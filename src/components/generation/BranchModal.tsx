@@ -34,112 +34,119 @@ type ForkConnector = { fromRow: number; fromCol: number; toRow: number; toCol: n
 function buildGrid(
   allBranches: Branch[],
   activeBranchId: string | null,
-  narrative: NarrativeState,
 ): { columns: { branchId: string }[]; rows: GridRow[]; forkConnectors: ForkConnector[] } {
   if (!activeBranchId || allBranches.length === 0) {
     return { columns: [], rows: [], forkConnectors: [] };
   }
 
   const byId = new Map(allBranches.map(b => [b.id, b]));
-  const activeSeq = resolveEntrySequence(narrative.branches, activeBranchId);
-  const activeEntrySet = new Set(activeSeq);
 
-  const ancestrySet = new Set<string>();
-  {
-    let bid = byId.get(activeBranchId)?.parentBranchId ?? null;
-    while (bid) {
-      ancestrySet.add(bid);
-      bid = byId.get(bid)?.parentBranchId ?? null;
+  // Each entry id is owned by exactly one branch — the branch whose own
+  // `entryIds` contains it. That's its "first occurrence" / origin. All
+  // other branches that contain the entry inherited it via the parent
+  // chain. Fork attribution is based on origin so connectors always run
+  // from the column that actually drew the entry, never from empty space.
+  const entryOrigin = new Map<string, string>();
+  for (const b of allBranches) {
+    for (const eid of b.entryIds) {
+      if (!entryOrigin.has(eid)) entryOrigin.set(eid, b.id);
     }
   }
 
-  const others: Branch[] = [];
-  const added = new Set<string>();
-  function addB(b: Branch) {
-    if (added.has(b.id) || b.id === activeBranchId) return;
-    if (b.parentBranchId) { const p = byId.get(b.parentBranchId); if (p) addB(p); }
-    added.add(b.id);
-    others.push(b);
+  // Column ordering: explicit DFS pre-order from roots, with siblings sorted
+  // by createdAt for stability. Each branch's full subtree is contiguous —
+  // parents always sit to the left of their descendants — so fork connectors
+  // run forward (parent column → child column on the right) without crossing
+  // unrelated columns. Active sits in its natural DFS position.
+  const childrenOf = new Map<string | null, Branch[]>();
+  for (const b of allBranches) {
+    const key = b.parentBranchId ?? null;
+    const list = childrenOf.get(key) ?? [];
+    list.push(b);
+    childrenOf.set(key, list);
   }
-  allBranches.forEach(b => { if (b.id !== activeBranchId) addB(b); });
+  for (const list of childrenOf.values()) {
+    list.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  }
 
-  const columns: { branchId: string }[] = [
-    ...others.map(b => ({ branchId: b.id })),
-    { branchId: activeBranchId },
-  ];
+  const ordered: Branch[] = [];
+  function dfs(branchId: string) {
+    const branch = byId.get(branchId);
+    if (branch) ordered.push(branch);
+    const children = childrenOf.get(branchId) ?? [];
+    for (const child of children) dfs(child.id);
+  }
+  const roots = childrenOf.get(null) ?? [];
+  for (const root of roots) dfs(root.id);
+
+  const columns: { branchId: string }[] = ordered.map((b) => ({ branchId: b.id }));
   const numCols = columns.length;
-  const currentCol = numCols - 1;
 
-  type BranchTrack = { col: number; entryPositions: Map<string, number> };
-  const tracks = new Map<string, BranchTrack>();
+  // Each entry sits at exactly one (column, row). Its column is its origin
+  // (the branch in `entryOrigin`); its row is computed by walking the branch
+  // tree: a root branch's first entry is at row 0, and a child branch's
+  // first entry is at (parent's row of the fork entry) + 1. Walking in DFS
+  // pre-order guarantees parents are computed before children.
+  const entryRow = new Map<string, number>();
+  const branchStartRow = new Map<string, number>();
+  let totalRows = 0;
 
-  const activePositions = new Map(activeSeq.map((eid, i) => [eid, i]));
-  tracks.set(activeBranchId, { col: currentCol, entryPositions: activePositions });
-
-  const forkConnectors: ForkConnector[] = [];
-  let totalRows = activeSeq.length;
-
-  for (const b of others) {
-    const col = columns.findIndex(c => c.branchId === b.id);
-    const isAncestor = ancestrySet.has(b.id);
-
-    let forkRow: number;
-    let forkCol: number;
-    let entriesToShow: string[];
-
-    if (isAncestor) {
-      const seq = resolveEntrySequence(narrative.branches, b.id);
-      let lcp = 0;
-      while (lcp < activeSeq.length && lcp < seq.length && activeSeq[lcp] === seq[lcp]) lcp++;
-      forkRow = lcp - 1;
-      forkCol = currentCol;
-      entriesToShow = b.entryIds.filter(eid => !activeEntrySet.has(eid));
-    } else {
-      forkRow = -1;
-      forkCol = currentCol;
-
-      if (b.forkEntryId) {
-        if (b.parentBranchId && b.parentBranchId !== activeBranchId) {
-          const parentTrack = tracks.get(b.parentBranchId);
-          if (parentTrack && parentTrack.entryPositions.has(b.forkEntryId)) {
-            forkRow = parentTrack.entryPositions.get(b.forkEntryId)!;
-            forkCol = parentTrack.col;
-          }
-        }
-        if (forkRow === -1 && activePositions.has(b.forkEntryId)) {
-          forkRow = activePositions.get(b.forkEntryId)!;
-          forkCol = currentCol;
-        }
+  for (const b of ordered) {
+    let startRow = 0;
+    if (b.parentBranchId && b.forkEntryId) {
+      const forkRow = entryRow.get(b.forkEntryId);
+      if (forkRow !== undefined) {
+        startRow = forkRow + 1;
       }
-
-      entriesToShow = b.entryIds;
+      // Else: data inconsistency (forkEntryId not yet placed); default to 0.
     }
-
-    const startRow = forkRow + 1;
-    const entryPositions = new Map<string, number>();
-    entriesToShow.forEach((eid, i) => { entryPositions.set(eid, startRow + i); });
-
-    tracks.set(b.id, { col, entryPositions });
-    totalRows = Math.max(totalRows, startRow + entriesToShow.length);
-
-    if (entriesToShow.length > 0 && forkRow >= 0) {
-      forkConnectors.push({ fromRow: forkRow, fromCol: forkCol, toRow: startRow, toCol: col });
+    branchStartRow.set(b.id, startRow);
+    b.entryIds.forEach((eid, i) => {
+      entryRow.set(eid, startRow + i);
+    });
+    if (b.entryIds.length > 0) {
+      totalRows = Math.max(totalRows, startRow + b.entryIds.length);
+    } else {
+      // Empty branches still need a row slot for their incoming connector.
+      totalRows = Math.max(totalRows, startRow + 1);
     }
   }
 
+  // Build the row grid: each row.colEntryIds[col] holds the entry id at that
+  // (col, row), if any. With the origin-based model, exactly one column per
+  // row has an entry — never duplicated.
   const rows: GridRow[] = Array.from({ length: totalRows }, () => ({
     colEntryIds: Array<string | null>(numCols).fill(null),
   }));
 
-  for (let i = 0; i < activeSeq.length && i < totalRows; i++) {
-    rows[i].colEntryIds[currentCol] = activeSeq[i];
+  for (const b of ordered) {
+    const col = columns.findIndex((c) => c.branchId === b.id);
+    if (col < 0) continue;
+    const startRow = branchStartRow.get(b.id) ?? 0;
+    b.entryIds.forEach((eid, i) => {
+      const ri = startRow + i;
+      if (ri < totalRows) rows[ri].colEntryIds[col] = eid;
+    });
   }
 
-  for (const b of others) {
-    const track = tracks.get(b.id)!;
-    for (const [eid, row] of track.entryPositions) {
-      if (row >= 0 && row < totalRows) rows[row].colEntryIds[track.col] = eid;
+  // Fork connectors: from origin column at the entry's row to the child
+  // branch's column at its first own row. Origin column is guaranteed to
+  // draw the fork entry (by construction), so the connector always lands
+  // on a real dot — no empty-column gaps, no lineage extensions needed.
+  const forkConnectors: ForkConnector[] = [];
+  for (const b of ordered) {
+    if (!b.parentBranchId || !b.forkEntryId) continue;
+    if (b.entryIds.length === 0) continue;
+    const originId = entryOrigin.get(b.forkEntryId);
+    if (!originId) continue;
+    const fromCol = columns.findIndex((c) => c.branchId === originId);
+    const toCol = columns.findIndex((c) => c.branchId === b.id);
+    const fromRow = entryRow.get(b.forkEntryId);
+    const toRow = branchStartRow.get(b.id);
+    if (fromCol < 0 || toCol < 0 || fromRow === undefined || toRow === undefined) {
+      continue;
     }
+    forkConnectors.push({ fromRow, fromCol, toRow, toCol });
   }
 
   return { columns, rows, forkConnectors };
@@ -220,7 +227,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
   const viewingBranchId = selectedBranchId ?? state.viewState.activeBranchId;
   const { columns, rows, forkConnectors } = useMemo(
     () => narrative
-      ? buildGrid(allBranches, viewingBranchId, narrative)
+      ? buildGrid(allBranches, viewingBranchId)
       : { columns: [], rows: [], forkConnectors: [] },
     [allBranches, viewingBranchId, narrative],
   );
@@ -320,7 +327,6 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
   }
 
   const numCols = columns.length;
-  const currentCol = numCols - 1;
   const svgW = numCols > 0 ? LPAD + numCols * COL_W + 8 : 0;
   const currentEntryId = state.resolvedEntryKeys[state.viewState.currentSceneIndex] ?? null;
 
@@ -587,7 +593,6 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               columns={columns}
               rows={rows}
               forkConnectors={forkConnectors}
-              currentCol={currentCol}
               svgW={svgW}
               branchLastRow={branchLastRow}
               entryLabel={entryLabel}
@@ -635,7 +640,6 @@ type GraphViewProps = {
   columns: { branchId: string }[];
   rows: GridRow[];
   forkConnectors: ForkConnector[];
-  currentCol: number;
   svgW: number;
   branchLastRow: Map<string, number>;
   entryLabel: (id: string) => string;
@@ -648,12 +652,15 @@ type GraphViewProps = {
   onSetForkEntry: (id: string) => void;
 };
 
+type LayoutMode = 'tracks' | 'map';
+
 function GraphView({
   narrative, allBranches, activeBranchId, selectedBranchId,
-  columns, rows, forkConnectors, currentCol, svgW, branchLastRow,
+  columns, rows, forkConnectors, svgW, branchLastRow,
   entryLabel, isWorldEntry, onSelect, onSwitch, parentChainOf,
   currentEntryId, forkEntryId, onSetForkEntry,
 }: GraphViewProps) {
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('tracks');
   const selected = selectedBranchId ? narrative.branches[selectedBranchId] : null;
   const selectedColor = selected ? stableBranchColor(selected.id, allBranches) : '#666';
   const selectedSeq = selected ? resolveEntrySequence(narrative.branches, selected.id) : [];
@@ -683,6 +690,28 @@ function GraphView({
 
   const rowCenter = (ri: number) => rowOffsets[ri] + (rowHeights[ri] ?? ROW_H) / 2;
   const totalHeight = rowOffsets[rows.length] ?? 0;
+
+  // Map each row to active's entry (if any). With the origin-based grid,
+  // active's column draws only its own entries — but the label column needs
+  // to surface every entry on active's resolved sequence (inherited too) so
+  // the user can read the full timeline. This walks active's sequence and
+  // looks each entry up in the row grid.
+  const activeSeqRowMap = useMemo(() => {
+    const m = new Map<number, string>();
+    if (!activeBranchId) return m;
+    const activeSeq = resolveEntrySequence(narrative.branches, activeBranchId);
+    const entryToRow = new Map<string, number>();
+    rows.forEach((row, ri) => {
+      row.colEntryIds.forEach((eid) => {
+        if (eid && !entryToRow.has(eid)) entryToRow.set(eid, ri);
+      });
+    });
+    for (const eid of activeSeq) {
+      const r = entryToRow.get(eid);
+      if (r !== undefined) m.set(r, eid);
+    }
+    return m;
+  }, [activeBranchId, narrative.branches, rows]);
 
   return (
     <>
@@ -726,13 +755,73 @@ function GraphView({
         </div>
       )}
 
+      {/* Layout mode toggle — small chip pair, top-right of the graph area.
+          Tracks = current per-row labelled view; Map = top-down tree of all
+          branches, no summaries, useful when many forks to scan structure. */}
+      <div className="px-6 pt-3 flex items-center justify-end shrink-0">
+        <div className="flex items-center gap-0.5 bg-white/5 border border-white/8 rounded-md p-0.5">
+          {(['tracks', 'map'] as LayoutMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setLayoutMode(m)}
+              className={`text-[11px] font-medium px-2.5 py-1 rounded transition-colors ${
+                layoutMode === m
+                  ? 'bg-white/15 text-text-primary'
+                  : 'text-text-dim hover:text-text-primary hover:bg-white/4'
+              }`}
+              title={
+                m === 'tracks'
+                  ? 'Per-row entry summaries on the active branch'
+                  : 'Top-down tree of all branches — structure only, no summaries'
+              }
+            >
+              {m === 'tracks' ? 'Tracks' : 'Map'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Graph */}
       <div className="flex-1 overflow-auto px-6 py-5 min-h-0">
         {rows.length === 0 ? (
           <p className="text-xs text-text-dim text-center py-12">No commits yet. Generate some scenes first.</p>
+        ) : layoutMode === 'map' ? (
+          <MapGraph
+            narrative={narrative}
+            allBranches={allBranches}
+            activeBranchId={activeBranchId}
+            selectedBranchId={selectedBranchId}
+            columns={columns}
+            rows={rows}
+            forkConnectors={forkConnectors}
+            isWorldEntry={isWorldEntry}
+            onSelect={onSelect}
+            onSwitch={onSwitch}
+          />
         ) : (
           <div className="flex">
             <svg width={svgW} height={totalHeight} className="shrink-0">
+
+              {/* Active column band — persistent faint highlight so the
+                  current branch stays identifiable even when selection
+                  moves elsewhere. Sits beneath the selected highlight so
+                  selected (when ≠ active) renders on top. */}
+              {(() => {
+                const activeIdx = activeBranchId
+                  ? columns.findIndex((c) => c.branchId === activeBranchId)
+                  : -1;
+                if (activeIdx < 0 || activeIdx === selectedColIdx) return null;
+                return (
+                  <rect
+                    x={colX(activeIdx) - DOT_R - 3}
+                    y={0}
+                    width={(DOT_R + 3) * 2}
+                    height={totalHeight}
+                    fill={`${stableBranchColor(columns[activeIdx].branchId, allBranches)}08`}
+                    rx={6}
+                  />
+                );
+              })()}
 
               {/* Selected column highlight */}
               {selectedColIdx >= 0 && (
@@ -762,15 +851,21 @@ function GraphView({
 
               {forkConnectors.map((fc, i) => {
                 const x1 = colX(fc.fromCol);
-                const y1 = rowCenter(fc.fromRow) + DOT_R + 1;
+                const y1 = rowCenter(fc.fromRow) + DOT_R;
                 const x2 = colX(fc.toCol);
-                const y2 = rowCenter(fc.toRow) - DOT_R - 1;
-                const midY = (y1 + y2) / 2;
+                const y2 = rowCenter(fc.toRow) - DOT_R;
+                // Smooth S-curve. Control points pull along the dominant axis
+                // (vertical here) by max(dy * 0.5, dx * 0.6) so wide forks
+                // (across many columns, only one row apart) get extra
+                // vertical room and avoid sharp near-90° bends.
+                const dy = y2 - y1;
+                const dx = Math.abs(x2 - x1);
+                const sweep = Math.max(dy * 0.5, dx * 0.6);
                 const c = stableBranchColor(columns[fc.toCol].branchId, allBranches);
                 return (
                   <path
                     key={`fc-${i}`}
-                    d={`M${x1} ${y1} C${x1} ${midY} ${x2} ${midY} ${x2} ${y2}`}
+                    d={`M${x1} ${y1} C${x1} ${y1 + sweep} ${x2} ${y2 - sweep} ${x2} ${y2}`}
                     stroke={c}
                     strokeWidth={2}
                     fill="none"
@@ -802,7 +897,7 @@ function GraphView({
             {/* Labels column */}
             <div className="flex-1 min-w-0 ml-2">
               {rows.map((row, ri) => {
-                const labelEntryId = row.colEntryIds[currentCol] ?? null;
+                const labelEntryId = activeSeqRowMap.get(ri) ?? null;
                 const labelIsActive = labelEntryId != null;
 
                 const headCols = columns
@@ -825,19 +920,21 @@ function GraphView({
                   >
                     {labelEntryId && (
                       <>
-                        {isCurrentRow && (
-                          <span
-                            title="Your current scene"
-                            className="text-[9px] uppercase tracking-widest text-text-dim border border-white/10 px-1 py-0.5 rounded shrink-0 mt-0.5"
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          {isCurrentRow && (
+                            <span
+                              title="Your current scene"
+                              className="self-start text-[9px] uppercase tracking-widest text-text-dim border border-white/10 px-1 py-0.5 rounded"
+                            >
+                              here
+                            </span>
+                          )}
+                          <p
+                            className={`text-xs leading-snug whitespace-pre-wrap wrap-break-word ${labelIsActive ? 'text-text-primary' : 'text-text-secondary'}`}
                           >
-                            here
-                          </span>
-                        )}
-                        <p
-                          className={`flex-1 text-xs leading-snug whitespace-pre-wrap wrap-break-word ${labelIsActive ? 'text-text-primary' : 'text-text-secondary'}`}
-                        >
-                          {entryLabel(labelEntryId)}
-                        </p>
+                            {entryLabel(labelEntryId)}
+                          </p>
+                        </div>
                         <button
                           onClick={() => onSetForkEntry(labelEntryId)}
                           title="Fork a new branch from this entry"
@@ -883,6 +980,253 @@ function GraphView({
         )}
       </div>
     </>
+  );
+}
+
+// ─── Map view ────────────────────────────────────────────────────────────────
+//
+// Compact zoomed-out version of the Tracks layout — same column-per-branch
+// vertical grid + same fork curves, just smaller and without the summary
+// column on the right. Designed for scanning a wide tree of branches when
+// per-row labels would overwhelm. Branch names render as rotated text above
+// their columns. Same interaction model as Tracks: click a column to select,
+// double-click to switch. Centered in the viewport.
+
+// Horizontal Map orientation — time flows left-to-right along the X axis,
+// branches are stacked horizontal lanes on the Y axis. Same data as Tracks,
+// rotated 90°. Reads as a git-style timeline overview where divergences fan
+// out vertically and chronological progression is the dominant axis.
+const MAP_ENTRY_W = 14;   // X spacing per entry (time step)
+const MAP_LANE_H = 24;    // Y spacing per branch lane
+const MAP_DOT_R = 3.5;
+const MAP_TOP_PAD = 12;
+const MAP_BOTTOM_PAD = 12;
+const MAP_LABEL_W = 110;  // Left padding for branch name labels.
+
+function mapEntryX(ri: number): number {
+  return MAP_LABEL_W + ri * MAP_ENTRY_W + MAP_ENTRY_W / 2;
+}
+function mapLaneY(ci: number): number {
+  return MAP_TOP_PAD + ci * MAP_LANE_H + MAP_LANE_H / 2;
+}
+
+type MapGraphProps = {
+  narrative: NarrativeState;
+  allBranches: Branch[];
+  activeBranchId: string | null;
+  selectedBranchId: string | null;
+  columns: { branchId: string }[];
+  rows: GridRow[];
+  forkConnectors: ForkConnector[];
+  isWorldEntry: (id: string) => boolean;
+  onSelect: (id: string) => void;
+  onSwitch: (id: string) => void;
+};
+
+function MapGraph({
+  narrative,
+  allBranches,
+  activeBranchId,
+  selectedBranchId,
+  columns,
+  rows,
+  forkConnectors,
+  isWorldEntry,
+  onSelect,
+  onSwitch,
+}: MapGraphProps) {
+  if (columns.length === 0 || rows.length === 0) {
+    return (
+      <p className="text-xs text-text-dim text-center py-12">
+        No branches to map yet.
+      </p>
+    );
+  }
+
+  // Natural coordinate-space dimensions. SVG renders at 100% of container
+  // via viewBox auto-fit. Horizontal layout: width grows with timeline
+  // length (rows = entries), height grows with branch count (columns =
+  // lanes). Scale-up is capped so tiny trees don't get absurdly stretched.
+  const svgW = MAP_LABEL_W + rows.length * MAP_ENTRY_W + 16;
+  const svgH = MAP_TOP_PAD + columns.length * MAP_LANE_H + MAP_BOTTOM_PAD;
+  const MAX_SCALE_UP = 3;
+
+  const selectedColIdx = selectedBranchId
+    ? columns.findIndex((c) => c.branchId === selectedBranchId)
+    : -1;
+  const activeColIdx = activeBranchId
+    ? columns.findIndex((c) => c.branchId === activeBranchId)
+    : -1;
+
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      <svg
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="w-full h-full"
+        style={{
+          maxWidth: svgW * MAX_SCALE_UP,
+          maxHeight: svgH * MAX_SCALE_UP,
+        }}
+      >
+        {/* Lane highlights — selected branch gets a brighter band, active
+            branch a fainter one. Spans the full timeline width including the
+            label gutter so the eye can sweep along the lane easily. */}
+        {columns.map((col, ci) => {
+          const isSelected = ci === selectedColIdx;
+          const isActive = ci === activeColIdx;
+          if (!isSelected && !isActive) return null;
+          const c = stableBranchColor(col.branchId, allBranches);
+          const y = mapLaneY(ci) - MAP_DOT_R - 4;
+          return (
+            <rect
+              key={`hl-${ci}`}
+              x={0}
+              y={y}
+              width={svgW}
+              height={(MAP_DOT_R + 4) * 2}
+              fill={isSelected ? `${c}1f` : `${c}0d`}
+              rx={4}
+            />
+          );
+        })}
+
+        {/* Lane hit areas — invisible rect per branch for selecting /
+            switching. Sits behind the visible elements. */}
+        {columns.map((col, ci) => (
+          <rect
+            key={`hit-${ci}`}
+            x={0}
+            y={mapLaneY(ci) - MAP_LANE_H / 2}
+            width={svgW}
+            height={MAP_LANE_H}
+            fill="transparent"
+            onClick={() => onSelect(col.branchId)}
+            onDoubleClick={() => onSwitch(col.branchId)}
+            className="cursor-pointer"
+          />
+        ))}
+
+        {/* Branch name labels — left-aligned, one per lane. With a small
+            color stripe so each lane is identifiable at a glance. */}
+        {columns.map((col, ci) => {
+          const branch = narrative.branches[col.branchId];
+          if (!branch) return null;
+          const c = stableBranchColor(col.branchId, allBranches);
+          const isActive = ci === activeColIdx;
+          const isSelected = ci === selectedColIdx;
+          const y = mapLaneY(ci);
+          return (
+            <g
+              key={`hdr-${ci}`}
+              onClick={() => onSelect(col.branchId)}
+              onDoubleClick={() => onSwitch(col.branchId)}
+              className="cursor-pointer"
+            >
+              <rect
+                x={4}
+                y={y - MAP_LANE_H / 2 + 4}
+                width={2.5}
+                height={MAP_LANE_H - 8}
+                rx={1.25}
+                fill={c}
+                opacity={isSelected ? 1 : 0.75}
+              />
+              <text
+                x={12}
+                y={y + 3.5}
+                fill={isSelected ? '#fff' : isActive ? c : '#a8a8a8'}
+                fontSize={10}
+                fontWeight={isSelected || isActive ? 600 : 400}
+              >
+                {(branch.name ?? col.branchId).slice(0, 16)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Same-branch lane segments — horizontal strokes connecting
+            consecutive entries on a lane. Time flows left-to-right. */}
+        {rows.map((row, ri) => {
+          if (ri === 0) return null;
+          return columns.map((_c, ci) => {
+            const prev = rows[ri - 1].colEntryIds[ci];
+            const curr = row.colEntryIds[ci];
+            if (!prev || !curr) return null;
+            const y = mapLaneY(ci);
+            const c = stableBranchColor(columns[ci].branchId, allBranches);
+            const x1 = mapEntryX(ri - 1) + MAP_DOT_R + 0.5;
+            const x2 = mapEntryX(ri) - MAP_DOT_R - 0.5;
+            return (
+              <line
+                key={`sp-${ri}-${ci}`}
+                x1={x1}
+                y1={y}
+                x2={x2}
+                y2={y}
+                stroke={c}
+                strokeWidth={1.5}
+              />
+            );
+          });
+        })}
+
+        {/* Fork connectors — smooth S-curve between lanes. Control points
+            sweep horizontally proportional to the larger of dx and dy, so
+            forks crossing many lanes (large dy, small dx) get extra
+            horizontal room and avoid the sharp near-90° bend that happens
+            when the control points sit too close to the endpoints. */}
+        {forkConnectors.map((fc, i) => {
+          const x1 = mapEntryX(fc.fromRow) + MAP_DOT_R + 0.5;
+          const y1 = mapLaneY(fc.fromCol);
+          const x2 = mapEntryX(fc.toRow) - MAP_DOT_R - 0.5;
+          const y2 = mapLaneY(fc.toCol);
+          const dx = x2 - x1;
+          const dy = Math.abs(y2 - y1);
+          const sweep = Math.max(dx * 0.5, dy * 0.6);
+          const c = stableBranchColor(columns[fc.toCol].branchId, allBranches);
+          return (
+            <path
+              key={`fc-${i}`}
+              d={`M${x1} ${y1} C${x1 + sweep} ${y1} ${x2 - sweep} ${y2} ${x2} ${y2}`}
+              stroke={c}
+              strokeWidth={1.5}
+              fill="none"
+            />
+          );
+        })}
+
+        {/* Entry markers — tiny dots / diamonds, same shape semantics as
+            Tracks (scenes round, world commits diamond). */}
+        {rows.map((row, ri) =>
+          row.colEntryIds.map((eid, ci) => {
+            if (!eid) return null;
+            const cx = mapEntryX(ri);
+            const cy = mapLaneY(ci);
+            const c = stableBranchColor(columns[ci].branchId, allBranches);
+            return isWorldEntry(eid) ? (
+              <rect
+                key={`d-${ri}-${ci}`}
+                x={cx - MAP_DOT_R + 0.5}
+                y={cy - MAP_DOT_R + 0.5}
+                width={(MAP_DOT_R - 0.5) * 2}
+                height={(MAP_DOT_R - 0.5) * 2}
+                fill={c}
+                transform={`rotate(45 ${cx} ${cy})`}
+              />
+            ) : (
+              <circle
+                key={`d-${ri}-${ci}`}
+                cx={cx}
+                cy={cy}
+                r={MAP_DOT_R}
+                fill={c}
+              />
+            );
+          })
+        )}
+      </svg>
+    </div>
   );
 }
 
