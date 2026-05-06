@@ -172,8 +172,32 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       degreeMap.set(e.from, (degreeMap.get(e.from) ?? 0) + 1);
       degreeMap.set(e.to, (degreeMap.get(e.to) ?? 0) + 1);
     }
+    // Per-node usage count across the visible window. Counts both
+    // introductions (systemDeltas.addedNodes) and attributions
+    // (systemAttributions) — every reference is a usage; the introduction
+    // is the first usage. This is the "usefulness" signal that combines
+    // with edge degree below so isolated-but-highly-cited rules still read
+    // as load-bearing.
+    const activationMap = new Map<string, number>();
+    for (let i = 0; i <= currentIndex && i < resolvedKeys.length; i++) {
+      const key = resolvedKeys[i];
+      const scene = narrative.scenes[key];
+      if (!scene) continue;
+      for (const n of scene.systemDeltas?.addedNodes ?? []) {
+        activationMap.set(n.id, (activationMap.get(n.id) ?? 0) + 1);
+      }
+      for (const id of scene.systemAttributions ?? []) {
+        activationMap.set(id, (activationMap.get(id) ?? 0) + 1);
+      }
+    }
     const maxDegree = Math.max(...nodeList.map((n) => degreeMap.get(n.id) ?? 0), 1);
-    const nodeRadius = (d: SysNode) => 10 + (d.degree / maxDegree) * 28;
+    const maxActivation = Math.max(...nodeList.map((n) => activationMap.get(n.id) ?? 0), 1);
+    const nodeRadius = (d: SysNode) => {
+      // 60% activation, 40% degree — usefulness leads, structure backs it up.
+      const aNorm = (activationMap.get(d.id) ?? 0) / maxActivation;
+      const dNorm = (d.degree ?? 0) / maxDegree;
+      return 10 + (aNorm * 0.6 + dNorm * 0.4) * 28;
+    };
 
     // Preserve positions of existing nodes
     const prevPos = new Map(nodesRef.current.map((n) => [n.id, { x: n.x, y: n.y }]));

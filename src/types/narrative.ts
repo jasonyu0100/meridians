@@ -824,6 +824,12 @@ export type Scene = {
   relationshipDeltas: RelationshipDelta[];
   /** System knowledge graph deltas — new concepts and connections about how the world works */
   systemDeltas?: SystemDelta;
+  /** IDs of *existing* system nodes this scene activates / leans on. Distinct
+   *  from `systemDeltas.addedNodes` (which records creation): this is reference
+   *  tracking for nodes already in the graph. Drives per-node usefulness
+   *  metrics — node sizing in graph view, activation timeline in inspector,
+   *  and signals which rules are doing structural work vs. sitting idle. */
+  systemAttributions?: string[];
   /** Artifact ownership changes — objects changing hands between characters/locations */
   ownershipDeltas?: OwnershipDelta[];
   /** Tie changes — characters forming or breaking ties with locations */

@@ -610,6 +610,18 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
       cumulativeSysNodes[n.id] = n;
       validSysIds.add(n.id);
     }
+    // Merge re-mention attributions: nodes that the model emitted as new but
+    // collapsed into existing concepts earn an attribution on the existing
+    // node. Plus remap any explicit systemAttributions through wkIdMap so
+    // GEN-* placeholder ids resolve to the real ids.
+    const mappedExplicit = (scene.systemAttributions ?? [])
+      .map((id) => wkIdMap[id] ?? id)
+      .filter((id) => validSysIds.has(id));
+    const attrSet = new Set<string>([
+      ...mappedExplicit,
+      ...resolved.attributedExistingIds,
+    ]);
+    scene.systemAttributions = Array.from(attrSet);
     // Remap edge references using the cumulative map (LLM GEN ids, prior-
     // scene real ids, and existing graph ids all pass through correctly).
     scene.systemDeltas.addedEdges = scene.systemDeltas.addedEdges.map((edge) => ({

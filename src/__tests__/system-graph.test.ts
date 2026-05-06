@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { SystemDelta, SystemGraph, SystemNode, SystemNodeType } from '@/types/narrative';
+import type { Scene, SystemDelta, SystemGraph, SystemNode, SystemNodeType } from '@/types/narrative';
 import {
   EMPTY_SYSTEM_GRAPH,
   systemEdgeKey,
@@ -9,6 +9,7 @@ import {
   normalizeSystemConcept,
   makeSystemIdAllocator,
   resolveSystemConceptIds,
+  getSceneSystemAttributions,
 } from '@/lib/system-graph';
 // ── Fixture helpers ──────────────────────────────────────────────────────────
 function node(id: string, concept: string, type: SystemNodeType = 'concept'): SystemNode {
@@ -342,9 +343,122 @@ describe('resolveSystemConceptIds', () => {
     expect(newNodes).toHaveLength(1);
     expect(remapped[0]).toEqual({ from: 'SYS-05', to: 'SYS-06', relation: 'enables' });
   });
+  it('reports existing-node ids that were re-mentioned as attributedExistingIds', () => {
+    const existing = {
+      'SYS-05': node('SYS-05', 'Magic', 'system'),
+      'SYS-06': node('SYS-06', 'Runes', 'concept'),
+    };
+    const { attributedExistingIds, newNodes } = resolveSystemConceptIds(
+      [
+        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' }, // → SYS-05 (re-mention)
+        { id: 'SYS-GEN-2', concept: 'Runes', type: 'concept' }, // → SYS-06 (re-mention)
+        { id: 'SYS-GEN-3', concept: 'Wards', type: 'concept' }, // → fresh, not an attribution
+      ],
+      existing,
+      alloc(['SYS-05', 'SYS-06']),
+    );
+    expect(newNodes).toHaveLength(1);
+    expect(newNodes[0].concept).toBe('Wards');
+    expect(attributedExistingIds.sort()).toEqual(['SYS-05', 'SYS-06']);
+  });
+  it('does not duplicate attributedExistingIds when a concept re-mentioned multiple times', () => {
+    const existing = { 'SYS-05': node('SYS-05', 'Magic', 'system') };
+    const { attributedExistingIds } = resolveSystemConceptIds(
+      [
+        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' },
+        { id: 'SYS-GEN-2', concept: 'magic', type: 'concept' },
+        { id: 'SYS-GEN-3', concept: 'MAGIC', type: 'principle' },
+      ],
+      existing,
+      alloc(['SYS-05']),
+    );
+    expect(attributedExistingIds).toEqual(['SYS-05']);
+  });
+  it('within-batch duplicates do NOT count as attributions (only existing-graph re-mentions do)', () => {
+    const { attributedExistingIds, newNodes } = resolveSystemConceptIds(
+      [
+        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' }, // fresh
+        { id: 'SYS-GEN-2', concept: 'Magic', type: 'concept' }, // batch dup of SYS-GEN-1
+      ],
+      {},
+      alloc(),
+    );
+    expect(newNodes).toHaveLength(1);
+    expect(attributedExistingIds).toEqual([]);
+  });
   it('handles empty input', () => {
     const { idMap, newNodes } = resolveSystemConceptIds([], {}, alloc());
     expect(idMap).toEqual({});
     expect(newNodes).toEqual([]);
+  });
+});
+
+// ── getSceneSystemAttributions ───────────────────────────────────────────────
+describe('getSceneSystemAttributions', () => {
+  function makeScene(opts: {
+    addedNodes?: SystemNode[];
+    explicitAttributions?: string[];
+  }): Scene {
+    // Minimal Scene shape — only the system fields matter for this helper.
+    return {
+      id: 'S-01',
+      arcId: 'ARC-01',
+      povId: null,
+      locationId: 'L-01',
+      participantIds: [],
+      events: [],
+      threadDeltas: [],
+      worldDeltas: [],
+      relationshipDeltas: [],
+      systemDeltas: opts.addedNodes
+        ? { addedNodes: opts.addedNodes, addedEdges: [] }
+        : undefined,
+      systemAttributions: opts.explicitAttributions,
+      summary: '',
+      timeDelta: { value: 0, unit: 'minute' },
+      kind: 'scene',
+    } as Scene;
+  }
+
+  it('returns empty when scene has no system data', () => {
+    const out = getSceneSystemAttributions(makeScene({}));
+    expect(out).toEqual([]);
+  });
+
+  it('attributes every introduced node — every system delta starts with 1 attribution', () => {
+    const scene = makeScene({
+      addedNodes: [node('SYS-01', 'A'), node('SYS-02', 'B')],
+    });
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-02']);
+  });
+
+  it('merges explicit systemAttributions with introduced ids', () => {
+    const scene = makeScene({
+      addedNodes: [node('SYS-01', 'A')],
+      explicitAttributions: ['SYS-99', 'SYS-77'],
+    });
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-99', 'SYS-77']);
+  });
+
+  it('deduplicates when an id appears in both addedNodes and systemAttributions', () => {
+    const scene = makeScene({
+      addedNodes: [node('SYS-01', 'A')],
+      explicitAttributions: ['SYS-01', 'SYS-99'],
+    });
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-99']);
+  });
+
+  it('preserves order: introductions first, then explicit attributions', () => {
+    const scene = makeScene({
+      addedNodes: [node('SYS-A', 'a')],
+      explicitAttributions: ['SYS-B'],
+    });
+    const out = getSceneSystemAttributions(scene);
+    expect(out.indexOf('SYS-A')).toBeLessThan(out.indexOf('SYS-B'));
+  });
+
+  it('handles scene with only attributions, no deltas', () => {
+    const scene = makeScene({ explicitAttributions: ['SYS-01', 'SYS-02'] });
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-02']);
   });
 });

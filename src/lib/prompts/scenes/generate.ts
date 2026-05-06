@@ -72,6 +72,7 @@ Return JSON with this exact structure.
       "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-001", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
       "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "description", "valenceDelta": 0.1}],
       "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-001", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-001", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
+      "systemAttributions": ["SYS-XX", "SYS-YY"],
       "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX|L-XX|null", "toId": "C-YY|L-YY|null"}],
       "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
       "newCharacters": [{"id": "C-GEN-001", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
@@ -95,6 +96,12 @@ Return JSON with this exact structure.
   </rule>
 
   <rule name="ids">scene S-GEN-###, knowledge K-GEN-###, system SYS-GEN-### (reused SYS nodes keep original ID). character/location/artifact/thread GEN-### placeholders remapped downstream.</rule>
+
+  <rule name="system-attributions" hint="Track which existing system rules each scene leans on — separate from creating new ones.">
+    Populate \`systemAttributions\` with IDs of EXISTING system nodes (already in the graph) that this scene structurally depends on — rules whose presence is doing actual work in the scene's events, not rules that merely happen to touch the world. Distinct from \`systemDeltas.addedNodes\` (which is for genuinely new concepts).
+    DISCIPLINE: cite a rule only when removing it would change the scene's outcome. 0–8 attributions per scene. Don't pad. A rule "merely active in the world" is not an attribution; a rule "load-bearing in this scene's logic" is.
+    EDGE PROMPTS: when two existing system nodes are co-attributed in the same scene and no edge yet links them, emit a new \`addedEdges\` entry capturing the relationship the scene just surfaced. Co-attribution without a connection is the strongest signal that a connection deserves to exist.
+  </rule>
 
   <rule name="time-delta">Gap from prior scene as estimate ({value: int≥0, unit}). Relative only — no absolute calendar. "that evening" → 3 hours; "next morning" → 1 day; "three years later" → 3 years; {value:0, unit:"minute"} = simultaneous/concurrent (also use for the first scene).</rule>
 

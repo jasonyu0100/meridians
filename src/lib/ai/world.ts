@@ -821,6 +821,20 @@ export async function generateNarrative(
       relation: edge.relation,
     }));
     sanitizeSystemDelta(scene.systemDeltas, validSysIds, seenSysEdgeKeys);
+
+    // Re-mentions collapsed during reconciliation become attributions on the
+    // existing node. Plus remap any explicit systemAttributions through the
+    // resolver's idMap (GEN-* placeholders → real ids).
+    const mappedExplicit = (scene.systemAttributions ?? [])
+      .map((id) => resolved.idMap[id] ?? id)
+      .filter((id) => validSysIds.has(id));
+    const attrSet = new Set<string>([
+      ...mappedExplicit,
+      ...resolved.attributedExistingIds,
+    ]);
+    if (attrSet.size > 0) {
+      scene.systemAttributions = Array.from(attrSet);
+    }
   }
 
   // Generate embeddings for scene summaries

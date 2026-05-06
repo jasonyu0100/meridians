@@ -1097,6 +1097,52 @@ export default function SceneDetail({ sceneId }: Props) {
           </div>
         )}
 
+      {/* System Attributions — existing nodes this scene leans on. Distinct
+          from creational deltas above; this is the activation record for
+          rules already in the graph. */}
+      {(scene.systemAttributions?.length ?? 0) > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+            Attributed
+            <span className="ml-1.5 text-text-dim/60 font-mono normal-case tracking-normal">
+              {scene.systemAttributions!.length}
+            </span>
+          </h3>
+          <div className="flex flex-col gap-1">
+            {scene.systemAttributions!.map((attrId) => {
+              const node = narrative.systemGraph.nodes[attrId];
+              const shortName = (concept: string) => {
+                const dash = concept.indexOf(" — ");
+                return dash > 0 ? concept.slice(0, dash) : concept;
+              };
+              return (
+                <button
+                  key={`attr-${attrId}`}
+                  type="button"
+                  onClick={() =>
+                    dispatch({
+                      type: "SET_INSPECTOR",
+                      context: { type: "knowledge", nodeId: attrId },
+                    })
+                  }
+                  className="flex items-start gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors text-left"
+                >
+                  <span className="shrink-0 text-text-dim/60">·</span>
+                  <span className="min-w-0">
+                    {node ? shortName(node.concept) : attrId}
+                    {node && (
+                      <span className="text-[10px] text-text-dim ml-1.5">
+                        ({node.type})
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Events */}
       {scene.events.length > 0 && (
         <div className="flex flex-col gap-1.5">

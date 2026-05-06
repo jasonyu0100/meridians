@@ -16,10 +16,40 @@
  *   - Nodes must carry concept + type.
  */
 
-import type { SystemDelta, SystemGraph, SystemNode, SystemEdge, SystemNodeType } from '@/types/narrative';
+import type { Scene, SystemDelta, SystemGraph, SystemNode, SystemEdge, SystemNodeType } from '@/types/narrative';
 
 /** Canonical empty system graph — the "zero value" for narrative initialization. */
 export const EMPTY_SYSTEM_GRAPH: SystemGraph = { nodes: {}, edges: [] };
+
+/**
+ * Effective set of system node IDs *attributed* by a scene. Every system
+ * delta a scene introduces counts as 1 attribution automatically — every
+ * reference is a usage, and the introduction is the first one. Plus any
+ * explicit `systemAttributions` for already-existing nodes the scene leans
+ * on. Returns a unique array preserving original order (introductions first,
+ * then explicit attributions not already present).
+ *
+ * Use this anywhere code asks "which system nodes did this scene use?" so
+ * the rule "every system delta starts with 1 attribution" stays automatic
+ * across the pipeline.
+ */
+export function getSceneSystemAttributions(scene: Scene): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const n of scene.systemDeltas?.addedNodes ?? []) {
+    if (!seen.has(n.id)) {
+      seen.add(n.id);
+      out.push(n.id);
+    }
+  }
+  for (const id of scene.systemAttributions ?? []) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
 
 /** Build the cross-delta edge key used for dedup. */
 export function systemEdgeKey(edge: { from: string; to: string; relation: string }): string {
@@ -131,9 +161,15 @@ export function makeSystemIdAllocator(seedIds: Iterable<string>): () => string {
  *   newNodes — only the nodes that are genuinely new and need to be added
  *              to the graph (existing-concept and within-batch-duplicate
  *              inputs are excluded)
+ *   attributedExistingIds — ids of EXISTING graph nodes whose concepts the
+ *              raw input re-mentioned. Callers should append these to the
+ *              scene's `systemAttributions` so re-mentions register as
+ *              usage of the original node (every reference is an
+ *              attribution; the merge into an existing concept is one).
  *
- * Callers use idMap to remap edge endpoints, then replace addedNodes with
- * newNodes so that downstream scoring only counts truly new concepts.
+ * Callers use idMap to remap edge endpoints, replace addedNodes with
+ * newNodes so that downstream scoring only counts truly new concepts, and
+ * merge attributedExistingIds into systemAttributions.
  */
 export function resolveSystemConceptIds(
   rawNodes: { id: string; concept: string; type: SystemNodeType }[],
@@ -142,6 +178,7 @@ export function resolveSystemConceptIds(
 ): {
   idMap: Record<string, string>;
   newNodes: { id: string; concept: string; type: SystemNodeType }[];
+  attributedExistingIds: string[];
 } {
   // Index existing graph by normalized concept. If the graph ever grows a
   // node with the same concept under different ids (shouldn't happen post-
@@ -157,6 +194,7 @@ export function resolveSystemConceptIds(
   const idMap: Record<string, string> = {};
   const newNodes: { id: string; concept: string; type: SystemNodeType }[] = [];
   const batchByConcept = new Map<string, string>();
+  const attributedExistingIds = new Set<string>();
 
   for (const raw of rawNodes) {
     if (!raw?.id || !raw.concept || !raw.type) continue;
@@ -164,9 +202,11 @@ export function resolveSystemConceptIds(
     if (!key) continue;
 
     // 1. Existing graph wins — re-mentioned concepts collapse to their id.
+    //    The merged-into id earns an attribution: the scene used the rule.
     const existingId = existingByConcept.get(key);
     if (existingId) {
       idMap[raw.id] = existingId;
+      attributedExistingIds.add(existingId);
       continue;
     }
 
@@ -184,5 +224,9 @@ export function resolveSystemConceptIds(
     newNodes.push({ id: freshId, concept: raw.concept, type: raw.type });
   }
 
-  return { idMap, newNodes };
+  return {
+    idMap,
+    newNodes,
+    attributedExistingIds: Array.from(attributedExistingIds),
+  };
 }

@@ -897,7 +897,12 @@ export type Action =
   | { type: "RESET_COORDINATION_PLAN"; branchId: string }
   | { type: "SET_COORDINATION_PLAN_ARC"; branchId: string; arcIndex: number }
   // Reasoning graph
-  | { type: "SET_ARC_REASONING_GRAPH"; arcId: string; reasoningGraph: Arc["reasoningGraph"] };
+  | { type: "SET_ARC_REASONING_GRAPH"; arcId: string; reasoningGraph: Arc["reasoningGraph"] }
+  // System graph manual mutations — used by the inspector's "Connect" button
+  // when two co-attributed nodes lack an edge. The edge is stored on the
+  // specified scene's systemDeltas so it joins the cumulative graph in
+  // chronological position rather than floating outside the timeline.
+  | { type: "ADD_SYSTEM_EDGE"; sceneId: string; edge: SystemEdge };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -3150,6 +3155,34 @@ function reducer(state: AppState, action: Action): AppState {
             [action.arcId]: {
               ...arc,
               reasoningGraph: action.reasoningGraph,
+            },
+          },
+        };
+      });
+
+    case "ADD_SYSTEM_EDGE":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene) return n;
+        const existing = scene.systemDeltas ?? { addedNodes: [], addedEdges: [] };
+        // Idempotent: don't duplicate the same edge if it's already present.
+        const dup = existing.addedEdges?.some(
+          (e) =>
+            e.from === action.edge.from &&
+            e.to === action.edge.to &&
+            e.relation === action.edge.relation,
+        );
+        if (dup) return n;
+        return {
+          ...n,
+          scenes: {
+            ...n.scenes,
+            [action.sceneId]: {
+              ...scene,
+              systemDeltas: {
+                addedNodes: existing.addedNodes ?? [],
+                addedEdges: [...(existing.addedEdges ?? []), action.edge],
+              },
             },
           },
         };

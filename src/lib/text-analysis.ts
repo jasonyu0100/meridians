@@ -2062,6 +2062,21 @@ export async function assembleNarrative(
                   (mm.action === "add" || mm.action === "remove"),
               );
           })() || undefined,
+        // Re-mentioned system concepts in this scene get redistributed as
+        // attributions on the canonical (already-seen) node id. Captured
+        // BEFORE the systemDeltas IIFE mutates seenSysNodeIds so we can
+        // distinguish re-mentions (existing → attribute) from genuinely
+        // new ones (added → introduction).
+        systemAttributions: (() => {
+          const wkm = s.systemDeltas;
+          if (!wkm?.addedNodes?.length) return undefined;
+          const attrs = new Set<string>();
+          for (const n of wkm.addedNodes) {
+            const id = getSysId(n.concept);
+            if (seenSysNodeIds.has(id)) attrs.add(id);
+          }
+          return attrs.size > 0 ? Array.from(attrs) : undefined;
+        })(),
         systemDeltas: (() => {
           const wkm = s.systemDeltas;
           if (!wkm) return undefined;
