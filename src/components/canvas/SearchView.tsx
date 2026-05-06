@@ -27,12 +27,12 @@ type QueryResponse = {
 };
 
 const SUGGESTED_QUERIES = [
-  "What are the main conflicts?",
-  "Character relationships and dynamics",
-  "Key plot turning points",
-  "Thematic patterns across scenes",
-  "World-building details and rules",
-  "Character motivations and goals",
+  "Central tensions and conflicts",
+  "Key decisions and turning points",
+  "Causal chains between events",
+  "Recurring patterns and motifs",
+  "Rules, systems, and constraints",
+  "Actors, motivations, and stakes",
 ];
 
 export function SearchView() {
@@ -412,7 +412,7 @@ export function SearchView() {
                     handleQuery(query);
                   }
                 }}
-                placeholder="Search your narrative..."
+                placeholder="Search this text..."
                 className="w-full px-6 py-3.5 bg-bg-elevated border border-border rounded-full text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sky-500/50 transition-all shadow-sm"
                 disabled={isSearching}
               />
@@ -438,18 +438,30 @@ export function SearchView() {
 
         {/* Suggested Queries - Only show when no results */}
         {!response && !isSearching && !errorMessage && isLoaded && (
-          <div className="w-full max-w-2xl px-8 mt-8">
-            <div className="text-xs text-text-dim mb-3">Try searching for:</div>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTED_QUERIES.map((suggested) => (
-                <button
-                  key={suggested}
-                  onClick={() => handleSuggestedQuery(suggested)}
-                  className="px-4 py-2 bg-bg-elevated border border-border rounded-full text-xs text-text-secondary hover:border-sky-500/50 hover:bg-bg-elevated/80 transition-all"
-                >
-                  {suggested}
-                </button>
-              ))}
+          <div className="w-full mt-8">
+            <div className="max-w-2xl mx-auto px-8 text-xs text-text-dim mb-3">
+              Try searching for:
+            </div>
+            <div
+              className="relative w-full overflow-hidden"
+              style={{
+                maskImage:
+                  "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+              }}
+            >
+              <div className="flex w-max gap-2 animate-marquee-x">
+                {[...SUGGESTED_QUERIES, ...SUGGESTED_QUERIES].map((suggested, i) => (
+                  <button
+                    key={`${suggested}-${i}`}
+                    onClick={() => handleSuggestedQuery(suggested)}
+                    className="shrink-0 px-4 py-2 bg-bg-elevated border border-border rounded-full text-xs text-text-secondary hover:border-sky-500/50 hover:bg-bg-elevated/80 transition-all"
+                  >
+                    {suggested}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

@@ -146,6 +146,23 @@ button,
   animation: bg-drift 30s ease-in-out infinite;
 }
 
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-x {
+  animation: marquee-x 40s linear infinite;
+}
+
+.animate-marquee-x:hover {
+  animation-play-state: paused;
+}
+
 /* ── Cosmos / astrology theme ──────────────────────────────────────────── */
 .cosmos-container {
   opacity: 1;
