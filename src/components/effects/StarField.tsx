@@ -28,15 +28,6 @@ interface Firing {
   cascaded: boolean;
 }
 
-interface ShootingStar {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-}
-
 function seededRandom(seed: number) {
   let s = seed % 2147483647;
   if (s <= 0) s += 2147483646;
@@ -51,12 +42,10 @@ export function StarField({ neurons = true }: { neurons?: boolean } = {}) {
   const animationRef = useRef<number>(0);
   const starsRef = useRef<Star[]>([]);
   const constellationsRef = useRef<Constellation[]>([]);
-  const shootingRef = useRef<ShootingStar[]>([]);
   const firingsRef = useRef<Firing[]>([]);
   const neighborsRef = useRef<number[][]>([]);
   const fireCandidatesRef = useRef<number[]>([]);
   const startTimeRef = useRef<number>(0);
-  const lastSpawnRef = useRef<number>(0);
   const lastFireRef = useRef<number>(0);
   const nextFireDelayRef = useRef<number>(120);
   const dimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -385,54 +374,6 @@ export function StarField({ neurons = true }: { neurons?: boolean } = {}) {
         ctx.arc(x, y, s.size, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      // Shooting stars — rare
-      if (timestamp - lastSpawnRef.current > 16000 + Math.random() * 14000) {
-        lastSpawnRef.current = timestamp;
-        if (shootingRef.current.length < 1) {
-          const fromLeft = Math.random() < 0.5;
-          shootingRef.current.push({
-            x: fromLeft ? -60 : w + 60,
-            y: Math.random() * h * 0.55,
-            vx: fromLeft ? 0.5 + Math.random() * 0.35 : -(0.5 + Math.random() * 0.35),
-            vy: 0.2 + Math.random() * 0.25,
-            life: 0,
-            maxLife: 1700,
-          });
-        }
-      }
-
-      shootingRef.current = shootingRef.current.filter((s) => {
-        s.life += delta;
-        if (s.life > s.maxLife) return false;
-        s.x += s.vx * delta * 0.5;
-        s.y += s.vy * delta * 0.5;
-        const lifeRatio = s.life / s.maxLife;
-        const fade =
-          lifeRatio < 0.18
-            ? lifeRatio / 0.18
-            : 1 - (lifeRatio - 0.18) / 0.82;
-        const trailLen = 80;
-        const grd = ctx.createLinearGradient(
-          s.x,
-          s.y,
-          s.x - s.vx * trailLen,
-          s.y - s.vy * trailLen,
-        );
-        grd.addColorStop(0, `rgba(255, 240, 200, ${0.55 * fade})`);
-        grd.addColorStop(1, "rgba(255, 240, 200, 0)");
-        ctx.strokeStyle = grd;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y);
-        ctx.lineTo(s.x - s.vx * trailLen, s.y - s.vy * trailLen);
-        ctx.stroke();
-        ctx.fillStyle = `rgba(255, 250, 230, ${fade * 0.7})`;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, 1.2, 0, Math.PI * 2);
-        ctx.fill();
-        return true;
-      });
 
       animationRef.current = requestAnimationFrame(animate);
     };
