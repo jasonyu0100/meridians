@@ -249,7 +249,21 @@ export default function MarketBriefingView() {
           </div>
         )}
 
-        {(loading || (reasoning && !briefing)) && <ReasoningPanel reasoning={reasoning} streaming={loading} />}
+        {(loading || (reasoning && !briefing)) && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 border-2 border-sky-400/30 border-t-sky-400/80 rounded-full animate-spin" />
+              <span className="text-[10px] text-text-dim">
+                {loading ? 'Generating brief...' : 'Reasoning'}
+              </span>
+            </div>
+            {reasoning && (
+              <p className="text-[11px] text-text-dim/60 leading-relaxed whitespace-pre-wrap">
+                {reasoning}
+              </p>
+            )}
+          </div>
+        )}
 
         {!briefing && !loading && !error && <EmptyState onRun={runBriefing} />}
 
@@ -886,30 +900,6 @@ function OutlookCard({ label, body }: { label: string; body: string }) {
     <div className="rounded-lg border border-white/8 bg-white/2 p-3 flex flex-col gap-1.5">
       <span className="text-[10px] uppercase tracking-wider text-text-dim">{label}</span>
       <p className="text-[11px] text-text-secondary leading-relaxed">{body}</p>
-    </div>
-  );
-}
-
-// ── Reasoning panel ────────────────────────────────────────────────────────
-
-function ReasoningPanel({ reasoning, streaming }: { reasoning: string; streaming: boolean }) {
-  return (
-    <div className="rounded-xl border border-white/8 bg-white/2 p-4 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        {streaming && (
-          <span className="w-2.5 h-2.5 border-2 border-emerald-400/30 border-t-emerald-400/80 rounded-full animate-spin" />
-        )}
-        <span className="text-[10px] uppercase tracking-wider text-text-dim">
-          {streaming ? 'Reading the board…' : 'Reasoning'}
-        </span>
-      </div>
-      {reasoning ? (
-        <p className="text-[11px] text-text-dim/70 leading-relaxed whitespace-pre-wrap font-mono">
-          {reasoning}
-        </p>
-      ) : (
-        <p className="text-[11px] text-text-dim/50 italic">Waiting for reasoning tokens…</p>
-      )}
     </div>
   );
 }
