@@ -10,20 +10,11 @@ type AttributionEntry = {
   sceneId: string;
   sceneIndex: number;
   sceneTitle: string;
-  /** Nodes co-active with this one in the same scene — both introductions
-   *  and attributions count, since either is a form of usage. */
-  coAttributed: string[];
   /** True when this scene is the one that *introduced* the node (the node
    *  appears in this scene's systemDeltas.addedNodes). The introduction
    *  scene is also counted as a usage but tagged distinctly so the timeline
    *  can mark it. */
   isIntroduction: boolean;
-};
-
-type CoActivation = {
-  otherId: string;
-  count: number;
-  sceneIds: string[];
 };
 
 type Props = {
@@ -146,94 +137,37 @@ export default function KnowledgeDetail({ nodeId }: Props) {
   // Co-activated nodes pulled from the same scene's full system footprint
   // (added + attributed) so co-activation captures rules that surfaced
   // together regardless of whether they were freshly introduced.
+  // Unified attribution timeline — every entry that uses this node, whether
+  // it's a scene that referenced it (systemAttributions), a scene that
+  // introduced it (systemDeltas.addedNodes), or a world-build commit that
+  // introduced it. Introductions are tagged so the row can mark them.
   const activations = useMemo(() => {
     const out: AttributionEntry[] = [];
     if (!narrative) return out;
     for (let i = 0; i <= state.viewState.currentSceneIndex && i < state.resolvedEntryKeys.length; i++) {
       const key = state.resolvedEntryKeys[i];
       const scene = narrative.scenes[key];
-      if (!scene) continue;
-      const addedIds = (scene.systemDeltas?.addedNodes ?? []).map((n) => n.id);
-      const attrs = scene.systemAttributions ?? [];
+      const wb = narrative.worldBuilds?.[key];
+      const addedIds = scene
+        ? (scene.systemDeltas?.addedNodes ?? []).map((n) => n.id)
+        : (wb?.expansionManifest?.systemDeltas?.addedNodes ?? []).map((n) => n.id);
+      const attrs = scene?.systemAttributions ?? [];
       const isIntroduction = addedIds.includes(nodeId);
       const isAttributed = attrs.includes(nodeId);
       if (!isIntroduction && !isAttributed) continue;
-      const all = new Set<string>([...addedIds, ...attrs]);
-      all.delete(nodeId);
-      const coAttributed = Array.from(all);
       const title =
-        scene.summary?.slice(0, 60) ?? scene.events?.[0]?.slice(0, 60) ?? key;
+        scene?.summary?.slice(0, 60) ??
+        wb?.summary?.slice(0, 60) ??
+        scene?.events?.[0]?.slice(0, 60) ??
+        key;
       out.push({
         sceneId: key,
         sceneIndex: i,
         sceneTitle: title,
-        coAttributed,
         isIntroduction,
       });
     }
     return out;
-  }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex, nodeId]);
-
-  // Co-activations: other nodes that have been attributed alongside this one,
-  // ranked by frequency. Each entry tracks the scenes where the pair was
-  // co-attributed — so the "Connect" button can attach a new edge to a real
-  // scene rather than a synthetic one.
-  const coActivations = useMemo(() => {
-    const counts = new Map<string, CoActivation>();
-    for (const a of activations) {
-      for (const otherId of a.coAttributed) {
-        if (!counts.has(otherId)) {
-          counts.set(otherId, { otherId, count: 0, sceneIds: [] });
-        }
-        const entry = counts.get(otherId)!;
-        entry.count += 1;
-        entry.sceneIds.push(a.sceneId);
-      }
-    }
-    return Array.from(counts.values()).sort((a, b) => b.count - a.count);
-  }, [activations]);
-
-  // Set of other nodes already linked to this one (either direction) — used
-  // to filter "needs connection" suggestions in the Attributions section.
-  const linkedNodeIds = useMemo(() => {
-    const s = new Set<string>();
-    for (const e of graph.edges) {
-      if (e.from === nodeId) s.add(e.to);
-      else if (e.to === nodeId) s.add(e.from);
-    }
-    return s;
-  }, [graph.edges, nodeId]);
-
-  const connectCoActivation = useCallback(
-    (otherId: string, sceneId: string) => {
-      // Direction: this node → other (relation defaults to a neutral
-      // "extends" since the user can refine in a future inline editor).
-      dispatch({
-        type: 'ADD_SYSTEM_EDGE',
-        sceneId,
-        edge: { from: nodeId, to: otherId, relation: 'extends' },
-      });
-    },
-    [dispatch, nodeId],
-  );
-
-  // Scenes where this node was introduced
-  const introScenes = useMemo(() => {
-    const scenes: { sceneId: string; sceneTitle: string }[] = [];
-    if (!narrative) return scenes;
-    for (let i = 0; i <= state.viewState.currentSceneIndex && i < state.resolvedEntryKeys.length; i++) {
-      const key = state.resolvedEntryKeys[i];
-      const scene = narrative.scenes[key];
-      const wb = narrative.worldBuilds?.[key];
-      const wkm = scene?.systemDeltas ?? wb?.expansionManifest.systemDeltas;
-      if (!wkm) continue;
-      const added = wkm.addedNodes ?? [];
-      if (added.some((n) => n.id === nodeId)) {
-        const title = scene?.events?.[0]?.slice(0, 60) ?? wb?.summary?.slice(0, 60) ?? key;
-        scenes.push({ sceneId: key, sceneTitle: title });
-      }
-    }
-    return scenes;
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex, nodeId]);
 
   if (!narrative) return null;
@@ -302,81 +236,26 @@ export default function KnowledgeDetail({ nodeId }: Props) {
       )}
 
       {/* Attributions — scenes that lean on this rule (introduction or
-          subsequent reference), plus co-activation suggestions. Total usage
-          count is the usefulness signal; the introduction scene is marked
-          to preserve the creation/reference distinction. */}
+          subsequent reference). Total usage count is the usefulness signal;
+          the introduction scene is marked to preserve the creation/
+          reference distinction. */}
       {activations.length > 0 && (
         <CollapsibleSection title="Attributions" count={activations.length} defaultOpen>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-1">
-              {activations.map(({ sceneId, sceneIndex, sceneTitle, isIntroduction }) => (
-                <button
-                  key={sceneId}
-                  type="button"
-                  onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'scene', sceneId } })}
-                  title={isIntroduction ? `Introduced in: ${sceneTitle}` : sceneTitle}
-                  className={`text-[10px] px-1.5 py-0.5 rounded font-mono transition-colors ${
-                    isIntroduction
-                      ? 'bg-white/12 text-text-primary ring-1 ring-white/15'
-                      : 'bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary'
-                  }`}
-                >
-                  {isIntroduction && <span className="mr-0.5">+</span>}#{sceneIndex + 1}
-                </button>
-              ))}
-            </div>
-            {coActivations.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <p className="text-[10px] uppercase tracking-widest text-text-dim/70">
-                  Co-activated
-                </p>
-                <ul className="flex flex-col gap-1">
-                  {coActivations.map(({ otherId, count, sceneIds }) => {
-                    const other = graph.nodes[otherId];
-                    const isLinked = linkedNodeIds.has(otherId);
-                    return (
-                      <li key={otherId} className="flex items-center gap-2 group">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${other ? TYPE_COLORS[other.type] ?? 'bg-white/40' : 'bg-white/20'}`} />
-                        <button
-                          type="button"
-                          onClick={() => navigateToNode(otherId)}
-                          className="text-xs text-text-secondary hover:text-text-primary transition-colors flex-1 text-left truncate"
-                        >
-                          {other?.concept ?? otherId}
-                        </button>
-                        <span className="text-[10px] text-text-dim/60 font-mono tabular-nums shrink-0">
-                          ×{count}
-                        </span>
-                        {!isLinked && (
-                          <button
-                            type="button"
-                            onClick={() => connectCoActivation(otherId, sceneIds[sceneIds.length - 1])}
-                            title="Create an edge between these co-activated nodes"
-                            className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-white/10 text-text-dim opacity-0 group-hover:opacity-100 hover:bg-white/8 hover:text-text-secondary transition-all shrink-0"
-                          >
-                            + connect
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Introduced in */}
-      {introScenes.length > 0 && (
-        <CollapsibleSection title="Introduced in" count={introScenes.length}>
           <ul className="flex flex-col gap-1">
-            {introScenes.map(({ sceneId, sceneTitle }) => (
-              <li key={sceneId}>
+            {activations.map(({ sceneId, sceneTitle, isIntroduction }) => (
+              <li key={sceneId} className="flex items-start gap-1.5">
+                {isIntroduction && (
+                  <span
+                    title="Introduced in this entry"
+                    className="text-[9px] uppercase tracking-widest text-text-dim/70 px-1 py-0.5 rounded border border-white/10 shrink-0 mt-px"
+                  >
+                    intro
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'scene', sceneId } })}
-                  className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                  className="text-xs text-text-secondary hover:text-text-primary transition-colors text-left"
                 >
                   {sceneTitle}
                 </button>
