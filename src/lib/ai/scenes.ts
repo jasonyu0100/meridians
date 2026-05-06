@@ -6,7 +6,7 @@ import { newNarratorBelief } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
 import { GENERATE_SCENES_SYSTEM } from '@/lib/prompts/scenes/generate';
-import { WRITING_MODEL, GENERATE_MODEL, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
+import { WRITING_MODEL, GENERATE_MODEL, GENERATE_MODEL_GRAPH_GUIDED, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext, sceneContext, buildProseProfile } from './context';
 import { PROMPT_STRUCTURAL_RULES, PROMPT_DELTAS, PROMPT_ARTIFACTS, PROMPT_LOCATIONS, PROMPT_POV, PROMPT_WORLD, PROMPT_SUMMARY_REQUIREMENT, promptThreadLifecycle, buildThreadHealthPrompt, buildCompletedBeatsPrompt, PROMPT_FORCE_STANDARDS, PROMPT_ARC_STATE_GUIDANCE, buildScenePlanSystemPrompt, buildBeatAnalystSystemPrompt, buildScenePlanEditSystemPrompt, buildSceneProseSystemPrompt } from './prompts';
@@ -369,9 +369,12 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     try {
       const reasoningBudget = resolveReasoningBudget(narrative);
       const useStream = !!(onToken || onReasoning);
+      // CRG present = graph executes the structural reasoning, so the scene
+      // pass becomes guided execution. Switch to a fast graph-capable model.
+      const sceneModel = reasoningGraph ? GENERATE_MODEL_GRAPH_GUIDED : GENERATE_MODEL;
       const raw = useStream
-        ? await callGenerateStream(prompt, GENERATE_SCENES_SYSTEM, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning)
-        : await callGenerate(prompt, GENERATE_SCENES_SYSTEM, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget);
+        ? await callGenerateStream(prompt, GENERATE_SCENES_SYSTEM, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', sceneModel, reasoningBudget, onReasoning)
+        : await callGenerate(prompt, GENERATE_SCENES_SYSTEM, MAX_TOKENS_LARGE, 'generateScenes', sceneModel, reasoningBudget);
       parsed = parseJson(raw, 'generateScenes') as { arcName?: string; directionVector?: string; worldState?: string; scenes: Scene[] };
       break;
     } catch (err) {

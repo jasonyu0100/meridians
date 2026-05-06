@@ -4,6 +4,7 @@ import {
   ANALYSIS_MAX_CORPUS_WORDS,
   ANALYSIS_MODEL,
   GENERATE_MODEL,
+  GENERATE_MODEL_GRAPH_GUIDED,
   INTERACTION_MODEL,
   PLANNING_MODEL,
   ANALYSIS_STAGGER_DELAY_MS,
@@ -80,6 +81,11 @@ describe("AI Model Constants", () => {
   it("GENERATE_MODEL is a valid model identifier", () => {
     expect(typeof GENERATE_MODEL).toBe("string");
     expect(GENERATE_MODEL.length).toBeGreaterThan(0);
+  });
+  it("GENERATE_MODEL_GRAPH_GUIDED is a valid model identifier", () => {
+    expect(typeof GENERATE_MODEL_GRAPH_GUIDED).toBe("string");
+    expect(GENERATE_MODEL_GRAPH_GUIDED.length).toBeGreaterThan(0);
+    expect(GENERATE_MODEL_GRAPH_GUIDED).toContain("/");
   });
   it("INTERACTION_MODEL is a valid model identifier", () => {
     expect(typeof INTERACTION_MODEL).toBe("string");
