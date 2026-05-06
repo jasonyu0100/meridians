@@ -3,7 +3,7 @@
 import { useImageUrl } from "@/hooks/useAssetUrl";
 import { computeForceSnapshots, detectCubeCorner, getEffectivePovId, resolveEntityName } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
-import { isScene, resolveEntry, type Scene } from "@/types/narrative";
+import { isScene, resolveEntry, type InspectorContext, type Scene } from "@/types/narrative";
 import { useMemo } from "react";
 
 type Props = {
@@ -870,7 +870,13 @@ export default function SceneDetail({ sceneId }: Props) {
           </h3>
           {scene.worldDeltas.flatMap((km, kmIdx) => {
             const entityName = resolveEntityName(narrative, km.entityId);
-            const isChar = !!narrative.characters[km.entityId];
+            const entityContext: InspectorContext | null = narrative.characters[km.entityId]
+              ? { type: "character", characterId: km.entityId }
+              : narrative.locations[km.entityId]
+                ? { type: "location", locationId: km.entityId }
+                : narrative.artifacts?.[km.entityId]
+                  ? { type: "artifact", artifactId: km.entityId }
+                  : null;
             return (km.addedNodes ?? []).map((node, nIdx) => (
               <div
                 key={`${km.entityId}-${node.id}-${kmIdx}-${nIdx}`}
@@ -882,16 +888,11 @@ export default function SceneDetail({ sceneId }: Props) {
                     <button
                       type="button"
                       onClick={() =>
-                        isChar &&
-                        dispatch({
-                          type: "SET_INSPECTOR",
-                          context: {
-                            type: "character",
-                            characterId: km.entityId,
-                          },
-                        })
+                        entityContext &&
+                        dispatch({ type: "SET_INSPECTOR", context: entityContext })
                       }
-                      className="text-text-primary transition-colors hover:underline"
+                      disabled={!entityContext}
+                      className="text-text-primary transition-colors hover:underline disabled:no-underline disabled:cursor-default"
                     >
                       {entityName}
                     </button>
@@ -899,7 +900,18 @@ export default function SceneDetail({ sceneId }: Props) {
                       {node.id}
                     </span>
                   </div>
-                  <span className="text-text-secondary">{node.content}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      dispatch({
+                        type: "SET_INSPECTOR",
+                        context: { type: "world", entityId: km.entityId, nodeId: node.id },
+                      })
+                    }
+                    className="text-text-secondary text-left hover:text-text-primary transition-colors"
+                  >
+                    {node.content}
+                  </button>
                 </div>
               </div>
             ));
@@ -1056,92 +1068,82 @@ export default function SceneDetail({ sceneId }: Props) {
         </div>
       )}
 
-      {/* System Knowledge Deltas */}
-      {scene.systemDeltas &&
-        ((scene.systemDeltas.addedNodes?.length ?? 0) > 0 ||
-          (scene.systemDeltas.addedEdges?.length ?? 0) > 0) && (
-          <div className="flex flex-col gap-1.5">
-            <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
-              System Knowledge
-            </h3>
-            {(scene.systemDeltas.addedNodes ?? []).map((node, i) => (
-              <div
-                key={`wk-node-${node.id}-${i}`}
-                className="flex items-start gap-1.5 text-xs"
-              >
-                <span className="shrink-0 text-world">+</span>
-                <span className="min-w-0 text-text-primary">
-                  {node.concept}{' '}
-                  <span className="text-[10px] text-text-dim">({node.type})</span>
-                </span>
-              </div>
-            ))}
-            {(scene.systemDeltas.addedEdges ?? []).map((edge, i) => {
-              const fromNode = narrative.systemGraph.nodes[edge.from];
-              const toNode = narrative.systemGraph.nodes[edge.to];
-              const shortName = (concept: string) => {
-                const dash = concept.indexOf(" — ");
-                return dash > 0 ? concept.slice(0, dash) : concept;
-              };
-              return (
-                <div
-                  key={`wk-edge-${edge.from}-${edge.to}-${i}`}
-                  className="text-xs pl-3 text-text-dim"
-                >
-                  {shortName(fromNode?.concept ?? edge.from ?? "")}{" "}
-                  <span className="italic text-text-dim">{edge.relation}</span>{" "}
-                  {shortName(toNode?.concept ?? edge.to ?? "")}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-      {/* System Attributions — existing nodes this scene leans on. Distinct
-          from creational deltas above; this is the activation record for
-          rules already in the graph. */}
-      {(scene.systemAttributions?.length ?? 0) > 0 && (
+      {/* System Knowledge Deltas — additions only; edges live on the graph */}
+      {(scene.systemDeltas?.addedNodes?.length ?? 0) > 0 && (
         <div className="flex flex-col gap-1.5">
           <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
-            Attributed
-            <span className="ml-1.5 text-text-dim/60 font-mono normal-case tracking-normal">
-              {scene.systemAttributions!.length}
-            </span>
+            System Knowledge
           </h3>
-          <div className="flex flex-col gap-1">
-            {scene.systemAttributions!.map((attrId) => {
-              const node = narrative.systemGraph.nodes[attrId];
-              const shortName = (concept: string) => {
-                const dash = concept.indexOf(" — ");
-                return dash > 0 ? concept.slice(0, dash) : concept;
-              };
-              return (
-                <button
-                  key={`attr-${attrId}`}
-                  type="button"
-                  onClick={() =>
-                    dispatch({
-                      type: "SET_INSPECTOR",
-                      context: { type: "knowledge", nodeId: attrId },
-                    })
-                  }
-                  className="flex items-start gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors text-left"
-                >
-                  <span className="shrink-0 text-text-dim/60">·</span>
-                  <span className="min-w-0">
-                    {node ? shortName(node.concept) : attrId}
-                    {node && (
-                      <span className="text-[10px] text-text-dim ml-1.5">
-                        ({node.type})
-                      </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {scene.systemDeltas!.addedNodes.map((node, i) => (
+            <button
+              key={`wk-node-${node.id}-${i}`}
+              type="button"
+              onClick={() =>
+                dispatch({
+                  type: "SET_INSPECTOR",
+                  context: { type: "knowledge", nodeId: node.id },
+                })
+              }
+              className="flex items-start gap-1.5 text-xs text-left hover:text-text-primary transition-colors"
+            >
+              <span className="shrink-0 text-world">+</span>
+              <span className="min-w-0 text-text-primary">
+                {node.concept}{' '}
+                <span className="text-[10px] text-text-dim">({node.type})</span>
+              </span>
+            </button>
+          ))}
         </div>
       )}
+
+      {/* System Attributions — existing nodes this scene leans on, excluding
+          any IDs already shown as creational additions above. Compact chip
+          layout since attributions carry more signal than the freshly added
+          nodes (they show what the scene is *acting on*). */}
+      {(() => {
+        const addedIds = new Set(
+          (scene.systemDeltas?.addedNodes ?? []).map((n) => n.id),
+        );
+        const attributionsOnly = (scene.systemAttributions ?? []).filter(
+          (id) => !addedIds.has(id),
+        );
+        if (attributionsOnly.length === 0) return null;
+        return (
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+              System Attributions
+              <span className="ml-1.5 text-text-dim/60 font-mono normal-case tracking-normal">
+                {attributionsOnly.length}
+              </span>
+            </h3>
+            <div className="flex flex-wrap gap-1">
+              {attributionsOnly.map((attrId) => {
+                const node = narrative.systemGraph.nodes[attrId];
+                const shortName = (concept: string) => {
+                  const dash = concept.indexOf(" — ");
+                  return dash > 0 ? concept.slice(0, dash) : concept;
+                };
+                return (
+                  <button
+                    key={`attr-${attrId}`}
+                    type="button"
+                    onClick={() =>
+                      dispatch({
+                        type: "SET_INSPECTOR",
+                        context: { type: "knowledge", nodeId: attrId },
+                      })
+                    }
+                    className="rounded border border-white/10 bg-white/2 px-1.5 py-0.5 text-[10px] text-text-secondary hover:text-text-primary hover:border-white/20 transition-colors"
+                    title={node ? `${node.concept} (${node.type})` : attrId}
+                  >
+                    {node ? shortName(node.concept) : attrId}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Events */}
       {scene.events.length > 0 && (
