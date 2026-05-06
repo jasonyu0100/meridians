@@ -46,7 +46,7 @@ function seededRandom(seed: number) {
   };
 }
 
-export function StarField() {
+export function StarField({ neurons = true }: { neurons?: boolean } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const starsRef = useRef<Star[]>([]);
@@ -249,10 +249,13 @@ export function StarField() {
       }
 
       // Neuron firings — rapid transient links between nearby stars.
+      // Skipped entirely when `neurons` is false (e.g. on the paper page where
+      // the rapid motion competes with reading).
       const neighbors = neighborsRef.current;
       const candidates = fireCandidatesRef.current;
       const firings = firingsRef.current;
       const MAX_FIRINGS = 14;
+      if (!neurons) firings.length = 0;
 
       const spawnFiring = (forcedA?: number, exclude?: number) => {
         if (candidates.length === 0 || firings.length >= MAX_FIRINGS) return;
@@ -278,7 +281,7 @@ export function StarField() {
         });
       };
 
-      if (timestamp - lastFireRef.current > nextFireDelayRef.current) {
+      if (neurons && timestamp - lastFireRef.current > nextFireDelayRef.current) {
         lastFireRef.current = timestamp;
         nextFireDelayRef.current = 50 + Math.random() * 180;
         const burst = Math.random() < 0.18 ? 2 + Math.floor(Math.random() * 2) : 1;
@@ -440,7 +443,7 @@ export function StarField() {
       window.removeEventListener("resize", buildField);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [neurons]);
 
   return (
     <canvas

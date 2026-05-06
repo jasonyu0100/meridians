@@ -1245,7 +1245,7 @@ export default function PaperPage() {
           <div className="cosmos-glow" />
         </div>
         <div className="absolute inset-0 z-10">
-          <StarField />
+          <StarField neurons={false} />
         </div>
       </div>
 
