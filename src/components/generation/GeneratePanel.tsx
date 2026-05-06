@@ -187,6 +187,10 @@ export function GeneratePanel({
   const [reasoningGraphDirection, setReasoningGraphDirection] = useState<string>("");
   const [showReasoningModal, setShowReasoningModal] = useState(false);
   const [generatingGraph, setGeneratingGraph] = useState(false);
+  // When true, the panel body is replaced by the extended-thinking launch
+  // surface — thinking dials + animation + a single confirm to start CRG
+  // generation. Closes on cancel or once generation begins.
+  const [extendedSetupOpen, setExtendedSetupOpen] = useState(false);
   // Arc reasoning options — initialized from story-level defaults so the
   // user doesn't have to re-pick their preferred thinking style each time.
   const thinkingDefaults = state.activeNarrative?.storySettings;
@@ -652,6 +656,7 @@ export function GeneratePanel({
                 setMode(m.value);
                 setError("");
                 setPreviewSequence(null);
+                setExtendedSetupOpen(false);
               }}
               disabled={loading}
               className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors rounded-md ${
@@ -678,6 +683,49 @@ export function GeneratePanel({
             }
             text={streamText}
           />
+        ) : extendedSetupOpen && mode === "continuation" ? (
+          /* ── Extended Thinking Launch ──────────────────────────── */
+          <div className="flex flex-col gap-6 py-2">
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <h3 className="text-base font-semibold text-text-primary tracking-tight">
+                Causal Reasoning
+              </h3>
+              <p className="text-[11px] text-text-dim/70 max-w-md leading-relaxed">
+                Build a reasoning graph before scenes — slower per cycle but
+                produces structurally tighter arcs grounded in a planned
+                causal spine.
+              </p>
+            </div>
+            <ThinkingSettings
+              variant="hero"
+              mode={reasoningMode}
+              onModeChange={setReasoningMode}
+              force={forcePreference}
+              onForceChange={setForcePreference}
+              size={reasoningSize}
+              onSizeChange={setReasoningSize}
+              networkBias={networkBias}
+              onNetworkBiasChange={setNetworkBias}
+            />
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                onClick={() => setExtendedSetupOpen(false)}
+                className="h-9 px-4 rounded-lg text-text-dim hover:text-text-primary text-[12px] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setExtendedSetupOpen(false);
+                  void handleGenerateReasoningGraph();
+                }}
+                disabled={!newArc && !currentArc}
+                className="h-9 px-5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold text-[12px] transition disabled:opacity-30"
+              >
+                Begin reasoning →
+              </button>
+            </div>
+          </div>
         ) : showPreview ? (
           /* ── Pacing Preview (editable) ─────────────────────────── */
           <div className="flex flex-col gap-4">
@@ -930,18 +978,6 @@ export function GeneratePanel({
                   </button>
                   {advancedOpen && (
                     <div className="mt-3 flex flex-col gap-3">
-                      {/* Thinking settings — mode, force, density */}
-                      <ThinkingSettings
-                        mode={reasoningMode}
-                        onModeChange={setReasoningMode}
-                        force={forcePreference}
-                        onForceChange={setForcePreference}
-                        size={reasoningSize}
-                        onSizeChange={setReasoningSize}
-                        networkBias={networkBias}
-                        onNetworkBiasChange={setNetworkBias}
-                      />
-
                       {/* Pacing presets — only shown when Markov pacing is enabled */}
                       {narrative.storySettings?.usePacingChain && (
                         <div>
@@ -1046,10 +1082,10 @@ export function GeneratePanel({
                     Generate Arc
                   </button>
                   <button
-                    onClick={() => handleGenerateReasoningGraph()}
+                    onClick={() => setExtendedSetupOpen(true)}
                     disabled={loading || generatingGraph || (!newArc && !currentArc)}
                     className="py-2.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition disabled:opacity-30 text-[12px]"
-                    title="Build a reasoning graph before generating scenes"
+                    title="Configure causal reasoning, then generate"
                   >
                     {generatingGraph ? "Planning..." : "Extended"}
                   </button>

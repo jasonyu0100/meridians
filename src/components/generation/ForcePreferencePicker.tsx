@@ -316,27 +316,32 @@ export function NetworkBiasPicker({
 
 // ── Thinking settings wrapper ────────────────────────────────────────────────
 
-/** Dropdown row — label on the left, native <select> on the right. All
- *  options rendered in a consistent near-white; the palette meaning is
- *  communicated by the animation, not the control. */
+/** Borderless dropdown row — label on the left, value-as-typography on the
+ *  right. Native <select> sits on top transparently for accessibility +
+ *  platform-native menus. Hover lifts the row with a subtle wash; no card
+ *  chrome, so it sits seamlessly on whatever surface contains it. */
 function DropdownRow<T extends string>({
-  label, value, options, onChange,
+  label, value, options, onChange, valueColor,
 }: {
   label: string;
   value: T;
   options: readonly { key: T; label: string; description?: string }[];
   onChange: (v: T) => void;
+  /** Optional colour for the displayed value — defaults to near-white. */
+  valueColor?: string;
 }) {
+  const current = options.find((o) => o.key === value) ?? options[0];
   return (
-    <label className="flex flex-col gap-1">
-      <span className="w-14 shrink-0 text-[8px] uppercase tracking-widest text-text-dim/70">
+    <label className="group relative flex items-center gap-3 py-1.5 px-1.5 -mx-1.5 rounded-md hover:bg-white/[0.035] transition-colors cursor-pointer">
+      <span className="w-16 shrink-0 text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
         {label}
       </span>
-      <div className="relative flex-1 rounded-md border border-white/10 bg-white/4 hover:bg-white/6 transition-colors">
+      <div className="relative flex-1 flex items-center justify-between min-w-0">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value as T)}
-          className="w-full bg-transparent text-[10px] font-medium text-text-primary cursor-pointer appearance-none outline-none px-2 py-1 pr-6"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          aria-label={label}
         >
           {options.map((opt) => (
             <option
@@ -350,10 +355,16 @@ function DropdownRow<T extends string>({
           ))}
         </select>
         <span
-          className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-text-dim/60 text-[8px]"
+          className="text-[12px] font-medium tracking-tight pointer-events-none truncate transition-colors"
+          style={{ color: valueColor ?? 'rgba(255,255,255,0.92)' }}
+        >
+          {current.label}
+        </span>
+        <span
+          className="ml-2 text-text-dim/30 text-[10px] pointer-events-none transition-all group-hover:text-text-dim/60 group-hover:translate-x-0.5"
           aria-hidden
         >
-          ▾
+          ›
         </span>
       </div>
     </label>
@@ -389,17 +400,21 @@ const BIAS_OPTS = [
 
 /**
  * Groups the four thinking-related dials (mode, force, density, network bias)
- * under a single `THINKING` header with a live animation preview. Dropdowns
- * keep the controls compact; the animation to the right tells the full
- * story — the existing network tiers, the causal graph the current mode
- * unfolds, and the tethers from each reasoning node back to the part of
- * the network the bias draws from.
+ * under a single `THINKING` header with a live animation preview.
+ *
+ * Two layouts via `variant`:
+ *   - 'compact' (default) — animation on the right, dropdowns on the left,
+ *     wrapped in a subtle card. Used in settings modals and disclosures.
+ *   - 'hero' — animation on top (full width), dropdowns below in a 2-column
+ *     grid, no card chrome. Used as a primary surface (e.g. the extended-
+ *     thinking launch view).
  */
 export function ThinkingSettings({
   mode, onModeChange,
   force, onForceChange,
   size, onSizeChange,
   networkBias, onNetworkBiasChange,
+  variant = 'compact',
 }: {
   mode: ReasoningMode;
   onModeChange: (m: ReasoningMode) => void;
@@ -409,8 +424,68 @@ export function ThinkingSettings({
   onSizeChange: (s: ReasoningSize) => void;
   networkBias: NetworkBias;
   onNetworkBiasChange: (b: NetworkBias) => void;
+  variant?: 'compact' | 'hero';
 }) {
   const modeMeta = REASONING_MODE_META[mode];
+  const forceMeta = FORCE_PREFERENCE_META[force];
+  const biasMeta = NETWORK_BIAS_META[networkBias];
+
+  // Shared dropdown rows — value-coloured per row, palette inherited from meta.
+  const rows = (
+    <>
+      <DropdownRow
+        label="Mode"
+        value={mode}
+        options={MODE_OPTS}
+        onChange={onModeChange}
+        valueColor={modeMeta.color}
+      />
+      <DropdownRow
+        label="Force"
+        value={force}
+        options={FORCE_OPTS}
+        onChange={onForceChange}
+        valueColor={forceMeta.color}
+      />
+      <DropdownRow
+        label="Density"
+        value={size}
+        options={SIZE_OPTS}
+        onChange={onSizeChange}
+      />
+      <DropdownRow
+        label="Network"
+        value={networkBias}
+        options={BIAS_OPTS}
+        onChange={onNetworkBiasChange}
+        valueColor={biasMeta.color}
+      />
+    </>
+  );
+
+  if (variant === 'hero') {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex justify-center">
+          <ThinkingAnimation
+            key={`${mode}-${force}-${size}-${networkBias}`}
+            mode={mode}
+            force={force}
+            size={size}
+            networkBias={networkBias}
+            width={420}
+            height={260}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 max-w-md mx-auto w-full">
+          {rows}
+        </div>
+        <p className="text-[11px] text-text-dim/60 text-center max-w-md mx-auto leading-relaxed">
+          {modeMeta.description}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-white/6 bg-white/2 p-3">
@@ -423,31 +498,8 @@ export function ThinkingSettings({
         </div>
       </div>
       <div className="flex gap-3 items-start">
-        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-          <DropdownRow
-            label="Mode"
-            value={mode}
-            options={MODE_OPTS}
-            onChange={onModeChange}
-          />
-          <DropdownRow
-            label="Force"
-            value={force}
-            options={FORCE_OPTS}
-            onChange={onForceChange}
-          />
-          <DropdownRow
-            label="Density"
-            value={size}
-            options={SIZE_OPTS}
-            onChange={onSizeChange}
-          />
-          <DropdownRow
-            label="Network"
-            value={networkBias}
-            options={BIAS_OPTS}
-            onChange={onNetworkBiasChange}
-          />
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+          {rows}
         </div>
         <div className="shrink-0">
           {/* key-based remount so every settings permutation plays a
