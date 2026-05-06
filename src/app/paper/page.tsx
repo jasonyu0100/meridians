@@ -1374,175 +1374,23 @@ export default function PaperPage() {
               tool we don&apos;t yet have.
             </P>
             <P>
-              The narrative case proves the math. Structural formulas
-              applied to published works versus AI-generated text
-              expose the gap empirically: published literature scores
-              85–95 on composite <B>activity</B>; unguided AI output
-              scores 65–78. The gap decomposes into specific
-              weaknesses &mdash; threads that cycle without
-              advancing, shallow entity continuity, sparse concept
-              connectivity. <em>Insufficient investment before
-              resolution.</em> The same diagnostic generalizes: a
-              forecast that fails to accumulate structural commitment
-              is a forecast that doesn&apos;t mean much.
+              The cost of not having it is everywhere. Strategic
+              forecasts read as opinions because they have no
+              structural commitment to point to. Research arguments
+              collapse on edge cases nobody simulated. Long-form
+              fiction drifts because the model forgot its own world.{" "}
+              <em>Insufficient investment before resolution</em>{" "}
+              &mdash; the narrative diagnostic &mdash; generalises:
+              a forecast that fails to accumulate structural
+              commitment is a forecast that doesn&apos;t mean much.{" "}
+              <B>
+                The fundamental problem isn&apos;t that we lack good
+                models. It&apos;s that we have no shared substrate
+                for <em>building</em> them &mdash; one that lets
+                priors compound, scenarios branch, and reality itself
+                become the grader.
+              </B>
             </P>
-
-            {/* ── Human vs AI gradient bar ──────────────────────────── */}
-            {(() => {
-              const W = 580,
-                H = 80;
-              const BAR_Y = 16,
-                BAR_H = 28;
-              const PAD_L = 30,
-                PAD_R = 20;
-              const barW = W - PAD_L - PAD_R;
-
-              const scoreMin = 60,
-                scoreMax = 100;
-              const toX = (s: number) =>
-                PAD_L + ((s - scoreMin) / (scoreMax - scoreMin)) * barW;
-
-              const works = [
-                { score: 65, human: false },
-                { score: 68, human: false },
-                { score: 70, human: false },
-                { score: 72, human: false },
-                { score: 75, human: false },
-                { score: 78, human: false },
-                { score: 85, human: true },
-                { score: 88, human: true },
-                { score: 90, human: true },
-                { score: 92, human: true },
-                { score: 94, human: true },
-                { score: 95, human: true },
-              ];
-
-              const ticks = [60, 70, 80, 90, 100];
-
-              return (
-                <div className="mt-6 rounded-xl border border-white/6 bg-white/[0.02] px-5 py-4 overflow-x-auto">
-                  <svg
-                    width={W}
-                    height={H}
-                    className="mx-auto block min-w-[480px]"
-                    viewBox={`0 0 ${W} ${H}`}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="score-grad"
-                        x1="0"
-                        y1="0"
-                        x2="1"
-                        y2="0"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="#ef4444"
-                          stopOpacity="0.5"
-                        />
-                        <stop
-                          offset="25%"
-                          stopColor="#f59e0b"
-                          stopOpacity="0.5"
-                        />
-                        <stop
-                          offset="50%"
-                          stopColor="#eab308"
-                          stopOpacity="0.4"
-                        />
-                        <stop
-                          offset="75%"
-                          stopColor="#84cc16"
-                          stopOpacity="0.4"
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="#22c55e"
-                          stopOpacity="0.5"
-                        />
-                      </linearGradient>
-                    </defs>
-
-                    {/* Gradient bar */}
-                    <rect
-                      x={PAD_L}
-                      y={BAR_Y}
-                      width={barW}
-                      height={BAR_H}
-                      rx={4}
-                      fill="url(#score-grad)"
-                    />
-
-                    {/* Tick marks */}
-                    {ticks.map((t) => (
-                      <g key={t}>
-                        <line
-                          x1={toX(t)}
-                          y1={BAR_Y + BAR_H}
-                          x2={toX(t)}
-                          y2={BAR_Y + BAR_H + 4}
-                          stroke="rgba(255,255,255,0.15)"
-                        />
-                        <text
-                          x={toX(t)}
-                          y={BAR_Y + BAR_H + 15}
-                          textAnchor="middle"
-                          fill="rgba(255,255,255,0.25)"
-                          fontSize="9"
-                        >
-                          {t}
-                        </text>
-                      </g>
-                    ))}
-
-                    {/* Points — on the bar */}
-                    {works.map((d, i) => (
-                      <circle
-                        key={i}
-                        cx={toX(d.score)}
-                        cy={BAR_Y + BAR_H / 2}
-                        r={d.human ? 4.5 : 3.5}
-                        fill={d.human ? "white" : "rgba(251,191,36,0.8)"}
-                        opacity={d.human ? 0.9 : 0.7}
-                        stroke={d.human ? "rgba(255,255,255,0.3)" : "none"}
-                        strokeWidth={1}
-                      />
-                    ))}
-
-                    {/* Legend */}
-                    <circle
-                      cx={PAD_L}
-                      cy={H - 6}
-                      r={3}
-                      fill="white"
-                      opacity={0.7}
-                    />
-                    <text
-                      x={PAD_L + 7}
-                      y={H - 3}
-                      fill="rgba(255,255,255,0.35)"
-                      fontSize="8"
-                    >
-                      Published literature (n=6)
-                    </text>
-                    <circle
-                      cx={PAD_L + 130}
-                      cy={H - 6}
-                      r={2.5}
-                      fill="rgba(251,191,36,0.8)"
-                    />
-                    <text
-                      x={PAD_L + 137}
-                      y={H - 3}
-                      fill="rgba(255,255,255,0.35)"
-                      fontSize="8"
-                    >
-                      AI-generated (n=6)
-                    </text>
-                  </svg>
-                </div>
-              );
-            })()}
           </Section>
 
           {/* ── Approach ──────────────────────────────────────────────── */}
