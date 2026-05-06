@@ -1262,9 +1262,8 @@ export default function PaperPage() {
             Quantifying Worlds in Motion
           </h1>
           <p className="text-[15px] text-white/40 leading-relaxed max-w-xl">
-            Measuring, querying, and modeling structural intelligence —
-            anchored in narrative analysis (validated against published works),
-            extending to research arguments and real-world scenario simulation.
+            Modeling structural intelligence across narrative, inquiry,
+            and simulation.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-white/40">
