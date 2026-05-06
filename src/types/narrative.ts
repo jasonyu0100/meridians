@@ -1345,6 +1345,9 @@ export type NarrativeState = {
   storySettings?: StorySettings;
   /** Chat threads keyed by thread ID — persisted with the narrative */
   chatThreads?: Record<string, ChatThread>;
+  /** Branch Workbench threads — multi-branch analytical sessions, persisted
+   *  with the narrative so prior cross-branch analysis can be revisited. */
+  branchWorkbenchThreads?: Record<string, BranchWorkbenchThread>;
   /** Notes keyed by note ID — persisted with the narrative */
   notes?: Record<string, Note>;
   /** Branch evaluations keyed by branch ID — most recent eval per branch */
@@ -2071,6 +2074,7 @@ export type SystemLogEntry = {
     | "ingest"
     | "api"
     | "phase-graph"
+    | "branch-workbench"
     | "other";
   /** Current operation */
   operation?: string;
@@ -2234,6 +2238,7 @@ export type NarrativeViewState = {
   currentResultIndex: number;
   searchFocusMode: boolean;
   activeChatThreadId: string | null;
+  activeBranchWorkbenchThreadId: string | null;
   activeNoteId: string | null;
   autoRunState: AutoRunState | null;
   isPlaying: boolean;
@@ -2304,12 +2309,58 @@ export type GraphViewMode =
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** Streamed reasoning tokens captured during the turn — assistant only.
+   *  Persisted so the user can re-expand prior thinking after the fact. */
+  reasoning?: string;
+  /** Wall-clock duration of the turn in ms — labels collapsed reasoning. */
+  durationMs?: number;
 };
 
 export type ChatThread = {
   id: string;
   name: string;
   messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+// ── Branch Workbench ──────────────────────────────────────────────────────────
+//
+// Persisted multi-branch analytical chat. Distinct from chatThreads (which
+// are single-branch); workbench threads compare a SET of branches at scoped
+// windows. The lab's foundation — v2 will reuse this thread shape as the
+// substrate for controlled-variable experiments.
+
+export type WorkbenchMessage = {
+  role: "user" | "assistant";
+  content: string;
+  /** Streamed reasoning tokens captured during the turn — assistant only. */
+  reasoning?: string;
+  /** Wall-clock duration of the turn in ms — labels collapsed reasoning. */
+  durationMs?: number;
+};
+
+export type ScopeMode = "all" | "last" | "post-divergence" | "custom";
+
+/** Serializable description of which entries to compare per branch. Re-resolves
+ *  to a concrete BranchScope[] at use-time against the current branch
+ *  sequences (so a thread keeps working after entries are added). */
+export type ScopeState = {
+  mode: ScopeMode;
+  /** N for the "last" mode. */
+  lastN: number;
+  /** Custom ranges keyed by branch id. Used only when mode === 'custom'. */
+  custom: Record<string, { start: number; end: number }>;
+};
+
+export type BranchWorkbenchThread = {
+  id: string;
+  name: string;
+  messages: WorkbenchMessage[];
+  /** Branch IDs in the comparison set. */
+  compareBranchIds: string[];
+  /** Scope configuration — replays on thread re-open. */
+  scopeState: ScopeState;
   createdAt: number;
   updatedAt: number;
 };

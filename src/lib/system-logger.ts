@@ -48,6 +48,7 @@ export type LogContext = {
     | "ingest"
     | "api"
     | "phase-graph"
+    | "branch-workbench"
     | "other";
   /** Current operation when error occurred */
   operation?: string;

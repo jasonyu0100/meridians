@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { resolveEntrySequence } from '@/lib/narrative-utils';
 import { Modal } from '@/components/Modal';
+import { BranchWorkbench } from './BranchWorkbench';
 import type { Branch, NarrativeState } from '@/types/narrative';
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
@@ -181,7 +182,7 @@ function longestCommonPrefix(seqs: string[][]): number {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type ViewMode = 'graph' | 'compare';
+type ViewMode = 'graph' | 'compare' | 'workbench';
 
 export function BranchModal({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useStore();
@@ -358,6 +359,15 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
             >
               Compare
             </button>
+            <button
+              onClick={() => setViewMode('workbench')}
+              className={`text-xs px-3 py-1 rounded transition-colors ${
+                viewMode === 'workbench' ? 'bg-white/12 text-text-primary' : 'text-text-dim hover:text-text-secondary'
+              }`}
+              title="Multi-branch analytical chat with controlled scopes"
+            >
+              Workbench
+            </button>
           </div>
           <button
             onClick={onClose}
@@ -389,7 +399,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               const seq = resolveEntrySequence(narrative.branches, b.id);
               const { scenes, worlds } = countEntryKinds(seq, narrative);
 
-              const cardActive = viewMode === 'compare' ? isInCompare : isSelected;
+              const cardActive = viewMode !== 'graph' ? isInCompare : isSelected;
 
               return (
                 <div
@@ -398,7 +408,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
                     cardActive ? 'bg-white/8' : 'hover:bg-white/4'
                   }`}
                   onClick={() => {
-                    if (viewMode === 'compare') toggleCompare(b.id);
+                    if (viewMode !== 'graph') toggleCompare(b.id);
                     else setSelectedBranchId(b.id);
                   }}
                 >
@@ -423,14 +433,37 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
                         {isActive && (
                           <span className="text-[8px] uppercase tracking-wider text-text-dim shrink-0">current</span>
                         )}
-                        {viewMode === 'compare' && isInCompare && (
+                        {/* Focus toggle — visible across ALL views. Marks
+                            branch for comparison/workbench. Independent of
+                            row click and the switch mechanism. */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCompare(b.id);
+                          }}
+                          className="shrink-0 flex items-center gap-1 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded transition-colors"
+                          style={{
+                            backgroundColor: isInCompare ? `${c}33` : 'transparent',
+                            color: isInCompare ? c : 'rgba(255,255,255,0.4)',
+                            boxShadow: isInCompare
+                              ? `inset 0 0 0 1px ${c}55`
+                              : 'inset 0 0 0 1px rgba(255,255,255,0.08)',
+                          }}
+                          title={
+                            isInCompare
+                              ? 'Remove from comparison focus'
+                              : 'Add to comparison focus'
+                          }
+                        >
                           <span
-                            className="text-[8px] uppercase tracking-wider px-1 rounded shrink-0"
-                            style={{ backgroundColor: `${c}33`, color: c }}
-                          >
-                            shown
-                          </span>
-                        )}
+                            className="w-1.5 h-1.5 rounded-full transition-colors"
+                            style={{
+                              backgroundColor: isInCompare ? c : 'transparent',
+                              boxShadow: isInCompare ? 'none' : `inset 0 0 0 1px ${c}88`,
+                            }}
+                          />
+                          {isInCompare ? 'Focus' : 'Focus'}
+                        </button>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-[10px] text-text-dim mt-0.5">
@@ -566,7 +599,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               forkEntryId={effectiveForkEntryId}
               onSetForkEntry={setForkEntryId}
             />
-          ) : (
+          ) : viewMode === 'compare' ? (
             <CompareView
               narrative={narrative}
               allBranches={allBranches}
@@ -576,6 +609,14 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               isWorldEntry={isWorldEntry}
               onToggleCompare={toggleCompare}
               onSwitch={handleSwitch}
+            />
+          ) : (
+            <WorkbenchView
+              narrative={narrative}
+              allBranches={allBranches}
+              compareBranchIds={compareBranchIds}
+              onToggleCompare={toggleCompare}
+              onRestoreCompareBranches={(ids) => setCompareBranchIds(ids)}
             />
           )}
         </main>
@@ -1012,6 +1053,71 @@ function CompareView({
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// ─── Workbench view ───────────────────────────────────────────────────────────
+
+type WorkbenchViewProps = {
+  narrative: NarrativeState;
+  allBranches: Branch[];
+  compareBranchIds: string[];
+  onToggleCompare: (id: string) => void;
+  onRestoreCompareBranches: (ids: string[]) => void;
+};
+
+function WorkbenchView({
+  narrative,
+  allBranches,
+  compareBranchIds,
+  onToggleCompare,
+  onRestoreCompareBranches,
+}: WorkbenchViewProps) {
+  return (
+    <>
+      {/* Selector chips — same shape as CompareView so selection feels
+          consistent across the two analytical modes. */}
+      <div className="px-6 pt-4 pb-3 border-b border-white/6 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-widest text-text-dim mr-1">
+            Comparing
+          </span>
+          {allBranches.map((b) => {
+            const c = stableBranchColor(b.id, allBranches);
+            const isShown = compareBranchIds.includes(b.id);
+            return (
+              <button
+                key={b.id}
+                onClick={() => onToggleCompare(b.id)}
+                className={`text-[11px] px-2 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+                  isShown
+                    ? 'bg-white/10 text-text-primary'
+                    : 'bg-white/3 text-text-dim hover:bg-white/6 hover:text-text-secondary'
+                }`}
+                style={isShown ? { boxShadow: `inset 2px 0 0 ${c}` } : {}}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: isShown ? c : `${c}66` }}
+                />
+                {b.name}
+              </button>
+            );
+          })}
+          {compareBranchIds.length >= 4 && (
+            <span className="text-[10px] text-text-dim">· max 4 (oldest drops)</span>
+          )}
+        </div>
+      </div>
+
+      <BranchWorkbench
+        narrative={narrative}
+        allBranches={allBranches}
+        compareBranchIds={compareBranchIds}
+        branchColor={(id) => stableBranchColor(id, allBranches)}
+        onRestoreCompareBranches={onRestoreCompareBranches}
+      />
     </>
   );
 }

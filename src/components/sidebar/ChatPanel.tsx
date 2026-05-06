@@ -8,9 +8,12 @@ import {
 } from "@/components/icons";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { narrativeContext, outlineContext, sceneContext } from "@/lib/ai";
-import { apiHeaders } from "@/lib/api-headers";
-import { logApiCall, updateApiLog } from "@/lib/api-logger";
-import { DEFAULT_MODEL } from "@/lib/constants";
+import { callGenerateStream, resolveReasoningBudget } from "@/lib/ai/api";
+import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
+import {
+  ReasoningCollapsed,
+  ReasoningInline,
+} from "@/components/generation/ReasoningStream";
 import { useStore } from "@/lib/store";
 import { resolveEntry } from "@/types/narrative";
 import type {
@@ -264,6 +267,8 @@ export default function ChatPanel() {
   const access = useFeatureAccess();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamText, setStreamText] = useState("");
+  const [reasoningText, setReasoningText] = useState("");
   const [contextMode, setContextMode] = useState<
     "narrative" | "outline" | "scene"
   >("narrative");
@@ -583,61 +588,51 @@ ${ctx}`;
     });
     setInput("");
     setLoading(true);
+    setStreamText("");
+    setReasoningText("");
 
     const sysPrompt = buildSystemPrompt();
-    const promptText = newMessages.map((m) => m.content).join("\n");
-    const logId = logApiCall(
-      "ChatPanel.send",
-      promptText.length + sysPrompt.length,
-      promptText,
-      DEFAULT_MODEL,
-      sysPrompt,
-    );
+    // Serialise prior turns into a single prompt — callGenerateStream takes
+    // {prompt, systemPrompt}, so we flatten the chat history into the prompt
+    // body with simple role tags. The system prompt carries persona + context.
+    const userPrompt = newMessages
+      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join("\n\n");
+    const reasoningBudget = resolveReasoningBudget(state.activeNarrative);
     const start = performance.now();
 
+    let reasoningAcc = "";
+
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: apiHeaders(),
-        body: JSON.stringify({
-          messages: newMessages,
-          systemPrompt: sysPrompt,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        const message = err.error || "Chat failed";
-        updateApiLog(logId, {
-          status: "error",
-          error: message,
-          durationMs: Math.round(performance.now() - start),
-        });
-        throw new Error(message);
-      }
-
-      const data = await res.json();
-      updateApiLog(logId, {
-        status: "success",
-        durationMs: Math.round(performance.now() - start),
-        responseLength: data.content.length,
-        responsePreview: data.content,
-      });
+      const full = await callGenerateStream(
+        userPrompt,
+        sysPrompt,
+        (tok) => setStreamText((prev) => prev + tok),
+        MAX_TOKENS_DEFAULT,
+        "ChatPanel.send",
+        DEFAULT_MODEL,
+        reasoningBudget,
+        (tok) => {
+          reasoningAcc += tok;
+          setReasoningText((prev) => prev + tok);
+        },
+      );
+      const durationMs = Math.round(performance.now() - start);
       dispatch({
         type: "UPSERT_CHAT_THREAD",
         threadId,
         messages: [
           ...newMessages,
-          { role: "assistant", content: data.content },
+          {
+            role: "assistant",
+            content: full,
+            reasoning: reasoningAcc || undefined,
+            durationMs,
+          },
         ],
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      updateApiLog(logId, {
-        status: "error",
-        error: message,
-        durationMs: Math.round(performance.now() - start),
-      });
       dispatch({
         type: "UPSERT_CHAT_THREAD",
         threadId,
@@ -648,6 +643,8 @@ ${ctx}`;
       });
     } finally {
       setLoading(false);
+      setStreamText("");
+      setReasoningText("");
     }
   }, [
     input,
@@ -979,35 +976,55 @@ ${ctx}`;
             key={i}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            <div
-              className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
-                msg.role === "user"
-                  ? "bg-accent/20 text-text-primary"
-                  : "bg-white/5 text-text-secondary"
-              }`}
-            >
-              <FormattedMessage text={msg.content} />
+            <div className="max-w-[85%] flex flex-col gap-1.5">
+              {msg.role === "assistant" && msg.reasoning && (
+                <ReasoningCollapsed text={msg.reasoning} durationMs={msg.durationMs} />
+              )}
+              <div
+                className={`rounded-lg px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
+                  msg.role === "user"
+                    ? "bg-accent/20 text-text-primary"
+                    : "bg-white/5 text-text-secondary"
+                }`}
+              >
+                <FormattedMessage text={msg.content} />
+              </div>
             </div>
           </div>
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-text-dim">
-              <span className="inline-flex gap-1">
-                <span className="animate-pulse">.</span>
-                <span
-                  className="animate-pulse"
-                  style={{ animationDelay: "0.2s" }}
-                >
-                  .
-                </span>
-                <span
-                  className="animate-pulse"
-                  style={{ animationDelay: "0.4s" }}
-                >
-                  .
-                </span>
-              </span>
+            <div className="max-w-[85%] flex flex-col gap-1.5">
+              {reasoningText && (
+                <ReasoningInline text={reasoningText} active={!streamText} />
+              )}
+              {/* Only render the answer bubble once we have answer tokens, OR
+                  when there's no reasoning at all (the dots placeholder is
+                  the only signal that work is happening). Avoids an empty
+                  bubble appearing alongside the reasoning stream. */}
+              {streamText ? (
+                <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
+                  {streamText}
+                </div>
+              ) : !reasoningText ? (
+                <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-text-dim">
+                  <span className="inline-flex gap-1">
+                    <span className="animate-pulse">.</span>
+                    <span
+                      className="animate-pulse"
+                      style={{ animationDelay: "0.2s" }}
+                    >
+                      .
+                    </span>
+                    <span
+                      className="animate-pulse"
+                      style={{ animationDelay: "0.4s" }}
+                    >
+                      .
+                    </span>
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

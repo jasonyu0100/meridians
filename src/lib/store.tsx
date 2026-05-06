@@ -57,8 +57,11 @@ import type {
   Branch,
   BranchPlan,
   Character,
+  BranchWorkbenchThread,
   ChatMessage,
   ChatThread,
+  ScopeState,
+  WorkbenchMessage,
   WorldDelta,
   GraphViewMode,
   InspectorContext,
@@ -650,6 +653,7 @@ const defaultViewState: NarrativeViewState = {
   currentResultIndex: 0,
   searchFocusMode: false,
   activeChatThreadId: null,
+  activeBranchWorkbenchThreadId: null,
   activeNoteId: null,
   autoRunState: null,
   isPlaying: false,
@@ -857,6 +861,19 @@ export type Action =
       threadId: string;
       messages: ChatMessage[];
       name?: string;
+    }
+  // Branch Workbench threads — persisted multi-branch analytical sessions.
+  | { type: "CREATE_WORKBENCH_THREAD"; thread: BranchWorkbenchThread }
+  | { type: "DELETE_WORKBENCH_THREAD"; threadId: string }
+  | { type: "RENAME_WORKBENCH_THREAD"; threadId: string; name: string }
+  | { type: "SET_ACTIVE_WORKBENCH_THREAD"; threadId: string | null }
+  | {
+      type: "UPSERT_WORKBENCH_THREAD";
+      threadId: string;
+      messages?: WorkbenchMessage[];
+      name?: string;
+      compareBranchIds?: string[];
+      scopeState?: ScopeState;
     }
   // Notes
   | { type: "CREATE_NOTE"; note: Note }
@@ -2786,6 +2803,79 @@ function reducer(state: AppState, action: Action): AppState {
               ...thread,
               messages: action.messages,
               ...(action.name ? { name: action.name } : {}),
+              updatedAt: Date.now(),
+            },
+          },
+        };
+      });
+
+    // ── Branch Workbench threads ──────────────────────────────────────────
+    case "CREATE_WORKBENCH_THREAD": {
+      const withThread = updateNarrative(state, (n) => ({
+        ...n,
+        branchWorkbenchThreads: {
+          ...(n.branchWorkbenchThreads ?? {}),
+          [action.thread.id]: action.thread,
+        },
+      }));
+      return {
+        ...withThread,
+        viewState: { ...withThread.viewState, activeBranchWorkbenchThreadId: action.thread.id },
+      };
+    }
+
+    case "DELETE_WORKBENCH_THREAD": {
+      const withoutThread = updateNarrative(state, (n) => {
+        const { [action.threadId]: _, ...rest } = n.branchWorkbenchThreads ?? {};
+        return { ...n, branchWorkbenchThreads: rest };
+      });
+      let nextActive = state.viewState.activeBranchWorkbenchThreadId;
+      if (state.viewState.activeBranchWorkbenchThreadId === action.threadId) {
+        const remaining = Object.values(
+          withoutThread.activeNarrative?.branchWorkbenchThreads ?? {},
+        );
+        remaining.sort((a, b) => b.updatedAt - a.updatedAt);
+        nextActive = remaining[0]?.id ?? null;
+      }
+      return {
+        ...withoutThread,
+        viewState: { ...withoutThread.viewState, activeBranchWorkbenchThreadId: nextActive },
+      };
+    }
+
+    case "RENAME_WORKBENCH_THREAD":
+      return updateNarrative(state, (n) => {
+        const thread = n.branchWorkbenchThreads?.[action.threadId];
+        if (!thread) return n;
+        return {
+          ...n,
+          branchWorkbenchThreads: {
+            ...(n.branchWorkbenchThreads ?? {}),
+            [action.threadId]: { ...thread, name: action.name },
+          },
+        };
+      });
+
+    case "SET_ACTIVE_WORKBENCH_THREAD":
+      return {
+        ...state,
+        viewState: { ...state.viewState, activeBranchWorkbenchThreadId: action.threadId },
+      };
+
+    case "UPSERT_WORKBENCH_THREAD":
+      return updateNarrative(state, (n) => {
+        const thread = (n.branchWorkbenchThreads ?? {})[action.threadId];
+        if (!thread) return n;
+        return {
+          ...n,
+          branchWorkbenchThreads: {
+            ...(n.branchWorkbenchThreads ?? {}),
+            [action.threadId]: {
+              ...thread,
+              ...(action.messages ? { messages: action.messages } : {}),
+              ...(action.name ? { name: action.name } : {}),
+              ...(action.compareBranchIds ? { compareBranchIds: action.compareBranchIds } : {}),
+              ...(action.scopeState ? { scopeState: action.scopeState } : {}),
               updatedAt: Date.now(),
             },
           },
