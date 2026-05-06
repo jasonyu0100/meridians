@@ -14,6 +14,7 @@
 import type { NarrativeState, PhaseGraph, PhaseNodeSnapshot, PhaseEdgeSnapshot, PhaseNodeType } from "@/types/narrative";
 import { REASONING_BUDGETS } from "@/types/narrative";
 import { callGenerate, callGenerateStream } from "./api";
+import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext } from "./context";
 import { parseJson } from "./json";
 import { logError } from "@/lib/system-logger";
@@ -114,7 +115,7 @@ export async function generatePhaseGraph(
         () => {},
         undefined,
         "generatePhaseGraph",
-        undefined,
+        PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
       )
@@ -123,7 +124,7 @@ export async function generatePhaseGraph(
         PHASE_GRAPH_SYSTEM,
         undefined,
         "generatePhaseGraph",
-        undefined,
+        PLANNING_MODEL,
         reasoningBudget,
       );
 

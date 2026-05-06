@@ -329,7 +329,10 @@ async function callAnalysis(
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
+      let reasoningAccumulated = "";
       let buffer = "";
+      let lastLogFlush = 0;
+      const LOG_FLUSH_MS = 200;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -349,10 +352,22 @@ async function callAnalysis(
                 accumulated += parsed.token;
                 onToken(parsed.token, accumulated);
               }
+              if (parsed.reasoning) {
+                reasoningAccumulated += parsed.reasoning;
+              }
             } catch {
               // skip malformed
             }
           }
+        }
+
+        const now = performance.now();
+        if (now - lastLogFlush >= LOG_FLUSH_MS) {
+          lastLogFlush = now;
+          updateApiLog(logId, {
+            responsePreview: accumulated,
+            ...(reasoningAccumulated ? { reasoningContent: reasoningAccumulated } : {}),
+          });
         }
       }
       content = accumulated;

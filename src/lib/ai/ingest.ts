@@ -1,5 +1,5 @@
 import { callGenerate } from './api';
-import { GENERATE_MODEL } from '@/lib/constants';
+import { DEFAULT_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
 import type { NarrativeState, ProseProfile } from '@/types/narrative';
 import {
@@ -27,7 +27,7 @@ export async function ingestProseProfile(text: string, existing?: Partial<ProseP
 
   let raw: string;
   try {
-    raw = await callGenerate(prompt, INGEST_PROSE_PROFILE_SYSTEM, undefined, 'ingestProseProfile', GENERATE_MODEL);
+    raw = await callGenerate(prompt, INGEST_PROSE_PROFILE_SYSTEM, undefined, 'ingestProseProfile', DEFAULT_MODEL);
   } catch (err) {
     logError('ingestProseProfile call failed', err, {
       source: 'ingest',
@@ -86,7 +86,7 @@ export async function deriveProseProfile(narrative: NarrativeState): Promise<Pro
   if (scenes.length > 0) {
     lines.push(`\nSCENE SUMMARIES (sample):`);
     for (const s of scenes.slice(0, 8)) {
-      const pov = narrative.characters[s.povId]?.name ?? s.povId;
+      const pov = s.povId ? (narrative.characters[s.povId]?.name ?? s.povId) : 'narrator';
       lines.push(`  - [${pov}] ${s.summary.slice(0, 150)}`);
     }
   }
@@ -118,7 +118,7 @@ export async function deriveProseProfile(narrative: NarrativeState): Promise<Pro
 
   let raw: string;
   try {
-    raw = await callGenerate(prompt, DERIVE_PROSE_PROFILE_SYSTEM, undefined, 'deriveProseProfile', GENERATE_MODEL);
+    raw = await callGenerate(prompt, DERIVE_PROSE_PROFILE_SYSTEM, undefined, 'deriveProseProfile', DEFAULT_MODEL);
   } catch (err) {
     logError('deriveProseProfile call failed', err, {
       source: 'ingest',

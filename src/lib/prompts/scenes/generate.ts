@@ -61,7 +61,7 @@ Return JSON with this exact structure.
       "id": "S-GEN-001",
       "arcId": "${arcId}",
       "locationId": "existing location ID",
-      "povId": "character ID (must be a participant)${povRestrictedHint}",
+      "povId": "viewpoint entity ID OR null. Set to a participant character (fiction) or named author entity (memoir/essay/first-person non-fiction) when the source narrates from that vantage. Set to null for omniscient simulation, impersonal analytical writing, polyphonic / dialogic sources — registers that have no viewpoint entity. Do not appoint a 'modelled agent' inside a simulation as POV. See pov-discipline for the full rule.${povRestrictedHint}",
       "participantIds": ["existing character IDs"],
       "summary": "Prose in NAMES not IDs. Length adapts to content — 3-6 sentences for routine scenes, expand WITHOUT UPPER BOUND for cognition-dense scenes (multi-step planning, scenario modelling, complex reveals, layered argument). Name each scenario weighed, each tradeoff accepted, each conclusion reached. This is the prose writer's only brief and the only artifact other scenes can read.",
       "timeDelta": {"value": 1, "unit": "minute|hour|day|week|month|year"},

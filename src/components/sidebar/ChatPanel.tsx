@@ -482,8 +482,9 @@ export default function ChatPanel() {
     // Build a current-scene anchor that every context mode can reference
     let sceneAnchor = "";
     if (currentScene) {
-      const povName =
-        n.characters[currentScene.povId]?.name ?? currentScene.povId;
+      const povName = currentScene.povId
+        ? (n.characters[currentScene.povId]?.name ?? currentScene.povId)
+        : "—";
       const locName =
         n.locations[currentScene.locationId]?.name ?? currentScene.locationId;
       const arcName = currentScene.arcId

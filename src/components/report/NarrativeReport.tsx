@@ -1668,8 +1668,9 @@ export function NarrativeReport({
                       {segMoments.map((m) => {
                         const isPeak = m.kind === "peak";
                         const scene = isPeak ? m.peak!.scene : m.trough!.scene;
-                        const povName =
-                          data.characterNames[scene.povId] ?? scene.povId;
+                        const povName = scene.povId
+                          ? (data.characterNames[scene.povId] ?? scene.povId)
+                          : "—";
                         const locName =
                           data.locationNames[scene.locationId] ??
                           scene.locationId;

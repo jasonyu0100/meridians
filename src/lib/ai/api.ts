@@ -53,6 +53,8 @@ export async function callGenerateStream(
     let full = '';
     let reasoningFull = '';
     let usage: { promptTokens?: number; completionTokens?: number } | null = null;
+    let lastLogFlush = 0;
+    const LOG_FLUSH_MS = 200;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -86,6 +88,15 @@ export async function callGenerateStream(
             console.warn(`[${caller}] malformed SSE chunk`, { line: trimmed.slice(0, 200), err });
           }
         }
+      }
+
+      const now = Date.now();
+      if (now - lastLogFlush >= LOG_FLUSH_MS) {
+        lastLogFlush = now;
+        updateApiLog(logId, {
+          responsePreview: full,
+          ...(reasoningFull ? { reasoningContent: reasoningFull } : {}),
+        });
       }
     }
 

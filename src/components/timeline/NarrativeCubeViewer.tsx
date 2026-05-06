@@ -269,7 +269,7 @@ export function NarrativeCubeViewer({ onClose }: { onClose: () => void }) {
     const scene = narrative.scenes[entry.sceneId];
     if (!scene) return null;
     const loc = narrative.locations[scene.locationId];
-    const pov = narrative.characters[scene.povId];
+    const pov = scene.povId ? narrative.characters[scene.povId] : undefined;
     const participants = scene.participantIds
       .map((id) => narrative.characters[id]?.name)
       .filter(Boolean);

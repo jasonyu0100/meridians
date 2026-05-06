@@ -105,7 +105,7 @@ export function KeyMomentsSlide({ data, sceneIdx, kind }: { data: SlidesData; sc
   const relationshipChanges = peakInfo?.relationshipChanges ?? scene.relationshipDeltas?.map((rm) => ({ from: rm.from, to: rm.to, type: rm.type, delta: rm.valenceDelta })) ?? [];
 
   const maxForce = Math.max(Math.abs(forces.fate), Math.abs(forces.world), Math.abs(forces.system), 0.5);
-  const povName = data.characterNames[scene.povId] ?? scene.povId;
+  const povName = scene.povId ? (data.characterNames[scene.povId] ?? scene.povId) : "—";
   const locationName = data.locationNames[scene.locationId] ?? scene.locationId;
   const participants = scene.participantIds
     .filter((id) => id !== scene.povId)

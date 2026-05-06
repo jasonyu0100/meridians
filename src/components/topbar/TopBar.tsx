@@ -119,7 +119,7 @@ function exportBranch(narrative: NarrativeState, branchId: string) {
     const scene = narrative.scenes[key];
     if (scene) {
       scenes[key] = scene;
-      referencedCharIds.add(scene.povId);
+      if (scene.povId) referencedCharIds.add(scene.povId);
       for (const pid of scene.participantIds) referencedCharIds.add(pid);
       referencedLocIds.add(scene.locationId);
       for (const tm of scene.threadDeltas)
@@ -760,7 +760,7 @@ export default function TopBar() {
       const scene = narrative.scenes[key];
       if (scene) {
         scenes[key] = scene;
-        referencedCharIds.add(scene.povId);
+        if (scene.povId) referencedCharIds.add(scene.povId);
         for (const pid of scene.participantIds) referencedCharIds.add(pid);
         referencedLocIds.add(scene.locationId);
         for (const tm of scene.threadDeltas)

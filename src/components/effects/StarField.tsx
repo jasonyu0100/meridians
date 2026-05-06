@@ -19,6 +19,15 @@ interface Constellation {
   edges: [number, number][]; // local indices into starIdx
 }
 
+interface Firing {
+  a: number; // star index
+  b: number; // star index
+  life: number; // ms elapsed
+  maxLife: number; // ms total
+  intensity: number; // 0..1
+  cascaded: boolean;
+}
+
 interface ShootingStar {
   x: number;
   y: number;
@@ -43,8 +52,13 @@ export function StarField() {
   const starsRef = useRef<Star[]>([]);
   const constellationsRef = useRef<Constellation[]>([]);
   const shootingRef = useRef<ShootingStar[]>([]);
+  const firingsRef = useRef<Firing[]>([]);
+  const neighborsRef = useRef<number[][]>([]);
+  const fireCandidatesRef = useRef<number[]>([]);
   const startTimeRef = useRef<number>(0);
   const lastSpawnRef = useRef<number>(0);
+  const lastFireRef = useRef<number>(0);
+  const nextFireDelayRef = useRef<number>(120);
   const dimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
   const lastTsRef = useRef<number>(0);
 
@@ -165,6 +179,43 @@ export function StarField() {
         constellations.push({ starIdx: cluster, edges });
       }
       constellationsRef.current = constellations;
+
+      // Precompute nearest neighbors for neuron-firing layer.
+      // Bias toward larger stars so firings happen between visible nodes.
+      const maxNeighbors = 6;
+      const maxDistSq = 0.022;
+      const neighbors: number[][] = [];
+      for (let i = 0; i < stars.length; i++) {
+        const si = stars[i];
+        const candidates: { idx: number; d: number }[] = [];
+        for (let j = 0; j < stars.length; j++) {
+          if (j === i) continue;
+          const dx = stars[j].x - si.x;
+          const dy = stars[j].y - si.y;
+          const d = dx * dx + dy * dy;
+          if (d < maxDistSq && d > 0.00005) {
+            candidates.push({ idx: j, d });
+          }
+        }
+        candidates.sort((a, b) => a.d - b.d);
+        neighbors.push(candidates.slice(0, maxNeighbors).map((c) => c.idx));
+      }
+      neighborsRef.current = neighbors;
+
+      // Stars eligible to seed a firing — must have at least one neighbor and
+      // some visible mass. Brighter stars are listed multiple times so they
+      // fire more often, which makes the network feel anchored to "hubs".
+      const candidates: number[] = [];
+      for (let i = 0; i < stars.length; i++) {
+        if (neighbors[i].length === 0) continue;
+        const weight = stars[i].size > 1.4 ? 4 : stars[i].size > 0.9 ? 2 : 1;
+        for (let k = 0; k < weight; k++) candidates.push(i);
+      }
+      fireCandidatesRef.current = candidates;
+
+      firingsRef.current = [];
+      lastFireRef.current = 0;
+      nextFireDelayRef.current = 80;
     };
 
     buildField();
@@ -194,6 +245,108 @@ export function StarField() {
           ctx.moveTo(sa.x * w, sa.y * h);
           ctx.lineTo(sb.x * w, sb.y * h);
           ctx.stroke();
+        }
+      }
+
+      // Neuron firings — rapid transient links between nearby stars.
+      const neighbors = neighborsRef.current;
+      const candidates = fireCandidatesRef.current;
+      const firings = firingsRef.current;
+      const MAX_FIRINGS = 14;
+
+      const spawnFiring = (forcedA?: number, exclude?: number) => {
+        if (candidates.length === 0 || firings.length >= MAX_FIRINGS) return;
+        const a =
+          forcedA !== undefined
+            ? forcedA
+            : candidates[Math.floor(Math.random() * candidates.length)];
+        const nbs = neighbors[a];
+        if (!nbs || nbs.length === 0) return;
+        let pickFrom = nbs;
+        if (exclude !== undefined) {
+          const filtered = nbs.filter((n) => n !== exclude);
+          if (filtered.length > 0) pickFrom = filtered;
+        }
+        const b = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+        firings.push({
+          a,
+          b,
+          life: 0,
+          maxLife: 280 + Math.random() * 380,
+          intensity: 0.55 + Math.random() * 0.45,
+          cascaded: false,
+        });
+      };
+
+      if (timestamp - lastFireRef.current > nextFireDelayRef.current) {
+        lastFireRef.current = timestamp;
+        nextFireDelayRef.current = 50 + Math.random() * 180;
+        const burst = Math.random() < 0.18 ? 2 + Math.floor(Math.random() * 2) : 1;
+        for (let k = 0; k < burst; k++) spawnFiring();
+      }
+
+      ctx.lineCap = "round";
+      for (let i = firings.length - 1; i >= 0; i--) {
+        const f = firings[i];
+        f.life += delta;
+        if (f.life > f.maxLife) {
+          firings.splice(i, 1);
+          continue;
+        }
+        const sa = stars[f.a];
+        const sb = stars[f.b];
+        const ax = sa.x * w;
+        const ay = sa.y * h;
+        const bx = sb.x * w;
+        const by = sb.y * h;
+        const r = f.life / f.maxLife;
+        // Envelope: sharp rise, slower fall — like a synaptic spike.
+        const env = r < 0.18 ? r / 0.18 : Math.pow(1 - (r - 0.18) / 0.82, 1.4);
+        const a = env * f.intensity;
+
+        // Base line: faint cool-violet trail along the whole edge.
+        ctx.lineWidth = 0.7;
+        ctx.strokeStyle = `rgba(180, 200, 255, ${0.18 * a})`;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+
+        // Traveling pulse: a bright segment that rides from a → b.
+        const head = Math.min(1, r * 1.35);
+        const tail = Math.max(0, head - 0.32);
+        const hx = ax + (bx - ax) * head;
+        const hy = ay + (by - ay) * head;
+        const tx = ax + (bx - ax) * tail;
+        const ty = ay + (by - ay) * tail;
+        const grd = ctx.createLinearGradient(tx, ty, hx, hy);
+        grd.addColorStop(0, `rgba(165, 243, 252, 0)`);
+        grd.addColorStop(0.6, `rgba(196, 220, 255, ${0.55 * a})`);
+        grd.addColorStop(1, `rgba(255, 255, 255, ${0.95 * a})`);
+        ctx.strokeStyle = grd;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(hx, hy);
+        ctx.stroke();
+
+        // Synaptic flash at the receiving end as the pulse arrives.
+        if (head > 0.85) {
+          const flash = Math.min(1, (head - 0.85) / 0.15) * a;
+          const flashR = 6 + 4 * flash;
+          const fg = ctx.createRadialGradient(bx, by, 0, bx, by, flashR);
+          fg.addColorStop(0, `rgba(220, 240, 255, ${0.8 * flash})`);
+          fg.addColorStop(1, `rgba(165, 243, 252, 0)`);
+          ctx.fillStyle = fg;
+          ctx.beginPath();
+          ctx.arc(bx, by, flashR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Cascade — once the pulse lands, sometimes b fires onward.
+        if (!f.cascaded && r > 0.78) {
+          f.cascaded = true;
+          if (Math.random() < 0.45) spawnFiring(f.b, f.a);
         }
       }
 

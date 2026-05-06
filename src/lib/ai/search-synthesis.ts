@@ -9,7 +9,7 @@
  */
 
 import { callGenerateStream, resolveReasoningBudget } from './api';
-import { ANALYSIS_MODEL } from '../constants';
+import { DEFAULT_MODEL } from '../constants';
 import { logInfo, logError } from '../system-logger';
 import { buildSearchSynthesisPrompt, SEARCH_SYNTHESIS_SYSTEM } from '@/lib/prompts/search';
 import type { NarrativeState, SearchResult, SearchSynthesis } from '@/types/narrative';
@@ -186,7 +186,7 @@ export async function synthesizeSearchResults(
       },
       2048,
       'synthesizeSearchResults',
-      ANALYSIS_MODEL,
+      DEFAULT_MODEL,
       resolveReasoningBudget(narrative),
       undefined,
       0.3,

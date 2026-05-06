@@ -12,7 +12,7 @@ import { callGenerate, resolveReasoningBudget } from "@/lib/ai/api";
 import { narrativeContext } from "@/lib/ai/context";
 import { FatalApiError } from "@/lib/ai/errors";
 import { parseJson } from "@/lib/ai/json";
-import { ANALYSIS_MODEL, ANALYSIS_TEMPERATURE } from "@/lib/constants";
+import { INTERACTION_MODEL, ANALYSIS_TEMPERATURE } from "@/lib/constants";
 import {
   buildCharacterPersona,
   buildLocationPersona,
@@ -212,7 +212,7 @@ export async function runSurvey(
           systemPrompt,
           undefined,
           `survey:${survey.questionType}`,
-          ANALYSIS_MODEL,
+          INTERACTION_MODEL,
           resolveReasoningBudget(narrative),
           true, // jsonMode — every response is structured JSON
           ANALYSIS_TEMPERATURE, // near-deterministic — research signal must be reproducible
@@ -296,7 +296,7 @@ export async function generateSurveyProposal(
     SURVEY_GEN_SYSTEM,
     undefined,
     "generateSurveyProposal",
-    ANALYSIS_MODEL,
+    INTERACTION_MODEL,
     resolveReasoningBudget(narrative),
     true,
     ANALYSIS_TEMPERATURE,

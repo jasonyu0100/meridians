@@ -13,7 +13,7 @@ import { callGenerate, resolveReasoningBudget } from "@/lib/ai/api";
 import { narrativeContext } from "@/lib/ai/context";
 import { FatalApiError } from "@/lib/ai/errors";
 import { parseJson } from "@/lib/ai/json";
-import { ANALYSIS_MODEL, ANALYSIS_TEMPERATURE } from "@/lib/constants";
+import { INTERACTION_MODEL, ANALYSIS_TEMPERATURE } from "@/lib/constants";
 import { CATEGORY_GUIDANCE, RESEARCH_CATEGORIES, type ResearchCategory } from "@/lib/research-categories";
 import {
   INTERVIEW_GEN_SYSTEM,
@@ -98,7 +98,7 @@ export async function runInterview(
           personaPrompt,
           undefined,
           `interview:${q.questionType}`,
-          ANALYSIS_MODEL,
+          INTERACTION_MODEL,
           resolveReasoningBudget(narrative),
           true,
           ANALYSIS_TEMPERATURE,
@@ -188,7 +188,7 @@ export async function generateInterviewBatch(
     INTERVIEW_GEN_SYSTEM,
     undefined,
     `generateInterviewBatch${category ? `:${category}` : ""}`,
-    ANALYSIS_MODEL,
+    INTERACTION_MODEL,
     resolveReasoningBudget(narrative),
     true,
     ANALYSIS_TEMPERATURE,

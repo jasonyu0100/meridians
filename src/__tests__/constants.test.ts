@@ -3,6 +3,9 @@ import {
   ANALYSIS_CONCURRENCY,
   ANALYSIS_MAX_CORPUS_WORDS,
   ANALYSIS_MODEL,
+  GENERATE_MODEL,
+  INTERACTION_MODEL,
+  PLANNING_MODEL,
   ANALYSIS_STAGGER_DELAY_MS,
   ANALYSIS_TEMPERATURE,
   API_LOG_STALE_THRESHOLD_MS,
@@ -20,7 +23,6 @@ import {
   FORCE_TIMELINE_WINDOW_DEFAULT,
   // AI Context
   FORCE_WINDOW_SIZE,
-  GENERATE_MODEL,
   GRAPH_WORLD_LIMIT,
   // UI
   INSPECTOR_PAGE_SIZE,
@@ -71,9 +73,17 @@ describe("AI Model Constants", () => {
     expect(typeof ANALYSIS_MODEL).toBe("string");
     expect(ANALYSIS_MODEL.length).toBeGreaterThan(0);
   });
+  it("PLANNING_MODEL is a valid model identifier", () => {
+    expect(typeof PLANNING_MODEL).toBe("string");
+    expect(PLANNING_MODEL.length).toBeGreaterThan(0);
+  });
   it("GENERATE_MODEL is a valid model identifier", () => {
     expect(typeof GENERATE_MODEL).toBe("string");
     expect(GENERATE_MODEL.length).toBeGreaterThan(0);
+  });
+  it("INTERACTION_MODEL is a valid model identifier", () => {
+    expect(typeof INTERACTION_MODEL).toBe("string");
+    expect(INTERACTION_MODEL.length).toBeGreaterThan(0);
   });
 });
 describe("AI Pricing Constants", () => {

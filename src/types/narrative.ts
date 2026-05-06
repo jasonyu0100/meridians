@@ -808,8 +808,10 @@ export type Scene = {
   id: string;
   arcId: string;
   locationId: string;
-  /** Character whose perspective this scene is told from */
-  povId: string;
+  /** Character whose perspective this scene is told from. Null when the
+   *  source has no viewpoint entity (omniscient simulation, impersonal
+   *  analytical writing, polyphonic sources). */
+  povId: string | null;
   participantIds: string[];
   /** Artifact usages — which character used which artifact in this scene.
    *  Location-owned artifacts can be used communally; character-owned only by owner. */

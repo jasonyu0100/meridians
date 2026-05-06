@@ -461,56 +461,75 @@ function ShapeCurve({
 }
 
 // ── Cost calculation reference ────────────────────────────────────────────────
-// Recomputed against observed token data (Nov 2025, 16-scene narrative,
-// 45 calls totalling $1.04 → $0.065/scene typical).
+// Per-domain model split — pick the cheapest model that meets the bar for each
+// kind of work. DeepSeek v4 Flash on the cheap deterministic paths; Gemini 2.5
+// Flash on the structured-extraction and planning paths where the cheaper model
+// stalls on schema discipline.
 //
-// 2.5 Flash:         $0.30/M input · $2.50/M output+reasoning — structure, planning, analysis, evaluation
-// 3 Flash Preview:   $0.50/M input · $3.00/M output+reasoning — prose only
+// DEFAULT_MODEL      Gemini 2.5 Flash    fallback — evaluation, briefing, game
+//                                        theory, search synthesis, report
+// GENERATE_MODEL     DeepSeek v4 Flash   scene generation — generateScenes,
+//                                        generateNarrative, reconstruction edits
+// WRITING_MODEL      DeepSeek v4 Flash   prose generation + rewrite
+// PLANNING_MODEL     Gemini 2.5 Flash    scene plans, reasoning graph (CRG),
+//                                        phase graph (PRG)
+// ANALYSIS_MODEL     Gemini 2.5 Flash    full analysis pipeline (extraction,
+//                                        reconciliation, fate re-extract,
+//                                        beat-plan reverse-engineering)
+// INTERACTION_MODEL  DeepSeek v4 Flash   chat, surveys, interviews
+//
+// Pricing: DeepSeek v4 Flash $0.14/M in · $0.28/M out; Gemini 2.5 Flash $0.30/M
+// in · $2.50/M out (output-heavy planning & analysis pay the Gemini premium).
 //
 // GENERATION (per arc, ~4 scenes, ~4800 words):
-//   generateScenes              1× 2.5F  ~45K in + 8K out + reasoning  = $0.04
-//   generateReasoningGraph      1× 2.5F  ~38K in + 7K out + reasoning  = $0.03  (CRG — per-arc causal graph, replaces refreshDirection)
-//   generateScenePlan.extract   4× 2.5F  ~5K in + 3.5K out × 4         = $0.05  (Phase 1 of two-phase planning — extracts compulsory propositions from summary)
-//   generateScenePlan           4× 2.5F  ~13K in + 5K out × 4          = $0.08  (Phase 2 — beats glue propositions into narrative flow)
-//   generateSceneProse          4× 3FP   ~12K in + 1.2K out × 4        = $0.04  (~1.2K words/scene; cheaper than originally estimated — minimal reasoning budget)
-//   expandWorld               ~⅓× 2.5F  ~25K in + 5K out               = $0.01  (amortised — runs once per ~3 arcs)
-//   generatePhaseGraph         rare      ~30K in + 5K out + reasoning   = $0.03  (PRG — meta-machinery; on-demand, not per-arc)
-//                                                                Total = $0.24-0.26/arc typical
+//   generateScenes              1× DeepSeek  ~45K in + 8K out        = ~$0.01
+//   generateReasoningGraph      1× Gemini    ~38K in + 7K out + reas = ~$0.04  (per-arc CRG)
+//   generateScenePlan           4× Gemini    ~18K in + 8.5K out × 4  = ~$0.07
+//   generateSceneProse          4× DeepSeek  ~12K in + 1.2K out × 4  = ~$0.01
+//   expandWorld               ~⅓× Gemini    ~25K in + 5K out         = ~$0.01
+//   generatePhaseGraph         rare Gemini   ~30K in + 5K out + reas = ~$0.03  (on-demand)
+//                                                              Total ≈ $0.13/arc
 //
 // EVALUATION & REVISION (per arc, ~25% edit rate):
-//   evaluateBranch              1× 2.5F  ~12K in + 2K out              = $0.01
-//   editScene/insertScene/etc  ~1× 2.5F  ~30K in + 0.5K out            = $0.01
-//   evaluatePlanQuality         1× 2.5F  ~15K in + 1K out              = $0.01
-//   evaluateProseQuality        1× 2.5F  ~15K in + 1K out              = $0.01
-//   rewriteSceneProse          ~1× 3FP   ~12K in + 1.5K out            = $0.01
-//                                                                Total ≈ $0.05/arc
-// (rewriteSceneProse in StoryReader is spot-fix only — not in this estimate)
+//   evaluateBranch              1× Gemini    ~12K in + 2K out        = ~$0.01
+//   editScene/insertScene/etc  ~1× DeepSeek  ~30K in + 0.5K out      = ~$0.00
+//   evaluatePlanQuality         1× Gemini    ~15K in + 1K out        = ~$0.01
+//   evaluateProseQuality        1× Gemini    ~15K in + 1K out        = ~$0.01
+//   rewriteSceneProse          ~1× DeepSeek  ~12K in + 1.5K out      = ~$0.00
+//                                                              Total ≈ $0.03/arc
 //
-// ANALYSIS (per corpus, scene-first pipeline, no reasoning):
-//   extractSceneStructure       N× 2.5F  ~6K in + 2K out × N           = ~$0.008/scene
-//   reverseEngineerScenePlan    N× 2.5F  ~5K in + 1K out × N           = ~$0.005/scene  (when extractPlans=true)
-//   reextractFateWithLifecycle  N× 2.5F  ~4K in + 1K out × N           = ~$0.004/scene  (full mode only — skipped in world-only)
-//   summariseWorldBuildBatch   ⌈N/12⌉× 2.5F  ~2K in + 0.3K out         = ~$0.001/scene  (per-batch LLM intent summary)
-//   embeddings (OpenAI)         N× ada   summaries + propositions + prose = ~$0.003/scene
-//   groupScenesIntoArcs         1× 2.5F  ~2K in + 0.5K out             = ~$0.002 once  (skipped in world-only)
-//   reconcileResults            1× 2.5F  ~8K in + 2K out               = ~$0.008 once
-//   analyzeThreading            1× 2.5F  ~3K in + 0.5K out             = ~$0.003 once  (skipped in world-only)
-//   meta-extraction             1× 2.5F  ~25K in + 3K out              = ~$0.020 once
-//   Per scene: ~$0.021 (structure + plan + reextract + WB summary + embeddings)
-//   Per corpus once: ~$0.033
+// ANALYSIS (per corpus) — Gemini 2.5 Flash, no reasoning:
+//   extractSceneStructure       N×  ~6K in + 2K out × N             = ~$0.008/scene
+//   reverseEngineerScenePlan    N×  ~5K in + 1K out × N             = ~$0.005/scene  (when extractPlans=true)
+//   reextractFateWithLifecycle  N×  ~4K in + 1K out × N             = ~$0.004/scene
+//   summariseWorldBuildBatch   ⌈N/12⌉× ~2K in + 0.3K out             = ~$0.001/scene
+//   embeddings (OpenAI)         N×  summaries + propositions + prose = ~$0.003/scene
+//   groupScenesIntoArcs         1×  ~2K in + 0.5K out               = ~$0.002 once
+//   reconcileResults            1×  ~8K in + 2K out                 = ~$0.008 once
+//   analyzeThreading            1×  ~3K in + 0.5K out               = ~$0.003 once
+//   meta-extraction             1×  ~25K in + 3K out                = ~$0.020 once
+//   Per scene: ~$0.021 · Per corpus once: ~$0.033
 //
-//   77K novel (~64 scenes):  64×$0.021 + $0.033 = ~$1.38
-//   100K novel (~83 scenes): 83×$0.021 + $0.033 = ~$1.78
-//   500K series (~416 scenes): 416×$0.021 + $0.033 = ~$8.77
+// END-TO-END (Create + Continue, from-scratch):
+//   Short story (~10K, 3 arcs):    ~$0.24
+//   Novel       (~85K, 21 arcs):   ~$3.20
+//   Serial     (~500K, 125 arcs): ~$19.78
 //
-// World-only mode skips reextractFateWithLifecycle + groupScenesIntoArcs +
-// analyzeThreading: ~$0.013/scene + $0.020 once.
+// END-TO-END (Analyse only, expert-priors flow):
+//   77K novel  (~64 scenes):   ~$1.38
+//   100K novel (~83 scenes):   ~$1.78
+//   500K series (~416 scenes): ~$8.77
+//
+// World-only analysis skips reextract + grouping + threading: ~$0.013/scene + $0.020 once.
 
 type BreakdownRow = {
   call: string;
   count: string;
-  /** Mixed = a combo row spanning both models (e.g. plan + prose pass). */
-  model: "2.5 Flash" | "3 Flash" | "mixed";
+  /** "DeepSeek v4" — scene generation, prose, interaction (chat / surveys / interviews).
+   *  "Gemini 2.5" — planning (CRG / PRG / scene plans), analysis pipeline, default
+   *  fallback (evaluation, briefings, game theory).
+   *  "mixed" — a combined step that spans both models. */
+  model: "DeepSeek v4" | "Gemini 2.5" | "mixed";
   note: string;
   cost: string;
 };
@@ -529,19 +548,19 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
       {
         call: "generateNarrative",
         count: "×1",
-        model: "2.5 Flash",
+        model: "DeepSeek v4",
         note: "Initial entities, relationships, 8-scene intro arc structures",
-        cost: "$0.05",
+        cost: "~$0.01",
       },
       {
         call: "generateScenePlan + generateSceneProse",
         count: "×8",
         model: "mixed",
-        note: "Plan + prose for the intro arc's scenes",
-        cost: "$0.34",
+        note: "Plan (Gemini) + prose (DeepSeek) for the intro arc's scenes",
+        cost: "~$0.07",
       },
     ],
-    subtotal: { calls: "~17 calls", cost: "~$0.40 once" },
+    subtotal: { calls: "~17 calls", cost: "~$0.08 once" },
   },
   {
     label: "Generation",
@@ -550,47 +569,47 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
       {
         call: "generateScenes",
         count: "×1",
-        model: "2.5 Flash",
+        model: "DeepSeek v4",
         note: "Scene structures, deltas, summaries",
-        cost: "$0.04",
+        cost: "~$0.01",
       },
       {
         call: "generateReasoningGraph",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Causal reasoning graph (CRG) — per-arc",
-        cost: "$0.03",
+        cost: "~$0.04",
       },
       {
         call: "generateScenePlan",
         count: "×4",
-        model: "2.5 Flash",
-        note: "Single call — extracts compulsory propositions and glues them into the beat plan in one pass",
-        cost: "$0.13",
+        model: "Gemini 2.5",
+        note: "Compulsory propositions + beat plan, single pass",
+        cost: "~$0.07",
       },
       {
         call: "generateSceneProse",
         count: "×4",
-        model: "3 Flash",
+        model: "DeepSeek v4",
         note: "~1.2K words of prose per scene",
-        cost: "$0.04",
+        cost: "~$0.01",
       },
       {
         call: "expandWorld",
         count: "×~⅓",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "New characters / locations / threads (amortised)",
-        cost: "$0.01",
+        cost: "~$0.01",
       },
       {
         call: "generatePhaseGraph",
         count: "occasional",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Phase reasoning graph (PRG) — meta-machinery, on-demand",
-        cost: "$0.03",
+        cost: "~$0.03",
       },
     ],
-    subtotal: { calls: "~14 calls", cost: "~$0.25" },
+    subtotal: { calls: "~14 calls", cost: "~$0.13" },
   },
   {
     label: "Evaluation & Revision",
@@ -599,105 +618,105 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
       {
         call: "evaluateBranch",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Structure verdicts + thematic critique",
-        cost: "$0.01",
+        cost: "~$0.01",
       },
       {
         call: "editScene / insertScene / mergeScenes",
         count: "×~1",
-        model: "2.5 Flash",
+        model: "DeepSeek v4",
         note: "Reconstruction edits (summary + deltas)",
-        cost: "$0.01",
+        cost: "~$0.00",
       },
       {
         call: "evaluatePlanQuality",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Plan-level continuity verdicts",
-        cost: "$0.01",
+        cost: "~$0.01",
       },
       {
         call: "evaluateProseQuality",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Prose quality edit verdicts + critique",
-        cost: "$0.01",
+        cost: "~$0.01",
       },
       {
         call: "rewriteSceneProse",
         count: "×~1",
-        model: "3 Flash",
+        model: "DeepSeek v4",
         note: "~1K words rewritten (25% rate)",
-        cost: "$0.01",
+        cost: "~$0.00",
       },
     ],
-    subtotal: { calls: "~5 calls", cost: "~$0.05" },
+    subtotal: { calls: "~5 calls", cost: "~$0.03" },
   },
   {
     label: "Analysis",
-    unit: "per corpus  ·  scene-first pipeline  ·  ~$0.021/scene",
+    unit: "per corpus  ·  expert-priors pipeline  ·  ~$0.021/scene",
     rows: [
       {
         call: "extractSceneStructure",
         count: "×N",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Entities, deltas, summary from prose chunk",
         cost: "~$0.008/scene",
       },
       {
         call: "reverseEngineerScenePlan",
         count: "×N",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Beat plan + propositions (when extractPlans=true)",
         cost: "~$0.005/scene",
       },
       {
         call: "reextractFateWithLifecycle",
         count: "×N",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Lifecycle-aware fate re-scoring (skipped in world-only)",
         cost: "~$0.004/scene",
       },
       {
         call: "summariseWorldBuildBatch",
         count: "×⌈N/12⌉",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Per-batch WorldBuild intent summary (parallel pool)",
         cost: "~$0.001/scene",
       },
       {
         call: "embeddings",
         count: "×N",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Summaries, propositions, prose (OpenAI)",
         cost: "~$0.003/scene",
       },
       {
         call: "groupScenesIntoArcs",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Name arcs from scene summaries (skipped in world-only)",
         cost: "~$0.002",
       },
       {
         call: "reconcileResults",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Entity deduplication across chunks",
         cost: "~$0.008",
       },
       {
         call: "analyzeThreading",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Thread dependency analysis (skipped in world-only)",
         cost: "~$0.003",
       },
       {
         call: "meta-extraction (assembleNarrative)",
         count: "×1",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Image style, prose profile, genre, patterns",
         cost: "~$0.020",
       },
@@ -706,47 +725,54 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
   },
   {
     label: "Questioning",
-    unit: "on-demand  ·  operator-initiated  ·  not part of generation cost",
+    unit: "on-demand  ·  operator-initiated  ·  separate from generation budget",
     rows: [
       {
         call: "generateMarketBriefing",
         count: "per request",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Briefing tab — situation + suggested arc/world directions",
-        cost: "~$0.025",
+        cost: "~$0.02",
       },
       {
         call: "executeSurvey",
         count: "per request",
-        model: "2.5 Flash",
-        note: "1 question × N respondents (parallel) — ~$0.005 per respondent",
-        cost: "~$0.05 (10 respondents)",
+        model: "DeepSeek v4",
+        note: "1 question × N respondents (parallel) — ~$0.001 per respondent",
+        cost: "~$0.01 (10 respondents)",
       },
       {
         call: "executeInterview",
         count: "per request",
-        model: "2.5 Flash",
+        model: "DeepSeek v4",
         note: "1 subject × ~6 AI-generated questions",
-        cost: "~$0.04",
+        cost: "~$0.01",
       },
       {
         call: "analyzeSceneGames",
         count: "per scene",
-        model: "2.5 Flash",
+        model: "Gemini 2.5",
         note: "Game-theory decomposition of a scene (additive, doesn't mutate deltas)",
         cost: "~$0.015",
       },
+      {
+        call: "chat",
+        count: "per turn",
+        model: "DeepSeek v4",
+        note: "Conversational turn over narrative state — entity persona / Q&A",
+        cost: "~$0.001",
+      },
     ],
-    subtotal: { calls: "operator-paced", cost: "~$0.02–$0.05 each" },
+    subtotal: { calls: "operator-paced", cost: "~$0.001–$0.02 each" },
   },
 ];
 
-function ModelPill({ model }: { model: "2.5 Flash" | "3 Flash" | "mixed" }) {
+function ModelPill({ model }: { model: "DeepSeek v4" | "Gemini 2.5" | "mixed" }) {
   const tone =
-    model === "3 Flash"
-      ? "bg-amber-500/10 text-amber-400/60"
+    model === "Gemini 2.5"
+      ? "bg-violet-500/10 text-violet-400/60"
       : model === "mixed"
-        ? "bg-violet-500/10 text-violet-400/60"
+        ? "bg-amber-500/10 text-amber-400/60"
         : "bg-emerald-500/10 text-emerald-400/60";
   return (
     <span
@@ -765,15 +791,19 @@ function CostEstimates() {
         End-to-End Estimates · ~4 scenes/arc · ~1.2K words/scene
       </span>
 
-      {/* End-to-end derived from per-scope costs:
-          Creation (one-time): ~$0.40 wizard bootstrap (~8 scenes / ~2 arcs)
-          Generation per arc:  ~$0.25 (CRG + 4× scene plan/prose pass)
-          Evaluation per arc:  ~$0.05 (eval + ~25% edit/rewrite rate)
-          Per-arc total:       ~$0.30 (~$0.075/scene)
-          Analysis (ingest):   ~$0.021/scene + ~$0.033 once
+      {/* Domain-routed model split — DeepSeek v4 Flash drives scene generation,
+          prose, and interaction (chat / surveys / interviews); Gemini 2.5 Flash
+          drives planning (CRG / PRG / scene plans), the analysis pipeline, and
+          everything else by default (evaluation, briefings, game theory).
 
-          "Create from premise" rows = wizard + (arcs - 2 from bootstrap) × $0.30
-          "Analyse + continue" rows  = ingest + 8 continuation arcs × $0.30. */}
+          Creation (one-time):     ~$0.08 wizard bootstrap (~8 scenes / ~2 arcs)
+          Generation per arc:      ~$0.13 (CRG + 4× scene plan/prose pass)
+          Evaluation per arc:      ~$0.03 (eval + ~25% edit/rewrite rate)
+          Per-arc total:           ~$0.16 (~$0.04/scene)
+          Analysis (ingest):       ~$0.021/scene + ~$0.033 once
+
+          "Create from premise" rows = wizard + (arcs - 2 from bootstrap) × $0.16
+          "Analyse + continue" rows  = ingest + continuation arcs × $0.16. */}
       <table className="w-full text-[11px] table-fixed">
         <colgroup>
           <col className="w-[18%]" />
@@ -801,10 +831,10 @@ function CostEstimates() {
             { scale: "Epic", words: "~200K", scenes: 200, arcs: 50 },
             { scale: "Serial", words: "~500K", scenes: 500, arcs: 125 },
           ].map(({ scale, words, scenes, arcs }, i) => {
-            // Wizard creation (always ~$0.40; ~$0.05 for very short stories where it covers most of the work).
-            const create = 0.40;
-            // Continuation = remaining arcs after the wizard's 2 bootstrap arcs × $0.30/arc.
-            const continueCost = Math.max(0, arcs - 2) * 0.30;
+            // Wizard creation — one-time bootstrap (~8 scenes / ~2 arcs).
+            const create = 0.08;
+            // Continuation = remaining arcs after the wizard's 2 bootstrap arcs × $0.16/arc.
+            const continueCost = Math.max(0, arcs - 2) * 0.16;
             const totalCreate = create + continueCost;
             // Analyse = ingest cost for the same scene count.
             const analyse = scenes * 0.021 + 0.033;
@@ -833,17 +863,23 @@ function CostEstimates() {
       </table>
 
       <p className="text-[9px] text-white/25 mt-2">
-        <span className="font-mono text-white/40">Create</span> = wizard one-time bootstrap (~$0.40 for entities + intro arc).{" "}
-        <span className="font-mono text-white/40">Continue</span> = remaining arcs × ~$0.30/arc (CRG + 4 scenes' plan/prose + per-arc eval).{" "}
+        <span className="font-mono text-white/40">Create</span> = wizard one-time bootstrap (~$0.08 for entities + intro arc).{" "}
+        <span className="font-mono text-white/40">Continue</span> = remaining arcs × ~$0.16/arc (CRG + 4 scenes' plan/prose + per-arc eval).{" "}
         <span className="font-mono text-white/40">Analyse</span> = ingest an existing corpus into NarrativeState (separate flow — pay this OR Create, not both).{" "}
         <span className="font-mono text-white/40">Total</span> sums Create + Continue for the from-scratch flow.
       </p>
 
       <p className="text-[10px] text-white/25 mt-3">
-        Structure, planning, analysis &amp; prose all run on{" "}
-        <span className="text-emerald-500/40">DeepSeek v4 Flash</span> ($0.14/M
-        in · $0.28/M out+reasoning). Generation cost per arc is constant once
-        the story exceeds the 50-scene context window.
+        Each kind of work runs on the cheapest model that meets its bar.{" "}
+        <span className="text-emerald-500/40">DeepSeek v4 Flash</span> ($0.14/M in
+        · $0.28/M out) handles scene generation, prose, and interaction
+        (chat / surveys / interviews).{" "}
+        <span className="text-violet-400/60">Gemini 2.5 Flash</span> ($0.30/M in ·
+        $2.50/M out) handles planning (CRG / PRG / scene plans), the analysis
+        pipeline, and the default fallback (evaluation, briefings, game theory).
+        The richer the priors fed into analysis, the more the simulation can
+        reason — analysis is the path where domain corpus becomes queryable
+        structure.
       </p>
 
       <button

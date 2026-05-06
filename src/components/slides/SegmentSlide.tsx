@@ -34,7 +34,7 @@ export function SegmentSlide({ data, segment }: { data: SlidesData; segment: Seg
   // Unique characters in this segment
   const charSet = new Set<string>();
   for (const s of segScenes) {
-    charSet.add(s.povId);
+    if (s.povId) charSet.add(s.povId);
     for (const p of s.participantIds) charSet.add(p);
   }
 

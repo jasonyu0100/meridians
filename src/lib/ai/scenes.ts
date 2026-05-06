@@ -6,7 +6,7 @@ import { newNarratorBelief } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
 import { GENERATE_SCENES_SYSTEM } from '@/lib/prompts/scenes/generate';
-import { WRITING_MODEL, GENERATE_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
+import { WRITING_MODEL, GENERATE_MODEL, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext, sceneContext, buildProseProfile } from './context';
 import { PROMPT_STRUCTURAL_RULES, PROMPT_DELTAS, PROMPT_ARTIFACTS, PROMPT_LOCATIONS, PROMPT_POV, PROMPT_WORLD, PROMPT_SUMMARY_REQUIREMENT, promptThreadLifecycle, buildThreadHealthPrompt, buildCompletedBeatsPrompt, PROMPT_FORCE_STANDARDS, PROMPT_ARC_STATE_GUIDANCE, buildScenePlanSystemPrompt, buildBeatAnalystSystemPrompt, buildScenePlanEditSystemPrompt, buildSceneProseSystemPrompt } from './prompts';
@@ -451,7 +451,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   for (const scene of scenes) {
     // Remap participant IDs, POV, location
     scene.participantIds = scene.participantIds.map((id) => charIdMap[id] ?? id);
-    scene.povId = charIdMap[scene.povId] ?? scene.povId;
+    if (scene.povId) scene.povId = charIdMap[scene.povId] ?? scene.povId;
     scene.locationId = locIdMap[scene.locationId] ?? scene.locationId;
     // Remap worldDeltas entity IDs
     for (const km of scene.worldDeltas ?? []) {
@@ -719,8 +719,8 @@ async function extractCompulsoryPropositions(
   });
 
   const raw = onReasoning
-    ? await callGenerateStream(userPrompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', GENERATE_MODEL, reasoningBudget, onReasoning)
-    : await callGenerate(userPrompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', GENERATE_MODEL, reasoningBudget);
+    ? await callGenerateStream(userPrompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', PLANNING_MODEL, reasoningBudget, onReasoning)
+    : await callGenerate(userPrompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', PLANNING_MODEL, reasoningBudget);
 
   const parsed = parseJson(raw, 'generateScenePlan.extractPropositions') as { propositions?: unknown[] };
   return parsePropositions(Array.isArray(parsed.propositions) ? parsed.propositions : []);
@@ -781,7 +781,7 @@ function buildParticipantGroundingBlock(narrative: NarrativeState, scene: Scene)
     return `  <${tag} ${attrs}>${inner ? `\n${inner}\n  ` : ''}</${tag}>`;
   };
 
-  const povChar = narrative.characters[scene.povId];
+  const povChar = scene.povId ? narrative.characters[scene.povId] : undefined;
   const otherParticipants = scene.participantIds
     .filter(id => id !== scene.povId)
     .map(id => narrative.characters[id])
@@ -921,8 +921,8 @@ ${proseProfileBlock}
   const prompt = buildScenePlanUserPrompt({ inputBlocks: inputBlocks.join('\n') });
 
   const raw = onReasoning
-    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan', GENERATE_MODEL, reasoningBudget, onReasoning)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan', GENERATE_MODEL, reasoningBudget);
+    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan', PLANNING_MODEL, reasoningBudget, onReasoning)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan', PLANNING_MODEL, reasoningBudget);
 
   const parsed = parseJson(raw, 'generateScenePlan') as { beats?: unknown[] };
   const rawBeats = parsed.beats ?? [];
@@ -1100,7 +1100,7 @@ export async function editScenePlan(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
-  const raw = await callGenerate(prompt, buildScenePlanEditSystemPrompt(narrative.title), MAX_TOKENS_SMALL, 'editScenePlan', GENERATE_MODEL, reasoningBudget);
+  const raw = await callGenerate(prompt, buildScenePlanEditSystemPrompt(narrative.title), MAX_TOKENS_SMALL, 'editScenePlan', PLANNING_MODEL, reasoningBudget);
 
   const parsed = parseJson(raw, 'editScenePlan') as { beats?: unknown[]; propositions?: unknown[] };
   const beats = (parsed.beats ?? []).map((b: unknown) => {
@@ -1243,8 +1243,8 @@ async function reverseEngineerScenePlanOnce(
   let accumulated = '';
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onToken
-    ? await callGenerateStream(prompt, systemPrompt, (token) => { accumulated += token; onToken(token, accumulated); }, MAX_TOKENS_SMALL, 'reverseEngineerScenePlan', GENERATE_MODEL, reasoningBudget, undefined, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'reverseEngineerScenePlan', GENERATE_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, systemPrompt, (token) => { accumulated += token; onToken(token, accumulated); }, MAX_TOKENS_SMALL, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, undefined, ANALYSIS_TEMPERATURE)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
 
   type BeatData = { fn: string; mechanism: string; what: string; propositions: unknown[] };
   const parsed = parseJson(raw, 'reverseEngineerScenePlan') as { beats?: unknown[] };
@@ -1408,8 +1408,8 @@ Scene-level "propositions" should capture the overall takeaways from the scene.`
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'rewriteScenePlan', GENERATE_MODEL, reasoningBudget, onReasoning)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'rewriteScenePlan', GENERATE_MODEL, reasoningBudget);
+    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'rewriteScenePlan', PLANNING_MODEL, reasoningBudget, onReasoning)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'rewriteScenePlan', PLANNING_MODEL, reasoningBudget);
   const parsed = parseJson(raw, 'rewriteScenePlan') as { beats?: unknown[]; propositions?: unknown[] };
 
   const beats = (parsed.beats ?? []).map((b: unknown) => {
@@ -1741,7 +1741,6 @@ export function sanitizeScenes(scenes: Scene[], narrative: NarrativeState, label
   const validArtifactIds = new Set(Object.keys(narrative.artifacts ?? {}));
   const allEntityIds = new Set([...validCharIds, ...validLocIds, ...validArtifactIds]);
   const stripped: string[] = [];
-  const fallbackCharId = Object.keys(narrative.characters)[0];
 
   // ── First pass: register introduced entities across every scene ──
   // Must happen BEFORE reference validation so that participantIds /
@@ -2071,9 +2070,12 @@ export function sanitizeScenes(scenes: Scene[], narrative: NarrativeState, label
     }
     if (!Array.isArray(scene.participantIds)) scene.participantIds = [];
     if (!Array.isArray(scene.events)) scene.events = [];
-    if (!scene.povId || !validCharIds.has(scene.povId)) {
-      if (scene.povId) stripped.push(`povId "${scene.povId}" in scene ${scene.id} (invalid)`);
-      scene.povId = scene.participantIds.find((pid) => validCharIds.has(pid)) ?? fallbackCharId;
+    // povId is OPTIONAL — null means no viewpoint entity (omniscient
+    // simulation, impersonal analytical writing, polyphonic source). Strip
+    // an invalid id but never fabricate one.
+    if (scene.povId != null && !validCharIds.has(scene.povId)) {
+      stripped.push(`povId "${scene.povId}" in scene ${scene.id} (invalid, cleared)`);
+      scene.povId = null;
     }
     const validParticipants = scene.participantIds.filter((pid) => {
       if (validCharIds.has(pid)) return true;
@@ -2090,9 +2092,9 @@ export function sanitizeScenes(scenes: Scene[], narrative: NarrativeState, label
         stripped.push(`newCharacter "${c.id}" auto-added to participantIds in scene ${scene.id}`);
       }
     }
-    scene.participantIds = validParticipants.length > 0 ? validParticipants : [fallbackCharId];
-    if (!scene.participantIds.includes(scene.povId)) {
-      scene.povId = scene.participantIds[0] ?? fallbackCharId;
+    scene.participantIds = validParticipants;
+    if (scene.povId != null && !scene.participantIds.includes(scene.povId)) {
+      scene.povId = scene.participantIds[0] ?? null;
     }
     if (!Array.isArray(scene.threadDeltas)) scene.threadDeltas = [];
     if (!Array.isArray(scene.worldDeltas)) scene.worldDeltas = [];

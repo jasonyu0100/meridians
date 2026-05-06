@@ -112,7 +112,7 @@ function renderSceneEntry(
 ): string {
   const fields = TIER_FIELDS[tier];
   const loc = n.locations[s.locationId]?.name ?? s.locationId;
-  const povName = n.characters[s.povId]?.name ?? s.povId;
+  const povName = s.povId ? (n.characters[s.povId]?.name ?? s.povId) : 'narrator';
   // Compact time-gap so the planner/writer can see pacing across history —
   // e.g. "3 hours", "2 weeks", "concurrent". Rich guidance is still surfaced
   // on the active scene via sceneContext's <time-gap> block.
@@ -495,7 +495,7 @@ export function narrativeContext(
     const entry = resolveEntry(n, k);
     if (!entry) return;
     if (entry.kind === 'scene') {
-      referencedCharIds.add(entry.povId);
+      if (entry.povId) referencedCharIds.add(entry.povId);
       for (const pid of entry.participantIds) referencedCharIds.add(pid);
       referencedLocIds.add(entry.locationId);
       for (const tm of entry.threadDeltas) {
@@ -872,7 +872,7 @@ export function sceneContext(
   // continuity context should combine this with narrativeContext, not
   // duplicate state here.
   const location = narrative.locations[scene.locationId];
-  const pov = narrative.characters[scene.povId];
+  const pov = scene.povId ? narrative.characters[scene.povId] : undefined;
   const arc = Object.values(narrative.arcs).find((a) => a.sceneIds.includes(scene.id));
 
   // Network attributes for participant + thread enrichment. Scene context is
@@ -1063,7 +1063,7 @@ export function deriveLogicRules(
 
   const participantIdSet = new Set(scene.participantIds);
   const location = narrative.locations[scene.locationId];
-  const pov = narrative.characters[scene.povId];
+  const pov = scene.povId ? narrative.characters[scene.povId] : undefined;
 
   // NOTE: Spatial constraints and POV-lock are NOT included here because:
   // - sceneContext already provides location, pov, and participants
@@ -1368,7 +1368,7 @@ ${artifactLines.join('\n')}
   // ═══════════════════════════════════════════════════════════════════════════
   if (sections.length === 0) return '';
 
-  const povName = pov?.name ?? scene.povId;
+  const povName = pov?.name ?? scene.povId ?? 'narrator';
   const locName = location?.name ?? scene.locationId;
 
   return `<logic-context scene="${scene.id}" pov="${povName}" location="${locName}">
@@ -1423,7 +1423,7 @@ export function outlineContext(
       sections.push(group);
     }
 
-    const povName = n.characters[entry.povId]?.name ?? entry.povId;
+    const povName = entry.povId ? (n.characters[entry.povId]?.name ?? entry.povId) : 'narrator';
     const locName = n.locations[entry.locationId]?.name ?? entry.locationId;
     group.entries.push(
       `  <scene index="${sceneNum}" pov="${povName}" location="${locName}">${entry.summary}</scene>`,

@@ -103,7 +103,7 @@ export function CubeExplorer({
         a.sceneIds.includes(scene.id),
       );
       const location = narrative.locations[scene.locationId];
-      const pov = narrative.characters[scene.povId];
+      const pov = scene.povId ? narrative.characters[scene.povId] : undefined;
 
       return {
         scene,

@@ -23,6 +23,7 @@ import type {
 } from "@/types/narrative";
 import { REASONING_BUDGETS, resolveEntry } from "@/types/narrative";
 import { callGenerate, callGenerateStream } from "./api";
+import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext, getStateAtIndex } from "./context";
 import { parseJson } from "./json";
 import { buildCumulativeSystemGraph, getMarketProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/narrative-utils";
@@ -302,7 +303,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
         () => {}, // No token streaming for main output
         undefined,
         "generateReasoningGraph",
-        undefined,
+        PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
       )
@@ -311,7 +312,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
         ARC_REASONING_GRAPH_SYSTEM,
         undefined,
         "generateReasoningGraph",
-        undefined,
+        PLANNING_MODEL,
         reasoningBudget,
       );
 
@@ -603,7 +604,7 @@ export async function generateCoordinationPlan(
     .map(k => {
       const entry = resolveEntry(narrative, k);
       if (entry?.kind !== "scene") return null;
-      const povName = narrative.characters[entry.povId]?.name ?? entry.povId;
+      const povName = entry.povId ? (narrative.characters[entry.povId]?.name ?? entry.povId) : 'narrator';
       const locName = narrative.locations[entry.locationId]?.name ?? entry.locationId;
       return `- [${povName} @ ${locName}] ${entry.summary}`;
     })
@@ -675,7 +676,7 @@ export async function generateCoordinationPlan(
         () => {}, // No token streaming for main output
         undefined,
         "generateCoordinationPlan",
-        undefined,
+        PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
       )
@@ -684,7 +685,7 @@ export async function generateCoordinationPlan(
         COORDINATION_PLAN_SYSTEM,
         undefined,
         "generateCoordinationPlan",
-        undefined,
+        PLANNING_MODEL,
         reasoningBudget,
       );
 

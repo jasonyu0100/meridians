@@ -17,23 +17,34 @@ export const ANALYSIS_MAX_CORPUS_WORDS = 500_000;
 
 // ── AI Models ───────────────────────────────────────────────────────────────
 
-/** Default LLM model used across all API routes */
-export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
+/** Default LLM model — fallback for everything not explicitly routed: evaluation,
+ *  reviews, briefings, game theory, search synthesis, report generation,
+ *  prose-rewrite changelog, ingest. */
+export const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
-/** Model for plans and prose (creative writing tasks) */
+/** Model for scene generation — generateScenes, generateNarrative (intro arc),
+ *  reconstruction edits/inserts/merges. */
+export const GENERATE_MODEL = "deepseek/deepseek-v4-flash";
+
+/** Model for prose (creative writing tasks). */
 export const WRITING_MODEL = "deepseek/deepseek-v4-flash";
 
-/** Model for scoring, reconciliation, and text analysis */
-export const ANALYSIS_MODEL = "deepseek/deepseek-v4-flash";
+/** Model for planning calls — beat plans, reasoning graphs (CRG), phase graphs (PRG). */
+export const PLANNING_MODEL = "google/gemini-2.5-flash";
 
-/** Model for scene generation — MCTS, auto mode, manual */
-export const GENERATE_MODEL = "deepseek/deepseek-v4-flash";
+/** Model for the analysis pipeline (extraction, reconciliation, fate re-extract,
+ *  beat-plan reverse-engineering). */
+export const ANALYSIS_MODEL = "google/gemini-2.5-flash";
+
+/** Model for interactive / conversational calls — chat, surveys, interviews. */
+export const INTERACTION_MODEL = "deepseek/deepseek-v4-flash";
 
 // ── AI Pricing (per million tokens) ──────────────────────────────────────────
 
 export const MODEL_PRICING: Record<string, { input: number; output: number }> =
   {
     "deepseek/deepseek-v4-flash": { input: 0.14, output: 0.28 },
+    "google/gemini-2.5-flash": { input: 0.30, output: 2.50 },
   };
 
 /** Fallback pricing when model is unknown */

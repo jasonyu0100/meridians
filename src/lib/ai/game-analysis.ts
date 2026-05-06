@@ -9,7 +9,7 @@
 import { callGenerateStream, resolveReasoningBudget } from "./api";
 import { parseJson } from "./json";
 import { buildGameTheorySystemPrompt, buildGameTheoryUserPrompt } from "@/lib/prompts/scenes/game-theory";
-import { ANALYSIS_MODEL } from "@/lib/constants";
+import { DEFAULT_MODEL } from "@/lib/constants";
 import { logError, logInfo } from "@/lib/system-logger";
 import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/narrative-utils";
 import {
@@ -419,7 +419,7 @@ export async function generateSceneGameAnalysis(
     },
     undefined,
     "generateSceneGameAnalysis",
-    ANALYSIS_MODEL,
+    DEFAULT_MODEL,
     reasoningBudget,
     (token) => {
       fullReasoning += token;

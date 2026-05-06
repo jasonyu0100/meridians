@@ -94,17 +94,19 @@ export function CastAnalytics({ onClose }: Props) {
     const stats = new Map<string, { scenes: number; pov: number; first: number; last: number; presence: boolean[] }>();
 
     for (const [i, scene] of allScenes.entries()) {
-      // POV
-      const existing = stats.get(scene.povId);
-      if (existing) {
-        existing.pov++;
-        existing.scenes++;
-        existing.last = i;
-        existing.presence[i] = true;
-      } else {
-        const presence = new Array(allScenes.length).fill(false);
-        presence[i] = true;
-        stats.set(scene.povId, { scenes: 1, pov: 1, first: i, last: i, presence });
+      // POV (skip when scene has no viewpoint entity)
+      if (scene.povId) {
+        const existing = stats.get(scene.povId);
+        if (existing) {
+          existing.pov++;
+          existing.scenes++;
+          existing.last = i;
+          existing.presence[i] = true;
+        } else {
+          const presence = new Array(allScenes.length).fill(false);
+          presence[i] = true;
+          stats.set(scene.povId, { scenes: 1, pov: 1, first: i, last: i, presence });
+        }
       }
 
       // Participants (excluding POV to avoid double count)

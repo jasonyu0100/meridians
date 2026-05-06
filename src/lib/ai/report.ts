@@ -4,7 +4,7 @@ import { NARRATIVE_CUBE, type CubeCornerKey, resolveEntry, isScene } from '@/typ
 import { detectCubeCorner, resolveEntityName } from '@/lib/narrative-utils';
 import { callGenerate, resolveReasoningBudget } from './api';
 import { parseJson } from './json';
-import { ANALYSIS_MODEL, MAX_TOKENS_SMALL, ANALYSIS_TEMPERATURE } from '@/lib/constants';
+import { DEFAULT_MODEL, MAX_TOKENS_SMALL, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { REPORT_SYSTEM, REPORT_ANALYSIS_PROMPT, REPORT_SECTIONS } from '@/lib/prompts';
 import { logError, logInfo } from '@/lib/system-logger';
 
@@ -62,7 +62,7 @@ function buildStoryContext(narrative: NarrativeState, data: SlidesData, resolved
 
   // ── Full scene-by-scene narrative ──
   const sceneBlock = scenes.map((scene, idx) => {
-    const povName = narrative.characters[scene.povId]?.name ?? scene.povId;
+    const povName = scene.povId ? (narrative.characters[scene.povId]?.name ?? scene.povId) : 'narrator';
     const locName = narrative.locations[scene.locationId]?.name ?? scene.locationId;
     const participants = scene.participantIds
       .filter((id) => id !== scene.povId)
@@ -276,7 +276,7 @@ export async function generateReportAnalysis(
   const reasoningBudget = resolveReasoningBudget(narrative);
   let result: string;
   try {
-    result = await callGenerate(prompt, REPORT_SYSTEM, MAX_TOKENS_SMALL, 'generateReportAnalysis', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    result = await callGenerate(prompt, REPORT_SYSTEM, MAX_TOKENS_SMALL, 'generateReportAnalysis', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
   } catch (err) {
     logError('Report analysis generation failed', err, {
       source: 'analysis',

@@ -2,7 +2,7 @@ import type { NarrativeState, StructureReview, ProseEvaluation, ProseSceneEval, 
 import { resolveEntry, isScene } from '@/types/narrative';
 import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
 import { parseJson } from './json';
-import { ANALYSIS_MODEL, MAX_TOKENS_DEFAULT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
+import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { logInfo } from '@/lib/system-logger';
 import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import {
@@ -50,7 +50,7 @@ export async function reviewBranch(
     if (!entry || !isScene(entry)) continue;
     const scene = entry as Scene;
     const arc = narrative.arcs[scene.arcId] as Arc | undefined;
-    const pov = narrative.characters[scene.povId]?.name ?? scene.povId;
+    const pov = scene.povId ? (narrative.characters[scene.povId]?.name ?? scene.povId) : 'narrator';
     const location = narrative.locations[scene.locationId]?.name ?? scene.locationId;
     sceneSummaries.push({
       idx: i + 1,
@@ -106,8 +106,8 @@ ${guidance.trim()}`
   const maxTokens = MAX_TOKENS_DEFAULT;
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, BRANCH_REVIEW_SYSTEM, () => {}, maxTokens, 'evaluateBranch', ANALYSIS_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, BRANCH_REVIEW_SYSTEM, maxTokens, 'evaluateBranch', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, BRANCH_REVIEW_SYSTEM, () => {}, maxTokens, 'evaluateBranch', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
+    : await callGenerate(prompt, BRANCH_REVIEW_SYSTEM, maxTokens, 'evaluateBranch', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
 
   const parsed = parseJson(raw, 'evaluateBranch') as {
     overall?: string;
@@ -194,7 +194,7 @@ export async function reviewProseQuality(
     if (!prose) continue;
     scenesWithProse.push({
       id: scene.id,
-      pov: narrative.characters[scene.povId]?.name ?? scene.povId,
+      pov: scene.povId ? (narrative.characters[scene.povId]?.name ?? scene.povId) : 'narrator',
       location: narrative.locations[scene.locationId]?.name ?? scene.locationId,
       summary: scene.summary,
       prose,
@@ -242,8 +242,8 @@ ${profile.rules?.length ? `Rules:\n${profile.rules.map((r) => `  - ${r}`).join('
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, PROSE_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', ANALYSIS_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, PROSE_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, PROSE_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
+    : await callGenerate(prompt, PROSE_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
 
   const parsed = parseJson(raw, 'evaluateProseQuality') as {
     overall?: string;
@@ -309,7 +309,7 @@ export async function reviewPlanQuality(
     if (!plan?.beats?.length) continue;
     scenesWithPlans.push({
       id: scene.id,
-      pov: narrative.characters[scene.povId]?.name ?? scene.povId,
+      pov: scene.povId ? (narrative.characters[scene.povId]?.name ?? scene.povId) : 'narrator',
       location: narrative.locations[scene.locationId]?.name ?? scene.locationId,
       beats: plan.beats.map((b, j) => `  ${j + 1}. [${b.fn}:${b.mechanism}] ${b.what}\n     Props: ${b.propositions.map(p => `"${p.content}"`).join('; ')}`).join('\n'),
     });
@@ -354,8 +354,8 @@ export async function reviewPlanQuality(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, PLAN_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', ANALYSIS_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, PLAN_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, PLAN_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
+    : await callGenerate(prompt, PLAN_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
 
   const parsed = parseJson(raw, 'evaluatePlanQuality') as {
     overall?: string;

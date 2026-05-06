@@ -1,6 +1,6 @@
 import type { NarrativeState, Scene, ProseFormat } from '@/types/narrative';
 import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
-import { WRITING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
+import { WRITING_MODEL, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import { parseJson } from './json';
 import { sceneContext, buildProseProfile } from './context';
 import { resolveProfile } from '@/lib/beat-profiles';
@@ -74,7 +74,7 @@ export async function rewriteSceneProse(
       const pScene = pId ? narrative.scenes[pId] : null;
       const latestProse = pScene?.proseVersions?.[pScene.proseVersions.length - 1]?.prose;
       if (latestProse) {
-        const pov = narrative.characters[pScene.povId]?.name ?? pScene.povId;
+        const pov = pScene.povId ? (narrative.characters[pScene.povId]?.name ?? pScene.povId) : 'narrator';
         const loc = narrative.locations[pScene.locationId]?.name ?? pScene.locationId;
         prevScenes.unshift(`--- SCENE ${pIdx + 1} (POV: ${pov}, @${loc}) ---\n${pScene.summary}\n\n${latestProse}`);
       }
@@ -94,7 +94,7 @@ export async function rewriteSceneProse(
       const nScene = nId ? narrative.scenes[nId] : null;
       const latestProse = nScene?.proseVersions?.[nScene.proseVersions.length - 1]?.prose;
       if (latestProse) {
-        const pov = narrative.characters[nScene.povId]?.name ?? nScene.povId;
+        const pov = nScene.povId ? (narrative.characters[nScene.povId]?.name ?? nScene.povId) : 'narrator';
         const loc = narrative.locations[nScene.locationId]?.name ?? nScene.locationId;
         nextScenes.push(`--- SCENE ${nIdx + 1} (POV: ${pov}, @${loc}) ---\n${nScene.summary}\n\n${latestProse}`);
       }
@@ -125,7 +125,7 @@ export async function rewriteSceneProse(
         const refProse = refScene?.proseVersions?.[refScene.proseVersions.length - 1]?.prose;
         if (!refProse) return null;
         const idx = resolvedKeys.indexOf(id);
-        const pov = narrative.characters[refScene.povId]?.name ?? refScene.povId;
+        const pov = refScene.povId ? (narrative.characters[refScene.povId]?.name ?? refScene.povId) : 'narrator';
         const loc = narrative.locations[refScene.locationId]?.name ?? refScene.locationId;
         return `--- SCENE ${idx + 1} [pinned reference] (POV: ${pov}, @${loc}) ---\n${refScene.summary}\n\n${refProse}`;
       })
@@ -190,7 +190,7 @@ export async function rewriteSceneProse(
     REWRITE_CHANGELOG_SYSTEM,
     800,
     'rewriteChangelog',
-    ANALYSIS_MODEL,
+    DEFAULT_MODEL,
     reasoningBudget,
   );
   const changelogParsed = parseJson(changelogRaw, 'rewriteChangelog') as { changelog: unknown };
