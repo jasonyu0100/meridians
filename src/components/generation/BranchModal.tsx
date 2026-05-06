@@ -28,10 +28,10 @@ function colX(col: number): number {
   return LPAD + col * COL_W;
 }
 
-type GridRow = { colEntryIds: (string | null)[] };
-type ForkConnector = { fromRow: number; fromCol: number; toRow: number; toCol: number };
+export type GridRow = { colEntryIds: (string | null)[] };
+export type ForkConnector = { fromRow: number; fromCol: number; toRow: number; toCol: number };
 
-function buildGrid(
+export function buildGrid(
   allBranches: Branch[],
   activeBranchId: string | null,
 ): { columns: { branchId: string }[]; rows: GridRow[]; forkConnectors: ForkConnector[] } {
