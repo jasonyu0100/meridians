@@ -2,9 +2,9 @@
 
 # InkTide
 
-**A browser-based engine for simulating, analyzing, and querying long-form text.** Built for developers who need to reason about narrative structure, run analysis over text corpuses, and generate coherent long-form output without an LLM forgetting what it wrote three sections ago.
+**A browser-based simulation engine for long-form reasoning.** Build worlds from rich priors, model branching timelines, and forecast outcomes — across **fiction**, **non-fiction** (research, argument, essay), and **real-world simulation** (scenario forecasts, alternate-history modeling, strategic timelines). Originally built to analyze narratives — still validated there, with *Harry Potter and the Sorcerer's Stone* as the calibration anchor — the framework now extends to any domain where rich priors and structured exploration beat ungrounded LLM speculation. The moat is your priors.
 
-No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key, paste any text, and the engine extracts a typed knowledge graph that mutates section by section — characters, locations, artifacts, threads, system rules. Three forces (fate / world / system) are derived deterministically from graph mutations; no second LLM call required to grade structure.
+No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key, paste a corpus, brief, or dataset, and the engine extracts a typed knowledge graph that mutates section by section — actors, locations, artifacts, threads, system rules. Three forces (fate / world / system) are derived deterministically from the graph; no second LLM call required to grade structure. Branch alternative timelines, compare outcomes, evaluate scenarios — at fixed cost, reproducibly.
 
 **[Try it →](https://inktide-sourcenovel.vercel.app/)** · **[Read the paper →](https://inktide-sourcenovel.vercel.app/paper)** · **[Architecture reference →](CLAUDE.md)**
 
@@ -35,7 +35,9 @@ See `.env.example` for the full list.
 
 **Narrative simulation.** Generate full arcs end-to-end through a layered pipeline — phase graph (the world's working machinery) → causal reasoning graph (per-arc causal logic) → scene structures (deltas + summaries) → beat plans (function + mechanism scaffolding) → prose. Each stage commits decisions the next executes against, so coherence survives across hundreds of scenes. Branchable, reviewable, reconstructable. Renders into prose, screenplay, meta-overlay, or in-world simulation overlay — same beat plan, format-tailored accent profile.
 
-**Text corpus analysis.** Paste any long-form work and the engine extracts its full structure: typed knowledge graph, force trajectories, pacing fingerprint (Markov transition matrices over scene-level cube modes), prose profile (authorial Markov chains over a 10-function / 8-mechanism beat taxonomy). Every analyzed work compounds the network — pacing patterns and prose signatures become reusable for cross-corpus comparison or generation.
+**Real-world scenario modeling.** Feed the engine a rich brief or dataset — a market state, a strategic timeline, an alternate-history premise, a domain corpus — and it builds the same typed graph. Branch alternative timelines from any decision point, evaluate them in the **Branch Workbench** (multi-branch analytical chat with controlled scope windows, register-agnostic prompts, persisted threads), and compare outcomes through the same force math that grades novels. The framework is genre-neutral; what it actually measures is how a world is moving and where pressure builds.
+
+**Text corpus analysis.** Paste any long-form work and the engine extracts its full structure: typed knowledge graph, force trajectories, pacing fingerprint (Markov transition matrices over scene-level cube modes), prose profile (authorial Markov chains over a 10-function / 8-mechanism beat taxonomy). Every analyzed work compounds the network — pacing patterns and prose signatures become reusable for cross-corpus comparison, scenario seeding, or generation.
 
 **Mind mapping at scale.** Entities, threads, knowledge nodes, and embeddings render as interactive D3 graphs: network view (cumulative activation tiers), world graph (per-entity inner knowledge), knowledge graph (system rules / concepts), phase graph (working model of reality), reasoning graph (per-arc causal chain). Click any node to inspect — characters, locations, artifacts, threads, system nodes, knowledge nodes all open in the side panel with their full continuity.
 
