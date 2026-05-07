@@ -28,7 +28,12 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
 
   <thread-deltas hint="Field shapes and multi-outcome update patterns. Market-discipline blocks (principles, evidence scale, logtype, closure, abandonment) carry the rest.">
     <question-shape>
-      A thread question carries an arc when it has stakes, uncertainty, and contested outcomes (binary or multi-outcome). Dramatic, evidentiary, argumentative, and rule-driven questions are all valid — outcomes are concrete states the work can adjudicate. Examples: "Can Ayesha clear her grandfather's name before the tribunal ends?" → ["yes", "no"]. "Which faction claims the southern province?" → ["Tahir house", "Konoe clan", "merchant guilds", "nobody"]. "Does the replication study confirm, refute, or partially support the original finding?" → ["confirms", "refutes", "partial"]. "Does the modelled epidemic cross the regional containment threshold before the policy intervention takes effect?" → ["contained", "breaches threshold", "delayed breach"]. Picaresque / ironic / open-inquiry forms may use a deliberately simple recurring question — register must earn it.
+      A thread carries an arc when its question has stakes, uncertainty, and contested outcomes (binary or multi-outcome). Outcomes are concrete states the work can adjudicate.
+      <example register="fiction" hint="multi-outcome with named factions">"Which faction claims the southern province?" → ["Tahir house", "Konoe clan", "merchant guilds", "nobody"].</example>
+      <example register="non-fiction" hint="evidentiary chain has a partial-collapse mode">"Does the witness's revised testimony hold once the courier's manifest is cross-checked?" → ["holds", "collapses", "partial"].</example>
+      <example register="analysis" hint="argumentative — the residual is what prior models missed">"Does the proposed mechanism explain the residual the prior model cannot?" → ["explains", "partial", "fails"].</example>
+      <example register="simulation" hint="rule-driven — the threshold + the timing are both load-bearing">"Does the modelled epidemic cross the regional containment threshold before the policy intervention takes effect?" → ["contained", "breaches threshold", "delayed breach"].</example>
+      Picaresque / ironic / open-inquiry forms may use a deliberately simple recurring question — register must earn it.
     </question-shape>
 
     <fields>
@@ -60,8 +65,12 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
       <type kind="locations">new history, properties, dangers, rules, atmospheric facts.</type>
       <type kind="artifacts">new capabilities, limitations, states demonstrated through use.</type>
     </by-entity-type>
-    <example type="good">"Akira carries a hand-shaped burn mark from the night her household fell." / "The force grading formula is calibrated so published works score 85-92 on a 100-point curve." — present-tense facts, specific.</example>
-    <example type="bad" reason="events belong in thread log">"Akira discovered..." / "The authors realised..."</example>
+    <example type="good" hint="present-tense fact specific enough to be unique to this entity in this world.">
+      fiction: "Akira carries a hand-shaped burn mark from the night her household fell." ·
+      non-fiction: "The investigator now treats the courier's manifest as compromised after the dock-time discrepancy." ·
+      simulation: "The Politburo holds a graduated-retaliation posture, ruling out unilateral withdrawal under the declared escalation rules."
+    </example>
+    <example type="bad" reason="event-language belongs in thread log, not as a present-tense state">"Akira discovered..." / "The authors realised..." / "The Politburo decided..."</example>
     <rule name="node-order">Order matters (auto-chains).</rule>
 
     <tag-richly hint="Entities are SPONGES: rich prose supports many nodes per entity; sparse prose supports few. No per-entity cap.">
@@ -73,7 +82,12 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
   </world-deltas>
 
   <system-deltas hint="How the WORLD / DOMAIN WORKS. Rules, principles, mechanisms, gates, propagation laws, causal couplings, constraints — not things, not events. In rule-driven works (simulation, modelled scenarios) these ARE the substrate of consequence; treat rule-mechanic content as legitimate and weighty system substance.">
-    <example type="good">"Spirit-marks near uninitiated apprentices are attributed to them regardless of source." / "Cross-check protocols at the tribunal require concurrence from three department heads to ratify a hostile identification." / "Delivery is computed as the equal-weighted mean of z-score-normalised force values." / "Infection rate doubles whenever cross-region travel exceeds the dampening threshold." / "Reinforcements arrive on a six-turn delay once a province falls below 20% supply." / "A central bank that cuts rates while inflation expectations are unanchored loses credibility on a one-meeting lag." / "Cultivation tier gates require concurrent mastery of breath-circulation and meridian alignment." — general rules, not things or events.</example>
+    <examples type="good" hint="General rules, not things or events. The form holds across registers — name the implicit mechanic and the conditions under which it fires.">
+      <example register="fiction">"Spirit-marks near uninitiated apprentices are attributed to them regardless of source."</example>
+      <example register="non-fiction">"Cross-check protocols at the tribunal require concurrence from three department heads to ratify a hostile identification."</example>
+      <example register="analysis">"Self-attention computes weighted sums where each position attends to all positions in the sequence."</example>
+      <example register="simulation">"A central bank that cuts rates while inflation expectations are unanchored loses credibility on a one-meeting lag."</example>
+    </examples>
     <example type="bad" reason="too vague / specific not general / event not rule">"The art" / "Akira's plan" / "They met in the chamber"</example>
     <directive>NAME the implicit mechanic — a cross-check bypassed surfaces the cross-check structure; an artifact resonating surfaces its behaviour class; a deduction surfaces the pattern detected; a modelled threshold crossed surfaces the propagation law; a tier gate triggered surfaces the gate condition. Never emit \`systemDeltas: {}\`.</directive>
     <types>principle | system | concept | tension | constraint.</types>

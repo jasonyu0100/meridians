@@ -18,22 +18,13 @@ export const PROMPT_PROPOSITIONS = `<propositions hint="KEY FACTS established by
     state, belief, relationship, event, rule, secret, motivation, image, atmosphere, figurative_rule, invocation, refrain, claim, definition, formula, evidence, parameter, mechanism, comparison, method, constraint, example, citation, counterargument.
   </type-labels>
 
-  <examples hint="Concrete shape only — your own examples must come from the source. Spans fiction, non-fiction, and simulation.">
-    <example>{"content": "Ayesha enters the tribunal antechamber alone", "type": "event"}</example>
-    <example>{"content": "The envoy wears the black sash of the third house", "type": "state"}</example>
-    <example>{"content": "The bound spirit can pass through stone but not through salt", "type": "rule"}</example>
-    <example>{"content": "Cross-region travel above the dampening threshold doubles infection rate", "type": "mechanism"}</example>
-    <example>{"content": "In Macondo, it rains yellow flowers when a patriarch dies", "type": "figurative_rule"}</example>
-    <example>{"content": "The river at the village edge runs uphill on the night of the feast", "type": "image"}</example>
-    <example>{"content": "The traveller's name is called three times before the council answers", "type": "refrain"}</example>
-    <example>{"content": "F = Σ_t v_t · D_KL(p_t⁺ ‖ p_t⁻)", "type": "formula"}</example>
-    <example>{"content": "F represents Fate — attention-weighted Kullback–Leibler divergence from prior to posterior belief across every market the scene touched; one summation, no tuning constants", "type": "definition"}</example>
-    <example>{"content": "W = ΔN_c + √ΔE_c — entity transformation across characters, locations, artifacts", "type": "definition"}</example>
-    <example>{"content": "Published works score 85-95", "type": "evidence"}</example>
-    <example>{"content": "Reinforcement delay = 6 turns when a province falls below 20% supply", "type": "parameter"}</example>
-    <example>{"content": "Red Team commits its reserve to the southern axis on turn 14", "type": "event"}</example>
-    <example>{"content": "Modelled R0 falls below 1.0 by week 9 under the contact-tracing regime", "type": "evidence"}</example>
-    <example>{"content": "Had the Mughal succession passed to Dara Shikoh, the Deccan campaigns would have been suspended within two seasons", "type": "counterargument"}</example>
+  <examples hint="Each chosen to teach a nuance — the type label tracks what the claim is DOING in the prose, not the prose's surface form.">
+    <example register="fiction" hint="figurative-claims-are-claims-when-load-bearing">{"content": "In Macondo, it rains yellow flowers when a patriarch dies", "type": "figurative_rule"}</example>
+    <example register="non-fiction" hint="evidence-cites-time-or-source-precisely">{"content": "The witness places the suspect at the dock between 0140 and 0210, contradicting the manifest's 0030 sailing", "type": "evidence"}</example>
+    <example register="analysis" hint="mechanism-describes-HOW-not-WHAT-rules">{"content": "Self-attention computes weighted sums where each position attends to all positions in the sequence", "type": "mechanism"}</example>
+    <example register="analysis" hint="parameter-vs-rule: the equation is a formula; the values plugged in are parameters">{"content": "F = Σ_t v_t · D_KL(p_t⁺ ‖ p_t⁻)", "type": "formula"}</example>
+    <example register="simulation" hint="agent-decision-is-an-event-not-a-rule">{"content": "Red Team commits its reserve to the southern axis on turn 14", "type": "event"}</example>
+    <example register="simulation" hint="counterfactual-claim-is-counterargument-not-evidence">{"content": "Had the Mughal succession passed to Dara Shikoh, the Deccan campaigns would have been suspended within two seasons", "type": "counterargument"}</example>
   </examples>
 
   <invalid>Craft goals, pacing instructions, meta-commentary.</invalid>

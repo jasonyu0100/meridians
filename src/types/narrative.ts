@@ -788,7 +788,8 @@ export type ProseScore = {
 // consecutive scenes. Time is tracked relative to the first scene only — no
 // absolute calendar reference (no "Monday 1st January 2026"). `value: 0`
 // (with any unit) denotes a concurrent scene — same moment as the prior
-// scene, different POV or vantage.
+// scene, different POV or vantage. Negative `value` denotes a flashback —
+// the scene sits at an earlier point on the timeline than the prior scene.
 
 export type TimeUnit =
   | "minute"
@@ -801,6 +802,10 @@ export type TimeUnit =
 export type TimeDelta = {
   value: number;
   unit: TimeUnit;
+  /** Optional natural-language phrasing of the transition — "the next morning",
+   *  "years before, when she was a child", "by the time the funeral closed".
+   *  Captures English-language flow nuance the {value, unit} pair cannot. */
+  transition?: string;
 };
 
 export type Scene = {

@@ -3,6 +3,7 @@
 import { useImageUrl } from "@/hooks/useAssetUrl";
 import { computeForceSnapshots, detectCubeCorner, getEffectivePovId, resolveEntityName } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
+import { formatTimeDelta } from "@/lib/time-deltas";
 import { isScene, resolveEntry, type InspectorContext, type Scene } from "@/types/narrative";
 import { useMemo } from "react";
 
@@ -652,6 +653,39 @@ export default function SceneDetail({ sceneId }: Props) {
           )}
         </div>
       )}
+
+      {/* Time Transition — natural-language phrase + signed gap. Negative
+          values are flashbacks; zero is concurrent / opening. */}
+      {scene.timeDelta && (() => {
+        const td = scene.timeDelta;
+        const gap = formatTimeDelta(td);
+        const phrase = td.transition?.trim();
+        const isFlashback = td.value < 0;
+        const isConcurrent = td.value === 0;
+        const accent = isFlashback
+          ? "text-violet-400"
+          : isConcurrent
+            ? "text-text-dim"
+            : "text-amber-400";
+        return (
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+              Time Transition
+            </h3>
+            <div className="flex flex-col gap-0.5">
+              <div className={`text-xs font-medium ${accent}`}>
+                {isFlashback ? "↶ " : isConcurrent ? "= " : "→ "}
+                {gap}
+              </div>
+              {phrase && (
+                <div className="text-xs italic text-text-secondary">
+                  "{phrase}"
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Participants */}
       {scene.participantIds.length > 0 && (

@@ -170,11 +170,12 @@ ${CRAFT_DOCTRINE}
       <rule>If a single beat runs past ~${wordsPerBeat * 2} words, it's probably two beats.</rule>
     </beat-sizing>
 
-    <opening-transition hint="Weave time-gap into texture, never as timestamp. The texture takes the surface form the source's register supplies — sensory detail, shifted state of evidence, revised position, section break.">
+    <opening-transition hint="Weave time-gap into texture, never as timestamp. The scene's <time-gap> block carries a transition attribute when one is supplied — that natural-language phrase IS the prose-level signal for the gap; honour it (verbatim, paraphrased, or as texture).">
       <gap level="minor" magnitude="concurrent | hours | same-day | multi-day">Texture only — a small change in light, posture, wear, attention, or where a thought picks up. NEVER write "X hours later".</gap>
       <gap level="notable" magnitude="multi-week">A clearer signal — a season turning, a project moved on, a wound healing, a draft revised, a citation freshened.</gap>
       <gap level="major" magnitude="multi-month">Weight the opening with a re-anchor — status update, changed condition, recapitulation of where things stood. Naming elapsed time directly is permitted when it carries force.</gap>
       <gap level="generational" magnitude="year+">Mark with weight — compressed passage, aged-up description, generational reframing, environmental change. Underplaying reads as continuity error.</gap>
+      <gap level="flashback" magnitude="negative — earlier on the timeline">Open by anchoring the jump BACKWARD: a memory rising under present pressure, an excerpt from earlier records, a remembered scene, a dispatch from before the prior scene. Reader must register that the timeline has reversed — the prior scene's present remains the reference point.</gap>
     </opening-transition>
 
     <closing-rules>Every sentence conforms to the declared voice, register, devices, and rules.</closing-rules>

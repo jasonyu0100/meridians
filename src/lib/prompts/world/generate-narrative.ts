@@ -59,6 +59,7 @@ export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): strin
 Return JSON with this exact structure:
 {
   "worldSummary": "2-3 sentence world description",
+  "worldBuildSummary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this initial world commit — what creative space it opens, what tension it primes, which load-bearing entities, factions, or rules it brings into play. Used downstream to steer arc generation when this commit is read as <world-build-focus>, so name the load-bearing additions, not counts.",
   "imageStyle": "A concise visual style directive for all generated images (e.g. 'watercolour style with soft lighting'). Should capture the tone, medium, palette, and aesthetic that best fits this world.",
   "characters": [
     {"id": "C-01", "name": "Full name matching the cultural palette of the world — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-01"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-01", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}
@@ -252,16 +253,17 @@ Return JSON with this exact structure:
   </scene-coverage>
 
   <time-delta required="true">
-    <intent>Each scene is an instant in time; timeDelta captures the gap since the PRIOR scene as an estimate.</intent>
+    <intent>Each scene is an instant; timeDelta captures the gap since the PRIOR scene as an estimate. Approximate is fine — captures the general flow.</intent>
     <invariant>Always commit to a best-guess; do not skip the field.</invariant>
-    <field name="value">integer ≥ 0</field>
+    <field name="value">integer (positive = forward, 0 = concurrent, negative = flashback to an earlier point on the timeline).</field>
     <field name="unit" values="minute | hour | day | week | month | year">Pick the unit that reads most naturally.</field>
     <example phrase="that evening">3 hours</example>
     <example phrase="the next morning">1 day</example>
     <example phrase="three years later">3 years</example>
-    <special-case>{value: 0, unit: "minute"} marks a concurrent / simultaneous scene (same moment, different POV or vantage) — also use this for the very first scene of the arc where there's no prior scene to measure against.</special-case>
-    <rule>This is an ESTIMATE — it's understood that you're reading prose cues, not consulting a calendar. Pick the most plausible value.</rule>
-    <rule>This is a RELATIVE delta only; there is no absolute calendar anchor. Do not assume a start date.</rule>
+    <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment, different POV / vantage / cutaway, OR the very first scene of the arc.</special-case>
+    <special-case kind="flashback">Negative values mark a jump BACK on the timeline ("years earlier" → {value: -3, unit: "year"}). The next forward-scene's timeDelta should roughly cancel the jump so the cumulative offset realigns.</special-case>
+    <rule>This is an ESTIMATE — read prose cues, not a calendar. Pick the most plausible value.</rule>
+    <rule>RELATIVE delta only; no absolute calendar anchor.</rule>
   </time-delta>
 
   ${PROMPT_POV}

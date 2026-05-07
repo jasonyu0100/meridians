@@ -11,12 +11,15 @@ term feels wrong for a non-fiction or simulation register, **broaden the usage**
 (e.g. a "scene" of a research paper, a "beat" of an essay, a "scene" of a
 wargame turn) rather than introducing a parallel word.
 
-Rationale: InkTide is a multipurpose text engine. Three top-level registers are
+Rationale: InkTide is a multipurpose text engine. Four top-level registers are
 first-class, no register preferenced over another:
 
 - **Fiction** — novel, novella, short fiction, screenplay, drama.
-- **Non-fiction** — memoir, essay, reportage, research paper, case study,
-  history, biography.
+- **Non-fiction** — memoir, essay, reportage, case study, history, biography.
+- **Analysis** — research paper, technical writeup, formal investigation
+  with hypothesis-testing structure, formulas, tables, figures, citations.
+  (Previously folded under non-fiction; now first-class given how distinct
+  its conventions are.)
 - **Simulation** — works that model real-life events from a stated rule set.
   The central proposition is "given these rules and these initial conditions,
   what happens?" Examples: historical counterfactuals (had the Mughal

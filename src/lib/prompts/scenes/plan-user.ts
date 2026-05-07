@@ -93,12 +93,19 @@ ${PROMPT_PROPOSITIONS}
     Match mechanism to fact: visual ↔ environment/action/first-presence; beliefs/secrets/goals ↔ thought/dialogue; history/relation ↔ memory/callback; capability/weakness ↔ action under pressure. Surface a continuity fact only when THIS beat would naturally call it up. One or two glue facts per beat. Visual identity surfaces at least once per scene per visible participant. Bridge propositions read as callbacks (already-known); compulsory propositions read as fresh commitments.
   </grounding-selection>
 
-  <opening-shape hint="Weave time-gap into texture, never as timestamp. Gap size shifts how visible the weaving is, not whether it happens.">
+  <opening-shape hint="Weave time-gap into texture, never as timestamp. Gap size shifts how visible the weaving is, not whether it happens. The scene's timeDelta carries direction (forward / concurrent / flashback) and may carry a transition natural-language phrase — surface that phrase or its sense in the opening beat.">
     <gap size="minor" range="concurrent · hours · same-day · multi-day">Texture only — light, mood, weather, wear, what's changed.</gap>
     <gap size="notable" range="multi-week">Clearer signal — a season turning, a project moved on, a wound healing.</gap>
     <gap size="major" range="multi-month">Weight with a re-anchor beat (status update, changed season, plan bearing fruit). Naming elapsed time directly is permitted when it carries force.</gap>
     <gap size="generational" range="year+">Acknowledge with weight — montage, aged-up reveal, environmental change.</gap>
+    <gap size="flashback" range="negative — earlier on the timeline">First beat anchors the jump BACKWARD: a memory triggered, an excerpt from earlier records, a dispatch from before, a remembered scene that surfaces under present pressure. The reader must register that we have moved BACKWARD; the prior scene's present remains the reference point.</gap>
   </opening-shape>
+
+  <transition-discipline hint="The scene's timeDelta carries an optional natural-language transition phrase (e.g. 'the next morning', 'years before, when she was a child', 'later that same evening'). When supplied, this phrase IS the prose-level transition signal — the opening beat should land it (verbatim, paraphrased, or restructured into texture) so the elapsed time reads naturally.">
+    <rule>If the timeDelta carries a transition phrase, the opening beat MUST honour it — either incorporate the phrase directly when register supports it, or render its sense through texture (the morning light, the season turned, the years now visible on a face, the memory rising under present pressure).</rule>
+    <rule>For flashback transitions (negative timeDelta), the transition phrase typically anchors the jump back ("years before...", "the night before the funeral..."). Use it; do not render a forward-flowing opening when the timeDelta points backward.</rule>
+    <rule>Concurrent scenes (timeDelta = 0) typically need no opening transition — the scene continues from the prior moment from a different vantage. If a transition phrase is supplied for a concurrent scene, it is usually a vantage-shift signal ("meanwhile, across the city...") rather than a time signal.</rule>
+  </transition-discipline>
 
   <rules>
     <rule name="opening">Most scenes open with 1–3 breathe beats establishing context — physical detail in fiction, evidentiary state in non-fiction, rule-state / initial conditions in simulation. Scenes structured as in-medias-res, epistolary, thesis-first essay, dream-logic, direct-address, refrain/invocation, or scenario briefing may open with their structural device — the prose profile or form declaration decides.</rule>

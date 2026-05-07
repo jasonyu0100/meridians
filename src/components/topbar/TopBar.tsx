@@ -23,6 +23,7 @@ import { CubeExplorer } from "@/components/topbar/CubeExplorer";
 import { DefinitionsModal } from "@/components/topbar/DefinitionsModal";
 import { ExportPackageModal } from "@/components/topbar/ExportPackageModal";
 import { FormulaModal } from "@/components/topbar/FormulaModal";
+import { TimeFlowModal } from "@/components/topbar/TimeFlowModal";
 import { ImportPackageModal } from "@/components/topbar/ImportPackageModal";
 import { MarkovChainModal } from "@/components/topbar/MarkovChainModal";
 import { NarrativeEditModal } from "@/components/topbar/NarrativeEditModal";
@@ -354,6 +355,7 @@ export default function TopBar() {
   const [cubeExplorerOpen, setCubeExplorerOpen] = useState(false);
   const [branchContextOpen, setBranchContextOpen] = useState(false);
   const [formulaOpen, setFormulaOpen] = useState(false);
+  const [timeFlowOpen, setTimeFlowOpen] = useState(false);
   const [definitionsOpen, setDefinitionsOpen] = useState(false);
   const [slidesOpen, setSlidesOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -1288,6 +1290,11 @@ export default function TopBar() {
             {
               label: "Scorecard",
               onClick: () => setScorecardOpen((v) => !v),
+              disabled: !hasNarrative,
+            },
+            {
+              label: "Time",
+              onClick: () => setTimeFlowOpen(true),
               disabled: !hasNarrative,
             },
             {
@@ -2319,6 +2326,7 @@ export default function TopBar() {
         />
       )}
       {formulaOpen && <FormulaModal onClose={() => setFormulaOpen(false)} />}
+      {timeFlowOpen && <TimeFlowModal onClose={() => setTimeFlowOpen(false)} />}
       {definitionsOpen && (
         <DefinitionsModal onClose={() => setDefinitionsOpen(false)} />
       )}

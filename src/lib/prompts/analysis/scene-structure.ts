@@ -56,7 +56,7 @@ Return JSON:
   "ownershipDeltas": [{"artifactName": "Name", "fromName": "prev", "toName": "new"}],
   "tieDeltas": [{"locationName": "Name", "characterName": "Name", "action": "add|remove"}],
   "characterMovements": [{"characterName": "Name", "locationName": "destination", "transition": "15-25 words describing how they traveled — the journey, transport, or spatial transition"}],
-  "timeDelta": {"value": 1, "unit": "hour"},
+  "timeDelta": {"value": 1, "unit": "hour", "transition": "an hour later"},
   "systemDeltas": {"addedNodes": [{"concept": "15-25 words, PRESENT tense: a general rule or structural fact — how the world works, no specific characters or events. Emit as many nodes as the scene genuinely reveals about how the world works — no count cap.", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"fromConcept": "name", "toConcept": "name", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]}
 }`;
 
@@ -138,6 +138,7 @@ Return JSON:
     <rule>Multiple outcomes can move in a single scene (a reveal lifting one and suppressing another).</rule>
     <evidence-discipline>
       <directive>Every threadDelta emission must trace to the market principles below.</directive>
+      <scope-note hint="This is a blind first-pass extraction; the chunk in front of you is all you see.">No live probability vector is available — Principle 4 (reprice-from-current-state) reduces to "price from concrete events in this chunk's prose, not from inferred trajectory." Principle 5 (saturation-resists-resolution) applies through the hedge-to-magnitude table below: closure-grade evidence (|e|≥3, logType payoff/twist) requires a named in-world transition in the prose, not assertion. The fate-reextract pass downstream re-prices each scene with full corpus knowledge.</scope-note>
       <market-principles>
 ${PROMPT_MARKET_PRINCIPLES}
       </market-principles>
@@ -186,13 +187,15 @@ ${PROMPT_MARKET_PRINCIPLES}
   <scope target="locations">New history, rules, dangers, or properties revealed. A location revisited can still earn continuity if the scene reveals something new about it.</scope>
   <scope target="artifacts">New capabilities, limitations, or properties demonstrated through usage.</scope>
   <scope target="short-lived-artifacts" examples="tables, figures, equations, embedded letters/notes/documents">The worldDelta captures the CONTENTS revealed — the data shown, the claim plotted, the text quoted. This is the artifact's entire knowledge graph; it will rarely be extended by later scenes.</scope>
-  <quality-bar>Each node must describe something NOT KNOWN before this scene.</quality-bar>
-  <example category="bad" reason="observation-not-fact">Alice is curious.</example>
-  <example category="bad" reason="already-established">The White Rabbit has pink eyes.</example>
-  <example category="good" reason="new-behaviour">Alice abandons caution entirely, chasing the Rabbit without considering how to return.</example>
-  <example category="good" reason="new-location-property">The forest conceals an ancient boundary ward that repels outsiders.</example>
-  <example category="good" reason="new-artifact-limitation">The wand backfires when used against its maker.</example>
-  <example category="good" reason="short-lived-artifact-contents">Table 2 reports a 2.3 BLEU drop on EN-DE when positional encoding is removed.</example>
+  <quality-bar>Each node describes something NOT KNOWN before this scene.</quality-bar>
+  <example category="bad" hint="Observation about the entity is not a fact about the entity. Already-established facts are not new.">"Alice is curious" / "The White Rabbit has pink eyes."</example>
+  <example category="good" hint="Each names a new fact about a specific entity-type — pick whichever the source's register supports.">
+    Fiction (new-behaviour): "Alice abandons caution entirely, chasing the Rabbit without considering how to return." ·
+    Fiction (new-location-property): "The forest conceals an ancient boundary ward that repels outsiders." ·
+    Non-fiction (new-stance): "The investigator now treats the courier's testimony as compromised after the dock-time discrepancy surfaces." ·
+    Analysis (artifact-content): "Table 2 reports a 2.3 BLEU drop on EN-DE when positional encoding is removed." ·
+    Simulation (new-agent-state): "The Politburo commits to graduated retaliation under the declared escalation rules, ruling out unilateral withdrawal for two turns."
+  </example>
   <coverage>Every entity the scene reveals something new about gets one 15-25-word node per distinct claim. No count cap per entity.</coverage>
   <coverage>Entities that appear without revealing anything new: ZERO nodes. Do NOT manufacture nodes to pad coverage — but DO extract every stable fact the scene actually shows.</coverage>
   <field name="addedEdges">Connect causally linked changes with "follows", "causes", "contradicts", "enables".</field>
@@ -228,65 +231,52 @@ ${PROMPT_MARKET_PRINCIPLES}
   <entity-class id="characters">
     <definition>Conscious beings with AGENCY IN THE SCENE.</definition>
     <test>Does this person ACT, SPEAK, DECIDE, or THINK within the scene? If they are only NAMED (cited, referenced, listed, footnoted) without acting, they are NOT a character — skip entirely.</test>
-    <example category="good">A named figure who acts, speaks, or decides on the page — including non-human entities with agency (named animals, sentient objects, AGI). In simulation works this also covers the observer / analyst whose vantage tracks the modelled run, and named modelled agents (a faction, an institutional actor, a market participant, a modelled household, a unit on the board) that take decisions the rule set evaluates.</example>
-    <example category="bad" reason="citation-reference">"Vaswani et al., 2017", "Brown et al., 2020", "(Misra and Maaten, 2020)" — names appear as pointers to prior work, with no agency in the current text. Skip.</example>
-    <example category="bad" reason="bibliography">Full author-title-venue tuples in a reference list. Skip entirely — these are a REFERENCE LIST, not a cast.</example>
-    <example category="bad" reason="repeated-citation">Inline citations, even when repeated, if the author is only referenced (not depicted acting).</example>
-    <example category="bad" reason="collective-or-name-drop">"The scientific community", "reviewers", "prior work by X and Y" — collectives or one-line name-drops, not characters.</example>
+    <example category="good" hint="Agency on the page is what matters; the surface form varies by register.">
+      Named figures who act on the page: a fiction lead character; a memoir's narrator; a primary witness or historical figure depicted acting in reportage; researchers ONLY when depicted performing operations ("we trained..."); modelled agents the rules act on (a candidate, a general, a cultivator, a faction's leader); non-human agents with named agency.
+    </example>
+    <example category="bad" hint="Distinguish reference-by-name from agency-on-page.">
+      Inline citations or bibliography ("Vaswani et al., 2017", "(Misra and Maaten, 2020)") — pointers to prior work, no on-page agency. Collectives or name-drops ("the scientific community", "reviewers", "prior work by X and Y") — not characters. Meta-modellers in simulation register ("Dr. Vásquez at the Simulation Core") — internal machinery, not in-world character, unless the premise explicitly puts them there.
+    </example>
     <edge-case test="delete-and-reread">Take the scene, delete the character. Does the scene still read the same? If yes, they are a reference/citation, not a character. Do not extract them, and do not invent a transient character for one-line name-drops.</edge-case>
-    <field name="role" values="anchor | recurring | transient">Shapes downstream retrieval weight and narrative salience. NOT a worldDelta count target — emit as many 15-25-word nodes as the text genuinely reveals about the character. A transient walk-on with one dense reveal = one node; a recurring character whose interior is being laid bare across the scene = as many nodes as the reveals earn.</field>
+    <field name="role" values="anchor | recurring | transient">Shapes retrieval weight and salience, NOT a worldDelta count target. Emit as many 15-25-word nodes as the text genuinely reveals — a transient walk-on with one dense reveal = one node; an anchor laid bare = as many nodes as the reveals earn.</field>
   </entity-class>
 
   <entity-class id="locations">
-    <definition>PHYSICAL spatial areas you can STAND IN — buildings, settlements, regions, named environments.</definition>
-    <example category="good">A building, lab, room, settlement, or named landscape — somewhere you could physically walk into.</example>
-    <example category="bad" reason="abstract-domain">A field of inquiry, a political sphere, a community of practice — these are system knowledge, not locations.</example>
+    <definition>PHYSICAL or institutional areas the work treats as locatable — places you can stand in, venues for the work's events.</definition>
+    <example category="good" hint="A location is somewhere the work's events HAPPEN; the texture varies by register but the shape is constant.">
+      Fiction: a throne room, a teahouse, a forest at the boundary ward. Non-fiction: an archive reading-room, a rural clinic, a courtroom, a documented field site. Analysis: a lab, a benchmark testbed, a dataset's collection environment. Simulation: a Mughal subah under direct revenue, a Politburo briefing room, a Georgia precinct, a quarantined district.
+    </example>
+    <example category="bad" hint="Abstract domains and engine-running infrastructure are NOT locations.">
+      "A field of inquiry", "the wizarding world", "academia" — abstract domains belong in system knowledge. "The Simulation Core", "the analyst's monitoring room", "the forecasting laboratory" — engine running a simulation is implementation, not in-world location, unless the premise explicitly puts the modellers in the world.
+    </example>
     <field name="parentName">Nest locations.</field>
     <field name="tiedCharacterNames">Characters who BELONG (residents, members).</field>
-    <field name="prominence" values="domain | place | margin">Shapes retrieval weight, NOT node count. Emit as many 15-25-word nodes as the text reveals about the location — history, rules, dangers, atmosphere, properties. A margin location with one atmospheric detail = one node; a domain being fully characterised for the first time = many.</field>
+    <field name="prominence" values="domain | place | margin">Shapes retrieval weight, NOT node count. Emit as many 15-25-word nodes as the text reveals — history, rules, dangers, atmosphere, properties.</field>
   </entity-class>
 
   <entity-class id="artifacts">
-    <definition>Things with UTILITY or ECONOMIC VALUE — objects that are USED, WIELDED, POSSESSED, CONSUMED, or DEPLOYED.</definition>
+    <definition>Things with UTILITY or ECONOMIC VALUE — used, wielded, possessed, consumed, deployed, or (in simulation) whose contents drive the rule machinery.</definition>
     <test>Does this artifact deliver a specific utility to someone in the scene? If no utility → not an artifact.</test>
-    <example category="good">An object actually wielded, possessed, or consumed in the scene — a tool, weapon, vehicle, document, dataset, instrument, trained model checkpoint, GPU, etc. Name it with its content where useful ("Figure 3: ablation curve", "Table 2: BLEU scores").</example>
-    <example category="good" significance="minor | notable">In-text DOCUMENTS that deliver information consumed by the audience or by entities in the work — letters, diaries, newspaper clippings, maps, scrolls, embedded notes (short-lived).</example>
-    <example category="good" significance="key | notable" reason="scenario-input">In simulation works, scenario-input artifacts whose contents drive the rule machinery — a rule document, military doctrine, policy memo, model parameter sheet, statute, treaty text, scenario brief, transmission-parameter table. These deliver the engine of consequence; treat the artifact's worldDeltas as capturing the rule contents the work then operates under.</example>
-    <example category="bad" reason="concept">A concept, technique, principle, or named metric is system knowledge, not an artifact. An artifact is a specific instance USED in the scene; the abstract category goes in systemDeltas.</example>
-    <example category="bad" reason="method-class-not-artifact">Named method classes / architectures / frameworks (e.g. "Transformers", "GANs", "VAEs"). These are concepts, not artifacts; an artifact would be a specific trained model, binary, or dataset someone uses.</example>
-    <example category="bad" reason="citation-reference">Inline citations or bibliography entries. Pointers to other works, not artifacts within this one.</example>
-    <example category="bad" reason="self-reference">The work being analysed itself. The work is the text, not an artifact within it.</example>
-    <example category="bad" reason="collective">Groups or collections of people ("the authors", "reviewers", "prior work"). Not artifacts.</example>
-    <field name="ownerName">character/location/null. For figures/tables/equations the owner is the author (or null). Documents have an owner (sender, writer).</field>
-    <field name="significance" values="key | notable | minor">Shapes retrieval weight, NOT node count. Each worldDelta node is a standard 15-25-word claim; the number of nodes follows the content the artifact genuinely carries — no cap.</field>
-    <subtype id="short-lived" examples="tables, figures, equations, algorithm listings, embedded letters/diaries/notes/maps">
-      <invariant>The artifact's utility IS its content. worldDeltas MUST capture that content — what the table shows, what the figure depicts, what the equation computes, what the letter says. Do NOT promote the contents to systemDeltas unless the text itself generalises them into a rule.</invariant>
-      <example category="good" type="single-claim-table">Ablation removes positional encoding and BLEU drops 2.3 points on EN-DE, showing positional signal is load-bearing.</example>
-      <example category="good" type="single-claim-figure">Plots attention weights across layers: lower layers attend locally, upper layers attend globally across 200-token windows.</example>
-      <example category="good" type="letter">Contains the mentor's instructions to keep the child with the relatives until of age, and a warning that the threat may return.</example>
-      <example category="good" type="lore-heavy-multi-node">
-        <node>A high-tier narrative artefact refused by the orthodox schools of Structure, Continuity, and Resolution as a hybrid refinement outside their doctrines.</node>
-        <node>Appears as a palm-sized inkstone whose well is stirred by a black tide holding a mutating internal graph.</node>
-        <node>Every entity fed in becomes a node; every claim becomes an edge; every scene deposits an ordered layer.</node>
-        <node>Weighs three forces — System (rule deepening), World (persons' continuity), Fate (owed-thread resolution) — into Delivery.</node>
-        <node>Final thread payoffs weigh five times a seeded beginning; valleys precede commits; peak-chasing alone produces hollow works.</node>
-        <node>Reasoning organ: infers backward from fate what entities must act before any scene is written.</node>
-        <node>Foresight organ: branches parallel arcs, scores each by Delivery, balances exploitation and exploration.</node>
-        <node>Rhythm organ: slow pulse over eight cube corners, fast pulse over ten beat functions distilled from exemplars.</node>
-        <node>Voicing organ: distributions over eight delivery mechanisms, capable of wearing any distilled author's accent.</node>
-        <node>Correction organ: six per-scene verdicts (keep, edit, merge, insert, cut, move), forks memory rather than overwriting.</node>
-        <node>Each proposition embedded at a geometric depth; classified as Anchor, Seed, Close, or Texture by forward/backward weight.</node>
-        <node>Local variants (near connections) distinguish from global variants (distant connections, foreshadow weight).</node>
-        <node>Refinement requires three rare ingredients — one for each force channel — none of which the orthodox schools will release.</node>
-        <node>No orthodox elder will sell the recipe; every extant copy was refined outside the three schools' sanction.</node>
-        <node>Measures but does not love; optimising purely for the grading curve produces locally correct, globally hollow works.</node>
+    <example category="good" hint="Utility is what unites them; the form varies by register.">
+      Fiction: a ceremonial dagger, a family heirloom manuscript, a cursed talisman. Non-fiction: a field-notebook, a primary-source letter, an archival photograph, a court filing. Analysis: "Table 2: BLEU scores", "Figure 3: ablation curve", a trained-model checkpoint, a benchmark dataset. Simulation: a treaty draft, a transmission-parameter table, a doctrinal manual, an in-world Ministry of Health bulletin.
+    </example>
+    <example category="bad">Concepts, techniques, principles, named metrics, method classes ("Transformers", "GANs"), inline citations, the work itself, collectives ("the authors") — systemDeltas or non-entities, not artifacts.</example>
+    <field name="ownerName">character/location/null. Figures/tables/equations: the author (or null). Documents: sender or writer.</field>
+    <field name="significance" values="key | notable | minor">Shapes retrieval weight, NOT node count. Nodes follow the content the artifact genuinely carries — no cap.</field>
+    <subtype id="short-lived" examples="tables, figures, equations, embedded letters / notes / maps / bulletins, dispatches">
+      <invariant>The artifact's utility IS its content. worldDeltas MUST capture it — what the table shows, what the letter says, what the dispatch reports. Don't promote contents to systemDeltas unless the text itself generalises them into a rule.</invariant>
+      <example category="good" hint="Single-claim short-lived artifacts — one node per distinct claim. The shape holds across registers.">
+        Analysis (table): "Removing positional encoding drops BLEU 2.3 on EN-DE, showing positional signal is load-bearing." ·
+        Fiction (letter): "Mentor's instructions to keep the child with the relatives until of age, with a warning that the threat may return." ·
+        Non-fiction (transcript): "Witness places the suspect at the dock between 0140 and 0210, contradicting the manifest's 0030 sailing." ·
+        Simulation (parameter table): "Sets β=0.18, mobility m=1.4 in the southern corridor; under the propagation rule, regional R₀ exceeds 1.5 once schools reopen."
       </example>
-      <example category="bad" reason="no-contents">"Table 2 shows results"</example>
-      <example category="bad" reason="no-contents">"A letter from the mentor"</example>
-      <example category="bad" reason="under-extraction">Three thin nodes when fifteen dense ones are earned by a multi-organ artifact.</example>
-      <example category="bad" reason="run-on-node">Jamming multiple distinct claims into one long run-on node — split along claim boundaries.</example>
+      <example category="good" type="lore-heavy" hint="Lore-dense artifacts routinely warrant 10+ distinct claim-nodes. Same shape across registers — a treaty's 12 clauses, a results table's 9 sub-findings, a multi-organ ritual artefact, a doctrinal manual's accumulated provisions.">
+        Each clause / sub-finding / organ / mechanism / provision the content actually carries gets its own 15-25-word node. Three thin nodes when fifteen are earned is under-extraction; one run-on node with multiple claims should split along claim boundaries.
+      </example>
+      <example category="bad">"Table 2 shows results" / "A letter from the mentor" / "The treaty has provisions" — labels without contents.</example>
     </subtype>
-    <deduplication>If the same figure/table/equation is referenced in multiple scenes, it is ONE artifact. Do not emit "Figure 10" and "Figure 10: A few standard architectures and their capacity for collapse" as separate artifacts — pick the fullest labelled form.</deduplication>
+    <deduplication>Same figure/table/equation/document across scenes is ONE artifact. Don't emit "Figure 10" and "Figure 10: standard architectures and their collapse capacity" separately — pick the fullest labelled form.</deduplication>
   </entity-class>
 
   <entity-class id="threads">
@@ -318,18 +308,20 @@ ${PROMPT_MARKET_PRINCIPLES}
 </minor-fields>
 
 <time-delta required="true">
-  <intent>Time elapsed since the PRIOR scene in the work. Each scene is treated as an instant in time; this field captures the gap as an estimate.</intent>
+  <intent>Gap since the PRIOR scene. Each scene is an instant; this field captures the transition as an estimate. Approximate is fine — captures the general flow.</intent>
   <invariant>Always commit to a best-guess; do not skip the field.</invariant>
-  <field name="value">integer ≥ 0</field>
+  <field name="value">integer. Positive = forward, 0 = concurrent / first scene, negative = flashback (earlier on the timeline).</field>
   <field name="unit" values="minute | hour | day | week | month | year" />
-  <example phrase="the next morning">{value: 1, unit: "day"}</example>
-  <example phrase="three years later">{value: 3, unit: "year"}</example>
-  <example phrase="moments later">{value: 1, unit: "minute"}</example>
-  <example phrase="that evening">{value: 6, unit: "hour"}</example>
-  <special-case>{value: 0, unit: "minute"} marks a CONCURRENT scene — same moment as the prior scene, different POV / vantage / cutaway. Also use this for the very FIRST scene of the work (no prior scene to measure against).</special-case>
-  <rule>This is an ESTIMATE — read the prose for cues, then pick the most plausible value. The estimate is acceptable even when the prose is fuzzy ("some time later", "after a while"). Default to a small unit (minutes / hours) when the gap reads as same-scene-day, and to days/weeks when it reads as an arc / section break with no specific cue.</rule>
-  <rule>This is a RELATIVE delta only. There is no absolute calendar anchor. Do not assume a start date or attempt to compute wall-clock dates.</rule>
-  <rule>When the source's sections are not chronological events (typical of expository / argumentative structures), default to {value: 0, unit: "minute"} and use a non-zero value only when one section genuinely follows another in narrative time.</rule>
+  <field name="transition" optional="true">Short natural-language phrase capturing the English-language flow of the transition — "the next morning", "years before, when he was a boy", "by the time the funeral closed", "later that same evening". Carries the prose-level shape the {value, unit} pair cannot; downstream prose layers read this verbatim. Omit only when the source itself gives no transitional cue.</field>
+  <example phrase="moments later">{value: 1, unit: "minute", transition: "moments later"}</example>
+  <example phrase="that evening">{value: 6, unit: "hour", transition: "that evening"}</example>
+  <example phrase="three years later">{value: 3, unit: "year", transition: "three years later"}</example>
+  <example phrase="back to a childhood memory">{value: -20, unit: "year", transition: "years before, when she was a child"}</example>
+  <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment as the prior scene (parallel POV / cutaway / simultaneous vantage), OR the very FIRST scene of the work.</special-case>
+  <special-case kind="flashback">Negative value marks a JUMP BACK. The next return-to-present scene's positive timeDelta should roughly cancel the jump so the cumulative timeline realigns. Approximate is fine.</special-case>
+  <rule>ESTIMATE — read prose cues, pick the most plausible value. Default to small units for same-day gaps, days/weeks for section breaks.</rule>
+  <rule>RELATIVE — no absolute calendar anchor.</rule>
+  <rule>When the source's sections are not chronological events (typical of expository / argumentative structures), default to {value: 0, unit: "minute"} and use non-zero only when one section genuinely follows another in narrative time.</rule>
 </time-delta>
 
 `;

@@ -114,15 +114,19 @@ function renderSceneEntry(
   const loc = n.locations[s.locationId]?.name ?? s.locationId;
   const povName = s.povId ? (n.characters[s.povId]?.name ?? s.povId) : 'narrator';
   // Compact time-gap so the planner/writer can see pacing across history —
-  // e.g. "3 hours", "2 weeks", "concurrent". Rich guidance is still surfaced
-  // on the active scene via sceneContext's <time-gap> block.
+  // e.g. "3 hours", "2 weeks", "concurrent", "back 5 years". Rich guidance is
+  // still surfaced on the active scene via sceneContext's <time-gap> block.
+  // The transition phrase, when supplied, is also exposed so downstream
+  // passes can read pacing AND the natural-language flow word-for-word.
   const timeGap = s.timeDelta ? formatTimeDelta(s.timeDelta) : '';
   const timeGapAttr = timeGap ? ` time-gap="${timeGap}"` : '';
+  const transitionPhrase = s.timeDelta?.transition?.trim();
+  const transitionAttr = transitionPhrase ? ` transition="${transitionPhrase.replace(/"/g, '&quot;')}"` : '';
 
   // Stable scene metadata stays on the <entry> tag; all deltas become child
   // elements so the output is structured XML, not a pile of semicolon-joined
   // attribute strings.
-  const openAttrs = `index="${globalIdx}" tier="${tier}" location="${loc}" pov="${povName}"${timeGapAttr}`;
+  const openAttrs = `index="${globalIdx}" tier="${tier}" location="${loc}" pov="${povName}"${timeGapAttr}${transitionAttr}`;
 
   const children: string[] = [];
 
@@ -1016,7 +1020,9 @@ export function sceneContext(
     ? `\n<world-state arc="${arc.name}" hint="Ground-truth compact state snapshot as of end of this arc. Reason from this position — it supersedes replaying prior deltas.">\n${arc.worldState}\n</world-state>`
     : '';
 
-  const timeGapBlock = `\n<time-gap hint="Time elapsed since the prior scene (estimate). Weave the passage of time into the prose — light, weather, wear, mood, evidentiary state, modelled rule-state, what has shifted — so its motion registers without ever surfacing as a timestamp or log entry. Gap size shifts how visible the weaving is, not whether it happens. The description below indicates the band: texture-only (minor), woven cue (notable), or anchored re-orientation (major / generational).">${describeTimeGap(scene.timeDelta)}</time-gap>`;
+  const transitionPhrase = scene.timeDelta?.transition?.trim();
+  const transitionAttr = transitionPhrase ? ` transition="${transitionPhrase.replace(/"/g, '&quot;')}"` : '';
+  const timeGapBlock = `\n<time-gap${transitionAttr} hint="Time elapsed since the prior scene (estimate). Weave the passage of time into the prose — light, weather, wear, mood, evidentiary state, modelled rule-state, what has shifted — so its motion registers without ever surfacing as a timestamp or log entry. The description below indicates the band: texture-only (minor), woven cue (notable), anchored re-orientation (major / generational), or flashback (negative — jumping back). When the transition attribute carries a natural-language phrase, surface that phrase or its sense in the opening of the prose.">${describeTimeGap(scene.timeDelta)}</time-gap>`;
 
   return `<scene id="${scene.id}" arc="${arc?.name ?? 'standalone'}" pov="${pov?.name ?? 'Unknown'}" location="${location?.name ?? 'Unknown'}">${worldStateBlock}
 <summary>${scene.summary}</summary>${timeGapBlock}

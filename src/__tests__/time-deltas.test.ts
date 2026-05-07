@@ -90,9 +90,10 @@ describe("formatTimeDelta", () => {
 });
 
 describe("formatCumulative", () => {
-  test("zero / negative collapses to 'origin'", () => {
+  test("zero collapses to 'origin'; negatives format as before-origin (flashbacks past the start)", () => {
     expect(formatCumulative(0)).toBe("origin");
-    expect(formatCumulative(-5)).toBe("origin");
+    expect(formatCumulative(-5)).toBe("before-origin (sub-minute)");
+    expect(formatCumulative(-3_600)).toBe("before-origin 1 hour");
   });
 
   test("picks the largest unit whose value is ≥ 1", () => {
@@ -119,10 +120,37 @@ describe("normalizeTimeDelta", () => {
   });
 
   test("returns null for malformed shape", () => {
-    expect(normalizeTimeDelta({ value: -1, unit: "day" })).toBeNull();
     expect(normalizeTimeDelta({ value: "x", unit: "day" })).toBeNull();
     expect(normalizeTimeDelta({ value: 1, unit: 42 })).toBeNull();
     expect(normalizeTimeDelta({ value: 1, unit: "fortnight" })).toBeNull();
+  });
+
+  test("accepts negative values (flashbacks)", () => {
+    expect(normalizeTimeDelta({ value: -1, unit: "day" })).toEqual({
+      value: -1,
+      unit: "day",
+    });
+    expect(normalizeTimeDelta({ value: -20, unit: "year", transition: "years before, when she was a child" })).toEqual({
+      value: -20,
+      unit: "year",
+      transition: "years before, when she was a child",
+    });
+  });
+
+  test("preserves a transition string when supplied; drops empty / non-string", () => {
+    expect(normalizeTimeDelta({ value: 1, unit: "day", transition: "the next morning" })).toEqual({
+      value: 1,
+      unit: "day",
+      transition: "the next morning",
+    });
+    expect(normalizeTimeDelta({ value: 1, unit: "day", transition: "  " })).toEqual({
+      value: 1,
+      unit: "day",
+    });
+    expect(normalizeTimeDelta({ value: 1, unit: "day", transition: 42 })).toEqual({
+      value: 1,
+      unit: "day",
+    });
   });
 
   test("accepts singular units", () => {

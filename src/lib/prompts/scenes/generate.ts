@@ -50,6 +50,16 @@ ${priorities}
 
 <summary-discipline>The summary IS the delta budget. Write the summary so every intended delta has a source sentence — every entity-change, rule-surfacing, thread-move, and off-screen-affected party traceable to a sentence. Use NAMES not IDs. Under-tagging is the dominant failure mode.</summary-discipline>
 
+<non-repetition critical="true" hint="Scenes must each commit something the prior scenes did not. Read <scene-history> before emitting; cross-check every scene you draft against the most recent ~6-8 entries.">
+  <check name="beat-shape">Two scenes with the same beat shape (same POV reflecting, same confrontation, same revelation, same task-completion) is repetition unless the recurrence is itself the point (a refrain, a ritual, a deliberate echo). Default: VARY the shape.</check>
+  <check name="delta-pattern">If two scenes' worldDeltas hit the same entities with the same node-types in the same direction (e.g. POV gains another "belief" about the same antagonist; same location accrues another "history" entry) the second scene is treading water. Move the cast — touch a different entity, surface a different node-type, or reveal a fact that re-frames an earlier delta.</check>
+  <check name="thread-trigger">Two scenes shifting the same thread in the same direction with the same trigger (same character's same suspicion, same elder's same warning, same sensor's same reading) is phantom motion. Force a different trigger — a new party intervenes, a rule fires unexpectedly, an off-stage event re-prices the thread.</check>
+  <check name="location-rotation">Three+ consecutive scenes in the same location without a structural reason (siege, locked-room, single-day arc) is a setting-trap. Rotate venues so the world stays material.</check>
+  <check name="cast-rotation">Same participant set across consecutive scenes flattens the network. Bring named secondary entities on-screen; let third-party agendas surface.</check>
+  <check name="redundancy-against-rolled-up-arcs">Far-tier arc-summary entries carry the chess-board state at end of each arc — do not re-cover ground they've already resolved. If your draft scene re-establishes a fact a prior arc-summary already commits, cut it.</check>
+  <fallback>If a draft scene fails ≥2 checks, regenerate it with a different angle: switch POV, introduce a new entity or third-party event, or reframe the scene's central question. Better to commit a fresh-but-shorter beat than a polished repetition.</fallback>
+</non-repetition>
+
 <output-format>
 Return JSON with this exact structure.
 
@@ -65,7 +75,7 @@ Return JSON with this exact structure.
       "povId": "viewpoint entity ID OR null. Set to a participant character (fiction) or named author entity (memoir/essay/first-person non-fiction) when the source narrates from that vantage. Set to null for omniscient simulation, impersonal analytical writing, polyphonic / dialogic sources — registers that have no viewpoint entity. Do not appoint a 'modelled agent' inside a simulation as POV. See pov-discipline for the full rule.${povRestrictedHint}",
       "participantIds": ["existing character IDs"],
       "summary": "Prose in NAMES not IDs. Length adapts to content — 3-6 sentences for routine scenes, expand WITHOUT UPPER BOUND for cognition-dense scenes (multi-step planning, scenario modelling, complex reveals, layered argument). Name each scenario weighed, each tradeoff accepted, each conclusion reached. This is the prose writer's only brief and the only artifact other scenes can read.",
-      "timeDelta": {"value": 1, "unit": "minute|hour|day|week|month|year"},
+      "timeDelta": {"value": 1, "unit": "minute|hour|day|week|month|year", "transition": "natural-language phrase — 'the next morning', 'years before', 'later that evening' — captures English-language flow"},
       "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did"}],
       "characterMovements": {"C-XX": {"locationId": "L-YY", "transition": "how they travelled"}},
       "events": ["event_tag_1", "event_tag_2"],
@@ -104,7 +114,7 @@ Return JSON with this exact structure.
     EDGE PROMPTS: when two existing system nodes are co-attributed in the same scene and no edge yet links them, emit a new \`addedEdges\` entry capturing the relationship the scene just surfaced. Co-attribution without a connection is the strongest signal that a connection deserves to exist.
   </rule>
 
-  <rule name="time-delta">Gap from prior scene as estimate ({value: int≥0, unit}). Relative only — no absolute calendar. "that evening" → 3 hours; "next morning" → 1 day; "three years later" → 3 years; {value:0, unit:"minute"} = simultaneous/concurrent (also use for the first scene).</rule>
+  <rule name="time-delta">Gap from prior scene as estimate ({value: integer, unit, transition}). Positive = forward, 0 = concurrent / first scene, negative = FLASHBACK. "that evening" → {3, hour, "that evening"}; "next morning" → {1, day, "the next morning"}; "three years later" → {3, year, "three years later"}; "years before, when he was a boy" → {-10, year, "years before, when he was a boy"} (a later return-to-present scene needs a positive timeDelta roughly cancelling the jump). Always include a transition natural-language phrase — the English-language flow downstream prose reads verbatim. Approximate values are fine.</rule>
 
   <rule name="tag-richly-discipline" hint="Floors and per-tier density bands live in force-standards / deltas; this rule adds scene-shape-specific guidance.">
     <thread-step>One threadDelta per thread per scene; transitions move ONE step forward.</thread-step>

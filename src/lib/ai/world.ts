@@ -720,16 +720,18 @@ export async function generateNarrative(
   // Create initial WorldBuild with entities and empty systemDeltas
   // This mirrors the analysis pattern: entities are structural (in WorldBuild),
   // all knowledge (system + world deltas) flows through scenes.
-  // Reuse the AI's `worldSummary` as the WB summary — it captures what the
-  // initial world IS, which is exactly what downstream arc generation wants
-  // when it reads <world-build-focus> for steering. Fall back to a derived
-  // count string when the AI omits it.
+  // The WB summary is INTENT-style — what the commit opens up for arc generation
+  // — to match the live expand-world path and the text-analysis
+  // summariseWorldBuildBatch pass. Fall back through worldSummary (broader
+  // world description) and finally a derived count string.
   const worldBuildId = `WB-${now}-INIT`;
+  const aiWorldBuildSummary = typeof parsed.worldBuildSummary === 'string' ? parsed.worldBuildSummary.trim() : '';
   const aiWorldSummary = typeof parsed.worldSummary === 'string' ? parsed.worldSummary.trim() : '';
   const initialWorldBuild: WorldBuild = {
     kind: 'world_build',
     id: worldBuildId,
     summary:
+      aiWorldBuildSummary ||
       aiWorldSummary ||
       `Initial world: ${Object.keys(characters).length} characters, ${Object.keys(locations).length} locations, ${Object.keys(threads).length} threads`,
     expansionManifest: {
