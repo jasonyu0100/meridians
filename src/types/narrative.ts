@@ -872,6 +872,13 @@ export type Scene = {
   planEmbeddingCentroid?: EmbeddingRef;
   /** Embedding of full prose text for semantic search (reference or inline) */
   proseEmbedding?: EmbeddingRef;
+  /** Wall-clock timestamp (ISO 8601) when this scene was committed into the
+   *  narrative — by the LLM, by analysis extraction, or by reconstruction.
+   *  Used to surface "when this prediction was made" for credibility when
+   *  showing forecasts InkTide produced. Stamped at the boundary; never
+   *  emitted by the LLM itself. Optional for backward compatibility with
+   *  scenes generated before this field existed. */
+  createdAt?: string;
 };
 
 export type WorldBuild = {
@@ -881,6 +888,9 @@ export type WorldBuild = {
   expansionManifest: WorldExpansion;
   /** Reasoning graph used to plan this expansion — stored for canvas viewing */
   reasoningGraph?: ReasoningGraphSnapshot;
+  /** Wall-clock timestamp (ISO 8601) when this world commit landed. See
+   *  Scene.createdAt — same purpose, applied to expansion commits. */
+  createdAt?: string;
 };
 
 // ── Branch Evaluation ─────────────────────────────────────────────────────

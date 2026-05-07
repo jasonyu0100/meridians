@@ -21,7 +21,6 @@ import { GeneratePanel } from '@/components/generation/GeneratePanel';
 import { BranchModal } from '@/components/generation/BranchModal';
 import { AutoSettingsPanel } from '@/components/auto/AutoSettingsPanel';
 import { AutoLogModal } from '@/components/auto/AutoLogModal';
-import { NarrativeCubeViewer } from '@/components/timeline/NarrativeCubeViewer';
 import { useAutoPlay } from '@/hooks/useAutoPlay';
 import { useBulkGenerate } from '@/hooks/useBulkGenerate';
 import { useBulkAudioGenerate } from '@/hooks/useBulkAudioGenerate';
@@ -64,7 +63,6 @@ export default function SeriesPage() {
   const [forkOpen, setForkOpen] = useState(false);
   const [autoSettingsOpen, setAutoSettingsOpen] = useState(false);
   const [autoLogOpen, setAutoLogOpen] = useState(false);
-  const [cubeViewerOpen, setCubeViewerOpen] = useState(false);
   const [forceAnalyticsOpen, setForceAnalyticsOpen] = useState(false);
   const [castAnalyticsOpen, setCastAnalyticsOpen] = useState(false);
   const [proseProfileOpen, setProseProfileOpen] = useState(false);
@@ -121,7 +119,6 @@ export default function SeriesPage() {
     }
     function handleOpenFork() { setForkOpen(true); }
     function handleOpenAutoSettings() { setAutoSettingsOpen(true); }
-    function handleOpenCubeViewer() { setCubeViewerOpen(true); }
     function handleOpenForceAnalytics() { setForceAnalyticsOpen(true); }
     function handleOpenCastAnalytics() { setCastAnalyticsOpen(true); }
     function handleOpenProseProfile() { setProseProfileOpen(true); }
@@ -139,7 +136,6 @@ export default function SeriesPage() {
     window.addEventListener('open-generate-panel', handleOpenGenerate);
     window.addEventListener('open-branch-modal', handleOpenFork);
     window.addEventListener('open-auto-settings', handleOpenAutoSettings);
-    window.addEventListener('open-cube-viewer', handleOpenCubeViewer);
     window.addEventListener('open-force-analytics', handleOpenForceAnalytics);
     window.addEventListener('open-cast-analytics', handleOpenCastAnalytics);
     window.addEventListener('open-prose-profile', handleOpenProseProfile);
@@ -150,7 +146,6 @@ export default function SeriesPage() {
       window.removeEventListener('open-generate-panel', handleOpenGenerate);
       window.removeEventListener('open-branch-modal', handleOpenFork);
       window.removeEventListener('open-auto-settings', handleOpenAutoSettings);
-      window.removeEventListener('open-cube-viewer', handleOpenCubeViewer);
       window.removeEventListener('open-force-analytics', handleOpenForceAnalytics);
       window.removeEventListener('open-cast-analytics', handleOpenCastAnalytics);
       window.removeEventListener('open-prose-profile', handleOpenProseProfile);
@@ -367,9 +362,6 @@ export default function SeriesPage() {
           log={autoPlay.log}
           onClose={() => setAutoLogOpen(false)}
         />
-      )}
-      {cubeViewerOpen && (
-        <NarrativeCubeViewer onClose={() => setCubeViewerOpen(false)} />
       )}
       {forceAnalyticsOpen && <ForceAnalytics onClose={() => setForceAnalyticsOpen(false)} />}
       {castAnalyticsOpen && <CastAnalytics onClose={() => setCastAnalyticsOpen(false)} />}

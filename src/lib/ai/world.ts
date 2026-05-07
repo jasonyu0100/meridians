@@ -483,8 +483,8 @@ ${m.recommendation === 'depth' ? EXPANSION_STRATEGY_PROMPTS.depth : m.recommenda
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, EXPAND_WORLD_SYSTEM, () => {}, undefined, 'expandWorld', undefined, reasoningBudget, onReasoning)
-    : await callGenerate(prompt, EXPAND_WORLD_SYSTEM, undefined, 'expandWorld', undefined, reasoningBudget);
+    ? await callGenerateStream(prompt, EXPAND_WORLD_SYSTEM, () => {}, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, onReasoning)
+    : await callGenerate(prompt, EXPAND_WORLD_SYSTEM, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = parseJson(raw, 'expandWorld') as any;
 
@@ -699,8 +699,9 @@ export async function generateNarrative(
   }
 
   const scenes: NarrativeState['scenes'] = {};
+  const sceneCreatedAt = new Date().toISOString();
   if (!worldOnly) {
-    for (const s of (parsed.scenes ?? [])) scenes[s.id] = { ...s, kind: 'scene', summary: s.summary || `Scene ${s.id}`, timeDelta: normalizeTimeDelta(s.timeDelta) };
+    for (const s of (parsed.scenes ?? [])) scenes[s.id] = { ...s, kind: 'scene', summary: s.summary || `Scene ${s.id}`, timeDelta: normalizeTimeDelta(s.timeDelta), createdAt: sceneCreatedAt };
   }
 
   const arcs: NarrativeState['arcs'] = {};
@@ -730,6 +731,7 @@ export async function generateNarrative(
   const initialWorldBuild: WorldBuild = {
     kind: 'world_build',
     id: worldBuildId,
+    createdAt: sceneCreatedAt,
     summary:
       aiWorldBuildSummary ||
       aiWorldSummary ||

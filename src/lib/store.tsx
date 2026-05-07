@@ -1050,6 +1050,7 @@ function reducer(state: AppState, action: Action): AppState {
         const worldBuild: WorldBuild = {
           kind: "world_build",
           id: worldBuildId,
+          createdAt: new Date().toISOString(),
           summary: `World created: ${parts.join(", ")}`,
           expansionManifest: {
             newCharacters: allChars,
@@ -2026,6 +2027,7 @@ function reducer(state: AppState, action: Action): AppState {
       const worldBuild: WorldBuild = {
         kind: "world_build",
         id: worldBuildId,
+        createdAt: new Date().toISOString(),
         summary: worldBuildSummary,
         expansionManifest: {
           newCharacters: action.characters,

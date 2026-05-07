@@ -394,6 +394,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   const worldState = parsed.worldState;
 
   const sceneIds = nextIds('S', Object.keys(narrative.scenes), parsed.scenes.length, 3);
+  const createdAt = new Date().toISOString();
   const scenes: Scene[] = parsed.scenes.map((s, i) => ({
     ...s,
     kind: 'scene' as const,
@@ -401,6 +402,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     arcId,
     summary: s.summary || `Scene ${i + 1} of arc "${arcName}"`,
     timeDelta: normalizeTimeDelta(s.timeDelta),
+    createdAt,
   }));
 
   sanitizeScenes(scenes, narrative, 'generateScenes');

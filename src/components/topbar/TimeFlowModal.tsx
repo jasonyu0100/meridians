@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { useStore } from '@/lib/store';
 import {
@@ -118,6 +119,7 @@ export function TimeFlowModal({ onClose }: Props) {
             <CumulativeView
               scenes={data.scenes}
               offsets={data.offsets}
+              gapsSec={data.gapsSec}
               currentIndex={currentIndex}
               onSelect={(i) => dispatch({ type: 'SET_SCENE_INDEX', index: i })}
             />
@@ -363,6 +365,9 @@ function RhythmView({
   currentIndex: number;
   onSelect: (i: number) => void;
 }) {
+  const [hover, setHover] = useState<{ i: number; screenX: number; screenY: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   // ── Inverse area chart layout ──────────────────────────────────────────
   // X = scene index (uniform spacing). Y = intensity, peaks at the top
   // (tight pacing), valleys at the bottom (slow / generational gaps).
@@ -395,7 +400,11 @@ function RhythmView({
         <div className="px-4 py-2 text-[10px] uppercase tracking-widest text-text-dim border-b border-white/6 flex items-center justify-between">
           <span>Pacing intensity · peaks = events close together · valleys = events apart</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="relative" onMouseLeave={() => setHover(null)}>
+          <div
+            ref={scrollRef}
+            className="overflow-x-auto"
+          >
           <svg width={totalWidth} height={PLOT_HEIGHT} className="block">
             <defs>
               <linearGradient id="rhythm-area" x1="0" y1="0" x2="0" y2="1">
@@ -446,29 +455,51 @@ function RhythmView({
             {/* Line on top of the area */}
             {linePath && <path d={linePath} fill="none" stroke="rgba(251,191,36,0.85)" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />}
 
-            {/* Scene markers — clickable, with flashback overlay */}
+            {/* Scene markers — visible dots, with flashback overlay */}
             {scenes.map((scene, i) => {
               const value = scene.timeDelta?.value ?? 0;
               const isFlashback = i > 0 && value < 0;
-              const isFirst = i === 0;
               const { x, y } = points[i];
               const isCurrent = i === currentIndex;
-              const td = scene.timeDelta;
-              const phrase = td?.transition?.trim();
-              const { label } = bandKey(gapsSec[i], isFirst);
-              const tooltip = `Scene ${i + 1}${scene.summary ? ` — ${scene.summary.slice(0, 60)}` : ''}\nGap: ${td ? formatTimeDelta(td) : '—'} (${isFlashback ? 'flashback · ' : ''}${label})${phrase ? `\nTransition: ${phrase}` : ''}`;
               return (
-                <g
-                  key={`marker-${scene.id}-${i}`}
-                  className="cursor-pointer"
-                  onClick={() => onSelect(i)}
-                >
-                  <title>{tooltip}</title>
+                <g key={`marker-${scene.id}-${i}`}>
                   <circle cx={x} cy={y} r={isCurrent ? 6 : 3} fill={isFlashback ? FLASHBACK : 'rgba(251,191,36,0.95)'} stroke={isCurrent ? CURRENT : 'transparent'} strokeWidth={isCurrent ? 2 : 0} />
                   {isFlashback && (
                     <text x={x} y={y - 8} fontSize={10} fill={FLASHBACK} textAnchor="middle">↶</text>
                   )}
                 </g>
+              );
+            })}
+
+            {/* Invisible hit columns — hover for tooltip, click to navigate.
+                Each spans the full chart height so the user doesn't need to
+                land on the small marker dot. */}
+            {scenes.map((_, i) => {
+              const x = xForIndex(i);
+              const y = points[i].y;
+              return (
+                <rect
+                  key={`hit-${i}`}
+                  x={x - SCENE_WIDTH / 2}
+                  y={PADDING_TOP}
+                  width={SCENE_WIDTH}
+                  height={innerHeight}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={(e) => {
+                    // Translate the marker's SVG-relative position into
+                    // viewport coords. The hit-rect spans the chart area
+                    // starting at SVG y = PADDING_TOP, so the marker's
+                    // screen-y is the rect's top + (markerY - PADDING_TOP).
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setHover({
+                      i,
+                      screenX: rect.left + rect.width / 2,
+                      screenY: rect.top + (y - PADDING_TOP),
+                    });
+                  }}
+                  onClick={() => onSelect(i)}
+                />
               );
             })}
 
@@ -490,6 +521,63 @@ function RhythmView({
               );
             })}
           </svg>
+          </div>
+
+          {/* Hover tooltip — same shape as the world-graph tooltip:
+              anchored above the marker with a downward arrow, full summary
+              shown without truncation. Lives OUTSIDE the scrolling div so
+              it can extend above the chart bounds (overflow-x-auto would
+              clip the y-axis otherwise). Pointer-events disabled so the
+              tooltip never breaks the hit-test. */}
+          {hover && (() => {
+            const scene = scenes[hover.i];
+            if (!scene) return null;
+            const td = scene.timeDelta;
+            const isFirst = hover.i === 0;
+            const isFlashback = !isFirst && (td?.value ?? 0) < 0;
+            const isConcurrent = (td?.value ?? 0) === 0;
+            const { label } = bandKey(gapsSec[hover.i], isFirst);
+            const phrase = td?.transition?.trim();
+            const dot = isFlashback ? FLASHBACK : isConcurrent ? CONCURRENT_BLOCK : FORWARD;
+            return createPortal(
+              <div
+                className="fixed z-100 pointer-events-none"
+                style={{ left: hover.screenX, top: hover.screenY - 12, transform: 'translate(-50%, -100%)' }}
+              >
+                <div className="bg-bg-elevated border border-border rounded-lg px-3 py-2 shadow-xl max-w-sm">
+                  <div className="flex items-start gap-2 mb-1.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0 mt-1"
+                      style={{ background: dot, boxShadow: `0 0 6px ${dot}80` }}
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest text-text-dim">
+                        Scene {hover.i + 1}
+                      </span>
+                      <span className="text-[10px] font-mono text-text-secondary">
+                        {isFlashback ? '↶ ' : ''}
+                        {td ? formatTimeDelta(td) : '—'} · {label}
+                      </span>
+                    </div>
+                  </div>
+                  {scene.summary && (
+                    <p className="text-xs text-text-primary whitespace-normal wrap-break-word leading-relaxed">
+                      {scene.summary}
+                    </p>
+                  )}
+                  {phrase && (
+                    <p className="text-[10px] italic text-text-dim mt-1.5 pt-1.5 border-t border-border/40">
+                      "{phrase}"
+                    </p>
+                  )}
+                </div>
+                <div className="flex justify-center">
+                  <div className="w-2.5 h-2.5 bg-bg-elevated border-r border-b border-border rotate-45 -mt-1.5" />
+                </div>
+              </div>,
+              document.body
+            );
+          })()}
         </div>
       </div>
 
@@ -502,14 +590,17 @@ function RhythmView({
 function CumulativeView({
   scenes,
   offsets,
+  gapsSec,
   currentIndex,
   onSelect,
 }: {
   scenes: Scene[];
   offsets: number[];
+  gapsSec: number[];
   currentIndex: number;
   onSelect: (i: number) => void;
 }) {
+  const { hover, setHover, clear } = useSceneHover();
   const SCENE_WIDTH = 32;
   const PADDING_X = 64;
   const PADDING_TOP = 24;
@@ -522,6 +613,7 @@ function CumulativeView({
   const scale = makeBandedScale({ minSeconds: minOffset, maxSeconds: maxOffset, innerHeight, paddingTop: PADDING_TOP });
   const totalHeight = scale.plotHeightActual + PADDING_TOP + PADDING_BOTTOM;
   const xForIndex = (i: number) => PADDING_X + i * SCENE_WIDTH + SCENE_WIDTH / 2;
+  const yForIndex = (i: number) => scale.yForSeconds(offsets[i]);
 
   const pathD = scenes
     .map((_, i) => {
@@ -532,44 +624,55 @@ function CumulativeView({
     .join(' ');
 
   return (
-    <ChartFrame totalWidth={totalWidth} totalHeight={totalHeight}>
-      <BandGrid ticks={scale.ticks} yZero={scale.yZero} totalWidth={totalWidth} paddingX={PADDING_X} />
-      <path d={pathD} fill="none" stroke={`${FORWARD}99`} strokeWidth={1.5} />
-      {scenes.map((scene, i) => {
-        const td = scene.timeDelta;
-        const value = td?.value ?? 0;
-        const x = xForIndex(i);
-        const y = scale.yForSeconds(offsets[i]);
-        const isFlashback = value < 0;
-        const isConcurrent = value === 0 && i !== 0;
-        const fill = i === 0 || isConcurrent ? CONCURRENT : isFlashback ? FLASHBACK : FORWARD;
-        return (
-          <SceneMarker
-            key={`marker-${scene.id}-${i}`}
-            x={x}
-            y={y}
-            fill={fill}
-            isCurrent={i === currentIndex}
-            tooltip={tooltipFor(scene, i, td, offsets[i])}
-            onClick={() => onSelect(i)}
-            extra={
-              isFlashback && i > 0 ? (
-                <line
-                  x1={xForIndex(i - 1)}
-                  x2={x}
-                  y1={scale.yForSeconds(offsets[i - 1])}
-                  y2={y}
-                  stroke={`${FLASHBACK}66`}
-                  strokeWidth={1}
-                  strokeDasharray="2 2"
-                />
-              ) : null
-            }
-          />
-        );
-      })}
-      <SceneIndexLabels scenes={scenes} xForIndex={xForIndex} y={totalHeight - PADDING_BOTTOM + 16} />
-    </ChartFrame>
+    <div onMouseLeave={clear}>
+      <ChartFrame totalWidth={totalWidth} totalHeight={totalHeight}>
+        <BandGrid ticks={scale.ticks} yZero={scale.yZero} totalWidth={totalWidth} paddingX={PADDING_X} />
+        <path d={pathD} fill="none" stroke={`${FORWARD}99`} strokeWidth={1.5} />
+        {scenes.map((scene, i) => {
+          const td = scene.timeDelta;
+          const value = td?.value ?? 0;
+          const x = xForIndex(i);
+          const y = scale.yForSeconds(offsets[i]);
+          const isFlashback = value < 0;
+          const isConcurrent = value === 0 && i !== 0;
+          const fill = i === 0 || isConcurrent ? CONCURRENT : isFlashback ? FLASHBACK : FORWARD;
+          return (
+            <SceneMarker
+              key={`marker-${scene.id}-${i}`}
+              x={x}
+              y={y}
+              fill={fill}
+              isCurrent={i === currentIndex}
+              extra={
+                isFlashback && i > 0 ? (
+                  <line
+                    x1={xForIndex(i - 1)}
+                    x2={x}
+                    y1={scale.yForSeconds(offsets[i - 1])}
+                    y2={y}
+                    stroke={`${FLASHBACK}66`}
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
+                  />
+                ) : null
+              }
+            />
+          );
+        })}
+        <HoverHitRects
+          count={scenes.length}
+          paddingTop={PADDING_TOP}
+          innerHeight={scale.plotHeightActual}
+          sceneWidth={SCENE_WIDTH}
+          xForIndex={xForIndex}
+          yForIndex={yForIndex}
+          setHover={setHover}
+          onSelect={onSelect}
+        />
+        <SceneIndexLabels scenes={scenes} xForIndex={xForIndex} y={totalHeight - PADDING_BOTTOM + 16} />
+      </ChartFrame>
+      <SceneTooltip hover={hover} scenes={scenes} gapsSec={gapsSec} cumulativeOffset={hover ? offsets[hover.i] : undefined} />
+    </div>
   );
 }
 
@@ -587,6 +690,7 @@ function GapsView({
   currentIndex: number;
   onSelect: (i: number) => void;
 }) {
+  const { hover, setHover, clear } = useSceneHover();
   const SCENE_WIDTH = 32;
   const PADDING_X = 64;
   const PADDING_TOP = 24;
@@ -599,53 +703,65 @@ function GapsView({
   const scale = makeBandedScale({ minSeconds: minGap, maxSeconds: maxGap, innerHeight, paddingTop: PADDING_TOP });
   const totalHeight = scale.plotHeightActual + PADDING_TOP + PADDING_BOTTOM;
   const xForIndex = (i: number) => PADDING_X + i * SCENE_WIDTH + SCENE_WIDTH / 2;
+  // Anchor the tooltip arrow at each bar's nearer edge to the origin so it
+  // visually points at the bar from above when forward and from below when
+  // a flashback. Use the bar-tip y-coord for hover.
+  const yForIndex = (i: number) => scale.yForSeconds(gapsSec[i]);
 
   return (
-    <ChartFrame totalWidth={totalWidth} totalHeight={totalHeight}>
-      <BandGrid ticks={scale.ticks} yZero={scale.yZero} totalWidth={totalWidth} paddingX={PADDING_X} />
-      {scenes.map((scene, i) => {
-        const td = scene.timeDelta;
-        const value = td?.value ?? 0;
-        const gap = gapsSec[i];
-        const x = xForIndex(i);
-        const yBar = scale.yForSeconds(gap);
-        const isFlashback = value < 0;
-        const isConcurrent = value === 0 && i !== 0;
-        const fill = i === 0 || isConcurrent ? CONCURRENT : isFlashback ? FLASHBACK : FORWARD;
-        const barTop = Math.min(yBar, scale.yZero);
-        const barHeight = Math.max(2, Math.abs(yBar - scale.yZero));
-        return (
-          <g
-            key={`bar-${scene.id}-${i}`}
-            className="cursor-pointer"
-            onClick={() => onSelect(i)}
-          >
-            <title>{tooltipFor(scene, i, td, undefined)}</title>
-            <rect
-              x={x - SCENE_WIDTH / 2 + 4}
-              y={barTop}
-              width={SCENE_WIDTH - 8}
-              height={barHeight}
-              fill={`${fill}55`}
-              stroke={fill}
-              strokeWidth={i === currentIndex ? 1.5 : 0.5}
-            />
-            {i === currentIndex && (
+    <div onMouseLeave={clear}>
+      <ChartFrame totalWidth={totalWidth} totalHeight={totalHeight}>
+        <BandGrid ticks={scale.ticks} yZero={scale.yZero} totalWidth={totalWidth} paddingX={PADDING_X} />
+        {scenes.map((scene, i) => {
+          const td = scene.timeDelta;
+          const value = td?.value ?? 0;
+          const gap = gapsSec[i];
+          const x = xForIndex(i);
+          const yBar = scale.yForSeconds(gap);
+          const isFlashback = value < 0;
+          const isConcurrent = value === 0 && i !== 0;
+          const fill = i === 0 || isConcurrent ? CONCURRENT : isFlashback ? FLASHBACK : FORWARD;
+          const barTop = Math.min(yBar, scale.yZero);
+          const barHeight = Math.max(2, Math.abs(yBar - scale.yZero));
+          return (
+            <g key={`bar-${scene.id}-${i}`}>
               <rect
                 x={x - SCENE_WIDTH / 2 + 4}
                 y={barTop}
                 width={SCENE_WIDTH - 8}
                 height={barHeight}
-                fill="none"
-                stroke={CURRENT}
-                strokeWidth={1.5}
+                fill={`${fill}55`}
+                stroke={fill}
+                strokeWidth={i === currentIndex ? 1.5 : 0.5}
               />
-            )}
-          </g>
-        );
-      })}
-      <SceneIndexLabels scenes={scenes} xForIndex={xForIndex} y={totalHeight - PADDING_BOTTOM + 16} />
-    </ChartFrame>
+              {i === currentIndex && (
+                <rect
+                  x={x - SCENE_WIDTH / 2 + 4}
+                  y={barTop}
+                  width={SCENE_WIDTH - 8}
+                  height={barHeight}
+                  fill="none"
+                  stroke={CURRENT}
+                  strokeWidth={1.5}
+                />
+              )}
+            </g>
+          );
+        })}
+        <HoverHitRects
+          count={scenes.length}
+          paddingTop={PADDING_TOP}
+          innerHeight={scale.plotHeightActual}
+          sceneWidth={SCENE_WIDTH}
+          xForIndex={xForIndex}
+          yForIndex={yForIndex}
+          setHover={setHover}
+          onSelect={onSelect}
+        />
+        <SceneIndexLabels scenes={scenes} xForIndex={xForIndex} y={totalHeight - PADDING_BOTTOM + 16} />
+      </ChartFrame>
+      <SceneTooltip hover={hover} scenes={scenes} gapsSec={gapsSec} />
+    </div>
   );
 }
 
@@ -746,6 +862,130 @@ function DistributionView({ gapsSec }: { gapsSec: number[] }) {
   );
 }
 
+// ── Shared hover tooltip (portaled to body so it escapes container clipping) ─
+
+type HoverState = { i: number; screenX: number; screenY: number };
+
+function SceneTooltip({
+  hover,
+  scenes,
+  gapsSec,
+  cumulativeOffset,
+}: {
+  hover: HoverState | null;
+  scenes: Scene[];
+  gapsSec: number[];
+  /** Optional cumulative offset to surface in the tooltip (Cumulative view). */
+  cumulativeOffset?: number;
+}) {
+  if (!hover) return null;
+  const scene = scenes[hover.i];
+  if (!scene) return null;
+  const td = scene.timeDelta;
+  const isFirst = hover.i === 0;
+  const isFlashback = !isFirst && (td?.value ?? 0) < 0;
+  const isConcurrent = (td?.value ?? 0) === 0;
+  const { label } = bandKey(gapsSec[hover.i], isFirst);
+  const phrase = td?.transition?.trim();
+  const dot = isFlashback ? FLASHBACK : isConcurrent ? CONCURRENT_BLOCK : FORWARD;
+  return createPortal(
+    <div
+      className="fixed z-100 pointer-events-none"
+      style={{ left: hover.screenX, top: hover.screenY - 12, transform: 'translate(-50%, -100%)' }}
+    >
+      <div className="bg-bg-elevated border border-border rounded-lg px-3 py-2 shadow-xl max-w-sm">
+        <div className="flex items-start gap-2 mb-1.5">
+          <span
+            className="w-2.5 h-2.5 rounded-full shrink-0 mt-1"
+            style={{ background: dot, boxShadow: `0 0 6px ${dot}80` }}
+          />
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-widest text-text-dim">
+              Scene {hover.i + 1}
+            </span>
+            <span className="text-[10px] font-mono text-text-secondary">
+              {isFlashback ? '↶ ' : ''}
+              {td ? formatTimeDelta(td) : '—'} · {label}
+              {cumulativeOffset !== undefined ? ` · ${formatCumulative(cumulativeOffset)}` : ''}
+            </span>
+          </div>
+        </div>
+        {scene.summary && (
+          <p className="text-xs text-text-primary whitespace-normal wrap-break-word leading-relaxed">
+            {scene.summary}
+          </p>
+        )}
+        {phrase && (
+          <p className="text-[10px] italic text-text-dim mt-1.5 pt-1.5 border-t border-border/40">
+            "{phrase}"
+          </p>
+        )}
+      </div>
+      <div className="flex justify-center">
+        <div className="w-2.5 h-2.5 bg-bg-elevated border-r border-b border-border rotate-45 -mt-1.5" />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** SVG hit-rects (one per scene column) that capture hover/click. Returns
+ *  the rects + the hover state. Render rects inside the SVG; render the
+ *  tooltip via SceneTooltip outside the SVG. */
+function useSceneHover() {
+  const [hover, setHover] = useState<HoverState | null>(null);
+  return { hover, setHover, clear: () => setHover(null) };
+}
+
+function HoverHitRects({
+  count,
+  paddingTop,
+  innerHeight,
+  sceneWidth,
+  xForIndex,
+  yForIndex,
+  setHover,
+  onSelect,
+}: {
+  count: number;
+  paddingTop: number;
+  innerHeight: number;
+  sceneWidth: number;
+  xForIndex: (i: number) => number;
+  yForIndex: (i: number) => number;
+  setHover: (h: HoverState | null) => void;
+  onSelect: (i: number) => void;
+}) {
+  return (
+    <g>
+      {Array.from({ length: count }, (_, i) => {
+        const x = xForIndex(i);
+        const y = yForIndex(i);
+        return (
+          <rect
+            key={`hit-${i}`}
+            x={x - sceneWidth / 2}
+            y={paddingTop}
+            width={sceneWidth}
+            height={innerHeight}
+            fill="transparent"
+            className="cursor-pointer"
+            onMouseEnter={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setHover({
+                i,
+                screenX: rect.left + rect.width / 2,
+                screenY: rect.top + (y - paddingTop),
+              });
+            }}
+            onClick={() => onSelect(i)}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
 // ── Shared chart bits ────────────────────────────────────────────────────────
 
 function ChartFrame({ totalWidth, totalHeight, children }: { totalWidth: number; totalHeight: number; children: React.ReactNode }) {
@@ -800,24 +1040,18 @@ function SceneMarker({
   y,
   fill,
   isCurrent,
-  tooltip,
-  onClick,
   extra,
 }: {
   x: number;
   y: number;
   fill: string;
   isCurrent: boolean;
-  tooltip: string;
-  onClick: () => void;
   extra?: React.ReactNode;
 }) {
   const r = isCurrent ? 6 : 4;
   return (
-    <g className="cursor-pointer" onClick={onClick}>
-      <title>{tooltip}</title>
+    <g>
       {extra}
-      <circle cx={x} cy={y} r={r + 4} fill="transparent" />
       <circle
         cx={x}
         cy={y}
@@ -859,19 +1093,6 @@ function SceneIndexLabels({
       })}
     </g>
   );
-}
-
-function tooltipFor(scene: Scene, i: number, td: Scene['timeDelta'], cumulative: number | undefined): string {
-  const tdDescr = td ? formatTimeDelta(td) : '—';
-  const phrase = td?.transition?.trim();
-  const summary = scene.summary?.slice(0, 60);
-  const lines = [
-    `Scene ${i + 1}${summary ? ` — ${summary}` : ''}`,
-    `Gap: ${tdDescr}`,
-  ];
-  if (phrase) lines.push(`Transition: ${phrase}`);
-  if (cumulative !== undefined) lines.push(`Cumulative: ${formatCumulative(cumulative)}`);
-  return lines.join('\n');
 }
 
 function pluralUnit(unit: TimeUnit): string {

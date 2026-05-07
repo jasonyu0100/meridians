@@ -19,7 +19,6 @@ import ApiKeyModal from "@/components/topbar/ApiKeyModal";
 import { ApiLogsModal } from "@/components/topbar/ApiLogsModal";
 import { BeatProfileModal } from "@/components/topbar/BeatProfileModal";
 import { BranchContextModal } from "@/components/topbar/BranchContextModal";
-import { CubeExplorer } from "@/components/topbar/CubeExplorer";
 import { DefinitionsModal } from "@/components/topbar/DefinitionsModal";
 import { ExportPackageModal } from "@/components/topbar/ExportPackageModal";
 import { FormulaModal } from "@/components/topbar/FormulaModal";
@@ -352,7 +351,6 @@ export default function TopBar() {
   const [apiKeysOpen, setApiKeysOpen] = useState(false);
   const [systemLogsOpen, setSystemLogsOpen] = useState(false);
 
-  const [cubeExplorerOpen, setCubeExplorerOpen] = useState(false);
   const [branchContextOpen, setBranchContextOpen] = useState(false);
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [timeFlowOpen, setTimeFlowOpen] = useState(false);
@@ -1320,12 +1318,6 @@ export default function TopBar() {
               disabled: !hasNarrative,
             },
             {
-              label: "Narrative Cube",
-              onClick: () =>
-                window.dispatchEvent(new CustomEvent("open-cube-viewer")),
-              disabled: !hasNarrative,
-            },
-            {
               label: "Propositions",
               onClick: () => setPropositionAnalysisOpen(true),
               disabled: !hasNarrative,
@@ -1364,11 +1356,6 @@ export default function TopBar() {
             {
               label: "Patterns",
               onClick: () => setPatternsOpen(true),
-              disabled: !hasNarrative,
-            },
-            {
-              label: "Cube Explorer",
-              onClick: () => setCubeExplorerOpen(true),
               disabled: !hasNarrative,
             },
           ]}
@@ -2314,17 +2301,6 @@ export default function TopBar() {
         <SystemLogModal onClose={() => setSystemLogsOpen(false)} />
       )}
 
-      {cubeExplorerOpen && narrative && (
-        <CubeExplorer
-          narrative={narrative}
-          resolvedKeys={state.resolvedEntryKeys}
-          currentSceneIndex={state.viewState.currentSceneIndex}
-          onClose={() => setCubeExplorerOpen(false)}
-          onNavigate={(idx) =>
-            dispatch({ type: "SET_SCENE_INDEX", index: idx })
-          }
-        />
-      )}
       {formulaOpen && <FormulaModal onClose={() => setFormulaOpen(false)} />}
       {timeFlowOpen && <TimeFlowModal onClose={() => setTimeFlowOpen(false)} />}
       {definitionsOpen && (

@@ -99,13 +99,30 @@ export default function NarrativePanel() {
     return (
       <div className={containerClass} style={containerStyle}>
         {resizeHandle}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
-            {positionLabel || "World Expansion"}
-          </span>
-          <span className="font-mono text-[10px] text-text-dim">
-            {entry.id}
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
+              {positionLabel || "World Expansion"}
+            </span>
+            <span className="font-mono text-[10px] text-text-dim">
+              {entry.id}
+            </span>
+          </div>
+          {entry.createdAt && (() => {
+            const dt = new Date(entry.createdAt);
+            if (Number.isNaN(dt.getTime())) return null;
+            return (
+              <span
+                className="text-[10px] text-text-dim font-mono shrink-0"
+                title={`Committed: ${entry.createdAt}`}
+              >
+                committed {dt.toLocaleString(undefined, {
+                  year: 'numeric', month: 'short', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </span>
+            );
+          })()}
         </div>
         <div className="flex flex-col gap-1.5">
           {entry.summary && (
@@ -258,6 +275,26 @@ export default function NarrativePanel() {
             </>
           )}
         </div>
+        {/* Generation timestamp on the far right — wall-clock when this
+            scene was committed. Surfaced for credibility on predictions:
+            "this forecast was made on DATE". Stamped at the boundary by
+            every generation path; absent on older scenes that pre-date
+            the field. */}
+        {scene.createdAt && (() => {
+          const dt = new Date(scene.createdAt);
+          if (Number.isNaN(dt.getTime())) return null;
+          return (
+            <span
+              className="text-[10px] text-text-dim font-mono shrink-0"
+              title={`Committed: ${scene.createdAt}`}
+            >
+              committed {dt.toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </span>
+          );
+        })()}
       </div>
       <p className="text-sm leading-relaxed text-text-primary">
         {showTimeDelta && (

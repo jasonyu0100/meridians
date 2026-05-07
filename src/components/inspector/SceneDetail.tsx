@@ -89,6 +89,27 @@ export default function SceneDetail({ sceneId }: Props) {
           {entry.summary || "No summary available."}
         </p>
 
+        {entry.createdAt && (() => {
+          const dt = new Date(entry.createdAt);
+          if (Number.isNaN(dt.getTime())) return null;
+          return (
+            <div className="flex flex-col gap-1.5">
+              <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+                Committed
+              </h3>
+              <div className="flex flex-col gap-0.5">
+                <div className="text-xs text-text-secondary font-mono">
+                  {dt.toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </div>
+                <div className="text-[10px] text-text-dim">{entry.createdAt}</div>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex flex-col gap-1.5">
           {isEmpty && (
             <p className="text-[10px] text-text-dim italic">
@@ -682,6 +703,33 @@ export default function SceneDetail({ sceneId }: Props) {
                   "{phrase}"
                 </div>
               )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Generation timestamp — wall-clock when this scene was committed.
+          Surfaced for credibility on predictions: "this forecast was made on
+          DATE". Stamped at the boundary by every generation path; absent on
+          older scenes that pre-date the field. */}
+      {scene.createdAt && (() => {
+        const dt = new Date(scene.createdAt);
+        if (Number.isNaN(dt.getTime())) return null;
+        return (
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+              Committed
+            </h3>
+            <div className="flex flex-col gap-0.5">
+              <div className="text-xs text-text-secondary font-mono">
+                {dt.toLocaleString(undefined, {
+                  year: 'numeric', month: 'short', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </div>
+              <div className="text-[10px] text-text-dim">
+                {scene.createdAt}
+              </div>
             </div>
           </div>
         );

@@ -203,6 +203,7 @@ export async function reconstructBranch(
       const placeholder: Scene = {
         kind: 'scene',
         id: insertId,
+        createdAt: new Date().toISOString(),
         arcId: ref?.arcId ?? '',
         locationId: ref?.locationId ?? '',
         povId: ref?.povId ?? '',
@@ -303,6 +304,7 @@ export async function reconstructBranch(
       const placeholder: Scene = {
         kind: 'scene',
         id: insertId,
+        createdAt: new Date().toISOString(),
         arcId: ref?.arcId ?? '',
         locationId: ref?.locationId ?? '',
         povId: ref?.povId ?? '',
@@ -727,6 +729,7 @@ async function insertScene(
   const inserted: Scene = {
     kind: 'scene',
     id: '', // caller sets this
+    createdAt: new Date().toISOString(),
     arcId: '', // caller sets this
     locationId: parsed.locationId ?? '',
     povId: parsed.povId ?? '',

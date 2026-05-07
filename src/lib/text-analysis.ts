@@ -1909,6 +1909,7 @@ export async function assembleNarrative(
       const scene: Scene = {
         kind: "scene",
         id: sceneId,
+        createdAt: new Date().toISOString(),
         arcId,
         locationId,
         povId,
@@ -2503,6 +2504,7 @@ export async function assembleNarrative(
     worldBuilds[worldBuildId] = {
       kind: "world_build",
       id: worldBuildId,
+      createdAt: new Date().toISOString(),
       summary: "",
       expansionManifest: {
         newCharacters: newCharIds.map((id) => characters[id]).filter(Boolean),
