@@ -1260,8 +1260,8 @@ async function reverseEngineerScenePlanOnce(
   let accumulated = '';
   const reasoningBudget = resolveReasoningBudget(narrative);
   const raw = onToken
-    ? await callGenerateStream(prompt, systemPrompt, (token) => { accumulated += token; onToken(token, accumulated); }, MAX_TOKENS_SMALL, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, undefined, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, systemPrompt, (token) => { accumulated += token; onToken(token, accumulated); }, MAX_TOKENS_LARGE, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, undefined, ANALYSIS_TEMPERATURE)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
 
   type BeatData = { fn: string; mechanism: string; what: string; propositions: unknown[] };
   const parsed = parseJson(raw, 'reverseEngineerScenePlan') as { beats?: unknown[] };
