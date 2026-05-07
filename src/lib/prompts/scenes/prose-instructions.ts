@@ -79,7 +79,7 @@ export function buildProseInstructionsWithPlan(args: { wordsPerBeat: number }): 
     ${phaseGraphPriorityEntry(4, "scene-prose")}
   </integration-hierarchy>
 
-  <follow-plan>Each beat maps to a passage of prose. The mechanism defines the delivery MODE (dialogue, thought, action, etc); the propositions define FACTS TO TRANSMIT (story-world events, argued claims, observed evidence, rule-driven outcomes / modelled state transitions / agent decisions — whatever the source register carries: fiction, non-fiction, or simulation). Weave both into voiced prose.</follow-plan>
+  <follow-plan>Each beat maps to a passage of prose. The mechanism defines the delivery MODE (dialogue, thought, action, etc); the propositions define FACTS TO TRANSMIT (in-world events, argued claims, observed evidence, rule-driven outcomes / modelled state transitions / agent decisions — whatever the source register carries: fiction, non-fiction, or simulation). Weave both into voiced prose.</follow-plan>
 
   <beat-boundary-markers hint="Insert a marker line between beats; do NOT include a marker after the final beat. Markers are stripped from final output.">
     Format: \`[BEAT_END:N]\` on its own line — N is the 0-indexed beat number. Example for a 3-beat scene: [Prose for beat 0...] / [BEAT_END:0] / [Prose for beat 1...] / [BEAT_END:1] / [Prose for beat 2...]

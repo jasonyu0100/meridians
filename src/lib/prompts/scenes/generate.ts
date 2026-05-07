@@ -31,12 +31,13 @@ export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): strin
   } = args;
 
   const priorities = [
-    `  <priority rank="1">BRIEF — reasoning graph (CRG) / coordination-plan directive / direction. Scenes execute the brief.</priority>`,
-    `  <priority rank="2">ARC SETTINGS — force preference / reasoning mode / network bias the CRG was built under. Scenes inherit the engine tilt.</priority>`,
-    `  <priority rank="3">WORLD-BUILD FOCUS — recently-introduced entities and latent threads this arc must activate. Bring them on-screen.</priority>`,
-    hasPacingSequence ? `  <priority rank="4">PACING SEQUENCE — per-scene mode + force band targets.</priority>` : '',
-    `  ${phaseGraphPriorityEntry(5, "scene-structure")}`,
-    `  <priority rank="6">NARRATIVE CONTEXT — characters, threads, system knowledge, recent history.</priority>`,
+    `  <priority rank="1">USER-SUPPLIED CONTEXT — operator's direction, constraints, narrative settings, explicit guidance. Beats engine defaults whenever it speaks; defaults apply only where the operator is silent.</priority>`,
+    `  <priority rank="2">BRIEF — reasoning graph (CRG) / coordination-plan directive / direction. Scenes execute the brief.</priority>`,
+    `  <priority rank="3">ARC SETTINGS — force preference / reasoning mode / network bias the CRG was built under. Scenes inherit the engine tilt.</priority>`,
+    `  <priority rank="4">WORLD-BUILD FOCUS — recently-introduced entities and latent threads this arc must activate. Bring them on-screen.</priority>`,
+    hasPacingSequence ? `  <priority rank="5">PACING SEQUENCE — per-scene mode + force band targets.</priority>` : '',
+    `  ${phaseGraphPriorityEntry(6, "scene-structure")}`,
+    `  <priority rank="7">NARRATIVE CONTEXT — characters, threads, system knowledge, recent history.</priority>`,
   ].filter(Boolean).join('\n');
 
   return `<inputs>
@@ -53,8 +54,8 @@ ${priorities}
 Return JSON with this exact structure.
 
 {
-  "arcName": "2-4 words, evocative, UNIQUE. Bad: 'Continuation'. Good: 'Fractured Oaths'.",
-  "directionVector": "Forward-looking intent for this arc.",
+  "arcName": "2-4 words from the narrative's own palette. Mood-coded ('Seeds of Distrust') or concrete-event ('Tier Tribulation', 'Ratification Vote') — both fine. Bad: generic ('Continuation'); Anglo/Gothic defaults when set elsewhere. Favour subtle and specific.",
+  "directionVector": "1-2 sentences. Central pressure (what is closing, sharpening, tipping) and shape of consequence. Vector, not script.",
   "worldState": "Compact state snapshot at END of arc — the chess-board position.",
   "scenes": [
     {
@@ -78,7 +79,7 @@ Return JSON with this exact structure.
       "newCharacters": [{"id": "C-GEN-001", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
       "newLocations": [{"id": "L-GEN-001", "name": "Name", "prominence": "domain|place|margin", "parentId": "L-XX|null", "tiedCharacterIds": [], "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history", "content": "key fact"}}, "edges": []}}],
       "newArtifacts": [{"id": "A-GEN-001", "name": "Name", "significance": "key|notable|minor", "parentId": "C-XX|L-XX|null", "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|capability|history|state", "content": "one fact per node"}}, "edges": []}}],
-      "newThreads": [{"id": "T-GEN-001", "description": "compelling question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}]
+      "newThreads": [{"id": "T-GEN-001", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}]
     }
   ]
 }

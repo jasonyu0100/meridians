@@ -13,15 +13,21 @@ export const PROMPT_MARKET_PRINCIPLES = `<market-discipline hint="Trade like a m
 
     <principle index="3" name="realized-not-forecast">Only on-page events are evidence. Narrative sympathy, genre expectation, POV momentum: none count. Standing advantages (foreknowledge, hidden identity) price into the opening prior. When uncertain between readings, pulse — the next scene disambiguates.</principle>
 
-    <principle index="4" name="saturation-asymmetry">In saturated markets (top p ≥ 0.85 or near-closed), valid emissions shrink to: payoff (closes), twist (reverses), resistance (legitimate setback on leader), pulse (continuation). Small +1..+2 on a saturated leader is phantom accumulation — the market already knows.</principle>
+    <principle index="4" name="reprice-from-current-state">Each scene re-prices from the CURRENT probability vector, not from the trajectory's direction. Read the live distribution before emitting; ask "what would a market maker do at THESE probabilities given this scene's events?", not "what's the natural next move along the trend." Constant re-evaluation — every scene is an opportunity to disagree with the current price.</principle>
 
-    <principle index="5" name="liabilities-stay-on-the-books">Stated costs exist until paid, waived, or proven inapplicable. Successful action without realized cost is evidence for DEBT-DEFERRED, not NO-COST. Don't saturate "no-cost / undetected / free" while structural debt accumulates.</principle>
+    <principle index="5" name="saturation-resists-resolution">Saturation (top p ≥ 0.85) is RESISTANCE TO FULL RESOLUTION, not settlement. Real prediction markets at 90% still price the 10% tail; closure requires a CLEAR TRANSITION — a named resolving event in the prose with |e|≥3 and logType payoff/twist — not continued favourable evidence on the leader. Until the transition fires:
+      - Tail outcomes remain priceable: |e|=1..2 on a non-leader when the scene's events genuinely touch it (a hedge bet still gets made at 90%).
+      - Resistance on the leader (|e|=1..2) is legitimate at any saturation level — the leader can lose ground without the market closing.
+      - Small +1..+2 on a saturated LEADER is phantom accumulation; the market already knows.
+      - Closure that bypasses an in-world transition reads as authorial assertion, not earned resolution.</principle>
 
-    <principle index="6" name="outcomes-name-specific-futures">Outcomes must be unambiguously adjudicable at resolution. Trivially-true labels ("reveals complex connection", "has meaningful effect") describe THAT something happens, not what — they cannot be re-priced and close at low quality.</principle>
+    <principle index="6" name="liabilities-stay-on-the-books">Stated costs exist until paid, waived, or proven inapplicable. Successful action without realized cost is evidence for DEBT-DEFERRED, not NO-COST. Don't saturate "no-cost / undetected / free" while structural debt accumulates.</principle>
 
-    <principle index="7" name="cascades-scale-with-quality">Decisive reveals can reprice coupled threads in the same scene; cascade strength scales with the driving event's quality. Each cascade emission cites its driving sentence. Don't smuggle evidence into threads the scene didn't touch.</principle>
+    <principle index="7" name="outcomes-name-specific-futures">Outcomes must be unambiguously adjudicable at resolution. Trivially-true labels ("reveals complex connection", "has meaningful effect") describe THAT something happens, not what — they cannot be re-priced and close at low quality.</principle>
 
-    <principle index="8" name="scope-distance-attenuation">Magnitude attenuates by the thread's HORIZON field:
+    <principle index="8" name="cascades-scale-with-quality">Decisive reveals can reprice coupled threads in the same scene; cascade strength scales with the driving event's quality. Each cascade emission cites its driving sentence. Don't smuggle evidence into threads the scene didn't touch.</principle>
+
+    <principle index="9" name="scope-distance-attenuation">Magnitude attenuates by the thread's HORIZON field:
       <horizon name="short" cap="±3..±4 (full band)">Resolves in 2-3 scenes. No attenuation.</horizon>
       <horizon name="medium" cap="±1..±2 typical, ±3 only on direct contact">Within one arc (~4-8 scenes). Default if undefined.</horizon>
       <horizon name="long" cap="±0.5..±1 typical, ±2 only on structural pivot">Multi-arc.</horizon>
@@ -49,7 +55,7 @@ export const PROMPT_PORTFOLIO_PRINCIPLES = `<portfolio-discipline hint="Emission
   <state-change>No market is permanently settled short of resolution. Markets that look settled under the current trajectory must remain re-priceable when legitimate force-of-system or force-of-world evidence lands.</state-change>
 </portfolio-discipline>`;
 
-export const PROMPT_MARKET_EVIDENCE_SCALE = `<evidence-scale hint="Real number in [-4, +4] per affected outcome. Decimals encouraged; rounded to 1dp. Apply Principle 8 (scope-distance-attenuation) before picking a band.">
+export const PROMPT_MARKET_EVIDENCE_SCALE = `<evidence-scale hint="Real number in [-4, +4] per affected outcome. Decimals encouraged; rounded to 1dp. Apply Principle 9 (scope-distance-attenuation) before picking a band.">
   <band magnitude="±0..1" kind="small">pulse, minor shift, OR meaningful local event scored against a long-horizon market.</band>
   <band magnitude="±1..2" kind="meaningful">setup, resistance.</band>
   <band magnitude="±2..3" kind="significant">escalation, twist.</band>

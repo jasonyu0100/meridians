@@ -65,7 +65,7 @@ ${proseSamples || 'No prose available yet'}
     <consider>What genre or register conventions unlock fresh opportunities for THIS narrative?</consider>
     <consider>What structural patterns create satisfying variety across arcs?</consider>
     <consider>What entity dynamics feel authentic AND allow for growth/change?</consider>
-    <consider>What techniques keep the prose engaging without becoming formulaic?</consider>
+    <consider>What variation in mechanism, register, or voice keeps the prose from becoming formulaic?</consider>
     <consider>Include at least 1-2 patterns that specifically encourage novelty and surprise.</consider>
     <example>Each arc must introduce at least one element (entity, location, system) that recontextualizes something established.</example>
     <example>Power or authority dynamics must shift — no anchor entity should stay dominant for more than two arcs.</example>

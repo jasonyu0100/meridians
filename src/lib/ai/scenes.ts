@@ -242,7 +242,7 @@ export async function generateScenes(
     : `${Math.max(2, targetLen - 1)}-${targetLen + 1} scenes (choose the count that best fits the arc's natural length)`;
   const arcInstruction = existingArc
     ? `CONTINUE the existing arc "${existingArc.name}" (${arcId}) which already has ${existingArc.sceneIds.length} scenes. Add ${sceneCountInstruction} that naturally extend this arc.`
-    : `Generate a NEW ARC with ${sceneCountInstruction}. Give the arc a short, evocative name (2-4 words) that reads like a chapter title — specific to the story, not generic.`;
+    : `Generate a NEW ARC with ${sceneCountInstruction}. Give the arc a short, evocative name (2-4 words) — specific to the narrative, not generic.`;
   // Unique seed to ensure divergent narrative directions across parallel generations
   const seed = Math.random().toString(36).slice(2, 10) + '-' + Date.now().toString(36);
 
@@ -277,7 +277,7 @@ export async function generateScenes(
         layered.push(`<plan-directive hint="The coordination-plan directive that seeded this CRG. The graph encodes it structurally; this preserves the original phrasing for nuance the nodes don't carry.">${planDirective}</plan-directive>`);
       }
       if (sourceDirection) {
-        layered.push(`<source-direction hint="The prose direction that seeded this CRG (and any user constraints in story-settings still apply). Honour it alongside the graph — the graph dictates structure, the direction shapes what the structure leaves open.">${sourceDirection}</source-direction>`);
+        layered.push(`<source-direction hint="The prose direction that seeded this CRG (and any user constraints in narrative-settings still apply). Honour it alongside the graph — the graph dictates structure, the direction shapes what the structure leaves open.">${sourceDirection}</source-direction>`);
       }
       return `<brief type="reasoning-graph" hint="PRIMARY BRIEF — execute this path exactly; don't skip nodes or invent reasoning not shown. REASONING nodes are core logic; CHARACTER/LOCATION/ARTIFACT/SYSTEM nodes provide grounding; OUTCOME nodes are thread effects to deliver. Edge labels carry meaning (enables, requires, causes, etc.).">
   <arc-summary>${reasoningGraph.summary}</arc-summary>
@@ -296,7 +296,7 @@ ${buildSequentialPath(reasoningGraph)}
 ${direction}
 </brief>`;
     }
-    return `<brief type="freeform">Use your judgment — pick the most compelling next development based on unresolved threads, tensions, and momentum.</brief>`;
+    return `<brief type="freeform">Use your judgment — pick the next development that best moves unresolved threads, tensions, and momentum.</brief>`;
   })();
 
   const worldBuildFocusBlock = worldBuildFocus ? (() => {
@@ -311,7 +311,7 @@ ${direction}
       const outcomes = (live?.outcomes ?? t.outcomes ?? []).join(' | ');
       return `    <thread status="${status}" outcomes="${outcomes}">${t.description}</thread>`;
     }).join('\n');
-    return `<world-build-focus id="${wb.id}" hint="The entities below were recently introduced and have not yet had a presence in the story. This arc should bring them in — use these characters in scenes, set at least one scene in these locations, and begin seeding these latent threads.">
+    return `<world-build-focus id="${wb.id}" hint="The entities below were recently introduced and have not yet had a presence in the narrative. This arc should bring them in — use these characters in scenes, set at least one scene in these locations, and begin seeding these latent threads.">
   <summary>${wb.summary}</summary>
 ${chars ? `  <characters>\n${chars}\n  </characters>` : ''}
 ${locs ? `  <locations>\n${locs}\n  </locations>` : ''}
@@ -327,7 +327,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   const arcSettingsBlock = buildArcSettingsBlock(resolvedArcSettings);
   if (arcSettingsBlock) inputBlocks.push(`  ${arcSettingsBlock.replace(/\n/g, '\n  ')}`);
   if (worldBuildFocusBlock) inputBlocks.push(`  ${worldBuildFocusBlock.replace(/\n/g, '\n  ')}`);
-  inputBlocks.push(`  <continuation-point hint="Scenes continue from this point in the story.">after scene index ${currentIndex + 1}</continuation-point>`);
+  inputBlocks.push(`  <continuation-point hint="Scenes continue from this point in the narrative.">after scene index ${currentIndex + 1}</continuation-point>`);
   if (sequencePrompt) inputBlocks.push(`  <pacing-sequence>\n${sequencePrompt}\n  </pacing-sequence>`);
   const phaseGraphSection = buildActivePhaseGraphSection(narrative, 'scene-structure');
   if (phaseGraphSection) inputBlocks.push(`  ${phaseGraphSection.replace(/\n/g, '\n  ')}`);
@@ -900,7 +900,7 @@ async function constructBeatPlan(
     const slotXml = sampledSlots
       .map((b, i) => `  <slot index="${i + 1}" fn="${b.fn}" mechanism="${b.mechanism}" />`)
       .join('\n');
-    return `<beat-slots hint="The sampler has pre-assigned each beat's fn and mechanism. These are the story's voice and are NOT negotiable. Fill in only \`what\` and \`propositions\` per slot; copy fn/mechanism verbatim. Use slots in order (slot 1 = beat 1, ...). Stop early if content fits fewer beats; trailing slots are discarded. If a mechanism seems to clash with the scene (e.g. dialogue in a solitary POV), render it creatively within that mechanism (interior monologue spoken aloud, muttered side-remark, conversation with an absent party) rather than substituting — the mix is the voice, and every substitution drifts it. Structural exceptions are a last resort.">
+    return `<beat-slots hint="The sampler has pre-assigned each beat's fn and mechanism. These are the narrative's voice and are NOT negotiable. Fill in only \`what\` and \`propositions\` per slot; copy fn/mechanism verbatim. Use slots in order (slot 1 = beat 1, ...). Stop early if content fits fewer beats; trailing slots are discarded. If a mechanism seems to clash with the scene (e.g. dialogue in a solitary POV), render it creatively within that mechanism (interior monologue spoken aloud, muttered side-remark, conversation with an absent party) rather than substituting — the mix is the voice, and every substitution drifts it. Structural exceptions are a last resort.">
 ${slotXml}
 </beat-slots>`;
   })();
@@ -918,7 +918,7 @@ ${slotXml}
   const proseProfileBlock = buildProseProfile(resolveProfile(narrative));
 
   const inputBlocks: string[] = [];
-  inputBlocks.push(`  <prose-profile hint="The story's authorial voice — mechanism mix, register, devices. Beats inherit voice from this profile, not from prompt instructions.">
+  inputBlocks.push(`  <prose-profile hint="The narrative's authorial voice — mechanism mix, register, devices. Beats inherit voice from this profile, not from prompt instructions.">
 ${proseProfileBlock}
   </prose-profile>`);
   const planFormat = narrative.storySettings?.proseFormat ?? 'prose';
@@ -1622,7 +1622,7 @@ ${b.propositions.map(p => `      <proposition>${p.content}</proposition>`).join(
 ).join('\n')}
 </beat-plan>
 
-<proposition-craft hint="Propositions are facts the reader must come to believe. Transmit through demonstration, implication, sensory detail, action, atmosphere — never verbatim, never flat declarations.">
+<proposition-craft hint="Propositions are facts the work must establish. Transmit through demonstration, implication, sensory detail, action, evidence, or rule-driven consequence — never verbatim, never flat declarations.">
   <example proposition="Mist covers the village at dawn">
     <method type="direct-sensory">He couldn't see past ten paces. Dampness clung to his skin.</method>
     <method type="through-action">Houses materialized from whiteness as he walked.</method>
@@ -1647,7 +1647,7 @@ ${b.propositions.map(p => `      <proposition>${p.content}</proposition>`).join(
     : buildProseInstructionsFreeform({ wordsPerBeat: WORDS_PER_BEAT });
 
   const inputBlocks: string[] = [];
-  if (profileSection.trim()) inputBlocks.push(`  <prose-profile hint="The story's authorial voice. Always law — rules in <instructions> apply only when this is silent on a given dimension.">${profileSection}\n  </prose-profile>`);
+  if (profileSection.trim()) inputBlocks.push(`  <prose-profile hint="The narrative's authorial voice. Always law — rules in <instructions> apply only when this is silent on a given dimension.">${profileSection}\n  </prose-profile>`);
   const proseProsePhaseGraphSection = buildActivePhaseGraphSection(narrative, 'scene-prose');
   if (proseProsePhaseGraphSection) inputBlocks.push(`  ${proseProsePhaseGraphSection.replace(/\n/g, '\n  ')}`);
   if (adjacentProseBlock) inputBlocks.push(`  ${adjacentProseBlock.replace(/\n/g, '\n  ')}`);

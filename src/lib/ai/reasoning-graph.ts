@@ -230,7 +230,7 @@ export async function generateReasoningGraph(
     .map((n) => `- [${n.id}] ${n.concept} (${n.type})`)
     .join("\n");
 
-  // Get story patterns and anti-patterns
+  // Get narrative patterns and anti-patterns
   const patterns = narrative.patterns ?? [];
   const antiPatterns = narrative.antiPatterns ?? [];
 
@@ -259,7 +259,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
     <rule>Reasoning chain uses different inference modes. Prior leaned on constraint-propagation/sequential dependency → introduce abduction, inversion, analogy, or branching.</rule>
     <rule>Warning nodes must cite specific shapes from the prior graph (node labels or indices) so the new graph visibly routes around them.</rule>
   </divergence-rules>
-  <failure-mode>If your chain and terminal map onto the spine above with only content swaps, you've re-described the prior arc, not advanced the story.</failure-mode>
+  <failure-mode>If your chain and terminal map onto the spine above with only content swaps, you've re-described the prior arc, not advanced the narrative.</failure-mode>
 </prior-arc-graph>`
     : "";
 

@@ -403,7 +403,7 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
   // POV mode
   const povLabels: Record<string, string> = {
     single: 'SINGLE POV — every scene must use the same POV character.',
-    ensemble: 'ENSEMBLE POV — this is a TRUE ENSEMBLE story. Every designated POV character is a co-lead, not a supporting player. Each must drive their own thread(s), own significant arcs, and make decisions that change the world independently of the others. Screen time distributes roughly evenly across the cast over the course of the story — no single character dominates. Avoid the trap of one central protagonist with occasional cutaways; that is Single POV in disguise. POV typically comes in STREAKS (2-4 scenes per character before switching) so each perspective has room to breathe, but across any given arc, multiple POVs should appear. When plotting threads, distribute ownership so no single POV owns the majority of the narrative stakes. For declared polyphonic, choral, or mosaic forms (e.g. Faulkner-style polyvocality, Caribbean polyvocal tradition, works built on per-scene rotation), per-scene or per-paragraph rotation IS the form — honour the declared form over the default streak length.',
+    ensemble: 'ENSEMBLE POV — this is a TRUE ENSEMBLE narrative. Every designated POV character is a co-lead, not a supporting player. Each must drive their own thread(s), own significant arcs, and make decisions that change the world independently of the others. Screen time distributes roughly evenly across the cast — no single character dominates. Avoid the trap of one central anchor with occasional cutaways; that is Single POV in disguise. POV typically comes in STREAKS (2-4 scenes per character before switching) so each perspective has room to breathe, but across any given arc, multiple POVs should appear. When distributing thread ownership, no single POV owns the majority of the narrative stakes. For declared polyphonic, choral, or mosaic forms (e.g. Faulkner-style polyvocality, Caribbean polyvocal tradition, works built on per-scene rotation), per-scene or per-paragraph rotation IS the form — honour the declared form over the default streak length.',
     free: '', // no constraint
   };
   if (s.povMode !== 'free') {
@@ -449,7 +449,7 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
   }
 
   if (lines.length === 0) return '';
-  return `\n<story-settings>\n${lines.join('\n')}\n</story-settings>\n`;
+  return `\n<narrative-settings>\n${lines.join('\n')}\n</narrative-settings>\n`;
 }
 
 /** Format network annotations as XML attributes for inline use on entity
@@ -1016,7 +1016,7 @@ export function sceneContext(
     ? `\n<world-state arc="${arc.name}" hint="Ground-truth compact state snapshot as of end of this arc. Reason from this position — it supersedes replaying prior deltas.">\n${arc.worldState}\n</world-state>`
     : '';
 
-  const timeGapBlock = `\n<time-gap hint="Time elapsed since the prior scene (estimate). Good storytelling weaves the passage of time into narrative texture — light, weather, wear, mood, what's changed — so the reader always FEELS time moving without ever reading it as a timestamp or log entry. Gap size shifts how visible the weaving is, not whether it happens. The description below indicates the band: texture-only (minor), woven cue (notable), or anchored re-orientation (major / generational).">${describeTimeGap(scene.timeDelta)}</time-gap>`;
+  const timeGapBlock = `\n<time-gap hint="Time elapsed since the prior scene (estimate). Weave the passage of time into the prose — light, weather, wear, mood, evidentiary state, modelled rule-state, what has shifted — so its motion registers without ever surfacing as a timestamp or log entry. Gap size shifts how visible the weaving is, not whether it happens. The description below indicates the band: texture-only (minor), woven cue (notable), or anchored re-orientation (major / generational).">${describeTimeGap(scene.timeDelta)}</time-gap>`;
 
   return `<scene id="${scene.id}" arc="${arc?.name ?? 'standalone'}" pov="${pov?.name ?? 'Unknown'}" location="${location?.name ?? 'Unknown'}">${worldStateBlock}
 <summary>${scene.summary}</summary>${timeGapBlock}

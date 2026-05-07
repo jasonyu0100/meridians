@@ -41,7 +41,7 @@ import {
 /**
  * Coerce a horizon string from the LLM (or undefined) into a valid
  * `ThreadHorizon`. Defaults to `'medium'` — the right neutral for any
- * thread the model didn't classify, since Principle 8 (scope-distance
+ * thread the model didn't classify, since Principle 9 (scope-distance
  * attenuation) treats medium as the unbiased baseline.
  */
 const VALID_HORIZONS: ReadonlySet<string> = new Set(['short', 'medium', 'long', 'epic']);

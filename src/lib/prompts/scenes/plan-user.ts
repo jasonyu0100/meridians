@@ -101,8 +101,8 @@ ${PROMPT_PROPOSITIONS}
   </opening-shape>
 
   <rules>
-    <rule name="opening">Most scenes open with 1–3 breathe beats grounding the reader physically. Scenes structured as in-medias-res, epistolary, thesis-first essay, dream-logic, direct-address, refrain/invocation, or rule-state / initial-conditions briefing may open with their structural device — the prose profile or form declaration decides.</rule>
-    <rule name="beat-weight">Each beat lands a proposition, delivers a delta, or executes a shift. Beats that don't move the scene are padding — cut them and the prose budget with them.</rule>
+    <rule name="opening">Most scenes open with 1–3 breathe beats establishing context — physical detail in fiction, evidentiary state in non-fiction, rule-state / initial conditions in simulation. Scenes structured as in-medias-res, epistolary, thesis-first essay, dream-logic, direct-address, refrain/invocation, or scenario briefing may open with their structural device — the prose profile or form declaration decides.</rule>
+    <rule name="beat-weight">Each beat must carry concrete content under its declared fn — a proposition stated, a delta delivered, or the function meaningfully discharged (a turn, a shift, a reveal, etc). Beats with no payload are padding — cut them and the prose budget with them.</rule>
     <rule name="delta-coverage">Every structural delta (thread, world, relationship, system knowledge) maps to at least one beat. Thread transitions need a concrete trigger in 'what'; knowledge gains need a discovery mechanism (overheard, read, deduced, confessed, cited, witnessed); relationship shifts need a catalytic moment.</rule>
     <rule name="specificity">"She asks about the missing shipment; he deflects" — not "A tense exchange."</rule>
 

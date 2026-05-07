@@ -136,8 +136,8 @@ Return JSON with this exact structure:
     <rule>Locations hold histories that WILL matter, resources that WILL be contested, rules that WILL constrain.</rule>
     <rule>Artifacts have costs that WILL be paid, powers that WILL be exercised, origins that WILL be revealed.</rule>
     <rule>Systems create pressures that WILL force action — scarcity breeds conflict, power demands trade-offs.</rule>
-    <invariant>The reader should sense from the first scene that SOMETHING LARGER IS COMING. Every detail is a load-bearing seed; you're priming the connections that will matter.</invariant>
-    <rule name="plant-surprises">At least 2 characters should have secrets even the reader doesn't know yet (these go in world nodes of type "secret").</rule>
+    <invariant>From the first scene the audience should sense that SOMETHING LARGER IS COMING. Every detail is a load-bearing seed; you're priming the connections that will matter.</invariant>
+    <rule name="plant-surprises">At least 2 characters carry undisclosed information not yet surfaced anywhere in the work (these go in world nodes of type "secret").</rule>
     <rule name="create-asymmetries">What Character A believes about Character B should differ from reality in ways that will surface later.</rule>
     <rule name="build-pressure">Threads should share participants so collision is INEVITABLE, not coincidental.</rule>
   </seeding-fate>
@@ -147,7 +147,7 @@ Return JSON with this exact structure:
     <entity id="locations">Spatial areas, regions, or institutions — places you can be IN, physically or institutionally (a city, an archive, a laboratory, a movement). In simulation register: scenario theatres INSIDE the modelled world (a Mughal subah, a strait, a quarantined district, a Georgia precinct, a Politburo briefing room, a campaign suite), agent populations treated as a place (a guild, a sect, a faction's catchment) — NOT an out-of-frame "Simulation Core", "data archive", or "forecasting laboratory" unless the premise explicitly asks for that meta-narrative.</entity>
     <entity id="artifacts">Anything that delivers utility — tools, documents, instruments, sources. Active, not passive concepts. Concepts belong in system knowledge. In simulation register: rule documents in-world (treaties, doctrinal texts, statutes, a campaign's internal polling report), instruments characters wield (sensors, telegrams, audit ledgers, an indictment filing), and rule-readouts ONLY when the modelled world itself contains them as objects characters interact with (a LitRPG stat sheet, a wargame turn report passed between commanders, a cultivation tier certificate, an in-world Ministry of Health bulletin). NEVER an out-of-frame modeller's forecast / dashboard / dampener-parameter unless the premise is explicitly a meta-narrative about modelling.</entity>
     <entity id="threads">
-      <definition>COMPELLING QUESTIONS that shape fate. A compelling question has stakes, uncertainty, and investment. Match the narrative's register.</definition>
+      <definition>QUESTIONS that shape fate — stakes, uncertainty, contested outcomes. Match the narrative's register.</definition>
       <example category="bad">Will X succeed?</example>
       <example category="good" register="narrative">Can Ayesha clear her grandfather's name before the tribunal ends?</example>
       <example category="good" register="argument">Does the proposed mechanism explain the anomalies the prior model cannot?</example>
@@ -180,7 +180,7 @@ Return JSON with this exact structure:
       <market-behaviour>May never close within the work's scope; probability drifts as events reshape the anchor's stance.</market-behaviour>
       <maintenance>Need recurring small pulses to stay alive (volume decay is lethal); treat them as the narrative's weather, not its fate spine.</maintenance>
     </shape>
-    <invariant>Within the same narrative, these shapes should feel distinctly different to the reader. A discrete-resolution thread that pulses through 20 scenes without resolving has been mis-shaped. A constant-tension thread that closes cleanly in arc 3 has been mis-shaped. Name the shape when you seed — match the question to the lifetime you intend.</invariant>
+    <invariant>Within the same narrative, these shapes should read as distinctly different. A discrete-resolution thread that pulses through 20 scenes without resolving has been mis-shaped. A constant-tension thread that closes cleanly in arc 3 has been mis-shaped. Name the shape when you seed — match the question to the lifetime you intend.</invariant>
   </thread-shapes>
 
   <character-depth-by-role hint="Minimums; go deeper for complex characters.">
@@ -201,7 +201,7 @@ Return JSON with this exact structure:
     <intent>The premise may contain placeholder or generic names (e.g. "The Reincarnator", "The Elder Council", "Shadow Realm"). Replace ALL placeholder names with original, specific names. Naming is the single biggest quality signal.</intent>
     <directive>Name with cultural specificity, not generic invented syllables. Names should be rooted in real traditions of the world's implied culture.</directive>
     <step index="1" name="detect-cultural-origin">
-      <rule>Detect the cultural origin the premise actually implies, then source names from THAT palette. The failure mode is REFLEXIVE defaulting to Anglo/Celtic/Greek when the premise points elsewhere — a Mughal-court premise should yield Persian/Arabic/Turkic names, a Lagos-set story Yoruba/Igbo/Akan, a Heian-court tale Japanese. But when the premise IS genuinely Western (US politics with real figures like Trump / Biden / Harris, a 19th-century British memoir, a Greek-archaeology paper, a Silicon Valley startup), Western names — including diasporic names that fit the actual demographics — are correct. The rule is against unconditional defaulting, not against Western names per se.</rule>
+      <rule>Detect the cultural origin the premise actually implies, then source names from THAT palette. The failure mode is REFLEXIVE defaulting to Anglo/Celtic/Greek when the premise points elsewhere — a Mughal-court premise should yield Persian/Arabic/Turkic names, a Lagos-set narrative Yoruba/Igbo/Akan, a Heian-court tale Japanese. But when the premise IS genuinely Western (US politics with real figures like Trump / Biden / Harris, a 19th-century British memoir, a Greek-archaeology paper, a Silicon Valley startup), Western names — including diasporic names that fit the actual demographics — are correct. The rule is against unconditional defaulting, not against Western names per se.</rule>
       <palette region="east-asian">Han Chinese (classical / modern), Japanese (kun/on readings), Korean, Vietnamese, Mongolian</palette>
       <palette region="south-asian">Sanskrit, Tamil/Dravidian, Bengali, Punjabi, Sinhala, Pashto</palette>
       <palette region="middle-eastern / west-asian">Arabic, Persian/Farsi, Turkish, Hebrew, Aramaic, Kurdish</palette>
@@ -235,7 +235,7 @@ Return JSON with this exact structure:
   <relationships>
     <rule>Connect anchors to MANY characters (6+ relationships per anchor).</rule>
     <rule>Asymmetric descriptions: "A admires B" while "B suspects A".</rule>
-    <rule>At least 2 hidden relationships (known to the reader, not yet to the entities involved).</rule>
+    <rule>At least 2 hidden relationships (known to the audience, not yet to the entities involved).</rule>
   </relationships>
 
   <artifacts-and-tools>

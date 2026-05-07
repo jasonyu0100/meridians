@@ -28,14 +28,14 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
 
   <thread-deltas hint="Field shapes and multi-outcome update patterns. Market-discipline blocks (principles, evidence scale, logtype, closure, abandonment) carry the rest.">
     <question-shape>
-      A compelling question can carry an arc (binary or multi-outcome). Dramatic, evidentiary, argumentative, and rule-driven questions are all valid — outcomes are concrete states the work can adjudicate. Examples: "Can Ayesha clear her grandfather's name before the tribunal ends?" → ["yes", "no"]. "Which faction claims the southern province?" → ["Tahir house", "Konoe clan", "merchant guilds", "nobody"]. "Does the replication study confirm, refute, or partially support the original finding?" → ["confirms", "refutes", "partial"]. "Does the modelled epidemic cross the regional containment threshold before the policy intervention takes effect?" → ["contained", "breaches threshold", "delayed breach"]. Picaresque / ironic / open-inquiry forms may use a deliberately simple recurring question — register must earn it.
+      A thread question carries an arc when it has stakes, uncertainty, and contested outcomes (binary or multi-outcome). Dramatic, evidentiary, argumentative, and rule-driven questions are all valid — outcomes are concrete states the work can adjudicate. Examples: "Can Ayesha clear her grandfather's name before the tribunal ends?" → ["yes", "no"]. "Which faction claims the southern province?" → ["Tahir house", "Konoe clan", "merchant guilds", "nobody"]. "Does the replication study confirm, refute, or partially support the original finding?" → ["confirms", "refutes", "partial"]. "Does the modelled epidemic cross the regional containment threshold before the policy intervention takes effect?" → ["contained", "breaches threshold", "delayed breach"]. Picaresque / ironic / open-inquiry forms may use a deliberately simple recurring question — register must earn it.
     </question-shape>
 
     <fields>
       <field name="updates[]">per-outcome { outcome: string, evidence: number in [-4, 4]; decimals encouraged (e.g. 1.5 or -0.8); rounded to 1dp }.</field>
       <field name="logType">one of { pulse, transition, setup, escalation, payoff, twist, callback, resistance, stall }.</field>
       <field name="volumeDelta">integer change to attention in [0, 2] (negative only when deliberately quieted).</field>
-      <field name="rationale">ONE prose sentence grounded in the scene — what HAPPENED in natural language, what the reader witnesses and what it implies for the question. Don't quote outcome identifiers (technical names like "yes_with_great_cost"); don't reference logType or evidence numbers. Margin annotation, not database column.</field>
+      <field name="rationale">ONE prose sentence grounded in the scene — what TRANSPIRED in natural language and what it implies for the question. In fiction / non-fiction this is what the audience witnesses on the page; in simulation it is what state the rule set forced under the current conditions. Don't quote outcome identifiers (technical names like "yes_with_great_cost"); don't reference logType or evidence numbers. Margin annotation, not database column.</field>
       <field name="addOutcomes[]" rare="true">names of NEW outcomes added mid-narrative when a scene genuinely opens a new possibility.</field>
     </fields>
 
@@ -80,7 +80,7 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
     <edges>enables | governs | opposes | extends | constrains.</edges>
   </system-deltas>
 
-  <relationship-deltas>SHIFTS only. valenceDelta: ±0.1 subtle, ±0.3 meaningful, ±0.5 dramatic.</relationship-deltas>
+  <relationship-deltas>SHIFTS only — emit when the scene's events actually move the pair, skip when they don't. valenceDelta: ±0.1 subtle drift, ±0.3 meaningful (named on-page trigger), ±0.5 dramatic (irreversible). Successive minute shifts are legitimate accumulation; the failure is reusing the same magnitude regardless of what the trigger does.</relationship-deltas>
   <events>2-4 word tags, 2-4 per scene.</events>
   <artifact-usages>When an artifact / tool delivers utility. Every usage has a wielder.</artifact-usages>
   <ownership-deltas>Artifact changes hands.</ownership-deltas>

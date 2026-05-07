@@ -82,8 +82,8 @@ export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
 ${context}
   </narrative-context>
 ${phaseGraphSection ? `\n  ${phaseGraphSection.replace(/\n/g, '\n  ')}\n` : ''}
-  <directive hint="${directive.trim() ? 'Primary creative brief — drive the expansion off this.' : 'No directive — analyze the current narrative state and add what would create the most interesting new possibilities based on existing tensions and unexplored areas.'}">
-${directive.trim() ? directive : 'EXPAND the world — analyze the current narrative state and add characters, locations, and threads that would create the most interesting new possibilities based on existing tensions and unexplored areas.'}
+  <directive hint="${directive.trim() ? 'Primary creative brief — drive the expansion off this.' : 'No directive — analyse the current narrative state and add what most extends existing tensions or opens unexplored areas.'}">
+${directive.trim() ? directive : 'EXPAND the world — analyse the current narrative state and add characters, locations, and threads that extend existing tensions or open unexplored areas.'}
   </directive>
 ${sourceText ? `  <source-material hint="Verbatim from plan document — use as the authoritative guide. If the source names specific characters, places, or objects, create them with those exact names and roles. Source takes priority over generic expansion.">\n${sourceText}\n  </source-material>` : ''}
 

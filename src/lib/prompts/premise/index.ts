@@ -8,7 +8,7 @@
  * history if that flow comes back.
  */
 
-export const PREMISE_SUGGEST_PROMPT = `<task>Generate an original, compelling premise for a long-form work. The work may be fiction (novel, novella, short fiction, drama), non-fiction (memoir, essay, long-form reportage, research, history, case study), or simulation (a work that models real-life events from a stated rule set — historical counterfactual, economic / policy / political-wargame / pandemic / climate scenario, agent-based study, LitRPG / cultivation / xianxia where in-world mechanics drive events) — pick whichever register the premise most naturally belongs to.</task>
+export const PREMISE_SUGGEST_PROMPT = `<task>Generate an original premise for a long-form work — specific, evocative, register-coherent. The work may be fiction (novel, novella, short fiction, drama), non-fiction (memoir, essay, long-form reportage, research, history, case study), or simulation (a work that models real-life events from a stated rule set — historical counterfactual, economic / policy / political-wargame / pandemic / climate scenario, agent-based study, LitRPG / cultivation / xianxia where in-world mechanics drive events) — pick whichever register the premise most naturally belongs to.</task>
 
 <rules>
   <rule>Be specific and evocative — not generic.</rule>
@@ -32,7 +32,7 @@ export const PREMISE_SUGGEST_PROMPT = `<task>Generate an original, compelling pr
 Return JSON:
 {
   "title": "A memorable title (2-5 words)",
-  "premise": "A compelling setup in 2-3 sentences. Include: a specific anchoring figure (protagonist, author, investigator, subject, scenario actor, or modelled agent) carrying a tension, contradiction, or flaw; an inciting situation or question that demands engagement; and stakes that make us care. For simulation premises, state the rule set and the initial conditions explicitly. Ground it in a particular time, place, culture, or intellectual tradition."
+  "premise": "Setup in 2-3 sentences. Include: a specific anchoring figure (lead character, author, investigator, subject, scenario actor, or modelled agent) carrying a tension, contradiction, or flaw; an inciting situation or question; and stakes. For simulation premises, state the rule set and the initial conditions explicitly. Ground it in a particular time, place, culture, or intellectual tradition."
 }
 </output-format>`;
 

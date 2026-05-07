@@ -20,7 +20,7 @@ export const PROMPT_SUMMARY_REQUIREMENT = `<summary-requirement length="adaptive
         Wrong: "Mara refined her approach to the upcoming arbitration, weighing options and assessing risks."
         Right: "Mara considered three approaches to the arbitration. Approach A — open with her strongest precedent and force the panel to address it directly — offered fast resolution but burned her secondary arguments if the panel rejected it. Approach B — sequence weaker precedents first to anchor the panel's attention before deploying her strongest — depended on the chair's known impatience holding for at least thirty minutes. Approach C — concede the most contentious point upfront in exchange for a tighter scope ruling — sacrificed leverage but eliminated the panel's main objection. She rejected A because the chair's history showed he hardens against frontal arguments raised in the first ten minutes. She committed to B for the morning session while preparing C as a fallback for the afternoon, identifying the signal she needed from the chair's opening: if he raised the scope question, sequencing was unsalvageable and she had to pivot to C immediately."
 
-      Run for many paragraphs when the underlying reasoning demands it. The penalty is for missing content, not length.
+      Expand the summary as far as the reasoning demands — multiple paragraphs are normal for genuinely dense scenes. The penalty is for missing content, not length.
     </expand>
   </length-policy>
 

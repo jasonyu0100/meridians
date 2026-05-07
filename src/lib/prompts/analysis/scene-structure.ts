@@ -47,7 +47,7 @@ Return JSON:
   "characters": [{"name": "Full Name", "role": "anchor|recurring|transient", "firstAppearance": false, "imagePrompt": "1-2 sentence LITERAL physical description: concrete traits like hair colour, build, clothing style. No metaphors or figurative language."}],
   "locations": [{"name": "Location Name", "prominence": "domain|place|margin", "parentName": "Parent or null", "description": "Brief description", "imagePrompt": "1-2 sentence LITERAL visual description: architecture, landscape, lighting, weather. Concrete physical details only, no metaphors.", "tiedCharacterNames": ["characters tied here"]}],
   "artifacts": [{"name": "Artifact Name", "significance": "key|notable|minor", "imagePrompt": "1-2 sentence LITERAL visual description — concrete physical details only, no metaphors or figurative language", "ownerName": "owner or null"}],
-  "threads": [{"description": "A COMPELLING QUESTION with stakes, uncertainty, investment — 15-30 words. BAD: 'Will X succeed?' GOOD: 'Can Marcus protect his daughter from the cult that killed his wife?' / 'Does the proposed mechanism explain anomalies the prior model cannot?' / 'Does the modelled grid reach cascading failure under the declared load schedule?'", "participantNames": ["names"], "outcomes": ["named outcome 1", "named outcome 2", "..."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes (immediate question, local outcome). medium = within an arc, 4-8 scenes. long = multi-arc, segment-spanning. epic = work-spanning or open-ended (eternal life, dynastic ambition, civilisational trajectory, long-horizon equilibria). Drives evidence-magnitude attenuation in the fate-reextract pass.", "development": "15-25 words: how this question was advanced or answered in this scene"}],
+  "threads": [{"description": "A QUESTION with stakes, uncertainty, contested outcomes — 15-30 words. BAD: 'Will X succeed?' GOOD: 'Can Marcus protect his daughter from the cult that killed his wife?' / 'Does the proposed mechanism explain anomalies the prior model cannot?' / 'Does the modelled grid reach cascading failure under the declared load schedule?'", "participantNames": ["names"], "outcomes": ["named outcome 1", "named outcome 2", "..."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes (immediate question, local outcome). medium = within an arc, 4-8 scenes. long = multi-arc, segment-spanning. epic = work-spanning or open-ended (eternal life, dynastic ambition, civilisational trajectory, long-horizon equilibria). Drives evidence-magnitude attenuation in the fate-reextract pass.", "development": "15-25 words: how this question was advanced or answered in this scene"}],
   "relationships": [{"from": "Name", "to": "Name", "type": "description", "valence": 0.0}],
   "threadDeltas": [{"threadDescription": "exact thread description", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if the scene opens possibilities not previously in the market"], "rationale": "15-25 words — the specific summary sentence that moved the market this scene"}],
   "worldDeltas": [{"entityName": "Name", "addedNodes": [{"content": "15-25 words, PRESENT tense: a stable fact about the entity — their unique perspective on reality, identity, or condition. Emit as many 15-25-word nodes per entity as the scene genuinely reveals — no count cap.", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
@@ -70,7 +70,7 @@ Return JSON:
 
 <detecting-fate>
   <definition>Fate is the HIGHER-ORDER force that compels world and system to bend toward narrative meaning — what pulls arcs toward resolution against or beyond the local logic of rules and character traits.</definition>
-  <criterion>A compelling question has STAKES (what's at risk), UNCERTAINTY (outcome not obvious), INVESTMENT (we care).</criterion>
+  <criterion>STAKES (what's at risk), UNCERTAINTY (outcome not obvious), INVESTMENT (we care).</criterion>
   <example category="weak">"Will [Name] succeed?" — too plain unless the form is picaresque/satirical.</example>
   <example category="strong">"Can Ayesha clear her grandfather's name before the tribunal ends?" / "Does the proposed mechanism explain anomalies the prior model cannot?" / "What role did diaspora networks play in the movement before digital coordination?" / "Does the modelled coalition fragment before the budget cycle closes under the declared payoff structure?"</example>
   <key-test>If a development is fully explained by traits, constraints, and rules — that's ordinary world/system activity, NOT fate. Fate earns weight when developments OUTRUN those explanations: a commitment kept at cost the prior profile wouldn't predict, a coincidence ratifying itself into pattern, a claim landing because the work's overall trajectory required it rather than because local causation forced it.</key-test>
@@ -89,7 +89,7 @@ Return JSON:
 </thread-creation>
 
 <threads-as-prediction-markets>
-  <model>A thread is a named question the work has committed to, with NAMED OUTCOMES. The market prices each outcome (via logits → softmax). Scenes emit evidence that shifts per-outcome logits; the reader's belief over "which outcome wins" evolves across the narrative.</model>
+  <model>A thread is a named question the work has committed to, with NAMED OUTCOMES. The market prices each outcome (via logits → softmax). Scenes emit evidence that shifts per-outcome logits; the audience's belief over "which outcome wins" evolves across the narrative.</model>
 
   <outcomes required="true">
     <range>2 to ~6 named possibilities covering the resolution space.</range>
@@ -106,10 +106,14 @@ Return JSON:
       <test id="exhaustive">Covers every live future the question admits; add a residual outcome rather than forcing a fit.</test>
       <test id="neutral-labels">Outcomes name observable future-states, not slogans or framings. Never emit an outcome whose name encodes a position the source text rejected (e.g. "US reasserts pre-eminence" in a corpus arguing the unipolar moment is over).</test>
       <test id="specific-not-meta">
-        <rule>Reject outcomes whose text is a meta-observation rather than a concrete future. Labels containing "complex", "significant", "meaningful", "important", "notable", "has effect", "matters" without specific referent content are trivially-true — they describe that SOMETHING happens, not what.</rule>
-        <bad>["reveals complex connection", "turns out to be unimportant"] — "complex connection" is meta; what IS the connection?</bad>
+        <rule>Reject outcomes that describe THAT something happens rather than WHAT. Two failure shapes:
+          (a) Trigger-word labels: "complex", "significant", "meaningful", "important", "notable", "has effect", "matters" without specific referent.
+          (b) Category labels: "hidden X discovered", "true Y revealed", "secret Z exposed" — name a category, not which member resolves. The LLM reinterprets the category at close time, so closure carries no structural information. Specify the member as its own outcome.</rule>
+        <bad>["reveals complex connection", "turns out to be unimportant"] — what IS the connection?</bad>
+        <bad>["hidden talent discovered", "no hidden talent"] — which talent?</bad>
         <good>["they share an ancestor", "they trained under the same master", "they are rival agents of the same faction", "they have no connection"]</good>
-        <fallback>If you can't enumerate concrete alternatives, the thread's question is under-specified — re-phrase the question instead of emitting trivial outcomes. A market priced on a trivially-true outcome cannot be re-priced and closes at low quality, losing the structural continuity the thread was meant to track.</fallback>
+        <good>["A-grade aperture confirmed", "C-grade confirmed, strategic cunning recognised", "C-grade confirmed and dismissed"] — concrete members of one category.</good>
+        <fallback>If you can't enumerate concrete members, the question is under-specified — rephrase it.</fallback>
       </test>
     </mece-tests>
   </outcomes>
@@ -147,7 +151,7 @@ ${PROMPT_MARKET_PRINCIPLES}
           <row hedge="X is inevitable / decisive">|e| ≈ 3-4, closure</row>
         </table>
         <rule>A passage that asserts then walks back stays small-magnitude.</rule>
-        <rule name="distributional-vs-modal">Rare-event rhetoric ("tail risk has grown", "base rates no longer apply") shifts the TAIL outcome 5-15% up from prior base rates, NOT past 50%. A rare-event market at 5-10% becomes 15-25%, not 60-70%, on distributional claims. Only on-page events (detonation, declared test, announced succession) move the modal outcome — those come with |e| ≥ 3, logType payoff/twist. "Tail risk is the story" lifts the tail; the modal stays modal.</rule>
+        <rule name="distributional-vs-modal">Rare-event rhetoric ("tail risk has grown", "base rates no longer apply") shifts the TAIL outcome 5-15% up from prior base rates, NOT past 50%. A rare-event market at 5-10% becomes 15-25%, not 60-70%, on distributional claims. Only on-page events (detonation, declared test, announced succession) move the modal outcome — those come with |e| ≥ 3, logType payoff/twist. Rhetoric framing the tail as the headline lifts the tail; the modal stays modal.</rule>
         <rule name="text-volume-not-probability">Authors detail the interesting outcome, not the likeliest one. Price by hedges and events, not by word-share per outcome.</rule>
       </lexical-calibration>
     </evidence-discipline>
@@ -171,7 +175,7 @@ ${PROMPT_MARKET_PRINCIPLES}
     <prohibition>DO NOT mention evidence numbers or logType.</prohibition>
     <invariant>Two good rationales on the SAME delta should read like two descriptions of the same moment, not two schema dumps.</invariant>
   </field>
-  <coverage>Touch every thread the scene genuinely moves. A thread mentioned but stable gets a pulse with volumeDelta=+1 and evidence=0. No count cap.</coverage>
+  <coverage>Touch every thread the scene engages. Threads the scene NAMES, observes, or invokes without shifting take a pulse (volumeDelta=+1, evidence=0..0.5) — pulses keep markets alive and let minute motion accumulate. Threads with no on-page connection get no entry. Err toward emitting when uncertain. No count cap.</coverage>
   <invariant>Evidence ≠ volume: does the scene change WHAT we believe (evidence) or ATTENTION on the thread (volumeDelta)?</invariant>
   <correlation>One event can legitimately move multiple threads; each rationale cites its driving sentence.</correlation>
 </thread-deltas>
@@ -198,11 +202,12 @@ ${PROMPT_MARKET_PRINCIPLES}
 <relationship-deltas>
   <intent>Only when a relationship SHIFTS, not just exists.</intent>
   <field name="valenceDelta">
-    <magnitude band="subtle">±0.1</magnitude>
-    <magnitude band="meaningful">±0.2-0.3</magnitude>
-    <magnitude band="dramatic">±0.4-0.5</magnitude>
+    <magnitude band="subtle">±0.1 — passing reaction, mild update, drift on existing valence.</magnitude>
+    <magnitude band="meaningful">±0.2-0.3 — concrete on-page event reframes how the parties stand toward each other (a confrontation, a betrayal admitted, a kindness that changes register).</magnitude>
+    <magnitude band="dramatic">±0.4-0.5 — irreversible shift, oath broken or sworn, blood drawn, alliance crystallised or snapped.</magnitude>
   </field>
-  <coverage>Emit one per genuine shift the scene shows — no count cap.</coverage>
+  <discipline name="match-the-trigger">Magnitude follows the on-page trigger. Successive minute shifts (±0.1, occasionally ±0.2) are legitimate when each scene contributes a real concrete event — a held look, a withheld word, a small concession. Failure mode: reusing the same magnitude regardless of what the trigger does.</discipline>
+  <coverage>Emit one per genuine shift the scene shows — no count cap, no count floor.</coverage>
 </relationship-deltas>
 
 <system-deltas>
@@ -245,7 +250,7 @@ ${PROMPT_MARKET_PRINCIPLES}
     <definition>Things with UTILITY or ECONOMIC VALUE — objects that are USED, WIELDED, POSSESSED, CONSUMED, or DEPLOYED.</definition>
     <test>Does this artifact deliver a specific utility to someone in the scene? If no utility → not an artifact.</test>
     <example category="good">An object actually wielded, possessed, or consumed in the scene — a tool, weapon, vehicle, document, dataset, instrument, trained model checkpoint, GPU, etc. Name it with its content where useful ("Figure 3: ablation curve", "Table 2: BLEU scores").</example>
-    <example category="good" significance="minor | notable">In-text DOCUMENTS that deliver information the reader/characters consume — letters, diaries, newspaper clippings, maps, scrolls, embedded notes (short-lived).</example>
+    <example category="good" significance="minor | notable">In-text DOCUMENTS that deliver information consumed by the audience or by entities in the work — letters, diaries, newspaper clippings, maps, scrolls, embedded notes (short-lived).</example>
     <example category="good" significance="key | notable" reason="scenario-input">In simulation works, scenario-input artifacts whose contents drive the rule machinery — a rule document, military doctrine, policy memo, model parameter sheet, statute, treaty text, scenario brief, transmission-parameter table. These deliver the engine of consequence; treat the artifact's worldDeltas as capturing the rule contents the work then operates under.</example>
     <example category="bad" reason="concept">A concept, technique, principle, or named metric is system knowledge, not an artifact. An artifact is a specific instance USED in the scene; the abstract category goes in systemDeltas.</example>
     <example category="bad" reason="method-class-not-artifact">Named method classes / architectures / frameworks (e.g. "Transformers", "GANs", "VAEs"). These are concepts, not artifacts; an artifact would be a specific trained model, binary, or dataset someone uses.</example>

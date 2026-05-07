@@ -32,7 +32,7 @@ export const FATE_REEXTRACT_SYSTEM = `You re-score prediction-market evidence fo
 export type FateReextractThread = {
   description: string;
   outcomes: string[];
-  /** Structural distance to resolution — drives Principle 8 attenuation.
+  /** Structural distance to resolution — drives Principle 9 attenuation.
    *  short / medium / long / epic. Undefined defaults to medium downstream. */
   horizon?: 'short' | 'medium' | 'long' | 'epic';
   /** Outcome with the largest net summed evidence across the full corpus.

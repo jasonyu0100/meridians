@@ -7,12 +7,12 @@
  */
 
 export function buildGameTheorySystemPrompt(): string {
-  return `You are a strategic analyst. For each beat bearing a meaningful decision in the scene, map the OUTCOME SPACE — every plausible action each participant could have taken, and the consequences of every pairing. You are an EVALUATOR, not a predictor: the author has already chosen what happened; your job is to describe the alternatives, not judge the choice. Follow the classification procedure, action-axis taxonomy, scoring scale, and output schema supplied in the user prompt. Return ONLY valid JSON.`;
+  return `You are a strategic analyst. For each beat bearing a meaningful decision in the scene, map the OUTCOME SPACE — every plausible action each participant could have taken, and the consequences of every pairing. You are an EVALUATOR, not a predictor: the realised outcome is already on the page (chosen by the author in fiction / non-fiction, or forced by the rule set in simulation); your job is to describe the alternatives, not judge the choice. Follow the classification procedure, action-axis taxonomy, scoring scale, and output schema supplied in the user prompt. Return ONLY valid JSON.`;
 }
 
 /** Detailed analysis guide — appended to the scene context in the user prompt. */
 const GAME_THEORY_GUIDE = `<doctrine>
-  <principle name="evaluator-not-predictor">Agents often act against local strategic interest — they trade stake for identity, short-term for long-term, cooperation for arc, narrow win for institutional position. That is a feature of narrative (and of real-world strategic play). NEVER warp stake deltas to "justify" what happened. Score each cell as if it were the realized outcome — honestly, against that player's interests. The author / source picking a dominated cell is exactly the information the downstream analysis wants.</principle>
+  <principle name="evaluator-not-predictor">Agents often act against local strategic interest — they trade stake for identity, short-term for long-term, cooperation for arc, narrow win for institutional position. That is a feature of narrative (and of real-world strategic play). NEVER warp stake deltas to "justify" what happened. Score each cell as if it were the realized outcome — honestly, against that player's interests. The realised cell landing on a dominated branch (whether by authorial choice or rule-forced consequence) is exactly the information the downstream analysis wants.</principle>
 </doctrine>
 
 <scope hint="Include beats where two+ agentic parties make choices that meaningfully affect each other.">
@@ -41,7 +41,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <field name="outcomes">EVERY pairing: playerAActions.length × playerBActions.length cells. { aActionName, bActionName, description, stakeDeltaA, stakeDeltaB }.</field>
   <field name="realizedAAction">The A-action that actually happened (must match a menu entry).</field>
   <field name="realizedBAction">The B-action that actually happened (must match a menu entry).</field>
-  <field name="rationale">ONE sentence: why did the author pick the realized cell over the alternatives?</field>
+  <field name="rationale">ONE sentence: why did the realised cell land where it did (authorial choice in fiction / non-fiction, or rule-forced consequence in simulation), instead of any alternative?</field>
   <constraint>Both players' actions live on the SAME axis (both on disclosure, both on trust, etc.). Actions should be specific to the scene, not generic ("reveals the letter", not "reveals information").</constraint>
   <constraint name="json-numbers">Write positives as plain digits (0, 1, 2, 3, 4), negatives with a minus (-1, -2, -3, -4). A leading "+" is invalid JSON and fails the whole response.</constraint>
 </game-object>
@@ -176,7 +176,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <scale value="-2">Moderately harmful.</scale>
   <scale value="-4">Catastrophic.</scale>
   <constraint>zero-sum label is reserved for grids that LITERALLY sum to zero across every cell — if any cell leaves both players positive OR both negative, the beat is not zero-sum.</constraint>
-  <key>Score as if the cell were the realized outcome. Do not bias toward making the realized cell look maximal. The evaluator's value comes from honest cross-cell comparison — the author picking a dominated cell is exactly the information downstream analysis wants to surface.</key>
+  <key>Score as if the cell were the realized outcome. Do not bias toward making the realized cell look maximal. The evaluator's value comes from honest cross-cell comparison — a dominated cell landing as realised is exactly the information downstream analysis wants to surface.</key>
 </stake-delta-scoring>
 
 <example title="Recipient (C-01) and Messenger (C-02) delivering a sealed summons in front of the recipient's household">

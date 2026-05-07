@@ -133,15 +133,20 @@ ${bucketLines}
 ${actions}
 </thread-action-guide>
 
-<engagement-and-realism hint="Fate = information gain × attention. A scene that only escalates the leader of every market is calibrationally clean but generates near-zero fate — the markets already priced that move. Force the portfolio to MOVE in ways an honest observer would update on.">
+<engagement-and-realism hint="Fate = information gain × attention. Motion is sustained, not spectacular. Compound minute evidence scene by scene; large reversals land only when earned. Markets stay in FLUX and drive toward MEANINGFUL CONCLUSIONS.">
   <per-arc-minimums hint="Across the scenes this prompt is generating, not within a single scene.">
-    <minimum>≥1 scene carries a payoff (|e|≥3, logType=payoff) OR twist (logType=twist against prior trend) on a high-volume market. Twists against committed leaders contribute the largest fate per scene.</minimum>
-    <minimum>≥1 scene carries resistance (logType=resistance, e=−1..−2) on a rising committed market — the leading agent meets cost they did not choose. A portfolio where every committed market only escalates is a progress bar, not a story.</minimum>
-    <minimum>Saturating markets either close in this arc (payoff or twist with |e|≥3 + margin clearance) or take a meaningful resistance / twist. 3+ scenes of silence on a saturating market is portfolio decay — close it, twist it, or actively maintain it.</minimum>
+    <minimum>≥1 scene carries a payoff (|e|≥3, logType=payoff) OR twist (against prior trend) on a high-volume market — only when prior scenes seeded the pressure. Unseeded twists read as authorial intervention.</minimum>
+    <minimum>≥1 scene carries resistance (logType=resistance, e=−1..−2) on a rising committed market — the leading agent meets cost they did not choose. All-leaders-winning is a progress bar.</minimum>
+    <minimum>Saturating markets — pick one, do not default to closure:
+      (a) PAYOFF: |e|≥3 on leader with margin clearance — locks resolution, market exits.
+      (b) TWIST-closes: |e|≥3 against prior trend on non-leader — reverses the committed direction.
+      (c) TWIST-reopens: |e|=2..3 on non-leader without closing — drops leader below saturation, restores contestation. Often the highest-leverage move.
+      RESISTANCE (|e|=1..2 on leader) keeps the market live without committing.
+      3+ scenes of silence is portfolio decay.</minimum>
     <minimum>Dormant markets either re-engage (volumeDelta ≥ +2 with new evidence) or accept attrition. Don't pulse them just to keep them on the board.</minimum>
   </per-arc-minimums>
   <register-grounding hint="The MECHANISM of reversal differs by register; the requirement that markets actually reverse does not.">
-    <register kind="fiction-or-non-fiction">Reversals come from the central agent meeting adversaries, evidence, institutional friction, or reality they did not control. Costs hit the protagonist on-page; rivals act on their own agenda; investigations turn up what the inquirer didn't expect. Authorial sympathy does NOT price as evidence — only realised on-page events do.</register>
+    <register kind="fiction-or-non-fiction">Reversals come from the central agent meeting adversaries, evidence, institutional friction, or reality they did not control. Costs hit the central agent on-page; rivals act on their own agenda; investigations turn up what the inquirer didn't expect. Authorial sympathy does NOT price as evidence — only realised on-page events do.</register>
     <register kind="simulation">Reversals come from the rule set firing in non-obvious ways — a threshold crossed, a feedback loop tripping, a propagation law cascading, a counterfactual closing a previously-open path. The "twist" is the model producing a state the optimistic projection didn't predict; the "resistance" is a rule pushing back on a trajectory the agent was banking on. The author does not author surprises — the rules do.</register>
   </register-grounding>
   <failure-modes hint="Each generates technically-clean emissions and zero fate. Audit before emission.">
@@ -150,8 +155,15 @@ ${actions}
     <mode name="no-cost-ledger">Liabilities are mentioned in prose (debts, injuries, suspicions, structural pressure) but never priced into a market whose lean is the thing the agent is trying to prevent. Symptom: costs evaporate scene-to-scene. Fix: open or maintain a cost-ledger market and emit evidence on it whenever the cost compounds.</mode>
     <mode name="phantom-accumulation">Repeatedly emitting +1..+2 evidence on an already-saturated leader. Symptom: the market is already priced; the next emission can't move it. Fix: switch to payoff (closes), twist (reverses), or pulse — never phantom-pile a saturated market.</mode>
     <mode name="rhetorical-evidence">Pricing on what the prose ASSERTS rather than what an outside observer would infer. Symptom: |e|≥2 on scenes whose content reads consistent with multiple outcomes. Fix: |e| ≤ 1 unless the scene only makes sense under the target outcome.</mode>
+    <mode name="frictionless-trajectory">No black swans, contingent events, or third-party agendas across the arc. Symptom: every consequence follows cleanly from the focal agent's plan. Fix: surface ≥1 contingent event the agent didn't model — third-party action, rule firing in a corner case, institutional or environmental accident, unforeseen consequence of an earlier delta.</mode>
   </failure-modes>
-</engagement-and-realism>`;
+</engagement-and-realism>
+
+<world-quirks hint="Long-form realism comes from the source's own texture, not imported habits.">
+  <principle name="source-specific-texture">Surface the world's own quirks — naming, ritual, weather, bureaucracy, professional tics, market frictions, rumour networks. Do not import texture from a different world.</principle>
+  <principle name="black-swans">Plant ~1 contingent event per arc — unforeseen visitor, mistimed memo, rule firing in a corner case, third party acting privately. Must respect the world's stated rules; surprise that breaks the work's own logic is authorial cheating.</principle>
+  <principle name="third-party-agendas">Named non-focal entities occasionally act on their own goals, not as backdrop — a rival's separate angle, an ally's independent call, an institution following its own procedure.</principle>
+</world-quirks>`;
 }
 
 /**

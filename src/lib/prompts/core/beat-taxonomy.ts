@@ -5,13 +5,13 @@
  * reverse engineering, and prose generation.
  */
 
-export const PROMPT_BEAT_TAXONOMY = `<beat-taxonomy hint="A beat is a single move within a scene. The 10 functions name what the move does; the 8 mechanisms name how the prose delivers it. The substance is whatever the source's register naturally carries — story event, argued claim, surfaced finding, image, current rule-state report — the taxonomy is the same.">
+export const PROMPT_BEAT_TAXONOMY = `<beat-taxonomy hint="A beat is a single move within a scene. The 10 functions name what the move does; the 8 mechanisms name how the prose delivers it. The substance is whatever the source's register naturally carries — narrative event, argued claim, surfaced finding, image, current rule-state report — the taxonomy is the same.">
 
   <functions count="10" hint="What the beat does.">
     <fn name="breathe">Atmosphere, grounding, framing, stage-setting, statement of current rule-state.</fn>
-    <fn name="inform">Someone learns something NOW — a participant or the reader registers a new fact, result, recognition, or rule reading.</fn>
+    <fn name="inform">Someone learns something NOW — a participant or the audience registers a new fact, result, recognition, or rule reading.</fn>
     <fn name="advance">Forward motion: goals pursued, claim pressed, evidence accumulates, position consolidates, modelled trajectory progresses.</fn>
-    <fn name="bond">Relational shift between any two positions — entities, stakeholders, framings, author and reader.</fn>
+    <fn name="bond">Relational shift between any two positions — entities, stakeholders, framings, work and audience.</fn>
     <fn name="turn">Revelation, reversal, interruption, counterargument.</fn>
     <fn name="reveal">Underlying nature exposed through action or choice — of an entity, a rule, a dataset, a source, a modelled mechanism.</fn>
     <fn name="shift">Power dynamic or rule-driven leverage inverts — between participants, between framings, between stakeholders, between rule-driven trajectories.</fn>
