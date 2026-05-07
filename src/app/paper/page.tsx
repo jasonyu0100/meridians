@@ -1259,7 +1259,7 @@ export default function PaperPage() {
             White Paper
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-white/90 mb-4">
-            Quantifying Worlds in Motion
+            Quantifying Worlds
           </h1>
           <p className="text-[15px] text-white/40 leading-relaxed max-w-xl">
             Modeling structural intelligence across narrative, inquiry,
