@@ -389,6 +389,11 @@ export type ThreadTrajectoryPoint = {
   sceneOrdinal: number;
   /** Scene id (for hover / click-through). */
   sceneId: string;
+  /** Outcome labels at this scene — the running cursor's outcomes (post
+   *  any mid-narrative addOutcomes). ALWAYS aligned 1:1 with `probs` so the
+   *  UI can render label/value pairs without an external lookup whose
+   *  length may have drifted from the cursor's softmax distribution. */
+  outcomes: string[];
   /** Probability distribution at this scene. */
   probs: number[];
   /** Normalized entropy at this scene. */
@@ -472,6 +477,11 @@ export function buildThreadTrajectory(
       sceneIndex: i,
       sceneOrdinal,
       sceneId: key,
+      // Snapshot the cursor's outcomes at the same moment we snapshot its
+      // probs. Mid-narrative addOutcomes can grow this beyond the live
+      // narrative.threads[id].outcomes — keeping the pair together
+      // guarantees the UI renders matching labels/values.
+      outcomes: cursor.outcomes.slice(),
       probs,
       entropy: normalizedEntropy(probs),
       volume: belief?.volume ?? 0,

@@ -13,19 +13,9 @@ import {
   THREAD_CATEGORY_HEX,
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
+  outcomeColourBg,
   type ThreadCategory,
 } from '@/lib/thread-category';
-
-// Probability-distribution outcome palette — top outcome saturated, runners-up
-// muted. Supports up to 6 outcomes (the market schema cap).
-const OUTCOME_COLOURS = [
-  'bg-emerald-400',
-  'bg-sky-400',
-  'bg-amber-400',
-  'bg-violet-400',
-  'bg-rose-400',
-  'bg-teal-400',
-];
 
 // ── Probability bar ────────────────────────────────────────────────────────
 
@@ -48,7 +38,7 @@ function ProbabilityBar({
       {probs.map((p, i) => (
         <div
           key={`${outcomes[i]}-${i}`}
-          className={`${OUTCOME_COLOURS[i % OUTCOME_COLOURS.length]} ${i === topIdx ? '' : 'opacity-50'}`}
+          className={`${outcomeColourBg(i)} ${i === topIdx ? '' : 'opacity-50'}`}
           style={{ width: `${p * 100}%` }}
         />
       ))}

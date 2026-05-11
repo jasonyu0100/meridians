@@ -104,6 +104,68 @@ export const THREAD_CATEGORY_HEX: Record<ThreadCategory, string> = {
   dormant: '#475569',     // slate-dim
 };
 
+// ── Outcome palette ────────────────────────────────────────────────────────
+// Single source of truth for per-outcome colour across every market view —
+// portfolio rows, market chart, thread inspector. Outcomes are colour-indexed
+// by their position in `thread.outcomes` (or trajectory snapshot), so a view
+// using a different palette would paint the same outcome a different hue.
+// Three views consume this: ThreadPortfolio (left sidebar), MarketView
+// (centre chart), ThreadDetail (right inspector).
+//
+// Sizing: the analysis-time market schema caps at ~6 outcomes ("2 to ~6 named
+// possibilities" — see scene-structure.ts), but mid-narrative `addOutcomes`
+// can grow a market further. The palette holds 12 distinct hues so any market
+// up to that size renders cleanly; beyond 12 the helpers below wrap (two
+// outcomes share a hue) — which is rare and acceptable, but `outcomeColour*`
+// gives callers a single chokepoint should we ever need to switch to a
+// generative HSL scheme.
+const OUTCOME_PALETTE_HEX_RAW: readonly string[] = [
+  '#38BDF8', // sky
+  '#FBBF24', // amber
+  '#2DD4BF', // teal
+  '#A78BFA', // violet
+  '#FB7185', // rose
+  '#34D399', // emerald
+  '#818CF8', // indigo
+  '#FB923C', // orange
+  '#A3E635', // lime
+  '#E879F9', // fuchsia
+  '#22D3EE', // cyan
+  '#FACC15', // yellow
+];
+
+const OUTCOME_PALETTE_BG_RAW: readonly string[] = [
+  'bg-sky-400',
+  'bg-amber-400',
+  'bg-teal-400',
+  'bg-violet-400',
+  'bg-rose-400',
+  'bg-emerald-400',
+  'bg-indigo-400',
+  'bg-orange-400',
+  'bg-lime-400',
+  'bg-fuchsia-400',
+  'bg-cyan-400',
+  'bg-yellow-400',
+];
+
+export const OUTCOME_PALETTE_HEX = OUTCOME_PALETTE_HEX_RAW;
+export const OUTCOME_PALETTE_BG = OUTCOME_PALETTE_BG_RAW;
+
+/** Hex colour for outcome at `idx`. Wraps at palette length so unbounded
+ *  outcome growth never throws — the wrap is the documented overflow
+ *  behaviour (two outcomes share a hue past 12). Always prefer these helpers
+ *  over direct palette access so the wrap policy stays in one place. */
+export function outcomeColourHex(idx: number): string {
+  return OUTCOME_PALETTE_HEX_RAW[((idx % OUTCOME_PALETTE_HEX_RAW.length) + OUTCOME_PALETTE_HEX_RAW.length) % OUTCOME_PALETTE_HEX_RAW.length];
+}
+
+/** Tailwind bg class for outcome at `idx`. Same wrap policy as
+ *  `outcomeColourHex`. */
+export function outcomeColourBg(idx: number): string {
+  return OUTCOME_PALETTE_BG_RAW[((idx % OUTCOME_PALETTE_BG_RAW.length) + OUTCOME_PALETTE_BG_RAW.length) % OUTCOME_PALETTE_BG_RAW.length];
+}
+
 /** Tailwind token classes (background). For React components that compose
  *  with rounded-full / etc. The `/N` suffix is intentionally absent so the
  *  caller picks an opacity if they need one. */

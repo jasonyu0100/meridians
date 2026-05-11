@@ -38,22 +38,10 @@ import {
   THREAD_CATEGORY_HEX,
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
+  outcomeColourHex,
   type ThreadCategory,
 } from '@/lib/thread-category';
 import { getMarketBelief, getMarketMargin, getMarketProbs, countScenes, sceneOrdinalAt } from '@/lib/narrative-utils';
-
-// ── Palette ────────────────────────────────────────────────────────────────
-
-// Per-outcome colours for the probability trajectory + outcome list. Top
-// outcome in the featured market's distribution takes the brightest slot.
-const OUTCOME_HEX = [
-  '#38BDF8', // sky — leader
-  '#FBBF24', // amber
-  '#2DD4BF', // teal
-  '#A78BFA', // violet
-  '#FB7185', // rose
-  '#34D399', // emerald
-];
 
 // ── Category filter chips ──────────────────────────────────────────────────
 
@@ -156,15 +144,21 @@ function FeaturedTrajectory({
   const xAt = (i: number) => PAD_L + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
   const yAt = (p: number) => PAD_T + (1 - p) * plotH;
 
+  // Use the trajectory's own outcomes list (last point — outcomes only grow
+  // via addOutcomes, never shrink). Renders against `pt.probs` 1:1, so a
+  // mid-narrative outcome expansion that diverges from the live
+  // narrative.threads[id].outcomes still renders correctly and the per-
+  // scene percentages sum to 100%.
+  const chartOutcomes = points[points.length - 1].outcomes;
+  const numOutcomes = chartOutcomes.length;
   // Per-outcome vertical nudge so tied probabilities render as parallel strokes
   // rather than collapsing onto each other. 3.5px keeps tied lines legible
   // without falsifying the data meaningfully (≈1.4pp on a 0–100% axis).
-  const numOutcomes = thread.outcomes.length;
   const lineOffset = (k: number) => (k - (numOutcomes - 1) / 2) * 3.5;
 
   // Build one polyline per outcome — the probability of that outcome over
   // time. Readers can trace which outcome surged when.
-  const lines = thread.outcomes.map((_, k) => {
+  const lines = chartOutcomes.map((_, k) => {
     const off = lineOffset(k);
     const d = points
       .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(pt.probs[k] ?? 0) + off}`)
@@ -207,15 +201,16 @@ function FeaturedTrajectory({
           key={k}
           d={d}
           fill="none"
-          stroke={OUTCOME_HEX[k % OUTCOME_HEX.length]}
+          stroke={outcomeColourHex(k)}
           strokeWidth={1.75}
           opacity={0.85}
           strokeLinecap="round"
         />
       ))}
       {/* Endpoint dots — labels live in the left-side outcome list, so we only
-          mark the current position here. */}
-      {thread.outcomes.map((_, k) => {
+          mark the current position here. Use the trajectory's own outcomes
+          for the same length-alignment guarantee as the polyline. */}
+      {chartOutcomes.map((_, k) => {
         const p = points[points.length - 1].probs[k] ?? 0;
         return (
           <circle
@@ -223,7 +218,7 @@ function FeaturedTrajectory({
             cx={xAt(points.length - 1)}
             cy={yAt(p) + lineOffset(k)}
             r={2.5}
-            fill={OUTCOME_HEX[k % OUTCOME_HEX.length]}
+            fill={outcomeColourHex(k)}
             opacity={0.9}
           />
         );
@@ -252,11 +247,19 @@ function FeaturedMarket({
   points: ThreadTrajectoryPoint[];
   category: ThreadCategory;
 }) {
-  const probs = getMarketProbs(thread);
+  // The trajectory's tail point is the canonical source for both the
+  // outcome labels and their probabilities at the current scene index —
+  // they're snapshotted together from the same softmax distribution, so the
+  // displayed percentages always sum to 100% and match what the chart
+  // plots. Fall back to the live thread only when no scenes have replayed
+  // for this market yet.
+  const tail = points.length > 0 ? points[points.length - 1] : null;
+  const tailOutcomes = tail ? tail.outcomes : thread.outcomes;
+  const tailProbs = tail ? tail.probs : getMarketProbs(thread);
   const belief = getMarketBelief(thread);
   const { margin } = getMarketMargin(thread);
-  const ranked = thread.outcomes
-    .map((o, i) => ({ outcome: o, idx: i, prob: probs[i] ?? 0 }))
+  const ranked = tailOutcomes
+    .map((o, i) => ({ outcome: o, idx: i, prob: tailProbs[i] ?? 0 }))
     .sort((a, b) => b.prob - a.prob);
   const catColor = THREAD_CATEGORY_HEX[category];
 
@@ -316,7 +319,7 @@ function FeaturedMarket({
             <div key={`${outcome}-${idx}`} className="flex items-start gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-sm shrink-0 mt-1"
-                style={{ background: OUTCOME_HEX[idx % OUTCOME_HEX.length] }}
+                style={{ background: outcomeColourHex(idx) }}
               />
               <span className="text-xs text-text-primary flex-1 wrap-break-word min-w-0 leading-snug">
                 {outcome}
@@ -417,7 +420,7 @@ function MarketCard({
             key={i}
             style={{
               width: `${p * 100}%`,
-              background: OUTCOME_HEX[i % OUTCOME_HEX.length],
+              background: outcomeColourHex(i),
               opacity: i === topIdx ? 1 : 0.5,
             }}
           />

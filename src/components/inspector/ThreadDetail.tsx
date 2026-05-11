@@ -24,15 +24,7 @@ import { useStore } from "@/lib/store";
 import { useMemo, useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
 
-// Shared palette with MarketView — top outcome takes the brightest slot.
-const OUTCOME_HEX = [
-  "#38BDF8", // sky
-  "#FBBF24", // amber
-  "#2DD4BF", // teal
-  "#A78BFA", // violet
-  "#FB7185", // rose
-  "#34D399", // emerald
-];
+import { outcomeColourHex } from "@/lib/thread-category";
 
 type Props = {
   threadId: string;
@@ -422,10 +414,15 @@ export default function ThreadDetail({ threadId }: Props) {
         const tailPoint =
           trajectory.length > 0 ? trajectory[trajectory.length - 1] : null;
         const tailProbs = tailPoint ? tailPoint.probs : getMarketProbs(thread);
+        // Render the outcomes that match the displayed probs 1:1. Mid-
+        // narrative addOutcomes can leave the cursor with more outcomes
+        // than narrative.threads[id].outcomes; using the trajectory's own
+        // snapshot guarantees the displayed percentages sum to 100%.
+        const tailOutcomes = tailPoint ? tailPoint.outcomes : thread.outcomes;
         const belief = getMarketBelief(thread);
         const { margin } = getMarketMargin(thread);
         const currentEntropy = normalizedEntropy(tailProbs);
-        const ranked = thread.outcomes
+        const ranked = tailOutcomes
           .map((outcome, idx) => ({
             outcome,
             idx,
@@ -491,7 +488,7 @@ export default function ThreadDetail({ threadId }: Props) {
             {/* Ranked outcomes with probability bars */}
             <ul className="flex flex-col gap-1.5">
               {ranked.map(({ outcome, idx, prob }) => {
-                const color = OUTCOME_HEX[idx % OUTCOME_HEX.length];
+                const color = outcomeColourHex(idx);
                 const isWinner = isClosed && thread.closeOutcome === idx;
                 const logit = belief?.logits[idx] ?? 0;
                 return (
