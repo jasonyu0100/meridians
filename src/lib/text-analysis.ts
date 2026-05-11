@@ -1578,9 +1578,9 @@ function buildMetaContext(
 export const ASSEMBLE_STAGES = [
   'ingest',
   'arcs',
-  'world-builds',
-  'world-summaries',
-  'meta-extraction',
+  'builds',
+  'summaries',
+  'meta',
   'finalize',
 ] as const;
 export type AssembleStage = (typeof ASSEMBLE_STAGES)[number];
@@ -1599,6 +1599,24 @@ export type AssembleNarrativeOptions = {
    *    the system deltas the LLM emitted on those scenes are aggregated onto
    *    the WB they belong to (otherwise the knowledge would be lost). */
   extractionMode?: 'world' | 'full';
+  // ── Precomputed phase outputs ─────────────────────────────────────────────
+  // When supplied, assembly consumes them directly — no LLM round-trips. The
+  // runner produces these in discrete phases before assembly, persists them
+  // onto the analysis job, and passes them here. Regeneration (after the
+  // narrative is deleted) reads them off the job, so assembly stays purely
+  // deterministic.
+  /** Per-WorldBuild intent summary, keyed by the deterministic WB id. */
+  worldBuildSummaries?: Record<string, string>;
+  /** Whole-work meta (image style, prose profile, genre, patterns). */
+  meta?: import('@/types/narrative').AnalysisMeta;
+  // ── First-run capture callbacks ───────────────────────────────────────────
+  // Invoked AS the LLM outputs are produced, so the runner can persist them
+  // onto the job for future regeneration. When the inputs above are already
+  // supplied, the corresponding LLM call is skipped and the callback fires
+  // with the supplied value unchanged (so the runner can store the same
+  // canonical value regardless of source).
+  onWorldBuildSummariesResolved?: (summaries: Record<string, string>) => void;
+  onMetaResolved?: (meta: import('@/types/narrative').AnalysisMeta) => void;
 };
 
 export async function assembleNarrative(
@@ -1615,6 +1633,8 @@ export async function assembleNarrative(
       : (onTokenOrOptions ?? { arcGroups: arcGroupsLegacy });
   const { onToken, arcGroups, onStage, cancelled } = options;
   const extractionMode: 'world' | 'full' = options.extractionMode ?? 'full';
+  const providedSummaries = options.worldBuildSummaries;
+  const providedMeta = options.meta;
   const PREFIX =
     title
       .replace(/[^a-zA-Z]/g, "")
@@ -2351,7 +2371,7 @@ export async function assembleNarrative(
 
   // World builds — one per ~3 arcs (12 scenes), only when new entities are introduced.
   // The first batch always gets a commit; later batches are skipped if nothing new appeared.
-  onStage?.('world-builds');
+  onStage?.('builds');
   const WORLD_COMMIT_INTERVAL = SCENES_PER_ARC * 3; // ~12 scenes = 3 arcs
   const worldBuilds: Record<string, WorldBuild> = {};
   // Map from the first scene id of a batch → the world build commit to insert before it
@@ -2532,14 +2552,24 @@ export async function assembleNarrative(
     }
   }
 
-  // Resolve the LLM intent summaries for every WorldBuild via a worker pool
-  // capped at ANALYSIS_CONCURRENCY — same sliding-window pattern as
-  // reextractFateWithLifecycle. Progress feeds the analysis sidebar so the
-  // operator sees "(N/M)" tick up. On per-summary failure we drop in a
-  // deterministic fallback string so a flaky LLM doesn't sink the assembly.
-  // Stage always fires (even with zero summaries) so the sidebar advances.
-  onStage?.('world-summaries', 0, worldBuildSummaryInputs.length);
-  if (worldBuildSummaryInputs.length > 0) {
+  // Per-WorldBuild intent summaries. When the runner supplied them via
+  // options.worldBuildSummaries (i.e. they were produced by the upstream
+  // world-summaries phase and persisted on the job), apply them directly and
+  // skip the LLM pool. Otherwise call the LLM in a sliding-window worker
+  // pool capped at ANALYSIS_CONCURRENCY; on per-summary failure we drop in
+  // a deterministic fallback so a flaky LLM doesn't sink assembly.
+  onStage?.('summaries', 0, worldBuildSummaryInputs.length);
+  const resolvedSummaries: Record<string, string> = {};
+  if (providedSummaries && worldBuildSummaryInputs.length > 0) {
+    // Pure path — no LLM round-trips.
+    for (const input of worldBuildSummaryInputs) {
+      const summary = providedSummaries[input.worldBuildId] ?? fallbackBatchSummary(input);
+      resolvedSummaries[input.worldBuildId] = summary;
+      const wb = worldBuilds[input.worldBuildId];
+      if (wb) wb.summary = summary;
+    }
+    onStage?.('summaries', worldBuildSummaryInputs.length, worldBuildSummaryInputs.length);
+  } else if (worldBuildSummaryInputs.length > 0) {
     let summaryDone = 0;
     const queue = [...worldBuildSummaryInputs];
     const workerCount = Math.min(ANALYSIS_CONCURRENCY, queue.length);
@@ -2552,6 +2582,7 @@ export async function assembleNarrative(
             if (!input) return;
             try {
               const summary = await summariseWorldBuildBatch(input);
+              resolvedSummaries[input.worldBuildId] = summary;
               const wb = worldBuilds[input.worldBuildId];
               if (wb) wb.summary = summary;
             } catch (err) {
@@ -2560,11 +2591,13 @@ export async function assembleNarrative(
                 err,
                 { source: 'analysis', operation: 'summariseWorldBuildBatch' },
               );
+              const fallback = fallbackBatchSummary(input);
+              resolvedSummaries[input.worldBuildId] = fallback;
               const wb = worldBuilds[input.worldBuildId];
-              if (wb) wb.summary = fallbackBatchSummary(input);
+              if (wb) wb.summary = fallback;
             } finally {
               summaryDone++;
-              onStage?.('world-summaries', summaryDone, worldBuildSummaryInputs.length);
+              onStage?.('summaries', summaryDone, worldBuildSummaryInputs.length);
             }
           }
         })(),
@@ -2572,6 +2605,7 @@ export async function assembleNarrative(
     }
     await Promise.all(workers);
   }
+  options.onWorldBuildSummariesResolved?.(resolvedSummaries);
 
   // Build entryIds.
   //
@@ -2642,8 +2676,10 @@ export async function assembleNarrative(
 
   const worldSummary = results.map((ch) => ch.chapterSummary).join(" ");
 
-  // Generate image style and prose profile from the analyzed content
-  onStage?.('meta-extraction');
+  // Meta extraction — image style + prose profile + genre + patterns. When
+  // the runner supplied options.meta from the upstream meta-synthesis phase,
+  // apply it directly; the LLM call is the costly step we skip on regenerate.
+  onStage?.('meta');
   let imageStyle: string | undefined;
   let proseProfile: ProseProfile | undefined;
   let planGuidance = "";
@@ -2652,71 +2688,90 @@ export async function assembleNarrative(
   let patterns: string[] = [];
   let antiPatterns: string[] = [];
 
-  try {
-    const metaResult = await callAnalysis(
-      buildMetaExtractionPrompt({
-        metaContext: buildMetaContext(results, characters, threads, locations, scenes, worldSummary),
-      }),
-      META_EXTRACTION_SYSTEM,
-      onToken,
-      "metaExtraction",
-    );
-    const metaParsed = JSON.parse(extractJSON(metaResult));
-    imageStyle = metaParsed.imageStyle;
-    if (
-      metaParsed.proseProfile &&
-      typeof metaParsed.proseProfile === "object"
-    ) {
-      const pp = metaParsed.proseProfile;
-      const str = (v: unknown) =>
-        typeof v === "string" && v.trim() ? v.trim() : undefined;
-      proseProfile = {
-        register: str(pp.register) ?? "",
-        stance: str(pp.stance) ?? "",
-        tense: str(pp.tense),
-        sentenceRhythm: str(pp.sentenceRhythm),
-        interiority: str(pp.interiority),
-        dialogueWeight: str(pp.dialogueWeight),
-        devices: Array.isArray(pp.devices)
-          ? pp.devices.filter((d: unknown) => typeof d === "string")
-          : [],
-        rules: Array.isArray(pp.rules)
-          ? pp.rules.filter((r: unknown) => typeof r === "string")
-          : [],
-        antiPatterns: Array.isArray(pp.antiPatterns)
-          ? pp.antiPatterns.filter((a: unknown) => typeof a === "string")
-          : [],
-      };
+  if (providedMeta) {
+    imageStyle = providedMeta.imageStyle;
+    proseProfile = providedMeta.proseProfile;
+    planGuidance = providedMeta.planGuidance ?? "";
+    genre = providedMeta.genre;
+    subgenre = providedMeta.subgenre;
+    patterns = providedMeta.patterns ?? [];
+    antiPatterns = providedMeta.antiPatterns ?? [];
+  } else {
+    try {
+      const metaResult = await callAnalysis(
+        buildMetaExtractionPrompt({
+          metaContext: buildMetaContext(results, characters, threads, locations, scenes, worldSummary),
+        }),
+        META_EXTRACTION_SYSTEM,
+        onToken,
+        "metaExtraction",
+      );
+      const metaParsed = JSON.parse(extractJSON(metaResult));
+      imageStyle = metaParsed.imageStyle;
+      if (
+        metaParsed.proseProfile &&
+        typeof metaParsed.proseProfile === "object"
+      ) {
+        const pp = metaParsed.proseProfile;
+        const str = (v: unknown) =>
+          typeof v === "string" && v.trim() ? v.trim() : undefined;
+        proseProfile = {
+          register: str(pp.register) ?? "",
+          stance: str(pp.stance) ?? "",
+          tense: str(pp.tense),
+          sentenceRhythm: str(pp.sentenceRhythm),
+          interiority: str(pp.interiority),
+          dialogueWeight: str(pp.dialogueWeight),
+          devices: Array.isArray(pp.devices)
+            ? pp.devices.filter((d: unknown) => typeof d === "string")
+            : [],
+          rules: Array.isArray(pp.rules)
+            ? pp.rules.filter((r: unknown) => typeof r === "string")
+            : [],
+          antiPatterns: Array.isArray(pp.antiPatterns)
+            ? pp.antiPatterns.filter((a: unknown) => typeof a === "string")
+            : [],
+        };
+      }
+      if (
+        typeof metaParsed.planGuidance === "string" &&
+        metaParsed.planGuidance.trim()
+      ) {
+        planGuidance = metaParsed.planGuidance.trim();
+      }
+      if (typeof metaParsed.genre === "string" && metaParsed.genre.trim()) {
+        genre = metaParsed.genre.trim();
+      }
+      if (typeof metaParsed.subgenre === "string" && metaParsed.subgenre.trim()) {
+        subgenre = metaParsed.subgenre.trim();
+      }
+      if (Array.isArray(metaParsed.patterns)) {
+        patterns = metaParsed.patterns.filter((p: unknown) => typeof p === "string");
+      }
+      if (Array.isArray(metaParsed.antiPatterns)) {
+        antiPatterns = metaParsed.antiPatterns.filter((p: unknown) => typeof p === "string");
+      }
+    } catch (err) {
+      logWarning(
+        "Style/profile extraction failed - using defaults",
+        err instanceof Error ? err : String(err),
+        {
+          source: "analysis",
+          operation: "meta-extraction",
+          details: { title, chunkCount: results.length },
+        },
+      );
     }
-    if (
-      typeof metaParsed.planGuidance === "string" &&
-      metaParsed.planGuidance.trim()
-    ) {
-      planGuidance = metaParsed.planGuidance.trim();
-    }
-    if (typeof metaParsed.genre === "string" && metaParsed.genre.trim()) {
-      genre = metaParsed.genre.trim();
-    }
-    if (typeof metaParsed.subgenre === "string" && metaParsed.subgenre.trim()) {
-      subgenre = metaParsed.subgenre.trim();
-    }
-    if (Array.isArray(metaParsed.patterns)) {
-      patterns = metaParsed.patterns.filter((p: unknown) => typeof p === "string");
-    }
-    if (Array.isArray(metaParsed.antiPatterns)) {
-      antiPatterns = metaParsed.antiPatterns.filter((p: unknown) => typeof p === "string");
-    }
-  } catch (err) {
-    logWarning(
-      "Style/profile extraction failed - using defaults",
-      err instanceof Error ? err : String(err),
-      {
-        source: "analysis",
-        operation: "meta-extraction",
-        details: { title, chunkCount: results.length },
-      },
-    );
   }
+  options.onMetaResolved?.({
+    imageStyle,
+    proseProfile,
+    planGuidance,
+    genre,
+    subgenre,
+    patterns,
+    antiPatterns,
+  });
 
   // World-only mode emits a seed: entities + per-batch world commits, no
   // chronology. The deltas every dropped scene carried have already been

@@ -1817,12 +1817,80 @@ describe('assembleNarrative — world-only extraction', () => {
       extractionMode: 'world',
       onStage: (stage) => stages.push(stage),
     });
-    // The world-summaries phase must still fire even with no scenes.
-    expect(stages).toContain('world-summaries');
+    // The summaries phase must still fire even with no scenes.
+    expect(stages).toContain('summaries');
     // Each WB carries some summary string (LLM-generated or fallback).
     for (const wb of Object.values(narrative.worldBuilds)) {
       expect(wb.summary.length).toBeGreaterThan(0);
     }
+  });
+
+  // ── Pre-assembly phase outputs: meta + worldBuildSummaries are persistable ──
+  // The assembly pipeline emits its LLM outputs (per-WB intent summaries and
+  // whole-work meta) via callbacks. When passed back in via options, the
+  // function uses them directly and emits nothing further — making
+  // regeneration after a deleted narrative a zero-LLM operation.
+
+  it('emits resolved worldBuildSummaries and meta on first assembly', async () => {
+    const results = [createRichAnalysisResult(0)];
+    let capturedSummaries: Record<string, string> | null = null;
+    let capturedMeta: import('@/types/narrative').AnalysisMeta | null = null;
+    await assembleNarrative('Test', results, {}, {
+      extractionMode: 'world',
+      onWorldBuildSummariesResolved: (s) => { capturedSummaries = s; },
+      onMetaResolved: (m) => { capturedMeta = m; },
+    });
+    // Summaries map keys by WorldBuild id ("WB-PFX-001"). At minimum the
+    // initial commit gets a summary; expect at least one entry.
+    expect(capturedSummaries).not.toBeNull();
+    expect(Object.keys(capturedSummaries!).length).toBeGreaterThan(0);
+    // Meta object is always emitted (fields may be undefined when the LLM
+    // call falls through to defaults, but the callback fires exactly once).
+    expect(capturedMeta).not.toBeNull();
+  });
+
+  it('consumes precomputed worldBuildSummaries deterministically on regenerate', async () => {
+    const results = [createRichAnalysisResult(0)];
+    // First pass — capture the outputs.
+    let firstSummaries: Record<string, string> | null = null;
+    await assembleNarrative('Test', results, {}, {
+      extractionMode: 'world',
+      onWorldBuildSummariesResolved: (s) => { firstSummaries = s; },
+    });
+    expect(firstSummaries).not.toBeNull();
+    // Second pass — feed the outputs back in, swap one summary to a sentinel
+    // string. Assembly must use the supplied value verbatim, not re-call
+    // the LLM (which would overwrite our sentinel).
+    const wbIds = Object.keys(firstSummaries!);
+    const sentinelId = wbIds[0];
+    const sentinel = '<<sentinel-summary-from-regenerate>>';
+    const regenInputs = { ...firstSummaries!, [sentinelId]: sentinel };
+    const narrative = await assembleNarrative('Test', results, {}, {
+      extractionMode: 'world',
+      worldBuildSummaries: regenInputs,
+    });
+    expect(narrative.worldBuilds[sentinelId].summary).toBe(sentinel);
+  });
+
+  it('consumes precomputed meta deterministically on regenerate', async () => {
+    const results = [createRichAnalysisResult(0)];
+    const sentinelMeta: import('@/types/narrative').AnalysisMeta = {
+      imageStyle: 'sentinel-image-style',
+      genre: 'sentinel-genre',
+      subgenre: 'sentinel-subgenre',
+      planGuidance: 'sentinel-guidance',
+      patterns: ['p1', 'p2'],
+      antiPatterns: ['ap1'],
+    };
+    const narrative = await assembleNarrative('Test', results, {}, {
+      extractionMode: 'world',
+      meta: sentinelMeta,
+    });
+    expect(narrative.imageStyle).toBe('sentinel-image-style');
+    expect(narrative.genre).toBe('sentinel-genre');
+    expect(narrative.subgenre).toBe('sentinel-subgenre');
+    expect(narrative.patterns).toEqual(['p1', 'p2']);
+    expect(narrative.antiPatterns).toEqual(['ap1']);
   });
 });
 

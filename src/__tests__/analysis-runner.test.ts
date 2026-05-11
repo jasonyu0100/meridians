@@ -41,7 +41,7 @@ vi.mock('@/lib/asset-manager', () => ({
     storeEmbedding: vi.fn(async () => 'emb-ref-123'),
   },
 }));
-import { extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, assembleNarrative } from '@/lib/text-analysis';
+import { extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, reextractFateWithLifecycle, assembleNarrative } from '@/lib/text-analysis';
 import { reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { analysisRunner } from '@/lib/analysis-runner';
 const mockNarrative: NarrativeState = {
@@ -674,5 +674,104 @@ describe('AnalysisRunner — Edge Cases', () => {
       a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.results
     );
     expect(resultUpdates.length).toBeGreaterThan(0);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Resume — phases that have already produced their canonical output skip on
+// re-run. Each phase's completion marker on the AnalysisJob doubles as the
+// resume guard.
+// ══════════════════════════════════════════════════════════════════════════════
+describe('AnalysisRunner — Resume from partial progress', () => {
+  it('skips arc grouping when arcGroups already on the job', async () => {
+    const job = createMockJob({
+      arcGroups: [{ name: 'Pre-existing Arc', sceneIndices: [0, 1] }],
+    });
+    await analysisRunner.start(job, () => {});
+    expect(groupScenesIntoArcs).not.toHaveBeenCalled();
+    // Assembly still receives the persisted groups verbatim.
+    const opts = vi.mocked(assembleNarrative).mock.calls[0][3] as { arcGroups?: { name: string; sceneIndices: number[] }[] } | undefined;
+    expect(opts?.arcGroups?.[0].name).toBe('Pre-existing Arc');
+  });
+
+  it('skips reconciliation when reconciledAt is set', async () => {
+    const job = createMockJob({
+      reconciledAt: Date.now() - 60_000,
+    });
+    await analysisRunner.start(job, () => {});
+    expect(reconcileResults).not.toHaveBeenCalled();
+  });
+
+  it('skips fate re-extract when fateReextractedAt is set', async () => {
+    const job = createMockJob({
+      fateReextractedAt: Date.now() - 60_000,
+    });
+    await analysisRunner.start(job, () => {});
+    expect(reextractFateWithLifecycle).not.toHaveBeenCalled();
+  });
+
+  it('skips thread-deps LLM when threadDependencies already on the job', async () => {
+    const job = createMockJob({
+      threadDependencies: { 'T-01': ['T-02'] },
+    });
+    await analysisRunner.start(job, () => {});
+    expect(analyzeThreading).not.toHaveBeenCalled();
+  });
+
+  it('passes worldBuildSummaries + meta through to assembly when persisted', async () => {
+    const job = createMockJob({
+      worldBuildSummaries: { 'WB-TST-001': 'persisted summary' },
+      meta: { imageStyle: 'persisted-style', patterns: ['p1'] },
+    });
+    await analysisRunner.start(job, () => {});
+    const opts = vi.mocked(assembleNarrative).mock.calls[0][3] as {
+      worldBuildSummaries?: Record<string, string>;
+      meta?: { imageStyle?: string; patterns?: string[] };
+    } | undefined;
+    expect(opts?.worldBuildSummaries?.['WB-TST-001']).toBe('persisted summary');
+    expect(opts?.meta?.imageStyle).toBe('persisted-style');
+  });
+
+  it('full resume: every cross-chunk phase is skipped when all markers set', async () => {
+    const job = createMockJob({
+      // Per-chunk done (chapterSummary + plan present) so structure/plans skip.
+      results: [
+        {
+          chapterSummary: 'done',
+          characters: [], locations: [], threads: [],
+          scenes: [{
+            locationName: 'X', povName: 'Y', participantNames: [], events: [], summary: 'done',
+            sections: [], prose: 'p',
+            plan: { beats: [{ fn: 'advance', mechanism: 'action', what: 'd', propositions: [] }] },
+            threadDeltas: [], worldDeltas: [], relationshipDeltas: [],
+          }],
+          relationships: [],
+        },
+        {
+          chapterSummary: 'done',
+          characters: [], locations: [], threads: [],
+          scenes: [{
+            locationName: 'X', povName: 'Y', participantNames: [], events: [], summary: 'done',
+            sections: [], prose: 'p',
+            plan: { beats: [{ fn: 'advance', mechanism: 'action', what: 'd', propositions: [] }] },
+            threadDeltas: [], worldDeltas: [], relationshipDeltas: [],
+          }],
+          relationships: [],
+        },
+      ],
+      arcGroups: [{ name: 'Done', sceneIndices: [0, 1] }],
+      reconciledAt: 1,
+      fateReextractedAt: 1,
+      threadDependencies: { 'T-01': [] },
+    });
+    await analysisRunner.start(job, () => {});
+    // Only assembly runs — every LLM-bearing phase is skipped.
+    expect(reverseEngineerScenePlan).not.toHaveBeenCalled();
+    expect(extractSceneStructure).not.toHaveBeenCalled();
+    expect(groupScenesIntoArcs).not.toHaveBeenCalled();
+    expect(reconcileResults).not.toHaveBeenCalled();
+    expect(reextractFateWithLifecycle).not.toHaveBeenCalled();
+    expect(analyzeThreading).not.toHaveBeenCalled();
+    expect(assembleNarrative).toHaveBeenCalledTimes(1);
   });
 });

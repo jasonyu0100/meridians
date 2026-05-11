@@ -2211,7 +2211,22 @@ export type AnalysisPhase =
   | "arcs"
   | "reconciliation"
   | "finalization"
+  | "summaries"
+  | "meta"
   | "assembly";
+
+/** Meta-extraction output — produced by the meta-synthesis phase, consumed
+ *  by assembly. Image style + prose profile + genre + pattern directives
+ *  derived from a whole-work view of the chunk results. */
+export type AnalysisMeta = {
+  imageStyle?: string;
+  proseProfile?: ProseProfile;
+  planGuidance?: string;
+  genre?: string;
+  subgenre?: string;
+  patterns?: string[];
+  antiPatterns?: string[];
+};
 
 export type AnalysisJob = {
   id: string;
@@ -2219,7 +2234,7 @@ export type AnalysisJob = {
   sourceText: string;
   /** Text split into numbered sections */
   chunks: { index: number; text: string; sectionCount: number }[];
-  /** Results per chunk (same indices as chunks) */
+  /** Per-chunk extraction results (phases 1-4 output, indexed parallel to chunks). */
   results: (AnalysisChunkResult | null)[];
   status: "pending" | "running" | "paused" | "completed" | "failed";
   /** Current pipeline phase — more reliable than parsing stream text */
@@ -2240,6 +2255,33 @@ export type AnalysisJob = {
    *    extraction still runs (we need it to discover entities); only the
    *    assembled output differs. */
   extractionMode?: 'world' | 'full';
+  // ── Cross-chunk pipeline outputs ──────────────────────────────────────────
+  // Each field below is the canonical output of a discrete pipeline phase
+  // that runs ONCE after per-chunk extraction completes. Assembly consumes
+  // them deterministically; it makes no LLM calls of its own. Because the
+  // outputs live on the job, a later "regenerate" (after the narrative is
+  // deleted) re-runs assembly with zero LLM round-trips.
+  //
+  // Resumption: each field doubles as a completion marker. The runner
+  // checks for the field's presence and skips the producing phase when set
+  // — so a job can be paused mid-pipeline and resumed seamlessly without
+  // re-running expensive LLM calls.
+  /** Arc-grouping output (Phase 3). Skipped when present on resume. */
+  arcGroups?: { name: string; directionVector?: string; worldState?: string; sceneIndices: number[] }[];
+  /** Timestamp marker — reconciliation (Phase 4) completed at this time.
+   *  Skipped on resume when set. */
+  reconciledAt?: number;
+  /** Timestamp marker — fate re-extract (Phase 5a) completed at this time.
+   *  Skipped on resume when set. */
+  fateReextractedAt?: number;
+  /** Thread-dependency map — phase 5 output (Finalization). */
+  threadDependencies?: Record<string, string[]>;
+  /** Per-WorldBuild intent summaries, keyed by deterministic worldBuildId
+   *  ("WB-<prefix>-001"). Phase output of WORLD_SUMMARIES. */
+  worldBuildSummaries?: Record<string, string>;
+  /** Whole-work meta — image style, prose profile, genre, patterns. Phase
+   *  output of META_SYNTHESIS. */
+  meta?: AnalysisMeta;
   createdAt: number;
   updatedAt: number;
 };

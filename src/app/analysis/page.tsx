@@ -24,9 +24,9 @@ import { ApiLogsViewer } from '@/components/apilogs/ApiLogsViewer';
 const ASSEMBLE_STAGE_LABEL: Record<AssembleStage, string> = {
   ingest: 'Ingesting chunks',
   arcs: 'Wiring arcs',
-  'world-builds': 'Composing world commits',
-  'world-summaries': 'Summarising worlds',
-  'meta-extraction': 'Extracting style + profile',
+  builds: 'Composing world commits',
+  summaries: 'Summarising worlds',
+  meta: 'Extracting style + profile',
   finalize: 'Finalising narrative',
 };
 
@@ -262,7 +262,9 @@ function JobDetail({ job }: { job: AnalysisJob }) {
   const isArcing = liveJob.phase === 'arcs';
   const isReconciling = liveJob.phase === 'reconciliation';
   const isFinalizing = liveJob.phase === 'finalization';
-  const isAssembling = liveJob.phase === 'assembly';
+  const isSummarising = liveJob.phase === 'summaries';
+  const isMetaSynthesising = liveJob.phase === 'meta';
+  const isAssembling = liveJob.phase === 'assembly' || isSummarising || isMetaSynthesising;
 
   const completed = liveJob.results.filter((r): r is AnalysisChunkResult => r !== null && !!r.chapterSummary);
   const assembledNarrative = liveJob.narrativeId && state.activeNarrative?.id === liveJob.narrativeId
@@ -368,7 +370,9 @@ function JobDetail({ job }: { job: AnalysisJob }) {
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-semibold text-white/90 truncate">{liveJob.title}</h2>
             <span className="text-[9px] text-white/20 font-mono shrink-0">
-              {isAssembling ? 'assembling...'
+              {isMetaSynthesising ? 'extracting meta...'
+                : isSummarising ? 'summarising worlds...'
+                : isAssembling ? 'assembling...'
                 : isFinalizing ? 'finalizing...'
                 : isReconciling ? 'reconciling...'
                 : isStructuring ? `structure ${completedScenes}/${totalScenes}`
@@ -463,18 +467,38 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                     return;
                   }
                   // Either first-time assembly OR regeneration after the
-                  // previous narrative was deleted. Both paths re-run
-                  // assembleNarrative against the cached chunk results.
+                  // previous narrative was deleted. Either way: assembly is
+                  // a deterministic transform over (results, thread-deps,
+                  // world-build summaries, meta). On a job that has already
+                  // completed once, all four pipeline outputs are persisted
+                  // — passing them in makes assembly skip every LLM call.
                   setAssembling(true);
                   setAssembleStage('Assembling narrative...');
                   try {
                     const { assembleNarrative } = await import('@/lib/text-analysis');
                     const completedResults = liveJob.results.filter((r): r is AnalysisChunkResult => r !== null);
-                    const narrative = await assembleNarrative(liveJob.title, completedResults, {}, {
-                      onStage: (stage, current, total) => {
-                        setAssembleStage(formatAssembleStage(stage, current, total));
+                    const narrative = await assembleNarrative(
+                      liveJob.title,
+                      completedResults,
+                      liveJob.threadDependencies ?? {},
+                      {
+                        onStage: (stage, current, total) => {
+                          setAssembleStage(formatAssembleStage(stage, current, total));
+                        },
+                        worldBuildSummaries: liveJob.worldBuildSummaries,
+                        meta: liveJob.meta,
+                        // Capture the outputs if this is the first assembly
+                        // (worldBuildSummaries / meta would have been
+                        // undefined on the job until now). Persist back so
+                        // subsequent regenerations stay pure too.
+                        onWorldBuildSummariesResolved: (summaries) => {
+                          dispatch({ type: 'UPDATE_ANALYSIS_JOB', id: liveJob.id, updates: { worldBuildSummaries: summaries } });
+                        },
+                        onMetaResolved: (meta) => {
+                          dispatch({ type: 'UPDATE_ANALYSIS_JOB', id: liveJob.id, updates: { meta } });
+                        },
                       },
-                    });
+                    );
                     dispatch({ type: 'ADD_NARRATIVE', narrative });
                     dispatch({ type: 'UPDATE_ANALYSIS_JOB', id: liveJob.id, updates: { narrativeId: narrative.id } });
                     router.push(`/series/${narrative.id}?slides=1`);
@@ -516,7 +540,14 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                       ))}
                     </div>
                     <p className="text-white/12 text-xs font-mono">
-                      {isReconciling ? 'Reconciling entities...' : isFinalizing ? 'Analyzing thread dependencies...' : isAssembling ? 'Assembling narrative...' : isStructuring ? 'Extracting structure per scene...' : isArcing ? 'Grouping scenes into arcs...' : 'Extracting beat plans...'}
+                      {isReconciling ? 'Reconciling entities...'
+                        : isFinalizing ? 'Analyzing thread dependencies...'
+                        : isSummarising ? 'Summarising world commits...'
+                        : isMetaSynthesising ? 'Extracting style & profile...'
+                        : isAssembling ? 'Assembling narrative...'
+                        : isStructuring ? 'Extracting structure per scene...'
+                        : isArcing ? 'Grouping scenes into arcs...'
+                        : 'Extracting beat plans...'}
                     </p>
                   </>
                 ) : liveJob.status === 'completed' ? (
@@ -663,9 +694,17 @@ function JobDetail({ job }: { job: AnalysisJob }) {
           <div className="w-80 shrink-0 border-l border-white/6 bg-black/40 flex flex-col min-h-0">
             {/* Header */}
             <div className="px-3 py-2 flex items-center gap-2 border-b border-white/4 shrink-0">
-              <div className={`w-1.5 h-1.5 rounded-full ${isReconciling ? 'bg-sky-400' : isFinalizing ? 'bg-purple-400' : isAssembling ? 'bg-amber-400' : isStructuring ? 'bg-emerald-400' : isPlanExtracting ? 'bg-indigo-400' : 'bg-white/20'} animate-pulse`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${isReconciling ? 'bg-sky-400' : isFinalizing ? 'bg-purple-400' : isSummarising ? 'bg-rose-400' : isMetaSynthesising ? 'bg-fuchsia-400' : isAssembling ? 'bg-amber-400' : isStructuring ? 'bg-emerald-400' : isPlanExtracting ? 'bg-indigo-400' : 'bg-white/20'} animate-pulse`} />
               <span className="text-[9px] text-white/25 font-mono uppercase tracking-wider">
-                {isReconciling ? 'Reconciliation' : isFinalizing ? 'Finalization' : isAssembling ? 'Assembly' : isArcing ? 'Arcs' : isStructuring ? 'Structure' : isPlanExtracting ? 'Plans' : 'Idle'}
+                {isReconciling ? 'Reconciliation'
+                  : isFinalizing ? 'Finalization'
+                  : isSummarising ? 'Summaries'
+                  : isMetaSynthesising ? 'Meta'
+                  : isAssembling ? 'Assembly'
+                  : isArcing ? 'Arcs'
+                  : isStructuring ? 'Structure'
+                  : isPlanExtracting ? 'Plans'
+                  : 'Idle'}
               </span>
               <span className="text-[9px] font-mono ml-auto" style={{ color: isPlanExtracting ? 'rgb(129 140 248 / 0.4)' : isStructuring ? 'rgb(52 211 153 / 0.4)' : 'rgb(255 255 255 / 0.1)' }}>
                 {isPlanExtracting ? `${beatStats.planCount} / ${totalScenes}` : isStructuring ? `${completedScenes} / ${totalScenes}` : ''}
@@ -1182,12 +1221,14 @@ function JobDetail({ job }: { job: AnalysisJob }) {
         {isRunning && (
           <div className="flex items-center gap-3 mb-2.5">
             {[
-              { label: 'Structure', active: isStructuring, done: isPlanExtracting || isArcing || isReconciling || isFinalizing || isAssembling || liveJob.status === 'completed', color: 'bg-emerald-400' },
-              ...(liveJob.skipPlanExtraction ? [] : [{ label: 'Plans', active: isPlanExtracting, done: isArcing || isReconciling || isFinalizing || isAssembling || liveJob.status === 'completed', color: 'bg-indigo-400' }]),
-              { label: 'Arcs', active: isArcing, done: isReconciling || isFinalizing || isAssembling || liveJob.status === 'completed', color: 'bg-violet-400' },
-              { label: 'Reconcile', active: isReconciling, done: isFinalizing || isAssembling || liveJob.status === 'completed', color: 'bg-sky-400' },
-              { label: 'Finalize', active: isFinalizing, done: isAssembling || liveJob.status === 'completed', color: 'bg-purple-400' },
-              { label: 'Assemble', active: isAssembling, done: liveJob.status === 'completed', color: 'bg-amber-400' },
+              { label: 'Structure', active: isStructuring, done: isPlanExtracting || isArcing || isReconciling || isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-emerald-400' },
+              ...(liveJob.skipPlanExtraction ? [] : [{ label: 'Plans', active: isPlanExtracting, done: isArcing || isReconciling || isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-indigo-400' }]),
+              { label: 'Arcs', active: isArcing, done: isReconciling || isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-violet-400' },
+              { label: 'Reconcile', active: isReconciling, done: isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-sky-400' },
+              { label: 'Finalize', active: isFinalizing, done: isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-purple-400' },
+              { label: 'Summaries', active: isSummarising, done: isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-rose-400' },
+              { label: 'Meta', active: isMetaSynthesising, done: liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-fuchsia-400' },
+              { label: 'Assemble', active: liveJob.phase === 'assembly' && !isSummarising && !isMetaSynthesising, done: liveJob.status === 'completed', color: 'bg-amber-400' },
             ].map((phase, pi) => (
               <div key={phase.label} className="flex items-center gap-1.5">
                 {pi > 0 && <div className="w-4 h-px bg-white/6" />}

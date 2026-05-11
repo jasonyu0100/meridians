@@ -376,8 +376,9 @@ class AnalysisRunner {
     // Skipped in world-only mode: no scenes will land in the narrative, so
     // arc records would be unreferenced.
     // ═════════════════════════════════════════════════════════════════════════
-    let arcGroups: { name: string; sceneIndices: number[] }[] = [];
-    if (job.extractionMode !== 'world') {
+    // Resume: skip if arcGroups already persisted on the job.
+    let arcGroups: { name: string; directionVector?: string; worldState?: string; sceneIndices: number[] }[] = job.arcGroups ?? [];
+    if (job.extractionMode !== 'world' && arcGroups.length === 0) {
       d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'arcs' } });
 
       const sceneSummaries = results
@@ -398,30 +399,41 @@ class AnalysisRunner {
             arcGroups.push({ name: `Arc ${Math.floor(i / 4) + 1}`, sceneIndices: slice.map(s => s.index) });
           }
         }
+        // Persist so a later resume skips this phase entirely.
+        d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { arcGroups } });
       }
+    } else if (arcGroups.length > 0) {
+      this.emitStream(job.id, `Arcs: ${arcGroups.length} groups (resumed from saved state)`);
     }
-    (job as any).arcGroups = arcGroups;
 
     if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused', results: [...results] } }); return; }
 
     // ═════════════════════════════════════════════════════════════════════════
     // Phase 4: RECONCILIATION
+    //
+    // Resume: a completed reconciliation pass stamps `reconciledAt` onto the
+    // job. On resume we skip — the canonical entity merges live in `results`
+    // and re-running the LLM would only re-confirm what's already there.
     // ═════════════════════════════════════════════════════════════════════════
-    d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'reconciliation', currentChunkIndex: total } });
-    this.emitStream(job.id, 'Reconciling entities...');
+    if (!job.reconciledAt) {
+      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'reconciliation', currentChunkIndex: total } });
+      this.emitStream(job.id, 'Reconciling entities...');
 
-    try {
-      const raw = results.filter((r): r is AnalysisChunkResult => r !== null);
-      const reconciled = await reconcileResults(raw, (_token, acc) => { this.emitStream(job.id, `Reconciling...\n${acc}`); });
+      try {
+        const raw = results.filter((r): r is AnalysisChunkResult => r !== null);
+        const reconciled = await reconcileResults(raw, (_token, acc) => { this.emitStream(job.id, `Reconciling...\n${acc}`); });
 
-      if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused' } }); return; }
+        if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused' } }); return; }
 
-      let ri = 0;
-      for (let i = 0; i < results.length; i++) { if (results[i] !== null) results[i] = reconciled[ri++]; }
-      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { results: [...results] } });
-    } catch (err) {
-      logWarning('Reconciliation failed (non-fatal)', err, { source: 'analysis', operation: 'reconciliation' });
-      this.emitStream(job.id, 'Reconciliation failed (non-fatal), using raw results...');
+        let ri = 0;
+        for (let i = 0; i < results.length; i++) { if (results[i] !== null) results[i] = reconciled[ri++]; }
+        d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { results: [...results], reconciledAt: Date.now() } });
+      } catch (err) {
+        logWarning('Reconciliation failed (non-fatal)', err, { source: 'analysis', operation: 'reconciliation' });
+        this.emitStream(job.id, 'Reconciliation failed (non-fatal), using raw results...');
+      }
+    } else {
+      this.emitStream(job.id, 'Reconciliation: already complete (resumed)');
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -437,52 +449,72 @@ class AnalysisRunner {
     // and no thread-dependency graph to walk — the seed commit just carries
     // the canonical thread list.
     // ═════════════════════════════════════════════════════════════════════════
-    let threadDependencies: Record<string, string[]> = {};
+    let threadDependencies: Record<string, string[]> = job.threadDependencies ?? {};
     if (job.extractionMode !== 'world') {
       d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'finalization' } });
 
-      try {
-        const completed = results.filter((r): r is AnalysisChunkResult => r !== null);
-        const canonicalDescs = new Set(completed.flatMap(r => (r.threads ?? []).map(t => t.description)));
-        if (canonicalDescs.size > 0) {
-          entry.chunkStreams.clear();
-          this.emitStream(job.id, `Fate re-extract: ${completed.length} scenes × ${canonicalDescs.size} threads...`);
-          const reextracted = await reextractFateWithLifecycle(completed, {
-            onProgress: (done, total) => {
-              this.emitStream(job.id, `Fate re-extract: ${done}/${total}`);
-            },
-            onSceneStream: (sceneIdx, acc) => {
-              entry.chunkStreams.set(sceneIdx, acc);
-              this.emitChunkStream(job.id, sceneIdx, acc);
-            },
-            onSceneStart: (sceneIdx) => {
-              entry.inFlightIndices.add(sceneIdx);
-              this.emitInFlight(job.id, [...entry.inFlightIndices]);
-            },
-            onSceneEnd: (sceneIdx) => {
-              entry.inFlightIndices.delete(sceneIdx);
-              this.emitInFlight(job.id, [...entry.inFlightIndices]);
-            },
-            cancelled: () => entry.cancelled,
-          });
-          let ri = 0;
-          for (let i = 0; i < results.length; i++) {
-            if (results[i] !== null) results[i] = reextracted[ri++];
+      // ── 5a. Fate re-extract ────────────────────────────────────────────────
+      // Resume: skip when fateReextractedAt is set. The per-scene re-priced
+      // threadDeltas already live in `results`.
+      if (!job.fateReextractedAt) {
+        try {
+          const completed = results.filter((r): r is AnalysisChunkResult => r !== null);
+          const canonicalDescs = new Set(completed.flatMap(r => (r.threads ?? []).map(t => t.description)));
+          if (canonicalDescs.size > 0) {
+            entry.chunkStreams.clear();
+            this.emitStream(job.id, `Fate re-extract: ${completed.length} scenes × ${canonicalDescs.size} threads...`);
+            const reextracted = await reextractFateWithLifecycle(completed, {
+              onProgress: (done, total) => {
+                this.emitStream(job.id, `Fate re-extract: ${done}/${total}`);
+              },
+              onSceneStream: (sceneIdx, acc) => {
+                entry.chunkStreams.set(sceneIdx, acc);
+                this.emitChunkStream(job.id, sceneIdx, acc);
+              },
+              onSceneStart: (sceneIdx) => {
+                entry.inFlightIndices.add(sceneIdx);
+                this.emitInFlight(job.id, [...entry.inFlightIndices]);
+              },
+              onSceneEnd: (sceneIdx) => {
+                entry.inFlightIndices.delete(sceneIdx);
+                this.emitInFlight(job.id, [...entry.inFlightIndices]);
+              },
+              cancelled: () => entry.cancelled,
+            });
+            let ri = 0;
+            for (let i = 0; i < results.length; i++) {
+              if (results[i] !== null) results[i] = reextracted[ri++];
+            }
+            d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { results: [...results], fateReextractedAt: Date.now() } });
+            this.emitStream(job.id, `[OK] Fate re-extracted`);
+          } else {
+            d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { fateReextractedAt: Date.now() } });
           }
-          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { results: [...results] } });
-          this.emitStream(job.id, `[OK] Fate re-extracted`);
+          if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused' } }); return; }
+        } catch (err) {
+          logWarning('Fate re-extract failed (non-fatal)', err, { source: 'analysis', operation: 'fate-reextract' });
         }
-        if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused' } }); return; }
-      } catch (err) {
-        logWarning('Fate re-extract failed (non-fatal)', err, { source: 'analysis', operation: 'fate-reextract' });
+      } else {
+        this.emitStream(job.id, 'Fate re-extract: already complete (resumed)');
       }
 
+      // ── 5b. Thread dependencies ──────────────────────────────────────────
+      // Resume: skip when threadDependencies already on the job.
+      const hasDeps = Object.keys(threadDependencies).length > 0;
       try {
-        const completed = results.filter((r): r is AnalysisChunkResult => r !== null);
-        const threads = [...new Set(completed.flatMap(r => (r.threads ?? []).map(t => t.description)))];
-        if (threads.length >= 2) {
-          this.emitStream(job.id, 'Finalizing thread dependencies...');
-          threadDependencies = await analyzeThreading(threads, (_token, acc) => { this.emitStream(job.id, `Finalizing...\n${acc}`); });
+        if (!hasDeps) {
+          const completed = results.filter((r): r is AnalysisChunkResult => r !== null);
+          const threads = [...new Set(completed.flatMap(r => (r.threads ?? []).map(t => t.description)))];
+          if (threads.length >= 2) {
+            this.emitStream(job.id, 'Finalizing thread dependencies...');
+            threadDependencies = await analyzeThreading(threads, (_token, acc) => { this.emitStream(job.id, `Finalizing...\n${acc}`); });
+          }
+          // Persist the thread-dependency map onto the job. Once stored, a
+          // later regeneration (after the narrative is deleted) can run
+          // assembly without re-calling the threading LLM.
+          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { threadDependencies } });
+        } else {
+          this.emitStream(job.id, 'Thread dependencies: already complete (resumed)');
         }
         if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused' } }); return; }
       } catch (err) {
@@ -492,6 +524,12 @@ class AnalysisRunner {
 
     // ═════════════════════════════════════════════════════════════════════════
     // Phase 6: ASSEMBLY — build NarrativeState
+    //
+    // Assembly emits its two LLM-driven outputs (per-WorldBuild intent
+    // summaries, whole-work meta) via callbacks AS they resolve. The
+    // runner persists each output onto the analysis job. Once they're
+    // there, a later regeneration can pass them straight back in and
+    // assembly stays purely deterministic — no LLM round-trips.
     // ═════════════════════════════════════════════════════════════════════════
     d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'assembly' } });
     this.emitStream(job.id, 'Assembling narrative...');
@@ -502,8 +540,38 @@ class AnalysisRunner {
         onToken: (_token, acc) => {
           this.emitStream(job.id, `Assembling...\n${acc}`);
         },
-        arcGroups: (job as any).arcGroups,
+        onStage: (stage, current, total) => {
+          // Surface the two LLM-bearing assemble-stages as their own
+          // job-level phases so the analysis sidebar shows them as
+          // distinct steps in the pipeline (rather than hiding both
+          // inside a single "assembly" label). Each carries an
+          // emitStream so the right-column stream pane shows progress
+          // rather than going blank between phases.
+          if (stage === 'summaries') {
+            d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'summaries' } });
+            if (current !== undefined && total !== undefined && total > 0) {
+              this.emitStream(job.id, `Summarising world commits: ${current}/${total}`);
+            } else {
+              this.emitStream(job.id, 'Summarising world commits...');
+            }
+          } else if (stage === 'meta') {
+            d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'meta' } });
+            this.emitStream(job.id, 'Extracting style, prose profile, and patterns...');
+          } else if (stage === 'finalize') {
+            d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'assembly' } });
+            this.emitStream(job.id, 'Stitching final narrative...');
+          }
+        },
+        arcGroups,
         extractionMode: job.extractionMode ?? 'full',
+        worldBuildSummaries: job.worldBuildSummaries,
+        meta: job.meta,
+        onWorldBuildSummariesResolved: (summaries) => {
+          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { worldBuildSummaries: summaries } });
+        },
+        onMetaResolved: (meta) => {
+          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { meta } });
+        },
       });
 
       d({ type: 'ADD_NARRATIVE', narrative });
