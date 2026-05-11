@@ -414,11 +414,19 @@ export default function ThreadDetail({ threadId }: Props) {
         const tailPoint =
           trajectory.length > 0 ? trajectory[trajectory.length - 1] : null;
         const tailProbs = tailPoint ? tailPoint.probs : getMarketProbs(thread);
-        // Render the outcomes that match the displayed probs 1:1. Mid-
-        // narrative addOutcomes can leave the cursor with more outcomes
-        // than narrative.threads[id].outcomes; using the trajectory's own
-        // snapshot guarantees the displayed percentages sum to 100%.
         const tailOutcomes = tailPoint ? tailPoint.outcomes : thread.outcomes;
+        // Colour-key the outcomes off the LIVE narrative state's ordering
+        // (`thread.outcomes`) so the inspector and the portfolio bar always
+        // paint the same outcome with the same hue. The trajectory and the
+        // store-replayed thread may diverge in outcome ORDER if their
+        // addOutcomes-application paths disagree subtly; matching by name
+        // sidesteps that — the colour follows the outcome string, not its
+        // position in whichever array. Probs still come from the trajectory
+        // tail (so 100%-sum is preserved across mid-narrative expansions);
+        // tail-only outcomes (not yet in the live thread) fall through to
+        // their tail index.
+        const liveIdxByName = new Map<string, number>();
+        thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
         const belief = getMarketBelief(thread);
         const { margin } = getMarketMargin(thread);
         const currentEntropy = normalizedEntropy(tailProbs);
@@ -426,6 +434,7 @@ export default function ThreadDetail({ threadId }: Props) {
           .map((outcome, idx) => ({
             outcome,
             idx,
+            colourIdx: liveIdxByName.get(outcome) ?? idx,
             prob: tailProbs[idx] ?? 0,
           }))
           .sort((a, b) => b.prob - a.prob);
@@ -487,8 +496,8 @@ export default function ThreadDetail({ threadId }: Props) {
           <div className="flex flex-col gap-3 rounded-lg border border-white/5 bg-white/1.5 p-3">
             {/* Ranked outcomes with probability bars */}
             <ul className="flex flex-col gap-1.5">
-              {ranked.map(({ outcome, idx, prob }) => {
-                const color = outcomeColourHex(idx);
+              {ranked.map(({ outcome, idx, colourIdx, prob }) => {
+                const color = outcomeColourHex(colourIdx);
                 const isWinner = isClosed && thread.closeOutcome === idx;
                 const logit = belief?.logits[idx] ?? 0;
                 return (

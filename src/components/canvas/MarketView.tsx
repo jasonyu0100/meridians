@@ -151,6 +151,14 @@ function FeaturedTrajectory({
   // scene percentages sum to 100%.
   const chartOutcomes = points[points.length - 1].outcomes;
   const numOutcomes = chartOutcomes.length;
+  // Colour-key each chart outcome off its position in the LIVE thread's
+  // outcomes — same convention the portfolio sidebar uses — so any view
+  // showing this outcome paints it the same hue. If the trajectory's
+  // outcome isn't in the live list (rare race), fall back to its tail
+  // index.
+  const liveIdxByName = new Map<string, number>();
+  thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
+  const colourIdxOf = (k: number) => liveIdxByName.get(chartOutcomes[k]) ?? k;
   // Per-outcome vertical nudge so tied probabilities render as parallel strokes
   // rather than collapsing onto each other. 3.5px keeps tied lines legible
   // without falsifying the data meaningfully (≈1.4pp on a 0–100% axis).
@@ -201,7 +209,7 @@ function FeaturedTrajectory({
           key={k}
           d={d}
           fill="none"
-          stroke={outcomeColourHex(k)}
+          stroke={outcomeColourHex(colourIdxOf(k))}
           strokeWidth={1.75}
           opacity={0.85}
           strokeLinecap="round"
@@ -218,7 +226,7 @@ function FeaturedTrajectory({
             cx={xAt(points.length - 1)}
             cy={yAt(p) + lineOffset(k)}
             r={2.5}
-            fill={outcomeColourHex(k)}
+            fill={outcomeColourHex(colourIdxOf(k))}
             opacity={0.9}
           />
         );
@@ -258,8 +266,13 @@ function FeaturedMarket({
   const tailProbs = tail ? tail.probs : getMarketProbs(thread);
   const belief = getMarketBelief(thread);
   const { margin } = getMarketMargin(thread);
+  // Colour-key off the live thread's outcome ordering — matches the
+  // portfolio sidebar and the inspector so a given outcome paints the
+  // same hue in every view.
+  const liveIdxByName = new Map<string, number>();
+  thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
   const ranked = tailOutcomes
-    .map((o, i) => ({ outcome: o, idx: i, prob: tailProbs[i] ?? 0 }))
+    .map((o, i) => ({ outcome: o, idx: i, colourIdx: liveIdxByName.get(o) ?? i, prob: tailProbs[i] ?? 0 }))
     .sort((a, b) => b.prob - a.prob);
   const catColor = THREAD_CATEGORY_HEX[category];
 
@@ -315,11 +328,11 @@ function FeaturedMarket({
       <div className="grid grid-cols-[minmax(220px,280px)_1fr] gap-4 items-center">
         {/* Outcome list */}
         <div className="flex flex-col gap-2 self-center">
-          {ranked.map(({ outcome, idx, prob }) => (
+          {ranked.map(({ outcome, idx, colourIdx, prob }) => (
             <div key={`${outcome}-${idx}`} className="flex items-start gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-sm shrink-0 mt-1"
-                style={{ background: outcomeColourHex(idx) }}
+                style={{ background: outcomeColourHex(colourIdx) }}
               />
               <span className="text-xs text-text-primary flex-1 wrap-break-word min-w-0 leading-snug">
                 {outcome}

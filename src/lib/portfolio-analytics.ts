@@ -12,7 +12,7 @@
  * Pure derivation — no IO, no rendering.
  */
 
-import type { Belief, NarrativeState, Thread, Scene, WorldBuild } from '@/types/narrative';
+import type { NarrativeState, Thread, Scene, WorldBuild } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
 import { MARKET_OPENING_VOLUME } from '@/lib/constants';
 import { MARKET_FOCUS_K } from '@/lib/constants';
@@ -36,28 +36,24 @@ import { applyThreadDelta, decayUntouchedBeliefsForScene, newNarratorBelief } fr
 // ── Replay seed ────────────────────────────────────────────────────────────
 
 /** Copy a thread into the "just introduced, no evidence applied" state used as
- *  the replay seed. Preserves the LLM's prior beliefs (logits + initialVolume
- *  carried on the thread at introduction time) so the market's opening price
- *  is the in-world base rate, not uniform. Mirrors the seeding rules in
- *  computeDerivedEntities (store.tsx) so replays line up with the canonical
- *  state. */
+ *  the replay seed. Always rebuilds the belief from the thread's priorProbs
+ *  (or uniform if absent) — never from the existing belief logits.
+ *
+ *  Why: callers feed in threads from any source — a world commit's intro-time
+ *  snapshot (belief == prior, safe to copy) OR `narrative.threads[id]` as a
+ *  fallback (belief == post-replay state, with all evidence already baked in).
+ *  Copying the latter and then re-applying deltas double-counts evidence,
+ *  producing radically different distributions from a single source of truth.
+ *  Resetting to prior eliminates the source dependency. The WB-snapshot case
+ *  is unchanged because its priorProbs reflect the same initial state its
+ *  beliefs encoded. */
 function seedThreadCopy(t: Thread): Thread {
-  const existing = t.beliefs?.[NARRATOR_AGENT_ID];
-  let belief: Belief;
-  if (existing) {
-    belief = {
-      logits: existing.logits.slice(),
-      volume: existing.volume,
-      volatility: existing.volatility,
-    };
-  } else {
-    const rawPriorProbs = Array.isArray((t as { priorProbs?: unknown }).priorProbs)
-      ? ((t as { priorProbs?: unknown }).priorProbs as unknown[]).map((v) =>
-          typeof v === 'number' ? v : NaN,
-        )
-      : undefined;
-    belief = newNarratorBelief(t.outcomes.length, MARKET_OPENING_VOLUME, rawPriorProbs);
-  }
+  const rawPriorProbs = Array.isArray((t as { priorProbs?: unknown }).priorProbs)
+    ? ((t as { priorProbs?: unknown }).priorProbs as unknown[]).map((v) =>
+        typeof v === 'number' ? v : NaN,
+      )
+    : undefined;
+  const belief = newNarratorBelief(t.outcomes.length, MARKET_OPENING_VOLUME, rawPriorProbs);
   return {
     ...t,
     beliefs: { [NARRATOR_AGENT_ID]: belief },
