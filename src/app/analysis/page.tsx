@@ -437,14 +437,34 @@ function JobDetail({ job }: { job: AnalysisJob }) {
               {liveJob.status === 'failed' ? 'Retry' : liveJob.status === 'pending' ? 'Start' : 'Resume'}
             </button>
           )}
-          {liveJob.status === 'completed' && (
-            <button
-              disabled={assembling}
-              onClick={async () => {
-                if (liveJob.narrativeId) {
-                  dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: liveJob.narrativeId });
-                  router.push(`/series/${liveJob.narrativeId}?slides=1`);
-                } else {
+          {liveJob.status === 'completed' && (() => {
+            // A completed job retains its `narrativeId` even if the operator
+            // later deletes that narrative. Detect the orphan case so the
+            // button offers "Regenerate" instead of trying to open something
+            // that no longer exists — the cached chunk results are enough to
+            // re-assemble a fresh narrative without re-running the LLM.
+            const narrativeExists = liveJob.narrativeId
+              ? state.narratives.some((n) => n.id === liveJob.narrativeId)
+              : false;
+            const label = assembling
+              ? (assembleStage ?? 'Assembling...')
+              : narrativeExists
+                ? 'Open Narrative'
+                : liveJob.narrativeId
+                  ? 'Regenerate Narrative'
+                  : 'Create Narrative';
+            return (
+              <button
+                disabled={assembling}
+                onClick={async () => {
+                  if (narrativeExists && liveJob.narrativeId) {
+                    dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: liveJob.narrativeId });
+                    router.push(`/series/${liveJob.narrativeId}?slides=1`);
+                    return;
+                  }
+                  // Either first-time assembly OR regeneration after the
+                  // previous narrative was deleted. Both paths re-run
+                  // assembleNarrative against the cached chunk results.
                   setAssembling(true);
                   setAssembleStage('Assembling narrative...');
                   try {
@@ -464,13 +484,13 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                     setAssembling(false);
                     setAssembleStage(null);
                   }
-                }
-              }}
-              className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[10px] font-semibold px-4 py-1 rounded transition disabled:opacity-50"
-            >
-              {assembling ? (assembleStage ?? 'Assembling...') : liveJob.narrativeId ? 'Open Narrative' : 'Create Narrative'}
-            </button>
-          )}
+                }}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[10px] font-semibold px-4 py-1 rounded transition disabled:opacity-50"
+              >
+                {label}
+              </button>
+            );
+          })()}
         </div>
       </div>
 

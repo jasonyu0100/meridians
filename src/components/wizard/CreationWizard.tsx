@@ -1,6 +1,12 @@
 "use client";
 
-import { generateNarrative, suggestPremise } from "@/lib/ai";
+// Direct sub-module imports rather than the @/lib/ai barrel. The barrel
+// re-exports the whole AI surface; bundlers in dev mode (Turbopack
+// especially) walk every re-export from anywhere the barrel is referenced,
+// inflating the home-page compile graph by 30+ modules. Importing directly
+// keeps the home-page's transitive set tight.
+import { generateNarrative } from "@/lib/ai/world";
+import { suggestPremise } from "@/lib/ai/premise";
 import { useStore } from "@/lib/store";
 import { useWizard } from "@/lib/wizard-context";
 import type {
