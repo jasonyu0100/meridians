@@ -296,7 +296,18 @@ ${buildSequentialPath(reasoningGraph)}
 ${direction}
 </brief>`;
     }
-    return `<brief type="freeform">Use your judgment — pick the next development that best moves unresolved threads, tensions, and momentum.</brief>`;
+    // Pressure-simulation brief, not story-beat brief. The full world-state
+    // is already in context (threads-as-markets, PRG pressures, world graph);
+    // these tags reframe how to read it.
+    return `<brief type="freeform" hint="PRIMARY BRIEF — read the world-state across the three forces (fate, world, system). The established work decides which lead; a quiet world or system scene is as valid as a high-pressure fate scene.">
+  <locus>Pick where multiple active dimensions converge — a place, institution, artifact, relationship, or moment already touching several open threads, transformations, or rules. Density comes from causal adjacency, not invention.</locus>
+  <readings>Choose whichever the established work privileges. Fate-leading: threads near rupture, reversals against committed leaders, accumulation toward resolution. World-leading: inner transformation, relational depth, atmospheric texture, sensory grounding. System-leading: rule articulation, conceptual deepening, structural disclosure.</readings>
+  <leverage>Work WITH what already exists — established rules, latent relationships, accumulated commitments, the work's own conventions. Leverage and deepening beat arbitrary escalation.</leverage>
+  <multi-axis>Advance at least three layers from: actor commitments, inner state, relational depth, atmosphere, institutional response, resource economy, system rules, information state.</multi-axis>
+  <deformation>Prefer changes that alter future possibility-space — precedents set, relationships shifted, hidden state surfaced, options opened or foreclosed, conceptual ground broken. Motion without lasting effect is wasted.</deformation>
+  <restraint>Don't resolve every accumulated state at once. Let some persist, stall, redirect, partially leak, or mutate. Some consequences arrive only after secondary propagation.</restraint>
+  <epistemic-divergence>Different actors hold incompatible models of the same world. Lean into this: actors operating on stale or false beliefs, institutions misclassifying events through their own categories, rumours drifting from observable reality, systems optimising for false assumptions. False beliefs that anchor real action are the source of accidental escalation, self-fulfilling prophecies, tragic spirals, and coordination failures — emergence the engine cannot produce from agreement alone.</epistemic-divergence>
+</brief>`;
   })();
 
   const worldBuildFocusBlock = worldBuildFocus ? (() => {
