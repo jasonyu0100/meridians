@@ -24,6 +24,10 @@ const COL_W = 28;
 const DOT_R = 6;
 const LPAD = 14;
 
+/** Maximum branches that can be compared side-by-side. Beyond this the
+ *  oldest selection drops when a new one is added. */
+const MAX_COMPARE_BRANCHES = 10;
+
 function colX(col: number): number {
   return LPAD + col * COL_W;
 }
@@ -322,7 +326,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
     setCompareBranchIds(prev =>
       prev.includes(branchId)
         ? prev.filter(id => id !== branchId)
-        : prev.length >= 4 ? [...prev.slice(1), branchId] : [...prev, branchId],
+        : prev.length >= MAX_COMPARE_BRANCHES ? [...prev.slice(1), branchId] : [...prev, branchId],
     );
   }
 
@@ -1281,8 +1285,8 @@ function CompareView({
               </button>
             );
           })}
-          {compareBranchIds.length >= 4 && (
-            <span className="text-[10px] text-text-dim">· max 4 columns (oldest drops)</span>
+          {compareBranchIds.length >= MAX_COMPARE_BRANCHES && (
+            <span className="text-[10px] text-text-dim">· max {MAX_COMPARE_BRANCHES} columns (oldest drops)</span>
           )}
         </div>
       </div>
@@ -1449,8 +1453,8 @@ function WorkbenchView({
               </button>
             );
           })}
-          {compareBranchIds.length >= 4 && (
-            <span className="text-[10px] text-text-dim">· max 4 (oldest drops)</span>
+          {compareBranchIds.length >= MAX_COMPARE_BRANCHES && (
+            <span className="text-[10px] text-text-dim">· max {MAX_COMPARE_BRANCHES} (oldest drops)</span>
           )}
         </div>
       </div>
