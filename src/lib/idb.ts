@@ -7,7 +7,7 @@
 import { logError, logWarning } from '@/lib/system-logger';
 
 const DB_NAME = 'inktide-main';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const NARRATIVES_STORE = 'narratives';
 const META_STORE = 'meta';
 const API_LOGS_STORE = 'apiLogs';
