@@ -6,7 +6,7 @@
  * doctrine without the beat machinery.
  */
 
-import { phaseGraphPriorityEntry } from "../phase/application";
+import { modePriorityEntry } from "../mode/application";
 
 /** Final assembly: inputs + format rules + instructions. The system prompt
  *  stays high-level (role only); craft detail lives here. */
@@ -76,7 +76,7 @@ export function buildProseInstructionsWithPlan(args: { wordsPerBeat: number }): 
     <priority rank="1">BEAT PLAN — structural backbone; render every beat's propositions in the assigned mechanism, in the assigned order.</priority>
     <priority rank="2">PROSE PROFILE — authorial voice; rules below apply only when the profile is silent.</priority>
     <priority rank="3">SCENE CONTEXT — POV, setting, participants, deltas; the substrate the beats render.</priority>
-    ${phaseGraphPriorityEntry(4, "scene-prose")}
+    ${modePriorityEntry(4, "scene-prose")}
   </integration-hierarchy>
 
   <follow-plan>Each beat maps to a passage of prose. The mechanism defines the delivery MODE (dialogue, thought, action, etc); the propositions define FACTS TO TRANSMIT (in-world events, argued claims, observed evidence, rule-driven outcomes / modelled state transitions / agent decisions — whatever the source register carries: fiction, non-fiction, or simulation). Weave both into voiced prose.</follow-plan>
@@ -154,7 +154,7 @@ export function buildProseInstructionsFreeform(args: { wordsPerBeat: number }): 
   <integration-hierarchy hint="No beat plan in this mode.">
     <priority rank="1">PROSE PROFILE — authorial voice; rules below apply only when the profile is silent.</priority>
     <priority rank="2">SCENE CONTEXT — POV, setting, participants, deltas.</priority>
-    ${phaseGraphPriorityEntry(3, "scene-prose")}
+    ${modePriorityEntry(3, "scene-prose")}
   </integration-hierarchy>
 
   <reference name="craft-doctrine">

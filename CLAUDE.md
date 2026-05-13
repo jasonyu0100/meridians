@@ -33,7 +33,7 @@ Text and scenarios are modelled as a **knowledge graph** that mutates section by
 - **Four thinking modes** — abduction (default, backward selective), divergent (forward expansive), deduction (forward narrow), induction (backward generalising)
 - **Arc settings sync** — force preference, reasoning mode, and network bias persist on the CRG snapshot so scene generation inherits the same engine tilt without callers re-threading settings
 - **Markov chain pacing** — transition matrices from analyzed works shape scene-by-scene rhythm
-- **MCTS search** — explores branching narrative paths, each expansion guided by a fresh pacing sequence
+- **Experimentation batch** — one parallel arc continuation per Future scenario; softmax-ranked cohort, top result becomes active branch, rest attach as sister divergences
 - **Planning with course correction** — direction vectors rewritten after each arc
 - **Iterative revision** — evaluate → verdict (ok/edit/merge/insert/cut) → reconstruct versioned branches
 - **Prose profiles** — beat plans with authorial Markov chains over a 10-function / 8-mechanism taxonomy
@@ -56,7 +56,7 @@ npm run lint     # ESLint
 - **Images:** Replicate API (Seedream 4.5) via `/api/generate-image`, `/api/generate-cover`
 - **State:** React Context + useReducer in `src/lib/store.tsx`
 - **Persistence:** IndexedDB (narratives, embeddings) + localStorage (meta) via `src/lib/persistence.ts`, `src/lib/idb.ts`
-- **Types:** Domain model in `src/types/narrative.ts`, MCTS types in `src/types/mcts.ts`, config in `src/lib/constants.ts`
+- **Types:** Domain model in `src/types/narrative.ts`, experimentation types in `src/types/experimentation.ts`, config in `src/lib/constants.ts`
 
 ## Key Directories
 
@@ -76,7 +76,7 @@ src/
 │   ├── generation/         # GeneratePanel, BranchModal, PacingStrip, MarkovGraph
 │   ├── analytics/          # ForceTracker — stock-type force analysis
 │   ├── auto/               # AutoControlBar, AutoSettingsPanel
-│   ├── mcts/               # MCTSPanel, MCTSControlBar
+│   ├── experimentation/    # ExperimentationPanel, ExperimentationControlBar
 │   ├── slides/             # SlidesPlayer + individual slide components
 │   ├── sidebar/            # SeriesPicker, ThreadPortfolio, MediaDrive
 │   ├── layout/             # AppShell, RulesPanel
@@ -99,8 +99,9 @@ src/
 │   ├── store.tsx           # State management + reducer actions
 │   ├── text-analysis.ts    # Corpus → NarrativeState extraction (scene-first: plans → structure → arcs)
 │   ├── auto-engine.ts      # Automated story generation — phase-aware force management
-│   ├── mcts-engine.ts      # MCTS scene exploration
-│   ├── mcts-state.ts       # MCTS state management
+│   ├── experimentation-engine.ts # Parallel scenario batch — direction builder + virtual state + pool
+│   ├── experimentation-state.ts  # Virtual narrative-state helpers for in-flight runs
+│   ├── experimentation-remap.ts  # Comprehensive ID remap for parallel commits
 │   ├── slides-data.ts      # Slide generation logic
 │   ├── constants.ts        # All tunable config values
 │   ├── persistence.ts      # IndexedDB + localStorage read/write
@@ -111,8 +112,8 @@ src/
 │   └── api-logger.ts       # API call logging & token tracking
 ├── types/
 │   ├── narrative.ts        # Domain types: Scene, Character, Location, Thread, Arc, StructureEvaluation, etc.
-│   └── mcts.ts             # MCTS-specific types
-├── hooks/                  # useAutoPlay, useMCTS, useFeatureAccess
+│   └── experimentation.ts  # Scenario-batch run state types
+├── hooks/                  # useAutoPlay, useExperimentation, useFeatureAccess
 └── data/                   # Seed narratives (HP, LOTR, Star Wars, GoT, Reverend Insanity)
 ```
 
@@ -423,5 +424,4 @@ Key tuning values:
 - `PLAN_CONCURRENCY = 10` — parallel plan generation
 - `ANALYSIS_CONCURRENCY = 20` — parallel text analysis chunks
 - `DEFAULT_CONTEXT_SCENES = 50` — default branch time horizon (overridden per-story in settings)
-- `MCTS_MAX_NODE_CHILDREN = 8` — MCTS branching factor
 - `AUTO_STOP_CYCLE_LENGTH = 25` — auto-engine arc limit

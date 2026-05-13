@@ -1094,10 +1094,10 @@ export function GeneratePanel({
                       onClick={handleSample}
                       disabled={!newArc && !currentArc}
                       className="py-2.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition disabled:opacity-30 flex items-center justify-center gap-2 text-[12px]"
-                      title="MCTS multi-arc generation"
+                      title="Experimentation multi-arc generation"
                     >
                       <IconDice size={16} />
-                      MCTS
+                      Experimentation
                     </button>
                   )}
                 </div>

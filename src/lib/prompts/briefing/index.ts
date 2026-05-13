@@ -61,7 +61,7 @@ export type MarketBriefingPromptArgs = {
   /** Active phase + per-phase guidance from the auto engine. */
   phaseSummary: string;
   /** Active phase reasoning graph (PRG) summary, if one is set. */
-  phaseGraphSummary: string;
+  modeSummary: string;
 };
 
 export function buildMarketBriefingPrompt(args: MarketBriefingPromptArgs): string {
@@ -76,7 +76,7 @@ export function buildMarketBriefingPrompt(args: MarketBriefingPromptArgs): strin
     flags,
     outline,
     phaseSummary,
-    phaseGraphSummary,
+    modeSummary,
   } = args;
 
   return `<inputs>
@@ -86,7 +86,7 @@ ${currentDirection ? `  <current-direction hint="What the operator is currently 
 ${outline || '(no arcs yet)'}
   </outline>
   <phase>${phaseSummary}</phase>
-${phaseGraphSummary ? `  <phase-reasoning-graph hint="The working model of how the world operates. Moves should respect or deliberately defy these structural assumptions.">\n${phaseGraphSummary}\n  </phase-reasoning-graph>` : ''}
+${modeSummary ? `  <phase-reasoning-graph hint="The working model of how the world operates. Moves should respect or deliberately defy these structural assumptions.">\n${modeSummary}\n  </phase-reasoning-graph>` : ''}
   <active-markets label="market portfolio with category + leader margin">
 ${activeMarkets || '(none)'}
   </active-markets>

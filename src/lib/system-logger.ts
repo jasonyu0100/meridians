@@ -23,10 +23,10 @@ export function setSystemLoggerAnalysisId(id: string | null) {
 }
 
 export type LogContext = {
-  /** Where the error occurred (e.g., 'auto-play', 'mcts', 'manual-generation', 'analysis') */
+  /** Where the error occurred (e.g., 'auto-play', 'experimentation', 'manual-generation', 'analysis') */
   source:
     | "auto-play"
-    | "mcts"
+    | "experimentation"
     | "manual-generation"
     | "analysis"
     | "world-expansion"
@@ -47,7 +47,7 @@ export type LogContext = {
     | "audio-generation"
     | "ingest"
     | "api"
-    | "phase-graph"
+    | "mode"
     | "branch-workbench"
     | "other";
   /** Current operation when error occurred */

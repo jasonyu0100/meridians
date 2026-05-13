@@ -478,7 +478,10 @@ export default function CharacterDetail({ characterId }: Props) {
                   const isOutgoing = rel.from === characterId;
                   const otherId = isOutgoing ? rel.to : rel.from;
                   const other = narrative.characters[otherId];
-                  const arrow = isOutgoing ? "\u2192" : "\u2190";
+                  const selfName = character.name;
+                  const otherName = other?.name ?? otherId;
+                  const fromName = isOutgoing ? selfName : otherName;
+                  const toName = isOutgoing ? otherName : selfName;
                   const clamped = Math.max(-1, Math.min(1, rel.valence));
                   const pct = Math.abs(clamped) * 100;
                   const isPositive = rel.valence > 0;
@@ -486,31 +489,50 @@ export default function CharacterDetail({ characterId }: Props) {
                   return (
                     <li
                       key={`${rel.from}-${rel.to}-${rel.type}-${relIdx}`}
-                      className="flex flex-col gap-1"
+                      className="flex flex-col gap-1.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-text-primary flex items-center gap-1">
-                          <span className="text-text-dim">{arrow}</span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              dispatch({
-                                type: "SET_INSPECTOR",
-                                context: {
-                                  type: "character",
-                                  characterId: otherId,
-                                },
-                              })
-                            }
-                            className="hover:underline transition-colors"
-                          >
-                            {other?.name ?? otherId}
-                          </button>
+                      {/* Explicit source → destination so direction is unambiguous;
+                          the character being viewed is bolded for orientation. */}
+                      <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs">
+                        <span className={isOutgoing ? "text-text-primary font-semibold" : "text-text-secondary"}>
+                          {isOutgoing ? selfName : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                dispatch({
+                                  type: "SET_INSPECTOR",
+                                  context: { type: "character", characterId: otherId },
+                                })
+                              }
+                              className="hover:underline transition-colors"
+                            >
+                              {fromName}
+                            </button>
+                          )}
                         </span>
-                        <span className="text-[10px] text-text-dim">
-                          {rel.type}
+                        <span className="text-text-dim">→</span>
+                        <span className={isOutgoing ? "text-text-secondary" : "text-text-primary font-semibold"}>
+                          {isOutgoing ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                dispatch({
+                                  type: "SET_INSPECTOR",
+                                  context: { type: "character", characterId: otherId },
+                                })
+                              }
+                              className="hover:underline transition-colors"
+                            >
+                              {toName}
+                            </button>
+                          ) : selfName}
                         </span>
                       </div>
+                      {rel.type && (
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-text-dim/80 font-mono">
+                          {rel.type}
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5">
                         <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden relative">
                           <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
@@ -609,10 +631,12 @@ export default function CharacterDetail({ characterId }: Props) {
                         )),
                       )}
                       {relationshipDeltas.map((rm, rmIdx) => {
-                        const otherId =
-                          rm.from === characterId ? rm.to : rm.from;
+                        const isOutgoing = rm.from === characterId;
+                        const otherId = isOutgoing ? rm.to : rm.from;
                         const otherName =
                           narrative.characters[otherId]?.name ?? otherId;
+                        const fromName = isOutgoing ? character.name : otherName;
+                        const toName = isOutgoing ? otherName : character.name;
                         return (
                           <span
                             key={`${rm.from}-${rm.to}-${rmIdx}`}
@@ -628,7 +652,10 @@ export default function CharacterDetail({ characterId }: Props) {
                               {rm.valenceDelta > 0 ? "+" : ""}
                               {rm.valenceDelta}
                             </span>{" "}
-                            {otherName}: {rm.type}
+                            {fromName} → {toName}
+                            {rm.type && (
+                              <span className="text-text-dim/80">: {rm.type}</span>
+                            )}
                           </span>
                         );
                       })}

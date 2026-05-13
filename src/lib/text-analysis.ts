@@ -1611,10 +1611,7 @@ export type AssembleNarrativeOptions = {
   meta?: import('@/types/narrative').AnalysisMeta;
   // ── First-run capture callbacks ───────────────────────────────────────────
   // Invoked AS the LLM outputs are produced, so the runner can persist them
-  // onto the job for future regeneration. When the inputs above are already
-  // supplied, the corresponding LLM call is skipped and the callback fires
-  // with the supplied value unchanged (so the runner can store the same
-  // canonical value regardless of source).
+  // onto the job for future regeneration.
   onWorldBuildSummariesResolved?: (summaries: Record<string, string>) => void;
   onMetaResolved?: (meta: import('@/types/narrative').AnalysisMeta) => void;
 };
@@ -2606,6 +2603,11 @@ export async function assembleNarrative(
     await Promise.all(workers);
   }
   options.onWorldBuildSummariesResolved?.(resolvedSummaries);
+
+  // Variables are now per-arc and generated on-demand from the UI. The
+  // analysis pipeline no longer extracts them — arcs come out with no
+  // presentVariables and the Variables view shows the fresh-page seed
+  // state until the user explicitly generates a set for that arc.
 
   // Build entryIds.
   //

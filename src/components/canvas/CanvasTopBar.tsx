@@ -66,7 +66,7 @@ const SCOPE_PAIRS: Record<string, { local: GraphViewMode; global: GraphViewMode 
 
 export const GRAPH_MODES = new Set<GraphViewMode>(['spatial', 'overview', 'spark', 'codex', 'pulse', 'threads', 'network']);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'reasoning' | 'market' | 'brief' | 'phase';
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'reasoning' | 'market' | 'present' | 'future' | 'mode';
 type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'game';
 const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'game'];
 
@@ -262,8 +262,9 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'search') return 'search';
   if (graphViewMode === 'reasoning') return 'reasoning';
   if (graphViewMode === 'market') return 'market';
-  if (graphViewMode === 'brief') return 'brief';
-  if (graphViewMode === 'phase') return 'phase';
+  if (graphViewMode === 'present') return 'present';
+  if (graphViewMode === 'future') return 'future';
+  if (graphViewMode === 'mode') return 'mode';
   return 'graph';
 }
 
@@ -299,7 +300,21 @@ export function CanvasTopBar() {
   }, [graphViewMode]);
 
   const inSceneMode = (SCENE_MODES as string[]).includes(graphViewMode);
-  const inMarketMode = graphViewMode === 'market' || graphViewMode === 'brief';
+  // "Control" supersedes the old "Market" top-level slot — it bundles
+  // Opinion (the reflecting-reality market view), Present (the realized
+  // variables disposition), Future (the predictive scenario cohort), and
+  // Phase (the working-machinery graph).
+  const inControlMode = (
+    graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'future' || graphViewMode === 'mode'
+  );
+  const lastControlSubModeRef = useRef<'market' | 'present' | 'future' | 'mode'>('market');
+  useEffect(() => {
+    if (
+      graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'future' || graphViewMode === 'mode'
+    ) {
+      lastControlSubModeRef.current = graphViewMode;
+    }
+  }, [graphViewMode]);
 
   // ── Current scene ──────────────────────────────────────────────────────
   const currentScene = useMemo<Scene | null>(() => {
@@ -483,10 +498,10 @@ export function CanvasTopBar() {
   const [reasoningCopied, setReasoningCopied] = useState(false);
   const [phaseCopied, setPhaseCopied] = useState(false);
 
-  const activePhaseGraph = useMemo(() => {
-    const id = narrative?.currentPhaseGraphId;
-    return id ? narrative?.phaseGraphs?.[id] : undefined;
-  }, [narrative?.currentPhaseGraphId, narrative?.phaseGraphs]);
+  const activeMode = useMemo(() => {
+    const id = narrative?.currentModeId;
+    return id ? narrative?.modes?.[id] : undefined;
+  }, [narrative?.currentModeId, narrative?.modes]);
 
   useEffect(() => {
     if (editField) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
@@ -791,16 +806,16 @@ export function CanvasTopBar() {
           }}
         />
       )}
-      {canvasMode === 'phase' && activePhaseGraph && (
+      {canvasMode === 'mode' && activeMode && (
         <GraphInfoStrip
-          graph={activePhaseGraph}
+          graph={activeMode}
           copied={phaseCopied}
           onCopy={() => {
-            navigator.clipboard.writeText(buildSequentialPath({ nodes: activePhaseGraph.nodes, edges: activePhaseGraph.edges }));
+            navigator.clipboard.writeText(buildSequentialPath({ nodes: activeMode.nodes, edges: activeMode.edges }));
             setPhaseCopied(true);
             setTimeout(() => setPhaseCopied(false), 2000);
           }}
-          onExport={() => downloadGraphAsJson(activePhaseGraph, activePhaseGraph.name ?? 'phase-graph')}
+          onExport={() => downloadGraphAsJson(activeMode, activeMode.name ?? 'mode')}
         />
       )}
 
@@ -869,14 +884,18 @@ export function CanvasTopBar() {
           </>
         )}
 
-        {/* Market sub-mode toggle — Dashboard / Brief. Mirrors the graph
-            scope/domain pattern; only renders when the user is in Market or
-            Brief view. */}
-        {inMarketMode && (
+        {/* Control sub-mode toggle — Opinion · Present · Future · Mode.
+            Opinion reflects reality (markets); Present is the realized
+            variables disposition; Future is the predictive scenario cohort;
+            Mode is the working-machinery graph — a graphical context that
+            permeates downstream planning. */}
+        {inControlMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'market' as const, label: 'Dashboard' },
-              { mode: 'brief' as const, label: 'Brief' },
+              { mode: 'market' as const, label: 'Opinion' },
+              { mode: 'present' as const, label: 'Present' },
+              { mode: 'future' as const, label: 'Future' },
+              { mode: 'mode' as const, label: 'Mode' },
             ].map(({ mode, label }, idx) => {
               const isActive = graphViewMode === mode;
               return (
@@ -932,15 +951,15 @@ export function CanvasTopBar() {
           </div>
         )}
 
-        {/* Main canvas mode selector. Plan/Prose/Audio collapse into a single
-            "Scene" button; the sub-mode toggle renders to its left above. */}
+        {/* Main canvas mode selector. Plan/Prose/Audio collapse into "Scene";
+            Opinion/Variables/Phase collapse into "Control". The sub-mode
+            toggles render to the left for each cluster. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
-            { mode: 'graph' as CanvasMode, Icon: IconNetwork, label: 'Graph', condition: 'always' as const, activeWhen: canvasMode === 'graph' },
-            { mode: 'market' as CanvasMode, Icon: IconMarket, label: 'Market', condition: 'always' as const, activeWhen: canvasMode === 'market' || canvasMode === 'brief' },
-            { mode: 'phase' as CanvasMode, Icon: IconReasoning, label: 'Phase', condition: 'always' as const, activeWhen: canvasMode === 'phase' },
+            { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', condition: 'always' as const, activeWhen: canvasMode === 'graph' },
+            { mode: 'control' as const, Icon: IconMarket, label: 'Control', condition: 'always' as const, activeWhen: inControlMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', condition: 'sceneOnly' as const, activeWhen: inSceneMode },
-            { mode: 'search' as CanvasMode, Icon: IconSearch, label: 'Search', condition: 'always' as const, activeWhen: canvasMode === 'search' },
+            { mode: 'search' as const, Icon: IconSearch, label: 'Search', condition: 'always' as const, activeWhen: canvasMode === 'search' },
           ]
             .filter(({ condition }) => {
               if (condition === 'sceneOnly' && !currentScene) return false;
@@ -959,6 +978,8 @@ export function CanvasTopBar() {
                     onClick={() => {
                       if (mode === 'scene') {
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastSceneModeRef.current });
+                      } else if (mode === 'control') {
+                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastControlSubModeRef.current });
                       } else {
                         switchMode(mode);
                       }

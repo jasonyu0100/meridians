@@ -1,21 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { IconSpinner, IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
-import type { MCTSRunState } from '@/types/mcts';
+import { IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
+import type { ExperimentationRunState } from '@/types/experimentation';
 import type { AutoRunLog } from '@/types/narrative';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
 
-type ModeType = 'auto' | 'mcts' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game';
+type ModeType = 'auto' | 'experimentation' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game';
 
-type BaseProps = {
+// Pause/resume apply to auto + bulk modes (which manage queues we can
+// genuinely pause between iterations). Experimentation runs are pure
+// in-flight LLM calls — Stop cancels, but mid-call pause is impossible.
+type PausableProps = {
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
 };
 
-type AutoModeProps = BaseProps & {
+type StopOnlyProps = {
+  onStop: () => void;
+};
+
+type AutoModeProps = PausableProps & {
   mode: 'auto';
   isRunning: boolean;
   isPaused: boolean;
@@ -29,13 +36,13 @@ type AutoModeProps = BaseProps & {
   hasCoordinationPlan?: boolean;
 };
 
-type MCTSModeProps = BaseProps & {
-  mode: 'mcts';
-  runState: MCTSRunState;
+type ExperimentationModeProps = StopOnlyProps & {
+  mode: 'experimentation';
+  runState: ExperimentationRunState;
   onOpenPanel: () => void;
 };
 
-type BulkPlanProps = BaseProps & {
+type BulkPlanProps = PausableProps & {
   mode: 'bulk-plan';
   isRunning: boolean;
   isPaused: boolean;
@@ -43,7 +50,7 @@ type BulkPlanProps = BaseProps & {
   statusMessage: string;
 };
 
-type BulkProseProps = BaseProps & {
+type BulkProseProps = PausableProps & {
   mode: 'bulk-prose';
   isRunning: boolean;
   isPaused: boolean;
@@ -51,7 +58,7 @@ type BulkProseProps = BaseProps & {
   statusMessage: string;
 };
 
-type BulkAudioProps = BaseProps & {
+type BulkAudioProps = PausableProps & {
   mode: 'bulk-audio';
   isRunning: boolean;
   isPaused: boolean;
@@ -59,7 +66,7 @@ type BulkAudioProps = BaseProps & {
   statusMessage: string;
 };
 
-type BulkGameProps = BaseProps & {
+type BulkGameProps = PausableProps & {
   mode: 'bulk-game';
   isRunning: boolean;
   isPaused: boolean;
@@ -67,15 +74,9 @@ type BulkGameProps = BaseProps & {
   statusMessage: string;
 };
 
-type Props = AutoModeProps | MCTSModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps;
+type Props = AutoModeProps | ExperimentationModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
-}
 
 function scoreColorClass(v: number): string {
   if (v >= 90) return 'text-green-400';
@@ -87,7 +88,7 @@ function scoreColorClass(v: number): string {
 
 const MODE_CONFIG: Record<ModeType, { label: string; color: string; bgColor: string }> = {
   'auto': { label: 'Auto', color: 'text-amber-400', bgColor: 'bg-amber-400' },
-  'mcts': { label: 'MCTS', color: 'text-blue-400', bgColor: 'bg-blue-400' },
+  'experimentation': { label: 'Experimentation', color: 'text-blue-400', bgColor: 'bg-blue-400' },
   'bulk-plan': { label: 'Plans', color: 'text-sky-400', bgColor: 'bg-sky-400' },
   'bulk-prose': { label: 'Prose', color: 'text-emerald-400', bgColor: 'bg-emerald-400' },
   'bulk-audio': { label: 'Audio', color: 'text-violet-400', bgColor: 'bg-violet-400' },
@@ -111,13 +112,12 @@ export function ModeControlBar(props: Props) {
   const config = MODE_CONFIG[props.mode];
 
   // Determine state
-  const isRunning = props.mode === 'mcts'
+  const isRunning = props.mode === 'experimentation'
     ? props.runState.status === 'running'
     : props.isRunning;
-  const isPaused = props.mode === 'mcts'
-    ? props.runState.status === 'paused'
-    : props.isPaused;
-  const isComplete = props.mode === 'mcts' && props.runState.status === 'complete';
+  // Experimentation has no paused state — its runs are mid-flight LLM calls.
+  const isPaused = props.mode === 'experimentation' ? false : props.isPaused;
+  const isComplete = props.mode === 'experimentation' && props.runState.status === 'complete';
 
   // Auto mode specific
   const lastEntry = props.mode === 'auto' ? props.log[props.log.length - 1] : null;
@@ -125,10 +125,10 @@ export function ModeControlBar(props: Props) {
   const stoppedByError = props.mode === 'auto' && !isRunning && !isPaused && lastError;
   const hasError = props.mode === 'auto' && !!lastError;
 
-  // MCTS timer
+  // Experimentation timer
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    if (props.mode !== 'mcts') return;
+    if (props.mode !== 'experimentation') return;
     const { startedAt } = props.runState;
     if (!isRunning || !startedAt) { setElapsed(0); return; }
     setElapsed(Math.floor((Date.now() - startedAt) / 1000));
@@ -136,16 +136,29 @@ export function ModeControlBar(props: Props) {
       setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
     return () => clearInterval(id);
-  }, [props.mode === 'mcts' ? props.runState.startedAt : null, isRunning, props.mode]);
+  }, [props.mode === 'experimentation' ? props.runState.startedAt : null, isRunning, props.mode]);
 
-  // MCTS metrics
-  const mctsMetrics = props.mode === 'mcts' ? (() => {
-    const { tree, config: mctsConfig, iterationsCompleted, bestPath } = props.runState;
-    const nodeCount = Object.keys(tree.nodes).length;
-    const topScore = Object.values(tree.nodes).reduce((max, n) => Math.max(max, n.immediateScore), 0);
-    const bestArcName = bestPath?.[0] ? tree.nodes[bestPath[0]]?.arc.name : null;
-    const isTimerMode = mctsConfig.stopMode === 'timer';
-    return { nodeCount, topScore, bestArcName, isTimerMode, timeLimitSeconds: mctsConfig.timeLimitSeconds, maxNodes: mctsConfig.maxNodes, iterationsCompleted };
+  // Experimentation metrics — scenario-batched flow: count done / total
+  // across the cohort, surface the leading scenario's name.
+  const experimentationMetrics = props.mode === 'experimentation' ? (() => {
+    const { runs, scenarioOrder } = props.runState;
+    let done = 0;
+    let failed = 0;
+    let running = 0;
+    let topProb = -Infinity;
+    let topName: string | null = null;
+    for (const id of scenarioOrder) {
+      const r = runs[id];
+      if (!r) continue;
+      if (r.status === 'done') done++;
+      else if (r.status === 'failed') failed++;
+      else if (r.status === 'running') running++;
+      if (r.probabilityAtStart > topProb) {
+        topProb = r.probabilityAtStart;
+        topName = r.name;
+      }
+    }
+    return { total: scenarioOrder.length, done, failed, running, topName };
   })() : null;
 
   return (
@@ -212,31 +225,39 @@ export function ModeControlBar(props: Props) {
           </>
         )}
 
-        {props.mode === 'mcts' && mctsMetrics && (
+        {props.mode === 'experimentation' && experimentationMetrics && (
           <>
-            <span className="text-[10px] text-text-dim font-mono tabular-nums">
-              {mctsMetrics.isTimerMode
-                ? formatTime(elapsed)
-                : mctsMetrics.iterationsCompleted}
+            <span className="text-[10px] text-text-secondary font-mono tabular-nums">
+              {experimentationMetrics.done}
             </span>
             <span className="text-[9px] text-text-dim/50">/</span>
-            <span className="text-[10px] text-text-secondary font-mono tabular-nums">
-              {mctsMetrics.isTimerMode
-                ? formatTime(mctsMetrics.timeLimitSeconds)
-                : mctsMetrics.maxNodes}
+            <span className="text-[10px] text-text-dim font-mono tabular-nums">
+              {experimentationMetrics.total}
             </span>
-            {mctsMetrics.nodeCount > 0 && (
+            <span className="text-[9px] text-text-dim/60">scenarios</span>
+            {experimentationMetrics.running > 0 && (
               <>
                 <div className="w-px h-3 bg-white/10" />
-                <span className="text-[9px] text-text-dim">
-                  {mctsMetrics.nodeCount}n
+                <span className="text-[9px] text-blue-300/80 font-mono">
+                  {experimentationMetrics.running}↻
                 </span>
               </>
             )}
-            {mctsMetrics.topScore > 0 && (
-              <span className={`text-[10px] font-mono font-semibold ${scoreColorClass(mctsMetrics.topScore)}`}>
-                {mctsMetrics.topScore}
-              </span>
+            {experimentationMetrics.failed > 0 && (
+              <>
+                <div className="w-px h-3 bg-white/10" />
+                <span className="text-[9px] text-rose-300/80 font-mono">
+                  {experimentationMetrics.failed}✕
+                </span>
+              </>
+            )}
+            {experimentationMetrics.topName && (
+              <>
+                <div className="w-px h-3 bg-white/10" />
+                <span className="text-[10px] text-text-secondary truncate max-w-32" title={experimentationMetrics.topName}>
+                  {experimentationMetrics.topName}
+                </span>
+              </>
             )}
           </>
         )}
@@ -268,7 +289,7 @@ export function ModeControlBar(props: Props) {
 
         {/* Controls */}
         <div className="flex items-center gap-0.5">
-          {isRunning && (
+          {props.mode !== 'experimentation' && isRunning && (
             <button
               onClick={props.onPause}
               className="w-5 h-5 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
@@ -277,7 +298,7 @@ export function ModeControlBar(props: Props) {
               <IconPause size={8} />
             </button>
           )}
-          {isPaused && (
+          {props.mode !== 'experimentation' && isPaused && (
             <button
               onClick={props.onResume}
               className={`w-5 h-5 flex items-center justify-center ${config.color} hover:bg-white/8 rounded-full transition-colors`}
@@ -313,11 +334,11 @@ export function ModeControlBar(props: Props) {
               </button>
             </>
           )}
-          {props.mode === 'mcts' && (
+          {props.mode === 'experimentation' && (
             <button
               onClick={props.onOpenPanel}
               className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
-              title="Open MCTS panel"
+              title="Open Experimentation panel"
             >
               <IconExpand size={10} />
             </button>
@@ -353,12 +374,20 @@ export function ModeControlBar(props: Props) {
         </div>
       )}
 
-      {/* MCTS current phase */}
-      {props.mode === 'mcts' && isRunning && props.runState.currentPhase && (
-        <div className="mt-1 text-[9px] text-blue-400/70 capitalize">
-          {props.runState.currentPhase}
-        </div>
-      )}
+      {/* Experimentation summary line — show the most recently started
+          run's name + phase as the status text. */}
+      {props.mode === 'experimentation' && isRunning && (() => {
+        const latest = props.runState.scenarioOrder
+          .map((id) => props.runState.runs[id])
+          .filter((r) => r?.status === 'running')
+          .sort((a, b) => (b?.startedAt ?? 0) - (a?.startedAt ?? 0))[0];
+        if (!latest) return null;
+        return (
+          <div className="mt-1 text-[9px] text-blue-400/70 truncate">
+            {latest.name}{latest.phase ? ` · ${latest.phase}` : ''}
+          </div>
+        );
+      })()}
 
       {/* Bulk mode status */}
       {(props.mode === 'bulk-plan' || props.mode === 'bulk-prose' || props.mode === 'bulk-audio' || props.mode === 'bulk-game') && props.statusMessage && (

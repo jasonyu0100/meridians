@@ -5,7 +5,7 @@
  * reasoning-mode) so the prompts module stays free of upstream dependencies.
  */
 
-import { phaseGraphPriorityEntry } from "../phase/application";
+import { modePriorityEntry } from "../mode/application";
 
 export type CoordPlanNodeGuidance = {
   totalMin: number;
@@ -39,8 +39,8 @@ export type CoordinationPlanArgs = {
   nodeGuidance: CoordPlanNodeGuidance;
   forcePreferenceBlockText: string;
   reasoningModeBlockText: string;
-  /** Pre-rendered <phase-graph> block (or "" when no phase graph is active). */
-  phaseGraphSection: string;
+  /** Pre-rendered <mode> block (or "" when no phase graph is active). */
+  modeSection: string;
 };
 
 export function buildCoordinationPlanPrompt(args: CoordinationPlanArgs): string {
@@ -63,7 +63,7 @@ export function buildCoordinationPlanPrompt(args: CoordinationPlanArgs): string 
     nodeGuidance,
     forcePreferenceBlockText,
     reasoningModeBlockText,
-    phaseGraphSection,
+    modeSection,
   } = args;
 
   return `<inputs>
@@ -87,7 +87,7 @@ ${artifacts ? `    <key-artifacts>\n${artifacts}\n    </key-artifacts>` : ""}
 ${recentScenes ? `    <recent-scenes hint="What just happened.">\n${recentScenes}\n    </recent-scenes>` : ""}
   </narrative-state>
 
-${phaseGraphSection ? `  ${phaseGraphSection.replace(/\n/g, '\n  ')}` : ""}
+${modeSection ? `  ${modeSection.replace(/\n/g, '\n  ')}` : ""}
 ${patternsSection ? `  <patterns hint="Positive commandments.">\n${patternsSection}\n  </patterns>` : ""}
 ${antiPatternsSection ? `  <anti-patterns hint="Pitfalls to avoid.">\n${antiPatternsSection}\n  </anti-patterns>` : ""}
 
@@ -106,7 +106,7 @@ ${reasoningModeBlockText ? `    ${reasoningModeBlockText.replace(/\n/g, '\n    '
 <integration-hierarchy hint="When inputs conflict, this is the priority order for plan-level decisions.">
   <priority rank="1">DIRECTION / CONSTRAINTS / THREAD TARGETS — explicit user guidance; the plan must serve these directly.</priority>
   <priority rank="2">NARRATIVE STATE — active threads, key characters/locations, system knowledge, recent scenes; the substrate the plan operates on.</priority>
-  ${phaseGraphPriorityEntry(3, "reasoning-plan")}
+  ${modePriorityEntry(3, "reasoning-plan")}
   <priority rank="4">FORCE PREFERENCE / REASONING MODE — engine tilt applied within the constraints above.</priority>
 </integration-hierarchy>
 

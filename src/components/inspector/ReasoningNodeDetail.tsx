@@ -234,7 +234,7 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
                   {node.systemNodeId}
                 </span>
                 {systemNode && (
-                  <span className="text-[10px] text-text-secondary group-hover:text-text-primary transition truncate">
+                  <span className="text-[10px] text-text-secondary group-hover:text-text-primary transition leading-snug">
                     {systemNode.concept}
                   </span>
                 )}
@@ -269,7 +269,7 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
                     >
                       {isOutgoing ? "->" : "<-"} {edge.type}
                     </span>
-                    <span className="text-[11px] text-text-secondary group-hover:text-text-primary transition truncate flex-1">
+                    <span className="text-[11px] text-text-secondary group-hover:text-text-primary transition leading-snug flex-1">
                       {otherNode?.label ?? otherId}
                     </span>
                     {otherNode && (

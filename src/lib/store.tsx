@@ -703,6 +703,32 @@ export type Action =
   | { type: "INSPECTOR_BACK" }
   | { type: "ADD_NARRATIVE"; narrative: NarrativeState }
   | { type: "DELETE_NARRATIVE"; id: string }
+  | {
+      // Per-arc Present variables — each arc owns its own full set with
+      // intensities baked into each Variable. Pass [] to clear.
+      type: "SET_ARC_PRESENT_VARIABLES";
+      arcId: string;
+      variables: import("@/types/narrative").Variable[];
+    }
+  | {
+      // Replace the cohort of planning scenarios on a specific arc. Each
+      // scenario owns its own custom variable set. Pass [] to clear.
+      type: "SET_ARC_PLANNING_SCENARIOS";
+      arcId: string;
+      scenarios: import("@/types/narrative").PlanningScenario[];
+    }
+  | {
+      // Store the last user-supplied direction string that shaped the cohort.
+      type: "SET_ARC_SCENARIO_DIRECTION";
+      arcId: string;
+      direction: string | undefined;
+    }
+  | {
+      // Wipe a single arc's variables (Present + scenarios + plausibility +
+      // direction). No narrative-wide wipe — each arc owns its own state.
+      type: "WIPE_ARC_VARIABLES";
+      arcId: string;
+    }
   | { type: "SELECT_KNOWLEDGE_ENTITY"; entityId: string | null }
   | { type: "SELECT_THREAD_LOG"; threadId: string | null }
   | { type: "SET_GRAPH_VIEW_MODE"; mode: GraphViewMode }
@@ -839,10 +865,10 @@ export type Action =
   | { type: "SET_PROSE_PROFILE"; profile: ProseProfile | undefined }
   | { type: "SET_PATTERNS"; patterns: string[] }
   | { type: "SET_ANTI_PATTERNS"; antiPatterns: string[] }
-  | { type: "ADD_PHASE_GRAPH"; graph: import("@/types/narrative").PhaseGraph }
-  | { type: "SET_CURRENT_PHASE_GRAPH"; phaseGraphId: string | null }
-  | { type: "RENAME_PHASE_GRAPH"; phaseGraphId: string; name: string }
-  | { type: "DELETE_PHASE_GRAPH"; phaseGraphId: string }
+  | { type: "ADD_PHASE_GRAPH"; graph: import("@/types/narrative").Mode }
+  | { type: "SET_CURRENT_PHASE_GRAPH"; modeId: string | null }
+  | { type: "RENAME_PHASE_GRAPH"; modeId: string; name: string }
+  | { type: "DELETE_PHASE_GRAPH"; modeId: string }
   | { type: "SET_GENRE"; genre: string }
   | { type: "SET_SUBGENRE"; subgenre: string }
   | { type: "SET_DETECTED_PATTERNS"; genre: string; subgenre: string; patterns: string[]; antiPatterns: string[] }
@@ -1106,6 +1132,72 @@ function reducer(state: AppState, action: Action): AppState {
           currentSceneIndex: Math.max(0, newResolved.length - 1),
         },
       };
+    }
+    case "SET_ARC_PRESENT_VARIABLES": {
+      return updateNarrative(state, (n) => {
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
+        return {
+          ...n,
+          arcs: {
+            ...n.arcs,
+            [action.arcId]: {
+              ...arc,
+              presentVariables: action.variables.length > 0 ? action.variables : undefined,
+            },
+          },
+        };
+      });
+    }
+    case "SET_ARC_PLANNING_SCENARIOS": {
+      return updateNarrative(state, (n) => {
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
+        return {
+          ...n,
+          arcs: {
+            ...n.arcs,
+            [action.arcId]: {
+              ...arc,
+              planningScenarios: action.scenarios.length > 0 ? action.scenarios : undefined,
+            },
+          },
+        };
+      });
+    }
+    case "SET_ARC_SCENARIO_DIRECTION": {
+      return updateNarrative(state, (n) => {
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
+        return {
+          ...n,
+          arcs: {
+            ...n.arcs,
+            [action.arcId]: {
+              ...arc,
+              scenarioDirection: action.direction && action.direction.trim() ? action.direction.trim() : undefined,
+            },
+          },
+        };
+      });
+    }
+    case "WIPE_ARC_VARIABLES": {
+      return updateNarrative(state, (n) => {
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
+        return {
+          ...n,
+          arcs: {
+            ...n.arcs,
+            [action.arcId]: {
+              ...arc,
+              presentVariables: undefined,
+              planningScenarios: undefined,
+              scenarioDirection: undefined,
+            },
+          },
+        };
+      });
     }
     case "DELETE_NARRATIVE": {
       const isSeed = SEED_IDS.has(action.id);
@@ -2669,38 +2761,38 @@ function reducer(state: AppState, action: Action): AppState {
     case "ADD_PHASE_GRAPH":
       return updateNarrative(state, (n) => ({
         ...n,
-        phaseGraphs: { ...(n.phaseGraphs ?? {}), [action.graph.id]: action.graph },
-        currentPhaseGraphId: action.graph.id,
+        modes: { ...(n.modes ?? {}), [action.graph.id]: action.graph },
+        currentModeId: action.graph.id,
       }));
 
     case "SET_CURRENT_PHASE_GRAPH":
       return updateNarrative(state, (n) => ({
         ...n,
-        currentPhaseGraphId: action.phaseGraphId ?? undefined,
+        currentModeId: action.modeId ?? undefined,
       }));
 
     case "RENAME_PHASE_GRAPH":
       return updateNarrative(state, (n) => {
-        const graph = n.phaseGraphs?.[action.phaseGraphId];
+        const graph = n.modes?.[action.modeId];
         if (!graph) return n;
         return {
           ...n,
-          phaseGraphs: {
-            ...n.phaseGraphs,
-            [action.phaseGraphId]: { ...graph, name: action.name },
+          modes: {
+            ...n.modes,
+            [action.modeId]: { ...graph, name: action.name },
           },
         };
       });
 
     case "DELETE_PHASE_GRAPH":
       return updateNarrative(state, (n) => {
-        const next = { ...(n.phaseGraphs ?? {}) };
-        delete next[action.phaseGraphId];
+        const next = { ...(n.modes ?? {}) };
+        delete next[action.modeId];
         return {
           ...n,
-          phaseGraphs: next,
-          currentPhaseGraphId:
-            n.currentPhaseGraphId === action.phaseGraphId ? undefined : n.currentPhaseGraphId,
+          modes: next,
+          currentModeId:
+            n.currentModeId === action.modeId ? undefined : n.currentModeId,
         };
       });
 

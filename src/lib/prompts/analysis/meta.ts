@@ -80,12 +80,12 @@ Return JSON:
   "genre": "primary register or genre — name what the work actually IS (e.g. literary fiction, memoir, lyric essay, criticism, longform journalism, investigative reportage, theoretical paper, empirical paper, archival history, historical counterfactual, policy / wargame scenario, agent-based study, LitRPG / cultivation; if fiction, name the genre; if simulation, name the rule-driven form).",
   "subgenre": "specific subgenre or sub-form (e.g. progression fantasy, cozy mystery, autotheory, ablation paper, war reportage, oral history, Mughal-succession counterfactual, monetary-policy wargame, pandemic propagation scenario, cultivation-tier xianxia) — pick the most identifying form.",
   "proseProfile": {
-    "register": "string",
-    "stance": "string",
-    "tense": "string",
-    "sentenceRhythm": "string",
-    "interiority": "string",
-    "dialogueWeight": "string",
+    "register": "tonal register — e.g. 'literary, low-key', 'wry academic', 'plainspoken reportage'",
+    "stance": "narrator's distance — e.g. 'close third', 'omniscient', 'detached observer'",
+    "tense": "grammatical tense — e.g. 'past', 'present'",
+    "sentenceRhythm": "structural cadence — e.g. 'short clauses with periodic long sweeps', 'cumulative compound'",
+    "interiority": "depth into POV interior — e.g. 'shallow, action-led', 'frequent free-indirect thought'",
+    "dialogueWeight": "share given to dialogue — e.g. 'dialogue-heavy', 'sparse, expository only'",
     "devices": ["device1", "device2"],
     "rules": ["prose rule 1", "prose rule 2"],
     "antiPatterns": ["anti-pattern 1", "anti-pattern 2"]

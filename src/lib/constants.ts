@@ -133,8 +133,8 @@ export const GAME_CONCURRENCY = 10;
 /** Concurrent prose rewrite slots */
 export const REWRITE_CONCURRENCY = 10;
 
-/** Max children per MCTS node */
-export const MCTS_MAX_NODE_CHILDREN = 8;
+/** Max children per Experimentation node */
+export const EXPERIMENT_MAX_NODE_CHILDREN = 8;
 
 /** Arcs per season before auto-engine manual stop */
 export const AUTO_STOP_CYCLE_LENGTH = 25;

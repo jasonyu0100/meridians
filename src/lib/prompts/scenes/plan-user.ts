@@ -11,7 +11,7 @@
 import { BEAT_FN_LIST, BEAT_MECHANISM_LIST } from "@/types/narrative";
 import { PROMPT_BEAT_TAXONOMY } from "../core/beat-taxonomy";
 import { PROMPT_PROPOSITIONS } from "../core/propositions";
-import { phaseGraphPriorityEntry } from "../phase/application";
+import { modePriorityEntry } from "../mode/application";
 import { WORDS_PER_BEAT, BEATS_PER_SCENE, WORDS_PER_SCENE } from "@/lib/constants";
 
 export function buildScenePlanUserPrompt(args: {
@@ -27,7 +27,7 @@ ${args.inputBlocks}
   <priority rank="2">BEAT SLOTS — sampler-assigned fn/mechanism. Copy verbatim.</priority>
   <priority rank="3">PROSE PROFILE — voice rules; beats inherit voice from the profile.</priority>
   <priority rank="4">SCENE GROUNDING — visual + continuity; bridge propositions glue here when the moment calls them.</priority>
-  ${phaseGraphPriorityEntry(5, "scene-plan")}
+  ${modePriorityEntry(5, "scene-plan")}
 </integration-hierarchy>
 
 <beat-sizing>

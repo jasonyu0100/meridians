@@ -410,11 +410,11 @@ function MarketCard({
           )}
         </div>
       </div>
-      <p className="text-xs text-text-primary leading-snug line-clamp-2 wrap-break-word">
+      <p className="text-xs text-text-primary leading-snug wrap-break-word">
         {thread.description}
       </p>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-text-dim truncate min-w-0 flex-1">
+        <span className="text-[10px] text-text-dim min-w-0 flex-1">
           <span className="text-text-secondary font-mono">{thread.outcomes[topIdx]}</span>{' '}
           <span className="font-mono tabular-nums text-text-primary">
             {Math.round((probs[topIdx] ?? 0) * 100)}%
@@ -518,11 +518,11 @@ function MarketListSidebar({
                   : row.focus.toFixed(3)}
             </span>
           </div>
-          <p className="text-[11px] text-text-primary leading-snug line-clamp-2 wrap-break-word">
+          <p className="text-[11px] text-text-primary leading-snug wrap-break-word">
             {row.thread.description}
           </p>
           <div className="flex items-center gap-2 text-[10px] text-text-dim">
-            <span className="font-mono truncate">
+            <span className="font-mono">
               {row.thread.outcomes[row.topIdx]}
             </span>
             <span className="ml-auto font-mono tabular-nums text-text-primary shrink-0">
@@ -936,10 +936,10 @@ function TopMovers({
                   {Math.abs(Number(deltaPct))}%
                 </span>
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <span className="text-[11px] text-text-primary truncate">
+                  <span className="text-[11px] text-text-primary leading-snug">
                     {row?.thread.description ?? m.threadId}
                   </span>
-                  <span className="text-[10px] text-text-dim font-mono truncate">
+                  <span className="text-[10px] text-text-dim font-mono">
                     {m.topOutcome}{' '}
                     <span className="text-text-dim/70">
                       {Math.round(m.priorProb * 100)}% → {Math.round(m.nowProb * 100)}%
@@ -1003,7 +1003,7 @@ function VolatilityLeaders({
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <span className="text-[11px] text-text-primary truncate">
+                  <span className="text-[11px] text-text-primary leading-snug">
                     {row.thread.description}
                   </span>
                   <div className="h-1 rounded-full bg-white/5 overflow-hidden">

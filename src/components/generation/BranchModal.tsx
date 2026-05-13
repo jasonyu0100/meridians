@@ -918,63 +918,62 @@ function GraphView({
                     key={ri}
                     ref={(el) => { labelRefs.current[ri] = el; }}
                     style={{ minHeight: ROW_H }}
-                    className={`group flex items-start pl-2 gap-2 py-1.5 rounded-md transition-colors ${
+                    className={`group px-2 py-1.5 rounded-md transition-colors ${
                       isForkRow ? 'bg-white/8' : isCurrentRow ? 'bg-white/4' : 'hover:bg-white/3'
                     }`}
                   >
                     {labelEntryId && (
-                      <>
-                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <div className="flex flex-col gap-1.5">
+                        {/* Badge cluster — full-width row above the prose so
+                            the text below can span the full column without
+                            being constrained by chip widths. */}
+                        <div className="flex flex-wrap justify-end items-center gap-1">
                           {isCurrentRow && (
                             <span
                               title="Your current scene"
-                              className="self-start text-[9px] uppercase tracking-widest text-text-dim border border-white/10 px-1 py-0.5 rounded"
+                              className="mr-auto text-[9px] uppercase tracking-widest text-text-dim border border-white/10 px-1 py-0.5 rounded"
                             >
                               here
                             </span>
                           )}
-                          <p
-                            className={`text-xs leading-snug whitespace-pre-wrap wrap-break-word ${labelIsActive ? 'text-text-primary' : 'text-text-secondary'}`}
+                          <button
+                            onClick={() => onSetForkEntry(labelEntryId)}
+                            title="Fork a new branch from this entry"
+                            className={`text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded transition-all ${
+                              isForkRow
+                                ? 'bg-white/15 text-text-primary'
+                                : 'text-text-dim opacity-0 group-hover:opacity-100 hover:bg-white/8 hover:text-text-secondary'
+                            }`}
                           >
-                            {entryLabel(labelEntryId)}
-                          </p>
+                            {isForkRow ? '◇ fork point' : '◇ fork here'}
+                          </button>
+                          {headCols.map(({ branchId }) => {
+                            const branch = narrative.branches[branchId];
+                            const isActive = branchId === activeBranchId;
+                            const c = stableBranchColor(branchId, allBranches);
+                            return (
+                              <button
+                                key={branchId}
+                                onClick={() => onSelect(branchId)}
+                                onDoubleClick={() => onSwitch(branchId)}
+                                title={isActive ? 'current — double-click to switch' : 'click to inspect, double-click to switch'}
+                                className="px-1.5 py-0.5 rounded text-[9px] font-semibold transition-opacity hover:opacity-80"
+                                style={{
+                                  backgroundColor: isActive ? c : `${c}33`,
+                                  color: isActive ? '#000' : c,
+                                }}
+                              >
+                                {branch?.name ?? branchId}
+                              </button>
+                            );
+                          })}
                         </div>
-                        <button
-                          onClick={() => onSetForkEntry(labelEntryId)}
-                          title="Fork a new branch from this entry"
-                          className={`shrink-0 text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded transition-all ${
-                            isForkRow
-                              ? 'bg-white/15 text-text-primary'
-                              : 'text-text-dim opacity-0 group-hover:opacity-100 hover:bg-white/8 hover:text-text-secondary'
-                          }`}
+                        <p
+                          className={`text-xs leading-snug whitespace-pre-wrap wrap-break-word ${labelIsActive ? 'text-text-primary' : 'text-text-secondary'}`}
                         >
-                          {isForkRow ? '◇ fork point' : '◇ fork here'}
-                        </button>
-                        {headCols.length > 0 && (
-                          <div className="flex gap-1 shrink-0">
-                            {headCols.map(({ branchId }) => {
-                              const branch = narrative.branches[branchId];
-                              const isActive = branchId === activeBranchId;
-                              const c = stableBranchColor(branchId, allBranches);
-                              return (
-                                <button
-                                  key={branchId}
-                                  onClick={() => onSelect(branchId)}
-                                  onDoubleClick={() => onSwitch(branchId)}
-                                  title={isActive ? 'current — double-click to switch' : 'click to inspect, double-click to switch'}
-                                  className="px-1.5 py-0.5 rounded text-[9px] font-semibold transition-opacity hover:opacity-80"
-                                  style={{
-                                    backgroundColor: isActive ? c : `${c}33`,
-                                    color: isActive ? '#000' : c,
-                                  }}
-                                >
-                                  {branch?.name ?? branchId}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </>
+                          {entryLabel(labelEntryId)}
+                        </p>
+                      </div>
                     )}
                   </div>
                 );

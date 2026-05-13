@@ -28,9 +28,9 @@ import { type SceneRange } from '@/components/timeline/SceneRangeSelector';
 import { ForceAnalytics } from '@/components/analytics/ForceAnalytics';
 import { CastAnalytics } from '@/components/analytics/CastAnalytics';
 import ProseProfilePanel from '@/components/layout/ProseProfilePanel';
-import { MCTSPanel } from '@/components/mcts/MCTSPanel';
+import { ExperimentationPanel } from '@/components/experimentation/ExperimentationPanel';
 import { ModeControlBar } from '@/components/generation/ModeControlBar';
-import { useMCTS } from '@/hooks/useMCTS';
+import { useExperimentation } from '@/hooks/useExperimentation';
 import { StorySettingsModal } from '@/components/settings/StorySettingsModal';
 import { CoordinationPlanIndicator } from '@/components/generation/CoordinationPlanIndicator';
 import { CoordinationPlanModal } from '@/components/generation/CoordinationPlanModal';
@@ -66,7 +66,7 @@ export default function SeriesPage() {
   const [forceAnalyticsOpen, setForceAnalyticsOpen] = useState(false);
   const [castAnalyticsOpen, setCastAnalyticsOpen] = useState(false);
   const [proseProfileOpen, setProseProfileOpen] = useState(false);
-  const [mctsOpen, setMctsOpen] = useState(false);
+  const [experimentationOpen, setExperimentationOpen] = useState(false);
   const [storySettingsOpen, setStorySettingsOpen] = useState(false);
   const [coordinationPlanOpen, setCoordinationPlanOpen] = useState(false);
   const [coordinationSetupOpen, setCoordinationSetupOpen] = useState(false);
@@ -80,7 +80,7 @@ export default function SeriesPage() {
     coordinationPlanRef.current = { branchId, hasPlan };
   }, [state.viewState.activeBranchId, state.activeNarrative]);
   const autoPlay = useAutoPlay();
-  const mcts = useMCTS();
+  const experimentation = useExperimentation();
   const bulk = useBulkGenerate();
   const bulkAudio = useBulkAudioGenerate();
   const id = params.id as string;
@@ -122,7 +122,7 @@ export default function SeriesPage() {
     function handleOpenForceAnalytics() { setForceAnalyticsOpen(true); }
     function handleOpenCastAnalytics() { setCastAnalyticsOpen(true); }
     function handleOpenProseProfile() { setProseProfileOpen(true); }
-    function handleOpenMcts() { setMctsOpen(true); }
+    function handleOpenExperimentation() { setExperimentationOpen(true); }
     function handleOpenStorySettings() { setStorySettingsOpen(true); }
     function handleOpenCoordinationPlan() {
       // If plan exists, show it; otherwise open setup
@@ -139,7 +139,7 @@ export default function SeriesPage() {
     window.addEventListener('open-force-analytics', handleOpenForceAnalytics);
     window.addEventListener('open-cast-analytics', handleOpenCastAnalytics);
     window.addEventListener('open-prose-profile', handleOpenProseProfile);
-    window.addEventListener('open-mcts-panel', handleOpenMcts);
+    window.addEventListener('open-experimentation-panel', handleOpenExperimentation);
     window.addEventListener('open-story-settings', handleOpenStorySettings);
     window.addEventListener('open-coordination-plan', handleOpenCoordinationPlan);
     return () => {
@@ -149,7 +149,7 @@ export default function SeriesPage() {
       window.removeEventListener('open-force-analytics', handleOpenForceAnalytics);
       window.removeEventListener('open-cast-analytics', handleOpenCastAnalytics);
       window.removeEventListener('open-prose-profile', handleOpenProseProfile);
-      window.removeEventListener('open-mcts-panel', handleOpenMcts);
+      window.removeEventListener('open-experimentation-panel', handleOpenExperimentation);
       window.removeEventListener('open-story-settings', handleOpenStorySettings);
       window.removeEventListener('open-coordination-plan', handleOpenCoordinationPlan);
     };
@@ -185,7 +185,7 @@ export default function SeriesPage() {
   }
 
   const showAutoBar = state.viewState.autoRunState && (state.viewState.autoRunState.isRunning || state.viewState.autoRunState.isPaused || state.viewState.autoRunState.log.length > 0);
-  const showMctsBar = mcts.runState.status !== 'idle' || Object.keys(mcts.runState.tree.nodes).length > 0;
+  const showExperimentationBar = experimentation.runState.status !== 'idle';
   const showBulkBar = bulk.runState !== null;
   const showBulkAudioBar = bulkAudio.runState !== null;
 
@@ -194,6 +194,10 @@ export default function SeriesPage() {
   // at the lowest divider line and the wash only spills downward.
   const hasCanvasLegend = GRAPH_MODES.has(state.graphViewMode);
   const barLightTop = hasCanvasLegend ? 28 : 0;
+  // Variables view (Present/Future) renders its OWN internal topbar with a
+  // dedicated wash anchored to its bottom edge. Suppress the page-level
+  // light there so the two illuminations don't double up.
+  const suppressBarLight = state.graphViewMode === 'present' || state.graphViewMode === 'future';
 
   return (
     <PropositionClassificationProvider narrative={state.activeNarrative} resolvedKeys={state.resolvedEntryKeys}>
@@ -210,29 +214,34 @@ export default function SeriesPage() {
             {/* Top bar light — washes the upper canvas for legibility. Both
                 the wash and divider start at the bottom edge of the topmost
                 bar (CanvasTopBar, plus a legend strip when in graph mode), so
-                the light only ever spills downward. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0"
-              style={{
-                top: barLightTop,
-                height: 320,
-                background:
-                  'linear-gradient(to bottom, rgba(221, 214, 254, 0.22) 0%, rgba(210, 197, 253, 0.11) 12%, rgba(196, 181, 253, 0.05) 32%, rgba(196, 181, 253, 0.02) 60%, transparent 100%)',
-                mixBlendMode: 'screen',
-              }}
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0"
-              style={{
-                top: barLightTop,
-                height: 1,
-                background:
-                  'linear-gradient(to right, transparent 0%, rgba(196, 181, 253, 0.55) 18%, rgba(237, 233, 254, 0.85) 50%, rgba(196, 181, 253, 0.55) 82%, transparent 100%)',
-              }}
-            />
-            {/* Mode control bars - prioritize: bulk-audio > bulk > mcts > auto */}
+                the light only ever spills downward. Suppressed for the
+                Variables view, which renders its own internal version. */}
+            {!suppressBarLight && (
+              <>
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0"
+                  style={{
+                    top: barLightTop,
+                    height: 320,
+                    background:
+                      'linear-gradient(to bottom, rgba(221, 214, 254, 0.22) 0%, rgba(210, 197, 253, 0.11) 12%, rgba(196, 181, 253, 0.05) 32%, rgba(196, 181, 253, 0.02) 60%, transparent 100%)',
+                    mixBlendMode: 'screen',
+                  }}
+                />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0"
+                  style={{
+                    top: barLightTop,
+                    height: 1,
+                    background:
+                      'linear-gradient(to right, transparent 0%, rgba(196, 181, 253, 0.55) 18%, rgba(237, 233, 254, 0.85) 50%, rgba(196, 181, 253, 0.55) 82%, transparent 100%)',
+                  }}
+                />
+              </>
+            )}
+            {/* Mode control bars - prioritize: bulk-audio > bulk > experimentation > auto */}
             {showBulkAudioBar && bulkAudio.runState && (
               <ModeControlBar
                 mode="bulk-audio"
@@ -261,17 +270,15 @@ export default function SeriesPage() {
                 onStop={bulk.stop}
               />
             )}
-            {!showBulkAudioBar && !showBulkBar && showMctsBar && (
+            {!showBulkAudioBar && !showBulkBar && showExperimentationBar && (
               <ModeControlBar
-                mode="mcts"
-                runState={mcts.runState}
-                onPause={mcts.pause}
-                onResume={mcts.resume}
-                onStop={mcts.stop}
-                onOpenPanel={() => setMctsOpen(true)}
+                mode="experimentation"
+                runState={experimentation.runState}
+                onStop={experimentation.stop}
+                onOpenPanel={() => setExperimentationOpen(true)}
               />
             )}
-            {!showBulkAudioBar && !showBulkBar && !showMctsBar && showAutoBar && (
+            {!showBulkAudioBar && !showBulkBar && !showExperimentationBar && showAutoBar && (
               <ModeControlBar
                 mode="auto"
                 isRunning={autoPlay.isRunning}
@@ -294,12 +301,12 @@ export default function SeriesPage() {
               state.graphViewMode === 'prose' ||
               state.graphViewMode === 'audio' ||
               state.graphViewMode === 'game' ||
-              state.graphViewMode === 'phase' ||
+              state.graphViewMode === 'mode' ||
               state.graphViewMode === 'reasoning') && (
               <FloatingPalette
                 isBulkActive={!!(bulk.runState?.isRunning || bulk.runState?.isPaused)}
                 isBulkAudioActive={!!(bulkAudio.runState?.isRunning || bulkAudio.runState?.isPaused)}
-                isMctsActive={mcts.runState.status === 'running' || mcts.runState.status === 'paused'}
+                isExperimentationActive={experimentation.runState.status === 'running'}
               />
             )}
             {/* Coordination Plan Indicator — only in graph-style canvas modes */}
@@ -395,7 +402,7 @@ export default function SeriesPage() {
           }}
         />
       )}
-      <MCTSPanel isOpen={mctsOpen} onClose={() => setMctsOpen(false)} mcts={mcts} />
+      <ExperimentationPanel isOpen={experimentationOpen} onClose={() => setExperimentationOpen(false)} experimentation={experimentation} />
       {isMobile && (
         <div className="fixed inset-0 z-9999 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center">
           <p className="text-white/90 text-lg font-semibold mb-2">Desktop Only</p>

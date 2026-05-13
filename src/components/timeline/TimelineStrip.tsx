@@ -6,11 +6,13 @@ import {
   computeSwingMagnitudes,
   FORCE_REFERENCE_MEANS,
   gradeForces,
+  resolveEntrySequence,
 } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
-import type { Arc, Scene } from "@/types/narrative";
+import type { Arc, Scene, Branch } from "@/types/narrative";
 import { isScene, resolveEntry } from "@/types/narrative";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BranchTreePopover } from "./BranchTreePopover";
 
 const NODE_RADIUS = 8;
 const NODE_SPACING = 50;
@@ -162,32 +164,15 @@ export default function TimelineStrip() {
 
   return (
     <div className="relative h-18 shrink-0 glass-panel border-t border-border flex">
-      {/* Branch selector */}
+      {/* Branch selector — button opens a floating tree-shaped popover so
+          the user sees lineage instead of an opaque <select> list. */}
       {branchList.length > 1 && (
-        <div className="flex items-center px-2 border-r border-border shrink-0 w-36">
-          <select
-            value={state.viewState.activeBranchId ?? ""}
-            onChange={(e) =>
-              dispatch({ type: "SWITCH_BRANCH", branchId: e.target.value })
-            }
-            className="bg-transparent text-[10px] text-text-secondary uppercase tracking-wider cursor-pointer outline-none appearance-none pr-3 w-full truncate"
-            style={{ backgroundImage: "none" }}
-          >
-            {branchList.map((b) => (
-              <option
-                key={b.id}
-                value={b.id}
-                className="bg-bg-panel text-text-primary"
-              >
-                {b.name}
-              </option>
-            ))}
-          </select>
-          <IconChevronDown
-            size={8}
-            className="-ml-2 pointer-events-none text-text-dim"
-          />
-        </div>
+        <BranchSwitcherChip
+          branches={branchList}
+          activeBranch={activeBranch}
+          narrative={narrative}
+          onSwitch={(id) => dispatch({ type: "SWITCH_BRANCH", branchId: id })}
+        />
       )}
       <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-hidden">
         <svg
@@ -413,6 +398,68 @@ export default function TimelineStrip() {
           <IconFork size={14} />
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Branch switcher chip + tree popover ─────────────────────────────────
+
+function BranchSwitcherChip({
+  branches,
+  activeBranch,
+  narrative,
+  onSwitch,
+}: {
+  branches: Branch[];
+  activeBranch: Branch | null;
+  narrative: NonNullable<ReturnType<typeof useStore>['state']['activeNarrative']>;
+  onSwitch: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const formatSubtitle = useCallback(
+    (b: Branch) => {
+      // Resolved sequence length is the user-facing "how long is this
+      // branch?" signal — same accounting the rest of the app uses.
+      const seq = resolveEntrySequence(narrative.branches, b.id);
+      let scenes = 0;
+      let worlds = 0;
+      for (const id of seq) {
+        if (narrative.scenes[id]) scenes++;
+        else if (narrative.worldBuilds[id]) worlds++;
+      }
+      const parts: string[] = [`${scenes} sc`];
+      if (worlds > 0) parts.push(`${worlds} w`);
+      if (b.parentBranchId) {
+        const parentName = narrative.branches[b.parentBranchId]?.name;
+        if (parentName) parts.push(`from ${parentName}`);
+      }
+      return parts.join(' · ');
+    },
+    [narrative],
+  );
+
+  return (
+    <div className="relative flex items-center px-2 border-r border-border shrink-0 w-36">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-[10px] text-text-secondary uppercase tracking-wider cursor-pointer outline-none w-full hover:text-text-primary transition-colors"
+        title="Switch branch — opens the lineage tree"
+      >
+        <span className="truncate flex-1 text-left">{activeBranch?.name ?? '—'}</span>
+        <IconChevronDown size={8} className="text-text-dim shrink-0" />
+      </button>
+      {open && (
+        <BranchTreePopover
+          branches={branches}
+          activeBranchId={activeBranch?.id ?? null}
+          onSwitch={onSwitch}
+          onClose={() => setOpen(false)}
+          onOpenFullView={() => window.dispatchEvent(new CustomEvent('open-branch-modal'))}
+          formatSubtitle={formatSubtitle}
+        />
+      )}
     </div>
   );
 }

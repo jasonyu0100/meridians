@@ -1,17 +1,17 @@
 /**
- * Phase Graph generator — mines narrative context (with optional user
+ * Mode generator — mines narrative context (with optional user
  * guidance and optional seed graph) to produce a working model of reality.
  * Distinct from CRG (per-arc causal reasoning); the phase graph is a
  * descriptive snapshot of the system's current state and is consumed
  * downstream by CRG / scene / plan / prose generation.
  *
- * Phase graphs are immutable once stored. Regeneration produces a new graph
+ * Modes are immutable once stored. Regeneration produces a new graph
  * (optionally seeded by a prior one); the prior is preserved in storage as
  * long as it is current OR an arc references it (reference-counted GC in
- * `@/lib/phase-graph`).
+ * `@/lib/mode-graph`).
  */
 
-import type { NarrativeState, PhaseGraph, PhaseNodeSnapshot, PhaseEdgeSnapshot, PhaseNodeType } from "@/types/narrative";
+import type { NarrativeState, Mode, ModeNodeSnapshot, ModeEdgeSnapshot, ModeNodeType } from "@/types/narrative";
 import { REASONING_BUDGETS } from "@/types/narrative";
 import { callGenerate, callGenerateStream } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
@@ -20,38 +20,38 @@ import { parseJson } from "./json";
 import { logError } from "@/lib/system-logger";
 import {
   PHASE_GRAPH_SYSTEM,
-  buildPhaseGraphPrompt,
-  buildPhaseGraphSection,
-  buildPriorPhaseGraphSection,
-  type PhaseGraphScope,
-} from "@/lib/prompts/phase";
+  buildModePrompt,
+  buildModeSection,
+  buildPriorModeSection,
+  type ModeScope,
+} from "@/lib/prompts/mode";
 import { VALID_EDGE_TYPES } from "./reasoning-graph/shared";
 import type { ReasoningEdgeType } from "./reasoning-graph/types";
-import { getActivePhaseGraph } from "@/lib/phase-graph";
+import { getActiveMode } from "@/lib/mode-graph";
 
 /**
  * Render the active phase graph for injection into a downstream prompt:
  * data block + scope-tailored application directive. Returns "" when no
  * phase graph is active — callers can concatenate the result unconditionally.
  *
- * The actual prompt strings live in `@/lib/prompts/phase/application` so
+ * The actual prompt strings live in `@/lib/prompts/mode/application` so
  * the prompt language stays centralised and modular. This wrapper only
  * resolves which graph to render.
  */
-export function buildActivePhaseGraphSection(
+export function buildActiveModeSection(
   narrative: NarrativeState,
-  scope: PhaseGraphScope,
+  scope: ModeScope,
 ): string {
-  const graph = getActivePhaseGraph(narrative);
+  const graph = getActiveMode(narrative);
   if (!graph) return "";
-  return buildPhaseGraphSection(graph, scope);
+  return buildModeSection(graph, scope);
 }
 
 // Re-exports for legacy callers that imported types/helpers from this module
-// before the prompt strings were moved into `@/lib/prompts/phase`.
-export type { PhaseGraphScope };
+// before the prompt strings were moved into `@/lib/prompts/mode`.
+export type { ModeScope };
 
-const VALID_PHASE_NODE_TYPES = new Set<PhaseNodeType>([
+const VALID_PHASE_NODE_TYPES = new Set<ModeNodeType>([
   "pattern",
   "convention",
   "attractor",
@@ -61,9 +61,9 @@ const VALID_PHASE_NODE_TYPES = new Set<PhaseNodeType>([
   "landmark",
 ]);
 
-export type GeneratePhaseGraphOptions = {
+export type GenerateModeOptions = {
   /** Optional prior phase graph used as basis (regeneration with seed). */
-  basedOn?: PhaseGraph;
+  basedOn?: Mode;
   /** Optional user guidance / hypothesis. */
   guidance?: string;
   /** Reasoning effort. Defaults to the narrative's storySettings.reasoningLevel. */
@@ -74,22 +74,22 @@ export type GeneratePhaseGraphOptions = {
 
 /**
  * Generate a new phase graph from the narrative's current state. Returns a
- * PhaseGraph ready to be stored on NarrativeState (with `id` minted by the
+ * Mode ready to be stored on NarrativeState (with `id` minted by the
  * caller's id-allocation policy and `createdAt` stamped at storage time).
  */
-export async function generatePhaseGraph(
+export async function generateMode(
   narrative: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
-  options: GeneratePhaseGraphOptions = {},
-): Promise<Omit<PhaseGraph, "id" | "createdAt">> {
+  options: GenerateModeOptions = {},
+): Promise<Omit<Mode, "id" | "createdAt">> {
   const { basedOn, guidance, reasoningLevel, onReasoning } = options;
 
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
 
-  const basedOnSection = basedOn ? buildPriorPhaseGraphSection(basedOn) : undefined;
+  const basedOnSection = basedOn ? buildPriorModeSection(basedOn) : undefined;
 
-  // Node-count target scales with narrative size. Phase graphs are denser
+  // Node-count target scales with narrative size. Modes are denser
   // than per-arc reasoning graphs because they cover the whole system, but
   // bounded so the prompt doesn't explode for huge narratives.
   const sceneCount = Object.keys(narrative.scenes).length;
@@ -98,7 +98,7 @@ export async function generatePhaseGraph(
   const nodeCountMin = heft;
   const nodeCountMax = heft + 6;
 
-  const prompt = buildPhaseGraphPrompt({
+  const prompt = buildModePrompt({
     context: ctx,
     basedOnSection,
     guidance,
@@ -114,7 +114,7 @@ export async function generatePhaseGraph(
         PHASE_GRAPH_SYSTEM,
         () => {},
         undefined,
-        "generatePhaseGraph",
+        "generateMode",
         PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
@@ -123,28 +123,28 @@ export async function generatePhaseGraph(
         prompt,
         PHASE_GRAPH_SYSTEM,
         undefined,
-        "generatePhaseGraph",
+        "generateMode",
         PLANNING_MODEL,
         reasoningBudget,
       );
 
   try {
-    const data = parseJson(raw, "generatePhaseGraph") as {
+    const data = parseJson(raw, "generateMode") as {
       summary?: string;
-      nodes?: Partial<PhaseNodeSnapshot>[];
-      edges?: Partial<PhaseEdgeSnapshot>[];
+      nodes?: Partial<ModeNodeSnapshot>[];
+      edges?: Partial<ModeEdgeSnapshot>[];
     };
 
     if (!data.nodes || !Array.isArray(data.nodes)) {
       throw new Error("Invalid phase graph: missing nodes");
     }
 
-    const rawNodes: PhaseNodeSnapshot[] = data.nodes.map((n, i) => ({
+    const rawNodes: ModeNodeSnapshot[] = data.nodes.map((n, i) => ({
       id: typeof n.id === "string" ? n.id : `pn-${i}`,
       index: typeof n.index === "number" ? n.index : i,
       order: i,
-      type: (typeof n.type === "string" && VALID_PHASE_NODE_TYPES.has(n.type as PhaseNodeType))
-        ? (n.type as PhaseNodeType)
+      type: (typeof n.type === "string" && VALID_PHASE_NODE_TYPES.has(n.type as ModeNodeType))
+        ? (n.type as ModeNodeType)
         : "pattern",
       label: typeof n.label === "string" ? n.label.slice(0, 200) : "Unlabeled phase node",
       detail: typeof n.detail === "string" ? n.detail.slice(0, 600) : undefined,
@@ -153,10 +153,10 @@ export async function generatePhaseGraph(
       systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
     }));
 
-    const nodes = rawNodes.map((n) => validatePhaseNodeReferences(n, narrative));
+    const nodes = rawNodes.map((n) => validateModeNodeReferences(n, narrative));
 
     const nodeIds = new Set(nodes.map((n) => n.id));
-    const edges: PhaseEdgeSnapshot[] = (data.edges ?? [])
+    const edges: ModeEdgeSnapshot[] = (data.edges ?? [])
       .map((e, i) => ({
         id: typeof e.id === "string" ? e.id : `pe-${i}`,
         from: typeof e.from === "string" ? e.from : "",
@@ -169,7 +169,7 @@ export async function generatePhaseGraph(
       .filter((e) => e.from && e.to && nodeIds.has(e.from) && nodeIds.has(e.to));
 
     return {
-      summary: typeof data.summary === "string" ? data.summary : "Phase graph",
+      summary: typeof data.summary === "string" ? data.summary : "Mode",
       nodes,
       edges,
       basedOn: basedOn?.id,
@@ -177,8 +177,8 @@ export async function generatePhaseGraph(
     };
   } catch (err) {
     logError("Failed to parse phase graph", err, {
-      source: "phase-graph",
-      operation: "phase-graph-parse",
+      source: "mode",
+      operation: "mode-parse",
     });
     return {
       summary: "Failed to generate phase graph",
@@ -188,7 +188,7 @@ export async function generatePhaseGraph(
           index: 0,
           order: 0,
           type: "pattern",
-          label: "Phase graph generation failed",
+          label: "Mode generation failed",
           detail: String(err),
         },
       ],
@@ -204,8 +204,8 @@ export async function generatePhaseGraph(
  * entityId / threadId / systemNodeId). Same defensive pattern the CRG
  * validator uses — keeps the node but drops the bad anchor.
  */
-function validatePhaseNodeReferences(node: PhaseNodeSnapshot, narrative: NarrativeState): PhaseNodeSnapshot {
-  const next: PhaseNodeSnapshot = { ...node };
+function validateModeNodeReferences(node: ModeNodeSnapshot, narrative: NarrativeState): ModeNodeSnapshot {
+  const next: ModeNodeSnapshot = { ...node };
   if (next.entityId) {
     const exists =
       !!narrative.characters[next.entityId] ||

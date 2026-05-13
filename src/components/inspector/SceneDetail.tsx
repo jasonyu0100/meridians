@@ -1015,7 +1015,7 @@ export default function SceneDetail({ sceneId }: Props) {
                 key={`${rm.from}-${rm.to}-${i}`}
                 className="flex flex-col gap-0.5 text-xs"
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                   <button
                     type="button"
                     onClick={() =>
@@ -1028,7 +1028,7 @@ export default function SceneDetail({ sceneId }: Props) {
                   >
                     {fromName}
                   </button>
-                  <span className="text-text-dim">&harr;</span>
+                  <span className="text-text-dim">→</span>
                   <button
                     type="button"
                     onClick={() =>
@@ -1050,7 +1050,11 @@ export default function SceneDetail({ sceneId }: Props) {
                     {rm.valenceDelta}
                   </span>
                 </div>
-                <span className="text-text-secondary pl-2">{rm.type}</span>
+                {rm.type && (
+                  <span className="text-[10px] uppercase tracking-[0.12em] text-text-dim/80 font-mono pl-2">
+                    {rm.type}
+                  </span>
+                )}
               </div>
             );
           })}

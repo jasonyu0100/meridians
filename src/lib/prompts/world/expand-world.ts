@@ -8,7 +8,7 @@ export const EXPAND_WORLD_SYSTEM =
   'You are extending an established narrative. Honour the directive, the strategy, and the size budget; weave new entities into the existing fabric through relationships, location hierarchies, and shared threads. Match the narrative\'s cultural palette and naming conventions. Initialize every new entity (character, location, artifact) with at least one world node, and every new thread with a setup threadDelta. Return ONLY valid JSON matching the schema in the user prompt.';
 
 import { PROMPT_ENTITY_INTEGRATION } from '../entities/integration';
-import { phaseGraphPriorityEntry } from '../phase/application';
+import { modePriorityEntry } from '../mode/application';
 import type { ExpansionSizeConfig, WorldExpansionSize } from './expansion-suggestion';
 
 export type WorldExpansionStrategy = 'breadth' | 'depth' | 'dynamic';
@@ -44,8 +44,8 @@ export type ExpandWorldArgs = {
   strategyBlock: string;
   /** Pre-built entity-filter block (or empty when no types disabled). */
   entityFilterBlock: string;
-  /** Active phase graph rendered as a `<phase-graph>` block (or empty). */
-  phaseGraphSection?: string;
+  /** Active phase graph rendered as a `<mode>` block (or empty). */
+  modeSection?: string;
   existingCharList: string;
   existingLocList: string;
   existingRelList: string;
@@ -64,7 +64,7 @@ export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
     size,
     strategyBlock,
     entityFilterBlock,
-    phaseGraphSection,
+    modeSection,
     existingCharList,
     existingLocList,
     existingRelList,
@@ -81,7 +81,7 @@ export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
   <narrative-context>
 ${context}
   </narrative-context>
-${phaseGraphSection ? `\n  ${phaseGraphSection.replace(/\n/g, '\n  ')}\n` : ''}
+${modeSection ? `\n  ${modeSection.replace(/\n/g, '\n  ')}\n` : ''}
   <directive hint="${directive.trim() ? 'Primary creative brief — drive the expansion off this.' : 'No directive — analyse the current narrative state and add what most extends existing tensions or opens unexplored areas.'}">
 ${directive.trim() ? directive : 'EXPAND the world — analyse the current narrative state and add characters, locations, and threads that extend existing tensions or open unexplored areas.'}
   </directive>
@@ -111,7 +111,7 @@ ${size === 'exact' ? `    <rule>EXACT expansion — create ONLY what the directi
 <integration-hierarchy hint="When inputs conflict, this is the priority order for expansion decisions.">
   <priority rank="1">DIRECTIVE / SOURCE-MATERIAL — explicit creative brief; the expansion must serve these directly. Source-material (when present) is verbatim authority over names, roles, and specifics.</priority>
   <priority rank="2">STRATEGY / SIZE-MODE — depth/breadth/dynamic intent and the entity-count budget; shapes WHAT the expansion adds.</priority>
-  ${phaseGraphPriorityEntry(3, "expand")}
+  ${modePriorityEntry(3, "expand")}
   <priority rank="4">EXISTING-ENTITIES — the canon the expansion must integrate with; new content references these to avoid orphaning.</priority>
   <priority rank="5">ENTITY-FILTER — toggles for which delta types are emitted; structural, not creative.</priority>
 </integration-hierarchy>
@@ -173,7 +173,7 @@ Return JSON with this exact structure:
   },
   "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the market"], "rationale": "10-20 words, prose only — what happens in the scene in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
   "worldDeltas": [{"entityId": "existing C-XX, L-XX, or A-XX", "addedNodes": [{"id": "K-next", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "description", "valenceDelta": 0.1}],
+  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX or L-XX", "toId": "C-YY or L-YY"}],
   "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}]
 }

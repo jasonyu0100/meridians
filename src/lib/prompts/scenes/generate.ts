@@ -5,7 +5,7 @@
  * prompts module stays free of upstream dependencies.
  */
 
-import { phaseGraphPriorityEntry } from "../phase/application";
+import { modePriorityEntry } from "../mode/application";
 
 export const GENERATE_SCENES_SYSTEM =
   'You are a scene generator producing one arc of structurally rich scenes. Honour the brief (reasoning graph / coordination plan / direction), the pacing sequence, and the active threads. Read the world-state across the three forces (fate / world / system); let the established work\'s profile decide which lead this arc — a Classic is fate-dominant, a Show is world-dominant, a Paper is system-dominant. Each scene should reshape future possibility-space (precedents, relationships, inner state, conceptual ground) rather than land without lasting effect. Different actors hold incompatible models — the same event gets divergent readings; emergence often arrives through actions taken on false, partial, or stale beliefs. Every scene pairs its summary with rich threadDeltas (rationale grounded in the scene), worldDeltas (15–25 word present-tense facts across 3+ entities), and ≥1 systemDelta. Match the narrative\'s naming style for any new entities. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -36,7 +36,7 @@ export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): strin
     `  <priority rank="3">ARC SETTINGS — force preference / reasoning mode / network bias the CRG was built under. Scenes inherit the engine tilt.</priority>`,
     `  <priority rank="4">WORLD-BUILD FOCUS — recently-introduced entities and latent threads this arc must activate. Bring them on-screen.</priority>`,
     hasPacingSequence ? `  <priority rank="5">PACING SEQUENCE — per-scene mode + force band targets.</priority>` : '',
-    `  ${phaseGraphPriorityEntry(6, "scene-structure")}`,
+    `  ${modePriorityEntry(6, "scene-structure")}`,
     `  <priority rank="7">NARRATIVE CONTEXT — characters, threads, system knowledge, recent history.</priority>`,
   ].filter(Boolean).join('\n');
 
@@ -81,7 +81,7 @@ Return JSON with this exact structure.
       "events": ["event_tag_1", "event_tag_2"],
       "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — only when this scene structurally opens a possibility not previously in the market"], "rationale": "the summary sentence that moved this market"}],
       "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-001", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-      "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "description", "valenceDelta": 0.1}],
+      "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
       "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-001", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-001", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
       "systemAttributions": ["SYS-XX", "SYS-YY"],
       "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX|L-XX|null", "toId": "C-YY|L-YY|null"}],

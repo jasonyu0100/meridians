@@ -59,7 +59,7 @@ export function PlanCandidatesView({ narrative, scene, resolvedKeys, candidateCo
   };
 
 
-  // Auto-start candidates when component mounts (like MCTS does)
+  // Auto-start candidates when component mounts (like Experimentation does)
   useEffect(() => {
     handleRunCandidates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,7 +226,7 @@ export function PlanCandidatesView({ narrative, scene, resolvedKeys, candidateCo
                                         ⚠
                                       </span>
                                     )}
-                                    <span className="italic truncate">{prop.content}</span>
+                                    <span className="italic leading-snug">{prop.content}</span>
                                   </div>
                                 );
                               })}
@@ -243,7 +243,7 @@ export function PlanCandidatesView({ narrative, scene, resolvedKeys, candidateCo
         )}
         </div>
 
-        {/* Commit Button - bottom right, similar to MCTS */}
+        {/* Commit Button - bottom right, similar to Experimentation */}
         {!isGenerating && candidates && committedCandidate && (
           <div className="absolute bottom-6 right-6 z-20">
             <button

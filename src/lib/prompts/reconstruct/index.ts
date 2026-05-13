@@ -22,7 +22,7 @@ const SCENE_OUTPUT_SCHEMA_FULL = `{
   "events": ["event_tag"],
   "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names when this scene opens a possibility not previously in the market"], "rationale": "the summary sentence that moved this thread's market in this scene"}],
   "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-NEW-001", "content": "complete sentence: what they experienced or became", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "description", "valenceDelta": 0.1}],
+  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "systemDeltas": {"addedNodes": [], "addedEdges": []},
   "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}]
 }`;
@@ -36,7 +36,7 @@ const SCENE_OUTPUT_SCHEMA_MERGE = `{
   "events": ["event_tag"],
   "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names when this scene opens a possibility not previously in the market"], "rationale": "the summary sentence that moved this thread's market in this scene"}],
   "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-NEW-001", "content": "complete sentence: what they experienced or became", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "description", "valenceDelta": 0.1}],
+  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "systemDeltas": {"addedNodes": [], "addedEdges": []}
 }`;
 

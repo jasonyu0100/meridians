@@ -1,53 +1,54 @@
 /**
- * Phase Graph application prompts — string composition for injecting the
+ * Mode application prompts — string composition for injecting the
  * Phase Reasoning Graph (PRG) into downstream gen prompts.
  *
  * Three concerns live here:
  *
- *   1. <phase-graph> data block — the working model rendered as XML.
- *   2. <phase-graph-application> directive block — universal node-type
+ *   1. <mode> data block — the working model rendered as XML.
+ *   2. <mode-application> directive block — universal node-type
  *      semantics + rupture discipline + scope-specific usage.
  *   3. <priority> entry for <integration-hierarchy> — the consistent
  *      one-line PRG rank that each gen method's hierarchy uses.
  *
  * Centralising these here keeps the prompt language identical across the
  * pipeline so the LLM applies the PRG consistently no matter which gen
- * method is consuming it. Active-graph lookup lives in `@/lib/ai/phase-graph`;
+ * method is consuming it. Active-graph lookup lives in `@/lib/ai/mode-graph`;
  * this module is pure string composition.
  */
 
-import type { PhaseGraph } from "@/types/narrative";
+import type { Mode } from "@/types/narrative";
 import { buildSequentialPath } from "@/lib/prompts/reasoning/sequential-path";
 
 /**
- * Scope tag for phase-graph application — selects which scope-specific
- * directives ride alongside the phase-graph data, and which language the
+ * Scope tag for mode application — selects which scope-specific
+ * directives ride alongside the mode data, and which language the
  * <integration-hierarchy> entry uses. Mirrors the scoped
  * `forcePreferenceBlock` / `networkBiasBlock` pattern: the data is
  * universal, the directive is tailored to the consuming gen method.
  */
-export type PhaseGraphScope =
+export type ModeScope =
   | "expand"           // world expansion (entities, system rules, threads)
   | "reasoning-arc"    // per-arc causal reasoning graph
   | "reasoning-plan"   // multi-arc coordination plan
   | "scene-structure"  // scene generation
   | "scene-plan"       // beat plan
-  | "scene-prose";     // prose
+  | "scene-prose"      // prose
+  | "variables";       // arc-level variable analysis (Present + Future)
 
 // ── Data block ───────────────────────────────────────────────────────────────
 
 /**
- * Render the active phase graph as a `<phase-graph>` XML data block. The
+ * Render the active phase graph as a `<mode>` XML data block. The
  * hint summarises what the PRG is — applies-everywhere framing. Scope-
  * specific guidance lives in the application block, not here.
  */
-export function buildPhaseGraphDataBlock(graph: PhaseGraph): string {
-  return `<phase-graph hint="HIGH-LEVEL META MACHINERY of this work — the structural underpinnings of its economy or material conditions, institutional and political dynamics, the rule-system or methodological framework it runs on, cultural conventions, structural agents, foundational landmarks, and structural patterns. NOT situational state (that's CRG/scene). Inherit the machinery; let it trickle down so your output carries meaningful weight.">
+export function buildModeDataBlock(graph: Mode): string {
+  return `<mode hint="HIGH-LEVEL META MACHINERY of this work — the structural underpinnings of its economy or material conditions, institutional and political dynamics, the rule-system or methodological framework it runs on, cultural conventions, structural agents, foundational landmarks, and structural patterns. NOT situational state (that's CRG/scene). Inherit the machinery; let it trickle down so your output carries meaningful weight.">
   <summary>${graph.summary}</summary>
   <sequential-path>
 ${buildSequentialPath({ nodes: graph.nodes, edges: graph.edges })}
   </sequential-path>
-</phase-graph>`;
+</mode>`;
 }
 
 // ── Application directive ────────────────────────────────────────────────────
@@ -68,20 +69,20 @@ const PHASE_GRAPH_SEMANTICS_BLOCK = `  <semantics hint="Node types encode tempor
   </rupture>`;
 
 /**
- * Render the universal `<phase-graph-application>` directive block. This is
+ * Render the universal `<mode-application>` directive block. This is
  * what makes PRG application CONSISTENT across the pipeline: every gen
  * method that injects the data also injects this directive, so node-type
  * semantics and rupture discipline mean the same thing everywhere. The
  * scope-specific usage block adds layer-appropriate "how to apply" rules.
  */
-export function buildPhaseGraphApplicationBlock(scope: PhaseGraphScope): string {
-  return `<phase-graph-application scope="${scope}">
+export function buildModeApplicationBlock(scope: ModeScope): string {
+  return `<mode-application scope="${scope}">
 ${PHASE_GRAPH_SEMANTICS_BLOCK}
 ${SCOPE_USAGE_BLOCK[scope]}
-</phase-graph-application>`;
+</mode-application>`;
 }
 
-const SCOPE_USAGE_BLOCK: Record<PhaseGraphScope, string> = {
+const SCOPE_USAGE_BLOCK: Record<ModeScope, string> = {
   expand: `  <usage hint="World expansion materialises new pieces inside the active machinery.">
     <rule>New characters / locations / artifacts inherit the active phase. They obey active rules, defer to active agents, and slot into active conventions — not generic register defaults.</rule>
     <rule>New threads operationalise an active attractor or pressure. A new thread that doesn't pull toward an attractor or compound a pressure should justify its existence in its description.</rule>
@@ -113,6 +114,12 @@ const SCOPE_USAGE_BLOCK: Record<PhaseGraphScope, string> = {
     <rule>Don't name the rules; embody them. A character bargaining under a phase rule should bargain in the rule's terms, not narrate the rule.</rule>
     <rule>Active conventions shape register and address — speech levels, terms of art, ritualised exchanges. A convention ignored in prose reads as an inconsistency, not a stylistic choice.</rule>
   </usage>`,
+  variables: `  <usage hint="Variables — both arc-level Present and forward-looking Future scenarios — name the dials of the active machinery.">
+    <rule>Treat agents, pressures, and attractors as PRIMARY candidates for dials. They're the components of the machinery that genuinely move. Active rules become constraints (dials that bind or loosen); patterns become trends (dials that accumulate); landmarks anchor stance dials around their gravity.</rule>
+    <rule>Plausibility scoring (priorLogit) flows from the substrate. A scenario coordination that compounds an active pressure, approaches an active attractor, or honours active conventions reads as high-prior. A coordination that violates an active rule or contradicts a landmark reads as low-prior unless an in-arc rupture justifies it.</rule>
+    <rule>Don't paraphrase phase nodes verbatim as dials. Distil them — a "pressure: Bai Clan expansion" node may surface as the dial "Bai Clan territorial assertion"; an "agent: Elder Ruo Lan" node may anchor multiple stance dials around her interests. The phase graph is the substrate, the dials are the surface.</rule>
+    <rule>If a scenario implies superseding a phase rule, surface that explicitly in the priorRationale — silent rule-breaks read as model confusion, named rule-breaks read as decisive evidence.</rule>
+  </usage>`,
 };
 
 // ── Section composition ──────────────────────────────────────────────────────
@@ -122,22 +129,22 @@ const SCOPE_USAGE_BLOCK: Record<PhaseGraphScope, string> = {
  * injects under `<inputs>`. Pure composition — caller decides whether to
  * call this (when a graph is active) or omit the block entirely.
  */
-export function buildPhaseGraphSection(graph: PhaseGraph, scope: PhaseGraphScope): string {
-  return `${buildPhaseGraphDataBlock(graph)}\n${buildPhaseGraphApplicationBlock(scope)}`;
+export function buildModeSection(graph: Mode, scope: ModeScope): string {
+  return `${buildModeDataBlock(graph)}\n${buildModeApplicationBlock(scope)}`;
 }
 
 /**
- * Render a prior phase graph as a `<prior-phase-graph>` block for injection
+ * Render a prior phase graph as a `<prior-mode>` block for injection
  * into the PRG generation prompt as a seed. Used during regeneration when
  * the user wants the new graph to diverge from a previous one.
  */
-export function buildPriorPhaseGraphSection(prior: PhaseGraph): string {
-  return `<prior-phase-graph hint="The user is regenerating with this as the seed. The new graph must visibly diverge — supersede outdated nodes, surface emergent patterns the prior missed, retire pressures that have discharged. A new graph that maps onto this with cosmetic changes is a wasted regeneration.">
+export function buildPriorModeSection(prior: Mode): string {
+  return `<prior-mode hint="The user is regenerating with this as the seed. The new graph must visibly diverge — supersede outdated nodes, surface emergent patterns the prior missed, retire pressures that have discharged. A new graph that maps onto this with cosmetic changes is a wasted regeneration.">
   <summary>${prior.summary}</summary>
   <sequential-path>
 ${buildSequentialPath({ nodes: prior.nodes, edges: prior.edges })}
   </sequential-path>
-</prior-phase-graph>`;
+</prior-mode>`;
 }
 
 // ── Integration-hierarchy entry ──────────────────────────────────────────────
@@ -150,12 +157,12 @@ ${buildSequentialPath({ nodes: prior.nodes, edges: prior.edges })}
  * concerns — but the SHAPE is identical, so consumers see uniform PRG
  * priority semantics across the pipeline.
  */
-export function phaseGraphPriorityEntry(rank: number, scope: PhaseGraphScope): string {
+export function modePriorityEntry(rank: number, scope: ModeScope): string {
   const { framing, guidance } = SCOPE_PRIORITY_BLURB[scope];
   return `<priority rank="${rank}">PHASE GRAPH (PRG) — ${framing} ${guidance}</priority>`;
 }
 
-const SCOPE_PRIORITY_BLURB: Record<PhaseGraphScope, { framing: string; guidance: string }> = {
+const SCOPE_PRIORITY_BLURB: Record<ModeScope, { framing: string; guidance: string }> = {
   expand: {
     framing: "ambient working model.",
     guidance: "New entities, system rules, and threads inherit the active phase machinery; the directive overrides where they tension.",
@@ -179,5 +186,9 @@ const SCOPE_PRIORITY_BLURB: Record<PhaseGraphScope, { framing: string; guidance:
   "scene-prose": {
     framing: "atmospheric layer.",
     guidance: "Surface the ambient model in subtext: rules visibly bind the action, accumulated pressures audibly weight choices, currently-active patterns appear as recognisable shapes. Don't narrate the PRG; let it colour what the prose foregrounds.",
+  },
+  variables: {
+    framing: "substrate the dials inherit from.",
+    guidance: "Agents / pressures / attractors are primary dial candidates; active rules become constraint dials; landmarks anchor stance dials. Plausibility scoring tilts up for coordinations that compound active pressures or approach attractors, down for coordinations that silently violate active rules.",
   },
 };

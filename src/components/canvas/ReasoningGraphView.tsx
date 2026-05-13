@@ -96,9 +96,9 @@ type Props = {
    */
   buildInspectorContext?: (nodeId: string) => InspectorContext;
   /** Type discriminator used to match the active inspector context against this view. */
-  inspectorContextType?: "reasoning" | "phase";
-  /** When inspectorContextType === "phase", the phase graph id we're rendering. */
-  phaseGraphId?: string;
+  inspectorContextType?: "reasoning" | "mode";
+  /** When inspectorContextType === "mode", the phase graph id we're rendering. */
+  modeId?: string;
 };
 
 export function ReasoningGraphView({
@@ -108,7 +108,7 @@ export function ReasoningGraphView({
   nodeColors,
   buildInspectorContext,
   inspectorContextType = "reasoning",
-  phaseGraphId,
+  modeId,
 }: Props) {
   const { state, dispatch } = useStore();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -129,8 +129,8 @@ export function ReasoningGraphView({
   const selectedNodeId = useMemo(() => {
     const ctx = state.viewState.inspectorContext;
     if (!ctx) return null;
-    if (inspectorContextType === "phase" && ctx.type === "phase") {
-      return ctx.phaseGraphId === phaseGraphId ? ctx.nodeId : null;
+    if (inspectorContextType === "mode" && ctx.type === "mode") {
+      return ctx.modeId === modeId ? ctx.nodeId : null;
     }
     if (inspectorContextType === "reasoning" && ctx.type === "reasoning") {
       if ((arcId && ctx.arcId === arcId) || (worldBuildId && ctx.worldBuildId === worldBuildId)) {
@@ -138,7 +138,7 @@ export function ReasoningGraphView({
       }
     }
     return null;
-  }, [state.viewState.inspectorContext, arcId, worldBuildId, inspectorContextType, phaseGraphId]);
+  }, [state.viewState.inspectorContext, arcId, worldBuildId, inspectorContextType, modeId]);
 
   // Handle clicking a node to open inspector
   const handleNodeClick = useCallback((node: ReasoningNodeSnapshot) => {
@@ -486,7 +486,7 @@ export function ReasoningGraphView({
         return (
           <div className="absolute top-3 left-3 max-w-xs glass rounded-lg px-3 py-2">
             <div className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono mb-1">
-              {inspectorContextType === "phase" ? "Phase Graph" : "Causal Graph"}
+              {inspectorContextType === "mode" ? "Mode" : "Causal Graph"}
             </div>
             {showName && (
               <div className="text-xs font-semibold text-text-primary mb-1 whitespace-normal wrap-break-word">

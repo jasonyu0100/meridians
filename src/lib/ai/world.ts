@@ -17,7 +17,7 @@ import {
   GENERATE_NARRATIVE_SYSTEM,
   DETECT_PATTERNS_SYSTEM,
 } from '@/lib/prompts/world';
-import { buildActivePhaseGraphSection } from './phase-graph';
+import { buildActiveModeSection } from './mode-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext } from './context';
@@ -470,7 +470,7 @@ ${m.recommendation === 'depth' ? EXPANSION_STRATEGY_PROMPTS.depth : m.recommenda
     size,
     strategyBlock,
     entityFilterBlock,
-    phaseGraphSection: buildActivePhaseGraphSection(narrative, "expand"),
+    modeSection: buildActiveModeSection(narrative, "expand"),
     existingCharList,
     existingLocList,
     existingRelList,

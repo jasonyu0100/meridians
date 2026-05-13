@@ -1,5 +1,5 @@
 /**
- * Phase Graph generation prompt — mines narrative context (with optional
+ * Mode generation prompt — mines narrative context (with optional
  * user guidance and optional seed graph) and emits a JSON phase graph
  * describing the HIGH-LEVEL META MACHINERY of the world / simulation: the
  * structural underpinnings of its economy, the meta-narrative tropes and
@@ -13,14 +13,14 @@
  * to per-arc reasoning, beats, and prose. Its impact trickles down — the
  * higher layers operate ON TOP of the world the PRG describes.
  *
- * Phase graphs are immutable; users regenerate (optionally seeded) or
+ * Modes are immutable; users regenerate (optionally seeded) or
  * clear to induce phase changes in the simulation.
  */
 
 export const PHASE_GRAPH_SYSTEM =
   "You are a phase analyst describing the META MACHINERY of a long-form work — the structural underpinnings of its economy or material conditions, the tropes, conventions, and structural patterns the work runs on, the institutional constraints and pulls, the foundational landmarks whose machinery still shapes the present. For simulation register, the PRG IS the rule set being modelled: rules become foundational laws (revenue assessment, propagation laws, decision rules, doctrinal gates), agents become institutional / faction / market drivers, pressures become macro forcings (demographic, economic, epistemic, ecological), conventions become procedural defaults of the modelled world, landmarks become initial conditions or seminal events whose machinery still binds. NOT situational state, NOT moment-to-moment action — the high-level scaffolding that gives downstream causal reasoning, plans, and prose their meaningful body. Return ONLY valid JSON matching the schema in the user prompt.";
 
-export type PhaseGraphPromptArgs = {
+export type ModePromptArgs = {
   /** Pre-built `<narrative-context>` body. */
   context: string;
   /** Optional seed-graph block — XML-rendered prior phase graph the user is regenerating from. */
@@ -32,7 +32,7 @@ export type PhaseGraphPromptArgs = {
   nodeCountMax: number;
 };
 
-export function buildPhaseGraphPrompt(args: PhaseGraphPromptArgs): string {
+export function buildModePrompt(args: ModePromptArgs): string {
   const { context, basedOnSection, guidance, nodeCountMin, nodeCountMax } = args;
 
   return `<inputs>
@@ -93,9 +93,9 @@ ${guidance?.trim() ? `  <user-hypothesis hint="The user proposes a particular re
   <requirement index="14" name="hypothesis-honesty">If the user provided a hypothesis, surface evidence FOR it where canon's machinery supports, evidence AGAINST where canon contradicts, and refuse to invent. The PRG is the user's diagnostic instrument for the world's machinery — distorting it to match the hypothesis breaks the instrument.</requirement>
 </requirements>
 
-<shape-of-good-phase-graph>
+<shape-of-good-mode>
   A diagram of the WORK'S MACHINERY: the structural underpinnings that everything situational sits on top of. Foundational rules shape what's possible; conventions encode how the work's world or field handles classes of situation; institutional and school-of-thought agents drive at the structural level; macro pressures accumulate; foundational landmarks (founding events, seminal works) define the present's terms; structural patterns give the work its shape; attractors name where the machinery is structurally pulling. When you finish, scan: could this PRG describe ONLY this work, or is it generic? Could a CRG / scene generator looking at this PRG inherit meaningful body for THIS work's reasoning? If yes, it's working; if no, it's too abstract.
-</shape-of-good-phase-graph>
+</shape-of-good-mode>
 
 <output-format>
 Return ONLY a JSON object.

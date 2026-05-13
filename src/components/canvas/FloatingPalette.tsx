@@ -6,7 +6,6 @@ import {
   IconChevronRight,
   IconClose,
   IconEdit,
-  IconFlask,
   IconList,
   IconRefresh,
   IconReset,
@@ -24,13 +23,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type FloatingPaletteProps = {
   isBulkActive?: boolean;
   isBulkAudioActive?: boolean;
-  isMctsActive?: boolean;
+  isExperimentationActive?: boolean;
 };
 
 export default function FloatingPalette({
   isBulkActive = false,
   isBulkAudioActive = false,
-  isMctsActive = false,
+  isExperimentationActive = false,
 }: FloatingPaletteProps) {
   const { state, dispatch } = useStore();
   const access = useFeatureAccess();
@@ -64,7 +63,7 @@ export default function FloatingPalette({
     state.viewState.autoRunState?.isRunning || state.viewState.autoRunState?.isPaused
   );
   const isAnyModeActive =
-    isAutoActive || isBulkActive || isBulkAudioActive || isMctsActive;
+    isAutoActive || isBulkActive || isBulkAudioActive || isExperimentationActive;
 
   const handleDeleteHead = useCallback(() => {
     if (!narrative || !state.viewState.activeBranchId || !isHead) return;
@@ -104,7 +103,7 @@ export default function FloatingPalette({
     graphViewMode === "prose" ||
     graphViewMode === "audio" ||
     graphViewMode === "game";
-  const isPhaseMode = graphViewMode === "phase";
+  const isPhaseMode = graphViewMode === "mode";
   const isReasoningMode = graphViewMode === "reasoning";
 
   // ── Node navigation for graph modes (phase / reasoning) ──────────────
@@ -115,16 +114,16 @@ export default function FloatingPalette({
     if (!narrative) return null;
 
     if (isPhaseMode) {
-      const activeId = narrative.currentPhaseGraphId;
-      const graph = activeId ? narrative.phaseGraphs?.[activeId] : null;
+      const activeId = narrative.currentModeId;
+      const graph = activeId ? narrative.modes?.[activeId] : null;
       if (!graph || graph.nodes.length === 0 || !activeId) return null;
       const sorted = [...graph.nodes].sort((a, b) => a.index - b.index);
       const ctx = state.viewState.inspectorContext;
-      const selectedId = ctx?.type === "phase" && ctx.phaseGraphId === activeId ? ctx.nodeId : null;
+      const selectedId = ctx?.type === "mode" && ctx.modeId === activeId ? ctx.nodeId : null;
       const selectedIdx = selectedId ? sorted.findIndex((n) => n.id === selectedId) : -1;
       const buildContext = (nodeId: string): InspectorContext => ({
-        type: "phase",
-        phaseGraphId: activeId,
+        type: "mode",
+        modeId: activeId,
         nodeId,
       });
       return { sortedNodes: sorted, selectedIdx, buildContext };
@@ -273,7 +272,7 @@ export default function FloatingPalette({
   }, [rewriteText, graphViewMode]);
 
   // ── Phase mode state ─────────────────────────────────────────────────
-  // Generation work and loading UI live in PhaseGraphCanvas (mirroring the
+  // Generation work and loading UI live in ModeCanvas (mirroring the
   // ScenePlanView pattern); the palette only dispatches a submit event.
   type PhasePaletteMode = "idle" | "generate" | "history";
   const [phaseMode, setPhaseMode] = useState<PhasePaletteMode>("idle");
@@ -283,12 +282,12 @@ export default function FloatingPalette({
   const [phaseNameDraft, setPhaseNameDraft] = useState("");
   const phaseGuidanceRef = useRef<HTMLTextAreaElement>(null);
 
-  const phaseGraphs = useMemo(
-    () => Object.values(narrative?.phaseGraphs ?? {}).sort((a, b) => b.createdAt - a.createdAt),
-    [narrative?.phaseGraphs],
+  const modes = useMemo(
+    () => Object.values(narrative?.modes ?? {}).sort((a, b) => b.createdAt - a.createdAt),
+    [narrative?.modes],
   );
-  const activePhaseId = narrative?.currentPhaseGraphId;
-  const activePhaseGraph = activePhaseId ? narrative?.phaseGraphs?.[activePhaseId] : undefined;
+  const activePhaseId = narrative?.currentModeId;
+  const activeMode = activePhaseId ? narrative?.modes?.[activePhaseId] : undefined;
 
   const phaseClose = useCallback(() => {
     setPhaseMode("idle");
@@ -323,26 +322,26 @@ export default function FloatingPalette({
   }, [phaseGuidance, phaseBasisId, phaseClose]);
 
   const phaseSetActive = useCallback((id: string | null) => {
-    dispatch({ type: "SET_CURRENT_PHASE_GRAPH", phaseGraphId: id });
+    dispatch({ type: "SET_CURRENT_PHASE_GRAPH", modeId: id });
   }, [dispatch]);
 
   const phaseRenameGraph = useCallback((id: string, name: string) => {
-    dispatch({ type: "RENAME_PHASE_GRAPH", phaseGraphId: id, name });
+    dispatch({ type: "RENAME_PHASE_GRAPH", modeId: id, name });
     setPhaseEditingNameFor(null);
     setPhaseNameDraft("");
   }, [dispatch]);
 
   const phaseDeleteGraph = useCallback((id: string) => {
     if (!window.confirm("Delete this phase graph? Arcs that referenced it lose their working-model anchor.")) return;
-    dispatch({ type: "DELETE_PHASE_GRAPH", phaseGraphId: id });
+    dispatch({ type: "DELETE_PHASE_GRAPH", modeId: id });
   }, [dispatch]);
 
   // ── Phase mode palette — same chevrons + search + glass-pill convention
   //    as the editing palette below. Generate / Regenerate / Clear share
   //    the same icon language; clicking the active indicator opens history.
   if (isPhaseMode) {
-    const activeLabel = activePhaseGraph
-      ? (activePhaseGraph.name ?? activePhaseGraph.summary.slice(0, 28))
+    const activeLabel = activeMode
+      ? (activeMode.name ?? activeMode.summary.slice(0, 28))
       : "No active phase";
     return (
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
@@ -351,7 +350,7 @@ export default function FloatingPalette({
           <div className="w-96 flex flex-col rounded-xl glass overflow-hidden">
             <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-wider text-world">
-                {phaseBasisId ? "Regenerate from basis" : "Generate Phase Graph"}
+                {phaseBasisId ? "Regenerate from basis" : "Generate Mode"}
               </span>
               <button onClick={phaseClose} className="text-[10px] text-text-dim/40 hover:text-text-dim transition">
                 &times;
@@ -360,7 +359,7 @@ export default function FloatingPalette({
             <div className="p-3 space-y-2.5">
               {phaseBasisId && (
                 <div className="text-[10px] text-text-dim/70">
-                  Seeding from <span className="text-text-secondary">{narrative?.phaseGraphs?.[phaseBasisId]?.name ?? narrative?.phaseGraphs?.[phaseBasisId]?.summary.slice(0, 40) ?? phaseBasisId}</span>
+                  Seeding from <span className="text-text-secondary">{narrative?.modes?.[phaseBasisId]?.name ?? narrative?.modes?.[phaseBasisId]?.summary.slice(0, 40) ?? phaseBasisId}</span>
                 </div>
               )}
               <textarea
@@ -391,16 +390,16 @@ export default function FloatingPalette({
         {phaseMode === "history" && (
           <div className="w-md max-h-[60vh] flex flex-col rounded-xl glass overflow-hidden">
             <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wider text-text-secondary">Phase Graph History</span>
+              <span className="text-[10px] uppercase tracking-wider text-text-secondary">Mode History</span>
               <button onClick={phaseClose} className="text-[10px] text-text-dim/40 hover:text-text-dim transition">
                 &times;
               </button>
             </div>
             <div className="overflow-y-auto divide-y divide-white/5">
-              {phaseGraphs.length === 0 ? (
+              {modes.length === 0 ? (
                 <div className="p-4 text-[11px] text-text-dim text-center">No phase graphs generated yet.</div>
               ) : (
-                phaseGraphs.map((g) => {
+                modes.map((g) => {
                   const isActive = g.id === activePhaseId;
                   const isEditing = phaseEditingNameFor === g.id;
                   return (
@@ -527,11 +526,11 @@ export default function FloatingPalette({
           </button>
 
           {/* Regenerate (only when active) — opens generate overlay seeded by active */}
-          {activePhaseGraph && (
+          {activeMode && (
             <button
               type="button"
               className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
-              onClick={() => { setPhaseBasisId(activePhaseGraph.id); setPhaseMode("generate"); }}
+              onClick={() => { setPhaseBasisId(activeMode.id); setPhaseMode("generate"); }}
               aria-label="Regenerate from active basis"
               title="Regenerate using active as basis"
             >
@@ -540,7 +539,7 @@ export default function FloatingPalette({
           )}
 
           {/* Clear (only when active) */}
-          {activePhaseGraph && (
+          {activeMode && (
             <button
               type="button"
               className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
@@ -561,13 +560,13 @@ export default function FloatingPalette({
               phaseMode === "history" ? "bg-white/10" : "hover:bg-white/6"
             }`}
             onClick={() => setPhaseMode(phaseMode === "history" ? "idle" : "history")}
-            aria-label="Phase graph history"
-            title={`Open history (${phaseGraphs.length})`}
+            aria-label="Mode history"
+            title={`Open history (${modes.length})`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${activePhaseGraph ? "bg-emerald-400" : "bg-white/15"}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${activeMode ? "bg-emerald-400" : "bg-white/15"}`} />
             <span className="text-text-dim truncate max-w-32">{activeLabel}</span>
-            {phaseGraphs.length > 0 && (
-              <span className="text-[9px] text-text-dim/40 tabular-nums">{phaseGraphs.length}</span>
+            {modes.length > 0 && (
+              <span className="text-[9px] text-text-dim/40 tabular-nums">{modes.length}</span>
             )}
           </button>
         </div>
@@ -778,7 +777,7 @@ export default function FloatingPalette({
               <IconChevronRight size={14} />
             </button>
 
-            {/* Plan/Prose/Audio palette actions — hidden during auto/MCTS/bulk */}
+            {/* Plan/Prose/Audio palette actions — hidden during auto/Experimentation/bulk */}
             {!isAnyModeActive && (
               <>
                 <div className="w-px h-4 bg-white/12 mx-1" />
@@ -1100,7 +1099,7 @@ export default function FloatingPalette({
             <IconChevronRight size={14} />
           </button>
 
-          {/* Action buttons — hidden during auto/MCTS/bulk */}
+          {/* Action buttons — hidden during auto/Experimentation/bulk */}
           {!isAnyModeActive && (
             <>
               {/* Divider */}
@@ -1121,21 +1120,10 @@ export default function FloatingPalette({
                 Generate
               </button>
 
-              {/* MCTS Explorer */}
-              <button
-                type="button"
-                className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-blue-400 bg-blue-500/10 hover:bg-blue-500/20"
-                onClick={() => {
-                  if (access.userApiKeys && !access.hasOpenRouterKey) {
-                    window.dispatchEvent(new Event("open-api-keys"));
-                    return;
-                  }
-                  window.dispatchEvent(new CustomEvent("open-mcts-panel"));
-                }}
-                title="MCTS Explorer"
-              >
-                <IconFlask size={14} />
-              </button>
+              {/* Experimentation is no longer exposed here — it now lives
+                  in the Future view's topbar, alongside the scenarios that
+                  feed it. The bottom palette stays focused on view-level
+                  generation actions (Generate, Auto). */}
 
               {/* Auto */}
               <button

@@ -32,7 +32,7 @@ import { applyDerivedForceModes } from "@/lib/auto-engine";
 import { logError } from "@/lib/system-logger";
 import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/network-graph";
 import type { CoordinationPlanContext } from "./scenes";
-import { buildActivePhaseGraphSection } from "./phase-graph";
+import { buildActiveModeSection } from "./mode-graph";
 
 // ── Subsystem imports ───────────────────────────────────────────────────────
 
@@ -286,7 +286,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
       : undefined,
     direction,
     priorGraphSection,
-    phaseGraphSection: buildActivePhaseGraphSection(narrative, "reasoning-arc"),
+    modeSection: buildActiveModeSection(narrative, "reasoning-arc"),
     forcePreferenceBlockText: forcePreferenceBlock("arc", options?.forcePreference),
     reasoningModeBlockText: reasoningModeBlock(options?.reasoningMode),
     networkBiasBlockText: networkBiasBlock(options?.networkBias ?? narrative.storySettings?.defaultNetworkBias),
@@ -664,7 +664,7 @@ export async function generateCoordinationPlan(
     nodeGuidance,
     forcePreferenceBlockText: forcePreferenceBlock("plan", guidance.forcePreference),
     reasoningModeBlockText: reasoningModeBlock(guidance.reasoningMode),
-    phaseGraphSection: buildActivePhaseGraphSection(narrative, "reasoning-plan"),
+    modeSection: buildActiveModeSection(narrative, "reasoning-plan"),
   });
 
   const reasoningBudget = defaultReasoningBudget(narrative);

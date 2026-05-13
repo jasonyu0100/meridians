@@ -6,7 +6,7 @@
  * context) so the prompts module stays free of upstream dependencies.
  */
 
-import { phaseGraphPriorityEntry } from "../phase/application";
+import { modePriorityEntry } from "../mode/application";
 
 export const ARC_REASONING_GRAPH_SYSTEM =
   'You are a structural analyst building the causal reasoning graph for one arc. Choose nodes (fate, reasoning, character, location, artifact, system, pattern, warning, chaos) and typed edges (requires, enables, constrains, causes, reveals, develops, resolves) that capture how the arc actually works — fate, world, and system interacting, not one dominating. Honour the thinking mode (abduction/divergent/deduction/induction; deduction is the default for simulation register) and the divergence pressure from any prior graph. For simulation register the system layer is load-bearing — rule, agent (institutional / faction / market driver, encoded as character), pressure, and pattern nodes carry more of the graph than in fiction or non-fiction. Distribute agency across multiple actors, not a single focal one. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -36,8 +36,8 @@ export type ArcReasoningGraphArgs = {
   coordinationPlanContext: CoordinationPlanContextForPrompt | undefined;
   direction: string;
   priorGraphSection: string;
-  /** Pre-rendered <phase-graph> block (or "" when no phase graph is active). */
-  phaseGraphSection: string;
+  /** Pre-rendered <mode> block (or "" when no phase graph is active). */
+  modeSection: string;
   forcePreferenceBlockText: string;
   reasoningModeBlockText: string;
   networkBiasBlockText: string;
@@ -63,7 +63,7 @@ export function buildArcReasoningGraphPrompt(args: ArcReasoningGraphArgs): strin
     coordinationPlanContext,
     direction,
     priorGraphSection,
-    phaseGraphSection,
+    modeSection,
     forcePreferenceBlockText,
     reasoningModeBlockText,
     networkBiasBlockText,
@@ -112,7 +112,7 @@ ${coordinationPlanContext.directive}
       <additional-direction hint="Layer on top of the plan.">${direction}</additional-direction>` : ''}
     </coordination-plan>` : `    <direction>${direction}</direction>`}
   </arc-brief>
-${phaseGraphSection ? `\n  ${phaseGraphSection.replace(/\n/g, '\n  ')}\n` : ''}
+${modeSection ? `\n  ${modeSection.replace(/\n/g, '\n  ')}\n` : ''}
 ${priorGraphSection ? `\n  ${priorGraphSection.replace(/\n/g, '\n  ')}\n` : ''}
 ${forcePreferenceBlockText ? `  ${forcePreferenceBlockText.replace(/\n/g, '\n  ')}\n` : ''}
 ${reasoningModeBlockText ? `  ${reasoningModeBlockText.replace(/\n/g, '\n  ')}\n` : ''}
@@ -124,7 +124,7 @@ ${networkBiasBlockText ? `  ${networkBiasBlockText.replace(/\n/g, '\n  ')}\n` : 
 <integration-hierarchy hint="When inputs conflict, this is the priority order. Higher-rank inputs override lower-rank ones; lower-rank inputs are still always relevant.">
   <priority rank="1">DIRECTION / ARC BRIEF — the user's explicit ask, or the coordination-plan directive when one exists. The graph delivers what the brief commits to.</priority>
   <priority rank="2">PRIOR ARC GRAPH — divergence pressure; the new graph must NOT replicate the prior spine.</priority>
-  ${phaseGraphPriorityEntry(3, "reasoning-arc")}
+  ${modePriorityEntry(3, "reasoning-arc")}
   <priority rank="4">NARRATIVE CONTEXT — entities, threads, system rules; the substrate the chain stands on.</priority>
   <priority rank="5">FORCE PREFERENCE / REASONING MODE / NETWORK BIAS — engine tilt applied within the constraints above.</priority>
 </integration-hierarchy>

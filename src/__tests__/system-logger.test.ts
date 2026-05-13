@@ -118,7 +118,7 @@ describe('system-logger', () => {
       const listener = vi.fn();
       onSystemLog(listener);
       const context: LogContext = {
-        source: 'mcts',
+        source: 'experimentation',
         operation: 'expand-node',
       };
       const id = logWarning('Node expansion slow', 'Timeout approaching', context);

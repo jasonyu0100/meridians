@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PhaseNodeDetail — inspector for a single Phase Reasoning Graph (PRG)
+ * ModeNodeDetail — inspector for a single Phase Reasoning Graph (PRG)
  * node. Mirrors ReasoningNodeDetail's shape but with phase-specific
  * semantics: each node type encodes a temporal stance (currently-active
  * pattern, currently-followed convention, future-pointing attractor,
@@ -10,15 +10,15 @@
  */
 
 import { useStore } from "@/lib/store";
-import type { PhaseEdgeSnapshot, PhaseNodeType } from "@/types/narrative";
+import type { ModeEdgeSnapshot, ModeNodeType } from "@/types/narrative";
 import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
 import { useMemo } from "react";
 
-type PhaseEdgeType = PhaseEdgeSnapshot["type"];
+type ModeEdgeType = ModeEdgeSnapshot["type"];
 
-const NODE_COLORS: Record<PhaseNodeType, { fill: string; stroke: string; text: string }> = PHASE_NODE_COLORS;
+const NODE_COLORS: Record<ModeNodeType, { fill: string; stroke: string; text: string }> = PHASE_NODE_COLORS;
 
-const EDGE_COLORS: Record<PhaseEdgeType, string> = {
+const EDGE_COLORS: Record<ModeEdgeType, string> = {
   enables: "#22c55e",
   constrains: "#ef4444",
   risks: "#f59e0b",
@@ -30,7 +30,7 @@ const EDGE_COLORS: Record<PhaseEdgeType, string> = {
   supersedes: "#ec4899",
 };
 
-const TYPE_DESCRIPTIONS: Record<PhaseNodeType, { headline: string; stance: string }> = {
+const TYPE_DESCRIPTIONS: Record<ModeNodeType, { headline: string; stance: string }> = {
   pattern: {
     headline: "A genre / meta-narrative trope or structural shape the work runs on",
     stance: "structural — trickles into per-arc reasoning",
@@ -71,17 +71,17 @@ function ordinalSuffix(n: number): string {
 }
 
 type Props = {
-  phaseGraphId: string;
+  modeId: string;
   nodeId: string;
 };
 
-export default function PhaseNodeDetail({ phaseGraphId, nodeId }: Props) {
+export default function ModeNodeDetail({ modeId, nodeId }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
 
   const { node, graph, graphName, connectedEdges } = useMemo(() => {
     if (!narrative) return { node: null, graph: null, graphName: null, connectedEdges: [] };
-    const graph = narrative.phaseGraphs?.[phaseGraphId];
+    const graph = narrative.modes?.[modeId];
     if (!graph) return { node: null, graph: null, graphName: null, connectedEdges: [] };
     const node = graph.nodes.find((n) => n.id === nodeId) ?? null;
     const connectedEdges = graph.edges.filter((e) => e.from === nodeId || e.to === nodeId);
@@ -91,7 +91,7 @@ export default function PhaseNodeDetail({ phaseGraphId, nodeId }: Props) {
       graphName: graph.name ?? graph.summary.slice(0, 60),
       connectedEdges,
     };
-  }, [narrative, phaseGraphId, nodeId]);
+  }, [narrative, modeId, nodeId]);
 
   if (!node || !graph) {
     return <div className="text-text-dim text-sm">Phase node not found</div>;
@@ -100,7 +100,7 @@ export default function PhaseNodeDetail({ phaseGraphId, nodeId }: Props) {
   const navigateToNode = (id: string) => {
     dispatch({
       type: "SET_INSPECTOR",
-      context: { type: "phase", phaseGraphId, nodeId: id },
+      context: { type: "mode", modeId, nodeId: id },
     });
   };
 
@@ -190,7 +190,7 @@ export default function PhaseNodeDetail({ phaseGraphId, nodeId }: Props) {
                   <span className="text-[9px] font-mono uppercase tracking-wider shrink-0" style={{ color }}>
                     {isOutgoing ? "→" : "←"} {e.type}
                   </span>
-                  <span className="text-[11px] text-text-secondary truncate">
+                  <span className="text-[11px] text-text-secondary leading-snug">
                     {other?.label ?? otherId}
                   </span>
                 </button>

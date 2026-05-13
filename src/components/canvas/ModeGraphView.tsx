@@ -9,24 +9,24 @@
  */
 
 import { useStore } from "@/lib/store";
-import type { PhaseGraph, ReasoningGraphSnapshot } from "@/types/narrative";
+import type { Mode, ReasoningGraphSnapshot } from "@/types/narrative";
 import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
 import { ReasoningGraphView } from "./ReasoningGraphView";
-import { generatePhaseGraph } from "@/lib/ai/phase-graph";
+import { generateMode } from "@/lib/ai/mode-graph";
 import { nextId } from "@/lib/narrative-utils";
 import { logError } from "@/lib/system-logger";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const resolvePhaseNodeColor = (type: string) => {
+const resolveModeNodeColor = (type: string) => {
   return (PHASE_NODE_COLORS as Record<string, { fill: string; stroke: string; text: string }>)[type] ?? REASONING_NODE_COLOR_UNKNOWN;
 };
 
 type Props = {
-  graph: PhaseGraph;
+  graph: Mode;
 };
 
-export function PhaseGraphView({ graph }: Props) {
-  // Phase graphs share the snapshot shape with reasoning graphs (same node /
+export function ModeView({ graph }: Props) {
+  // Modes share the snapshot shape with reasoning graphs (same node /
   // edge fields). Adapt the PRG into the snapshot type the renderer expects.
   const adapted: ReasoningGraphSnapshot = useMemo(
     () => ({
@@ -45,17 +45,17 @@ export function PhaseGraphView({ graph }: Props) {
   // svg.call(zoom.transform, initialTransform) reset the pan/zoom on every
   // selection. Causal mode never passes this prop so it didn't surface there.
   const buildInspectorContext = useCallback(
-    (nodeId: string) => ({ type: "phase" as const, phaseGraphId: graph.id, nodeId }),
+    (nodeId: string) => ({ type: "mode" as const, modeId: graph.id, nodeId }),
     [graph.id],
   );
 
   return (
     <ReasoningGraphView
       graph={adapted}
-      nodeColors={resolvePhaseNodeColor}
+      nodeColors={resolveModeNodeColor}
       buildInspectorContext={buildInspectorContext}
-      inspectorContextType="phase"
-      phaseGraphId={graph.id}
+      inspectorContextType="mode"
+      modeId={graph.id}
     />
   );
 }
@@ -64,7 +64,7 @@ export function PhaseGraphView({ graph }: Props) {
  * Minimal empty state — matches the Plan empty placeholder convention:
  * terse two-line copy directing the user to the bottom palette.
  */
-function PhaseGraphEmptyState() {
+function ModeEmptyState() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-20 gap-3">
       <p className="text-[11px] text-text-dim">No phase graph active.</p>
@@ -79,7 +79,7 @@ function PhaseGraphEmptyState() {
  * Loading state with streaming reasoning. Mirrors ScenePlanView's loading
  * UI: small spinner + label + the streaming reasoning text below.
  */
-function PhaseGraphLoading({ reasoning }: { reasoning: string }) {
+function ModeLoading({ reasoning }: { reasoning: string }) {
   return (
     <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
@@ -98,16 +98,16 @@ function PhaseGraphLoading({ reasoning }: { reasoning: string }) {
 }
 
 /**
- * Wrapper rendered by the canvas when graphViewMode === 'phase'. Owns the
+ * Wrapper rendered by the canvas when graphViewMode === 'mode'. Owns the
  * generation flow: listens for `canvas:phase-generate-submit` events,
  * tracks loading + streaming reasoning, dispatches the resulting PRG into
  * the store. The FloatingPalette only fires the event with guidance + basis.
  */
-export function PhaseGraphCanvas() {
+export function ModeCanvas() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
-  const activeId = narrative?.currentPhaseGraphId;
-  const active = activeId ? narrative?.phaseGraphs?.[activeId] : undefined;
+  const activeId = narrative?.currentModeId;
+  const active = activeId ? narrative?.modes?.[activeId] : undefined;
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [reasoning, setReasoning] = useState("");
@@ -127,8 +127,8 @@ export function PhaseGraphCanvas() {
       setReasoning("");
       setError(null);
       try {
-        const basis = detail.basisId ? narrative.phaseGraphs?.[detail.basisId] : undefined;
-        const draft = await generatePhaseGraph(
+        const basis = detail.basisId ? narrative.modes?.[detail.basisId] : undefined;
+        const draft = await generateMode(
           narrative,
           state.resolvedEntryKeys,
           state.viewState.currentSceneIndex,
@@ -138,13 +138,13 @@ export function PhaseGraphCanvas() {
             onReasoning: (token) => setReasoning((prev) => prev + token),
           },
         );
-        const id = nextId("PRG", Object.keys(narrative.phaseGraphs ?? {}));
-        const fullGraph: PhaseGraph = { ...draft, id, createdAt: Date.now() };
+        const id = nextId("PRG", Object.keys(narrative.modes ?? {}));
+        const fullGraph: Mode = { ...draft, id, createdAt: Date.now() };
         dispatch({ type: "ADD_PHASE_GRAPH", graph: fullGraph });
       } catch (err) {
         logError("Failed to generate phase graph", err, {
-          source: "phase-graph",
-          operation: "phase-graph-generate",
+          source: "mode",
+          operation: "mode-generate",
         });
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -155,7 +155,7 @@ export function PhaseGraphCanvas() {
     return () => window.removeEventListener("canvas:phase-generate-submit", handler);
   }, [narrative, isGenerating, state.resolvedEntryKeys, state.viewState.currentSceneIndex, dispatch]);
 
-  if (isGenerating) return <PhaseGraphLoading reasoning={reasoning} />;
+  if (isGenerating) return <ModeLoading reasoning={reasoning} />;
   if (error) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center py-20 gap-3">
@@ -169,6 +169,6 @@ export function PhaseGraphCanvas() {
       </div>
     );
   }
-  if (!active || active.nodes.length === 0) return <PhaseGraphEmptyState />;
-  return <PhaseGraphView graph={active} />;
+  if (!active || active.nodes.length === 0) return <ModeEmptyState />;
+  return <ModeView graph={active} />;
 }

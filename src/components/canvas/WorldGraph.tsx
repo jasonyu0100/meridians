@@ -22,10 +22,10 @@ import { SceneAudioView } from './SceneAudioView';
 import { SceneGameTheoryView } from './SceneGameTheoryView';
 import { SearchView } from './SearchView';
 import { ReasoningGraphView } from './ReasoningGraphView';
-import { PhaseGraphCanvas } from './PhaseGraphView';
+import { ModeCanvas } from './ModeGraphView';
 import NetworkView from './NetworkView';
 import MarketView from './MarketView';
-import MarketBriefingView from './MarketBriefingView';
+import VariablesView from './VariablesView';
 import {
   type GraphNode,
   type GraphLink,
@@ -1154,10 +1154,12 @@ export default function WorldGraph() {
         <NetworkView />
       ) : graphViewMode === 'market' ? (
         <MarketView />
-      ) : graphViewMode === 'brief' ? (
-        <MarketBriefingView />
-      ) : graphViewMode === 'phase' ? (
-        <PhaseGraphCanvas />
+      ) : graphViewMode === 'present' ? (
+        <VariablesView mode="present" />
+      ) : graphViewMode === 'future' ? (
+        <VariablesView mode="future" />
+      ) : graphViewMode === 'mode' ? (
+        <ModeCanvas />
       ) : graphViewMode === 'reasoning' ? (
         // World build reasoning takes priority when viewing a world commit
         currentWorldBuildWithReasoning ? (

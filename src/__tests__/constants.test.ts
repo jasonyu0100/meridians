@@ -32,7 +32,7 @@ import {
   MAX_TOKENS_SMALL,
   // AI Token Limits
   MAX_TOKENS_XLARGE,
-  MCTS_MAX_NODE_CHILDREN,
+  EXPERIMENT_MAX_NODE_CHILDREN,
   // AI Pricing
   MODEL_PRICING,
   MOMENT_SPARKLINE_WINDOW,
@@ -161,9 +161,9 @@ describe("Generation Constants", () => {
     expect(AUDIO_CONCURRENCY).toBeGreaterThan(0);
     expect(REWRITE_CONCURRENCY).toBeGreaterThan(0);
   });
-  it("MCTS_MAX_NODE_CHILDREN is reasonable (2-20)", () => {
-    expect(MCTS_MAX_NODE_CHILDREN).toBeGreaterThanOrEqual(2);
-    expect(MCTS_MAX_NODE_CHILDREN).toBeLessThanOrEqual(20);
+  it("EXPERIMENT_MAX_NODE_CHILDREN is reasonable (2-20)", () => {
+    expect(EXPERIMENT_MAX_NODE_CHILDREN).toBeGreaterThanOrEqual(2);
+    expect(EXPERIMENT_MAX_NODE_CHILDREN).toBeLessThanOrEqual(20);
   });
   it("AUTO_STOP_CYCLE_LENGTH is positive", () => {
     expect(AUTO_STOP_CYCLE_LENGTH).toBeGreaterThan(0);

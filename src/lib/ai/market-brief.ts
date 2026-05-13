@@ -33,7 +33,7 @@ import {
 import { getMarketMargin } from '@/lib/narrative-utils';
 import { THREAD_CATEGORY_LABEL } from '@/lib/thread-category';
 import { getStoryPhase } from '@/lib/auto-engine';
-import { getActivePhaseGraph } from '@/lib/phase-graph';
+import { getActiveMode } from '@/lib/mode-graph';
 import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
 import { parseJson } from './json';
 import { MARKET_BRIEFING_SYSTEM, buildMarketBriefingPrompt } from '@/lib/prompts/briefing';
@@ -91,7 +91,7 @@ export async function generateMarketBriefing(
   const flags = detectFlags(rows);
   const outline = formatOutline(narrative);
   const phaseSummary = formatPhase(resolvedKeys, currentSceneIndex);
-  const phaseGraphSummary = formatPhaseGraph(narrative);
+  const modeSummary = formatMode(narrative);
 
   const prompt = buildMarketBriefingPrompt({
     title: narrative.title,
@@ -104,7 +104,7 @@ export async function generateMarketBriefing(
     flags,
     outline,
     phaseSummary,
-    phaseGraphSummary,
+    modeSummary,
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
@@ -280,8 +280,8 @@ function formatPhase(
   return `phase: ${phase} (timeline ${pct}% — scene ${currentIndex + 1} of ${total})`;
 }
 
-function formatPhaseGraph(narrative: NarrativeState): string {
-  const prg = getActivePhaseGraph(narrative);
+function formatMode(narrative: NarrativeState): string {
+  const prg = getActiveMode(narrative);
   if (!prg) return '';
   const summary = prg.summary?.trim() ?? '';
   const nodeBlock = (prg.nodes ?? [])

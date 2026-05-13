@@ -487,7 +487,7 @@ function ShapeCurve({
 //   generateScenePlan           4× Gemini    ~18K in + 8.5K out × 4  = ~$0.07
 //   generateSceneProse          4× DeepSeek  ~12K in + 1.2K out × 4  = ~$0.01
 //   expandWorld               ~⅓× Gemini    ~25K in + 5K out         = ~$0.01
-//   generatePhaseGraph         rare Gemini   ~30K in + 5K out + reas = ~$0.03  (on-demand)
+//   generateMode         rare Gemini   ~30K in + 5K out + reas = ~$0.03  (on-demand)
 //                                                              Total ≈ $0.13/arc
 //
 // EVALUATION & REVISION (per arc, ~25% edit rate):
@@ -602,7 +602,7 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
         cost: "~$0.01",
       },
       {
-        call: "generatePhaseGraph",
+        call: "generateMode",
         count: "occasional",
         model: "Gemini 2.5",
         note: "Phase reasoning graph (PRG) — meta-machinery, on-demand",
