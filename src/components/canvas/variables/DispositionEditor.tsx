@@ -30,7 +30,7 @@ interface Props {
 }
 
 /**
- * Editable rack of intensity dials, grouped by variable category. Works
+ * Editable rack of intensity sliders, grouped by variable category. Works
  * uniformly for arc Present and for a single scenario's variable set —
  * the parent passes the right `variables` array.
  */
@@ -51,7 +51,7 @@ export default function DispositionEditor({
     [variables],
   );
   // Pool entries that aren't already in the active set. Dedupe by id + name
-  // (case-insensitive) so sibling scenarios using the same dial under either
+  // (case-insensitive) so sibling scenarios using the same variable under either
   // an id-match or name-match get filtered out.
   const filteredPool = useMemo(() => {
     if (!pool || pool.length === 0) return [];
@@ -211,7 +211,7 @@ export default function DispositionEditor({
                               {VARIABLE_INTENSITY_LEVELS.map((lvl) => {
                                 if (lvl.idx === 0) {
                                   // Off-state placeholder for the inactive pool row — keeps
-                                  // alignment with active dials but unclickable.
+                                  // alignment with active variables but unclickable.
                                   return (
                                     <div
                                       key={lvl.idx}

@@ -399,7 +399,7 @@ const BIAS_OPTS = [
 ] as const;
 
 /**
- * Groups the four thinking-related dials (mode, force, density, network bias)
+ * Groups the four thinking-related controls (mode, force, density, network bias)
  * under a single `THINKING` header with a live animation preview.
  *
  * Two layouts via `variant`:

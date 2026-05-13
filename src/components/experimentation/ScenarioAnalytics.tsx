@@ -595,6 +595,28 @@ export function SceneDetail({
   const corner = forces ? detectCubeCorner(forces) : null;
   const loc = narrative.locations[scene.locationId];
   const pov = scene.povId ? narrative.characters[scene.povId] : null;
+
+  // First appearances — entities the scene introduces for the very first
+  // time. Filtered against the resolved narrative so we don't show ghost
+  // ids that didn't actually land.
+  const firstAppearances = {
+    characters: (scene.newCharacters ?? []).map((c) => c.id).filter((id) => narrative.characters[id]),
+    locations: (scene.newLocations ?? []).map((l) => l.id).filter((id) => narrative.locations[id]),
+    artifacts: (scene.newArtifacts ?? []).map((a) => a.id).filter((id) => narrative.artifacts[id]),
+    threads: (scene.newThreads ?? []).map((t) => t.id).filter((id) => narrative.threads[id]),
+  };
+  const hasFirstAppearances =
+    firstAppearances.characters.length > 0 ||
+    firstAppearances.locations.length > 0 ||
+    firstAppearances.artifacts.length > 0 ||
+    firstAppearances.threads.length > 0;
+
+  // System attributions filtered to exclude ids already shown as additions
+  // — mirrors the canvas SceneDetail so attributions surface what the
+  // scene is *acting on*, not what it just minted.
+  const addedSystemIds = new Set((scene.systemDeltas?.addedNodes ?? []).map((n) => n.id));
+  const attributionsOnly = (scene.systemAttributions ?? []).filter((id) => !addedSystemIds.has(id));
+
   return (
     <div className="flex flex-col gap-4">
       <button
@@ -622,24 +644,157 @@ export function SceneDetail({
             {pov?.name ?? scene.povId}
           </div>
         )}
-        {scene.timeDelta && (
-          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-            <span className="text-[10px] uppercase tracking-wider text-text-dim mr-1">Time</span>
-            <span className="text-text-secondary">
-              {scene.timeDelta.transition || `${scene.timeDelta.value} ${scene.timeDelta.unit}`}
-            </span>
-            {scene.timeDelta.transition && (
-              <span className="text-[10px] text-text-dim font-mono">
-                ({scene.timeDelta.value} {scene.timeDelta.unit})
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       <p className="text-xs text-text-secondary leading-relaxed">
         {scene.summary || 'No summary available.'}
       </p>
+
+      {/* First Appearances — emerald callout, matches canvas inspector. */}
+      {hasFirstAppearances && (
+        <div className="flex flex-col gap-2.5 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-3 py-2.5">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3 h-3 shrink-0 text-emerald-400/80" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l1.8 5.5L19 9l-5 3.5L15.5 19 12 15.5 8.5 19 10 12.5 5 9l5.2-1.5z" />
+            </svg>
+            <h3 className="text-[10px] uppercase tracking-widest font-semibold text-emerald-400/80">
+              First Appearances
+            </h3>
+            <span className="ml-auto text-[10px] text-emerald-400/40 font-mono tabular-nums">
+              {firstAppearances.characters.length +
+                firstAppearances.locations.length +
+                firstAppearances.artifacts.length +
+                firstAppearances.threads.length}
+            </span>
+          </div>
+          {firstAppearances.characters.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-text-dim">
+                Characters · {firstAppearances.characters.length}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {firstAppearances.characters.map((cid) => {
+                  const c = narrative.characters[cid];
+                  if (!c) return null;
+                  return (
+                    <span
+                      key={cid}
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-100"
+                    >
+                      <span>{c.name}</span>
+                      <span className="text-[8px] uppercase tracking-wider text-emerald-400/60">
+                        {c.role}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {firstAppearances.locations.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-text-dim">
+                Locations · {firstAppearances.locations.length}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {firstAppearances.locations.map((lid) => {
+                  const l = narrative.locations[lid];
+                  if (!l) return null;
+                  return (
+                    <span
+                      key={lid}
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-100"
+                    >
+                      <span>{l.name}</span>
+                      <span className="text-[8px] uppercase tracking-wider text-emerald-400/60">
+                        {l.prominence}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {firstAppearances.artifacts.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-text-dim">
+                Artifacts · {firstAppearances.artifacts.length}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {firstAppearances.artifacts.map((aid) => {
+                  const a = narrative.artifacts[aid];
+                  if (!a) return null;
+                  return (
+                    <span
+                      key={aid}
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-100"
+                    >
+                      <span>{a.name}</span>
+                      <span className="text-[8px] uppercase tracking-wider text-emerald-400/60">
+                        {a.significance}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {firstAppearances.threads.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-text-dim">
+                Threads · {firstAppearances.threads.length}
+              </span>
+              <div className="flex flex-col gap-1">
+                {firstAppearances.threads.map((tid) => {
+                  const t = narrative.threads[tid];
+                  if (!t) return null;
+                  return (
+                    <div
+                      key={tid}
+                      className="flex items-start gap-1.5 rounded bg-emerald-400/10 px-2 py-1"
+                    >
+                      <span className="shrink-0 font-mono text-[9px] text-emerald-400/60">{tid}</span>
+                      <span className="text-[10px] leading-tight text-emerald-100">
+                        {t.description}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Time Transition — natural-language phrase with directional accent.
+          Negative = flashback (violet), zero = concurrent (dim), positive
+          = forward (amber). Mirrors the canvas presentation. */}
+      {scene.timeDelta && (() => {
+        const td = scene.timeDelta;
+        const phrase = td.transition?.trim();
+        const isFlashback = td.value < 0;
+        const isConcurrent = td.value === 0;
+        const accent = isFlashback
+          ? 'text-violet-400'
+          : isConcurrent
+            ? 'text-text-dim'
+            : 'text-amber-400';
+        const gapLabel = `${td.value} ${td.unit}`;
+        return (
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-[10px] uppercase tracking-widest text-text-dim">Time Transition</h3>
+            <div className="flex flex-col gap-0.5">
+              <div className={`text-xs font-medium ${accent}`}>
+                {isFlashback ? '↶ ' : isConcurrent ? '= ' : '→ '}
+                {gapLabel}
+              </div>
+              {phrase && (
+                <div className="text-xs italic text-text-secondary">&ldquo;{phrase}&rdquo;</div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {scene.participantIds.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -927,19 +1082,29 @@ export function SceneDetail({
         </div>
       )}
 
-      {scene.systemAttributions && scene.systemAttributions.length > 0 && (
+      {attributionsOnly.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-[10px] uppercase tracking-widest text-text-dim">System Attributions</h3>
-          <div className="flex flex-col gap-0.5">
-            {scene.systemAttributions.map((sysId) => {
-              const node = narrative.systemGraph?.nodes?.[sysId];
+          <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+            System Attributions
+            <span className="ml-1.5 text-text-dim/60 font-mono normal-case tracking-normal">
+              {attributionsOnly.length}
+            </span>
+          </h3>
+          <div className="flex flex-wrap gap-1">
+            {attributionsOnly.map((attrId) => {
+              const node = narrative.systemGraph?.nodes?.[attrId];
+              const shortName = (concept: string) => {
+                const dash = concept.indexOf(' — ');
+                return dash > 0 ? concept.slice(0, dash) : concept;
+              };
               return (
-                <div key={sysId} className="flex items-baseline gap-1.5 text-xs">
-                  <span className="font-mono text-[10px] text-text-dim shrink-0">{sysId}</span>
-                  {node?.concept && (
-                    <span className="text-text-secondary leading-snug">{node.concept}</span>
-                  )}
-                </div>
+                <span
+                  key={`attr-${attrId}`}
+                  className="rounded border border-white/10 bg-white/2 px-1.5 py-0.5 text-[10px] text-text-secondary"
+                  title={node ? `${node.concept} (${node.type})` : attrId}
+                >
+                  {node ? shortName(node.concept) : attrId}
+                </span>
               );
             })}
           </div>

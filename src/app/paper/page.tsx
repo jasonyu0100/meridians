@@ -335,6 +335,160 @@ function ReasoningGraphDiagram() {
   );
 }
 
+/* ── Variable scenario diagram (parallel coordinates) ────────────────────── */
+
+const VAR_AXES: [string, string][] = [
+  ["Institutional", "drift"],
+  ["Actor", "reversal"],
+  ["External", "shock"],
+  ["Mechanism", "ignition"],
+  ["Attention", "saturation"],
+];
+
+const VAR_SCENARIOS: {
+  name: string;
+  color: string;
+  prob: number;
+  priorLogit: number;
+  intensities: number[];
+}[] = [
+  { name: "Modal continuation",  color: "#22d3ee", prob: 0.46, priorLogit:  1.6, intensities: [2, 1, 0, 1, 2] },
+  { name: "Slow consolidation",  color: "#a78bfa", prob: 0.28, priorLogit:  1.1, intensities: [3, 1, 0, 0, 2] },
+  { name: "External disruption", color: "#f59e0b", prob: 0.18, priorLogit:  0.7, intensities: [1, 2, 3, 1, 2] },
+  { name: "Mechanism rupture",   color: "#ef4444", prob: 0.08, priorLogit: -0.1, intensities: [1, 3, 1, 4, 3] },
+];
+
+function VariableScenarioDiagram() {
+  const W = 680;
+  const H = 280;
+  const axisTop = 30;
+  const axisBottom = 220;
+  const xs = [80, 200, 320, 440, 560];
+  const yFor = (lvl: number) => axisBottom - (lvl / 4) * (axisBottom - axisTop);
+
+  return (
+    <figure className="my-10">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+        {/* Axes */}
+        {xs.map((x, ai) => (
+          <g key={ai}>
+            <line
+              x1={x}
+              y1={axisTop}
+              x2={x}
+              y2={axisBottom}
+              stroke="rgba(255,255,255,0.12)"
+              strokeWidth={1}
+            />
+            {[0, 1, 2, 3, 4].map((lvl) => (
+              <line
+                key={lvl}
+                x1={x - 4}
+                y1={yFor(lvl)}
+                x2={x + 4}
+                y2={yFor(lvl)}
+                stroke="rgba(255,255,255,0.22)"
+                strokeWidth={1}
+              />
+            ))}
+            <text
+              x={x}
+              y={axisBottom + 20}
+              textAnchor="middle"
+              className="fill-white/50"
+              fontSize={10}
+              fontFamily="ui-monospace, monospace"
+            >
+              {VAR_AXES[ai][0]}
+            </text>
+            <text
+              x={x}
+              y={axisBottom + 34}
+              textAnchor="middle"
+              className="fill-white/35"
+              fontSize={10}
+              fontFamily="ui-monospace, monospace"
+            >
+              {VAR_AXES[ai][1]}
+            </text>
+          </g>
+        ))}
+
+        {/* Intensity scale on first axis */}
+        {[0, 1, 2, 3, 4].map((lvl) => (
+          <text
+            key={lvl}
+            x={xs[0] - 12}
+            y={yFor(lvl) + 3}
+            textAnchor="end"
+            className="fill-white/35"
+            fontSize={9}
+            fontFamily="ui-monospace, monospace"
+          >
+            {lvl}
+          </text>
+        ))}
+
+        {/* Scenario polylines */}
+        {VAR_SCENARIOS.map((s) => {
+          const points = s.intensities
+            .map((iv, ai) => `${xs[ai]},${yFor(iv)}`)
+            .join(" ");
+          return (
+            <g key={s.name}>
+              <polyline
+                points={points}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity={0.55 + s.prob * 0.55}
+              />
+              {s.intensities.map((iv, ai) => (
+                <circle
+                  key={ai}
+                  cx={xs[ai]}
+                  cy={yFor(iv)}
+                  r={3.5}
+                  fill={s.color}
+                  opacity={0.9}
+                />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 px-2">
+        {VAR_SCENARIOS.map((s) => (
+          <div
+            key={s.name}
+            className="flex items-center gap-2 text-[11px] text-white/55"
+          >
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: s.color }}
+            />
+            <span className="font-mono tabular-nums text-white/45 w-8 shrink-0">
+              {Math.round(s.prob * 100)}%
+            </span>
+            <span className="truncate">{s.name}</span>
+          </div>
+        ))}
+      </div>
+
+      <figcaption className="text-[11px] text-white/35 mt-4 leading-relaxed text-center max-w-2xl mx-auto">
+        Parallel coordinates over five variable axes. Each scenario is a
+        polyline; vertical position is intensity (0 off → 4 extreme).
+        Probabilities are softmax over per-scenario priorLogits — most mass
+        clusters on modal continuations, a thin tail covers rupture.
+      </figcaption>
+    </figure>
+  );
+}
+
 /* ── Thinking-mode explorer ──────────────────────────────────────────────── */
 
 const THINKING_MODES: {
@@ -1152,6 +1306,7 @@ const NAV = [
   { id: "grading", label: "Grading" },
   { id: "embeddings", label: "Embeddings" },
   { id: "planning", label: "Causal Reasoning" },
+  { id: "variables", label: "Variable Scenarios" },
   { id: "research", label: "Research Methods" },
   { id: "prose-profiles", label: "Prose Profiles" },
   { id: "markov", label: "Markov Chains" },
@@ -2947,6 +3102,74 @@ export default function PaperPage() {
               exists, then hands them to the next arc&apos;s causal graph as
               substrate. Long-range phases provide structure; reasoning graphs
               provide short-range causality that evolves arc by arc.
+            </P>
+          </Section>
+
+          {/* ── Variable Scenarios ────────────────────────────────────── */}
+          <Section id="variables" label="Variable Scenarios">
+            <P>
+              Causal reasoning commits to <em>one</em> chain — the arc&apos;s
+              spine. <B>Variable scenario modelling</B> is the complement: a
+              probabilistic alternative that produces a cohort of timelines
+              with relative probabilities. Where the CRG asks <em>what must
+              happen and why</em>, variables ask <em>what could happen, and
+              how likely</em>. The two run side-by-side and serve different
+              questions.
+            </P>
+            <P>
+              The arc is decomposed into a small <B>pool of variables</B> —
+              load-bearing forces the model judges most reshape trajectory if
+              they shift. Each <B>scenario</B> is one coordination over that
+              pool: a pattern of intensities (0 off → 4 extreme). The same
+              pool, different coordinations. A <B>priorLogit ∈ [-4, +4]</B>
+              scores each scenario&apos;s plausibility relative to its
+              siblings; softmax across the cohort produces the displayed
+              probability.
+            </P>
+
+            <VariableScenarioDiagram />
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Two surfaces
+            </h3>
+            <P>
+              <B>Present</B> — the arc&apos;s own load-bearing variables right
+              now (one set, intensities reflecting current state).{" "}
+              <B>Future</B> — a cohort of next-arc scenarios as coordinations
+              over a shared pool. Both run the same extraction prompt under
+              the same disciplines: forces not symptoms, post-shift framing
+              if the arc ended at a pivot, mechanisms from artifact and
+              key-actor world graphs.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Power-law cohort shape
+            </h3>
+            <P>
+              Reality doesn&apos;t distribute uniformly. Most futures cluster
+              near modal continuation; a thin tail covers rupture. The cohort
+              matches the SHAPE of the distribution it&apos;s drawn from —
+              tight when the possibility space is tight, bimodal when the
+              substrate forks, fat-tailed when a load-bearing mechanism could
+              ignite. PriorLogit is independent of intensity: a low-intensity
+              continuation can be high-prior, a high-intensity rupture can be
+              low-prior. Intensity carries magnitude; the logit carries
+              rarity.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              From scenarios to branches
+            </h3>
+            <P>
+              Scenarios drive <B>Experimentation</B>: one parallel arc
+              continuation per scenario, with the scenario&apos;s coordination
+              as primary generation guidance. On commit, every scenario
+              attaches as a sister branch; the softmax-top scenario&apos;s
+              branch becomes active. Multi-timeline analysis falls out
+              naturally — every committed run carries the variable
+              fingerprint that produced it, so the engine can compare what
+              <em> actually </em>played out against the prior the model
+              assigned.
             </P>
           </Section>
 

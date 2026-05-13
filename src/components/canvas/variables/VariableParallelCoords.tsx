@@ -27,7 +27,7 @@ interface Props {
  * (off) where its set didn't include that variable.
  *
  * Variables are keyed by name (case-insensitive) so two traces with the
- * same-named dial align on the same axis. The category of the first trace
+ * same-named variable align on the same axis. The category of the first trace
  * to mention a name wins for axis colouring.
  */
 export default function VariableParallelCoords({

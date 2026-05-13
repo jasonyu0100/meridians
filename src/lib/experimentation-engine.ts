@@ -30,14 +30,14 @@ export function buildDirectionFromScenario(
 ): string {
   const { overallDirection, constraintsPrompt } = options;
 
-  const dialsBlock = scenario.variables.length > 0
+  const variablesBlock = scenario.variables.length > 0
     ? scenario.variables
         .map((v) => {
           const label = VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? "?";
           return `  - ${v.name} @ ${label} (intensity ${v.intensity}/4) — ${v.description}`;
         })
         .join("\n")
-    : "  (no dials configured)";
+    : "  (no variables configured)";
 
   const tagline = scenario.tagline ? `\nTagline: ${scenario.tagline}` : "";
   const rationale = scenario.priorRationale
@@ -47,11 +47,11 @@ export function buildDirectionFromScenario(
   let direction = `SCENARIO: ${scenario.name}${tagline}${rationale}
 
 PRIMARY GUIDANCE — VARIABLE COORDINATION
-This arc continuation must enact the following coordination of dials. Each named force should be expressed at its specified intensity through scene events, character choices, thread movements, and world deltas. The dials are the spine — let them shape what happens.
+This arc continuation must enact the following coordination of variables. Each named force should be expressed at its specified intensity through scene events, character choices, thread movements, and world deltas. The variables are the spine — let them shape what happens.
 
-${dialsBlock}
+${variablesBlock}
 
-Generate scenes whose deltas and prose CAUSE the dials to fire at the stated intensities. A dial at intensity 3 (strong) should be a clear inflection driver across multiple scenes; intensity 4 (extreme) should reshape the arc; intensity 1 (weak) should be a background hint.`;
+Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) should be a clear inflection driver across multiple scenes; intensity 4 (extreme) should reshape the arc; intensity 1 (weak) should be a background hint.`;
 
   if (overallDirection?.trim()) {
     direction = `STORY DIRECTION (steer the broader narrative toward this): ${overallDirection.trim()}\n\n${direction}`;
@@ -73,7 +73,7 @@ export type VirtualState = {
 
 /**
  * Stamp a scenario's variable coordination onto a freshly generated arc.
- * The committed branch should carry the dials that produced it, with
+ * The committed branch should carry the variables that produced it, with
  * dormant entries (intensity 0) filtered out so the arc reflects only
  * variables actually firing in the scenario.
  *
@@ -92,7 +92,7 @@ export function stampScenarioVariables(arc: Arc, scenarioVariables: Variable[]):
  * Compute the narrative state with one generated arc applied — used as
  * the post-arc snapshot the panel can preview. The new arc's
  * `presentVariables` are stamped with the scenario's variables (filtered
- * to intensity > 0) so the resulting branch carries the dials that
+ * to intensity > 0) so the resulting branch carries the variables that
  * produced it.
  */
 export function buildVirtualState(

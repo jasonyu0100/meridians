@@ -114,7 +114,28 @@ Return JSON with this exact structure.
     EDGE PROMPTS: when two existing system nodes are co-attributed in the same scene and no edge yet links them, emit a new \`addedEdges\` entry capturing the relationship the scene just surfaced. Co-attribution without a connection is the strongest signal that a connection deserves to exist.
   </rule>
 
-  <rule name="time-delta">Gap from prior scene as estimate ({value: integer, unit, transition}). Positive = forward, 0 = concurrent / first scene, negative = FLASHBACK. "that evening" → {3, hour, "that evening"}; "next morning" → {1, day, "the next morning"}; "three years later" → {3, year, "three years later"}; "years before, when he was a boy" → {-10, year, "years before, when he was a boy"} (a later return-to-present scene needs a positive timeDelta roughly cancelling the jump). Always include a transition natural-language phrase — the English-language flow downstream prose reads verbatim. Approximate values are fine.</rule>
+  <rule name="time-delta" critical="true" hint="Gaps reshape what the scene commits — pick a mode, let the deltas answer for it.">
+    <shape>{value: integer, unit, transition}. Positive = forward, 0 = concurrent / first scene, negative = backward. transition is the natural-language phrase prose reads verbatim. Approximate values fine.</shape>
+    <mode name="continuous-step">Default. Minutes-to-days; deltas reflect what happens IN the scene. e.g. {3, hour, "that evening"}, {1, day, "the next morning"}.</mode>
+    <mode name="large-skip" hint="≥1 week with active anchors. The skip itself is a load-bearing event.">
+      The opening scene MUST compensate for off-screen drift, not just narrate the present:
+      • threads moved during the gap (stalls decay with negative volumeDelta + "stall"; live ones advance with "escalation"/"transition"; some close off-screen as "payoff"/"twist" citing the interval)
+      • anchors and named off-screen entities accrue aged-state worldDeltas — capabilities gained/lost, relationships eroded/hardened
+      • if the world's rules/institutions/conventions shifted during the gap, ≥1 systemDelta captures it
+      • summary opens by naming what the gap changed — the scene now operates on those facts, not on the pre-gap state
+    </mode>
+    <mode name="flashback" hint="Excursion into the past; narrative returns afterward.">
+      Negative value. Reveal-weighted: the present POV/reader LEARNS; the past does not re-mutate. worldDeltas bias toward belief/state/secret nodes on the present-self. A later scene MUST return with a positive timeDelta cancelling the jump (multiple flashbacks allowed; the return cancels their sum). e.g. {-10, year, "years before"} → eventually {10, year, "back in the present"}.
+    </mode>
+    <mode name="time-travel" hint="Diegetic travel — timeline FORKS, no return.">
+      Negative value, but UNLIKE flashback the narrative now lives in the new time. Subsequent timeDeltas are relative to the NEW position.
+      • traveller carries memory forward — their worldDeltas flag knowledge "carried from later" (belief/secret/capability)
+      • world snaps to its earlier state — locations, other characters, artifacts, system graph all at earlier configuration; do NOT propagate present-day deltas backward
+      • surface the mechanic as a systemDelta (rule + cost/constraint); add a chaos/rupture marker for unsanctioned or paradox-prone travel
+      e.g. {-5, year, "five years earlier, through the gate"} → next scene {2, day, "two days after his arrival"}.
+    </mode>
+    <decision-test>Flashback vs time-travel: does the narrative RETURN, or now LIVE in the new time? Continuous vs skip: ≥1 week with active anchors = skip, compensate.</decision-test>
+  </rule>
 
   <rule name="tag-richly-discipline" hint="Floors and per-tier density bands live in force-standards / deltas; this rule adds scene-shape-specific guidance.">
     <thread-step>One threadDelta per thread per scene; transitions move ONE step forward.</thread-step>

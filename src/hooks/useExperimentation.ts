@@ -176,7 +176,10 @@ export function useExperimentation() {
             });
           },
           {
-            parallel: config.parallelWorkers,
+            // Run every scenario in parallel — the cohort is small (a
+            // handful of futures) and the user always wants to see all
+            // outcomes side-by-side rather than waiting in batches.
+            parallel: selected.length,
             isCancelled: () => cancelledRef.current,
           },
         );
@@ -534,8 +537,8 @@ async function generateOneScenario(input: {
 
     const { scenes, arc: rawArc } = result;
     // Stamp the scenario's variable coordination onto the arc so the
-    // committed branch carries the dials that produced it. Shared helper
-    // with buildVirtualState below — both paths agree on what dials end
+    // committed branch carries the variables that produced it. Shared helper
+    // with buildVirtualState below — both paths agree on what variables end
     // up on the new arc.
     const arc = stampScenarioVariables(rawArc, scenario.variables);
     const virtual = buildVirtualState(

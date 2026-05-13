@@ -2,7 +2,7 @@
  * Experimentation — parallel scenario-driven branch generation.
  *
  * The user has a cohort of Future scenarios on the current arc. Each
- * scenario is a complete coordination of dials at chosen intensities.
+ * scenario is a complete coordination of variables at chosen intensities.
  * Experimentation takes that cohort and generates ONE arc continuation
  * per scenario in parallel, with the scenario's variable coordination as
  * primary generation guidance. Each result becomes a candidate Branch in
@@ -64,8 +64,6 @@ export type ScenarioRun = {
 // ── Run config ────────────────────────────────────────────────────────────
 
 export type ExperimentationConfig = {
-  /** Max scenarios generating in parallel at any time. */
-  parallelWorkers: number;
   /** Optional override — by default we use every scenario on the focused
    *  arc. Setting this lets the panel run a subset (e.g. just the top 3). */
   selectedScenarioIds?: string[];
@@ -79,9 +77,7 @@ export type ExperimentationConfig = {
   worldBuildFocusId?: string;
 };
 
-export const DEFAULT_EXPERIMENTATION_CONFIG: ExperimentationConfig = {
-  parallelWorkers: 4,
-};
+export const DEFAULT_EXPERIMENTATION_CONFIG: ExperimentationConfig = {};
 
 // ── Overall run state ─────────────────────────────────────────────────────
 

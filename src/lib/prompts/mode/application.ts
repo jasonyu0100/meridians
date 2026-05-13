@@ -114,10 +114,10 @@ const SCOPE_USAGE_BLOCK: Record<ModeScope, string> = {
     <rule>Don't name the rules; embody them. A character bargaining under a phase rule should bargain in the rule's terms, not narrate the rule.</rule>
     <rule>Active conventions shape register and address — speech levels, terms of art, ritualised exchanges. A convention ignored in prose reads as an inconsistency, not a stylistic choice.</rule>
   </usage>`,
-  variables: `  <usage hint="Variables — both arc-level Present and forward-looking Future scenarios — name the dials of the active machinery.">
-    <rule>Treat agents, pressures, and attractors as PRIMARY candidates for dials. They're the components of the machinery that genuinely move. Active rules become constraints (dials that bind or loosen); patterns become trends (dials that accumulate); landmarks anchor stance dials around their gravity.</rule>
+  variables: `  <usage hint="Variables — both arc-level Present and forward-looking Future scenarios — name the levers of the active machinery.">
+    <rule>Treat agents, pressures, and attractors as PRIMARY candidates for variables. They're the components of the machinery that genuinely move. Active rules become constraints (variables that bind or loosen); patterns become trends (variables that accumulate); landmarks anchor stance variables around their gravity.</rule>
     <rule>Plausibility scoring (priorLogit) flows from the substrate. A scenario coordination that compounds an active pressure, approaches an active attractor, or honours active conventions reads as high-prior. A coordination that violates an active rule or contradicts a landmark reads as low-prior unless an in-arc rupture justifies it.</rule>
-    <rule>Don't paraphrase phase nodes verbatim as dials. Distil them — a "pressure: Bai Clan expansion" node may surface as the dial "Bai Clan territorial assertion"; an "agent: Elder Ruo Lan" node may anchor multiple stance dials around her interests. The phase graph is the substrate, the dials are the surface.</rule>
+    <rule>Don't paraphrase phase nodes verbatim as variables. Distil them — a "pressure: Bai Clan expansion" node may surface as the variable "Bai Clan territorial assertion"; an "agent: Elder Ruo Lan" node may anchor multiple stance variables around her interests. The phase graph is the substrate, the variables are the surface.</rule>
     <rule>If a scenario implies superseding a phase rule, surface that explicitly in the priorRationale — silent rule-breaks read as model confusion, named rule-breaks read as decisive evidence.</rule>
   </usage>`,
 };
@@ -188,7 +188,7 @@ const SCOPE_PRIORITY_BLURB: Record<ModeScope, { framing: string; guidance: strin
     guidance: "Surface the ambient model in subtext: rules visibly bind the action, accumulated pressures audibly weight choices, currently-active patterns appear as recognisable shapes. Don't narrate the PRG; let it colour what the prose foregrounds.",
   },
   variables: {
-    framing: "substrate the dials inherit from.",
-    guidance: "Agents / pressures / attractors are primary dial candidates; active rules become constraint dials; landmarks anchor stance dials. Plausibility scoring tilts up for coordinations that compound active pressures or approach attractors, down for coordinations that silently violate active rules.",
+    framing: "substrate the variables inherit from.",
+    guidance: "Agents / pressures / attractors are primary variable candidates; active rules become constraint variables; landmarks anchor stance variables. Plausibility scoring tilts up for coordinations that compound active pressures or approach attractors, down for coordinations that silently violate active rules.",
   },
 };

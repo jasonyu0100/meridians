@@ -188,7 +188,7 @@ export function GeneratePanel({
   const [showReasoningModal, setShowReasoningModal] = useState(false);
   const [generatingGraph, setGeneratingGraph] = useState(false);
   // When true, the panel body is replaced by the extended-thinking launch
-  // surface — thinking dials + animation + a single confirm to start CRG
+  // surface — thinking controls + animation + a single confirm to start CRG
   // generation. Closes on cancel or once generation begins.
   const [extendedSetupOpen, setExtendedSetupOpen] = useState(false);
   // Arc reasoning options — initialized from story-level defaults so the

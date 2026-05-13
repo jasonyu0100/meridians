@@ -37,6 +37,8 @@ See `.env.example` for the full list.
 
 **Real-world scenario modeling.** Feed the engine a rich brief or dataset — a market state, a strategic timeline, an alternate-history premise, a domain corpus — and it builds the same typed graph. Branch alternative timelines from any decision point, evaluate them in the **Branch Workbench** (multi-branch analytical chat with controlled scope windows, register-agnostic prompts, persisted threads), and compare outcomes through the same force math that grades novels. The framework is genre-neutral; what it actually measures is how a world is moving and where pressure builds.
 
+**Variable scenario forecasting.** Probabilistic alternative to causal reasoning: instead of committing to one chain, the engine extracts a pool of load-bearing variables and produces a cohort of next-arc timelines as coordinations over that pool — each scored with a priorLogit, softmaxed to a relative probability. The cohort follows the power-law shape of real possibility space (most mass on modal continuation, a thin tail on rupture), works identically for fiction continuations, market scenarios, research counterfactuals, or strategic forecasts, and feeds **Experimentation** which generates one parallel branch per scenario for multi-timeline analysis.
+
 **Text corpus analysis.** Paste any long-form work and the engine extracts its full structure: typed knowledge graph, force trajectories, pacing fingerprint (Markov transition matrices over scene-level cube modes), prose profile (authorial Markov chains over a 10-function / 8-mechanism beat taxonomy). Every analyzed work compounds the network — pacing patterns and prose signatures become reusable for cross-corpus comparison, scenario seeding, or generation.
 
 **Mind mapping at scale.** Entities, threads, knowledge nodes, and embeddings render as interactive D3 graphs: network view (cumulative activation tiers), world graph (per-entity inner knowledge), knowledge graph (system rules / concepts), phase graph (working model of reality), reasoning graph (per-arc causal chain). Click any node to inspect — characters, locations, artifacts, threads, system nodes, knowledge nodes all open in the side panel with their full continuity.
@@ -73,7 +75,7 @@ The engine is the spine; the LLM is one tool the engine drives.
 ## For developers digging in
 
 - **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference. Every major subsystem (forces, threads, phase graph, CRG, scenes, plans, prose, embeddings, surveys, game theory, auto-engine) documented with file pointers.
-- **[`/paper`](https://inktide-sourcenovel.vercel.app/paper)** — the theory: force formulas, Markov chain pacing, MCTS evaluation, beat taxonomy, calibration against published works.
+- **[`/paper`](https://inktide-sourcenovel.vercel.app/paper)** — the theory: force formulas, Markov chain pacing, variable scenario modelling, beat taxonomy, calibration against published works.
 - **`src/types/narrative.ts`** — the domain model.
 - **`src/lib/ai/`** — the LLM call surface. All generation routes through `callGenerate` / `callGenerateStream`.
 - **`src/lib/prompts/`** — every prompt, modular and scoped. Phase-graph application, scene generation, beat planning, prose rendering, world expansion all live here.

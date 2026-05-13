@@ -54,16 +54,13 @@ export interface VariablesContextSource {
 }
 
 interface RenderOptions {
-  sceneCap?: number;
-  closedThreadCap?: number;
   includeArcStates?: boolean;
   focusArcId?: string;
 }
 
-function truncate(s: string | undefined, n = 220): string {
+function clean(s: string | undefined): string {
   if (!s) return '';
-  const cleaned = s.replace(/\s+/g, ' ').trim();
-  return cleaned.length <= n ? cleaned : cleaned.slice(0, n - 1) + '…';
+  return s.replace(/\s+/g, ' ').trim();
 }
 
 function cutoffSceneIds(src: VariablesContextSource): string[] {
@@ -89,40 +86,35 @@ function renderArcsBlock(src: VariablesContextSource): string {
   if (arcsOrdered.length === 0) return '';
   return arcsOrdered
     .map((arc) => {
-      const dir = arc.directionVector ? `\n    direction: ${truncate(arc.directionVector, 200)}` : '';
-      const ws = arc.worldState ? `\n    state: ${truncate(arc.worldState, 380)}` : '';
+      const dir = arc.directionVector ? `\n    direction: ${clean(arc.directionVector)}` : '';
+      const ws = arc.worldState ? `\n    state: ${clean(arc.worldState)}` : '';
       return `  - id: ${arc.id}\n    name: "${arc.name}"${dir}${ws}`;
     })
     .join('\n');
 }
 
-function renderScenesBlock(src: VariablesContextSource, opts: RenderOptions): string {
-  const cap = opts.sceneCap ?? 80;
+function renderScenesBlock(src: VariablesContextSource): string {
   const ordered = cutoffSceneIds(src);
   const total = ordered.length;
   if (total === 0) return '';
-  const slice = ordered.slice(Math.max(0, total - cap));
-  const earlierCount = total - slice.length;
   const lines: string[] = [];
-  if (earlierCount > 0) lines.push(`  (${earlierCount} earlier scene${earlierCount === 1 ? '' : 's'} elided)`);
-  slice.forEach((sid, i) => {
+  ordered.forEach((sid, i) => {
     const sc = src.scenes[sid];
     if (!sc) return;
-    const idx = Math.max(0, total - slice.length) + i + 1;
+    const idx = i + 1;
     const arc = src.arcs[sc.arcId];
     const loc = src.locations[sc.locationId];
     const pov = sc.povId ? src.characters[sc.povId]?.name : null;
     const arcPrefix = arc ? `${arc.name}` : sc.arcId;
     const locName = loc ? loc.name : sc.locationId;
     const povStr = pov ? `pov=${pov}` : 'pov=—';
-    const summary = sc.events.length > 0 ? truncate(sc.events.join(' · '), 240) : '(no events)';
+    const summary = sc.events.length > 0 ? clean(sc.events.join(' · ')) : '(no events)';
     lines.push(`  [${idx}] arc=${arcPrefix} loc=${locName} ${povStr} :: ${summary}`);
   });
   return lines.join('\n');
 }
 
-function renderThreadsBlock(src: VariablesContextSource, opts: RenderOptions): string {
-  const closedCap = opts.closedThreadCap ?? 20;
+function renderThreadsBlock(src: VariablesContextSource): string {
   const ordered = cutoffSceneIds(src);
   const orderedSet = new Set(ordered);
   const lastScene = ordered[ordered.length - 1];
@@ -132,7 +124,6 @@ function renderThreadsBlock(src: VariablesContextSource, opts: RenderOptions): s
     if (lastScene && t.openedAt && !orderedSet.has(t.openedAt)) continue;
     const isClosed = !!t.closedAt && orderedSet.has(t.closedAt);
     const participants = t.participants
-      .slice(0, 4)
       .map((p) => src.characters[p.id]?.name || src.locations[p.id]?.name || src.artifacts[p.id]?.name || p.id)
       .join(', ');
     const beliefs = t.beliefs?.['__NARRATOR__'] ?? Object.values(t.beliefs ?? {})[0];
@@ -144,27 +135,25 @@ function renderThreadsBlock(src: VariablesContextSource, opts: RenderOptions): s
       const probs = exps.map((e) => e / sum);
       const top = probs
         .map((p, i) => ({ p, name: t.outcomes[i] }))
-        .sort((a, b) => b.p - a.p)
-        .slice(0, 2);
+        .sort((a, b) => b.p - a.p);
       priceLine = ` — price: ${top.map((x) => `${x.name} ${(x.p * 100).toFixed(0)}%`).join(' / ')}`;
     }
     if (isClosed) {
       const winner = t.closeOutcome != null ? t.outcomes[t.closeOutcome] : '?';
       const idx = ordered.indexOf(t.closedAt!);
       closedLines.push({
-        line: `  ${t.id}: "${truncate(t.description, 160)}" — closed ${winner}${t.resolutionQuality != null ? ` (q=${t.resolutionQuality.toFixed(2)})` : ''} :: ${participants}`,
+        line: `  ${t.id}: "${clean(t.description)}" — closed ${winner}${t.resolutionQuality != null ? ` (q=${t.resolutionQuality.toFixed(2)})` : ''} :: ${participants}`,
         ord: idx,
       });
     } else {
-      liveLines.push(`  ${t.id}: "${truncate(t.description, 160)}"${priceLine} :: ${participants}`);
+      liveLines.push(`  ${t.id}: "${clean(t.description)}"${priceLine} :: ${participants}`);
     }
   }
   closedLines.sort((a, b) => b.ord - a.ord);
   const sections: string[] = [];
   if (liveLines.length > 0) sections.push(`<threads-live>\n${liveLines.join('\n')}\n</threads-live>`);
   if (closedLines.length > 0) {
-    const lines = closedLines.slice(0, closedCap).map((c) => c.line);
-    sections.push(`<threads-closed-recent>\n${lines.join('\n')}\n</threads-closed-recent>`);
+    sections.push(`<threads-closed>\n${closedLines.map((c) => c.line).join('\n')}\n</threads-closed>`);
   }
   return sections.join('\n');
 }
@@ -189,19 +178,19 @@ function renderRosterBlock(src: VariablesContextSource): string {
     return dr !== 0 ? dr : a.name.localeCompare(b.name);
   });
 
-  const charLines = chars.slice(0, 28).map((c) => {
-    const worldHead = Object.values(c.world?.nodes ?? {}).slice(0, 3).map((n) => n.content).join('; ');
-    const sketch = worldHead ? ` — ${truncate(worldHead, 200)}` : '';
+  const charLines = chars.map((c) => {
+    const worldHead = Object.values(c.world?.nodes ?? {}).map((n) => n.content).join('; ');
+    const sketch = worldHead ? ` — ${clean(worldHead)}` : '';
     return `  * ${c.role}: ${c.name}${sketch}`;
   }).join('\n');
-  const locLines = locs.slice(0, 18).map((l) => {
-    const worldHead = Object.values(l.world?.nodes ?? {}).slice(0, 2).map((n) => n.content).join('; ');
-    const sketch = worldHead ? ` — ${truncate(worldHead, 180)}` : '';
+  const locLines = locs.map((l) => {
+    const worldHead = Object.values(l.world?.nodes ?? {}).map((n) => n.content).join('; ');
+    const sketch = worldHead ? ` — ${clean(worldHead)}` : '';
     return `  * ${l.prominence}: ${l.name}${sketch}`;
   }).join('\n');
-  const artLines = arts.slice(0, 14).map((a) => {
-    const worldHead = Object.values(a.world?.nodes ?? {}).slice(0, 2).map((n) => n.content).join('; ');
-    const sketch = worldHead ? ` — ${truncate(worldHead, 160)}` : '';
+  const artLines = arts.map((a) => {
+    const worldHead = Object.values(a.world?.nodes ?? {}).map((n) => n.content).join('; ');
+    const sketch = worldHead ? ` — ${clean(worldHead)}` : '';
     return `  * ${a.significance}: ${a.name}${sketch}`;
   }).join('\n');
   const out: string[] = [];
@@ -218,9 +207,9 @@ export function renderVariablesContextBlock(
   const sections: string[] = [];
   const arcs = opts.includeArcStates !== false ? renderArcsBlock(src) : '';
   if (arcs) sections.push(`<arcs-ordered>\n${arcs}\n</arcs-ordered>`);
-  const scenes = renderScenesBlock(src, opts);
+  const scenes = renderScenesBlock(src);
   if (scenes) sections.push(`<scenes-up-to-current>\n${scenes}\n</scenes-up-to-current>`);
-  const threads = renderThreadsBlock(src, opts);
+  const threads = renderThreadsBlock(src);
   if (threads) sections.push(threads);
   const roster = renderRosterBlock(src);
   if (roster) sections.push(roster);
@@ -229,33 +218,26 @@ export function renderVariablesContextBlock(
 
 // ── Per-arc Present extraction ─────────────────────────────────────────────
 
-const EXTRACT_PRESENT_SYSTEM = `You name the load-bearing dynamic variables driving THIS arc — the dials whose movement most reshapes the trajectory. This is the arc's own basis vector set; no catalogue carries across arcs.
+const EXTRACT_PRESENT_SYSTEM = `You name the load-bearing dynamic variables driving THIS arc — the levers whose movement most reshapes the trajectory. The arc's own basis vector set; no catalogue carries across arcs.
 
-What a variable IS.
-A dial worth modelling NAMES a tension, pressure, or contingency that, when shifted, CASCADES — other actors recalibrate, threads inflect, the strategic position changes shape. It refers to something specific in this arc: named actors, named institutions, named mechanisms. "Fang Yuan's foreknowledge advantage," "the Bai Clan's expansion timing," "Clan Leader Bo's failing health" — not "antagonist pressure" or "resource availability."
+DISCIPLINES.
+  • SURFACE vs SUBSTRATE. Variables name FORCES, not symptoms. Symptoms are what becomes visible (prices fall, characters argue, a study gets cited); forces are what cascade to produce them. Reach one layer below the visible.
+  • PIVOT CHECK. Read the arc's ending state. If it describes a fundamental shift — regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, one-way institutional/technological change — variables model the POST-shift situation. Pre-shift variables are history.
+  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world (an artifact's lore, an institution's charter, a method's assumptions, a regime's reaction function). Their world-graph nodes define what's POSSIBLE here. An unactivated mechanism is a strong variable candidate.
 
-What a variable IS NOT.
-Granular character texture is noise floor, not signal. Emotional control, reputation management, investigative skill — these are colour, not levers. If you can imagine the dial moving and the story not visibly changing, it's not a variable.
+What earns a place.
+  • CONTINUATION — forces already firing, actively driving the present moment.
+  • CREATIVE — latent drivers not firing yet: external shock building, dormant alliance, hidden contradiction surfacing, unactivated mechanism, attractor pulling toward an unspoken outcome.
+Mix both at the highest-leverage instances only.
 
-What to look for.
-Read the scenes, threads, and roster. Two kinds of dial earn a place:
-  • CONTINUATION — dominant dynamics already firing, the forces actively driving the present moment.
-  • CREATIVE — latent drivers not firing yet but plausibly load-bearing if they ignite: an external shock building, a dormant alliance, a hidden contradiction about to surface, an attractor pulling things toward an unspoken outcome.
-A good set mixes both, drawn at the highest-leverage instances only.
-
-Quality bar.
-  • SPECIFIC — named, grounded in this arc's actual situation
-  • CASCADING — visibly reshapes the story when it moves
-  • ORTHOGONAL — no two dials measure the same underlying force from different angles
-  • DYNAMIC — capable of taking different values across plausible futures, not a fixed fact
-Tighter is better. A missing dimension can be added next regenerate; a swamp of dials dilutes signal and reads as noise. Stop when adding another dial wouldn't change predictions.
+Quality bar: SPECIFIC, CASCADING, ORTHOGONAL, DYNAMIC, SUBSTRATE-LEVEL. Pattern: \`[named subject] + [dynamic attribute]\`. Avoid buckets ("antagonist pressure," "market sentiment," "public mood"). Tighter is better; stop when adding another wouldn't change predictions.
 
 For each variable emit { id, name, description, category, intensity }:
-  • id: "var-<short-slug>" derived from the name
-  • name: short phrase that names the force
-  • description: one sentence — what the dial is AND what cascades when it turns up
-  • category: pick a label that groups related dials (stance, capability, pressure, knowledge, constraint, allegiance, external, contradiction, trend, threshold, resource, reputation, institutional, cultural, physical, temporal) or invent one if the work demands
-  • intensity (1–4): 1 weak, 2 mild, 3 strong, 4 extreme. Variables at 0 stay implicit — do not emit them.
+  • id: "var-<short-slug>"
+  • name: short phrase
+  • description: one sentence — what it is AND what cascades when it turns up
+  • category: stance / capability / pressure / knowledge / constraint / allegiance / external / contradiction / trend / threshold / resource / reputation / institutional / cultural / physical / temporal / mechanism — or invent
+  • intensity (1–4): 1 weak, 2 mild, 3 strong, 4 extreme. Omit 0.
 
 Output strict JSON:
 { "variables": [ { "id": "var-...", "name": "...", "description": "...", "category": "...", "intensity": 3 } ] }`;
@@ -270,7 +252,7 @@ export interface ExtractPresentInput {
   outline?: string;
   /** Pre-rendered active Mode section — folds the working-machinery graph
    *  (agents, pressures, rules, attractors, landmarks) into the prompt so
-   *  the dials inherit the substrate. Built via `buildActiveModeSection`. */
+   *  the variables inherit the substrate. Built via `buildActiveModeSection`. */
   modeSection?: string;
   direction?: string;
   /** Stream reasoning tokens to the caller (e.g. for the variables view to
@@ -308,7 +290,7 @@ export async function extractArcPresent(input: ExtractPresentInput): Promise<Var
     : '';
   // Outline + Mode sections are the highest-signal context blocks: a tight
   // arc-by-arc recap up to the current scene, and the working-machinery
-  // substrate the dials should inherit from.
+  // substrate the variables should inherit from.
   const outlineBlock = input.outline ? `\n${input.outline}\n` : '';
   const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : '';
 
@@ -322,7 +304,7 @@ title: ${input.narrativeTitle}
   state: ${summary}
 </arc>
 ${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ''}${directionBlock}
-Now identify this arc's load-bearing dynamic variables. Lean on the outline (arc-by-arc story so far) and the Mode substrate (active agents, pressures, rules, attractors, landmarks) as your ground truth. Dials should distil pieces of the substrate — not paraphrase them, distil them. Be ruthless about pruning: if a dial wouldn't change the trajectory if it moved, it doesn't belong. Output strict JSON only.`;
+Identify this arc's Present variable set. Apply the disciplines above to the current-arc state and the supporting context (outline, mode substrate, roster, threads). Variables distil pieces of the substrate — not paraphrase them, distil them. Output strict JSON only.`;
 
   const raw = input.onReasoning
     ? await callGenerateStream(
@@ -361,50 +343,31 @@ Now identify this arc's load-bearing dynamic variables. Lean on the outline (arc
 
 // ── Planning scenarios — each with its own custom variable set ────────────
 
-const SCENARIO_GENERATION_SYSTEM = `You generate a cohort of PLAUSIBLE ALTERNATIVE FUTURES for the next arc. All scenarios share ONE common pool of dials. Different scenarios arise from different COORDINATION of those dials — not from different vocabularies. Diversity comes from how the same forces interact, which ones dominate, what gets pushed past a threshold and what subsides.
+const SCENARIO_GENERATION_SYSTEM = `You generate a cohort of PLAUSIBLE ALTERNATIVE FUTURES for the next arc. All scenarios share ONE common POOL of variables. Each scenario is a different COORDINATION over that pool — its specific pattern of intensities.
 
-The framing is butterfly-effect, not parallel universes. These scenarios inhabit the SAME world driven by the SAME machinery. Most scenarios share many of the same active dials — the world's basic shape is stable. What differs is the COORDINATION: which dial earthquakes first, which goes loudest, which ones reinforce or cancel each other, which a single shift cascades into. A subtle change in initial coordination compounds into a dramatically different downstream outcome. That's the model.
+DISCIPLINES.
+  • SURFACE vs SUBSTRATE. Pool variables name FORCES, not symptoms. Symptoms are visible (prices fall, characters argue, a study gets retracted); forces are what cascade to produce them. Reach one layer below the visible.
+  • PIVOT CHECK. If the arc ends at a discontinuity (regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, one-way institutional/technological change), the cohort branches FROM the post-shift situation. A scenario in which the pivot didn't happen is mis-specified.
+  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world. Their world-graph nodes define what's POSSIBLE. An unactivated mechanism is a strong variable candidate; mechanism activation across scenarios is exactly the coordination signature this engine exists to model.
 
-So the cohort should feel like variations on a shared situation, not a stark menu of disjoint outcomes. Commonalities and differences both matter. Two scenarios may activate seven of the same dials but differ in intensity on three of them and that's enough to fork the future. Other scenarios may be defined by ONE rare dial firing at extreme intensity, while the common dials stay roughly where they were.
+THE SHAPE OF REALITY — power-law, not gradualism.
+Real futures distribute power-law: many cluster near modal continuation (substrate barely moves, a few intensities shift), a few rupture (a low-prior mechanism fires, an attractor catches, a load-bearing actor reverses). The world is mostly still, then changes overnight. The cohort should match the SHAPE of the distribution it's drawn from — not be forced toward gradualism, not be forced toward diversity. Let the situation govern the cohort: tight possibility space → tight cohort; bimodal possibility space → most scenarios near one mode, a few near the other; fat-tailed → a few extreme tails sit alongside the cluster. The probabilities (below) carry the rarity; intensity carries the magnitude.
 
-PROBABILITIES ARE RELATIVE.
-The displayed probability for each scenario is softmax over priorLogits ACROSS THIS COHORT — every scenario's score is read against its peers, not against an absolute scale. This has two consequences you must internalise:
+PROBABILITIES — RELATIVE, FULL RANGE.
+Displayed probability is softmax over priorLogits ACROSS THIS COHORT. No absolute scale. Two consequences:
+  1. The cohort is a REPRESENTATIVE SAMPLE — not exhaustive. More scenarios fragments probability mass.
+  2. Score relative to siblings, USE THE FULL [-4, +4] RANGE. A genuine tail event sits at -3/-4; a strongly-favoured continuation sits at +3/+4. Compressed scores collapse the softmax to uniform and erase information.
+PriorLogit is INDEPENDENT of intensity. A high-intensity earthquake can be high-prior if evidence supports it; a low-intensity continuation can be low-prior if it conflicts with the trajectory. Score the coordination's plausibility, not its amplitude.
 
-  1. The cohort should be a REPRESENTATIVE SAMPLE of the possibility space — not exhaustive. The more scenarios you add, the more probability mass fragments, and the less narratively legible the readout becomes for a human author. A few DISTINCT cases lets the reader keep the field in mind; ten near-duplicates collapses signal into noise.
-  2. Score each scenario relative to its siblings. A scenario with priorLogit +2 means "more plausible than the median sibling," not "+2 absolute." Reach the full [-4, +4] range across the cohort — don't compress everything into 0 to +1. If one scenario is genuinely far more plausible, give it +3 or +4; if one is a real tail event, push it to -3 or -4. Realistic spread is what makes the softmax produce a useful distribution.
+PIPELINE.
+  1. PIVOT CHECK on the arc's ending state.
+  2. Read mechanisms in the roster's artifacts and key-actor world-graphs.
+  3. Design the SHARED POOL — load-bearing forces only, substrate-level, orthogonal, dynamic.
+  4. Name 2–4 ORTHOGONAL AXES OF VARIATION that span the possibility space (e.g. axes of stance, timing, locus, magnitude — pick what the situation actually has, don't copy generic axes).
+  5. Draft scenarios as positions in axis space. Each is SELF-COHERENT, MEANINGFULLY DISTINCT (different axis position), and earns its place. Do not draft scenarios first and check coverage after; design the axes first.
+  6. Score priorLogits relative to the cohort, full range.
 
-Step 1 — design the SHARED POOL.
-Pick the dials that span this arc's strategic possibility space. Each dial must NAME a force specific to this arc, capable of CASCADING when it moves, ORTHOGONAL to the other dials, and DYNAMIC — its intensity could plausibly differ across futures. Reject character-grain texture; that's noise, not signal. The pool size should match how many independent levers this arc genuinely has — usually a tight set is right; a bloated pool dilutes signal.
-
-Step 2 — design a small set of DISTINCT coordinations over the shared pool.
-A scenario is a pattern of intensities. For each dial in the pool, pick an intensity:
-  0  off (omit from activations — dial is dormant in this future)
-  1  weak     2  mild     3  strong     4  extreme
-
-Most scenarios activate several dials at varying intensities. A few may be sharp — one or two dials at extreme, the rest dormant — those are the earthquake scenarios. Common dials may appear in many scenarios; that's a feature (it shows the stable substrate). What distinguishes a scenario is its specific coordination signature.
-
-Each scenario must:
-  • Be SELF-COHERENT — the activated intensities form a causally consistent pattern
-  • Be MEANINGFULLY DISTINCT — its coordination signature differs visibly from every other scenario in the cohort (near-duplicates fragment probability and read as noise)
-  • Have a STRATEGIC FRAME — a specific narrative thrust unique to this coordination
-  • Earn its place — adding it must give the cohort something the other scenarios don't already cover
-
-The right number is the smallest cohort that captures the shape of the possibility space — usually a handful of distinct cases, not a long catalogue. Stop when adding another scenario would just re-cover ground that's already there.
-
-Do NOT bias toward archetypes (continuation / pivot / shock). Generate the coordination patterns that genuinely arise as plausible alternative unfoldings.
-
-For each scenario estimate priorLogit ∈ [-4, +4] — same evidence scale used elsewhere in the engine, in log-odds units:
-   +4  decisive evidence in favour (would be surprising if NOT this)
-   +2  strongly supported by evidence
-    0  baseline plausibility (defensible given evidence, no strong tilt)
-   -2  needs a specific catalyst to become likely
-   -4  decisive evidence against / rare tail conditions required
-
-PriorLogit is INDEPENDENT of intensity. A high-intensity earthquake scenario can still be high-prior if evidence supports it; a low-intensity scenario can be low-prior if it conflicts with the trajectory. Score the coordination's plausibility, not its amplitude.
-
-Use the full range across the cohort. If you emit five scenarios all between 0 and +1, the softmax flattens them to near-uniform and the probabilities lose meaning. Reach for +3/+4 when the evidence really backs one scenario, and -3/-4 when one is a tail event the evidence pushes against — let the math tell a story.
-
-Include priorRationale — one sentence explaining the priorLogit. Each scenario name is a short phrase; tagline is one sentence.
+Each scenario carries: name (short phrase), tagline (one sentence), activations (variableId + intensity 1–4, omit 0), priorLogit ∈ [-4, +4], priorRationale (one sentence).
 
 Output strict JSON:
 {
@@ -413,11 +376,11 @@ Output strict JSON:
   ],
   "scenarios": [
     {
-      "name": "Strong follow-through",
-      "tagline": "Negotiations honour the summit; markets reward.",
+      "name": "...",
+      "tagline": "...",
       "activations": [ { "variableId": "var-...", "intensity": 3 } ],
       "priorLogit": 1.2,
-      "priorRationale": "Public commitments compound; reversal cost > follow-through cost."
+      "priorRationale": "..."
     }
   ]
 }`;
@@ -473,11 +436,7 @@ title: ${input.narrativeTitle}
   state: ${summary}
 </current-arc>
 ${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ''}${directionBlock}
-Now design the SHARED POOL and produce a representative sample of around ${target} DISTINCT scenarios as coordination patterns over it — fewer if the possibility space is tight, more only if there are genuinely distinct cases worth modelling. Don't pad; near-duplicates fragment probability and reduce legibility.
-
-Lean on the outline (arc-by-arc story so far) and the Mode substrate (active agents, pressures, rules, attractors, landmarks) as your ground truth. The pool's dials should distil pieces of the substrate; the coordinations should respect (or deliberately rupture) its rules and attractors. This is a fresh look at the situation from the historical record, not a projection from the arc's Present variables.
-
-Each scenario is a unique signature of intensities across the shared dials. Score priorLogits RELATIVE to one another — reach for the full [-4, +4] range so the softmax tells a real story. Output strict JSON only.`;
+Produce a cohort of around ${target} scenarios for this arc. Apply the disciplines and pipeline above to the current-arc state and supporting context (outline, mode substrate, roster, threads). Let the situation's actual shape govern the cohort — don't pad, don't force diversity. Fresh look from the historical record, not a projection from the arc's Present variables. Output strict JSON only.`;
 
   const raw = input.onReasoning
     ? await callGenerateStream(
@@ -518,7 +477,7 @@ Each scenario is a unique signature of intensities across the shared dials. Scor
   };
 
   // Pool: name → {id, name, description, category} (no intensity — pool entries
-  // are dial definitions; intensity lives per scenario via activations).
+  // are variable definitions; intensity lives per scenario via activations).
   const poolById = new Map<string, { id: string; name: string; description: string; category: string }>();
   for (const r of parsed.pool ?? []) {
     if (!r || typeof r !== 'object') continue;
@@ -591,7 +550,7 @@ Each scenario is a unique signature of intensities across the shared dials. Scor
 
 /**
  * Project a Future scenario into a Present-style variable set for a new
- * branch arc. The result drops every dial the scenario didn't activate
+ * branch arc. The result drops every variable the scenario didn't activate
  * (intensity = 0), keeping only the variables that matter to this future.
  * Used by Experimentation when materialising a scenario into a branch.
  */
@@ -601,25 +560,29 @@ export function presentFromScenario(scenario: PlanningScenario): Variable[] {
 
 // ── Scenario re-score (post-edit save) ─────────────────────────────────────
 
-const RESCORE_SCENARIO_SYSTEM = `You re-evaluate the plausibility of ONE scenario whose dials have been edited. Score its priorLogit ∈ [-4, +4] — log-odds units, the same evidence scale used elsewhere in the engine:
+const RESCORE_SCENARIO_SYSTEM = `You re-evaluate the plausibility of ONE scenario whose variables have been edited. Score its priorLogit ∈ [-4, +4]:
    +4  decisive evidence in favour (would be surprising if NOT this)
-   +2  strongly supported by evidence
-    0  baseline plausibility (defensible given evidence, no strong tilt)
-   -2  needs a specific catalyst to become likely
-   -4  decisive evidence against / rare tail conditions required
+   +2  strongly supported
+    0  baseline plausibility
+   -2  needs a specific catalyst
+   -4  decisive evidence against / rare tail conditions
 
-Probabilities are RELATIVE within the cohort — softmax over priorLogits across this scenario and its siblings. Your score has meaning only against its peers. So:
-  • Anchor on the siblings. If their priorLogits are listed below, place this scenario in the right RELATIVE position. Don't drift toward 0 by default; pick the value that puts this scenario where it belongs in the ranking.
-  • A representative cohort uses the full range. If most siblings cluster near 0, that's fine, but don't be afraid to push this scenario up to +3/+4 or down to -3/-4 when the edited coordination genuinely lands there.
+DISCIPLINES.
+  • SURFACE vs SUBSTRATE. Score coordinations of FORCES, not symptoms. A scenario built from symptoms reads as low signal regardless of intensities.
+  • PIVOT CHECK. If the arc ends at a discontinuity, a scenario that implicitly denies the pivot is mis-specified — score sharply low and say so.
+  • POWER-LAW. Rare-but-pivotal scenarios are real. Don't penalise low intensity merely because it's quiet, and don't penalise rupture merely because it's unusual. Score what the evidence supports.
 
-Ground your score in:
-  • The narrative context (outline, mode substrate, scenes, threads, roster, prior arcs) — what the historical record supports
-  • The scenario's revised coordination — which dials are active, at what intensities, in combination
-  • The sibling scenarios — score this scenario RELATIVE to them so the softmax produces a meaningful spread
+Probabilities are RELATIVE — softmax over priorLogits across this scenario and its siblings. Place this scenario in its right RELATIVE position; don't drift toward 0. Use the full [-4, +4] range when the coordination genuinely lands there.
 
-Score the coordination's plausibility, not its amplitude. A high-intensity earthquake scenario can be high-prior if evidence supports it; a low-intensity scenario can be low-prior if it conflicts with the trajectory.
+Ground in:
+  • Narrative context (outline, mode substrate, scenes, threads, roster, prior arcs)
+  • Mechanisms loaded in the roster's artifacts and key-actor world-graphs
+  • The scenario's revised coordination — which variables, what intensities, in combination
+  • The sibling scenarios — relative anchoring
 
-Include priorRationale — one sentence explaining the priorLogit, naming the relative anchor where it helps ("more plausible than X because…").
+priorLogit is INDEPENDENT of intensity. Score the coordination's plausibility, not its amplitude.
+
+Include priorRationale — one sentence, naming the relative anchor where it helps ("more plausible than X because…").
 
 Output strict JSON: { "priorLogit": <number>, "priorRationale": "<one sentence>" }`;
 
@@ -647,16 +610,16 @@ export async function rescoreScenario(input: RescoreScenarioInput): Promise<Resc
     ? input.scenario.variables
         .map((v) => `  - ${v.name} (${v.category}) @ ${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? '?'} — ${v.description}`)
         .join('\n')
-    : '  (no dials active)';
+    : '  (no variables active)';
 
   const cohortBlock = input.cohort
     .filter((s) => s.id !== input.scenario.id)
     .map((s) => {
-      const dials = s.variables.length > 0
+      const variables = s.variables.length > 0
         ? s.variables.map((v) => `${v.name}@${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? '?'}`).join(', ')
         : '(none)';
       const prior = typeof s.priorLogit === 'number' ? s.priorLogit.toFixed(1) : '0';
-      return `  • ${s.name} [priorLogit ${prior}]${s.tagline ? ` — ${s.tagline}` : ''}\n    dials: ${dials}`;
+      return `  • ${s.name} [priorLogit ${prior}]${s.tagline ? ` — ${s.tagline}` : ''}\n    variables: ${variables}`;
     })
     .join('\n');
 
@@ -725,7 +688,7 @@ export function scenarioProbabilities(
 }
 
 
-// ── Intensity dial + palettes ──────────────────────────────────────────────
+// ── Intensity scale + palettes ─────────────────────────────────────────────
 
 export const VARIABLE_INTENSITY_LEVELS = [
   { idx: 0, label: '—',       desc: 'off' },

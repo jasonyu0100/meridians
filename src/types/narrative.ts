@@ -989,12 +989,12 @@ export function isWorldBuild(entry: TimelineEntry): entry is WorldBuild {
  *  Extracted per-narrative during text analysis; reused across arcs as the
  *  vocabulary that both present-state snapshots and forward planning
  *  hypotheses are built against. */
-/** A variable — a dial on the possibility field. Each Present (per arc) and
+/** A variable — a lever on the possibility field. Each Present (per arc) and
  *  each Future scenario owns its OWN custom variable set, generated for that
  *  particular moment. There is no shared catalogue, and scenarios don't
  *  reference back to the arc's Present variables — every set stands alone.
  *
- *  Intensity index maps to a 5-level dial: 0 off, 1 weak, 2 mild, 3 strong,
+ *  Intensity index maps to a 5-level scale: 0 off, 1 weak, 2 mild, 3 strong,
  *  4 extreme. */
 export type Variable = {
   id: string;

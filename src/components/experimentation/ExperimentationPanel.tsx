@@ -5,7 +5,6 @@ import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { useStore } from '@/lib/store';
 import { findHeadArc, type ExperimentationHook } from '@/hooks/useExperimentation';
 import {
-  DEFAULT_EXPERIMENTATION_CONFIG,
   type ExperimentationConfig,
   type ScenarioRun,
 } from '@/types/experimentation';
@@ -205,7 +204,6 @@ function ConfigModal({
   // generation, and the cohort as a whole already represents the user's
   // intent (refined via the Future view).
   const [selected, setSelected] = useState<Set<string>>(() => new Set(scenarios.map((s) => s.id)));
-  const [parallelWorkers, setParallelWorkers] = useState<number>(DEFAULT_EXPERIMENTATION_CONFIG.parallelWorkers);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -221,10 +219,9 @@ function ConfigModal({
 
   const handleStart = useCallback(() => {
     onStart({
-      parallelWorkers,
       selectedScenarioIds: selectedIds,
     });
-  }, [parallelWorkers, selectedIds, onStart]);
+  }, [selectedIds, onStart]);
 
   return (
     <Modal onClose={onClose} size="lg" maxHeight="90vh">
@@ -239,7 +236,7 @@ function ConfigModal({
       <ModalBody className="p-6 space-y-5">
         <p className="text-[11px] text-text-dim leading-relaxed">
           One arc continuation is generated per selected scenario in parallel.
-          Each continuation uses the scenario&apos;s dial coordination as
+          Each continuation uses the scenario&apos;s variable coordination as
           primary guidance. When the batch completes, commit to attach every
           run as a branch — the highest-probability one becomes active.
         </p>
@@ -282,35 +279,11 @@ function ConfigModal({
                       {s.tagline && (
                         <div className="text-[10px] text-text-dim leading-snug mt-0.5">{s.tagline}</div>
                       )}
-                      <DialsStrip variables={s.variables} />
+                      <VariablesStrip variables={s.variables} />
                     </div>
                   </label>
                 );
               })}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-2">
-            Parallel workers
-          </label>
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4, 6, 8].map((n) => (
-              <button
-                key={n}
-                onClick={() => setParallelWorkers(n)}
-                className={`w-10 h-9 rounded-lg text-[12px] font-mono transition ${
-                  parallelWorkers === n
-                    ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40'
-                    : 'bg-bg-elevated text-text-dim hover:text-text-primary hover:bg-white/6'
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-            <span className="text-[10px] text-text-dim ml-2">
-              max scenarios generating at once
-            </span>
           </div>
         </div>
 
@@ -712,17 +685,45 @@ function ScenarioInspector({ run }: { run: ScenarioRun }) {
         </span>
       </div>
 
-      {/* Arc name + grade strip */}
+      {/* Arc name + stats + direction + worldState + grade strip — mirrors
+          the canvas Arc inspector so the user sees the same panel of facts
+          regardless of which surface they're looking at. */}
       {run.result && (
-        <div className="mb-4">
-          <div className="text-[12px] text-text-primary font-medium">{run.result.arc.name}</div>
+        <div className="mb-4 flex flex-col gap-3">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-text-dim">Arc</span>
+              <span className="font-mono text-[10px] text-text-dim">{run.result.arc.id}</span>
+            </div>
+            <p className="text-sm text-text-primary font-medium mt-0.5">{run.result.arc.name}</p>
+          </div>
+
+          <div className="flex gap-4 text-[10px] text-text-dim uppercase tracking-wider">
+            <span>{metrics?.scenes.length ?? run.result.scenes.length} scenes</span>
+            <span>{run.result.arc.activeCharacterIds.length} characters</span>
+            <span>{run.result.arc.locationIds.length} locations</span>
+          </div>
+
           {run.result.arc.directionVector && (
-            <div className="text-[10px] text-text-dim leading-snug mt-0.5">
-              {run.result.arc.directionVector}
+            <div className="flex flex-col gap-1">
+              <h3 className="text-[10px] uppercase tracking-widest text-text-dim">Direction</h3>
+              <p className="text-xs text-text-secondary leading-relaxed italic">
+                {run.result.arc.directionVector}
+              </p>
             </div>
           )}
+
+          {run.result.arc.worldState && (
+            <div className="flex flex-col gap-1">
+              <h3 className="text-[10px] uppercase tracking-widest text-text-dim">World State</h3>
+              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap rounded bg-white/3 p-2 font-mono">
+                {run.result.arc.worldState}
+              </p>
+            </div>
+          )}
+
           {metrics && (
-            <div className="mt-2">
+            <div>
               <GradeStrip grade={metrics.grade} />
             </div>
           )}
@@ -760,10 +761,10 @@ function ScenarioInspector({ run }: { run: ScenarioRun }) {
       {/* Threads this branch progresses */}
       {run.status === 'done' && <DevelopsList run={run} />}
 
-      {/* Coordination dials (the scenario's variable setup) */}
+      {/* Coordination variables (the scenario's variable setup) */}
       <section className="mt-5 mb-5">
         <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">Coordination</div>
-        <DialsList variables={run.variables} />
+        <VariablesList variables={run.variables} />
       </section>
 
       {/* Live reasoning while running — streams the model's thinking, not
@@ -824,7 +825,7 @@ function Prereq({ satisfied, label, children }: { satisfied: boolean; label: str
   );
 }
 
-function DialsStrip({ variables }: { variables: { id: string; intensity: number; category?: string }[] }) {
+function VariablesStrip({ variables }: { variables: { id: string; intensity: number; category?: string }[] }) {
   if (variables.length === 0) return null;
   return (
     <div className="flex items-center gap-0.5 mt-1.5">
@@ -843,7 +844,7 @@ function DialsStrip({ variables }: { variables: { id: string; intensity: number;
   );
 }
 
-function DialsList({ variables }: { variables: ScenarioRun['variables'] }) {
+function VariablesList({ variables }: { variables: ScenarioRun['variables'] }) {
   return (
     <ul className="space-y-2">
       {variables.map((v) => {

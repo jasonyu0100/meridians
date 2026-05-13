@@ -11,11 +11,11 @@ import type {
 
 // The experimentation engine drives parallel scenario commits. The behaviour
 // pinned here is the per-scenario variable stamp: every new arc carries the
-// dials that produced it as `presentVariables`, with intensity-zero entries
-// filtered out so the surface reflects only what's firing. Both the virtual
-// preview and the real commit path go through the same helper so the
+// variables that produced it as `presentVariables`, with intensity-zero
+// entries filtered out so the surface reflects only what's firing. Both the
+// virtual preview and the real commit path go through the same helper so the
 // previewed arc matches the committed one — a regression here means the
-// committed branch loses its dial fingerprint.
+// committed branch loses its variable fingerprint.
 
 // ── Fixture helpers ──────────────────────────────────────────────────────
 
@@ -78,7 +78,7 @@ describe('stampScenarioVariables', () => {
     expect(stamped.presentVariables).toEqual(vars);
   });
 
-  it('filters out intensity-zero variables (dormant dials)', () => {
+  it('filters out intensity-zero variables (dormant variables)', () => {
     const arc = makeArc('ARC-1');
     const vars: Variable[] = [
       makeVariable('var-a', 0),
@@ -90,7 +90,7 @@ describe('stampScenarioVariables', () => {
     expect(stamped.presentVariables?.map((v) => v.id)).toEqual(['var-b', 'var-d']);
   });
 
-  it('returns an empty array when every dial is dormant', () => {
+  it('returns an empty array when every variable is dormant', () => {
     const arc = makeArc('ARC-1');
     const vars: Variable[] = [
       makeVariable('var-a', 0),
@@ -166,7 +166,7 @@ describe('buildVirtualState', () => {
 
   it('merges presentVariables onto an existing arc with the same id', () => {
     // Mirrors what happens when a scenario continuation appends scenes to an
-    // arc that already lives in the root narrative — the dials still need to
+    // arc that already lives in the root narrative — the variables still need to
     // override the stale ones so the resulting branch reflects this scenario.
     const arc = makeArc('ARC-1', {
       sceneIds: ['S-001'],

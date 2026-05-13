@@ -18,7 +18,7 @@ import { CategoryPicker } from "./CategoryPicker";
  * Survey setup modal — mirrors the Interview composer's two-column shape:
  * a left setup rail (scope / lens / shape) and a right working surface
  * (question + intent). Gives the question genuine room and keeps all
- * dials visible without a label-heavy chip wall.
+ * controls visible without a label-heavy chip wall.
  */
 
 const TYPE_OPTIONS: { value: SurveyQuestionType; label: string; hint: string }[] = [
