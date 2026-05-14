@@ -1447,3 +1447,166 @@ ${arcSections}
 </story-summary>`;
 }
 
+// ── Future-scenario context ──────────────────────────────────────────────
+//
+// Compact XML shorthand of the head arc's Future scenarios — the
+// alternate-futures cohort the user has been shaping in the Variables
+// view. Designed for chat: every scenario's logit, softmax probability,
+// rarity tag, tagline, reasoning, and variable coordination ride along in
+// a structure dense enough to discuss but light enough not to crowd the
+// prompt. Pair with the narrative title + head arc state so the chat can
+// reason about *why* these scenarios are plausible.
+
+function xmlEscape(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function futureRarityLabel(logit: number): string {
+  if (logit >= 3) return 'expected';
+  if (logit >= 1) return 'likely';
+  if (logit >= -1) return 'even';
+  if (logit >= -3) return 'rare';
+  return 'tail-event';
+}
+
+const FUTURE_INTENSITY_LABELS = ['off', 'weak', 'mild', 'strong', 'extreme'];
+
+/** Resolve the arc the user is currently viewing — derived from the
+ *  scene at `currentIndex`. Returns null when the position is a
+ *  world commit or otherwise has no arc context. */
+function arcAtIndex(n: NarrativeState, resolvedKeys: string[], currentIndex: number) {
+  const key = resolvedKeys[currentIndex];
+  if (!key) return null;
+  const scene = n.scenes[key];
+  if (!scene || !scene.arcId) return null;
+  return n.arcs[scene.arcId] ?? null;
+}
+
+/**
+ * Build the XML context for the Future chat mode. Returns a string with
+ * a `<future>` root, one `<scenario>` per planning scenario on the
+ * currently-viewed arc, and a small `<rarity-scale>` legend so the chat
+ * knows what the rarity words mean. Returns an empty string when the
+ * current position is a world commit, has no arc, or the arc has no
+ * scenarios — the caller gates the Future option on
+ * `hasFutureScenarios(n, resolvedKeys, currentIndex)` returning true.
+ */
+export function futureContext(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+): string {
+  // Future is anchored on the arc the user is currently viewing — not
+  // the head arc — so a user can step back to a prior arc and discuss
+  // the scenarios that were generated there.
+  const arc = arcAtIndex(n, resolvedKeys, currentIndex);
+  if (!arc) return '';
+  const headArc = arc;
+  const scenarios = (headArc.planningScenarios ?? []).filter(
+    (s) => Array.isArray(s.variables) && s.variables.length > 0,
+  );
+  if (scenarios.length === 0) return '';
+
+  // Softmax over priorLogits — the same probability model the Variables
+  // view + Experimentation panel use. Wraps the scenario in a probability
+  // that's relative to its cohort.
+  const logits = scenarios.map((s) => (typeof s.priorLogit === 'number' ? s.priorLogit : 0));
+  const maxL = Math.max(...logits);
+  const exps = logits.map((l) => Math.exp(l - maxL));
+  const sumExp = exps.reduce((a, b) => a + b, 0) || 1;
+  const probs = exps.map((e) => e / sumExp);
+
+  // Sort by descending probability so the chat sees the front-runners
+  // first — same ordering as the scenarios sidebar.
+  const indexed = scenarios.map((s, i) => ({ s, p: probs[i], l: logits[i] }));
+  indexed.sort((a, b) => b.p - a.p);
+
+  const scenarioBlocks = indexed.map(({ s, p, l }, rank) => {
+    const rarity = futureRarityLabel(l);
+    const tagline = s.tagline ? `\n  <tagline>${xmlEscape(s.tagline)}</tagline>` : '';
+    const reasoning = s.priorRationale
+      ? `\n  <reasoning>${xmlEscape(s.priorRationale)}</reasoning>`
+      : '';
+    const description = s.description
+      ? `\n  <description>${xmlEscape(s.description)}</description>`
+      : '';
+    // Variables ordered by intensity desc — the load-bearing ones lead.
+    const orderedVars = [...s.variables]
+      .filter((v) => v.intensity > 0)
+      .sort((a, b) => b.intensity - a.intensity);
+    const varLines = orderedVars.map((v) => {
+      const intensity = Math.max(0, Math.min(4, Math.round(v.intensity)));
+      const intensityLabel = FUTURE_INTENSITY_LABELS[intensity] ?? '?';
+      const cat = v.category ? ` category="${xmlEscape(v.category)}"` : '';
+      const desc = v.description
+        ? `>${xmlEscape(v.description)}</variable>`
+        : ' />';
+      return `    <variable name="${xmlEscape(v.name)}" intensity="${intensity}" intensity-label="${intensityLabel}"${cat}${desc}`;
+    });
+    const varsBlock = varLines.length > 0
+      ? `\n  <variables count="${orderedVars.length}">\n${varLines.join('\n')}\n  </variables>`
+      : '';
+
+    return `<scenario rank="${rank + 1}" name="${xmlEscape(s.name)}" prob="${(p * 100).toFixed(1)}%" logit="${l.toFixed(2)}" rarity="${rarity}">${tagline}${description}${reasoning}${varsBlock}
+</scenario>`;
+  });
+
+  // Optional Present block — gives the chat a "where we are now" anchor
+  // it can contrast the scenarios against.
+  const presentBlock = (() => {
+    const pv = headArc.presentVariables;
+    if (!pv || pv.length === 0) return '';
+    const presentVars = pv
+      .filter((v) => v.intensity > 0)
+      .sort((a, b) => b.intensity - a.intensity)
+      .map((v) => {
+        const intensity = Math.max(0, Math.min(4, Math.round(v.intensity)));
+        const label = FUTURE_INTENSITY_LABELS[intensity] ?? '?';
+        return `    <variable name="${xmlEscape(v.name)}" intensity="${intensity}" intensity-label="${label}" />`;
+      });
+    const tagline = headArc.presentTagline ? `\n  <tagline>${xmlEscape(headArc.presentTagline)}</tagline>` : '';
+    const reasoning = headArc.presentReasoning
+      ? `\n  <reasoning>${xmlEscape(headArc.presentReasoning)}</reasoning>`
+      : '';
+    const logitAttr = typeof headArc.presentLogit === 'number'
+      ? ` logit="${headArc.presentLogit.toFixed(2)}" rarity="${futureRarityLabel(headArc.presentLogit)}"`
+      : '';
+    return `\n<present${logitAttr}>${tagline}${reasoning}
+  <variables count="${presentVars.length}">
+${presentVars.join('\n')}
+  </variables>
+</present>\n`;
+  })();
+
+  return `<future arc="${xmlEscape(headArc.name)}" scenarios="${scenarios.length}" hint="Cohort of plausible next-arc futures. Each scenario is a coordination of variables with a softmax probability over the cohort and a logit on the [-4,+4] evidence scale. Rarity is the natural-language descriptor for that logit.">
+<rarity-scale>
+  <level logit-range="[3, 4]">expected</level>
+  <level logit-range="[1, 3)">likely</level>
+  <level logit-range="(-1, 1)">even</level>
+  <level logit-range="(-3, -1]">rare</level>
+  <level logit-range="[-4, -3]">tail-event</level>
+</rarity-scale>
+${presentBlock}${scenarioBlocks.join('\n')}
+</future>`;
+}
+
+/** Lightweight gate so callers can hide the Future option when there's
+ *  nothing to inspect. Tied to the currently-viewed scene's arc — a
+ *  world commit position or an arc with no scenarios both return false,
+ *  so the dropdown can be conditionally shown. */
+export function hasFutureScenarios(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+): boolean {
+  const arc = arcAtIndex(n, resolvedKeys, currentIndex);
+  if (!arc) return false;
+  return (arc.planningScenarios ?? []).some(
+    (s) => Array.isArray(s.variables) && s.variables.length > 0,
+  );
+}
+

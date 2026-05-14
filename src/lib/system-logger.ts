@@ -48,7 +48,7 @@ export type LogContext = {
     | "ingest"
     | "api"
     | "mode"
-    | "branch-workbench"
+    | "branch-chat"
     | "other";
   /** Current operation when error occurred */
   operation?: string;

@@ -7,7 +7,13 @@ import {
   IconTrash,
 } from "@/components/icons";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
-import { narrativeContext, outlineContext, sceneContext } from "@/lib/ai";
+import {
+  futureContext,
+  hasFutureScenarios,
+  narrativeContext,
+  outlineContext,
+  sceneContext,
+} from "@/lib/ai";
 import { callGenerateStream, resolveReasoningBudget } from "@/lib/ai/api";
 import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
 import {
@@ -270,7 +276,7 @@ export default function ChatPanel() {
   const [streamText, setStreamText] = useState("");
   const [reasoningText, setReasoningText] = useState("");
   const [contextMode, setContextMode] = useState<
-    "narrative" | "outline" | "scene"
+    "narrative" | "outline" | "scene" | "future"
   >("narrative");
   // personaId: null (Assistant), PERSONA_FATE, PERSONA_SYSTEM, or a real
   // character ID. The two sentinels coalesce all threads / all system-graph
@@ -278,6 +284,8 @@ export default function ChatPanel() {
   const [personaId, setPersonaId] = useState<string | null>(null);
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
   const personaPickerRef = useRef<HTMLDivElement>(null);
+  const [contextPickerOpen, setContextPickerOpen] = useState(false);
+  const contextPickerRef = useRef<HTMLDivElement>(null);
   const [threadPickerOpen, setThreadPickerOpen] = useState(false);
   const [renamingThreadId, setRenamingThreadId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -361,6 +369,21 @@ export default function ChatPanel() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [personaPickerOpen]);
+
+  // Close context-mode picker on outside click.
+  useEffect(() => {
+    if (!contextPickerOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        contextPickerRef.current &&
+        !contextPickerRef.current.contains(e.target as Node)
+      ) {
+        setContextPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [contextPickerOpen]);
 
   // activePersona resolves the current personaId into a richer object the UI
   // and system-prompt builder can switch on. null = default "Assistant" mode.
@@ -523,6 +546,29 @@ ${sceneAnchor}
 Be concise and specific.
 
 ${ctx}`;
+    }
+
+    if (contextMode === "future") {
+      // Future mode pairs the scenario cohort with the outline recap so
+      // the chat can reason about why each scenario is plausible *given*
+      // the historical events that led here, not just the dial values.
+      const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      const future = futureContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the FUTURE scenarios on the currently-viewed arc — alternate next-arc unfoldings, each with a logit-based plausibility, a softmax probability over the cohort, and a coordination of named variables firing at different intensities. Two context blocks are attached below: a STORY OUTLINE (historical recap so you understand how the world got here) and the FUTURE cohort (the scenarios + the arc's Present coordination for contrast).
+
+When discussing scenarios:
+  • probabilities are softmax-relative within the cohort; logits are absolute on the [-4, +4] evidence scale (sigmoid gives an absolute plausibility)
+  • rarity descriptors (expected / likely / even / rare / tail-event) map to logit bands and capture the qualitative read
+  • variable coordinations are the "shape" of each scenario — the same dial firing at different intensities is what differentiates the futures
+  • the outline tells you what happened; the future tells you what could happen next — anchor every plausibility claim in concrete events from the outline
+Be ready to reason about which scenarios are favoured and why, which dials would have to fire for a tail-event scenario to play out, and how the cohort coordinates against the Present.
+${sceneAnchor}
+
+Be concise and specific. Reference scenarios by name; quote logits / probabilities when they're load-bearing.
+
+${outline}
+
+${future}`;
     }
 
     const ctx = narrativeContext(n, state.resolvedEntryKeys, contextSceneIndex);
@@ -1059,19 +1105,75 @@ ${ctx}`;
             />
           </button>
 
-          {!activePersona && (
-            <div className="flex rounded-md border border-border overflow-hidden text-[10px] font-medium">
-              {(["narrative", "outline", "scene"] as const).map((mode, idx) => (
+          {!activePersona && (() => {
+            // Future is offered only when the currently-viewed scene's
+            // arc carries planning scenarios — hidden for world commits
+            // and arcs that haven't had Future generated.
+            const futureAvailable = !!state.activeNarrative
+              && hasFutureScenarios(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
+            const modes: Array<{
+              value: "narrative" | "outline" | "scene" | "future";
+              label: string;
+              hint: string;
+            }> = [
+              { value: "narrative", label: "Narrative", hint: "Full tiered branch state up to the current scene." },
+              { value: "outline",   label: "Outline",   hint: "Condensed arc-by-arc recap." },
+              { value: "scene",     label: "Scene",     hint: "Scene-level deltas + immediate context." },
+            ];
+            if (futureAvailable) {
+              modes.push({
+                value: "future",
+                label: "Future",
+                hint: "Cohort of planning scenarios with logits + probabilities for this arc.",
+              });
+            }
+            // If the user had Future selected and it's no longer
+            // available (e.g. they navigated to a world commit), drop
+            // back to narrative on next render.
+            if (contextMode === "future" && !futureAvailable) {
+              setContextMode("narrative");
+            }
+            const currentLabel = modes.find((m) => m.value === contextMode)?.label
+              ?? "Narrative";
+            return (
+              <div className="relative" ref={contextPickerRef}>
                 <button
-                  key={mode}
-                  onClick={() => setContextMode(mode)}
-                  className={`px-2.5 py-1 transition-colors capitalize ${idx > 0 ? "border-l border-border" : ""} ${contextMode === mode ? "bg-white/10 text-text-primary" : "text-text-dim hover:text-text-secondary"}`}
+                  onClick={() => setContextPickerOpen((o) => !o)}
+                  className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md border border-border text-text-dim hover:text-text-secondary transition-colors"
+                  title="Context mode for the assistant"
                 >
-                  {mode}
+                  <span className="truncate">{currentLabel}</span>
+                  <IconChevronDown
+                    size={9}
+                    className={`shrink-0 transition-transform ${contextPickerOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
-              ))}
-            </div>
-          )}
+                {contextPickerOpen && (
+                  <div className="absolute bottom-full left-0 mb-1 z-50 rounded-lg glass overflow-hidden min-w-56">
+                    <div className="py-1.5">
+                      {modes.map((m) => (
+                        <button
+                          key={m.value}
+                          onClick={() => {
+                            setContextMode(m.value);
+                            setContextPickerOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 transition-colors ${
+                            contextMode === m.value
+                              ? "bg-white/8 text-text-primary"
+                              : "text-text-secondary hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="text-[11px] font-medium">{m.label}</div>
+                          <div className="text-[9px] text-text-dim/70 leading-snug mt-0.5">{m.hint}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <p className="text-[10px] text-text-dim truncate flex-1 opacity-60 text-right">
             {tokenLabel}

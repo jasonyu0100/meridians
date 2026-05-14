@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildWorkbenchContext } from '@/lib/ai/workbench';
+import { buildBranchChatContext } from '@/lib/ai/branch-chat';
 import { EMPTY_SYSTEM_GRAPH } from '@/lib/system-graph';
 import type {
   Arc,
@@ -8,7 +8,7 @@ import type {
   Scene,
 } from '@/types/narrative';
 
-// ── Minimal fixture builder — only the fields buildWorkbenchContext reads ────
+// ── Minimal fixture builder — only the fields buildBranchChatContext reads ────
 
 function scene(id: string, arcId: string, summary: string): Scene {
   return {
@@ -87,10 +87,10 @@ function makeNarrative(opts: {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('buildWorkbenchContext', () => {
+describe('buildBranchChatContext', () => {
   it('returns the empty-branches sentinel when scopes is empty', () => {
     const n = makeNarrative({ scenes: [], arcs: [], branches: [] });
-    expect(buildWorkbenchContext(n, [])).toBe('<branches />');
+    expect(buildBranchChatContext(n, [])).toBe('<branches />');
   });
 
   it('renders a single branch outline grouped by arc', () => {
@@ -102,7 +102,7 @@ describe('buildWorkbenchContext', () => {
       arcs: [arc('A1', 'Origin', ['S1', 'S2'])],
       branches: [branch('Canon', null, null, ['S1', 'S2'])],
     });
-    const out = buildWorkbenchContext(n, [{ branchId: 'Canon', start: 1, end: 2 }]);
+    const out = buildBranchChatContext(n, [{ branchId: 'Canon', start: 1, end: 2 }]);
     expect(out).toContain('<branch name="Canon"');
     expect(out).toContain('<arc name="Origin">');
     expect(out).toContain('<scene index="1"');
@@ -122,7 +122,7 @@ describe('buildWorkbenchContext', () => {
       arcs: [arc('A1', 'Origin', ['S1', 'S2', 'S3', 'S4'])],
       branches: [branch('Canon', null, null, ['S1', 'S2', 'S3', 'S4'])],
     });
-    const out = buildWorkbenchContext(n, [{ branchId: 'Canon', start: 2, end: 3 }]);
+    const out = buildBranchChatContext(n, [{ branchId: 'Canon', start: 2, end: 3 }]);
     expect(out).not.toContain('first');
     expect(out).toContain('second');
     expect(out).toContain('third');
@@ -152,7 +152,7 @@ describe('buildWorkbenchContext', () => {
         branch('B', 'Canon', 'S2', ['S3b']),
       ],
     });
-    const out = buildWorkbenchContext(n, [
+    const out = buildBranchChatContext(n, [
       { branchId: 'Canon', start: 1, end: 3 },
       { branchId: 'B', start: 1, end: 3 },
     ]);
@@ -170,7 +170,7 @@ describe('buildWorkbenchContext', () => {
       arcs: [arc('A1', 'Solo', ['S1'])],
       branches: [branch('Canon', null, null, ['S1'])],
     });
-    const out = buildWorkbenchContext(n, [{ branchId: 'Canon', start: 1, end: 1 }]);
+    const out = buildBranchChatContext(n, [{ branchId: 'Canon', start: 1, end: 1 }]);
     expect(out).not.toContain('<shared-baseline');
   });
 
@@ -180,7 +180,7 @@ describe('buildWorkbenchContext', () => {
       arcs: [],
       branches: [branch('Empty', null, null, [])],
     });
-    const out = buildWorkbenchContext(n, [{ branchId: 'Empty', start: 0, end: 0 }]);
+    const out = buildBranchChatContext(n, [{ branchId: 'Empty', start: 0, end: 0 }]);
     expect(out).toContain('<branch name="Empty"');
     expect(out).toContain('<empty />');
   });

@@ -1,5 +1,5 @@
 // Context builders
-export { narrativeContext, sceneContext, outlineContext } from './context';
+export { narrativeContext, sceneContext, outlineContext, futureContext, hasFutureScenarios } from './context';
 
 // Scene generation
 export { generateScenes, generateScenePlan, rewriteScenePlan, generateSceneProse, reverseEngineerScenePlan, type CoordinationPlanContext } from './scenes';

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { BranchScope } from "@/lib/ai/workbench";
+import type { BranchScope } from "@/lib/ai/branch-chat";
 import type { ScopeMode, ScopeState } from "@/types/narrative";
 
 /**
@@ -10,7 +10,7 @@ import type { ScopeMode, ScopeState } from "@/types/narrative";
  * The control is the lab's *variable widget*. v1 uses it to scope analytical
  * chat; v2 will reuse it as a controlled-variable axis in experiments. State
  * shape (mode + per-branch ranges) is intentionally serializable and lives in
- * types/narrative.ts so it can be persisted on workbench threads.
+ * types/narrative.ts so it can be persisted on branch-chat threads.
  */
 
 export type { ScopeMode, ScopeState };
@@ -31,7 +31,7 @@ export type BranchSequenceInfo = {
 };
 
 /** Compute the active per-branch scopes from the current state + branch info.
- *  Used by both the control's UI and the workbench when dispatching turns. */
+ *  Used by both the control's UI and branch-chat when dispatching turns. */
 export function resolveScopes(
   state: ScopeState,
   branches: BranchSequenceInfo[],

@@ -92,7 +92,7 @@ describe('store reducer', () => {
         currentResultIndex: 0,
         searchFocusMode: false,
         activeChatThreadId: null,
-        activeBranchWorkbenchThreadId: null,
+        activeBranchChatThreadId: null,
         activeNoteId: null,
         autoRunState: null,
         isPlaying: false,

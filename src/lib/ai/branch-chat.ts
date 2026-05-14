@@ -1,5 +1,5 @@
 /**
- * Branch Workbench — multi-branch analytical chat.
+ * Branch Chat — multi-branch analytical chat.
  *
  * Lab tool for evaluating candidate branches at controlled windows. The user
  * selects N branches with per-branch scope (start..end entry indices), then
@@ -31,7 +31,7 @@ export type BranchScope = {
   end: number;
 };
 
-export type WorkbenchMessage = {
+export type BranchChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   /** Streamed reasoning tokens captured during the turn — assistant only.
@@ -60,7 +60,7 @@ export const EXAMPLE_QUERIES: string[] = [
 
 // ── System prompt ───────────────────────────────────────────────────────────
 
-const WORKBENCH_SYSTEM = `You are an analyst comparing multiple branches of a long-form work at a birdseye level. Branches are parallel timelines. The operator has selected scoped windows on each branch and is interrogating them in a research-lab session.
+const BRANCH_CHAT_SYSTEM = `You are an analyst comparing multiple branches of a long-form work at a birdseye level. Branches are parallel timelines. The operator has selected scoped windows on each branch and is interrogating them in a research-lab session.
 
 Data discipline:
 - You receive OUTLINES — scene summaries grouped by arc — not prose, not engine deltas, not state annotations. Reason about structural shape, divergence patterns, commitments, and outcome states. Do not invent engine-level details (thread evidence numbers, force values, delta counts) that aren't in the outline.
@@ -180,7 +180,7 @@ function renderBranchOutline(
  * selected sequences) rendered as a terse summary list. Outlines preserve
  * global entry indices so analysis citations match the column view.
  */
-export function buildWorkbenchContext(
+export function buildBranchChatContext(
   narrative: NarrativeState,
   scopes: BranchScope[],
 ): string {
@@ -227,16 +227,16 @@ export function buildWorkbenchContext(
 // ── Streaming turn ──────────────────────────────────────────────────────────
 
 /**
- * Run one workbench turn. Builds the full context for the current scopes,
+ * Run one branch-chat turn. Builds the full context for the current scopes,
  * serialises prior conversation, fires the new user turn against the LLM
  * with streaming. Returns the assistant's complete response.
  *
  * Caller is responsible for appending the result to the conversation state.
  */
-export async function streamWorkbenchTurn(opts: {
+export async function streamBranchChatTurn(opts: {
   narrative: NarrativeState;
   scopes: BranchScope[];
-  history: WorkbenchMessage[];
+  history: BranchChatMessage[];
   newTurn: string;
   scopeChangedSinceLastTurn?: boolean;
   onToken: (token: string) => void;
@@ -247,7 +247,7 @@ export async function streamWorkbenchTurn(opts: {
 }): Promise<string> {
   const { narrative, scopes, history, newTurn, scopeChangedSinceLastTurn, onToken, onReasoning } = opts;
 
-  const branchContext = buildWorkbenchContext(narrative, scopes);
+  const branchContext = buildBranchChatContext(narrative, scopes);
 
   const conversationBlock = history.length === 0
     ? ''
@@ -272,10 +272,10 @@ export async function streamWorkbenchTurn(opts: {
 
   return callGenerateStream(
     userPrompt,
-    WORKBENCH_SYSTEM,
+    BRANCH_CHAT_SYSTEM,
     onToken,
     MAX_TOKENS_DEFAULT,
-    'workbench-turn',
+    'branch-chat-turn',
     DEFAULT_MODEL,
     reasoningBudget,
     onReasoning,

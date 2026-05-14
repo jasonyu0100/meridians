@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EXAMPLE_QUERIES,
-  streamWorkbenchTurn,
+  streamBranchChatTurn,
   type BranchScope,
-} from "@/lib/ai/workbench";
+} from "@/lib/ai/branch-chat";
 import { resolveEntrySequence } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
 import type {
   Branch,
-  BranchWorkbenchThread,
+  BranchChatThread,
   NarrativeState,
-  WorkbenchMessage,
+  BranchChatMessage,
 } from "@/types/narrative";
 import {
   BranchScopeChips,
@@ -26,10 +26,10 @@ import {
 import { ReasoningCollapsed, ReasoningInline } from "./ReasoningStream";
 
 /**
- * Branch Workbench — multi-branch analytical chat with controlled scopes.
+ * Branch Chat — multi-branch analytical chat with controlled scopes.
  *
  * Lab interface for evaluating candidate branches at user-controlled windows.
- * Conversations persist on the narrative as `branchWorkbenchThreads` so prior
+ * Conversations persist on the narrative as `branchChatThreads` so prior
  * cross-branch analysis can be revisited later. Foundation for v2 experiments
  * (controlled-variable simulation across the same scope primitives).
  */
@@ -45,7 +45,7 @@ type Props = {
   onRestoreCompareBranches: (ids: string[]) => void;
 };
 
-export function BranchWorkbench({
+export function BranchChat({
   narrative,
   allBranches,
   compareBranchIds,
@@ -53,15 +53,15 @@ export function BranchWorkbench({
   onRestoreCompareBranches,
 }: Props) {
   const { state, dispatch } = useStore();
-  const activeThreadId = state.viewState.activeBranchWorkbenchThreadId;
-  const threads = narrative.branchWorkbenchThreads ?? {};
+  const activeThreadId = state.viewState.activeBranchChatThreadId;
+  const threads = narrative.branchChatThreads ?? {};
   const activeThread =
     activeThreadId && threads[activeThreadId] ? threads[activeThreadId] : null;
 
   const [scopeState, setScopeState] = useState<ScopeState>(
     activeThread?.scopeState ?? DEFAULT_SCOPE_STATE,
   );
-  const [messages, setMessages] = useState<WorkbenchMessage[]>(
+  const [messages, setMessages] = useState<BranchChatMessage[]>(
     activeThread?.messages ?? [],
   );
   const [input, setInput] = useState("");
@@ -156,7 +156,7 @@ export function BranchWorkbench({
       const trimmed = firstUserContent.trim();
       const autoName =
         trimmed.length > 50 ? `${trimmed.slice(0, 50)}…` : trimmed || "New analysis";
-      const thread: BranchWorkbenchThread = {
+      const thread: BranchChatThread = {
         id,
         name: autoName,
         messages: [],
@@ -165,7 +165,7 @@ export function BranchWorkbench({
         createdAt: now,
         updatedAt: now,
       };
-      dispatch({ type: "CREATE_WORKBENCH_THREAD", thread });
+      dispatch({ type: "CREATE_BRANCH_CHAT_THREAD", thread });
       lastHydratedRef.current = id;
       return id;
     },
@@ -176,7 +176,7 @@ export function BranchWorkbench({
     if (!content.trim() || streaming) return;
     if (selectedBranches.length === 0) return;
 
-    const userMsg: WorkbenchMessage = { role: "user", content: content.trim() };
+    const userMsg: BranchChatMessage = { role: "user", content: content.trim() };
     const history = messages;
     const scopeChanged = lastTurnScopeKey.current !== "" && lastTurnScopeKey.current !== scopeKey;
 
@@ -196,7 +196,7 @@ export function BranchWorkbench({
     const startedAt = performance.now();
 
     try {
-      const full = await streamWorkbenchTurn({
+      const full = await streamBranchChatTurn({
         narrative,
         scopes: resolvedScopes,
         history,
@@ -209,7 +209,7 @@ export function BranchWorkbench({
         },
       });
       const durationMs = Math.round(performance.now() - startedAt);
-      const finalMessages: WorkbenchMessage[] = [
+      const finalMessages: BranchChatMessage[] = [
         ...afterUser,
         {
           role: "assistant",
@@ -223,16 +223,16 @@ export function BranchWorkbench({
       // Persist — full message log + the scope/branch selection captured at
       // turn time so the thread re-opens to the same configuration.
       dispatch({
-        type: "UPSERT_WORKBENCH_THREAD",
+        type: "UPSERT_BRANCH_CHAT_THREAD",
         threadId,
         messages: finalMessages,
         compareBranchIds,
         scopeState,
       });
     } catch (err) {
-      logError("Branch workbench turn failed", err, {
-        source: "branch-workbench",
-        operation: "workbench-turn",
+      logError("Branch chat turn failed", err, {
+        source: "branch-chat",
+        operation: "branch-chat-turn",
         details: { branchCount: selectedBranches.length },
       });
       setError(err instanceof Error ? err.message : String(err));
@@ -251,7 +251,7 @@ export function BranchWorkbench({
   }
 
   function handleNewThread() {
-    dispatch({ type: "SET_ACTIVE_WORKBENCH_THREAD", threadId: null });
+    dispatch({ type: "SET_ACTIVE_BRANCH_CHAT_THREAD", threadId: null });
     lastHydratedRef.current = null;
     setMessages([]);
     setError(null);
@@ -260,13 +260,13 @@ export function BranchWorkbench({
   }
 
   function handleSelectThread(id: string) {
-    dispatch({ type: "SET_ACTIVE_WORKBENCH_THREAD", threadId: id });
+    dispatch({ type: "SET_ACTIVE_BRANCH_CHAT_THREAD", threadId: id });
     setPickerOpen(false);
   }
 
   function handleDeleteThread(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    dispatch({ type: "DELETE_WORKBENCH_THREAD", threadId: id });
+    dispatch({ type: "DELETE_BRANCH_CHAT_THREAD", threadId: id });
   }
 
   const sortedThreads = useMemo(
@@ -277,7 +277,7 @@ export function BranchWorkbench({
   if (selectedBranches.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-xs text-text-dim px-6">
-        Select branches above to open the workbench.
+        Select branches above to open the chat.
       </div>
     );
   }
@@ -396,7 +396,7 @@ export function BranchWorkbench({
         {messages.length === 0 && !streaming && (
           <div className="flex flex-col items-center justify-center h-full gap-1.5 text-center">
             <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim/50 font-mono">
-              Workbench
+              Chat
             </div>
             <p className="text-[11px] text-text-dim/60 max-w-xs leading-relaxed">
               Birdseye comparison of scoped branches. Outline-only context — no
@@ -482,7 +482,7 @@ export function BranchWorkbench({
 
 // ── Message renderer ────────────────────────────────────────────────────────
 
-function Message({ message }: { message: WorkbenchMessage }) {
+function Message({ message }: { message: BranchChatMessage }) {
   if (message.role === "user") {
     return (
       <div className="flex flex-col gap-1.5">
@@ -513,7 +513,7 @@ function Message({ message }: { message: WorkbenchMessage }) {
 
 // ── Lightweight markdown renderer ──────────────────────────────────────────
 //
-// Handles the small set of constructs the workbench prompts emit: H2/H3
+// Handles the small set of constructs the branch-chat prompts emit: H2/H3
 // headings, bold inline, italic inline, lists, paragraphs. Avoids pulling
 // react-markdown for a feature with this tight surface.
 
@@ -717,12 +717,12 @@ function SuggestionsMarquee({
       <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-bg-panel to-transparent" />
       <style jsx>{`
         .marquee-track {
-          animation: workbench-marquee 60s linear infinite;
+          animation: branch-chat-marquee 60s linear infinite;
         }
         .marquee-frame:hover .marquee-track {
           animation-play-state: paused;
         }
-        @keyframes workbench-marquee {
+        @keyframes branch-chat-marquee {
           from {
             transform: translateX(0);
           }

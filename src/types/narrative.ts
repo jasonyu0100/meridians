@@ -1454,9 +1454,9 @@ export type NarrativeState = {
   storySettings?: StorySettings;
   /** Chat threads keyed by thread ID — persisted with the narrative */
   chatThreads?: Record<string, ChatThread>;
-  /** Branch Workbench threads — multi-branch analytical sessions, persisted
+  /** Branch Chat threads — multi-branch analytical sessions, persisted
    *  with the narrative so prior cross-branch analysis can be revisited. */
-  branchWorkbenchThreads?: Record<string, BranchWorkbenchThread>;
+  branchChatThreads?: Record<string, BranchChatThread>;
   /** Notes keyed by note ID — persisted with the narrative */
   notes?: Record<string, Note>;
   /** Branch evaluations keyed by branch ID — most recent eval per branch */
@@ -2183,7 +2183,7 @@ export type SystemLogEntry = {
     | "ingest"
     | "api"
     | "mode"
-    | "branch-workbench"
+    | "branch-chat"
     | "other";
   /** Current operation */
   operation?: string;
@@ -2390,7 +2390,7 @@ export type NarrativeViewState = {
   currentResultIndex: number;
   searchFocusMode: boolean;
   activeChatThreadId: string | null;
-  activeBranchWorkbenchThreadId: string | null;
+  activeBranchChatThreadId: string | null;
   activeNoteId: string | null;
   autoRunState: AutoRunState | null;
   isPlaying: boolean;
@@ -2477,14 +2477,14 @@ export type ChatThread = {
   updatedAt: number;
 };
 
-// ── Branch Workbench ──────────────────────────────────────────────────────────
+// ── Branch Chat ───────────────────────────────────────────────────────────────
 //
 // Persisted multi-branch analytical chat. Distinct from chatThreads (which
-// are single-branch); workbench threads compare a SET of branches at scoped
-// windows. The lab's foundation — v2 will reuse this thread shape as the
-// substrate for controlled-variable experiments.
+// are single-branch / single-entity); branch-chat threads compare a SET of
+// branches at scoped windows. The lab's foundation — v2 will reuse this
+// thread shape as the substrate for controlled-variable experiments.
 
-export type WorkbenchMessage = {
+export type BranchChatMessage = {
   role: "user" | "assistant";
   content: string;
   /** Streamed reasoning tokens captured during the turn — assistant only. */
@@ -2506,10 +2506,10 @@ export type ScopeState = {
   custom: Record<string, { start: number; end: number }>;
 };
 
-export type BranchWorkbenchThread = {
+export type BranchChatThread = {
   id: string;
   name: string;
-  messages: WorkbenchMessage[];
+  messages: BranchChatMessage[];
   /** Branch IDs in the comparison set. */
   compareBranchIds: string[];
   /** Scope configuration — replays on thread re-open. */

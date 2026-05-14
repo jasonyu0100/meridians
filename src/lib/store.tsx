@@ -57,11 +57,11 @@ import type {
   Branch,
   BranchPlan,
   Character,
-  BranchWorkbenchThread,
+  BranchChatThread,
+  BranchChatMessage,
   ChatMessage,
   ChatThread,
   ScopeState,
-  WorkbenchMessage,
   WorldDelta,
   GraphViewMode,
   InspectorContext,
@@ -656,7 +656,7 @@ const defaultViewState: NarrativeViewState = {
   currentResultIndex: 0,
   searchFocusMode: false,
   activeChatThreadId: null,
-  activeBranchWorkbenchThreadId: null,
+  activeBranchChatThreadId: null,
   activeNoteId: null,
   autoRunState: null,
   isPlaying: false,
@@ -899,15 +899,15 @@ export type Action =
       messages: ChatMessage[];
       name?: string;
     }
-  // Branch Workbench threads — persisted multi-branch analytical sessions.
-  | { type: "CREATE_WORKBENCH_THREAD"; thread: BranchWorkbenchThread }
-  | { type: "DELETE_WORKBENCH_THREAD"; threadId: string }
-  | { type: "RENAME_WORKBENCH_THREAD"; threadId: string; name: string }
-  | { type: "SET_ACTIVE_WORKBENCH_THREAD"; threadId: string | null }
+  // Branch Chat threads — persisted multi-branch analytical sessions.
+  | { type: "CREATE_BRANCH_CHAT_THREAD"; thread: BranchChatThread }
+  | { type: "DELETE_BRANCH_CHAT_THREAD"; threadId: string }
+  | { type: "RENAME_BRANCH_CHAT_THREAD"; threadId: string; name: string }
+  | { type: "SET_ACTIVE_BRANCH_CHAT_THREAD"; threadId: string | null }
   | {
-      type: "UPSERT_WORKBENCH_THREAD";
+      type: "UPSERT_BRANCH_CHAT_THREAD";
       threadId: string;
-      messages?: WorkbenchMessage[];
+      messages?: BranchChatMessage[];
       name?: string;
       compareBranchIds?: string[];
       scopeState?: ScopeState;
@@ -2927,67 +2927,67 @@ function reducer(state: AppState, action: Action): AppState {
         };
       });
 
-    // ── Branch Workbench threads ──────────────────────────────────────────
-    case "CREATE_WORKBENCH_THREAD": {
+    // ── Branch Chat threads ───────────────────────────────────────────────
+    case "CREATE_BRANCH_CHAT_THREAD": {
       const withThread = updateNarrative(state, (n) => ({
         ...n,
-        branchWorkbenchThreads: {
-          ...(n.branchWorkbenchThreads ?? {}),
+        branchChatThreads: {
+          ...(n.branchChatThreads ?? {}),
           [action.thread.id]: action.thread,
         },
       }));
       return {
         ...withThread,
-        viewState: { ...withThread.viewState, activeBranchWorkbenchThreadId: action.thread.id },
+        viewState: { ...withThread.viewState, activeBranchChatThreadId: action.thread.id },
       };
     }
 
-    case "DELETE_WORKBENCH_THREAD": {
+    case "DELETE_BRANCH_CHAT_THREAD": {
       const withoutThread = updateNarrative(state, (n) => {
-        const { [action.threadId]: _, ...rest } = n.branchWorkbenchThreads ?? {};
-        return { ...n, branchWorkbenchThreads: rest };
+        const { [action.threadId]: _, ...rest } = n.branchChatThreads ?? {};
+        return { ...n, branchChatThreads: rest };
       });
-      let nextActive = state.viewState.activeBranchWorkbenchThreadId;
-      if (state.viewState.activeBranchWorkbenchThreadId === action.threadId) {
+      let nextActive = state.viewState.activeBranchChatThreadId;
+      if (state.viewState.activeBranchChatThreadId === action.threadId) {
         const remaining = Object.values(
-          withoutThread.activeNarrative?.branchWorkbenchThreads ?? {},
+          withoutThread.activeNarrative?.branchChatThreads ?? {},
         );
         remaining.sort((a, b) => b.updatedAt - a.updatedAt);
         nextActive = remaining[0]?.id ?? null;
       }
       return {
         ...withoutThread,
-        viewState: { ...withoutThread.viewState, activeBranchWorkbenchThreadId: nextActive },
+        viewState: { ...withoutThread.viewState, activeBranchChatThreadId: nextActive },
       };
     }
 
-    case "RENAME_WORKBENCH_THREAD":
+    case "RENAME_BRANCH_CHAT_THREAD":
       return updateNarrative(state, (n) => {
-        const thread = n.branchWorkbenchThreads?.[action.threadId];
+        const thread = n.branchChatThreads?.[action.threadId];
         if (!thread) return n;
         return {
           ...n,
-          branchWorkbenchThreads: {
-            ...(n.branchWorkbenchThreads ?? {}),
+          branchChatThreads: {
+            ...(n.branchChatThreads ?? {}),
             [action.threadId]: { ...thread, name: action.name },
           },
         };
       });
 
-    case "SET_ACTIVE_WORKBENCH_THREAD":
+    case "SET_ACTIVE_BRANCH_CHAT_THREAD":
       return {
         ...state,
-        viewState: { ...state.viewState, activeBranchWorkbenchThreadId: action.threadId },
+        viewState: { ...state.viewState, activeBranchChatThreadId: action.threadId },
       };
 
-    case "UPSERT_WORKBENCH_THREAD":
+    case "UPSERT_BRANCH_CHAT_THREAD":
       return updateNarrative(state, (n) => {
-        const thread = (n.branchWorkbenchThreads ?? {})[action.threadId];
+        const thread = (n.branchChatThreads ?? {})[action.threadId];
         if (!thread) return n;
         return {
           ...n,
-          branchWorkbenchThreads: {
-            ...(n.branchWorkbenchThreads ?? {}),
+          branchChatThreads: {
+            ...(n.branchChatThreads ?? {}),
             [action.threadId]: {
               ...thread,
               ...(action.messages ? { messages: action.messages } : {}),

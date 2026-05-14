@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /**
- * Reasoning display primitives shared by BranchWorkbench and ChatPanel.
+ * Reasoning display primitives shared by BranchChat and ChatPanel.
  *
  *   ReasoningInline      live during streaming. Plain dim italic text on a
  *                        left border. No scroll, no max-height — text grows

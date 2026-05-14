@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { resolveEntrySequence } from '@/lib/narrative-utils';
 import { Modal } from '@/components/Modal';
-import { BranchWorkbench } from './BranchWorkbench';
+import { BranchChat } from './BranchChat';
 import type { Branch, NarrativeState } from '@/types/narrative';
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ function longestCommonPrefix(seqs: string[][]): number {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type ViewMode = 'graph' | 'compare' | 'workbench';
+type ViewMode = 'graph' | 'compare' | 'chat';
 
 export function BranchModal({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useStore();
@@ -370,13 +370,13 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               Compare
             </button>
             <button
-              onClick={() => setViewMode('workbench')}
+              onClick={() => setViewMode('chat')}
               className={`text-xs px-3 py-1 rounded transition-colors ${
-                viewMode === 'workbench' ? 'bg-white/12 text-text-primary' : 'text-text-dim hover:text-text-secondary'
+                viewMode === 'chat' ? 'bg-white/12 text-text-primary' : 'text-text-dim hover:text-text-secondary'
               }`}
               title="Multi-branch analytical chat with controlled scopes"
             >
-              Workbench
+              Chat
             </button>
           </div>
           <button
@@ -444,7 +444,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
                           <span className="text-[8px] uppercase tracking-wider text-text-dim shrink-0">current</span>
                         )}
                         {/* Focus toggle — visible across ALL views. Marks
-                            branch for comparison/workbench. Independent of
+                            branch for comparison/chat. Independent of
                             row click and the switch mechanism. */}
                         <button
                           onClick={(e) => {
@@ -620,7 +620,7 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               onSwitch={handleSwitch}
             />
           ) : (
-            <WorkbenchView
+            <BranchChatView
               narrative={narrative}
               allBranches={allBranches}
               compareBranchIds={compareBranchIds}
@@ -1404,9 +1404,9 @@ function CompareView({
   );
 }
 
-// ─── Workbench view ───────────────────────────────────────────────────────────
+// ─── Branch chat view ─────────────────────────────────────────────────────────
 
-type WorkbenchViewProps = {
+type BranchChatViewProps = {
   narrative: NarrativeState;
   allBranches: Branch[];
   compareBranchIds: string[];
@@ -1414,13 +1414,13 @@ type WorkbenchViewProps = {
   onRestoreCompareBranches: (ids: string[]) => void;
 };
 
-function WorkbenchView({
+function BranchChatView({
   narrative,
   allBranches,
   compareBranchIds,
   onToggleCompare,
   onRestoreCompareBranches,
-}: WorkbenchViewProps) {
+}: BranchChatViewProps) {
   return (
     <>
       {/* Selector chips — same shape as CompareView so selection feels
@@ -1458,7 +1458,7 @@ function WorkbenchView({
         </div>
       </div>
 
-      <BranchWorkbench
+      <BranchChat
         narrative={narrative}
         allBranches={allBranches}
         compareBranchIds={compareBranchIds}
