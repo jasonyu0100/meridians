@@ -6,6 +6,7 @@ import {
 import type {
   Arc,
   NarrativeState,
+  PlanningScenario,
   Variable,
 } from '@/types/narrative';
 

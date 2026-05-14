@@ -77,14 +77,39 @@ export type VirtualState = {
  * dormant entries (intensity 0) filtered out so the arc reflects only
  * variables actually firing in the scenario.
  *
+ * Also transfers the scenario's tagline + priorRationale onto the new arc
+ * as `presentTagline` / `presentReasoning` so lineage is preserved — the
+ * Future-scenario annotation becomes the new arc's Present annotation.
+ *
  * Shared between the virtual preview (`buildVirtualState`) and the real
  * commit path (`useExperimentation.runScenario`) so both surfaces agree
- * on what `presentVariables` end up on the new arc.
+ * on what gets stamped onto the new arc.
+ *
+ * Accepts either the raw variables array (legacy) or the full scenario
+ * for richer transfer. Callers that pass only variables get the variable
+ * stamp; callers that pass the scenario also get tagline + reasoning.
  */
-export function stampScenarioVariables(arc: Arc, scenarioVariables: Variable[]): Arc {
+export function stampScenarioVariables(
+  arc: Arc,
+  scenarioOrVariables: PlanningScenario | Variable[],
+): Arc {
+  const isScenario = !Array.isArray(scenarioOrVariables);
+  const scenarioVariables = isScenario ? scenarioOrVariables.variables : scenarioOrVariables;
+  const tagline = isScenario && scenarioOrVariables.tagline?.trim()
+    ? scenarioOrVariables.tagline.trim()
+    : undefined;
+  const reasoning = isScenario && scenarioOrVariables.priorRationale?.trim()
+    ? scenarioOrVariables.priorRationale.trim()
+    : undefined;
+  const logit = isScenario && typeof scenarioOrVariables.priorLogit === 'number'
+    ? scenarioOrVariables.priorLogit
+    : undefined;
   return {
     ...arc,
     presentVariables: scenarioVariables.filter((v) => v.intensity > 0),
+    presentTagline: tagline,
+    presentReasoning: reasoning,
+    presentLogit: logit,
   };
 }
 
@@ -101,12 +126,12 @@ export function buildVirtualState(
   arc: Arc,
   scenes: Scene[],
   activeBranchId: string,
-  scenarioVariables: Variable[],
+  scenarioOrVariables: PlanningScenario | Variable[],
 ): VirtualState {
   let narrative: NarrativeState = JSON.parse(JSON.stringify(rootNarrative));
   let resolvedKeys = [...rootResolvedKeys];
 
-  const stampedArc = stampScenarioVariables(arc, scenarioVariables);
+  const stampedArc = stampScenarioVariables(arc, scenarioOrVariables);
 
   for (const scene of scenes) {
     narrative.scenes[scene.id] = scene;
@@ -122,6 +147,9 @@ export function buildVirtualState(
       ...existing,
       sceneIds: [...existing.sceneIds, ...deduped],
       presentVariables: stampedArc.presentVariables,
+      presentTagline: stampedArc.presentTagline,
+      presentReasoning: stampedArc.presentReasoning,
+      presentLogit: stampedArc.presentLogit,
     };
   }
 

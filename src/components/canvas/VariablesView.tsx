@@ -15,8 +15,11 @@ import {
 } from '@/lib/ai/variables';
 import type { PlanningScenario, Variable } from '@/types/narrative';
 import DispositionEditor from './variables/DispositionEditor';
+import VariableRadarChart from './variables/VariableRadarChart';
 import VariableParallelCoords from './variables/VariableParallelCoords';
-import BentoTile, { TileLabel } from './variables/BentoTile';
+import VariableGridChart from './variables/VariableGridChart';
+import VariableViewSwitcher, { type VariableViewMode } from './variables/VariableViewSwitcher';
+import { TileLabel } from './variables/BentoTile';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { IconFlask } from '@/components/icons';
 import { findHeadArc } from '@/hooks/useExperimentation';
@@ -398,7 +401,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     setError(null);
     setStreamingReasoning('');
     try {
-      const variables = await extractArcPresent({
+      const { variables, tagline, reasoning, priorLogit } = await extractArcPresent({
         narrativeTitle: narrative.title,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
@@ -408,7 +411,14 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         onReasoning: (token) => setStreamingReasoning((prev) => prev + token),
         reasoningBudget: resolveReasoningBudget(narrative),
       });
-      dispatch({ type: 'SET_ARC_PRESENT_VARIABLES', arcId: focusedArc.id, variables });
+      dispatch({
+        type: 'SET_ARC_PRESENT_VARIABLES',
+        arcId: focusedArc.id,
+        variables,
+        tagline,
+        reasoning,
+        logit: priorLogit,
+      });
       if (direction.trim()) {
         dispatch({ type: 'SET_ARC_SCENARIO_DIRECTION', arcId: focusedArc.id, direction });
       }
@@ -512,6 +522,9 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
           mode === 'present' ? (
             <PresentBento
               variables={presentVariables}
+              tagline={focusedArc.presentTagline}
+              reasoning={focusedArc.presentReasoning}
+              logit={focusedArc.presentLogit}
               onChange={setPresentIntensity}
               error={error}
             />
@@ -529,7 +542,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
               onScenarioIntensityChange={setScenarioIntensity}
               onAddVariableToActiveScenario={addVariableToActiveScenario}
               onRemoveScenario={removeActiveScenario}
-              isDirty={pending !== null && pending.id === activeScenarioId}
+              hasPendingEdits={pending !== null && pending.id === activeScenarioId}
               isDraft={pending !== null && pending.isDraft && pending.id === activeScenarioId}
               onCommitPending={commitPending}
               onDiscardPending={discardPending}
@@ -868,52 +881,184 @@ function ReasoningOverlay({
   );
 }
 
+// ── Layout primitives ─────────────────────────────────────────────────────
+//
+// Minimalist divider-style chrome — header strip + thin vertical/horizontal
+// dividers replace the bordered bento cells. Sections share the same h-9
+// header so chart, sidebars, and variables editor all align across the
+// top, and the dividers make the column boundaries readable without
+// drawing card outlines around every region.
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="h-9 shrink-0 px-3 flex items-baseline gap-2 border-b border-white/6">
+      <div className="flex items-baseline gap-2 w-full self-center">{children}</div>
+    </div>
+  );
+}
+
+function VDivider() {
+  return <div className="w-px shrink-0 bg-white/8" aria-hidden />;
+}
+
+function HDivider() {
+  return <div className="h-px shrink-0 bg-white/8" aria-hidden />;
+}
+
+// ── Logit badge ───────────────────────────────────────────────────────────
+//
+// Surfaces a coordination's log-prior plausibility (in MARKET_EVIDENCE
+// units, [-4, +4]) as: the raw logit, a sigmoid-derived "how likely" %,
+// and a one-word rarity tag. Renders below the chart on Present/Future
+// footers so the path's rarity becomes a permanent, glanceable record —
+// "everything happened, but in retrospect there was a rarity to it."
+
+function rarityLabel(logit: number): { word: string; tone: string } {
+  if (logit >= 3) return { word: 'expected', tone: 'text-emerald-300/80' };
+  if (logit >= 1) return { word: 'likely',   tone: 'text-sky-300/80' };
+  if (logit >= -1) return { word: 'even',    tone: 'text-text-secondary' };
+  if (logit >= -3) return { word: 'rare',    tone: 'text-amber-300/80' };
+  return { word: 'tail event', tone: 'text-rose-300/80' };
+}
+
+function LogitBadge({ logit, accent }: { logit: number; accent: string }) {
+  const rarity = rarityLabel(logit);
+  // Compact one-row badge using a natural-language rarity descriptor as
+  // the lead — avoids competing with the cohort softmax % shown in the
+  // scenarios sidebar. Logit value rides along as a small footnote for
+  // anyone who wants the raw number.
+  return (
+    <div className="flex items-baseline gap-2 font-mono">
+      <span
+        className="w-1.5 h-1.5 rounded-full shrink-0 self-center"
+        style={{ background: accent }}
+      />
+      <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60">
+        Plausibility
+      </span>
+      <span className={`text-[12px] font-medium uppercase tracking-[0.12em] ${rarity.tone}`}>
+        {rarity.word}
+      </span>
+      <span className="text-[10px] text-text-dim/60 tabular-nums ml-auto">
+        logit {logit >= 0 ? '+' : ''}{logit.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
 // ── Present bento ──────────────────────────────────────────────────────────
 
 interface PresentBentoProps {
   variables: Variable[];
+  /** Tagline annotating the Present coordination — captures the gestalt
+   *  in one sentence. Generated alongside the variables and rendered as
+   *  a labelled paragraph in the chart-column footer. */
+  tagline?: string;
+  /** One-paragraph rationale explaining WHY these variables are firing
+   *  at these intensities given the arc's state. */
+  reasoning?: string;
+  /** Log-prior plausibility for this Present coordination, in
+   *  MARKET_EVIDENCE_MIN/MAX range ([-4, +4]). When transferred from a
+   *  Future scenario via experimentation commit, this records "how
+   *  likely was this coordination when it was chosen" — the rarity badge
+   *  that gives the path its sense of specialness. */
+  logit?: number;
   onChange: (variableId: string, intensity: number) => void;
   error: string | null;
 }
 
 function PresentBento({
-  variables, onChange, error,
+  variables, tagline, reasoning, logit, onChange, error,
 }: PresentBentoProps) {
   const traces = useMemo(() =>
     variables.length > 0 ? [{ id: 'present', color: PRESENT_TRACE_COLOR, variables }] : [],
   [variables]);
+  // Present can render the shape as radar (signature) or parallel
+  // (compact axis-by-axis). Grid is hidden — degenerate with one trace.
+  const [viewMode, setViewMode] = useState<VariableViewMode>('radar');
 
   return (
-    <div className="p-4 flex flex-col gap-3">
+    <div className="h-full flex flex-col">
       {error && (
-        <div className="px-2 text-[11px] text-rose-300/80 font-mono truncate">{error}</div>
+        <div className="px-3 py-1.5 border-b border-white/6 text-[10px] text-rose-300/80 font-mono truncate">
+          {error}
+        </div>
       )}
-
-      {/* Parallel coords sits above the editor — the trace establishes the
-          shape at a glance, the editor below is where the variables are tweaked. */}
-      <BentoTile header={<TileLabel>Shape</TileLabel>}>
-        {traces.length === 0 ? (
-          <div className="text-[11px] text-text-dim italic py-3">No variables yet. Regenerate to populate.</div>
-        ) : (
-          <VariableParallelCoords traces={traces} height={220} />
-        )}
-      </BentoTile>
-
-      <BentoTile
-        header={
-          <div className="flex items-baseline gap-2">
-            <TileLabel count={variables.length}>Variables</TileLabel>
-            <span className="ml-auto text-[9px] text-text-dim/60 font-mono">click an intensity to set</span>
+      <div className="flex-1 flex min-h-0">
+        {/* Main: chart with header strip carrying the view switcher. */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <SectionHeader>
+            <TileLabel>Shape</TileLabel>
+            <div className="ml-auto">
+              <VariableViewSwitcher
+                mode={viewMode}
+                onChange={setViewMode}
+                allowed={['radar', 'parallel']}
+              />
+            </div>
+          </SectionHeader>
+          <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center px-3 py-2">
+            {traces.length === 0 ? (
+              <div className="text-[11px] text-text-dim italic py-3">No variables yet. Regenerate to populate.</div>
+            ) : (
+              <div className="w-full">
+                {viewMode === 'radar' ? (
+                  <VariableRadarChart traces={traces} />
+                ) : (
+                  <VariableParallelCoords traces={traces} />
+                )}
+              </div>
+            )}
           </div>
-        }
-        flush
-      >
-        <DispositionEditor
-          variables={variables}
-          colorByCategory
-          onChange={onChange}
-        />
-      </BentoTile>
+          {(tagline || reasoning || typeof logit === 'number') && (
+            <>
+              <HDivider />
+              <div className="shrink-0 px-4 py-3 flex flex-col gap-2.5 max-h-48 overflow-auto">
+                {typeof logit === 'number' && (
+                  <LogitBadge logit={logit} accent={PRESENT_TRACE_COLOR} />
+                )}
+                {tagline && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
+                      Tagline
+                    </span>
+                    <p className="text-[11px] text-text-secondary italic leading-snug">
+                      {tagline}
+                    </p>
+                  </div>
+                )}
+                {reasoning && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
+                      Reasoning
+                    </span>
+                    <p className="text-[11px] text-text-secondary leading-snug">
+                      {reasoning}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <VDivider />
+        {/* Variables sidebar — same width and chrome as the Future view's
+            variables sidebar so the editor sits in a familiar place. */}
+        <div className="w-72 shrink-0 flex flex-col">
+          <SectionHeader>
+            <TileLabel count={variables.length}>Variables</TileLabel>
+            <span className="ml-auto text-[9px] text-text-dim/60 font-mono">click to set</span>
+          </SectionHeader>
+          <div className="flex-1 min-h-0 overflow-auto">
+            <DispositionEditor
+              variables={variables}
+              colorByCategory
+              onChange={onChange}
+              singleColumn
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -935,7 +1080,7 @@ interface FutureBentoProps {
   onRemoveScenario: () => void;
   /** Pending-edit state — true when the active scenario has unsaved variable
    *  edits (or is an unsaved draft). Drives the Save & Re-score affordance. */
-  isDirty: boolean;
+  hasPendingEdits: boolean;
   /** True if the active pending scenario is a brand-new draft (not yet
    *  committed to the cohort). */
   isDraft: boolean;
@@ -955,139 +1100,202 @@ function FutureBento(props: FutureBentoProps) {
     hoveredScenarioId, setHoveredScenarioId,
     activeScenarioPool,
     onScenarioIntensityChange, onAddVariableToActiveScenario, onRemoveScenario,
-    isDirty, isDraft, onCommitPending, onDiscardPending, onRenamePending,
+    hasPendingEdits, isDraft, onCommitPending, onDiscardPending, onRenamePending,
     onAddDraftScenario, busy, error,
   } = props;
 
   const traces = useMemo(
-    () => scenarios.map((s) => ({ id: s.id, color: s.color, variables: s.variables })),
+    () => scenarios.map((s) => ({ id: s.id, name: s.name, color: s.color, variables: s.variables })),
     [scenarios],
   );
 
+  // Three views over the same cohort:
+  //  • radar: just the active scenario's signature shape, focused
+  //  • parallel: all scenarios overlaid (compact, side-by-side comparison)
+  //  • grid: small-multiples — every scenario in its own mini-radar tile
+  const [viewMode, setViewMode] = useState<VariableViewMode>('radar');
+  const radarTraces = useMemo(
+    () => (activeScenarioId ? traces.filter((t) => t.id === activeScenarioId) : traces.slice(0, 1)),
+    [traces, activeScenarioId],
+  );
+
   return (
-    <div className="p-4 grid grid-cols-12 gap-3 auto-rows-min">
+    <div className="h-full flex flex-col">
       {error && (
-        <div className="col-span-12 text-[10px] text-rose-300/80 font-mono px-2">{error}</div>
+        <div className="px-3 py-1.5 border-b border-white/6 text-[10px] text-rose-300/80 font-mono truncate">
+          {error}
+        </div>
       )}
-
-      {/* Sidebar — vertical softmax stack of scenarios. Each row is a
-          probability-weighted segment; click to set the active scenario.
-          The "+ New scenario" button at the top opens an unsaved draft for
-          intuitive knob-based creation. */}
-      <BentoTile className="col-span-12 lg:col-span-3 lg:row-span-2" flush>
-        <ScenarioSidebar
-          scenarios={scenarios}
-          probs={probs}
-          ranks={ranks}
-          activeScenarioId={activeScenarioId}
-          onSelectScenario={setActiveScenarioId}
-          draftScenarioId={isDraft ? activeScenarioId : null}
-          onAddDraft={onAddDraftScenario}
-        />
-      </BentoTile>
-
-      {/* Parallel coords — all scenarios overlaid. Renders first in the
-          main column so the cohort shape is visible at a glance before the
-          user dives into a single scenario below. */}
-      <BentoTile
-        className="col-span-12 lg:col-span-9"
-        header={<TileLabel>Overlay</TileLabel>}
-      >
-        <VariableParallelCoords
-          traces={traces}
-          activeTraceId={activeScenarioId}
-          hoveredTraceId={hoveredScenarioId}
-          onHoverTrace={setHoveredScenarioId}
-          height={220}
-        />
-      </BentoTile>
-
-      {/* Active scenario detail — header carries the name (editable when
-          pending), prob + logit, and the commit/discard/remove actions. */}
-      {activeScenario && (
-        <BentoTile
-          accent={activeScenario.color}
-          className="col-span-12 lg:col-span-9 lg:col-start-4"
-          flush
-          header={
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="w-2 h-2 rounded-full" style={{ background: activeScenario.color }} />
-              {isDirty ? (
-                <input
-                  value={activeScenario.name}
-                  onChange={(e) => onRenamePending(e.target.value)}
-                  className="text-[12px] text-text-primary font-medium bg-transparent border-b border-white/15 focus:border-white/40 outline-none min-w-0 flex-1 max-w-60"
-                  placeholder="Scenario name"
+      <div className="flex-1 flex min-h-0">
+        {/* Left sidebar: scenarios stack — vertical softmax-weighted list,
+            click to set the active scenario. Self-contained chrome. */}
+        <div className="w-72 shrink-0 flex flex-col">
+          <ScenarioSidebar
+            scenarios={scenarios}
+            probs={probs}
+            ranks={ranks}
+            activeScenarioId={activeScenarioId}
+            onSelectScenario={setActiveScenarioId}
+            draftScenarioId={isDraft ? activeScenarioId : null}
+            onAddDraft={onAddDraftScenario}
+          />
+        </div>
+        <VDivider />
+        {/* Main: cohort visualisation. Three views over the same data —
+            radar focuses the active scenario, parallel overlays the cohort,
+            grid splits each scenario into a mini-radar. The active
+            scenario's tagline + reasoning live at the bottom of this
+            column so the right sidebar has full vertical room for the
+            variables editor. */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <SectionHeader>
+            <TileLabel>{viewMode === 'radar' ? 'Signature' : viewMode === 'parallel' ? 'Overlay' : 'Cohort'}</TileLabel>
+            <div className="ml-auto">
+              <VariableViewSwitcher mode={viewMode} onChange={setViewMode} />
+            </div>
+          </SectionHeader>
+          <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center px-3 py-2">
+            <div className="w-full">
+              {viewMode === 'radar' ? (
+                <VariableRadarChart traces={radarTraces} />
+              ) : viewMode === 'parallel' ? (
+                <VariableParallelCoords
+                  traces={traces}
+                  activeTraceId={activeScenarioId}
+                  hoveredTraceId={hoveredScenarioId}
+                  onHoverTrace={setHoveredScenarioId}
                 />
               ) : (
-                <span className="text-[12px] text-text-primary font-medium truncate">{activeScenario.name}</span>
+                <VariableGridChart
+                  traces={traces}
+                  activeTraceId={activeScenarioId}
+                  hoveredTraceId={hoveredScenarioId}
+                  onHoverTrace={setHoveredScenarioId}
+                  onSelectTrace={setActiveScenarioId}
+                />
               )}
-              {isDraft ? (
-                <span className="text-[9px] uppercase tracking-[0.15em] font-mono text-amber-300/80">Unsaved draft</span>
-              ) : isDirty ? (
-                <span className="text-[9px] uppercase tracking-[0.15em] font-mono text-amber-300/80">Unsaved edits</span>
-              ) : (
-                <span className="text-[10px] text-text-dim/70 font-mono">
-                  {Math.round((probs[activeScenario.id] ?? 0) * 100)}% likely &middot; logit {(activeScenario.priorLogit ?? 0).toFixed(1)}
+            </div>
+          </div>
+          {activeScenario
+            && (activeScenario.tagline || activeScenario.priorRationale || typeof activeScenario.priorLogit === 'number')
+            && !hasPendingEdits && (
+            <>
+              <HDivider />
+              <div className="shrink-0 px-4 py-3 flex flex-col gap-2.5 max-h-48 overflow-auto">
+                {typeof activeScenario.priorLogit === 'number' && (
+                  <LogitBadge logit={activeScenario.priorLogit} accent={activeScenario.color} />
+                )}
+                {activeScenario.tagline && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
+                      Tagline
+                    </span>
+                    <p className="text-[11px] text-text-secondary italic leading-snug">
+                      {activeScenario.tagline}
+                    </p>
+                  </div>
+                )}
+                {activeScenario.priorRationale && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
+                      Reasoning
+                    </span>
+                    <p className="text-[11px] text-text-secondary leading-snug">
+                      {activeScenario.priorRationale}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+          {activeScenario && hasPendingEdits && (
+            <>
+              <HDivider />
+              <div className="shrink-0 px-4 py-3 bg-amber-500/5 text-[11px] text-amber-200/80 leading-snug">
+                {isDraft
+                  ? 'Set the variables, then save to score this scenario’s plausibility against the cohort.'
+                  : 'Save & Re-score to update the reasoning and probability, or discard to revert.'}
+              </div>
+            </>
+          )}
+        </div>
+        <VDivider />
+        {/* Right sidebar: active scenario detail + variables editor. Same
+            width as the scenarios sidebar so the two flank the chart
+            symmetrically. */}
+        <div className="w-72 shrink-0 flex flex-col">
+          {activeScenario ? (
+            <>
+              <SectionHeader>
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: activeScenario.color }} />
+                {hasPendingEdits ? (
+                  <input
+                    value={activeScenario.name}
+                    onChange={(e) => onRenamePending(e.target.value)}
+                    className="text-[11px] text-text-primary font-medium bg-transparent border-b border-white/15 focus:border-white/40 outline-none min-w-0 flex-1"
+                    placeholder="Scenario name"
+                  />
+                ) : (
+                  <span className="text-[11px] text-text-primary font-medium truncate flex-1">{activeScenario.name}</span>
+                )}
+                {!hasPendingEdits && !isDraft && (
+                  <button
+                    onClick={onRemoveScenario}
+                    className="ml-auto text-[9px] uppercase tracking-[0.15em] text-text-dim hover:text-rose-300 font-mono transition"
+                  >
+                    remove
+                  </button>
+                )}
+              </SectionHeader>
+              {/* Status strip — only carries draft/dirty state + actions
+                  now. The rarity badge lives in the left scenarios
+                  sidebar and in the center footer summary so it doesn't
+                  duplicate. */}
+              {(isDraft || hasPendingEdits) && (
+              <div className="px-3 py-2 border-b border-white/6 flex items-center gap-2 text-[10px] font-mono min-h-9">
+                <span className="uppercase tracking-[0.15em] text-amber-300/80">
+                  {isDraft ? 'Unsaved draft' : 'Unsaved edits'}
                 </span>
-              )}
-              {!isDirty && activeScenario.tagline && (
-                <span className="text-[10px] text-text-dim italic truncate">— {activeScenario.tagline}</span>
-              )}
-              <div className="ml-auto flex items-center gap-1.5">
-                {isDirty && (
-                  <>
+                {hasPendingEdits && (
+                  <div className="ml-auto flex items-center gap-1.5">
                     <button
                       onClick={onDiscardPending}
                       disabled={busy}
-                      className="text-[9px] uppercase tracking-[0.15em] text-text-dim hover:text-text-primary font-mono transition disabled:opacity-30"
+                      className="text-[9px] uppercase tracking-[0.15em] text-text-dim hover:text-text-primary transition disabled:opacity-30"
                     >
                       Discard
                     </button>
                     <button
                       onClick={onCommitPending}
                       disabled={busy}
-                      className="h-7 px-3 rounded-md bg-white/10 hover:bg-white/16 text-text-primary font-semibold text-[10px] transition disabled:opacity-30 inline-flex items-center gap-1.5"
+                      className="h-6 px-2 rounded bg-white/10 hover:bg-white/16 text-text-primary font-semibold text-[10px] transition disabled:opacity-30 inline-flex items-center gap-1"
                     >
                       {busy && <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />}
-                      {busy ? 'Re-scoring…' : isDraft ? 'Save & Score' : 'Save & Re-score'}
+                      {busy ? 'Scoring…' : isDraft ? 'Save & Score' : 'Save & Re-score'}
                     </button>
-                  </>
-                )}
-                {!isDirty && !isDraft && (
-                  <button
-                    onClick={onRemoveScenario}
-                    className="text-[9px] uppercase tracking-[0.15em] text-text-dim hover:text-rose-300 font-mono transition"
-                  >
-                    remove
-                  </button>
+                  </div>
                 )}
               </div>
-            </div>
-          }
-        >
-          {activeScenario.priorRationale && !isDirty && (
-            <div className="px-4 py-2 border-b border-white/6 bg-white/1 text-[11px] text-text-secondary leading-snug">
-              <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono mr-1.5">Reasoning</span>
-              {activeScenario.priorRationale}
+              )}
+              <div className="flex-1 min-h-0 overflow-auto">
+                <DispositionEditor
+                  variables={activeScenario.variables}
+                  pool={activeScenarioPool}
+                  color={activeScenario.color}
+                  colorByCategory
+                  onChange={onScenarioIntensityChange}
+                  onAddFromPool={onAddVariableToActiveScenario}
+                  singleColumn
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-[11px] text-text-dim italic px-4 text-center">
+              Pick a scenario from the left to inspect or edit its variables.
             </div>
           )}
-          {isDirty && (
-            <div className="px-4 py-2 border-b border-white/6 bg-amber-500/5 text-[11px] text-amber-200/80 leading-snug">
-              {isDraft
-                ? 'Set the variables, then save to score this scenario’s plausibility against the cohort.'
-                : 'Save & Re-score to update the reasoning and probability, or discard to revert.'}
-            </div>
-          )}
-          <DispositionEditor
-            variables={activeScenario.variables}
-            pool={activeScenarioPool}
-            color={activeScenario.color}
-            onChange={onScenarioIntensityChange}
-            onAddFromPool={onAddVariableToActiveScenario}
-          />
-        </BentoTile>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1156,11 +1364,29 @@ function ScenarioSidebar({
                 {isDraft ? (
                   <span className="text-[9px] uppercase tracking-[0.12em] font-mono shrink-0 text-amber-300/80">Unsaved</span>
                 ) : (
-                  <span className="text-[11px] font-mono tabular-nums shrink-0" style={{ color: s.color }}>{Math.round(p * 100)}%</span>
+                  <span className="text-[11px] font-mono tabular-nums shrink-0" style={{ color: s.color }}>{(p * 100).toFixed(1)}%</span>
                 )}
               </div>
+              {/* Rarity tag — the same natural-language descriptor the
+                  center footer surfaces, plus the raw logit for anyone
+                  who wants the underlying number. Lives inline so the
+                  scenarios sidebar carries a glanceable per-row read on
+                  "how likely was this when it was generated". */}
+              {!isDraft && typeof s.priorLogit === 'number' && (() => {
+                const rarity = rarityLabel(s.priorLogit);
+                return (
+                  <div className="flex items-baseline gap-1.5 pl-1.5 mt-0.5 font-mono">
+                    <span className={`text-[9px] uppercase tracking-[0.12em] ${rarity.tone}`}>
+                      {rarity.word}
+                    </span>
+                    <span className="text-[9px] text-text-dim/50 tabular-nums">
+                      logit {s.priorLogit >= 0 ? '+' : ''}{s.priorLogit.toFixed(1)}
+                    </span>
+                  </div>
+                );
+              })()}
               {s.tagline && (
-                <div className="text-[9px] text-text-dim/70 leading-snug pl-1.5 line-clamp-2">{s.tagline}</div>
+                <div className="text-[9px] text-text-dim/70 leading-snug pl-1.5 line-clamp-2 mt-0.5">{s.tagline}</div>
               )}
             </button>
           );

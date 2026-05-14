@@ -66,12 +66,14 @@ import type {
   GraphViewMode,
   InspectorContext,
   Location,
+  Mode,
   NarrativeEntry,
   NarrativeState,
   NarrativeViewState,
   Note,
   OwnershipDelta,
   PlanEvaluation,
+  PlanningScenario,
   ProseEvaluation,
   ProseProfile,
   ProseScore,
@@ -94,6 +96,7 @@ import type {
   Thread,
   ThreadDelta,
   TieDelta,
+  Variable,
   WorldBuild,
 } from "@/types/narrative";
 import { isScene, resolveEntry } from "@/types/narrative";
@@ -706,16 +709,24 @@ export type Action =
   | {
       // Per-arc Present variables — each arc owns its own full set with
       // intensities baked into each Variable. Pass [] to clear.
+      // Optional tagline + reasoning annotate the coordination's gestalt
+      // and load-bearing logic; logit records "how likely was this when
+      // it was chosen" in MARKET_EVIDENCE_MIN/MAX range. All three are
+      // transferred onto new arcs by the experimentation commit path so
+      // the path's rarity is a permanent record.
       type: "SET_ARC_PRESENT_VARIABLES";
       arcId: string;
-      variables: import("@/types/narrative").Variable[];
+      variables: Variable[];
+      tagline?: string;
+      reasoning?: string;
+      logit?: number;
     }
   | {
       // Replace the cohort of planning scenarios on a specific arc. Each
       // scenario owns its own custom variable set. Pass [] to clear.
       type: "SET_ARC_PLANNING_SCENARIOS";
       arcId: string;
-      scenarios: import("@/types/narrative").PlanningScenario[];
+      scenarios: PlanningScenario[];
     }
   | {
       // Store the last user-supplied direction string that shaped the cohort.
@@ -865,7 +876,7 @@ export type Action =
   | { type: "SET_PROSE_PROFILE"; profile: ProseProfile | undefined }
   | { type: "SET_PATTERNS"; patterns: string[] }
   | { type: "SET_ANTI_PATTERNS"; antiPatterns: string[] }
-  | { type: "ADD_PHASE_GRAPH"; graph: import("@/types/narrative").Mode }
+  | { type: "ADD_PHASE_GRAPH"; graph: Mode }
   | { type: "SET_CURRENT_PHASE_GRAPH"; modeId: string | null }
   | { type: "RENAME_PHASE_GRAPH"; modeId: string; name: string }
   | { type: "DELETE_PHASE_GRAPH"; modeId: string }
@@ -1137,6 +1148,11 @@ function reducer(state: AppState, action: Action): AppState {
       return updateNarrative(state, (n) => {
         const arc = n.arcs[action.arcId];
         if (!arc) return n;
+        // Tagline / reasoning / logit are optional. Omitting them in the
+        // action clears any prior values (e.g. when the user wipes the
+        // arc); a partial regenerate that only supplies variables also
+        // clears them, since stale annotations would misdescribe the new
+        // set.
         return {
           ...n,
           arcs: {
@@ -1144,6 +1160,9 @@ function reducer(state: AppState, action: Action): AppState {
             [action.arcId]: {
               ...arc,
               presentVariables: action.variables.length > 0 ? action.variables : undefined,
+              presentTagline: action.tagline,
+              presentReasoning: action.reasoning,
+              presentLogit: action.logit,
             },
           },
         };

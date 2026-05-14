@@ -239,8 +239,18 @@ For each variable emit { id, name, description, category, intensity }:
   • category: stance / capability / pressure / knowledge / constraint / allegiance / external / contradiction / trend / threshold / resource / reputation / institutional / cultural / physical / temporal / mechanism — or invent
   • intensity (1–4): 1 weak, 2 mild, 3 strong, 4 extreme. Omit 0.
 
+Also emit:
+  • tagline: one short sentence (≤ 14 words) that captures the gestalt of this Present coordination — what the configuration *is* as a recognisable shape. Same register as a chapter epigraph.
+  • reasoning: one or two sentences explaining why these variables are firing at these intensities given the arc's state — the load-bearing logic, not a re-paraphrase of the variable descriptions.
+  • priorLogit ∈ [-4, +4]: log-prior plausibility of this coordination relative to alternative coordinations the world could have surfaced at this point. Same evidence scale as scenario priors: +4 = decisive evidence in favour of this coordination, 0 = baseline plausibility, -4 = a rare tail outcome that nonetheless occurred. Use the full range — this number is a permanent record of "how likely was this configuration at the time", a glimpse into the rarity of the path the world has taken.
+
 Output strict JSON:
-{ "variables": [ { "id": "var-...", "name": "...", "description": "...", "category": "...", "intensity": 3 } ] }`;
+{
+  "tagline": "...",
+  "reasoning": "...",
+  "priorLogit": 0,
+  "variables": [ { "id": "var-...", "name": "...", "description": "...", "category": "...", "intensity": 3 } ]
+}`;
 
 export interface ExtractPresentInput {
   narrativeTitle: string;
@@ -280,7 +290,16 @@ function sanitizeVariable(raw: unknown): Variable | null {
   };
 }
 
-export async function extractArcPresent(input: ExtractPresentInput): Promise<Variable[]> {
+export interface ExtractPresentResult {
+  variables: Variable[];
+  tagline?: string;
+  reasoning?: string;
+  /** Self-estimated log-prior in MARKET_EVIDENCE_MIN/MAX range — a glimpse
+   *  into how plausible this coordination was at the time. */
+  priorLogit?: number;
+}
+
+export async function extractArcPresent(input: ExtractPresentInput): Promise<ExtractPresentResult> {
   const arc = input.arc;
   const summary = (arc.summary ?? '(no summary)').replace(/\s+/g, ' ').trim();
   const dirVec = arc.directionVector ? `\n  direction: ${arc.directionVector}` : '';
@@ -329,16 +348,31 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
         ANALYSIS_TEMPERATURE,
       );
 
-  const parsed = parseJson(raw, 'extractArcPresent') as { variables?: unknown[] };
+  const parsed = parseJson(raw, 'extractArcPresent') as {
+    variables?: unknown[];
+    tagline?: unknown;
+    reasoning?: unknown;
+    priorLogit?: unknown;
+  };
   const seenIds = new Set<string>();
-  const out: Variable[] = [];
+  const variables: Variable[] = [];
   for (const r of parsed.variables ?? []) {
     const v = sanitizeVariable(r);
     if (!v || seenIds.has(v.id)) continue;
     seenIds.add(v.id);
-    out.push(v);
+    variables.push(v);
   }
-  return out;
+  const tagline = typeof parsed.tagline === 'string' ? parsed.tagline.trim() : '';
+  const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
+  const priorLogit = typeof parsed.priorLogit === 'number' && Number.isFinite(parsed.priorLogit)
+    ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
+    : undefined;
+  return {
+    variables,
+    tagline: tagline || undefined,
+    reasoning: reasoning || undefined,
+    priorLogit,
+  };
 }
 
 // ── Planning scenarios — each with its own custom variable set ────────────

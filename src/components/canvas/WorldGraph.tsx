@@ -1252,8 +1252,10 @@ export default function WorldGraph() {
         </div>
       </div>
       )}
-      {/* Fullscreen toggle */}
-      <FullscreenButton />
+      {/* Fullscreen toggle — hidden on the variable control views
+          (present/future) where the chrome is already roomy and the
+          button would compete with the sidebar layout. */}
+      {graphViewMode !== 'present' && graphViewMode !== 'future' && <FullscreenButton />}
       {/* Character/location image prompt tooltip — hidden when viewing entity inner graph */}
       {nodeTooltip && !selectedKnowledgeEntity && (
         <div

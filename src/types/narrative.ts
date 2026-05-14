@@ -1057,6 +1057,25 @@ export type Arc = {
    *  each own their own independent variable sets too. Undefined / empty =
    *  arc has no variables defined yet, UI shows the fresh-page seed state. */
   presentVariables?: Variable[];
+  /** Short tagline that captures the gestalt of the Present variable
+   *  coordination — one sentence describing what this configuration *is*.
+   *  Generated alongside the variables. When a Future scenario is committed
+   *  via experimentation, the scenario's own tagline is transferred onto the
+   *  new arc's `presentTagline` so the lineage is preserved. */
+  presentTagline?: string;
+  /** Short narrative reasoning for the Present variable coordination —
+   *  explains WHY these variables are firing at these intensities given the
+   *  arc's state. Transferred from the parent scenario's `priorRationale`
+   *  on experimentation commit. */
+  presentReasoning?: string;
+  /** Log-prior plausibility score for this Present coordination, in the
+   *  same MARKET_EVIDENCE_MIN/MAX range as scenario priorLogits ([-4, +4]).
+   *  When a Future scenario is committed via experimentation, the
+   *  scenario's `priorLogit` is transferred onto the new arc's
+   *  `presentLogit` — preserving "how likely was this when it was chosen"
+   *  as a permanent record of the path's rarity. When Present is
+   *  regenerated directly, the LLM emits a self-estimated logit. */
+  presentLogit?: number;
   /** Optional user-supplied direction string captured at the last regenerate
    *  for transparency — shows what guidance shaped the cohort. */
   scenarioDirection?: string;

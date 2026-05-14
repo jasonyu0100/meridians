@@ -537,17 +537,18 @@ async function generateOneScenario(input: {
 
     const { scenes, arc: rawArc } = result;
     // Stamp the scenario's variable coordination onto the arc so the
-    // committed branch carries the variables that produced it. Shared helper
-    // with buildVirtualState below — both paths agree on what variables end
-    // up on the new arc.
-    const arc = stampScenarioVariables(rawArc, scenario.variables);
+    // committed branch carries the variables that produced it — plus the
+    // scenario's tagline + priorRationale so the new arc's Present
+    // annotation continues the lineage. Shared helper with
+    // buildVirtualState below so both paths agree on what gets stamped.
+    const arc = stampScenarioVariables(rawArc, scenario);
     const virtual = buildVirtualState(
       rootNarrative,
       rootResolvedKeys,
       arc,
       scenes,
       activeBranchId,
-      scenario.variables,
+      scenario,
     );
 
     patchRun(scenario.id, {

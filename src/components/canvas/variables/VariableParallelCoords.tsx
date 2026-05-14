@@ -35,7 +35,7 @@ export default function VariableParallelCoords({
   activeTraceId,
   hoveredTraceId,
   onHoverTrace,
-  height = 220,
+  height = 500,
 }: Props) {
   // Build the union axis list. Key by lowercased name so different ids with
   // the same display name (which can happen across independently-generated
@@ -68,17 +68,26 @@ export default function VariableParallelCoords({
   const W = 1100;
   const PAD_L = 8;
   const PAD_R = 8;
-  const PAD_T = 44;
-  const PAD_B = 22;
+  // Generous top padding gives the rotated axis labels room to extend
+  // upward without clipping the SVG. The label baseline sits at
+  // (axisX, PAD_T - 12) and rotates -28° outward, so the vertical extent
+  // depends on label length × sin(28).
+  const PAD_T = 160;
+  const PAD_B = 40;
+  // Reserve a left column for the intensity (Y-axis) labels so the
+  // variable axes start beyond them.
+  const Y_LABEL_W = 80;
 
   const axisXs = useMemo(() => {
     if (axes.length === 0) return [];
-    if (axes.length === 1) return [W / 2];
+    const chartLeft = PAD_L + Y_LABEL_W;
+    const chartRight = W - PAD_R;
+    const availableSpan = chartRight - chartLeft;
+    if (axes.length === 1) return [chartLeft + availableSpan / 2];
     const AXIS_SPACING = 120;
     const totalSpan = AXIS_SPACING * (axes.length - 1);
-    const availableSpan = W - PAD_L - PAD_R;
     const useSpan = Math.min(totalSpan, availableSpan);
-    const startX = (W - useSpan) / 2;
+    const startX = chartLeft + (availableSpan - useSpan) / 2;
     return axes.map((_, i) => startX + useSpan * (i / (axes.length - 1)));
   }, [axes]);
 
@@ -95,11 +104,30 @@ export default function VariableParallelCoords({
     );
   }
 
+  // Y-axis labels — intensity 0–4 mapped to the canonical scale words. The
+  // same vocabulary used in the DispositionEditor buttons, so the parallel
+  // chart reads at a glance ("this scenario is Strong on dial X").
+  const INTENSITY_LABELS = ['—', 'Weak', 'Mild', 'Strong', 'Extreme'];
+
   return (
     <svg viewBox={`0 0 ${W} ${height}`} className="block w-full h-auto">
       {[0, 1, 2, 3, 4].map((i) => (
         <g key={i}>
-          <line x1={PAD_L} x2={W - PAD_R} y1={yScale(i)} y2={yScale(i)} stroke="rgba(255,255,255,0.04)" strokeDasharray={i === 0 ? undefined : '2,4'} />
+          <line x1={PAD_L + Y_LABEL_W} x2={W - PAD_R} y1={yScale(i)} y2={yScale(i)} stroke="rgba(255,255,255,0.04)" strokeDasharray={i === 0 ? undefined : '2,4'} />
+          {/* Y-axis tick label on the left edge — anchored end so labels
+              extend leftward from the chart start. */}
+          <text
+            x={PAD_L + Y_LABEL_W - 8}
+            y={yScale(i)}
+            textAnchor="end"
+            dominantBaseline="middle"
+            fontSize={13}
+            fill="rgba(232,232,232,0.5)"
+            fontFamily="var(--font-mono), monospace"
+            style={{ fontWeight: 500, letterSpacing: '0.05em' }}
+          >
+            {INTENSITY_LABELS[i].toUpperCase()}
+          </text>
         </g>
       ))}
 
@@ -108,13 +136,21 @@ export default function VariableParallelCoords({
         const cColor = categoryColor(axis.category);
         return (
           <g key={axis.key}>
-            <line x1={x} x2={x} y1={yScale(0)} y2={yScale(4)} stroke={cColor + '55'} strokeWidth={1} />
+            <line x1={x} x2={x} y1={yScale(0)} y2={yScale(4)} stroke={cColor + '55'} strokeWidth={1.4} />
             {[0, 1, 2, 3, 4].map((lvl) => (
-              <circle key={lvl} cx={x} cy={yScale(lvl)} r={1.4} fill={cColor + 'aa'} />
+              <circle key={lvl} cx={x} cy={yScale(lvl)} r={2} fill={cColor + 'aa'} />
             ))}
-            <g transform={`translate(${x}, ${PAD_T - 6}) rotate(-32)`}>
-              <text fontSize={9} fill={cColor} fontFamily="var(--font-mono), monospace">
-                {axis.name.length > 22 ? axis.name.slice(0, 21) + '…' : axis.name}
+            {/* Rotated label: anchored at the axis with -28° upward slant
+                so long names extend toward the top-left without
+                colliding with neighbouring axes. */}
+            <g transform={`translate(${x}, ${PAD_T - 12}) rotate(-28)`}>
+              <text
+                fontSize={16}
+                fill={cColor}
+                fontFamily="var(--font-mono), monospace"
+                style={{ fontWeight: 500 }}
+              >
+                {axis.name}
               </text>
             </g>
           </g>

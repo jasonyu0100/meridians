@@ -27,6 +27,10 @@ interface Props {
    *  with the chosen intensity baked in. Parent is responsible for adding
    *  it to the active set. If omitted, pool reveal is disabled. */
   onAddFromPool?: (variable: Variable) => void;
+  /** Force a single-column layout (categories stack vertically). Used when
+   *  the editor sits in a narrow sidebar — the responsive grid would
+   *  otherwise crush variable names into unreadable columns. */
+  singleColumn?: boolean;
 }
 
 /**
@@ -42,7 +46,11 @@ export default function DispositionEditor({
   readOnly,
   onChange,
   onAddFromPool,
+  singleColumn = false,
 }: Props) {
+  const gridClass = singleColumn
+    ? 'grid grid-cols-1 gap-4'
+    : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4';
   const [showPool, setShowPool] = useState(false);
 
   const activeIds = useMemo(() => new Set(variables.map((v) => v.id)), [variables]);
@@ -98,7 +106,7 @@ export default function DispositionEditor({
       {variables.length === 0 && (
         <div className="text-[11px] text-text-dim italic">No active variables. Use “Show more” below to draw from the cohort pool.</div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className={gridClass}>
       {grouped.map(([category, vars]) => {
         const catColor = colorByCategory ? categoryColor(category) : color;
         return (
@@ -181,7 +189,7 @@ export default function DispositionEditor({
             <span>{showPool ? 'Hide' : 'Show'} more · {filteredPool.length} unused</span>
           </button>
           {showPool && (
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className={`mt-2 ${gridClass}`}>
               {groupedPool.map(([category, vars]) => {
                 const catColor = colorByCategory ? categoryColor(category) : color;
                 return (
