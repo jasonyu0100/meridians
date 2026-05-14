@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
-import { outlineContext } from '@/lib/ai/context';
+import { narrativeContext } from '@/lib/ai/context';
 import { resolveReasoningBudget } from '@/lib/ai/api';
 import { buildActiveModeSection } from '@/lib/ai/mode-graph';
 import {
@@ -95,10 +95,11 @@ export default function VariablesView({ mode }: VariablesViewProps) {
 
   // High-signal context blocks for every LLM call — built once here, reused
   // by all three variable functions (Present extract, Future generation,
-  // scenario re-score). `outlineContext` is the tight arc-by-arc story
-  // recap up to the current scene; `buildActiveModeSection` folds in the
-  // working-machinery substrate so variables inherit from it.
-  const outline = outlineContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+  // scenario re-score). `narrativeContext` is the full tiered branch state
+  // up to the current scene (cumulative network, threads, roster, deltas);
+  // `buildActiveModeSection` folds in the working-machinery substrate so
+  // variables inherit from it.
+  const outline = narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
   const modeSection = buildActiveModeSection(narrative, 'variables');
 
   return (
