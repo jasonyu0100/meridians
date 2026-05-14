@@ -264,7 +264,7 @@ describe('buildStorySettingsBlock', () => {
       characters: { c1: createCharacter('c1', 'Hero') },
     });
     const block = buildStorySettingsBlock(n);
-    expect(block).toContain('SINGLE POV');
+    expect(block).toContain('<pov mode="single">');
     expect(block).toContain('Hero');
   });
   it('includes ensemble POV guidance with distribution nudge', () => {
@@ -276,19 +276,19 @@ describe('buildStorySettingsBlock', () => {
       },
     });
     const block = buildStorySettingsBlock(n);
-    expect(block).toContain('ENSEMBLE POV');
-    expect(block).toContain('TRUE ENSEMBLE');
+    expect(block).toContain('<pov mode="ensemble">');
+    expect(block).toContain('co-lead');
     expect(block).toContain('Alice');
     expect(block).toContain('Bob');
-    expect(block).toContain('Distribute POV meaningfully');
+    expect(block).toContain('Distribute POV across ALL');
   });
   it('nudges ensemble to commit to 3-5 anchors when no cast is designated', () => {
     const n = createMinimalNarrative({
       storySettings: { ...DEFAULT_STORY_SETTINGS, povMode: 'ensemble', povCharacterIds: [] },
     });
     const block = buildStorySettingsBlock(n);
-    expect(block).toContain('ENSEMBLE POV');
-    expect(block).toContain('3–5 anchor characters');
+    expect(block).toContain('<pov mode="ensemble">');
+    expect(block).toContain('3-5 anchors');
     expect(block).not.toContain('Designated POV character');
   });
   it('includes story direction when set', () => {
@@ -296,7 +296,7 @@ describe('buildStorySettingsBlock', () => {
       storySettings: { ...DEFAULT_STORY_SETTINGS, storyDirection: 'The hero must defeat the villain' },
     });
     const block = buildStorySettingsBlock(n);
-    expect(block).toContain('STORY DIRECTION');
+    expect(block).toContain('<story-direction');
     expect(block).toContain('defeat the villain');
   });
   it('includes story constraints when set', () => {
@@ -304,7 +304,7 @@ describe('buildStorySettingsBlock', () => {
       storySettings: { ...DEFAULT_STORY_SETTINGS, storyConstraints: 'No character deaths' },
     });
     const block = buildStorySettingsBlock(n);
-    expect(block).toContain('STORY CONSTRAINTS');
+    expect(block).toContain('<story-constraints');
     expect(block).toContain('No character deaths');
   });
   it('includes narrative guidance when set', () => {
@@ -312,7 +312,7 @@ describe('buildStorySettingsBlock', () => {
       storySettings: { ...DEFAULT_STORY_SETTINGS, narrativeGuidance: 'Keep scenes tight and focused' },
     });
     const block = buildStorySettingsBlock(n);
-    expect(block).toContain('NARRATIVE GUIDANCE');
+    expect(block).toContain('<narrative-guidance');
     expect(block).toContain('tight and focused');
   });
 });
@@ -513,10 +513,10 @@ describe('narrativeContext', () => {
     expect(ctx).not.toContain('<current-state');
   });
 
-  it('frames scene-history as the source of truth in its hint', () => {
+  it('frames scene-history as continuity grouped by arc in its hint', () => {
     const n = createMinimalNarrative();
     const ctx = narrativeContext(n, [], 0);
-    expect(ctx).toMatch(/<scene-history[^>]*source of truth/i);
+    expect(ctx).toMatch(/<scene-history[^>]*continuity grouped by arc/i);
   });
 
   it('reports tier counts in the scene-history scope', () => {

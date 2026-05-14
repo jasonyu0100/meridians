@@ -255,13 +255,14 @@ Return JSON with this exact structure:
   <time-delta required="true">
     <intent>Each scene is an instant; timeDelta captures the gap since the PRIOR scene as an estimate. Approximate is fine — captures the general flow.</intent>
     <invariant>Always commit to a best-guess; do not skip the field.</invariant>
-    <field name="value">integer (positive = forward, 0 = concurrent, negative = flashback to an earlier point on the timeline).</field>
+    <field name="value">integer (positive = forward, 0 = concurrent, negative = backward jump on the timeline — flashback OR diegetic time-travel; see special cases).</field>
     <field name="unit" values="minute | hour | day | week | month | year">Pick the unit that reads most naturally.</field>
     <example phrase="that evening">3 hours</example>
     <example phrase="the next morning">1 day</example>
     <example phrase="three years later">3 years</example>
-    <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment, different POV / vantage / cutaway, OR the very first scene of the arc.</special-case>
-    <special-case kind="flashback">Negative values mark a jump BACK on the timeline ("years earlier" → {value: -3, unit: "year"}). The next forward-scene's timeDelta should roughly cancel the jump so the cumulative offset realigns.</special-case>
+    <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment, different POV / vantage / cutaway, OR the very first scene of the arc. SAME-MOMENT-DIFFERENT-VANTAGE only; do NOT use {value: 0} as a default for "something happened that's hard to time."</special-case>
+    <special-case kind="flashback">Negative value, narrative EVENTUALLY RETURNS — a memory, excerpt, or recalled scene rising under present pressure. The next return-to-present scene's timeDelta should roughly cancel the jump.</special-case>
+    <special-case kind="time-travel">Negative value, narrative NOW LIVES in the new time — no return. A character travels back diegetically (consciousness rewind, regression artefact, paradox-prone mechanic) and subsequent scenes are relative to the NEW position. e.g. {value: -65, unit: "year", transition: "consciousness rewinds to youth"}. Never classify a time-travel event as concurrent — the rewind has a clear direction (backward) and a clear magnitude.</special-case>
     <rule>This is an ESTIMATE — read prose cues, not a calendar. Pick the most plausible value.</rule>
     <rule>RELATIVE delta only; no absolute calendar anchor.</rule>
   </time-delta>

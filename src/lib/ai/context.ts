@@ -1,6 +1,6 @@
-import type { NarrativeState, Scene, StorySettings, RelationshipEdge, WorldEdge, ProseProfile, SystemGraph } from '@/types/narrative';
+import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
 import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS } from '@/types/narrative';
-import { buildCumulativeSystemGraph, getMarketBelief, getMarketMargin, getMarketProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched } from '@/lib/narrative-utils';
+import { buildCumulativeSystemGraph, getMarketBelief, getMarketMargin, getMarketProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
 import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@/lib/constants';
 import { getIntroducedIds } from '@/lib/scene-filter';
@@ -109,6 +109,7 @@ function renderSceneEntry(
   s: Scene,
   globalIdx: number,
   tier: RecencyTier,
+  isPresent: boolean = false,
 ): string {
   const fields = TIER_FIELDS[tier];
   const loc = n.locations[s.locationId]?.name ?? s.locationId;
@@ -122,11 +123,15 @@ function renderSceneEntry(
   const timeGapAttr = timeGap ? ` time-gap="${timeGap}"` : '';
   const transitionPhrase = s.timeDelta?.transition?.trim();
   const transitionAttr = transitionPhrase ? ` transition="${transitionPhrase.replace(/"/g, '&quot;')}"` : '';
+  // `present="true"` marks the cursor's current scene — the latest state.
+  // Any "now" claim should anchor against this entry rather than infer from
+  // list position.
+  const presentAttr = isPresent ? ` present="true"` : '';
 
   // Stable scene metadata stays on the <entry> tag; all deltas become child
   // elements so the output is structured XML, not a pile of semicolon-joined
   // attribute strings.
-  const openAttrs = `index="${globalIdx}" tier="${tier}" location="${loc}" pov="${povName}"${timeGapAttr}${transitionAttr}`;
+  const openAttrs = `index="${globalIdx}" tier="${tier}" location="${loc}" pov="${povName}"${timeGapAttr}${transitionAttr}${presentAttr}`;
 
   const children: string[] = [];
 
@@ -142,17 +147,10 @@ function renderSceneEntry(
     if (parts.length > 0) children.push(`  <participants>\n${parts.join('\n')}\n  </participants>`);
   }
 
-  if (fields.threadTransitions && s.threadDeltas.length > 0) {
-    const lines = s.threadDeltas.map((tm) => {
-      const thr = n.threads[tm.threadId];
-      const desc = thr ? thr.description : tm.threadId;
-      const moves = (tm.updates ?? [])
-        .map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`)
-        .join(' ');
-      return `    <shift thread="${desc}" logType="${tm.logType}" updates="${moves}" />`;
-    });
-    children.push(`  <threads>\n${lines.join('\n')}\n  </threads>`);
-  }
+  // <threads> child intentionally omitted from per-scene entries — the
+  // per-thread <log> blocks (rendered separately under <threads>) already
+  // carry every delta with full event-type annotation. Re-emitting the same
+  // information here would duplicate context and waste tokens.
 
   if (fields.worldDeltas && s.worldDeltas.length > 0) {
     const lines = s.worldDeltas.flatMap((km) => {
@@ -348,7 +346,7 @@ function buildSystemKnowledgeBlock(graph: SystemGraph, tierLookup?: Map<string, 
       const connStr = conn?.length ? ` [${conn.join('; ')}]` : '';
       return `  <principle id="${n.id}"${attrs(n.id)}>${n.concept}${connStr}</principle>`;
     });
-    sections.push(`<principles hint="Fundamental truths — these MUST be obeyed.">\n${lines.join('\n')}\n</principles>`);
+    sections.push(`<principles hint="Fundamental truths. Must be obeyed.">\n${lines.join('\n')}\n</principles>`);
   }
 
   // Systems (organized mechanisms)
@@ -358,7 +356,7 @@ function buildSystemKnowledgeBlock(graph: SystemGraph, tierLookup?: Map<string, 
       const connStr = conn?.length ? ` [${conn.join('; ')}]` : '';
       return `  <system id="${n.id}"${attrs(n.id)}>${n.concept}${connStr}</system>`;
     });
-    sections.push(`<systems hint="Organized mechanisms — use these to drive conflict and reward preparation.">\n${lines.join('\n')}\n</systems>`);
+    sections.push(`<systems hint="Organized mechanisms. Drive conflict and reward preparation.">\n${lines.join('\n')}\n</systems>`);
   }
 
   // Constraints (hard limits)
@@ -368,7 +366,7 @@ function buildSystemKnowledgeBlock(graph: SystemGraph, tierLookup?: Map<string, 
       const connStr = conn?.length ? ` [${conn.join('; ')}]` : '';
       return `  <constraint id="${n.id}"${attrs(n.id)}>${n.concept}${connStr}</constraint>`;
     });
-    sections.push(`<constraints hint="Hard limits — costs, scarcity, boundaries that cannot be ignored.">\n${lines.join('\n')}\n</constraints>`);
+    sections.push(`<constraints hint="Hard limits. Costs, scarcity, boundaries. Cannot be ignored.">\n${lines.join('\n')}\n</constraints>`);
   }
 
   // Tensions (unresolved forces)
@@ -378,7 +376,7 @@ function buildSystemKnowledgeBlock(graph: SystemGraph, tierLookup?: Map<string, 
       const connStr = conn?.length ? ` [${conn.join('; ')}]` : '';
       return `  <tension id="${n.id}"${attrs(n.id)}>${n.concept}${connStr}</tension>`;
     });
-    sections.push(`<tensions hint="Unresolved contradictions — sources of conflict.">\n${lines.join('\n')}\n</tensions>`);
+    sections.push(`<tensions hint="Unresolved contradictions. Sources of conflict.">\n${lines.join('\n')}\n</tensions>`);
   }
 
   // Other types grouped together
@@ -395,65 +393,91 @@ function buildSystemKnowledgeBlock(graph: SystemGraph, tierLookup?: Map<string, 
 
   if (sections.length === 0) return '';
 
-  return `\n<system-graph nodes="${nodes.length}" edges="${validEdgeCount}" hint="Established system knowledge — principles, mechanisms, constraints, tensions. Scenes must operate within these truths. Connections shown as [relation→targetId] (outgoing) and [←relation sourceId] (incoming); reference existing IDs when relevant, new nodes need edges.">\n${sections.join('\n\n')}\n</system-graph>\n`;
+  return `\n<system-graph nodes="${nodes.length}" edges="${validEdgeCount}" hint="Established system knowledge: principles, mechanisms, constraints, tensions. Scenes must operate within these truths. Connections shown as [relation→targetId] (out) and [←relation sourceId] (in). Reuse existing IDs; new nodes need edges.">\n${sections.join('\n\n')}\n</system-graph>\n`;
 }
 
 
-/** Build a prompt block from story settings — returns empty string if all defaults */
+/** Build a prompt block from story settings — returns empty string if all defaults.
+ *  Each setting becomes a typed XML child so the LLM can parse the surface
+ *  structurally rather than scan prose. */
 export function buildStorySettingsBlock(n: NarrativeState): string {
   const s: StorySettings = { ...DEFAULT_STORY_SETTINGS, ...n.storySettings };
-  const lines: string[] = [];
+  const elements: string[] = [];
 
-  // POV mode
-  const povLabels: Record<string, string> = {
-    single: 'SINGLE POV — every scene must use the same POV character.',
-    ensemble: 'ENSEMBLE POV — this is a TRUE ENSEMBLE narrative. Every designated POV character is a co-lead, not a supporting player. Each must drive their own thread(s), own significant arcs, and make decisions that change the world independently of the others. Screen time distributes roughly evenly across the cast — no single character dominates. Avoid the trap of one central anchor with occasional cutaways; that is Single POV in disguise. POV typically comes in STREAKS (2-4 scenes per character before switching) so each perspective has room to breathe, but across any given arc, multiple POVs should appear. When distributing thread ownership, no single POV owns the majority of the narrative stakes. For declared polyphonic, choral, or mosaic forms (e.g. Faulkner-style polyvocality, Caribbean polyvocal tradition, works built on per-scene rotation), per-scene or per-paragraph rotation IS the form — honour the declared form over the default streak length.',
-    free: '', // no constraint
+  // POV
+  const povGuidance: Record<string, string> = {
+    single: 'Every scene uses the same POV character.',
+    ensemble:
+      'Every designated POV is a co-lead. Each drives their own thread(s), owns significant arcs, makes world-changing decisions independently. Screen time roughly even; no single character dominates. POV comes in streaks (2-4 scenes per character) so each perspective breathes, but every arc shows multiple POVs. No single POV owns the majority of stakes. For declared polyphonic/choral/mosaic forms, per-scene or per-paragraph rotation IS the form; honour it over the default streak length.',
+    free: '',
   };
+  const povCharacterLines = s.povCharacterIds
+    .map((id) => {
+      const char = n.characters[id];
+      return char
+        ? `    <character id="${id}" name="${char.name}" />`
+        : `    <character id="${id}" />`;
+    })
+    .join('\n');
   if (s.povMode !== 'free') {
-    lines.push(povLabels[s.povMode]);
+    const guidance = povGuidance[s.povMode];
+    let assignment = '';
     if (s.povCharacterIds.length > 0) {
-      const names = s.povCharacterIds
-        .map((id) => n.characters[id] ? `${n.characters[id].name} (${id})` : id)
-        .join(', ');
-      lines.push(`Designated POV character${s.povCharacterIds.length > 1 ? 's' : ''}: ${names}. Only these characters may appear in the "povId" field.${s.povMode === 'ensemble' && s.povCharacterIds.length > 1 ? ` Distribute POV meaningfully across ALL ${s.povCharacterIds.length} of them — not concentrated on one.` : ''}`);
+      const distribute =
+        s.povMode === 'ensemble' && s.povCharacterIds.length > 1
+          ? ` Distribute POV across ALL ${s.povCharacterIds.length}; do not concentrate on one.`
+          : '';
+      assignment = `\n  <assignment>Only the designated characters may appear in povId.${distribute}</assignment>`;
     } else if (s.povMode === 'ensemble') {
-      lines.push(`No explicit POV cast has been designated. Commit to an ensemble of 3–5 anchor characters up front and rotate POV among them across the story. Track this commitment — do not silently collapse to a single dominant POV. Each chosen anchor must own at least one thread and accumulate comparable screen time over the full arc. If this is a fresh generation and no anchors yet exist, establish them in the first arc and maintain rotation thereafter.`);
+      assignment = `\n  <assignment>No POV cast designated. Commit to 3-5 anchors up front, rotate among them, each owns at least one thread with comparable screen time. Establish in the first arc if none exist.</assignment>`;
     }
+    const charsBlock = povCharacterLines
+      ? `\n  <characters>\n${povCharacterLines}\n  </characters>`
+      : '';
+    elements.push(
+      `<pov mode="${s.povMode}">\n  <guidance>${guidance}</guidance>${charsBlock}${assignment}\n</pov>`,
+    );
   } else if (s.povCharacterIds.length > 0) {
-    const names = s.povCharacterIds
-      .map((id) => n.characters[id] ? `${n.characters[id].name} (${id})` : id)
-      .join(', ');
-    lines.push(`FREE POV with preferred characters: ${names}. Favour these characters as POV when the scene fits their perspective, but you may use any character when a different vantage is narratively stronger.`);
+    elements.push(
+      `<pov mode="free">\n  <guidance>Favour the preferred characters as POV when the scene fits; any character may be used when a different vantage is stronger.</guidance>\n  <characters>\n${povCharacterLines}\n  </characters>\n</pov>`,
+    );
   }
 
-  // Story direction
+  // Direction / constraints / guidance
   if (s.storyDirection.trim()) {
-    lines.push(`STORY DIRECTION (high-level north star): ${s.storyDirection.trim()}`);
+    elements.push(
+      `<story-direction hint="North star.">${s.storyDirection.trim()}</story-direction>`,
+    );
   }
-
-  // Story constraints (negative prompt)
   if (s.storyConstraints.trim()) {
-    lines.push(`STORY CONSTRAINTS (DO NOT do any of the following): ${s.storyConstraints.trim()}`);
+    elements.push(
+      `<story-constraints hint="Do NOT do any of the following.">${s.storyConstraints.trim()}</story-constraints>`,
+    );
   }
-
-  // Narrative guidance (editorial principles)
   if (s.narrativeGuidance.trim()) {
-    lines.push(`NARRATIVE GUIDANCE (editorial principles that govern how this story is told — scope discipline, reveal pacing, tonal rules, structural philosophy. These override default instincts):\n${s.narrativeGuidance.trim()}`);
+    elements.push(
+      `<narrative-guidance hint="Editorial principles. Override default instincts.">${s.narrativeGuidance.trim()}</narrative-guidance>`,
+    );
   }
 
-  // Story patterns (positive commandments)
+  // Patterns / anti-patterns
   if (n.patterns && n.patterns.length > 0) {
-    lines.push(`STORY PATTERNS (positive commandments — what makes this series good):\n${n.patterns.map(p => `• ${p}`).join('\n')}`);
+    const items = n.patterns.map((p) => `  <pattern>${p}</pattern>`).join('\n');
+    elements.push(
+      `<patterns hint="Positive commandments.">\n${items}\n</patterns>`,
+    );
   }
-
-  // Story anti-patterns (negative commandments)
   if (n.antiPatterns && n.antiPatterns.length > 0) {
-    lines.push(`STORY ANTI-PATTERNS (negative commandments — what to avoid):\n${n.antiPatterns.map(p => `• ${p}`).join('\n')}`);
+    const items = n.antiPatterns
+      .map((p) => `  <anti-pattern>${p}</anti-pattern>`)
+      .join('\n');
+    elements.push(
+      `<anti-patterns hint="Negative commandments.">\n${items}\n</anti-patterns>`,
+    );
   }
 
-  if (lines.length === 0) return '';
-  return `\n<narrative-settings>\n${lines.join('\n')}\n</narrative-settings>\n`;
+  if (elements.length === 0) return '';
+  return `\n<narrative-settings>\n${elements.join('\n')}\n</narrative-settings>\n`;
 }
 
 /** Format network annotations as XML attributes for inline use on entity
@@ -592,14 +616,14 @@ export function narrativeContext(
     artifactsByOwner.set(ownerId, list);
   }
 
-  // Helper: render continuity graph (nodes + edges) as XML — mirrors system knowledge rendering
-  const renderContinuityXml = (nodes: { id: string; type: string; content: string }[], edges: WorldEdge[], indent: string) => {
-    const nodeIds = new Set(nodes.map(n => n.id));
-    const nodeLines = nodes.map((kn) => `${indent}<knowledge id="${kn.id}" type="${kn.type}">${kn.content}</knowledge>`);
-    const relevantEdges = edges.filter(e => nodeIds.has(e.from) && nodeIds.has(e.to));
-    const edgeLines = relevantEdges.map(e => `${indent}<edge from="${e.from}" to="${e.to}" relation="${e.relation}" />`);
-    return [...nodeLines, ...edgeLines];
-  };
+  // Helper: render continuity nodes as XML. Each node's typed element name
+  // (trait / state / history / capability / belief / relation / secret /
+  // goal / weakness) carries the type — the tag IS the type, not a generic
+  // <knowledge> wrapper with a type attribute. Edges are intentionally
+  // omitted: the LLM consumes entity continuity as a list of typed claims,
+  // not as a graph traversal.
+  const renderContinuityXml = (nodes: { id: string; type: string; content: string }[], indent: string) =>
+    nodes.map((kn) => `${indent}<${kn.type} id="${kn.id}">${kn.content}</${kn.type}>`);
 
   // Recency-tiered continuity: keep nodes that are alive at the current index
   // AND whose origin scene is still in near/mid tier. Slicing by
@@ -613,11 +637,11 @@ export function narrativeContext(
   const characters = branchCharacters
     .map((c) => {
       const recentNodes = tieredContinuity(c.world.nodes);
-      const continuityLines = renderContinuityXml(recentNodes, c.world.edges, '  ');
+      const continuityLines = renderContinuityXml(recentNodes, '  ');
       const owned = artifactsByOwner.get(c.id) ?? [];
       const artifactLines = owned.map((a) => {
         const recentArtNodes = tieredContinuity(a.world.nodes);
-        const inner = renderContinuityXml(recentArtNodes, a.world.edges, '    ').join('\n');
+        const inner = renderContinuityXml(recentArtNodes, '    ').join('\n');
         return `  <artifact id="${a.id}" name="${a.name}" significance="${a.significance}"${networkAttrs(tierLookup.get(a.id))}>${inner ? `\n${inner}\n  ` : ''}</artifact>`;
       });
       const continuityBlock = continuityLines.length > 0 ? `\n${continuityLines.join('\n')}` : '';
@@ -628,12 +652,12 @@ export function narrativeContext(
   const locations = branchLocations
     .map((l) => {
       const recentNodes = tieredContinuity(l.world.nodes);
-      const continuityLines = renderContinuityXml(recentNodes, l.world.edges, '  ');
+      const continuityLines = renderContinuityXml(recentNodes, '  ');
       const parent = l.parentId ? ` parent="${n.locations[l.parentId]?.name ?? l.parentId}"` : '';
       const owned = artifactsByOwner.get(l.id) ?? [];
       const artifactLines = owned.map((a) => {
         const recentArtNodes = tieredContinuity(a.world.nodes);
-        const inner = renderContinuityXml(recentArtNodes, a.world.edges, '    ').join('\n');
+        const inner = renderContinuityXml(recentArtNodes, '    ').join('\n');
         return `  <artifact id="${a.id}" name="${a.name}" significance="${a.significance}"${networkAttrs(tierLookup.get(a.id))}>${inner ? `\n${inner}\n  ` : ''}</artifact>`;
       });
       const continuityBlock = continuityLines.length > 0 ? `\n${continuityLines.join('\n')}` : '';
@@ -681,19 +705,46 @@ export function narrativeContext(
       const marketAttr = belief
         ? ` category="${category}" lean="${t.outcomes[topIdx]}" p-lean="${topProb.toFixed(2)}" margin="${margin.toFixed(1)}" vol="${belief.volume.toFixed(1)}" volatility="${belief.volatility.toFixed(2)}" energy="${recentEnergy.toFixed(2)}" silent="${Number.isFinite(silent) ? silent : '∞'}"`
         : ` category="${category}"`;
-      const outcomeSummary = t.outcomes
-        .map((o, i) => `${o}=${(probs[i] ?? 0).toFixed(2)}`)
-        .join(' · ');
-      // Recency-tiered log entries: keep logs from near/mid scenes only. Older
-      // log detail is carried by scene-history summaries.
-      const logNodes = Object.values(t.threadLog?.nodes ?? {})
+      // Market: one outcome per option.
+      const marketBlock = `\n  <market>\n${t.outcomes
+        .map((o, i) => `    <outcome name="${o.replace(/"/g, '&quot;')}" p="${(probs[i] ?? 0).toFixed(2)}" />`)
+        .join('\n')}\n  </market>`;
+      // Replay logits chronologically so each rendered event can report the
+      // lead AFTER the update. Replay covers every node (even ones the
+      // recency filter drops) so kept events still show correct trajectories.
+      const orderedLog = Object.values(t.threadLog?.nodes ?? {}).slice().sort((a, b) => {
+        const ia = threadLogOriginScene.get(a.id) ?? -1;
+        const ib = threadLogOriginScene.get(b.id) ?? -1;
+        return ia - ib;
+      });
+      const eventLead = new Map<string, { lead: string; p: number }>();
+      {
+        let logits = new Array(t.outcomes.length).fill(0);
+        for (const ln of orderedLog) {
+          if (ln.updates && ln.updates.length > 0) {
+            logits = updateLogits(logits, t.outcomes, ln.updates);
+          }
+          const probsHere = softmax(logits);
+          let topIdxHere = 0;
+          for (let i = 1; i < probsHere.length; i++) if (probsHere[i] > probsHere[topIdxHere]) topIdxHere = i;
+          eventLead.set(ln.id, { lead: t.outcomes[topIdxHere], p: probsHere[topIdxHere] });
+        }
+      }
+      // Recency-tiered render window: keep events from near/mid scenes only.
+      const renderedLogNodes = orderedLog
         .filter((ln) => keepThreadLogNode(ln.id))
         .slice(-ENTITY_LOG_CONTEXT_LIMIT);
-      const logBlock = logNodes.length > 0
-        ? `\n  <log>${logNodes.map((ln) => `[${ln.type}] ${ln.content}`).join(' | ')}</log>`
+      const renderEvent = (ln: typeof orderedLog[number]): string => {
+        const state = eventLead.get(ln.id);
+        const leadAttr = state ? ` lead="${state.lead.replace(/"/g, '&quot;')}"` : '';
+        const pAttr = state ? ` p="${state.p.toFixed(2)}"` : '';
+        return `    <event type="${ln.type}"${leadAttr}${pAttr}>${ln.content}</event>`;
+      };
+      const logBlock = renderedLogNodes.length > 0
+        ? `\n  <log hint="lead+p track the leading outcome after each update; read top-down for trajectory.">\n${renderedLogNodes.map(renderEvent).join('\n')}\n  </log>`
         : '';
       const horizonAttr = ` horizon="${t.horizon ?? 'medium'}"`;
-      return `<thread id="${t.id}"${marketAttr}${horizonAttr}${age > 0 ? ` age="${age}" deltas="${deltas}"` : ''}${participantNames ? ` participants="${participantNames}"` : ''}${depsAttr}${networkAttrs(tierLookup.get(t.id))}>${t.description}\n  <market>${outcomeSummary}</market>${logBlock}\n</thread>`;
+      return `<thread id="${t.id}"${marketAttr}${horizonAttr}${age > 0 ? ` age="${age}" deltas="${deltas}"` : ''}${participantNames ? ` participants="${participantNames}"` : ''}${depsAttr}${networkAttrs(tierLookup.get(t.id))}>${t.description}${marketBlock}${logBlock}\n</thread>`;
     })
     .filter(Boolean)
     .join('\n');
@@ -711,20 +762,34 @@ export function narrativeContext(
       return `<relationship from="${fromName}" to="${toName}" valence="${Math.round(r.valence * 100) / 100}">${r.type}</relationship>`;
     })
     .join('\n');
-  // Tiered scene history with arc rollup for far entries — see classifyTier /
-  // renderSceneEntry. Near/mid scenes render individually. Consecutive
-  // far-tier scenes in the same arc collapse into a single arc-summary entry
-  // (the arc's worldState snapshot is the compact chess-board memory). World
-  // builds always render as a single summary line and force a flush.
+  // Tiered scene history grouped by arc — mirrors the outline's structural
+  // grouping so the LLM reads continuity arc-by-arc rather than as a flat
+  // event log. Near/mid scenes render individually as <entry> children of
+  // their arc's <arc> wrapper. Consecutive far-tier scenes in the same arc
+  // collapse into a single arc-summary entry (the arc's worldState snapshot
+  // is the compact chess-board memory) which lives inside the same wrapper.
+  // World builds break the flow and render as standalone siblings between
+  // arc wrappers, matching outlineContext.
   const tierCounts = { near: 0, mid: 0, far: 0, arcRollup: 0, farCompressed: 0 };
-  const sceneEntries: string[] = [];
+  type WorldBuildSection = { kind: 'world-build'; line: string };
+  type ArcSection = { kind: 'arc'; arcId: string; arcName: string; entries: string[]; present: boolean };
+  type Section = WorldBuildSection | ArcSection;
+  const sections: Section[] = [];
+  let currentArc: ArcSection | null = null;
   type ArcBuffer = { arcId: string; firstIndex: number; lastIndex: number; sceneCount: number };
   let arcBuffer: ArcBuffer | null = null;
 
-  const flushArc = () => {
+  const ensureArcSection = (arcId: string): ArcSection => {
+    if (currentArc && currentArc.arcId === arcId) return currentArc;
+    if (currentArc) sections.push(currentArc);
+    const arc = n.arcs[arcId];
+    currentArc = { kind: 'arc', arcId, arcName: arc?.name ?? 'unnamed arc', entries: [], present: false };
+    return currentArc;
+  };
+
+  const flushArcBuffer = () => {
     if (!arcBuffer) return;
     const arc = n.arcs[arcBuffer.arcId];
-    const arcName = arc?.name ?? 'unnamed arc';
     const indicesAttr = arcBuffer.firstIndex === arcBuffer.lastIndex
       ? `index="${arcBuffer.firstIndex}"`
       : `indices="${arcBuffer.firstIndex}-${arcBuffer.lastIndex}"`;
@@ -732,12 +797,21 @@ export function narrativeContext(
       || arc?.directionVector?.trim()
       || `${arcBuffer.sceneCount} scene${arcBuffer.sceneCount > 1 ? 's' : ''} elapsed — no chess-board snapshot recorded`;
     const compressionAttr = arcBuffer.sceneCount > 1 ? ` compresses="${arcBuffer.sceneCount}x"` : '';
-    sceneEntries.push(
-      `<entry ${indicesAttr} type="arc-summary" arc="${arcName}" scenes="${arcBuffer.sceneCount}"${compressionAttr}>\n  ${body}\n</entry>`,
+    const section = ensureArcSection(arcBuffer.arcId);
+    section.entries.push(
+      `  <entry ${indicesAttr} type="arc-summary" scenes="${arcBuffer.sceneCount}"${compressionAttr}>\n    ${body}\n  </entry>`,
     );
     tierCounts.arcRollup++;
     tierCounts.farCompressed += arcBuffer.sceneCount;
     arcBuffer = null;
+  };
+
+  const flushCurrentArc = () => {
+    flushArcBuffer();
+    if (currentArc) {
+      sections.push(currentArc);
+      currentArc = null;
+    }
   };
 
   for (let i = 0; i < keysUpToCurrent.length; i++) {
@@ -746,10 +820,15 @@ export function narrativeContext(
     if (!s) continue;
     const globalIdx = i + 1;
     const distanceFromCurrent = totalEntries - 1 - i;
+    const isPresent = i === keysUpToCurrent.length - 1;
+    const presentAttr = isPresent ? ' present="true"' : '';
 
     if (s.kind === 'world_build') {
-      flushArc();
-      sceneEntries.push(`<entry index="${globalIdx}" type="world-build">${s.summary}</entry>`);
+      flushCurrentArc();
+      sections.push({
+        kind: 'world-build',
+        line: `<entry index="${globalIdx}" type="world-build"${presentAttr}>${s.summary}</entry>`,
+      });
       continue;
     }
 
@@ -757,7 +836,7 @@ export function narrativeContext(
     tierCounts[tier]++;
 
     if (tier === 'far' && s.arcId) {
-      if (arcBuffer && arcBuffer.arcId !== s.arcId) flushArc();
+      if (arcBuffer && arcBuffer.arcId !== s.arcId) flushArcBuffer();
       if (!arcBuffer) {
         arcBuffer = { arcId: s.arcId, firstIndex: globalIdx, lastIndex: globalIdx, sceneCount: 1 };
       } else {
@@ -767,29 +846,44 @@ export function narrativeContext(
       continue;
     }
 
-    flushArc();
-    sceneEntries.push(renderSceneEntry(n, s, globalIdx, tier));
+    flushArcBuffer();
+    const section = ensureArcSection(s.arcId);
+    // Indent the inner entry so the nested structure stays readable.
+    section.entries.push('  ' + renderSceneEntry(n, s, globalIdx, tier, isPresent).replace(/\n/g, '\n  '));
+    if (isPresent) section.present = true;
   }
-  flushArc();
+  flushCurrentArc();
 
   // Current world state — only shown when the CURRENT arc (the arc of the
-  // most recent resolved scene) has a worldState of its own. Any older arc's
-  // state is stale relative to the current scene and must not be surfaced —
-  // a stale snapshot lies about the position. If the current arc has no
-  // state yet, no world-state entry is emitted.
+  // most recent resolved scene) has a worldState of its own. Stale snapshots
+  // from older arcs are NOT surfaced. Rendered as the closing child of the
+  // active arc's <arc> wrapper — semantically it IS the arc's current state.
   for (let i = keysUpToCurrent.length - 1; i >= 0; i--) {
     const entry = resolveEntry(n, keysUpToCurrent[i]);
     if (!entry || entry.kind !== 'scene') continue;
     const arc = n.arcs[entry.arcId];
     if (arc?.worldState) {
-      sceneEntries.push(
-        `<entry type="world-state" arc="${arc.name}" hint="Current ground-truth compact state snapshot — chess-board position; supersedes replaying prior deltas.">\n  ${arc.worldState}\n</entry>`,
+      const presentArcSection = [...sections].reverse().find(
+        (sec): sec is ArcSection => sec.kind === 'arc' && sec.arcId === entry.arcId,
       );
+      const worldStateEntry = `  <entry type="world-state" hint="Chess-board snapshot of the active arc. Supersedes replaying prior deltas.">\n    ${arc.worldState}\n  </entry>`;
+      if (presentArcSection) {
+        presentArcSection.entries.push(worldStateEntry);
+      } else {
+        // Fallback — no matching arc section (defensive; should not normally happen).
+        sections.push({ kind: 'world-build', line: `<entry type="world-state" arc="${arc.name}">\n  ${arc.worldState}\n</entry>` });
+      }
     }
     break;
   }
 
-  const sceneHistory = sceneEntries.join('\n');
+  const sceneHistory = sections
+    .map((sec) => {
+      if (sec.kind === 'world-build') return sec.line;
+      const presentAttr = sec.present ? ' present="true"' : '';
+      return `<arc name="${sec.arcName}"${presentAttr}>\n${sec.entries.join('\n')}\n</arc>`;
+    })
+    .join('\n\n');
 
   // ── System Knowledge Graph (scoped to time horizon) ────────────────
   const horizonSystemGraph = buildCumulativeSystemGraph(
@@ -813,42 +907,31 @@ export function narrativeContext(
   const compressionRatio = tierCounts.arcRollup > 0
     ? ` Far-tier compression: ${tierCounts.farCompressed} scenes → ${tierCounts.arcRollup} arc-summary entr${tierCounts.arcRollup === 1 ? 'y' : 'ies'} (${(tierCounts.farCompressed / tierCounts.arcRollup).toFixed(1)}x avg).`
     : '';
-  const historyNote = `${keysUpToCurrent.length} scenes — ${tierCounts.near} near, ${tierCounts.mid} mid, ${tierCounts.far} far.${compressionRatio} Arc-summary bodies are the chess-board snapshot for that span; treat them as ground truth and do not try to reconstruct individual scenes from them.`;
+  const historyNote = `${keysUpToCurrent.length} scenes. ${tierCounts.near} near, ${tierCounts.mid} mid, ${tierCounts.far} far.${compressionRatio} Arc-summary bodies are the chess-board snapshot for that span; treat as ground truth.`;
 
   return `<narrative title="${n.title}">
-<network-annotations hint="Every character / location / artifact / thread / system node below carries cumulative reasoning-network attributes:
-  tier (hot / warm / cold / fresh) — heat snapshot relative to the network
-  attributions — total times referenced across reasoning graphs
-  topology (bridge / hub / leaf / isolated) — position in the activation web (bridges connect ≥2 force cohorts; hubs are within-cohort centres)
-Use these to decide what to deepen vs. what to surface — load-bearing nodes are bridges and hubs; cold nodes are reactivation candidates." />
+<network-annotations hint="Every node below carries cumulative network attrs: tier (hot/warm/cold/fresh), attributions (cross-graph reference count), topology (bridge/hub/leaf/isolated). Load-bearing = bridges and hubs; cold = reactivation candidates." />
 ${systemKnowledgeBlock}${storySettingsBlock}
-<characters hint="Continuity tracks what each character knows. Use this to determine what they can reference, discover, or be surprised by.">
+<characters hint="Continuity = what each character knows. Drives what they can reference, discover, or be surprised by.">
 ${characters}
 </characters>
 
-<locations hint="Nested via parent attribute. Characters must physically travel between locations — no teleportation.">
+<locations hint="Nested via parent attribute. Characters must physically travel between locations.">
 ${locations}
 </locations>
 
-<threads hint="Threads are COMPELLING QUESTIONS the story is pricing as prediction markets over named outcomes. Each thread carries a category interpreting its current market state:
-  saturating — margin near closure; one committal (payoff/twist) away from resolving
-  volatile — recent swings (either a spiky scene or accumulated drift); twists against prior trend earn weight
-  contested — high entropy with real volume; either side is fair game
-  committed — one outcome clearly leads (p≥0.65); market expects this unless you twist it
-  developing — recently touched and actively moving, no decisive shape yet; pace it and let it settle
-  dormant — no recent touches and no distinctive signal; let it decay unless this scene re-engages it
-Plus: lean (leading outcome), p-lean (its probability), margin (logit gap to runner-up), vol (attention), volatility (EWMA of single-scene shifts), energy (summed absolute logit motion across the recent log window — catches gradual drift EWMA smooths out), silent (scenes since last touched). The <log> carries the accumulated event trace.">
+<threads hint="Compelling questions priced as prediction markets over named outcomes. category: saturating (near closure), volatile (recent swings), contested (high entropy, real volume), committed (one outcome leads p&gt;=0.65), developing (touched, no shape yet), dormant (untouched, decaying). Attrs: lean (top outcome), p-lean (its prob), margin (logit gap to runner-up), vol (attention), volatility (EWMA of per-scene shifts), energy (recent logit motion), silent (scenes since last touched).">
 ${threads}
 </threads>
 
-<relationships hint="Valence: negative = hostile/tense, positive = warm/allied. All interactions must reflect the current valence. Shifts happen through dramatic moments, not narration.">
+<relationships hint="Valence: negative = hostile, positive = allied. Interactions must reflect current valence. Shifts happen through dramatic moments.">
 ${relationships}
 </relationships>
 
-<scene-history scope="${historyNote}" hint="Source of truth for long-term continuity. Far-tier scenes are rolled up into arc-summary entries — each carries the arc's chess-board worldState as the compact memory of what that span resolved to. Near/mid entries expose per-scene deltas. Each entry's time-gap attribute is the elapsed time since the prior scene — use it to read pacing across the history and decide the gap into the next scene.">
+<scene-history scope="${historyNote}" hint="Continuity grouped by arc. present=&quot;true&quot; marks the active arc and the latest entry within it. type=&quot;world-state&quot; is the active arc's chess-board snapshot. World-build entries sit between arcs. time-gap is elapsed time since the prior scene.">
 ${sceneHistory}
 </scene-history>
-<valid-ids hint="You MUST use ONLY these exact IDs — do NOT invent new ones.">
+<valid-ids hint="Use ONLY these IDs. Do not invent new ones.">
   <characters>${charIdList}</characters>
   <locations>${locIdList}</locations>
   <threads>${threadIdList}</threads>${artifactEntries.length > 0 ? `\n  <artifacts>${artifactEntries.map((a) => a.id).join(', ')}</artifacts>` : ''}${sysIdList ? `\n  <system-nodes>${sysIdList}</system-nodes>` : ''}
@@ -1400,18 +1483,24 @@ export function outlineContext(
     for (const sid of arc.sceneIds) arcForScene.set(sid, arc.id);
   }
 
-  // Build scene entries grouped by arc, with world commits as top-level markers between arcs
-  type Section = { kind: 'arc'; arcName: string; entries: string[] } | { kind: 'world-commit'; line: string };
+  // Build scene entries grouped by arc, with world commits as top-level markers between arcs.
+  // The LAST entry in `keysUpToCurrent` is the "present" — the scene the cursor is on. It's
+  // tagged with `present="true"` so any downstream LLM call reading this outline can anchor
+  // every "now" claim against an explicit marker rather than inferring it from list position.
+  type Section = { kind: 'arc'; arcName: string; entries: string[]; arcId: string } | { kind: 'world-commit'; line: string };
   const sections: Section[] = [];
   const arcGroupMap = new Map<string, Section & { kind: 'arc' }>();
+  const lastKey = keysUpToCurrent[keysUpToCurrent.length - 1];
 
   let sceneNum = 0;
   for (const k of keysUpToCurrent) {
     const entry = resolveEntry(n, k);
     if (!entry) continue;
+    const isLatest = k === lastKey;
+    const presentAttr = isLatest ? ' present="true"' : '';
 
     if (entry.kind === 'world_build') {
-      sections.push({ kind: 'world-commit', line: `<world-commit>${entry.summary}</world-commit>` });
+      sections.push({ kind: 'world-commit', line: `<world-commit${presentAttr}>${entry.summary}</world-commit>` });
       continue;
     }
 
@@ -1424,25 +1513,40 @@ export function outlineContext(
       group = arcGroupMap.get(arcId)!;
     } else {
       const name = arc?.name ?? 'Standalone';
-      group = { kind: 'arc', arcName: name, entries: [] };
+      group = { kind: 'arc', arcName: name, entries: [], arcId: arcId ?? '' };
       if (arcId) arcGroupMap.set(arcId, group);
       sections.push(group);
     }
 
     const povName = entry.povId ? (n.characters[entry.povId]?.name ?? entry.povId) : 'narrator';
     const locName = n.locations[entry.locationId]?.name ?? entry.locationId;
+    // Match the metadata richness of narrativeContext's <entry> tags so the
+    // outline can be read with the same pacing/transition signals: time-gap
+    // (elapsed since prior scene) + transition (natural-language phrase).
+    const timeGap = entry.timeDelta ? formatTimeDelta(entry.timeDelta) : '';
+    const timeGapAttr = timeGap ? ` time-gap="${timeGap}"` : '';
+    const transitionPhrase = entry.timeDelta?.transition?.trim();
+    const transitionAttr = transitionPhrase
+      ? ` transition="${transitionPhrase.replace(/"/g, '&quot;')}"`
+      : '';
     group.entries.push(
-      `  <scene index="${sceneNum}" pov="${povName}" location="${locName}">${entry.summary}</scene>`,
+      `  <scene index="${sceneNum}" pov="${povName}" location="${locName}"${timeGapAttr}${transitionAttr}${presentAttr}>${entry.summary}</scene>`,
     );
   }
+
+  // Mark the arc that contains the present scene so the LLM can spot the
+  // active arc at a glance — independent of the per-scene marker.
+  const latestEntry = lastKey ? resolveEntry(n, lastKey) : null;
+  const latestArcId = latestEntry?.kind === 'scene' ? arcForScene.get(latestEntry.id) : undefined;
 
   // Format sections
   const arcSections = sections.map((s) => {
     if (s.kind === 'world-commit') return s.line;
-    return `<arc name="${s.arcName}">\n${s.entries.join('\n')}\n</arc>`;
+    const presentAttr = latestArcId && s.arcId === latestArcId ? ' present="true"' : '';
+    return `<arc name="${s.arcName}"${presentAttr}>\n${s.entries.join('\n')}\n</arc>`;
   }).join('\n\n');
 
-  return `<story-summary title="${n.title}" scenes="${sceneNum}" hint="Narrative recap — scene-by-scene progression grouped by arc.">
+  return `<story-summary title="${n.title}" scenes="${sceneNum}" hint="Scenes grouped by arc, chronological. present=\"true\" marks the cursor's position and its arc. Everything after is unwritten.">
 ${arcSections}
 </story-summary>`;
 }
