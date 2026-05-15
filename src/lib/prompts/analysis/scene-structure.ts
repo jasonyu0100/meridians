@@ -313,14 +313,19 @@ ${PROMPT_MARKET_PRINCIPLES}
   <field name="value">integer. Positive = forward, 0 = concurrent / first scene, negative = backward jump on the timeline (flashback OR diegetic time-travel — see special cases).</field>
   <field name="unit" values="minute | hour | day | week | month | year" />
   <field name="transition" optional="true">Short natural-language phrase capturing the English-language flow of the transition — "the next morning", "years before, when he was a boy", "by the time the funeral closed", "later that same evening". Carries the prose-level shape the {value, unit} pair cannot; downstream prose layers read this verbatim. Omit only when the source itself gives no transitional cue.</field>
-  <example phrase="moments later">{value: 1, unit: "minute", transition: "moments later"}</example>
-  <example phrase="that evening">{value: 6, unit: "hour", transition: "that evening"}</example>
-  <example phrase="three years later">{value: 3, unit: "year", transition: "three years later"}</example>
-  <example phrase="back to a childhood memory">{value: -20, unit: "year", transition: "years before, when she was a child"}</example>
-  <example phrase="consciousness rewinds to youth">{value: -65, unit: "year", transition: "consciousness journeys backward through time, reborn at age 15"}</example>
-  <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment as the prior scene (parallel POV / cutaway / simultaneous vantage), OR the very FIRST scene of the work. Concurrent is for SAME-MOMENT-DIFFERENT-VANTAGE only; do NOT use {value: 0} as a default for "something happened that's hard to time."</special-case>
-  <special-case kind="flashback">Negative value, narrative EVENTUALLY RETURNS. A memory, an excerpt, a recalled scene under present pressure. The next return-to-present scene's positive timeDelta should roughly cancel the jump so the cumulative timeline realigns. Approximate is fine.</special-case>
-  <special-case kind="time-travel">Negative value, narrative NOW LIVES in the new time — no return. A character travels back diegetically (consciousness rewind, regression artefact, paradox-prone mechanic) and subsequent scenes are relative to the NEW position. Distinguished from flashback by the absence of any later cancelling jump. e.g. {value: -65, unit: "year", transition: "the Spring Autumn Cicada rewinds his consciousness to youth"}. Never classify a time-travel event as concurrent; the rewind has a clear direction (backward) and a clear magnitude.</special-case>
+  <example>{value: 1, unit: "minute", transition: "moments later"}</example>
+  <example>{value: 6, unit: "hour", transition: "that evening"}</example>
+  <example>{value: 3, unit: "year", transition: "three years later"}</example>
+  <example>{value: -10, unit: "year", transition: "flashback to her schooldays"}</example>
+  <example>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</example>
+  <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment, different POV / vantage, OR the FIRST scene. Do NOT default to 0 for anything else.</special-case>
+  <special-case kind="flashback">Negative value, narrative RETURNS. Memory, excerpt, or recalled scene; a later forward-scene cancels the jump.</special-case>
+  <special-case kind="time-travel">Negative value, narrative LIVES in the new time. No return; subsequent deltas relative to the new position.</special-case>
+  <sign-alignment critical="true">Sign matches transition direction. Backward phrase ("earlier", "ago", "X before", flashback, Time-Turner-style rewind) = NEGATIVE value. Forward phrase ("later", "next morning", "X after") = POSITIVE value.
+    <correct>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</correct>
+    <correct>{value: -10, unit: "year", transition: "flashback to her schooldays"}</correct>
+    <wrong>{value: 3, unit: "hour", transition: "three hours earlier, using the Time-Turner"} — phrase is backward, sign is forward.</wrong>
+  </sign-alignment>
   <rule>ESTIMATE — read prose cues, pick the most plausible value. Default to small units for same-day gaps, days/weeks for section breaks.</rule>
   <rule>RELATIVE — no absolute calendar anchor.</rule>
   <rule>When the source's sections are not chronological events (typical of expository / argumentative structures), default to {value: 0, unit: "minute"} and use non-zero only when one section genuinely follows another in narrative time.</rule>
