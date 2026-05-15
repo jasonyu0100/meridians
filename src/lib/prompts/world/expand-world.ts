@@ -235,9 +235,8 @@ ${PROMPT_ENTITY_INTEGRATION}
   <rule>Focus on the structural WHY behind the expansion — what abstract rules, mechanisms, gate conditions, propagation laws, power structures, or tensions make these new entities meaningful?</rule>
 </system-knowledge-deltas>
 
-<attribution-skeleton hint="The expansion's contribution to the cumulative network graph. Names which existing ids this expansion structurally leans on and how new + existing ids wire together across kinds.">
-  <rule>Populate \`attributions\` with EXISTING IDs (any kind — C-N, L-N, A-N, T-N, SYS-N) that this expansion structurally engages. Newly-introduced entities and system nodes get attribution credit automatically downstream; don't double-list them. Cite an id only when removing it would change the expansion's meaning. 0–15 typical.</rule>
-  <rule>Populate \`attributionEdges\` with typed cross-kind connections between attributed ids (or new ids the expansion introduces) — character ↔ system rule, thread ↔ location, artifact ↔ character, system ↔ system. Use the CRG relation vocabulary: enables, constrains, requires, risks, causes, reveals, develops, resolves, supersedes.</rule>
-  <rule>Bias toward CROSS-KIND edges that no typed delta already captures. relationshipDeltas already covers character↔character; systemDeltas.addedEdges already covers system↔system. attributionEdges earns its keep on the cross-kind wiring (character→system, thread→location, etc.) that builds the structural skeleton over time.</rule>
+<attribution-skeleton hint="Expansion's contribution to the cumulative network graph. Emit at end.">
+  <attributions>Existing ids the expansion structurally engages (C/L/A/T/SYS). Skip newly-introduced ids — they credit at introduction. 0–15 typical.</attributions>
+  <attribution-edges>Typed cross-kind connections between attributed ids — character↔system, thread↔location, artifact↔character. Relation: enables, constrains, requires, risks, causes, reveals, develops, resolves, supersedes. Don't duplicate same-kind wiring already in relationshipDeltas / systemDeltas.addedEdges.</attribution-edges>
 </attribution-skeleton>`;
 }

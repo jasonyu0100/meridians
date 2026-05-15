@@ -4,9 +4,12 @@ import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/store';
 import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/network-graph';
+import type { AttributionEdgeRelation } from '@/types/narrative';
 
 type NNode = d3.SimulationNodeDatum & NetworkNode & { degree: number };
-type NLink = d3.SimulationLinkDatum<NNode> & { weight: number };
+type NLink = d3.SimulationLinkDatum<NNode> & { weight: number; relations?: AttributionEdgeRelation[] };
+
+type Scope = 'scene' | 'arc' | 'narrative';
 
 // Force palette — matches CubeCornerBadge / ForcesOverviewSlide.
 const FORCE_FILL: Record<NetworkNode['kind'], string> = {
@@ -55,15 +58,44 @@ export default function NetworkView() {
 
   const [colorMode, setColorMode] = useState<ColorMode>('heat');
   const [showLabels, setShowLabels] = useState(true);
+  const [scope, setScope] = useState<Scope>('narrative');
   const [tooltip, setTooltip] = useState<{ x: number; y: number; node: NetworkNode } | null>(null);
 
-  const network = useMemo(
-    () =>
-      narrative
-        ? aggregateNetworkGraph(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex)
-        : { nodes: [], edges: [], graphCount: 0 },
-    [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex],
-  );
+  // Scope-aware aggregation:
+  //   narrative — every resolved key up to the current scene (cumulative)
+  //   arc       — only resolved keys belonging to the current arc (scenes
+  //               sharing the current scene's arcId, up to the current index)
+  //   scene     — only the current scene (single attribution step)
+  // Arc and scene scopes hide edge relation labels; scene scope shows them
+  // (one step → at most one relation per edge, so the label is meaningful).
+  const network = useMemo(() => {
+    if (!narrative) return { nodes: [], edges: [], graphCount: 0 };
+    const keys = state.resolvedEntryKeys;
+    const idx = state.viewState.currentSceneIndex;
+    if (scope === 'narrative') {
+      return aggregateNetworkGraph(narrative, keys, idx);
+    }
+    if (scope === 'scene') {
+      const key = keys[idx];
+      if (!key) return aggregateNetworkGraph(narrative, [], -1);
+      return aggregateNetworkGraph(narrative, [key], 0);
+    }
+    // arc scope — find current scene's arcId, filter keys to scenes in that arc.
+    const currentKey = keys[idx];
+    const currentScene = currentKey ? narrative.scenes[currentKey] : undefined;
+    const arcId = currentScene?.arcId;
+    if (!arcId) return aggregateNetworkGraph(narrative, [], -1);
+    const arcKeys = keys.slice(0, idx + 1).filter((k) => {
+      const s = narrative.scenes[k];
+      return s && s.arcId === arcId;
+    });
+    return aggregateNetworkGraph(narrative, arcKeys, arcKeys.length - 1);
+  }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex, scope]);
+
+  // Edge labels are only meaningful in scene scope — at higher scopes, multiple
+  // edges between the same pair collapse into one network edge whose `relations`
+  // could carry contradictory relations across scenes. Hide them entirely there.
+  const showEdgeLabels = scope === 'scene';
 
   const tierCounts = useMemo(() => {
     const counts: Record<HeatTier, number> = { hot: 0, warm: 0, cold: 0, fresh: 0 };
@@ -114,6 +146,7 @@ export default function NetworkView() {
     svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
 
     g.append('g').attr('class', 'n-links');
+    g.append('g').attr('class', 'n-edge-labels');
     g.append('g').attr('class', 'n-nodes');
     g.append('g').attr('class', 'n-labels');
 
@@ -187,7 +220,12 @@ export default function NetworkView() {
     const nodeMap = new Map(simNodes.map((n) => [n.id, n]));
     const simLinks: NLink[] = network.edges
       .filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to))
-      .map((e) => ({ source: nodeMap.get(e.from)!, target: nodeMap.get(e.to)!, weight: e.weight }));
+      .map((e) => ({
+        source: nodeMap.get(e.from)!,
+        target: nodeMap.get(e.to)!,
+        weight: e.weight,
+        relations: e.relations,
+      }));
 
     const maxWeight = Math.max(...simLinks.map((l) => l.weight), 1);
 
@@ -210,6 +248,24 @@ export default function NetworkView() {
     linkSel.enter().append('line').merge(linkSel)
       .attr('stroke', '#ffffff20')
       .attr('stroke-width', (d) => Math.max(0.5, 0.5 + (d.weight / maxWeight) * 3));
+
+    // Edge labels (scene scope only) — render the relation token mid-line.
+    // For scopes that hide labels, the data join below clears the layer.
+    const edgeLabelData = showEdgeLabels
+      ? simLinks.filter((l) => l.relations && l.relations.length > 0)
+      : [];
+    const edgeLabelSel = g.select<SVGGElement>('g.n-edge-labels')
+      .selectAll<SVGTextElement, NLink>('text')
+      .data(edgeLabelData, (d) => `${(d.source as NNode).id}-${(d.target as NNode).id}`);
+    edgeLabelSel.exit().remove();
+    edgeLabelSel.enter().append('text')
+      .attr('text-anchor', 'middle')
+      .attr('pointer-events', 'none')
+      .merge(edgeLabelSel)
+      .attr('font-size', '9px')
+      .attr('fill', '#9CA3AF')
+      .attr('opacity', 0.75)
+      .text((d) => (d.relations ?? []).join(' · '));
 
     // Nodes
     const nodeSel = g.select<SVGGElement>('g.n-nodes')
@@ -298,6 +354,9 @@ export default function NetworkView() {
         .attr('y1', (d) => (d.source as NNode).y ?? 0)
         .attr('x2', (d) => (d.target as NNode).x ?? 0)
         .attr('y2', (d) => (d.target as NNode).y ?? 0);
+      g.select('g.n-edge-labels').selectAll<SVGTextElement, NLink>('text')
+        .attr('x', (d) => (((d.source as NNode).x ?? 0) + ((d.target as NNode).x ?? 0)) / 2)
+        .attr('y', (d) => (((d.source as NNode).y ?? 0) + ((d.target as NNode).y ?? 0)) / 2 - 4);
       g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
         .attr('cx', (d) => d.x ?? 0)
         .attr('cy', (d) => d.y ?? 0);
@@ -305,7 +364,7 @@ export default function NetworkView() {
         .attr('x', (d) => d.x ?? 0)
         .attr('y', (d) => (d.y ?? 0) + radiusOf(d) + 12);
     });
-  }, [network, dispatch]);
+  }, [network, dispatch, showEdgeLabels]);
 
   if (!narrative) {
     return (
@@ -317,8 +376,14 @@ export default function NetworkView() {
 
   return (
     <div className="flex flex-col absolute inset-0 z-20">
-      {/* Top legend strip — matches the KnowledgeGraphView pattern */}
+      {/* Top legend strip — scope tabs on the left, then color / label toggles, swatches, scope footer */}
       <div className="shrink-0 flex items-center gap-0 px-2 h-7 border-b border-border glass-panel z-30 overflow-x-auto">
+        <ScopeTab active={scope === 'scene'} onClick={() => setScope('scene')} label="Scene" />
+        <ScopeTab active={scope === 'arc'} onClick={() => setScope('arc')} label="Arc" />
+        <ScopeTab active={scope === 'narrative'} onClick={() => setScope('narrative')} label="Narrative" />
+
+        <div className="w-px h-3 bg-border mx-1" />
+
         <button
           onClick={() => setColorMode('heat')}
           className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${colorMode === 'heat' ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
@@ -357,9 +422,7 @@ export default function NetworkView() {
 
         <div className="w-px h-3 bg-border mx-1" />
 
-        <span className="text-[9px] text-text-dim/60 px-1">
-          {network.graphCount} graph{network.graphCount === 1 ? '' : 's'} · cumulative to scene {state.viewState.currentSceneIndex + 1}
-        </span>
+        <span className="text-[9px] text-text-dim/60 px-1">{scopeFooter(scope, network.graphCount, state.viewState.currentSceneIndex)}</span>
       </div>
 
       <div className="relative flex-1 overflow-hidden">
@@ -367,7 +430,11 @@ export default function NetworkView() {
         {network.graphCount === 0 && (
           <div className="absolute inset-0 flex items-center justify-center px-8 text-center pointer-events-none">
             <p className="text-text-dim text-sm italic max-w-md">
-              No reasoning graphs yet at this point in the timeline. Generate a per-arc or world-build reasoning graph and the network will populate as you scrub forward.
+              {scope === 'scene'
+                ? "This scene didn't declare any attributions or edges yet."
+                : scope === 'arc'
+                  ? 'No scenes in the current arc carry attributions yet. Scrub forward or generate scenes for this arc.'
+                  : 'No attributions yet on this timeline. Generate scenes or expansions and the network will grow as you scrub forward.'}
             </p>
           </div>
         )}
@@ -417,6 +484,24 @@ function Swatch({ color, label }: { color: string; label: string }) {
       <span className="text-[8px] text-text-dim/60">{label}</span>
     </span>
   );
+}
+
+function ScopeTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`text-[10px] font-medium px-2 py-1 rounded transition-colors select-none ${active ? 'text-text-primary' : 'text-text-dim/50 hover:text-text-dim'}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function scopeFooter(scope: Scope, graphCount: number, currentIndex: number): string {
+  const step = (n: number) => `${n} step${n === 1 ? '' : 's'}`;
+  if (scope === 'narrative') return `${step(graphCount)} · cumulative to scene ${currentIndex + 1}`;
+  if (scope === 'arc') return `${step(graphCount)} · current arc to scene ${currentIndex + 1}`;
+  return `${step(graphCount)} · scene ${currentIndex + 1}`;
 }
 
 function truncate(s: string, max: number): string {

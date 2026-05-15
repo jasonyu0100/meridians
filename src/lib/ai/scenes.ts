@@ -34,6 +34,7 @@ import { buildSequentialPath, extractPatternWarningDirectives } from './reasonin
 import { buildActiveModeSection } from './mode-graph';
 import { retryWithValidation, validateBeatPlan, validateBeatProseMap } from './validation';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/system-graph';
+import { ensureSceneAttributions } from '@/lib/attribution';
 
 /**
  * Split text into sentences, handling edge cases like abbreviations, decimals, and ellipsis.
@@ -662,6 +663,9 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     }
     for (const id of resolved.attributedExistingIds) pushAttr(id);
     scene.attributions = mergedAttrs;
+    // Fold in derived baseline attributions from typed delta fields so the
+    // network never goes blank when the LLM is sparse.
+    ensureSceneAttributions(scene);
     // Remap SYS edge references in scene.attributionEdges through wkIdMap so
     // the cumulative network sees real SYS ids on both endpoints.
     if (scene.attributionEdges) {

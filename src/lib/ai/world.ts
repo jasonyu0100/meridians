@@ -8,6 +8,7 @@ import type { ThreadLogNodeType } from '@/types/narrative';
 import { applyThreadDelta, newNarratorBelief } from '@/lib/thread-log';
 import { applyWorldDelta } from '@/lib/world-graph';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/system-graph';
+import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/attribution';
 import { callGenerate, callGenerateStream } from './api';
 import {
   ARC_DIRECTION_SYSTEM,
@@ -878,7 +879,13 @@ export async function generateNarrative(
         relation: e.relation,
       }));
     }
+    // Fold in derived baseline attributions from typed delta fields.
+    ensureSceneAttributions(scene);
   }
+
+  // Same fallback on the initial world build: every existing id its typed
+  // deltas touch counts as attribution, even if the LLM didn't list it.
+  ensureExpansionAttributions(initialWorldBuild.expansionManifest);
 
   // Generate embeddings for scene summaries
   if (sceneList.length > 0) {

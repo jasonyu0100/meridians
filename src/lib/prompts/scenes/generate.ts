@@ -89,14 +89,14 @@ Return JSON with this exact structure.
       "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
       "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
       "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
-      "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
-      "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}],
       "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX|L-XX|null", "toId": "C-YY|L-YY|null"}],
       "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
       "newCharacters": [{"id": "C-GEN-1", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
       "newLocations": [{"id": "L-GEN-1", "name": "Name", "prominence": "domain|place|margin", "parentId": "L-XX|null", "tiedCharacterIds": [], "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history", "content": "key fact"}}, "edges": []}}],
       "newArtifacts": [{"id": "A-GEN-1", "name": "Name", "significance": "key|notable|minor", "parentId": "C-XX|L-XX|null", "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|capability|history|state", "content": "one fact per node"}}, "edges": []}}],
-      "newThreads": [{"id": "T-GEN-1", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}]
+      "newThreads": [{"id": "T-GEN-1", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}],
+      "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
+      "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
     }
   ]
 }
@@ -114,28 +114,6 @@ Return JSON with this exact structure.
   </rule>
 
   <rule name="ids">scene S-GEN-N, knowledge K-GEN-N, system SYS-GEN-N (reused SYS nodes keep original ID). character/location/artifact/thread GEN-N placeholders remapped downstream. Use plain integers — no leading zeros (write S-GEN-1, not S-GEN-001).</rule>
-
-  <rule name="attributions" hint="Track which existing ids this scene structurally leans on — across every kind (character, location, artifact, thread, system). Builds the cumulative network graph over time.">
-    Populate \`attributions\` with IDs of EXISTING entities and system nodes (already in the graph) that this scene structurally depends on — entities whose presence is doing actual work in the scene's events, threads whose markets this scene actively engages, rules the scene's logic invokes. Distinct from per-kind delta fields (\`participantIds\`, \`threadDeltas.threadId\`, \`worldDeltas.entityId\`, \`systemDeltas.addedNodes\`) which capture mutation; attributions captures the structural skeleton the scene leans on, mutation or not.
-    DISCIPLINE: cite an id only when removing it would change the scene's outcome or meaning. 0–12 per scene; don't pad. An entity "merely on-screen" is not an attribution; an entity "load-bearing in this scene's logic" is. A thread "passively in the world" is not; a thread "actively being repriced or invoked" is. A rule "merely active" is not; a rule "this scene's logic depends on" is.
-    KINDS: include every kind that applies — C-N (characters), L-N (locations), A-N (artifacts), T-N (threads), SYS-N (system rules). Existing ids only — newly-introduced ids from \`newCharacters\`/\`newLocations\`/\`newArtifacts\`/\`newThreads\` and \`systemDeltas.addedNodes\` get attribution credit automatically downstream; don't double-list them here.
-  </rule>
-
-  <rule name="attribution-edges" hint="Declare typed connections between attributed ids — this is how the cumulative network graph grows its structural skeleton across scenes.">
-    Populate \`attributionEdges\` with typed connections between ids the scene structurally wires together — character ↔ system rule (this character invokes / is constrained by this rule), thread ↔ location (this thread's resolution is pinned to this place), thread ↔ character (this character's stake in this thread crystallises), system ↔ system (one rule enables / contradicts / supersedes another), and so on across every kind pair the scene actually makes load-bearing.
-    DISCIPLINE: emit an edge ONLY when the scene materially establishes or activates the connection. The connection must be inferable from the scene's events, deltas, or summary — not pre-existing graph state the scene merely mentions. 0–8 edges per scene typical; complex pivot scenes may exceed.
-    RELATIONS (use the CRG vocabulary, one of):
-      <relation name="enables">A makes B possible (a precedent enables a new claim; a character's position enables a faction's move).</relation>
-      <relation name="constrains">A limits or bounds B (a rule constrains an action; a location's geography constrains a strategy).</relation>
-      <relation name="requires">A needs B (a ritual requires an artifact; a verdict requires testimony).</relation>
-      <relation name="risks">A creates exposure for B (an alliance risks a third-party retaliation).</relation>
-      <relation name="causes">A produces B (a discovery causes a thread shift; a rule firing causes a market move).</relation>
-      <relation name="reveals">A exposes B (an action reveals an identity; a finding reveals a hidden rule).</relation>
-      <relation name="develops">A deepens B (a scene develops a character's commitment; a finding develops a thread).</relation>
-      <relation name="resolves">A concludes B (a payoff resolves a thread; a ruling resolves a contested question).</relation>
-      <relation name="supersedes">A replaces / overrides B (a new commitment supersedes a prior; a fresh rule overrides an old one).</relation>
-    BIAS TOWARD CROSS-KIND: most scenes already produce same-kind edges via deltas (system→system via systemDeltas.addedEdges, character→character via relationshipDeltas). Attribution edges earn their keep on CROSS-KIND wiring (character→system, thread→location, artifact→character, system→thread) that no typed delta captures.
-  </rule>
 
   <rule name="time-delta" critical="true" hint="Gaps reshape what the scene commits — pick a mode, let the deltas answer for it.">
     <shape>{value: integer, unit, transition}. Positive = forward, 0 = concurrent / first scene, negative = backward. transition is the natural-language phrase prose reads verbatim. Approximate values fine.</shape>
@@ -196,5 +174,10 @@ threadDeltas: [one transition + optional pulse on the surveillance-inquiry threa
   <reference name="shared-rules">
 ${sharedRulesBlock}
   </reference>
+
+  <closing-step name="attributions-and-edges" critical="true" hint="Emit LAST — after every other field. Synthesise from the scene you just wrote.">
+    <attributions>Existing ids the scene structurally leans on (C/L/A/T/SYS). One per load-bearing reference; skip "merely on-screen" or "passively in the world". Newly-introduced ids credit automatically downstream — don't list them. 0–12 typical.</attributions>
+    <attribution-edges>Typed cross-kind connections the scene activates — character↔system, thread↔location, artifact↔character, thread↔character, system↔thread. Relation: one of enables, constrains, requires, risks, causes, reveals, develops, resolves, supersedes. Same-kind wiring is already covered by relationshipDeltas / systemDeltas.addedEdges — don't duplicate it here. 0–8 typical.</attribution-edges>
+  </closing-step>
 </instructions>`;
 }

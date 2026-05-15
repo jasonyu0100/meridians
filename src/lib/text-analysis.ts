@@ -71,6 +71,7 @@ import {
   buildMetaExtractionPrompt,
 } from "@/lib/prompts/analysis";
 import { normalizeTimeDelta } from "@/lib/time-deltas";
+import { ensureSceneAttributions, ensureExpansionAttributions } from "@/lib/attribution";
 
 // ── Scene-level Splitting ────────────────────────────────────────────────────
 
@@ -2082,35 +2083,14 @@ export async function assembleNarrative(
                   (mm.action === "add" || mm.action === "remove"),
               );
           })() || undefined,
-        // Unified attribution list: every ID this scene structurally leans
-        // on, derived from the scene's own structural fields. SYS-side: re-
-        // mentioned system concepts get redistributed onto the canonical
-        // (already-seen) node id. Captured BEFORE the systemDeltas IIFE
-        // mutates seenSysNodeIds so we can distinguish re-mentions
-        // (existing → attribute) from genuinely new ones (added → introduction).
+        // Unified attribution list — derived from the scene's own typed
+        // fields by ensureSceneAttributions below (after the scene object is
+        // assembled). Plus any re-mentioned system rules captured here, since
+        // seenSysNodeIds is mutated by the systemDeltas IIFE that follows and
+        // we need the pre-mutation view to distinguish re-mention (existing →
+        // attribute) from genuine new ones (added → introduction).
         attributions: (() => {
           const attrs = new Set<string>();
-          // Participants + POV — the scene is "about" these characters.
-          if (povId) attrs.add(povId);
-          for (const pid of participantIds) attrs.add(pid);
-          // Location — the scene happens here.
-          if (locationId) attrs.add(locationId);
-          // Threads moved.
-          for (const tm of s.threadDeltas ?? []) {
-            const tid = getThreadId(tm.threadDescription);
-            if (tid) attrs.add(tid);
-          }
-          // Entities whose world graphs grew.
-          for (const wd of s.worldDeltas ?? []) {
-            const eid = getEntityId(wd.entityName);
-            if (eid) attrs.add(eid);
-          }
-          // Artifact usages — the artifact and the wielder.
-          for (const au of s.artifactUsages ?? []) {
-            if (au.artifactName) attrs.add(getArtifactId(au.artifactName));
-            if (au.characterName) attrs.add(getCharId(au.characterName));
-          }
-          // Re-mentioned system rules.
           const wkm = s.systemDeltas;
           if (wkm?.addedNodes?.length) {
             for (const n of wkm.addedNodes) {
@@ -2214,6 +2194,12 @@ export async function assembleNarrative(
         proseEmbedding: (s as any).proseEmbedding,
         planEmbeddingCentroid: (s as any).planEmbeddingCentroid,
       };
+
+      // Fold derived attributions from typed delta fields (participants,
+      // location, threads moved, world entities, artifact usages,
+      // relationships, ownership, ties, movements) onto the SYS-only seed
+      // captured during construction.
+      ensureSceneAttributions(scene);
 
       scenes[sceneId] = scene;
       chScenes.push(scene);
@@ -2563,6 +2549,10 @@ export async function assembleNarrative(
         tieDeltas: aggregatedTieDeltas,
       },
     };
+    // Fold derived attributions from the batch's typed deltas onto the
+    // worldBuild so analysed narratives feed the network at expansion steps
+    // the same way scene steps do.
+    ensureExpansionAttributions(worldBuilds[worldBuildId].expansionManifest);
 
     // Find the first scene of the first chunk in this batch
     for (let ci = batchStart; ci < batchEnd; ci++) {

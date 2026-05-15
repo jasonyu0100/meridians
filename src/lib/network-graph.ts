@@ -22,7 +22,7 @@
  * scenes carry deltas) — duplicating it as network annotations was noise.
  */
 
-import type { NarrativeState } from "@/types/narrative";
+import type { AttributionEdgeRelation, NarrativeState } from "@/types/narrative";
 
 /** Window in graphs where freshly-introduced nodes get the "fresh" tier
  *  regardless of count. Set to 1 — only nodes first seen in the LATEST
@@ -76,6 +76,11 @@ export type NetworkEdge = {
   /** Number of times an attributionEdge connected these two ids across the
    *  aggregated scenes / world builds. */
   weight: number;
+  /** Distinct relation labels seen on the underlying attributionEdges. Useful
+   *  for scene-scope rendering (one step → one relation per edge); higher
+   *  scopes collapse this into a set so the UI can decide whether to surface
+   *  it (we hide it for arc / narrative scope where the labels become noise). */
+  relations?: AttributionEdgeRelation[];
 };
 
 export type NetworkGraph = {
@@ -110,13 +115,14 @@ export function aggregateNetworkGraph(
   const firstSeen = new Map<string, number>();
   const lastSeen = new Map<string, number>();
   const edgeWeights = new Map<string, number>();
+  const edgeRelations = new Map<string, Set<AttributionEdgeRelation>>();
 
   let stepIndex = 0;
   let stepCount = 0;
 
   const visitStep = (
     attributionList: ReadonlyArray<string> | undefined,
-    edgeList: ReadonlyArray<{ from: string; to: string }> | undefined,
+    edgeList: ReadonlyArray<{ from: string; to: string; relation?: AttributionEdgeRelation }> | undefined,
   ) => {
     if ((!attributionList || attributionList.length === 0) &&
         (!edgeList || edgeList.length === 0)) {
@@ -139,6 +145,14 @@ export function aggregateNetworkGraph(
         ? `${edge.from}|${edge.to}`
         : `${edge.to}|${edge.from}`;
       edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
+      if (edge.relation) {
+        let relSet = edgeRelations.get(key);
+        if (!relSet) {
+          relSet = new Set();
+          edgeRelations.set(key, relSet);
+        }
+        relSet.add(edge.relation);
+      }
       // Edge endpoints that weren't in the explicit attribution list still
       // count as referenced — declaring an edge IS attribution.
       for (const ref of [edge.from, edge.to]) {
@@ -249,7 +263,9 @@ export function aggregateNetworkGraph(
   for (const [key, weight] of edgeWeights.entries()) {
     const [from, to] = key.split("|");
     if (knownIds.has(from) && knownIds.has(to)) {
-      edges.push({ from, to, weight });
+      const relSet = edgeRelations.get(key);
+      const relations = relSet && relSet.size > 0 ? Array.from(relSet) : undefined;
+      edges.push({ from, to, weight, relations });
     }
   }
 
