@@ -62,10 +62,24 @@ function CopyPaperButton() {
     <button
       type="button"
       onClick={handleCopy}
-      className="text-[10px] font-mono text-white/30 hover:text-white/60 transition-colors"
+      className="text-[10px] font-mono text-white/45 hover:text-white/75 transition-colors"
     >
       {status === "copied" ? "copied" : status === "error" ? "failed" : "copy"}
     </button>
+  );
+}
+
+/* ── Paper meta strip — minimal inline metadata ──────────────────────── */
+function PaperMeta() {
+  return (
+    <div className="inline-flex items-center text-[10px] font-mono text-white/45">
+      <span className="flex items-center gap-2">
+        <span aria-hidden className="w-1 h-1 rounded-full bg-purple-300/70" />
+        <span>15 min read</span>
+      </span>
+      <span aria-hidden className="mx-3 w-px h-3 bg-white/12" />
+      <CopyPaperButton />
+    </div>
   );
 }
 
@@ -1383,63 +1397,70 @@ function TimelineNav({ activeId }: { activeId: string }) {
   }, [activeGroupLabel]);
 
   return (
-    <nav className="hidden xl:flex flex-col gap-1 fixed top-1/2 -translate-y-1/2 left-[max(2rem,calc((100vw-56rem)/2-14rem))] max-h-[80vh] overflow-y-auto pr-2">
+    <nav className="hidden xl:flex flex-col fixed top-1/2 -translate-y-1/2 left-[max(2rem,calc((100vw-56rem)/2-15rem))] max-h-[80vh] overflow-y-auto pr-4">
+      {/* Pure-typography tree: chevron + label for groups, indented label for
+       *  children, a single short bar marks the active item. No spines, no
+       *  rings, no pills — the indentation IS the hierarchy. */}
       {NAV_GROUPS.map((group) => {
         const isOpen = !!openGroups[group.label];
         const groupActive = group.label === activeGroupLabel;
         return (
           <div key={group.label} className="flex flex-col">
+            {/* Group header */}
             <button
               type="button"
               onClick={() =>
                 setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))
               }
-              className="group flex items-center gap-2 py-1.5 select-none"
+              className="group flex items-center gap-3 py-2.5 select-none"
             >
               <span
-                className={`text-[8px] font-mono leading-none transition-transform duration-200 ${
+                className={`text-[8px] leading-none transition-all duration-200 w-2 ${
                   isOpen ? "rotate-90" : ""
-                } ${groupActive ? "text-white/55" : "text-white/25 group-hover:text-white/45"}`}
+                } ${
+                  groupActive
+                    ? "text-white/55"
+                    : "text-white/25 group-hover:text-white/50"
+                }`}
               >
-                ▶
+                ▸
               </span>
               <span
-                className={`text-[10px] font-mono uppercase tracking-[0.18em] transition-colors ${
+                className={`text-[10px] font-mono uppercase tracking-[0.24em] transition-colors ${
                   groupActive
-                    ? "text-white/65"
-                    : "text-white/30 group-hover:text-white/50"
+                    ? "text-white/70"
+                    : "text-white/35 group-hover:text-white/55"
                 }`}
               >
                 {group.label}
               </span>
             </button>
+
+            {/* Children — indented past the chevron. Active child carries a
+             *  thin 2px accent bar to its left; everything else is pure
+             *  typography. */}
             {isOpen && (
-              <div className="flex flex-col gap-0 ml-1.5">
-                {group.items.map(({ id, label }, i) => {
+              <div className="flex flex-col pb-2">
+                {group.items.map(({ id, label }) => {
                   const active = id === activeId;
                   return (
                     <a
                       key={id}
                       href={`#${id}`}
-                      className="group flex items-center gap-3 py-1.5 transition-colors"
+                      className="group relative flex items-center py-2 pl-7 transition-colors"
                     >
-                      <div className="relative flex flex-col items-center w-2">
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                            active
-                              ? "bg-white/70 scale-125"
-                              : "bg-white/15 group-hover:bg-white/30"
-                          }`}
-                        />
-                        {i < group.items.length - 1 && (
-                          <div className="w-px h-4 bg-white/8 mt-0.5" />
-                        )}
-                      </div>
+                      {/* Thin active marker */}
                       <span
-                        className={`text-[11px] font-mono transition-colors duration-200 whitespace-nowrap ${
+                        aria-hidden
+                        className={`absolute left-5 top-1/2 -translate-y-1/2 w-px h-3.5 transition-all duration-200 ${
+                          active ? "bg-white/55" : "bg-transparent"
+                        }`}
+                      />
+                      <span
+                        className={`text-[12px] transition-colors duration-200 whitespace-nowrap ${
                           active
-                            ? "text-white/60"
-                            : "text-white/15 group-hover:text-white/35"
+                            ? "text-white/85"
+                            : "text-white/30 group-hover:text-white/55"
                         }`}
                       >
                         {label}
@@ -1503,28 +1524,25 @@ export default function PaperPage() {
 
       <TimelineNav activeId={activeId} />
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 pt-20 pb-32">
+      <div className="relative z-10 max-w-3xl mx-auto px-6 sm:px-10 pt-28 pb-40">
         {/* Title */}
-        <div className="mb-16 animate-fade-up">
-          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/25 mb-4">
+        <div className="mb-24 animate-fade-up">
+          <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/25 mb-5">
             White Paper
           </p>
-          <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-white/90 mb-4">
-            Quantifying Worlds
+          <h1 className="text-4xl sm:text-5xl font-bold leading-[1.05] tracking-tight text-white/90 mb-6">
+            Quantifying World Views
           </h1>
-          <p className="text-[15px] text-white/40 leading-relaxed max-w-xl">
-            Modeling structural intelligence across narrative, inquiry,
-            and simulation.
+          <p className="text-[15px] text-white/45 leading-[1.7] max-w-xl">
+            A causal substrate for any coherent text &mdash; extract it,
+            query it, simulate where it goes next.
           </p>
-          <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-white/40">
-              ~15 min read
-            </span>
-            <CopyPaperButton />
+          <div className="mt-8">
+            <PaperMeta />
           </div>
         </div>
 
-        <div id="paper-body" className="space-y-16">
+        <div id="paper-body" className="space-y-24">
           {/* ── Abstract ──────────────────────────────────────────────── */}
           <Section id="abstract" label="Abstract">
             <P>

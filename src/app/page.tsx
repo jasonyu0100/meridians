@@ -401,7 +401,7 @@ export default function HomePage() {
                     onClick={() => openCreate()}
                     className="text-white/60 hover:text-white/90 underline underline-offset-2 transition"
                   >
-                    create a new world
+                    create a new world view
                   </button>{" "}
                   from a premise
                 </p>
