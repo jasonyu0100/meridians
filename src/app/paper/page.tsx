@@ -1435,18 +1435,15 @@ export default function PaperPage() {
               Taste is subjective; structure is not. A reader agreeing
               a moment feels earned, a scientist agreeing an argument
               lands, a strategist agreeing a scenario hangs together
-              &mdash; all respond to the same <B>legible skeleton</B>,
-              one that holds across narrative, argument, and
-              simulation. InkTide is a{" "}
-              <B>simulation engine for long-form reasoning</B> built
-              on that skeleton, running on the most portable substrate
-              there is: text. Local Git for textual simulation
-              &mdash; feed it priors, the engine extracts a typed
-              knowledge graph, branches alternative timelines, and
-              reads the structural forces driving each. Three modes
-              share the framework: <B>narratives</B>, <B>papers</B>,{" "}
-              <B>simulations</B> &mdash; same three fields of reality,
-              different weights.{" "}
+              &mdash; all respond to the same <B>legible skeleton</B>.
+              InkTide extracts and generates <B>World Views</B>:
+              causally coherent, highly mutable, queryable knowledge
+              structures over the three force fields. Any coherent
+              text describes a world view &mdash; <em>Harry Potter</em>
+              {" "}has one, a research paper has one, a wargame brief
+              has one. World view and narrative are interchangeable
+              here; narrative is the canonical case study, world view
+              is the underlying abstraction.{" "}
               <em>Harry Potter and the Sorcerer&apos;s Stone</em>{" "}
               calibrates the math; the framework generalizes.
             </P>
@@ -1455,95 +1452,57 @@ export default function PaperPage() {
               Each scene reveals two kinds of information:{" "}
               <B>encyclopedic</B> (new facts &mdash; actors, places,
               rules) and <B>possibility</B> (what could still happen).
-              From a per-scene knowledge graph we recover three
-              forces. <B>System</B> and <B>World</B> are
-              encyclopedic; <B>Fate</B> is possibility &mdash; thread
-              markets reprice as evidence lands. Texture and voice
-              ride in adjacent layers; the three forces carry the
-              causal spine.
-            </P>
-            <P>
-              The methodology splits along the seam the tools are good
-              at. <B>LLMs extract qualitative meaning</B> at low
-              temperature &mdash; which thread advanced, what an
-              entity learned, which rule was revealed.{" "}
-              <B>Deterministic formulas extract quantitative impact</B>
-              {" "}&mdash; the same deltas yield the same scores, every
-              time.
-            </P>
-            <P>
-              Summed on a common scale, the three forces give{" "}
-              <B>Activity</B> &mdash; how hard the world is working.{" "}
-              <B>Peaks</B> fire across all three channels;{" "}
-              <B>valleys</B> seed pressure for what follows. Applied
-              to <em>Harry Potter and the Sorcerer&apos;s Stone</em>,
-              the activity curve traces what a reader feels when a
-              narrative breathes &mdash; pulled straight from the
-              math. Published-vs-AI gap and cross-genre calibration
-              confirm the result outside the original fixture.
+              <B>System</B> and <B>World</B> measure encyclopedic
+              growth; <B>Fate</B> measures possibility &mdash; thread
+              markets reprice as evidence lands. LLMs extract
+              qualitative deltas at low temperature; deterministic
+              formulas turn deltas into scores. Same input, same score,
+              every time. Summed, the three forces give <B>Activity</B>{" "}
+              &mdash; how hard the world is working. Peaks fire across
+              all three channels; valleys seed pressure for what
+              follows.
             </P>
             <P>
               <B>The skill ceiling is your priors.</B> Sparse data,
-              sparse simulation. But rich, current priors fed through
-              causal reasoning graphs and chain-of-thought scene
-              execution yield scenarios that hold up. The moat is the
-              data; the engine is the multiplier. The hypothesis:
-              this is <B>the framework for textual simulation</B>{" "}
-              &mdash; riding on foundation models for scale, with the
-              typed graph and deterministic force math as substrate.
-              In active development: controlled-variable experiments,
-              multi-scenario probabilistic forecasting, and{" "}
-              <B>A/B tests against reality</B>. The longer the loop
-              runs, the sharper the next forecast.
+              sparse simulation. Rich priors fed through causal
+              reasoning graphs and chain-of-thought scene execution
+              yield scenarios that hold up. The moat is the data; the
+              engine is the multiplier. World views extend via
+              simulation with <B>variable predictive modelling</B>{" "}
+              already shipped; next on the roadmap is <B>A/B tests
+              against reality</B>. The longer the loop runs, the
+              sharper the next forecast.
             </P>
           </Section>
 
           {/* ── The Problem ───────────────────────────────────────────── */}
           <Section id="problem" label="The Problem">
             <P>
-              Forecasting any sufficiently complex world &mdash; a
-              market, a campaign, a research argument, a fictional
-              one &mdash; is gated by two things: <B>quality of
-              priors</B> and <B>continuity of reasoning</B>.
-              Foundation models give us scale and fluency but lose
-              continuity over long-form output: they drift,
-              hallucinate, forget what they wrote three sections
-              back. Specialized simulators give us continuity but
-              silo us to one domain &mdash; climate models can&apos;t
-              model a market, market models can&apos;t model a
-              campaign. Neither lets you take a text-describable
-              world, branch alternative futures from it, and grade
-              them against reality.
+              Forecasting a complex world &mdash; a market, a campaign,
+              a research argument, a fictional one &mdash; is gated by{" "}
+              <B>priors</B> and <B>continuity of reasoning</B>.
+              Foundation models give scale and fluency but lose
+              continuity: they drift, hallucinate, forget what they
+              wrote three sections back. Specialized simulators give
+              continuity but silo us to one domain &mdash; climate
+              models can&apos;t model a market, market models
+              can&apos;t model a campaign. Neither lets you take a
+              text-describable world, branch alternative futures from
+              it, and grade them against reality.
             </P>
             <P>
-              The missing piece is a <B>general-purpose substrate</B>{" "}
-              where rich text priors meet structural continuity meet
-              branchable, testable forecasting. Text is the most
-              portable representation humans have for any domain
-              &mdash; research papers, scenario briefs, intelligence
-              reports, novels, market state, wargame logs all live
-              as text. An engine that turns any text-describable
-              world into a typed structure, mutates it forward
-              through scenes, branches alternative futures, and
-              measures what each one commits to is the foundational
-              tool we don&apos;t yet have.
-            </P>
-            <P>
-              The cost of not having it is everywhere. Strategic
-              forecasts read as opinions because they have no
-              structural commitment to point to. Research arguments
-              collapse on edge cases nobody simulated. Long-form
-              fiction drifts because the model forgot its own world.{" "}
-              <em>Insufficient investment before resolution</em>{" "}
-              &mdash; the narrative diagnostic &mdash; generalises:
-              a forecast that fails to accumulate structural
-              commitment is a forecast that doesn&apos;t mean much.{" "}
+              The missing piece is a <B>general-purpose substrate</B>:
+              rich text priors meet structural continuity meet
+              branchable, testable forecasting. Strategic forecasts
+              read as opinions because they have no structural
+              commitment to point to. Research arguments collapse on
+              edge cases nobody simulated. Long-form fiction drifts
+              because the model forgot its own world.{" "}
               <B>
-                The fundamental problem isn&apos;t that we lack good
-                models. It&apos;s that we have no shared substrate
-                for <em>building</em> them &mdash; one that lets
-                priors compound, scenarios branch, and reality itself
-                become the grader.
+                We don&apos;t lack models. We lack a shared substrate
+                for <em>building</em> them &mdash; one that lets priors
+                compound, scenarios branch, and reality itself become
+                the grader.
               </B>
             </P>
           </Section>
@@ -1557,13 +1516,9 @@ export default function PaperPage() {
               actor, location, rule, or open question, updated only
               when a scene reveals something new. An LLM writes down{" "}
               <em>what changed</em>; deterministic formulas compute{" "}
-              <em>how much</em> was revealed. Comprehension (LLM)
-              splits from measurement (formulas) &mdash; the scoring
-              stays transparent and reproducible.
-            </P>
-            <P>
-              The scene-by-scene changes come in two kinds of
-              revelation &mdash; encyclopedic (new facts) and
+              <em>how much</em> was revealed. Comprehension splits from
+              measurement; the scoring stays reproducible. Changes come
+              in two kinds &mdash; encyclopedic (new facts) and
               possibility (outcomes becoming alive or dying) &mdash;
               captured by three delta layers:
             </P>
@@ -1596,18 +1551,14 @@ export default function PaperPage() {
                 <span>
                   <B>Thread deltas</B> &mdash; the{" "}
                   <em>possibility</em> kind. Every open question
-                  (rivalry, secret, quest, unresolved claim) opens a
-                  branch in possibility space, implemented as a{" "}
+                  (rivalry, secret, quest, unresolved claim) opens a{" "}
                   <em>prediction market</em> over named outcomes. Each
-                  scene emits integer evidence in [−4, +4] on the
-                  affected outcomes plus a log-type from nine
-                  primitives; the math handles log-odds conversion,
-                  volume decay, volatility, scaled closure, and
-                  abandonment. Fate falls out of the re-pricing
-                  &mdash; the more a scene&apos;s evidence re-shapes a
-                  high-attention market&apos;s live possibilities, the
-                  more fate it earns. Probability is the accounting;
-                  possibility is what&apos;s being tracked.
+                  scene emits integer evidence in [−4, +4] plus a
+                  log-type from nine primitives; the math handles
+                  log-odds conversion, volume decay, volatility,
+                  closure, and abandonment. Fate falls out of the
+                  re-pricing &mdash; the more a scene re-shapes a
+                  high-attention market, the more fate it earns.
                 </span>
               </li>
             </ul>
@@ -2457,27 +2408,22 @@ export default function PaperPage() {
             </P>
             <P>
               The reasoning graph does <em>not</em> force threads to
-              resolve. It receives each active thread with a per-
-              thread tag &mdash; LEANS, ACTIVE, CONTESTED, VOLATILE,
-              FADING &mdash; derived from market state, and treats it
-              as pressure in the force field. Strong-LEANS threads
-              with sufficient volume earn fate nodes that land;
-              CONTESTED threads often earn nothing (a legitimate
-              shape for a pivot arc); FADING threads decay. Fate
-              nodes are what the reasoning concludes, not what it was
-              forced to serve.
+              resolve. It receives each active thread tagged
+              &mdash; LEANS, ACTIVE, CONTESTED, VOLATILE, FADING &mdash;
+              and treats it as pressure. Strong-LEANS threads with
+              volume earn fate nodes that land; CONTESTED threads often
+              earn nothing (a legitimate pivot-arc shape); FADING
+              threads decay. Fate nodes are what the reasoning
+              concludes, not what it was forced to serve.
             </P>
             <P>
-              This closes the loop. Scenes emit evidence → the markets
-              re-price → the next arc&apos;s reasoning graph sees a new
-              portfolio → the graph lands whatever the updated state can
-              honestly earn → more scenes emit evidence. The system converges
-              when the writing is honest about what each arc can deliver.
-              Threads that matter accrue volume and eventually close with
-              high resolution quality; threads that stop mattering decay into
-              abandonment; deliberately resurrected threads carry the
-              attention cost of their return. No explicit horizon primitive
-              is needed — natural selection through volume decay and
+              The loop closes: scenes emit evidence → markets re-price →
+              the next arc&apos;s reasoning graph sees a new portfolio →
+              the graph lands what the updated state can honestly earn →
+              more evidence. Threads that matter accrue volume and close
+              with high resolution quality; threads that stop mattering
+              decay into abandonment. No explicit horizon primitive is
+              needed &mdash; natural selection through volume decay and
               focus-window ranking handles the lifecycle.
             </P>
           </Section>
@@ -2797,44 +2743,26 @@ export default function PaperPage() {
           {/* ── Embeddings & Proposition Classification ─────────────────── */}
           <Section id="embeddings" label="Embeddings">
             <P>
-              Forces operate at the scene level. But readers experience{" "}
-              <B>prose</B>, composed of <B>propositions</B> — atomic claims that
-              must be accepted as true within the narrative world. &ldquo;Harry
+              Forces operate at the scene level. Readers experience{" "}
+              <B>prose</B>, composed of <B>propositions</B> — atomic claims
+              that must be accepted as true within the world. &ldquo;Harry
               has a lightning-bolt scar.&rdquo; &ldquo;The wand chooses the
-              wizard.&rdquo; Each is a temporally bounded statement whose
-              structural significance is determined by its relationships to
-              every other proposition.
+              wizard.&rdquo; Forces measure <B>what changes</B> in the
+              knowledge graph; propositions measure <B>what is stated</B> in
+              the prose. Every proposition is embedded as a 1536-dimensional
+              vector (OpenAI text-embedding-3-small), transforming prose into
+              a geometric space where similarity is distance.
             </P>
             <P>
-              Forces measure <B>what changes</B> in the knowledge graph.
-              Propositions measure <B>what is stated</B> in the prose. Every
-              proposition is embedded as a 1536-dimensional vector (OpenAI
-              text-embedding-3-small), transforming prose into a geometric space
-              where similarity is distance and structural relationships become
-              computable.
-            </P>
-            <P>
-              Coherent writing behaves <em>like</em> a <B>proof graph</B>.
-              Each proposition introduces, derives from, or resolves prior
-              content; a plot hole reads as a broken inference chain, a
-              satisfying resolution as a deep tree closing. Quality is
-              structural — how propositions relate across time — and
-              similarity in embedding space gives us a computable handle on
-              that structure.
-            </P>
-            <P>
-              The honest caveat: cosine similarity is{" "}
-              <em>geometric approximation</em>, not logical inference. Two
-              propositions can cluster tightly because they share subject
-              matter without either entailing, contradicting, or depending
-              on the other. The proof graph we recover is therefore
-              <em> soft</em> — it surfaces probable dependencies for humans
-              or downstream LLM calls to confirm, not hard entailment
-              relations. A fully proof-like layer would add explicit typed
-              links (<em>entails</em>, <em>contradicts</em>,{" "}
-              <em>depends-on</em>) over the embedded propositions; the
-              current system stops at the geometric step and treats that
-              as a <em>well-shaped prior</em>, not a verdict.
+              Coherent writing behaves <em>like</em> a <B>proof graph</B>:
+              each proposition introduces, derives from, or resolves prior
+              content. A plot hole reads as a broken inference chain, a
+              satisfying resolution as a deep tree closing. The honest
+              caveat: cosine similarity is <em>geometric approximation</em>,
+              not logical inference — two propositions can cluster tightly
+              from shared subject matter alone. The proof graph we recover
+              is therefore <em>soft</em> — a well-shaped prior surfacing
+              probable dependencies, not a verdict.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
@@ -2927,21 +2855,13 @@ export default function PaperPage() {
                     <>
                       Start from what the arc must end at — a thread
                       resolution, a character turn, a payoff — and ask{" "}
-                      <em>
-                        which hypothesis, among competitors, best produces
-                        this?
-                      </em>{" "}
-                      The engine generates several candidate causal chains
-                      in parallel, then commits to the strongest. The
-                      animation shows this as multiple lanes converging
-                      upward on a fate terminal at top — one bright
-                      (selected), the rest dim (rejected). Arcs have
-                      targets; the question abduction answers is the{" "}
-                      <B>most satisfying route</B> to one. The drift risk
-                      is silent — once the first prior commits, abduction
-                      can flip into deduction and stop considering
-                      alternatives. Anchor discipline forces the engine to
-                      keep the rejected lanes visible as it builds.
+                      <em>which hypothesis, among competitors, best
+                      produces this?</em> The engine generates several
+                      candidate causal chains in parallel, then commits to
+                      the strongest. Anchor discipline keeps the rejected
+                      lanes visible as it builds; once the first prior
+                      commits, abduction can silently flip into deduction
+                      and stop considering alternatives.
                     </>
                   ),
                 },
@@ -2951,19 +2871,13 @@ export default function PaperPage() {
                   color: "#FBBF24",
                   body: (
                     <>
-                      Start from one source — an entity, an event, a thread
+                      Start from one source — an entity, event, or thread
                       — and branch into many possibilities without
-                      committing. Each branch grows leaves; a final check
-                      asks which leaf-pairs are{" "}
-                      <B>mutually exclusive</B> (a character cannot both
-                      die and inherit, a rule cannot both hold and break).
-                      The animation shows a tree growing downward with a
-                      dashed red edge marking one such pair. Divergent is
-                      the mode for <B>world expansion</B> and collision
-                      discovery — when the goal is to find surprising
-                      adjacencies rather than derive a specific outcome,
-                      and when the failure mode of abduction (committing
-                      too early) needs to be avoided.
+                      committing. A final check asks which leaf-pairs are{" "}
+                      <B>mutually exclusive</B>. The mode for{" "}
+                      <B>world expansion</B> and collision discovery, when
+                      the goal is surprising adjacencies rather than a
+                      specific outcome.
                     </>
                   ),
                 },
@@ -2975,16 +2889,11 @@ export default function PaperPage() {
                     <>
                       Given a premise, derive the{" "}
                       <em>single necessary consequence</em> at each step.
-                      The chain is deep and straight — no branching, no
-                      alternatives. The animation shows a rigid vertical
-                      chain; the premise carries a persistent outer halo,
-                      a validated-premise signal. If branching ever
-                      appears, the mode has drifted into divergent and
-                      must correct. Deduction is the mode for arcs where
-                      the premise{" "}
-                      <B>fully determines the outcome</B> — siege
-                      logistics, inheritance politics, the endgame of a
-                      trap the protagonist has already walked into.
+                      No branching, no alternatives. The mode for arcs
+                      where the premise <B>fully determines the
+                      outcome</B> — siege logistics, inheritance politics,
+                      the endgame of a trap already walked into. Branching
+                      means drift into divergent and must correct.
                     </>
                   ),
                 },
@@ -2995,16 +2904,13 @@ export default function PaperPage() {
                   body: (
                     <>
                       Many observations → inferred principle. The engine
-                      collects a set of prior events or scenes and asks:{" "}
-                      <em>what pattern underlies these?</em> The answer is
-                      promoted to a principle-level claim that governs
-                      future scenes. The animation shows a wide fan of
-                      observations pointing upward to a single principle,
-                      with a dashed ghost alongside — at least one{" "}
-                      <B>competing generalisation</B> survives as a live
-                      alternative. Useful for backfilling worldbuilding
-                      from accumulated events, or surfacing a thematic
-                      claim the prose has been enacting implicitly.
+                      collects prior events and asks: <em>what pattern
+                      underlies these?</em> The answer is promoted to a
+                      principle-level claim that governs future scenes. At
+                      least one <B>competing generalisation</B> survives
+                      as a live alternative. Useful for backfilling
+                      worldbuilding or surfacing a thematic claim the
+                      prose has been enacting implicitly.
                     </>
                   ),
                 },
@@ -3109,52 +3015,36 @@ export default function PaperPage() {
           <Section id="variables" label="Variable Scenarios">
             <P>
               Causal reasoning commits to <em>one</em> chain — the arc&apos;s
-              spine. <B>Variable scenario modelling</B> is the complement: a
-              probabilistic alternative that produces a cohort of timelines
-              with relative probabilities. Where the CRG asks <em>what must
-              happen and why</em>, variables ask <em>what could happen, and
-              how likely</em>. The two run side-by-side and serve different
-              questions.
+              spine. <B>Variable scenario modelling</B> is the
+              complement: a cohort of timelines with relative
+              probabilities. The CRG asks <em>what must happen and why</em>;
+              variables ask <em>what could happen, and how likely</em>.
             </P>
             <P>
-              The arc is decomposed into a small <B>pool of variables</B> —
-              load-bearing forces the model judges most reshape trajectory if
-              they shift. Each <B>scenario</B> is one coordination over that
-              pool: a pattern of intensities (0 off → 4 extreme). The same
-              pool, different coordinations. A <B>priorLogit ∈ [-4, +4]</B>
-              scores each scenario&apos;s plausibility relative to its
-              siblings; softmax across the cohort produces the displayed
+              The arc decomposes into a small <B>pool of variables</B> — the
+              load-bearing forces that most reshape trajectory if they
+              shift. Each <B>scenario</B> is one coordination over that
+              pool: a pattern of intensities (0 off → 4 extreme). A{" "}
+              <B>priorLogit ∈ [-4, +4]</B> scores each scenario relative to
+              its siblings; softmax across the cohort produces the displayed
               probability.
             </P>
 
             <VariableScenarioDiagram />
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
-              Two surfaces
+              Two surfaces, power-law shape
             </h3>
             <P>
-              <B>Present</B> — the arc&apos;s own load-bearing variables right
-              now (one set, intensities reflecting current state).{" "}
-              <B>Future</B> — a cohort of next-arc scenarios as coordinations
-              over a shared pool. Both run the same extraction prompt under
-              the same disciplines: forces not symptoms, post-shift framing
-              if the arc ended at a pivot, mechanisms from artifact and
-              key-actor world graphs.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
-              Power-law cohort shape
-            </h3>
-            <P>
-              Reality doesn&apos;t distribute uniformly. Most futures cluster
-              near modal continuation; a thin tail covers rupture. The cohort
-              matches the SHAPE of the distribution it&apos;s drawn from —
-              tight when the possibility space is tight, bimodal when the
-              substrate forks, fat-tailed when a load-bearing mechanism could
-              ignite. PriorLogit is independent of intensity: a low-intensity
-              continuation can be high-prior, a high-intensity rupture can be
-              low-prior. Intensity carries magnitude; the logit carries
-              rarity.
+              <B>Present</B> — the arc&apos;s load-bearing variables right
+              now. <B>Future</B> — a cohort of next-arc scenarios over a
+              shared pool. Reality doesn&apos;t distribute uniformly: most
+              futures cluster near modal continuation; a thin tail covers
+              rupture. The cohort matches the shape it&apos;s drawn from —
+              tight when the possibility space is tight, fat-tailed when a
+              load-bearing mechanism could ignite. PriorLogit is
+              independent of intensity: intensity carries magnitude, the
+              logit carries rarity.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
@@ -3162,13 +3052,11 @@ export default function PaperPage() {
             </h3>
             <P>
               Scenarios drive <B>Experimentation</B>: one parallel arc
-              continuation per scenario, with the scenario&apos;s coordination
-              as primary generation guidance. On commit, every scenario
-              attaches as a sister branch; the softmax-top scenario&apos;s
-              branch becomes active. Multi-timeline analysis falls out
-              naturally — every committed run carries the variable
-              fingerprint that produced it, so the engine can compare what
-              <em> actually </em>played out against the prior the model
+              continuation per scenario. On commit, every scenario attaches
+              as a sister branch; the softmax-top scenario&apos;s branch
+              becomes active. Every committed run carries the variable
+              fingerprint that produced it, so the engine can compare what{" "}
+              <em>actually</em> played out against the prior the model
               assigned.
             </P>
           </Section>
@@ -3219,25 +3107,21 @@ export default function PaperPage() {
               ))}
             </div>
             <P>
-              Every respondent answers in-character from its own world-graph
-              continuity — the same private knowledge the Character chat
-              persona uses — so responses are grounded in what that specific
-              entity knows, not in the LLM&rsquo;s general knowledge. The
-              ELO update uses a continuous margin rather than binary W/L:
+              Every respondent answers in-character from its own world-
+              graph continuity, grounded in what that specific entity
+              knows. ELO uses a continuous margin rather than binary W/L:
             </P>
             <Eq
               label="Margin score from A's perspective"
               tex="s_A = \mathrm{clamp}\left(0.5 + \frac{\Delta_A - \Delta_B}{16},\ 0,\ 1\right)"
             />
             <P>
-              <B>Distribution</B>, <B>depth</B>, <B>moves</B>, and{" "}
-              <B>accumulation</B> — surveys sample breadth, interviews
-              profile one mind, game theory names the strategic shape of a
-              beat, ELO tracks who accumulates advantage across the story.
-              Narrative structure and strategic structure are orthogonal: a
-              force-balanced scene can contain an unresolved prisoner&rsquo;s
-              dilemma, and that orthogonality is what makes the fourth
-              layer informative.
+              Surveys sample breadth, interviews profile one mind, game
+              theory names the strategic shape of a beat, ELO tracks who
+              accumulates advantage. Narrative and strategic structure
+              are orthogonal: a force-balanced scene can contain an
+              unresolved prisoner&rsquo;s dilemma, and that orthogonality
+              is what makes the fourth layer informative.
             </P>
           </Section>
 
@@ -3845,19 +3729,14 @@ export default function PaperPage() {
           {/* ── Revision ──────────────────────────────────────────── */}
           <Section id="revision" label="Revision">
             <P>
-              First drafts are rough. Scenes repeat beats, characters stagnate,
-              threads drift. The revision pipeline improves a branch
-              systematically without starting over, using the same git-like
-              branching that underlies generation.
-            </P>
-            <P>
-              <B>Evaluation</B> reads scene summaries and assigns per-scene
-              verdicts. <B>Reconstruction</B> creates a new versioned branch,
-              applying verdicts in parallel — edits revise content, merges
-              combine scenes, inserts generate new scenes to fill gaps, moves
-              reposition scenes without any LLM call, cuts are omitted. World
-              commits pass through at their original positions. The original
-              branch is never modified.
+              First drafts are rough. <B>Evaluation</B> reads scene
+              summaries and assigns per-scene verdicts;{" "}
+              <B>reconstruction</B> creates a new versioned branch,
+              applying verdicts in parallel — edits revise content,
+              merges combine scenes, inserts fill gaps, moves
+              reposition without any LLM call, cuts are omitted. World
+              commits pass through at their original positions. The
+              original branch is never modified.
             </P>
 
             <div className="mt-4 space-y-1.5 text-[12px]">
@@ -3918,14 +3797,12 @@ export default function PaperPage() {
             </div>
 
             <P>
-              Evaluations can be <B>guided</B> with external feedback — from
-              another AI, a human editor, or the author&apos;s own notes. Each
-              reconstruction produces a versioned branch (<em>v2</em>,{" "}
-              <em>v3</em>, <em>v4</em>) — the original is never modified. The
-              loop converges in 2–3 passes. Beneath branch versioning,
-              individual scenes track prose and plan versions with semantic
-              numbering (major/minor/patch), and structural branching uses
-              git-like reference sharing so a 200-scene narrative with 10
+              Evaluations can be <B>guided</B> with external feedback —
+              from another AI, a human editor, or the author&apos;s own
+              notes. Each reconstruction produces a versioned branch
+              (<em>v2</em>, <em>v3</em>, <em>v4</em>); the loop
+              converges in 2–3 passes. Structural branching uses git-
+              like reference sharing so a 200-scene narrative with 10
               branches stores far fewer than 2000 scene objects.
             </P>
           </Section>
@@ -4269,18 +4146,15 @@ export default function PaperPage() {
             <CostEstimates />
 
             <P>
-              Analysing a 100K-word novel into full narrative state
-              costs under twenty-five cents (parallel chunk extraction,
-              no reasoning). A 500K-word series runs about a dollar.
-              Evaluating a branch costs five cents. The same numbers
-              apply to non-fiction and simulation at comparable scale
-              &mdash; domain corpus, scenario brief, wargame timeline
-              all extract for cents. At these prices the
-              generate-evaluate-revise loop is cheap to repeat across
-              prose profiles, branches, and structural constraints;
-              comparative datasets across dozens of corpora are within
-              reach. <B>Computation is fixed and cheap; data quality
-              decides the result.</B>
+              Analysing a 100K-word novel costs under twenty-five cents
+              (parallel chunk extraction, no reasoning); a 500K-word
+              series runs about a dollar; evaluating a branch costs five
+              cents. The same numbers apply to non-fiction and
+              simulation at comparable scale. The generate-evaluate-
+              revise loop is cheap to repeat; comparative datasets
+              across dozens of corpora are within reach.{" "}
+              <B>Computation is fixed and cheap; data quality decides
+              the result.</B>
             </P>
           </Section>
 
@@ -4289,14 +4163,10 @@ export default function PaperPage() {
             <P>
               InkTide is open source. Every formula in this paper lives
               in the codebase &mdash; readable, runnable, modifiable.
-            </P>
-            <P>
-              Structural analysis benefits from transparency: every
-              weight, threshold, and reference mean is a constant in
-              the source. The formulas are tools to read and modify,
-              not doctrine. A genre needing a fourth force can add
-              one; a domain needing a different calibration can
-              replace the defaults.
+              Weights, thresholds, and reference means are constants in
+              the source; the formulas are tools, not doctrine. A genre
+              needing a fourth force can add one; a domain needing
+              different calibration can replace the defaults.
             </P>
             <P>
               The{" "}
@@ -4307,10 +4177,9 @@ export default function PaperPage() {
                 analysis pipeline
               </Link>{" "}
               accepts any corpus &mdash; novels, screenplays, web
-              serials, fanfiction, research papers, scenario briefs,
-              wargame logs. The interesting cases are domains the
-              framework was never tuned for, with priors rich enough
-              to model them cleanly. Contributions welcome.
+              serials, research papers, scenario briefs, wargame logs.
+              The interesting cases are domains the framework was never
+              tuned for. Contributions welcome.
             </P>
 
             <div className="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
@@ -4334,34 +4203,16 @@ export default function PaperPage() {
           {/* ── Coming Soon ───────────────────────────────────────────── */}
           <Section id="coming-soon" label="Coming Soon">
             <P>
-              Two features close the loop from <em>simulation</em> to{" "}
-              <em>forecasting tool</em>.
-            </P>
-            <P>
-              <B>A/B tests against reality.</B> Backtest model
+              <B>A/B tests against reality.</B> Backtest world-view
               forecasts against actual outcomes as they unfold. The
               operator sees where priors held and where reality
               diverged, then refines the priors. Better priors, sharper
               forecasts, compounding confidence &mdash; the source of
               truth is reality itself, or any ground truth you trust.
-            </P>
-            <P>
-              <B>Experimental controlled-variable setups.</B> Hold
-              scope and direction constant, vary one parameter
-              (forces, reasoning mode, priors), generate{" "}
-              <em>N</em> candidate timelines, compare outcomes.
-              Multi-scenario probabilistic forecasting follows:
-              probability mass over alternative futures, all grounded
-              in the same world model. Forecasting from the present,
-              not just analysis of the past.
-            </P>
-            <P>
-              Both extend primitives already exposed by the engine
-              &mdash; branchable timelines, scope-controlled chat,
-              deterministic force math &mdash; and turn the platform
-              from a simulator into a continuously-updating
-              forecasting tool. Priors are inputs; simulations are
-              experiments; reality is the validation.
+              Closes the loop from <em>simulator</em> to{" "}
+              <em>continuously-updating forecasting tool</em>: priors
+              are inputs, simulations are experiments, reality is the
+              validation.
             </P>
           </Section>
         </div>

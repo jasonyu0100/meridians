@@ -343,9 +343,9 @@ export default function HomePage() {
           </h1>
 
           <p className="animate-fade-up-delay-2 text-[15px] text-white/60 mt-6 max-w-lg text-center leading-relaxed">
-            Paste any text. See its structure.
+            Any text is a world view.
             <br />
-            Search it by meaning. Generate from what you find.
+            Extract it, query it, simulate where it goes next.
           </p>
 
           {/* ── Analyze Corpus ─────────────────────────────────────────── */}
@@ -463,31 +463,43 @@ export default function HomePage() {
               {[
                 {
                   q: "What can I do with this?",
-                  a: "Paste any text — a novel, a research paper, a screenplay — and InkTide builds a knowledge graph of its threads, relationships, and ideas. You get force scores, pacing analysis, world density metrics, and semantic embeddings across the full timeline. Search by meaning, get AI-synthesized answers with citations, and generate new content from the same graph.",
+                  a: "Paste any long-form text and InkTide extracts a typed knowledge graph you can query by meaning, interrogate in-character, simulate forward, and extend with new content — all from the same substrate.",
                 },
                 {
-                  q: "What does the analysis measure?",
-                  a: "Thread development and resolution (Fate). Transformation intensity — how much shifts per section (Change). New information entering the text (Knowledge). Pacing rhythm — how the author transitions between fast and slow sections. World density — how interconnected the knowledge graph is. Dynamic contrast — whether the text varies its intensity or flatlines. Each layer is a different lens on the same underlying structure.",
+                  q: "What's a 'world view'?",
+                  a: "A causally coherent, queryable knowledge structure measured across three force fields: fate (commitments pulling toward resolution), world (the state of entities), and system (the rules of the domain). A novel, a research paper, and a wargame brief are all world views with different weightings.",
                 },
                 {
-                  q: "How does search work?",
-                  a: 'Every proposition in the text is embedded as a vector. You search by meaning, not keywords — "betrayal" finds scenes of broken trust even when the word never appears. Results include AI-synthesized overviews that trace patterns across the timeline, with inline citations linking to specific passages.',
+                  q: "How is this different from a wiki or notes?",
+                  a: "Integrated Obsidian with a quantitative engine that simulates forward. Notes give you a static graph; InkTide gives you one that's queryable like a database, chattable like a character, and brancheable like Git.",
                 },
                 {
-                  q: "What do the charts show?",
-                  a: "Force curves trace the shape of the text through time. Peaks are where threads resolve, worlds deepen, or transformations land. Valleys are buildup. A flat curve means the text lacks contrast. An all-peaks curve means it never lets the reader settle. The scores are computed from knowledge graph deltas, not from the prose directly.",
+                  q: "How can I query the world view?",
+                  a: "Semantic search with AI-synthesized overviews and citations. Surveys distribute one question across the cast to reveal fault-lines. Interviews go deep on one subject. Every respondent answers in-character from its own continuity.",
                 },
                 {
-                  q: "What happens with each work I analyze?",
-                  a: "Its pacing rhythm becomes a reusable transition matrix. Its prose patterns become a profile you can apply to generation. Each work joins a growing open network of structural data from published fiction and non-fiction — the more works analyzed, the richer the system's understanding of how different authors structure text.",
+                  q: "Can I chat with the world?",
+                  a: "Yes. Every character holds a private knowledge graph — what they've seen, who they trust, what they believe — and only that gets loaded when you talk to them. Nothing leaks across; the world stays internally consistent.",
+                },
+                {
+                  q: "Can I simulate forward in time?",
+                  a: "Yes — the core loop. The engine extracts load-bearing variables, generates a cohort of next-arc scenarios over them, and ranks each with a relative probability. Run them all in parallel; the top becomes the active branch, the rest stay as sister divergences.",
+                },
+                {
+                  q: "How do branches stay coherent?",
+                  a: "Git-like. Branches fork from a parent and share its timeline by reference; only structurally different scenes create new objects. Revise a whole branch through review → verdict → reconstruct to produce a new version. Alternate futures stay grounded in the same root world.",
+                },
+                {
+                  q: "What does the engine measure?",
+                  a: "Fate as information gain over thread prediction markets (attention-weighted KL divergence). World and System as graph deltas. Per-scene game theory across 14 strategic axes with continuous ELO ratings. Pacing as Markov transitions. All derived from graph deltas, not prose.",
                 },
                 {
                   q: "Can it generate?",
-                  a: "Yes. From a knowledge graph — built by analysis or from a premise — the engine generates scenes paced by transition matrices from published works, explores branching paths scored by the same force metrics, and revises its own output through structural evaluation. Generation uses the analysis layers, not a separate system.",
+                  a: "Yes. A Phase Reasoning Graph mines the world's machinery; a Causal Reasoning Graph plans each arc; scenes execute the graph paced by Markov chains from analyzed works; prose follows beat plans that re-render into prose, screenplay, meta, or simulation formats.",
                 },
                 {
                   q: "What does it cost?",
-                  a: "InkTide is free and open source. You just need an OpenRouter API key to get started — that covers all analysis, search, and generation. Optionally add an OpenAI key for embeddings or a Replicate key for image generation. You pay only for the tokens you use. No subscription, no platform fee.",
+                  a: "Free and open source. Bring an OpenRouter key for analysis, search, and generation. Optional OpenAI key for embeddings, Replicate key for images. You pay only for tokens — no subscription, no platform fee.",
                 },
               ].map(({ q, a }, i) => (
                 <details key={i} className="group">
