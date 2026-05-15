@@ -327,9 +327,9 @@ describe("generateScenes", () => {
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
     const result = await generateScenes(narrative, [], 0, 3, "Test direction");
-    expect(result.scenes[0].id).toBe("S-001");
-    expect(result.scenes[1].id).toBe("S-002");
-    expect(result.scenes[2].id).toBe("S-003");
+    expect(result.scenes[0].id).toBe("S-1");
+    expect(result.scenes[1].id).toBe("S-2");
+    expect(result.scenes[2].id).toBe("S-3");
   });
   it("sanitizes invalid character IDs from participantIds", async () => {
     const mockResponse = JSON.stringify({

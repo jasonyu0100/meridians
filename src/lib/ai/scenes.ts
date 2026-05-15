@@ -404,7 +404,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   const directionVector = parsed.directionVector;
   const worldState = parsed.worldState;
 
-  const sceneIds = nextIds('S', Object.keys(narrative.scenes), parsed.scenes.length, 3);
+  const sceneIds = nextIds('S', Object.keys(narrative.scenes), parsed.scenes.length);
   const createdAt = new Date().toISOString();
   const scenes: Scene[] = parsed.scenes.map((s, i) => ({
     ...s,

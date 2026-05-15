@@ -84,30 +84,33 @@ function createNarrative(
 // ── ID Generation ────────────────────────────────────────────────────────────
 describe("nextId", () => {
   it("returns first ID when no existing IDs", () => {
-    expect(nextId("C", [])).toBe("C-01");
-    expect(nextId("S", [], 3)).toBe("S-001");
+    expect(nextId("C", [])).toBe("C-1");
+    expect(nextId("S", [])).toBe("S-1");
   });
   it("increments from highest existing ID", () => {
-    expect(nextId("C", ["C-01", "C-02", "C-03"])).toBe("C-04");
+    expect(nextId("C", ["C-1", "C-2", "C-3"])).toBe("C-4");
   });
   it("handles non-sequential existing IDs", () => {
-    expect(nextId("C", ["C-01", "C-05", "C-03"])).toBe("C-06");
+    expect(nextId("C", ["C-1", "C-5", "C-3"])).toBe("C-6");
   });
   it("handles complex ID formats", () => {
-    expect(nextId("C", ["C-1742000000-3", "C-01"])).toBe("C-04");
+    expect(nextId("C", ["C-1742000000-3", "C-1"])).toBe("C-4");
   });
-  it("respects custom padding width", () => {
-    expect(nextId("S", ["S-001", "S-002"], 3)).toBe("S-003");
+  it("reads zero-padded historical IDs without aliasing them", () => {
+    // Old data may carry "C-01" / "S-007" — parser tolerates them but the
+    // allocator emits the canonical unpadded form, so SYS-17 and SYS-017
+    // cannot coexist as duplicate output.
+    expect(nextId("S", ["S-007", "S-002"])).toBe("S-8");
   });
 });
 describe("nextIds", () => {
   it("generates multiple sequential IDs", () => {
-    const ids = nextIds("C", ["C-01"], 3);
-    expect(ids).toEqual(["C-02", "C-03", "C-04"]);
+    const ids = nextIds("C", ["C-1"], 3);
+    expect(ids).toEqual(["C-2", "C-3", "C-4"]);
   });
   it("handles empty existing IDs", () => {
-    const ids = nextIds("S", [], 2, 3);
-    expect(ids).toEqual(["S-001", "S-002"]);
+    const ids = nextIds("S", [], 2);
+    expect(ids).toEqual(["S-1", "S-2"]);
   });
 });
 // ── Branch Resolution ────────────────────────────────────────────────────────

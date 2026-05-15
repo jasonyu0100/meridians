@@ -51,7 +51,7 @@ Return JSON:
 {
   "overall": "2-4 paragraph prose quality critique. Name specific scenes and quote specific lines.",
   "sceneEvals": [
-    { "sceneId": "S-001", "verdict": "ok|edit", "issues": ["specific issue 1", "specific issue 2"] }
+    { "sceneId": "S-1", "verdict": "ok|edit", "issues": ["specific issue 1", "specific issue 2"] }
   ],
   "patterns": ["recurring prose issue 1", "recurring prose issue 2"]
 }

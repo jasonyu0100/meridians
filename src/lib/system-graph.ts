@@ -61,7 +61,7 @@ export function systemEdgeKey(edge: { from: string; to: string; relation: string
  * cross-delta seen-edges set. Returns the same delta for convenience.
  *
  * Callers are responsible for assigning stable IDs to nodes BEFORE calling
- * this (e.g. remapping LLM-assigned SYS-GEN-* ids to real SYS-XX ids). The
+ * this (e.g. remapping LLM-assigned SYS-GEN-* ids to real SYS-N ids). The
  * validIds set should already contain any newly-assigned ids.
  */
 export function sanitizeSystemDelta(
@@ -128,10 +128,12 @@ export function normalizeSystemConcept(concept: string): string {
 }
 
 /**
- * Create a closure that yields unique sequential SYS-XX ids starting after
- * the max number already present in seedIds. Each call returns a fresh id
- * and increments the internal counter — safe to use across multiple resolve
- * passes without manually tracking which ids have been allocated.
+ * Create a closure that yields unique sequential SYS-N ids starting after the
+ * max number already present in seedIds. Canonical form is unpadded — emitting
+ * `SYS-7` (not `SYS-07`) so that no two ids parse to the same counter value
+ * and the model can't conflate `SYS-17` with `SYS-017`. The seed scan reads
+ * historical padded forms tolerantly via parseInt so legacy data still
+ * advances the counter correctly.
  */
 export function makeSystemIdAllocator(seedIds: Iterable<string>): () => string {
   let counter = 0;
@@ -144,7 +146,7 @@ export function makeSystemIdAllocator(seedIds: Iterable<string>): () => string {
   }
   return () => {
     counter++;
-    return `SYS-${String(counter).padStart(2, '0')}`;
+    return `SYS-${counter}`;
   };
 }
 

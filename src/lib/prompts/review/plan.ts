@@ -37,7 +37,7 @@ ${p.sceneBlocks}
 
 <instructions>
   <step name="check" hint="For each scene, walk these five checks.">
-    <check name="beat-to-delta-alignment">Do the beats actually show what the declared deltas claim? If a thread delta says T-03 escalates, which specific beat delivers that escalation? If no beat does, flag it.</check>
+    <check name="beat-to-delta-alignment">Do the beats actually show what the declared deltas claim? If a thread delta says T-3 escalates, which specific beat delivers that escalation? If no beat does, flag it.</check>
     <check name="cross-plan-continuity">Does this plan's opening beats follow logically from the previous plan's closing beats? Entity positions, emotional/epistemic states, knowledge, conditions.</check>
     <check name="internal-beat-logic">Do beats within the plan follow causally? Does beat 5 depend on something beat 3 established?</check>
     <check name="entity-knowledge">Does any beat have an entity act on or invoke information not yet established in prior scenes or earlier beats? "Information" here includes a modelled agent's state under the rule set — an agent cannot apply a rule, hold a resource, or occupy a state the rule set has not yet established for them.</check>
@@ -56,7 +56,7 @@ Return JSON:
 {
   "overall": "2-3 paragraph analysis focused on beat quality and delta alignment.",
   "sceneEvals": [
-    { "sceneId": "S-001", "verdict": "ok|edit", "issues": ["Beat N: specific issue"] }
+    { "sceneId": "S-1", "verdict": "ok|edit", "issues": ["Beat N: specific issue"] }
   ],
   "patterns": ["recurring issue across multiple plans"]
 }

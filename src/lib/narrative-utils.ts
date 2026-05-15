@@ -50,9 +50,17 @@ export function resolveEntityName(narrative: NarrativeState, id: string | null |
 // ── Sequential ID generation ─────────────────────────────────────────────────
 
 /**
- * Extract the numeric suffix from an entity ID (e.g., "C-01" → 1, "L-12" → 12, "S-003" → 3).
- * Handles various formats: "C-01", "C-1742000000-3", "S-GEN-1742000000-5", etc.
- * Returns the highest trailing number found, or 0 if none.
+ * Canonical entity ID format: `<PREFIX>-<N>` (or `<PREFIX>-<WORK>-<N>` for analyzed
+ * works). No leading zeros — `SYS-7` is canonical, `SYS-07` / `SYS-007` would alias
+ * to the same counter value and are not produced. Allocators reject leading-zero
+ * forms on emit; parsers read them tolerantly so historical data still loads.
+ */
+
+/**
+ * Extract the numeric suffix from an entity ID (e.g., "C-1" → 1, "S-12" → 12).
+ * Permissive read: tolerates historical zero-padded forms ("C-01" → 1, "S-007" → 7)
+ * so the allocator's seed scan still finds the correct max counter across old data.
+ * Returns 0 if no trailing number is present.
  */
 function extractIdNumber(id: string): number {
   const match = id.match(/(\d+)$/);
@@ -60,32 +68,28 @@ function extractIdNumber(id: string): number {
 }
 
 /**
- * Compute the next sequential ID for a given prefix by scanning existing IDs in the narrative.
- * Returns zero-padded IDs like "C-09", "L-12", "T-08", "S-016", "ARC-04".
- *
- * @param prefix - Entity prefix (e.g., "C", "L", "T", "S", "ARC", "WX", "K")
- * @param existingIds - Array of existing IDs to scan for the highest number
- * @param padWidth - Zero-padding width (default: 2 for most, 3 for scenes)
+ * Compute the next sequential ID for a given prefix by scanning existing IDs in
+ * the narrative. Emits canonical unpadded form: `${prefix}-${n}`.
  */
-export function nextId(prefix: string, existingIds: string[], padWidth = 2): string {
+export function nextId(prefix: string, existingIds: string[]): string {
   let max = 0;
   for (const id of existingIds) {
     const n = extractIdNumber(id);
     if (n > max) max = n;
   }
-  return `${prefix}-${String(max + 1).padStart(padWidth, '0')}`;
+  return `${prefix}-${max + 1}`;
 }
 
 /**
  * Generate a batch of sequential IDs starting from the next available number.
  */
-export function nextIds(prefix: string, existingIds: string[], count: number, padWidth = 2): string[] {
+export function nextIds(prefix: string, existingIds: string[], count: number): string[] {
   let max = 0;
   for (const id of existingIds) {
     const n = extractIdNumber(id);
     if (n > max) max = n;
   }
-  return Array.from({ length: count }, (_, i) => `${prefix}-${String(max + 1 + i).padStart(padWidth, '0')}`);
+  return Array.from({ length: count }, (_, i) => `${prefix}-${max + 1 + i}`);
 }
 
 /**

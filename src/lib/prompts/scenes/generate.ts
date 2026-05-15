@@ -80,16 +80,16 @@ Return JSON with this exact structure.
       "characterMovements": {"C-XX": {"locationId": "L-YY", "transition": "how they travelled"}},
       "events": ["event_tag_1", "event_tag_2"],
       "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — only when this scene structurally opens a possibility not previously in the market"], "rationale": "the summary sentence that moved this market"}],
-      "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-001", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
+      "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
       "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
-      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-001", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-001", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
+      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
       "systemAttributions": ["SYS-XX", "SYS-YY"],
       "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX|L-XX|null", "toId": "C-YY|L-YY|null"}],
       "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
-      "newCharacters": [{"id": "C-GEN-001", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
-      "newLocations": [{"id": "L-GEN-001", "name": "Name", "prominence": "domain|place|margin", "parentId": "L-XX|null", "tiedCharacterIds": [], "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history", "content": "key fact"}}, "edges": []}}],
-      "newArtifacts": [{"id": "A-GEN-001", "name": "Name", "significance": "key|notable|minor", "parentId": "C-XX|L-XX|null", "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|capability|history|state", "content": "one fact per node"}}, "edges": []}}],
-      "newThreads": [{"id": "T-GEN-001", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}]
+      "newCharacters": [{"id": "C-GEN-1", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
+      "newLocations": [{"id": "L-GEN-1", "name": "Name", "prominence": "domain|place|margin", "parentId": "L-XX|null", "tiedCharacterIds": [], "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history", "content": "key fact"}}, "edges": []}}],
+      "newArtifacts": [{"id": "A-GEN-1", "name": "Name", "significance": "key|notable|minor", "parentId": "C-XX|L-XX|null", "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|capability|history|state", "content": "one fact per node"}}, "edges": []}}],
+      "newThreads": [{"id": "T-GEN-1", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}]
     }
   ]
 }
@@ -106,7 +106,7 @@ Return JSON with this exact structure.
     <example type="good" register="simulation">"Under the modelled mobilisation rules, the eastern front absorbs 18 divisions before week three; the resulting supply-line stress drops doctrine-X compliance below the 0.6 threshold and the front fragments at the Drava crossing." (the specific rule-driven state — divisions, threshold, breakage point — is named, not gestured)</example>
   </rule>
 
-  <rule name="ids">scene S-GEN-###, knowledge K-GEN-###, system SYS-GEN-### (reused SYS nodes keep original ID). character/location/artifact/thread GEN-### placeholders remapped downstream.</rule>
+  <rule name="ids">scene S-GEN-N, knowledge K-GEN-N, system SYS-GEN-N (reused SYS nodes keep original ID). character/location/artifact/thread GEN-N placeholders remapped downstream. Use plain integers — no leading zeros (write S-GEN-1, not S-GEN-001).</rule>
 
   <rule name="system-attributions" hint="Track which existing system rules each scene leans on — separate from creating new ones.">
     Populate \`systemAttributions\` with IDs of EXISTING system nodes (already in the graph) that this scene structurally depends on — rules whose presence is doing actual work in the scene's events, not rules that merely happen to touch the world. Distinct from \`systemDeltas.addedNodes\` (which is for genuinely new concepts).
@@ -116,6 +116,11 @@ Return JSON with this exact structure.
 
   <rule name="time-delta" critical="true" hint="Gaps reshape what the scene commits — pick a mode, let the deltas answer for it.">
     <shape>{value: integer, unit, transition}. Positive = forward, 0 = concurrent / first scene, negative = backward. transition is the natural-language phrase prose reads verbatim. Approximate values fine.</shape>
+    <sign-alignment critical="true">Sign matches transition direction. Backward phrase ("earlier", "ago", "X before", flashback, Time-Turner-style rewind) = NEGATIVE value. Forward phrase ("later", "next morning", "X after") = POSITIVE value.
+      <correct>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</correct>
+      <correct>{value: -10, unit: "year", transition: "flashback to her schooldays"}</correct>
+      <wrong>{value: 3, unit: "hour", transition: "three hours earlier, using the Time-Turner"} — phrase is backward, sign is forward.</wrong>
+    </sign-alignment>
     <mode name="continuous-step">Default. Minutes-to-days; deltas reflect what happens IN the scene. e.g. {3, hour, "that evening"}, {1, day, "the next morning"}.</mode>
     <mode name="large-skip" hint="≥1 week with active anchors. The skip itself is a load-bearing event.">
       The opening scene MUST compensate for off-screen drift, not just narrate the present:
@@ -124,17 +129,17 @@ Return JSON with this exact structure.
       • if the world's rules/institutions/conventions shifted during the gap, ≥1 systemDelta captures it
       • summary opens by naming what the gap changed — the scene now operates on those facts, not on the pre-gap state
     </mode>
-    <mode name="flashback" hint="Excursion into the past; narrative returns afterward.">
-      Negative value. Reveal-weighted: the present POV/reader LEARNS; the past does not re-mutate. worldDeltas bias toward belief/state/secret nodes on the present-self. A later scene MUST return with a positive timeDelta cancelling the jump (multiple flashbacks allowed; the return cancels their sum). e.g. {-10, year, "years before"} → eventually {10, year, "back in the present"}.
+    <mode name="flashback" hint="Excursion into the past; narrative returns.">
+      Negative value. Reveal-weighted: the present POV/reader LEARNS; the past does not re-mutate. worldDeltas favour belief/state/secret nodes on the present-self. A later scene MUST cancel the jump with a positive delta. e.g. {-10, year, "flashback to her schooldays"} → eventually {10, year, "back in the present"}.
     </mode>
-    <mode name="time-travel" hint="Diegetic travel — timeline FORKS, no return.">
-      Negative value, but UNLIKE flashback the narrative now lives in the new time. Subsequent timeDeltas are relative to the NEW position.
-      • traveller carries memory forward — their worldDeltas flag knowledge "carried from later" (belief/secret/capability)
-      • world snaps to its earlier state — locations, other characters, artifacts, system graph all at earlier configuration; do NOT propagate present-day deltas backward
-      • surface the mechanic as a systemDelta (rule + cost/constraint); add a chaos/rupture marker for unsanctioned or paradox-prone travel
-      e.g. {-5, year, "five years earlier, through the gate"} → next scene {2, day, "two days after his arrival"}.
+    <mode name="time-travel" hint="Diegetic travel — timeline forks, no return.">
+      Negative value. Unlike flashback, the narrative now LIVES in the new time; subsequent deltas are relative to the new position.
+      • traveller carries memory forward (worldDeltas flag knowledge "carried from later")
+      • world snaps to its earlier state; do NOT propagate present-day deltas backward
+      • surface the mechanic as a systemDelta; add a chaos/rupture marker for paradox-prone travel
+      e.g. {-3, hour, "three hours earlier, using the Time-Turner"} → next scene {1, hour, "an hour after arrival"}.
     </mode>
-    <decision-test>Flashback vs time-travel: does the narrative RETURN, or now LIVE in the new time? Continuous vs skip: ≥1 week with active anchors = skip, compensate.</decision-test>
+    <decision-test>Flashback returns; time-travel doesn't. Continuous vs skip: ≥1 week with active anchors = skip, compensate.</decision-test>
   </rule>
 
   <rule name="tag-richly-discipline" hint="Floors and per-tier density bands live in force-standards / deltas; this rule adds scene-shape-specific guidance.">

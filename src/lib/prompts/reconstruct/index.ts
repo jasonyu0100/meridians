@@ -121,7 +121,7 @@ ${sourceBlock}
   <rules>
     <rule>The output is ONE scene, not multiple. It replaces the target scene.</rule>
     <rule>You may change POV, location, and participants if the absorbed content demands it.</rule>
-    <rule>Combine thread deltas from all scenes — if the target advances T-01 and a source advances T-03, the merged scene should advance both. Each threadDelta MUST include 1-2 addedNodes log entries describing what happened to THAT thread in the merged scene.</rule>
+    <rule>Combine thread deltas from all scenes — if the target advances T-1 and a source advances T-3, the merged scene should advance both. Each threadDelta MUST include 1-2 addedNodes log entries describing what happened to THAT thread in the merged scene.</rule>
     <rule>Combine world and relationship deltas — deduplicate but preserve unique knowledge. List world nodes in causal/temporal order (adjacent nodes auto-chain).</rule>
     <rule>The summary must use character NAMES and location NAMES (never raw IDs) and weave the best elements from all inputs into a cohesive narrative beat.</rule>
     <rule>Do NOT simply concatenate summaries. Synthesize them into a single dramatic moment.</rule>

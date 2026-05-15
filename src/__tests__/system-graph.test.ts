@@ -188,25 +188,32 @@ describe('normalizeSystemConcept', () => {
 });
 // ── makeSystemIdAllocator ────────────────────────────────────────────────────────
 describe('makeSystemIdAllocator', () => {
-  it('starts at SYS-01 when seeded with no ids', () => {
+  it('starts at SYS-1 when seeded with no ids', () => {
     const alloc = makeSystemIdAllocator([]);
-    expect(alloc()).toBe('SYS-01');
-    expect(alloc()).toBe('SYS-02');
+    expect(alloc()).toBe('SYS-1');
+    expect(alloc()).toBe('SYS-2');
   });
   it('seeds from the max existing id', () => {
-    const alloc = makeSystemIdAllocator(['SYS-01', 'SYS-05', 'SYS-03']);
-    expect(alloc()).toBe('SYS-06');
-    expect(alloc()).toBe('SYS-07');
+    const alloc = makeSystemIdAllocator(['SYS-1', 'SYS-5', 'SYS-3']);
+    expect(alloc()).toBe('SYS-6');
+    expect(alloc()).toBe('SYS-7');
+  });
+  it('reads zero-padded historical seeds without re-emitting them', () => {
+    // Padded forms like SYS-017 exist only in old data; the allocator parses
+    // them (counter=17) but always emits the canonical unpadded SYS-18 next.
+    // This is the fix for the SYS-17 / SYS-017 namespace-collision class.
+    const alloc = makeSystemIdAllocator(['SYS-017', 'SYS-005']);
+    expect(alloc()).toBe('SYS-18');
   });
   it('ignores non-SYS ids in seed', () => {
-    const alloc = makeSystemIdAllocator(['C-01', 'L-02', 'T-99', 'WK-09']);
-    expect(alloc()).toBe('SYS-01');
+    const alloc = makeSystemIdAllocator(['C-1', 'L-2', 'T-99', 'WK-9']);
+    expect(alloc()).toBe('SYS-1');
   });
   it('ignores malformed ids in seed', () => {
-    const alloc = makeSystemIdAllocator(['SYS-foo', 'SYS-', 'SYS-03']);
-    expect(alloc()).toBe('SYS-04');
+    const alloc = makeSystemIdAllocator(['SYS-foo', 'SYS-', 'SYS-3']);
+    expect(alloc()).toBe('SYS-4');
   });
-  it('pads to at least 2 digits', () => {
+  it('emits plain unpadded integers across the rollover boundary', () => {
     const alloc = makeSystemIdAllocator([]);
     for (let i = 0; i < 9; i++) alloc();
     expect(alloc()).toBe('SYS-10');
@@ -231,9 +238,9 @@ describe('resolveSystemConceptIds', () => {
       alloc(),
     );
     expect(newNodes).toHaveLength(2);
-    expect(idMap['SYS-GEN-1']).toBe('SYS-01');
-    expect(idMap['SYS-GEN-2']).toBe('SYS-02');
-    expect(newNodes[0]).toEqual({ id: 'SYS-01', concept: 'Mana Binding', type: 'system' });
+    expect(idMap['SYS-GEN-1']).toBe('SYS-1');
+    expect(idMap['SYS-GEN-2']).toBe('SYS-2');
+    expect(newNodes[0]).toEqual({ id: 'SYS-1', concept: 'Mana Binding', type: 'system' });
   });
   it('collapses a raw node whose concept exists in the existing graph', () => {
     const existing = { 'SYS-07': node('SYS-07', 'Mana Binding', 'system') };
@@ -276,9 +283,9 @@ describe('resolveSystemConceptIds', () => {
       alloc(),
     );
     expect(newNodes).toHaveLength(1);
-    expect(idMap['SYS-GEN-1']).toBe('SYS-01');
-    expect(idMap['SYS-GEN-2']).toBe('SYS-01');
-    expect(idMap['SYS-GEN-3']).toBe('SYS-01');
+    expect(idMap['SYS-GEN-1']).toBe('SYS-1');
+    expect(idMap['SYS-GEN-2']).toBe('SYS-1');
+    expect(idMap['SYS-GEN-3']).toBe('SYS-1');
   });
   it('existing-graph match takes priority over within-batch match', () => {
     const existing = { 'SYS-42': node('SYS-42', 'Mana Binding', 'system') };
@@ -341,7 +348,7 @@ describe('resolveSystemConceptIds', () => {
       relation: e.relation,
     }));
     expect(newNodes).toHaveLength(1);
-    expect(remapped[0]).toEqual({ from: 'SYS-05', to: 'SYS-06', relation: 'enables' });
+    expect(remapped[0]).toEqual({ from: 'SYS-05', to: 'SYS-6', relation: 'enables' });
   });
   it('reports existing-node ids that were re-mentioned as attributedExistingIds', () => {
     const existing = {

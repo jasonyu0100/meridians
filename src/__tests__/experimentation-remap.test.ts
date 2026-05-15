@@ -281,8 +281,8 @@ describe('remapScenarioCommit — arc + scene collisions', () => {
     expect(out.scenes[0].arcId).toBe(out.arc.id);
     expect(out.scenes[1].arcId).toBe(out.arc.id);
     // Scene ids are still S-prefixed and unique.
-    expect(out.scenes[0].id).toMatch(/^S-\d{3}$/);
-    expect(out.scenes[1].id).toMatch(/^S-\d{3}$/);
+    expect(out.scenes[0].id).toMatch(/^S-\d+$/);
+    expect(out.scenes[1].id).toMatch(/^S-\d+$/);
     expect(out.scenes[0].id).not.toBe(out.scenes[1].id);
   });
 });
@@ -321,7 +321,7 @@ describe('remapScenarioCommit — character collisions', () => {
     const newCharId = out.scenes[0].newCharacters![0].id;
 
     expect(newCharId).not.toBe('C-01');
-    expect(newCharId).toMatch(/^C-\d{2}$/);
+    expect(newCharId).toMatch(/^C-\d+$/);
 
     // Arc-level character refs
     expect(out.arc.activeCharacterIds).toContain(newCharId);
@@ -371,7 +371,7 @@ describe('remapScenarioCommit — location collisions', () => {
     const newLocId = out.scenes[0].newLocations![0].id;
 
     expect(newLocId).not.toBe('L-01');
-    expect(newLocId).toMatch(/^L-\d{2}$/);
+    expect(newLocId).toMatch(/^L-\d+$/);
 
     expect(out.arc.locationIds).toEqual([newLocId]);
     expect(out.arc.initialCharacterLocations['C-01']).toBe(newLocId);
@@ -434,7 +434,7 @@ describe('remapScenarioCommit — artifact collisions', () => {
     const newArtId = out.scenes[0].newArtifacts![0].id;
 
     expect(newArtId).not.toBe('A-01');
-    expect(newArtId).toMatch(/^A-\d{2}$/);
+    expect(newArtId).toMatch(/^A-\d+$/);
     expect(out.arc.develops).toContain(newArtId);
     expect(out.scenes[0].artifactUsages?.[0].artifactId).toBe(newArtId);
     expect(out.scenes[0].artifactUsages?.[0].characterId).toBe('C-01'); // pass-through
@@ -504,7 +504,7 @@ describe('remapScenarioCommit — thread collisions', () => {
     const newThreadId = out.scenes[0].newThreads![0].id;
 
     expect(newThreadId).not.toBe('T-01');
-    expect(newThreadId).toMatch(/^T-\d{2}$/);
+    expect(newThreadId).toMatch(/^T-\d+$/);
     expect(out.arc.develops).toContain(newThreadId);
     expect(out.scenes[0].threadDeltas[0].threadId).toBe(newThreadId);
     // Participant id is C-01 — not in maps, passes through.
@@ -565,7 +565,7 @@ describe('remapScenarioCommit — world node (K) collisions', () => {
 
     expect(remappedDelta.entityId).toBe(newCharId);
     expect(remappedDelta.addedNodes[0].id).not.toBe('K-01');
-    expect(remappedDelta.addedNodes[0].id).toMatch(/^K-\d{2}$/);
+    expect(remappedDelta.addedNodes[0].id).toMatch(/^K-\d+$/);
   });
 
   it('remaps the internal node ids of new-entity world graphs and their edges', () => {
@@ -596,7 +596,7 @@ describe('remapScenarioCommit — world node (K) collisions', () => {
 
     expect(nodeIds).toHaveLength(2);
     for (const nid of nodeIds) {
-      expect(nid).toMatch(/^K-\d{2}$/);
+      expect(nid).toMatch(/^K-\d+$/);
       expect(nid).not.toBe('K-01');
       expect(nid).not.toBe('K-02');
       // node.id field is kept consistent with the record key.
@@ -635,7 +635,7 @@ describe('remapScenarioCommit — system node (SYS) collisions', () => {
     const newSysId = out.scenes[0].systemDeltas!.addedNodes[0].id;
 
     expect(newSysId).not.toBe('SYS-001');
-    expect(newSysId).toMatch(/^SYS-\d{3}$/);
+    expect(newSysId).toMatch(/^SYS-\d+$/);
     expect(out.scenes[0].systemDeltas!.addedEdges[0].from).toBe(newSysId);
     // SYS-999 isn't in the payload — passes through.
     expect(out.scenes[0].systemDeltas!.addedEdges[0].to).toBe('SYS-999');

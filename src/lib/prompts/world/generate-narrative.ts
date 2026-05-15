@@ -62,40 +62,40 @@ Return JSON with this exact structure:
   "worldBuildSummary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this initial world commit — what creative space it opens, what tension it primes, which load-bearing entities, factions, or rules it brings into play. Used downstream to steer arc generation when this commit is read as <world-build-focus>, so name the load-bearing additions, not counts.",
   "imageStyle": "A concise visual style directive for all generated images (e.g. 'watercolour style with soft lighting'). Should capture the tone, medium, palette, and aesthetic that best fits this world.",
   "characters": [
-    {"id": "C-01", "name": "Full name matching the cultural palette of the world — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-01"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-01", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}
+    {"id": "C-1", "name": "Full name matching the cultural palette of the world — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-1"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}
   ],
   "locations": [
-    {"id": "L-01", "name": "Location name from geography, founders, or corrupted older words — concrete and specific", "prominence": "domain|place|margin", "parentId": null, "threadIds": [], "imagePrompt": "1-2 sentence LITERAL visual description — concrete architecture, landscape, lighting. No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "LK-01", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this location — history, rules, dangers, atmosphere, or properties"}]}}
+    {"id": "L-1", "name": "Location name from geography, founders, or corrupted older words — concrete and specific", "prominence": "domain|place|margin", "parentId": null, "threadIds": [], "imagePrompt": "1-2 sentence LITERAL visual description — concrete architecture, landscape, lighting. No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "LK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this location — history, rules, dangers, atmosphere, or properties"}]}}
   ],
   "threads": [
-    {"id": "T-01", "participants": [{"id": "C-01", "type": "character|location|artifact"}], "description": "Frame as a QUESTION: 'Will X succeed?' 'Can Y be trusted?' 'What is the truth behind Z?' — 15-30 words, specific", "outcomes": ["Named possibilities the market prices. Binary default: ['yes','no']. Multi-outcome when resolution is N-way. Must be distinct, mutually exclusive, 2–6 entries."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes, medium = within an arc, long = multi-arc, epic = work-spanning or open-ended. Drives evidence-magnitude attenuation downstream — pick honestly.", "openedAt": "S-001", "dependents": []}
+    {"id": "T-1", "participants": [{"id": "C-1", "type": "character|location|artifact"}], "description": "Frame as a QUESTION: 'Will X succeed?' 'Can Y be trusted?' 'What is the truth behind Z?' — 15-30 words, specific", "outcomes": ["Named possibilities the market prices. Binary default: ['yes','no']. Multi-outcome when resolution is N-way. Must be distinct, mutually exclusive, 2–6 entries."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes, medium = within an arc, long = multi-arc, epic = work-spanning or open-ended. Drives evidence-magnitude attenuation downstream — pick honestly.", "openedAt": "S-1", "dependents": []}
   ],
   "relationshipDeltas": [
-    {"from": "C-01", "to": "C-02", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.5}
+    {"from": "C-1", "to": "C-2", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.5}
   ],
   "artifacts": [
-    {"id": "A-01", "name": "Artifact name — concrete and specific to its function or origin", "significance": "key|notable|minor", "threadIds": [], "parentId": "character or location ID, or null for world-owned", "world": {"nodes": [{"id": "AK-01", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: what this artifact is, what it does, its history, powers, or limitations"}]}, "imagePrompt": "1-2 sentence LITERAL visual description — concrete physical details only, no metaphors or figurative language"}
+    {"id": "A-1", "name": "Artifact name — concrete and specific to its function or origin", "significance": "key|notable|minor", "threadIds": [], "parentId": "character or location ID, or null for world-owned", "world": {"nodes": [{"id": "AK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: what this artifact is, what it does, its history, powers, or limitations"}]}, "imagePrompt": "1-2 sentence LITERAL visual description — concrete physical details only, no metaphors or figurative language"}
   ],${worldOnly ? `
-  "systemDeltas": {"addedNodes": [{"id": "SYS-01", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-01", "to": "SYS-02", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},` : `
+  "systemDeltas": {"addedNodes": [{"id": "SYS-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-1", "to": "SYS-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},` : `
   "scenes": [
     {
-      "id": "S-001",
-      "arcId": "ARC-01",
-      "locationId": "L-01",
-      "povId": "C-01",
-      "participantIds": ["C-01"],
+      "id": "S-1",
+      "arcId": "ARC-1",
+      "locationId": "L-1",
+      "povId": "C-1",
+      "participantIds": ["C-1"],
       "summary": "REQUIRED — WRITE THIS FIRST. This is the spine of the scene; every delta below must trace back to something stated here. Rich prose sentences using character NAMES and location NAMES (never raw IDs). Include specifics: actions, consequences, dialogue snippets. Include any context that shapes how the scene is written (time span, technique, tone). No sentences ending in emotions or realizations.",
       "timeDelta": {"value": 1, "unit": "hour"},
       "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did — how it delivered utility"}],
       "events": ["event_tag"],
-      "threadDeltas": [{"threadId": "T-01", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the market"], "rationale": "thread-specific prose sentence (10-20 words) — what the scene does to this thread in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
-      "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-GEN-001", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
+      "threadDeltas": [{"threadId": "T-1", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the market"], "rationale": "thread-specific prose sentence (10-20 words) — what the scene does to this thread in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
+      "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
       "relationshipDeltas": [],
-      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-001", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-001", "to": "SYS-GEN-002", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]}
+      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-GEN-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]}
     }
   ],
   "arcs": [
-    {"id": "ARC-01", "name": "Arc name — a short thematic label for this narrative segment", "sceneIds": ["S-001"], "develops": ["T-01"], "locationIds": ["L-01"], "activeCharacterIds": ["C-01"], "initialCharacterLocations": {"C-01": "L-01"}, "directionVector": "Forward-looking intent — see ARC METADATA guidance below.", "worldState": "Backward-looking compact state snapshot as of END of arc — see ARC METADATA guidance below for domain-adaptive form."}
+    {"id": "ARC-1", "name": "Arc name — a short thematic label for this narrative segment", "sceneIds": ["S-1"], "develops": ["T-1"], "locationIds": ["L-1"], "activeCharacterIds": ["C-1"], "initialCharacterLocations": {"C-1": "L-1"}, "directionVector": "Forward-looking intent — see ARC METADATA guidance below.", "worldState": "Backward-looking compact state snapshot as of END of arc — see ARC METADATA guidance below for domain-adaptive form."}
   ],`}
   "proseProfile": {
     "register": "the tonal register (conversational/literary/raw/clinical/sardonic/lyrical/mythic/journalistic or other)",
@@ -257,14 +257,18 @@ Return JSON with this exact structure:
     <invariant>Always commit to a best-guess; do not skip the field.</invariant>
     <field name="value">integer (positive = forward, 0 = concurrent, negative = backward jump on the timeline — flashback OR diegetic time-travel; see special cases).</field>
     <field name="unit" values="minute | hour | day | week | month | year">Pick the unit that reads most naturally.</field>
-    <example phrase="that evening">3 hours</example>
-    <example phrase="the next morning">1 day</example>
-    <example phrase="three years later">3 years</example>
-    <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment, different POV / vantage / cutaway, OR the very first scene of the arc. SAME-MOMENT-DIFFERENT-VANTAGE only; do NOT use {value: 0} as a default for "something happened that's hard to time."</special-case>
-    <special-case kind="flashback">Negative value, narrative EVENTUALLY RETURNS — a memory, excerpt, or recalled scene rising under present pressure. The next return-to-present scene's timeDelta should roughly cancel the jump.</special-case>
-    <special-case kind="time-travel">Negative value, narrative NOW LIVES in the new time — no return. A character travels back diegetically (consciousness rewind, regression artefact, paradox-prone mechanic) and subsequent scenes are relative to the NEW position. e.g. {value: -65, unit: "year", transition: "consciousness rewinds to youth"}. Never classify a time-travel event as concurrent — the rewind has a clear direction (backward) and a clear magnitude.</special-case>
-    <rule>This is an ESTIMATE — read prose cues, not a calendar. Pick the most plausible value.</rule>
-    <rule>RELATIVE delta only; no absolute calendar anchor.</rule>
+    <example>{value: 3, unit: "hour", transition: "that evening"}</example>
+    <example>{value: 1, unit: "day", transition: "the next morning"}</example>
+    <example>{value: 3, unit: "year", transition: "three years later"}</example>
+    <example>{value: -10, unit: "year", transition: "flashback to her schooldays"}</example>
+    <example>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</example>
+    <special-case kind="concurrent">{value: 0} — same moment, different POV / vantage, OR the first scene of the arc. Do NOT default to 0 for anything else.</special-case>
+    <special-case kind="flashback">Negative value, narrative RETURNS. A later forward-scene cancels the jump.</special-case>
+    <special-case kind="time-travel">Negative value, narrative LIVES in the new time. No return; subsequent deltas relative to the new position.</special-case>
+    <sign-alignment critical="true">Sign matches transition direction. Backward phrase (flashback, Time-Turner-style rewind, "earlier", "ago", "X before") = NEGATIVE. Forward phrase ("later", "next morning", "X after") = POSITIVE.
+      <wrong>{value: 3, unit: "hour", transition: "three hours earlier, using the Time-Turner"} — phrase is backward, sign is forward.</wrong>
+    </sign-alignment>
+    <rule>Estimate from prose cues, not a calendar.</rule>
   </time-delta>
 
   ${PROMPT_POV}

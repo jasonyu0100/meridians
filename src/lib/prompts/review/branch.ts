@@ -88,11 +88,11 @@ Return JSON:
 {
   "overall": "3-5 paragraph critique. Name scenes, entities, patterns. End with the thematic question.",
   "sceneEvals": [
-    { "sceneId": "S-001", "verdict": "ok|edit|merge|cut|move|insert", "reason": "For edit: 1-3 sentences instructing the rewriter. For move: one sentence explaining why this position is wrong and where it belongs. For insert: full generation brief. For merge/cut: one sentence.", "mergeInto": "S-002 (merge only)", "moveAfter": "S-003 (move only — exact scene ID this scene should follow)", "insertAfter": "S-004 or START (insert only — scene ID, INSERT placeholder, or START for before first scene)" }
+    { "sceneId": "S-1", "verdict": "ok|edit|merge|cut|move|insert", "reason": "For edit: 1-3 sentences instructing the rewriter. For move: one sentence explaining why this position is wrong and where it belongs. For insert: full generation brief. For merge/cut: one sentence.", "mergeInto": "S-2 (merge only)", "moveAfter": "S-3 (move only — exact scene ID this scene should follow)", "insertAfter": "S-4 or START (insert only — scene ID, INSERT placeholder, or START for before first scene)" }
   ],
   "repetitions": ["pattern 1", "pattern 2"],
   "thematicQuestion": "The underlying question the work is interrogating — human, argumentative / evidentiary, or what the rule set reveals under stress, depending on the source's register"
 }
-Every scene must appear in sceneEvals. Use the EXACT scene IDs shown above (e.g. "S-001", not "1" or "scene 1").
+Every scene must appear in sceneEvals. Use the EXACT scene IDs shown above (e.g. "S-1", not "1" or "scene 1").
 </output-format>`;
 }

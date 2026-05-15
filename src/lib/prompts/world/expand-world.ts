@@ -138,7 +138,7 @@ Return JSON with this exact structure:
     {
       "id": "${nextLocId}",
       "name": "Location name from geography, founders, or corrupted older words — concrete and specific",
-      "parentId": "REQUIRED: existing location ID (e.g. L-01) to nest under, or null ONLY for top-level regions",
+      "parentId": "REQUIRED: existing location ID (e.g. L-1) to nest under, or null ONLY for top-level regions",
       "tiedCharacterIds": ["character IDs with a significant tie to this location — residents, employees, faction members, students. Ties represent gravity and belonging, not just presence"],
       "threadIds": [],
       "imagePrompt": "1-2 sentence LITERAL visual description: architecture, landscape, lighting, weather. Use concrete physical details only — no metaphors, similes, or figurative language. Image generators interpret them literally.",
@@ -168,8 +168,8 @@ Return JSON with this exact structure:
     }
   ],
   "systemDeltas": {
-    "addedNodes": [{"id": "SYS-GEN-001", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}],
-    "addedEdges": [{"from": "SYS-GEN-001", "to": "existing-SYS-ID", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]
+    "addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}],
+    "addedEdges": [{"from": "SYS-GEN-1", "to": "existing-SYS-ID", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]
   },
   "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the market"], "rationale": "10-20 words, prose only — what happens in the scene in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
   "worldDeltas": [{"entityId": "existing C-XX, L-XX, or A-XX", "addedNodes": [{"id": "K-next", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
@@ -180,11 +180,12 @@ Return JSON with this exact structure:
 </output-format>
 
 <id-rules>
-  <rule>Character IDs: continue sequentially from ${nextCharId} (e.g., ${nextCharId}, C-${String(parseInt(nextCharId.split('-').pop()!) + 1).padStart(2, '0')}, ...).</rule>
-  <rule>Location IDs: continue sequentially from ${nextLocId} (e.g., ${nextLocId}, L-${String(parseInt(nextLocId.split('-').pop()!) + 1).padStart(2, '0')}, ...).</rule>
-  <rule>Thread IDs: continue sequentially from ${nextThreadId} (e.g., ${nextThreadId}, T-${String(parseInt(nextThreadId.split('-').pop()!) + 1).padStart(2, '0')}, ...).</rule>
-  <rule>Artifact IDs: continue sequentially from ${nextArtifactId} (e.g., ${nextArtifactId}, A-${String(parseInt(nextArtifactId.split('-').pop()!) + 1).padStart(2, '0')}, ...).</rule>
-  <rule>Knowledge node IDs: continue sequentially from ${nextKId} (e.g., ${nextKId}, K-${String(parseInt(nextKId.split('-').pop()!) + 1).padStart(2, '0')}, ...).</rule>
+  <rule>Character IDs: continue sequentially from ${nextCharId} (e.g., ${nextCharId}, C-${parseInt(nextCharId.split('-').pop()!) + 1}, ...).</rule>
+  <rule>Location IDs: continue sequentially from ${nextLocId} (e.g., ${nextLocId}, L-${parseInt(nextLocId.split('-').pop()!) + 1}, ...).</rule>
+  <rule>Thread IDs: continue sequentially from ${nextThreadId} (e.g., ${nextThreadId}, T-${parseInt(nextThreadId.split('-').pop()!) + 1}, ...).</rule>
+  <rule>Artifact IDs: continue sequentially from ${nextArtifactId} (e.g., ${nextArtifactId}, A-${parseInt(nextArtifactId.split('-').pop()!) + 1}, ...).</rule>
+  <rule>Knowledge node IDs: continue sequentially from ${nextKId} (e.g., ${nextKId}, K-${parseInt(nextKId.split('-').pop()!) + 1}, ...).</rule>
+  <rule>No leading zeros — write C-7, not C-07. The pipeline rejects zero-padded duplicates.</rule>
   <rule>ALL knowledge nodes (in both characters and locations) use the K- prefix and share one sequence.</rule>
 </id-rules>
 
@@ -216,7 +217,7 @@ ${PROMPT_ENTITY_INTEGRATION}
 
 <thread-convergence hint="Critical for long-form narrative.">
   <rule>The "dependents" field lists EXISTING thread IDs that this new thread connects to, accelerates, or converges with. This is how threads collide.</rule>
-  <rule>A convergent thread is one whose activation or resolution forces multiple existing threads into new trajectories. Example: a resource thread (T-new) that depends on [T-03, T-07] means when this resource thread activates, it creates pressure on both T-03 and T-07 simultaneously.</rule>
+  <rule>A convergent thread is one whose activation or resolution forces multiple existing threads into new trajectories. Example: a resource thread (T-new) that depends on [T-3, T-7] means when this resource thread activates, it creates pressure on both T-3 and T-7 simultaneously.</rule>
   <rule>At least ONE new thread should have 2+ dependents — this is a convergent bridge thread that forces collision between existing threads.</rule>
   <rule>Dependents should reference threads that are currently in different parts of the narrative or involve different entities — the whole point is to CREATE connections between threads that were previously parallel.</rule>
   <rule>Think: shared resources multiple factions need, events that affect multiple threads, secrets that connect separated entities, external forces that compress multiple conflicts.</rule>
@@ -225,7 +226,7 @@ ${PROMPT_ENTITY_INTEGRATION}
 
 <system-knowledge-deltas hint="systemDeltas define the FOUNDATIONAL abstractions this expansion establishes — the rules, mechanisms, gates, propagation laws, causal couplings, concepts, and tensions that the new entities operate within. Intentional world-building, not incidental discovery. In rule-driven works the system layer is load-bearing — it IS the substrate driving consequence — so the expansion must extend that substrate, not decorate it.">
   <rule>Use "principle" for fundamental truths, "system" for mechanisms/institutions/gate conditions/propagation laws, "concept" for abstract ideas, "tension" for contradictions, "event" for world-level occurrences, "structure" for organizations/factions, "environment" for geography/climate, "convention" for customs/norms/procedural defaults, "constraint" for scarcities/limitations/causal couplings.</rule>
-  <rule>Node IDs should be SYS-GEN-001, SYS-GEN-002, etc. (they will be re-mapped to real IDs).</rule>
+  <rule>Node IDs should be SYS-GEN-1, SYS-GEN-2, etc. (no leading zeros — they will be re-mapped to real IDs).</rule>
   <rule>Edges can reference both new SYS-GEN-* IDs and existing system knowledge IDs already in the narrative.</rule>
   <rule>Generate ${size === 'small' ? '4-6' : size === 'medium' ? '8-12' : size === 'exact' ? 'as many as the directive calls for' : '15-25'} system knowledge nodes with a comparable number of edges. Each must be a genuine structural rule, mechanism, or gate that the new entities operate within. EDGES ARE CRITICAL — an isolated node contributes 1 to system, but an edge connecting it to an existing SYS node adds √1 more AND wires the expansion into the existing graph.</rule>
   <rule>At least HALF of your edges should cross the new/existing boundary — use existing SYS IDs from the narrative context, not just SYS-GEN-* → SYS-GEN-*. This is how expansions deepen the foundation instead of floating free.</rule>

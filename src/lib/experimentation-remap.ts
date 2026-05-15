@@ -94,11 +94,14 @@ function makeMaps(): IdMaps {
   };
 }
 
-/** Mint a fresh id with the given prefix that isn't in `taken`. */
-function fresh(prefix: string, taken: Set<string>, padWidth = 2): string {
+/** Mint a fresh id with the given prefix that isn't in `taken`. Canonical
+ *  unpadded form (`SYS-7`, not `SYS-07`) — matches the rest of the pipeline so
+ *  scenario commits can't introduce padded duplicates like SYS-017 alongside
+ *  an existing SYS-17. */
+function fresh(prefix: string, taken: Set<string>): string {
   let n = 1;
   while (true) {
-    const candidate = `${prefix}-${String(n).padStart(padWidth, '0')}`;
+    const candidate = `${prefix}-${n}`;
     if (!taken.has(candidate)) return candidate;
     n++;
   }
@@ -115,9 +118,8 @@ function reserve(
   prefix: string,
   taken: Set<string>,
   map: Map<string, string>,
-  padWidth = 2,
 ): string {
-  const next = taken.has(proposedId) ? fresh(prefix, taken, padWidth) : proposedId;
+  const next = taken.has(proposedId) ? fresh(prefix, taken) : proposedId;
   taken.add(next);
   map.set(proposedId, next);
   return next;
@@ -210,7 +212,7 @@ export function remapScenarioCommit(
   reserve(arc.id, 'ARC', taken.arc, maps.arc);
 
   // Scene ids.
-  for (const s of scenes) reserve(s.id, 'S', taken.scene, maps.scene, 3);
+  for (const s of scenes) reserve(s.id, 'S', taken.scene, maps.scene);
 
   // Newly-introduced entities (per-scene).
   for (const s of scenes) {
@@ -224,7 +226,7 @@ export function remapScenarioCommit(
     }
     // System-graph nodes
     if (s.systemDeltas) {
-      for (const n of s.systemDeltas.addedNodes ?? []) reserve(n.id, 'SYS', taken.sys, maps.sys, 3);
+      for (const n of s.systemDeltas.addedNodes ?? []) reserve(n.id, 'SYS', taken.sys, maps.sys);
     }
   }
 

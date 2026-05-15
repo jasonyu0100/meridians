@@ -601,7 +601,7 @@ export function GeneratePanel({
       );
       dispatch({
         type: "EXPAND_WORLD",
-        worldBuildId: nextId("WB", Object.keys(narrative.worldBuilds), 3),
+        worldBuildId: nextId("WB", Object.keys(narrative.worldBuilds)),
         branchId: state.viewState.activeBranchId!,
         summary: expansion.summary,
         characters: expansion.characters,

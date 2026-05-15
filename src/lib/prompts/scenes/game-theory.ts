@@ -179,7 +179,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <key>Score as if the cell were the realized outcome. Do not bias toward making the realized cell look maximal. The evaluator's value comes from honest cross-cell comparison — a dominated cell landing as realised is exactly the information downstream analysis wants to surface.</key>
 </stake-delta-scoring>
 
-<example title="Recipient (C-01) and Messenger (C-02) delivering a sealed summons in front of the recipient's household">
+<example title="Recipient (C-1) and Messenger (C-2) delivering a sealed summons in front of the recipient's household">
   <classification-walkthrough>
     <step name="scope">Two strategic agents, no mechanism override. Proceed.</step>
     <step name="mechanism-override">No timing/binding form dominates. Proceed.</step>
@@ -196,7 +196,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   "gameType": "signaling",
   "actionAxis": "disclosure",
 
-  "playerAId": "C-01",
+  "playerAId": "C-1",
   "playerAName": "Recipient",
   "playerAActions": [
     { "name": "reads aloud" },
@@ -204,7 +204,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
     { "name": "refuses to open" }
   ],
 
-  "playerBId": "C-02",
+  "playerBId": "C-2",
   "playerBName": "Messenger",
   "playerBActions": [
     { "name": "narrates the contents" },

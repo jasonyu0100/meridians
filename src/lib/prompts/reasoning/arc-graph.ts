@@ -207,7 +207,7 @@ Return a JSON object.
   "nodes": [
     // Backward mode: terminal first (order 0-2 at index 4-6).
     // order: 0 · index: 4 — fate node the reasoning LANDS (not mandated).
-    {"id": "fate-position-secured", "index": 4, "type": "fate", "label": "Coalition secures the contested position through shared cause", "detail": "T-01 leaned 'secured' (p=0.78); reasoning delivers it. Closure plausible given volume and scene count.", "threadId": "T-01"},
+    {"id": "fate-position-secured", "index": 4, "type": "fate", "label": "Coalition secures the contested position through shared cause", "detail": "T-1 leaned 'secured' (p=0.78); reasoning delivers it. Closure plausible given volume and scene count.", "threadId": "T-1"},
     // order: 1 · index: 5 — cost that falls out of the path taken.
     {"id": "reason-observer-exposure", "index": 5, "type": "reasoning", "label": "Negotiation exposes the principal actor to a hostile observer", "detail": "Securing the coalition's terms requires the principal to demonstrate the faction's structural weakness in front of the counterpart's council. The act of demonstrating is the act of disclosing — there is no version of this negotiation where the observer doesn't see what the principal knows. Once seen, the knowledge cannot be denied or pretended away in later sections."},
     // order: 2 · index: 6 — new thread emerges from the cost.

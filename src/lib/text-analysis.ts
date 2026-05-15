@@ -1647,16 +1647,18 @@ export async function assembleNarrative(
     sysCounter = 0,
     artifactCounter = 0;
 
-  const nextId = (pre: string, counter: () => number, pad = 2) =>
-    `${pre}-${PREFIX}-${String(counter()).padStart(pad, "0")}`;
+  // Canonical analyzed-work id form: `<CLASS>-<WORK>-<N>`. No zero padding — see
+  // narrative-utils.nextId for the same convention on generation-side ids.
+  const nextId = (pre: string, counter: () => number) =>
+    `${pre}-${PREFIX}-${counter()}`;
   const nextCharId = () => nextId("C", () => ++charCounter);
   const nextLocId = () => nextId("L", () => ++locCounter);
   const nextThreadId = () => nextId("T", () => ++threadCounter);
-  const nextSceneId = () => nextId("S", () => ++sceneCounter, 3);
+  const nextSceneId = () => nextId("S", () => ++sceneCounter);
   const nextArcId = () => nextId("ARC", () => ++arcCounter);
-  const nextKId = () => nextId("K", () => ++kCounter, 3);
-  const nextTkId = () => nextId("TK", () => ++tkCounter, 3);
-  const nextSysId = () => nextId("SYS", () => ++sysCounter, 2);
+  const nextKId = () => nextId("K", () => ++kCounter);
+  const nextTkId = () => nextId("TK", () => ++tkCounter);
+  const nextSysId = () => nextId("SYS", () => ++sysCounter);
   const nextArtifactIdFn = () => nextId("A", () => ++artifactCounter);
 
   const charNameToId: Record<string, string> = {};
@@ -2423,7 +2425,7 @@ export async function assembleNarrative(
       continue;
 
     const batchNum = Math.floor(batchStart / WORLD_COMMIT_INTERVAL) + 1;
-    const worldBuildId = `WB-${PREFIX}-${String(batchNum).padStart(3, "0")}`;
+    const worldBuildId = `WB-${PREFIX}-${batchNum}`;
 
     // Collect input data for the LLM intent summariser — applied after the
     // loop so all batches summarise in parallel. The placeholder here is

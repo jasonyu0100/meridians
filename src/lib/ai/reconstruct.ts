@@ -198,7 +198,7 @@ export async function reconstructBranch(
     if (!inserts) return;
     const ref = lastSceneEntry;
     for (const ins of inserts) {
-      const insertId = nextId('S', [...allExistingSceneIds, ...usedNewIds], 3);
+      const insertId = nextId('S', [...allExistingSceneIds, ...usedNewIds]);
       usedNewIds.add(insertId);
       const placeholder: Scene = {
         kind: 'scene',
@@ -265,7 +265,7 @@ export async function reconstructBranch(
       // Reuse original ID for unchanged scenes; only mint new IDs for scenes that will be modified
       const needsNewId = verdict === 'edit';
       const newId = needsNewId
-        ? nextId('S', [...allExistingSceneIds, ...usedNewIds], 3)
+        ? nextId('S', [...allExistingSceneIds, ...usedNewIds])
         : entry.id;
       if (needsNewId) usedNewIds.add(newId);
 
@@ -299,7 +299,7 @@ export async function reconstructBranch(
     const wasPlaced = sceneEntries.some((s) => s.verdict === 'insert' && s.reason === ins.reason && s.scene.summary === ins.reason);
     if (!wasPlaced) {
       const ref = lastSceneEntry;
-      const insertId = nextId('S', [...allExistingSceneIds, ...usedNewIds], 3);
+      const insertId = nextId('S', [...allExistingSceneIds, ...usedNewIds]);
       usedNewIds.add(insertId);
       const placeholder: Scene = {
         kind: 'scene',

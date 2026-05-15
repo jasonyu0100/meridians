@@ -1050,7 +1050,7 @@ function reducer(state: AppState, action: Action): AppState {
 
       // Only inject a world-build commit if the narrative doesn't already have one
       const hasExistingWorldBuild = Object.keys(n.worldBuilds).length > 0;
-      const worldBuildId = nextId("WB", Object.keys(n.worldBuilds), 3);
+      const worldBuildId = nextId("WB", Object.keys(n.worldBuilds));
       if (
         rootBranch &&
         !hasExistingWorldBuild &&

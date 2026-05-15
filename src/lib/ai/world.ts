@@ -72,7 +72,7 @@ function normalizeInitialWorld(
     .filter((n: any) => n && typeof n.content === 'string' && n.content.trim())
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((n: any, i: number) => ({
-      id: n.id || `K-${entityId}-${String(i + 1).padStart(3, '0')}`,
+      id: n.id || `K-${entityId}-${i + 1}`,
       content: n.content,
       type: (n.type || 'trait') as WorldDelta['addedNodes'][number]['type'],
     }));

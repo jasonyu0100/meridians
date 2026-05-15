@@ -137,9 +137,9 @@ describe('expandWorld — systemDeltas', () => {
     const result = await expandWorld(narrative, [], 0, 'Expand the magic system');
     const sysDelta = result.systemDeltas!;
     expect(sysDelta.addedNodes).toHaveLength(2);
-    expect(sysDelta.addedNodes.map((n) => n.id)).toEqual(['SYS-01', 'SYS-02']);
+    expect(sysDelta.addedNodes.map((n) => n.id)).toEqual(['SYS-1', 'SYS-2']);
     expect(sysDelta.addedEdges).toHaveLength(1);
-    expect(sysDelta.addedEdges[0]).toEqual({ from: 'SYS-02', to: 'SYS-01', relation: 'enables' });
+    expect(sysDelta.addedEdges[0]).toEqual({ from: 'SYS-2', to: 'SYS-1', relation: 'enables' });
   });
   it('collapses re-mentioned concepts to existing SYS ids', async () => {
     vi.mocked(callGenerate).mockResolvedValue(JSON.stringify({
