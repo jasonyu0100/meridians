@@ -362,21 +362,33 @@ export function useExperimentation() {
    */
   const commit = useCallback(() => {
     const current = runStateRef.current;
-    if (!current.arcId) return;
     const activeBranchId = state.viewState.activeBranchId;
     const narrative = state.activeNarrative;
-    if (!activeBranchId || !narrative) return;
 
-    // Pull the trigger on any in-flight workers before we start dispatching
-    // CREATE_BRANCH actions. This stops them from racing the commit and
-    // (more importantly) keeps them from burning further LLM tokens after
-    // the user has decided to move on.
+    // Clicking Commit is an explicit "I'm done with this run" signal.
+    // Whatever happens below — successful attach, nothing-to-commit, or
+    // missing-state bail — the run state goes back to idle so the control
+    // bar disappears and the next run starts clean. Anything in flight is
+    // cancelled so workers don't burn further LLM tokens after the user has
+    // decided to move on.
     cancelledRef.current = true;
+    const finishCommit = () => {
+      setRunState(() => makeEmptyRunState());
+      runningRef.current = false;
+    };
+
+    if (!current.arcId || !activeBranchId || !narrative) {
+      finishCommit();
+      return;
+    }
 
     const completed = current.scenarioOrder
       .map((id) => current.runs[id])
       .filter((r): r is ScenarioRun => !!r && r.status === 'done' && !!r.result);
-    if (completed.length === 0) return;
+    if (completed.length === 0) {
+      finishCommit();
+      return;
+    }
 
     // Rank by softmax probability; highest = active branch.
     const ranked = [...completed].sort((a, b) => b.probabilityAtStart - a.probabilityAtStart);
@@ -437,8 +449,7 @@ export function useExperimentation() {
       dispatch({ type: 'SWITCH_BRANCH', branchId: firstNewBranchId });
     }
 
-    setRunState(() => makeEmptyRunState());
-    runningRef.current = false;
+    finishCommit();
   }, [state, dispatch, setRunState]);
 
   // ── ID minting ────────────────────────────────────────────────────────

@@ -274,7 +274,12 @@ export default function SeriesPage() {
               <ModeControlBar
                 mode="experimentation"
                 runState={experimentation.runState}
-                onStop={experimentation.stop}
+                // Stop on the floating pill kills the run AND clears the bar
+                // — the user is dismissing experimentation entirely from
+                // outside the panel. The panel's own stop button uses
+                // experimentation.stop so the modal can stay open to review
+                // partial results before committing.
+                onStop={experimentation.reset}
                 onOpenPanel={() => setExperimentationOpen(true)}
               />
             )}
