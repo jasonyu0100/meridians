@@ -20,7 +20,7 @@ ${args.sceneXml}
 
 <phrasing-discipline critical="true" hint="Each proposition is consumed downstream by the prose writer. If it reads like a database row, the prose layer has to translate it before use, which both costs work and risks the metadata leaking into the page.">
   <rule name="natural-language">Write as prose-ready statements about WHAT IS TRUE in the world. Past or present tense in the world's voice — not the engine's metadata.</rule>
-  <rule name="no-identifier-echo">Never echo internal identifiers, snake_case event names, or system-node ids. Translate "instrument_malfunction" / "adaptive_countermeasure" / "SYS-07" into the actual phenomenon (the specific in-world event the label points at, named in concrete language).</rule>
+  <rule name="no-identifier-echo">Never echo internal identifiers, snake_case event names, or system-node ids. Translate "instrument_malfunction" / "adaptive_countermeasure" / "SYS-7" into the actual phenomenon (the specific in-world event the label points at, named in concrete language).</rule>
   <rule name="no-template-scaffolding">Do NOT write "An X event occurred" or "The thread 'Y' has shifted to 'Z', indicating W." Drop the framing entirely and state the in-world fact directly.</rule>
   <rule name="thread-shifts-as-events">For threadDeltas: do NOT quote the thread's question text or name its lifecycle status. Describe what actually happens in the scene that moves that thread (the discovery, the choice, the consequence). The thread's description is your anchor for what's at stake; the proposition states the in-world event.</rule>
   <rule name="events-as-prose">For events: the event string is a label, not the proposition. Render the underlying happening as a concrete prose statement.</rule>
@@ -40,7 +40,7 @@ ${args.sceneXml}
   <good>"The regulator is actively jamming the relay network, scrambling its routing tables."</good>
   <bad reason="bundled claims">"The relay network was used by Lin for night-time reconnaissance, but experienced targeted interference and distortion."</bad>
   <good>["Lin queries the relay network to track the night patrol's rounds.", "The relay network suffers targeted interference mid-query."]</good>
-  <bad reason="simulation register — engine bookkeeping rather than in-world rule-driven event">"The system_rule for containment was triggered by SYS-04."</bad>
+  <bad reason="simulation register — engine bookkeeping rather than in-world rule-driven event">"The system_rule for containment was triggered by SYS-4."</bad>
   <good reason="simulation register — the rule-driven outcome stated as in-world fact">["The reproduction number crosses 1.4 at week six of the modelled outbreak.", "Lagos prefecture activates its tier-two containment order in response."]</good>
   <bad reason="cognition-collapse — one gesture proposition for an entire chain of reasoning">["Mara refined her approach to the upcoming arbitration, weighing options and assessing risks."]</bad>
   <good reason="each named scenario, tradeoff, and conclusion gets its own proposition">[

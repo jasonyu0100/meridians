@@ -788,8 +788,13 @@ export type ProseScore = {
 // consecutive scenes. Time is tracked relative to the first scene only — no
 // absolute calendar reference (no "Monday 1st January 2026"). `value: 0`
 // (with any unit) denotes a concurrent scene — same moment as the prior
-// scene, different POV or vantage. Negative `value` denotes a flashback —
-// the scene sits at an earlier point on the timeline than the prior scene.
+// scene, different POV or vantage. Negative `value` denotes a backward jump
+// on the timeline — used by two modes: FLASHBACK (one negative entry; scenes
+// inside the past span use normal positive deltas; one eventual big positive
+// delta snap-returns to present) and TIME-TRAVEL (one negative entry; scenes
+// move forward from the new position; the narrative lives in the new time,
+// no snap-return). Both share the shape (negative entry → forward motion);
+// only the flashback returns.
 
 export type TimeUnit =
   | "minute"

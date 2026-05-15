@@ -19,10 +19,10 @@ function mkThread(id: string, overrides: Partial<Thread> = {}): Thread {
       [NARRATOR_AGENT_ID]: {
         logits: new Array(outcomes.length).fill(0),
         volume: 2, volatility: 0,
-        lastTouchedScene: 'S-001',
+        lastTouchedScene: 'S-1',
       },
     },
-    openedAt: 'S-000',
+    openedAt: 'S-0',
     dependents: [],
     threadLog: { nodes: {}, edges: [] },
     ...overrides,
@@ -31,7 +31,7 @@ function mkThread(id: string, overrides: Partial<Thread> = {}): Thread {
 
 function mkScene(id: string, threadDeltas: Scene['threadDeltas'] = []): Scene {
   return {
-    kind: 'scene', id, arcId: 'ARC-01', povId: 'C-01', locationId: 'L-01',
+    kind: 'scene', id, arcId: 'ARC-1', povId: 'C-1', locationId: 'L-1',
     participantIds: [], events: [], threadDeltas,
     worldDeltas: [], relationshipDeltas: [], summary: id,
   };
@@ -90,16 +90,16 @@ describe('buildPortfolioRows', () => {
       CLOSED: mkThread('CLOSED', { closedAt: 'S-1', closeOutcome: 0 }),
       COMMITTED: mkThread('COMMITTED', {
         // Margin ≈ 0.9 (below saturating threshold), topProb ≈ 0.71 → "committed" category.
-        beliefs: { [NARRATOR_AGENT_ID]: { logits: [0.45, -0.45], volume: 2, volatility: 0, lastTouchedScene: 'S-001' } },
+        beliefs: { [NARRATOR_AGENT_ID]: { logits: [0.45, -0.45], volume: 2, volatility: 0, lastTouchedScene: 'S-1' } },
       }),
       NEAR: mkThread('NEAR', {
-        beliefs: { [NARRATOR_AGENT_ID]: { logits: [2.5, 0], volume: 2, volatility: 0, lastTouchedScene: 'S-001' } },
+        beliefs: { [NARRATOR_AGENT_ID]: { logits: [2.5, 0], volume: 2, volatility: 0, lastTouchedScene: 'S-1' } },
       }),
       ABANDONED: mkThread('ABANDONED', {
         beliefs: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: 0.1, volatility: 0 } },
       }),
     };
-    const rows = buildPortfolioRows(mkNarrative(threads), ['S-001'], 0);
+    const rows = buildPortfolioRows(mkNarrative(threads), ['S-1'], 0);
     const ids = rows.map((r) => r.thread.id);
     // Terminal states (abandoned, then resolved) pinned to the tail.
     expect(ids.indexOf('ABANDONED')).toBeGreaterThan(ids.indexOf('NEAR'));
@@ -115,10 +115,10 @@ describe('buildPortfolioRows', () => {
     const threads = {
       T1: mkThread('T1', {
         // Margin = 2.5 is in the near-closed band [2, 3) → saturating.
-        beliefs: { [NARRATOR_AGENT_ID]: { logits: [1.25, -1.25], volume: 3, volatility: 0.4, lastTouchedScene: 'S-001' } },
+        beliefs: { [NARRATOR_AGENT_ID]: { logits: [1.25, -1.25], volume: 3, volatility: 0.4, lastTouchedScene: 'S-1' } },
       }),
     };
-    const [row] = buildPortfolioRows(mkNarrative(threads), ['S-001'], 0);
+    const [row] = buildPortfolioRows(mkNarrative(threads), ['S-1'], 0);
     expect(row.probs[0]).toBeGreaterThan(row.probs[1]);
     expect(row.margin).toBeCloseTo(2.5, 5);
     expect(row.volume).toBe(3);
@@ -132,10 +132,10 @@ describe('currentFocusIds', () => {
     const threads: Record<string, Thread> = {};
     for (let i = 0; i < 10; i++) {
       threads[`T${i}`] = mkThread(`T${i}`, {
-        beliefs: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: i + 1, volatility: 0, lastTouchedScene: 'S-001' } },
+        beliefs: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: i + 1, volatility: 0, lastTouchedScene: 'S-1' } },
       });
     }
-    const ids = currentFocusIds(mkNarrative(threads), ['S-001'], 0, 3);
+    const ids = currentFocusIds(mkNarrative(threads), ['S-1'], 0, 3);
     expect(ids.size).toBe(3);
     // Highest-volume threads win focus.
     expect(ids.has('T9')).toBe(true);
@@ -148,14 +148,14 @@ describe('buildThreadTrajectory', () => {
   it('replays belief evolution scene-by-scene', () => {
     const threads = { T1: mkThread('T1') };
     const scenes: Record<string, Scene> = {
-      'S-001': mkScene('S-001', [
+      'S-1': mkScene('S-1', [
         { threadId: 'T1', logType: 'setup', updates: [{ outcome: 'yes', evidence: 2 }], volumeDelta: 1, rationale: 'opens' },
       ]),
-      'S-002': mkScene('S-002', [
+      'S-2': mkScene('S-2', [
         { threadId: 'T1', logType: 'escalation', updates: [{ outcome: 'yes', evidence: 3 }], volumeDelta: 1, rationale: 'rises' },
       ]),
     };
-    const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-001', 'S-002']);
+    const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-1', 'S-2']);
     expect(points).toHaveLength(2);
     // Probability on "yes" increases monotonically scene-by-scene.
     expect(points[1].probs[0]).toBeGreaterThan(points[0].probs[0]);
@@ -166,12 +166,12 @@ describe('buildThreadTrajectory', () => {
   it('stops replay at closure (trajectory ends at resolved scene)', () => {
     const threads = { T1: mkThread('T1') };
     const scenes: Record<string, Scene> = {
-      'S-001': mkScene('S-001', [
+      'S-1': mkScene('S-1', [
         { threadId: 'T1', logType: 'payoff', updates: [{ outcome: 'yes', evidence: 4 }, { outcome: 'no', evidence: -4 }], volumeDelta: 1, rationale: 'decisive' },
       ]),
-      'S-002': mkScene('S-002', []),
+      'S-2': mkScene('S-2', []),
     };
-    const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-001', 'S-002']);
+    const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-1', 'S-2']);
     expect(points).toHaveLength(1);
   });
 });

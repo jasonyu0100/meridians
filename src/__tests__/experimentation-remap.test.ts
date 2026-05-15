@@ -18,7 +18,7 @@ import { newNarratorBelief } from '@/lib/thread-log';
 import { EMPTY_THREAD_LOG } from '@/lib/thread-log';
 
 // Every parallel scenario worker mints IDs from the same root narrative, so
-// without remapping every commit collides on `S-001`, `C-01`, `L-01` etc.
+// without remapping every commit collides on `S-1`, `C-1`, `L-1` etc.
 // These tests pin the contract: per-scenario remap mints fresh ids for
 // newly-introduced entities, rewrites every cross-reference field, and lets
 // references to existing narrative entities pass through.
@@ -71,7 +71,7 @@ function makeThread(id: string, overrides: Partial<Thread> = {}): Thread {
     beliefs: {
       [NARRATOR_AGENT_ID]: newNarratorBelief(outcomes.length),
     },
-    openedAt: 'S-001',
+    openedAt: 'S-1',
     dependents: [],
     threadLog: { ...EMPTY_THREAD_LOG },
     ...overrides,
@@ -85,7 +85,7 @@ function makeScene(id: string, arcId: string, overrides: Partial<Scene> = {}): S
     arcId,
     summary: `${id} summary`,
     povId: null,
-    locationId: 'L-01',
+    locationId: 'L-1',
     participantIds: [],
     events: [],
     threadDeltas: [],
@@ -112,7 +112,7 @@ function makeArc(id: string, overrides: Partial<Arc> = {}): Arc {
 
 function makeNarrative(overrides: Partial<NarrativeState> = {}): NarrativeState {
   return {
-    id: 'N-01',
+    id: 'N-1',
     title: 'Test',
     description: '',
     characters: {},
@@ -136,43 +136,43 @@ function makeNarrative(overrides: Partial<NarrativeState> = {}): NarrativeState 
 
 describe('buildTakenFromNarrative', () => {
   it('captures every entity id across all 8 classes', () => {
-    const charA = makeCharacter('C-01', {
+    const charA = makeCharacter('C-1', {
       world: {
         nodes: {
-          'K-01': { id: 'K-01', type: 'trait', content: 'brave' },
+          'K-1': { id: 'K-1', type: 'trait', content: 'brave' },
         },
         edges: [],
       },
     });
-    const locA = makeLocation('L-01', {
+    const locA = makeLocation('L-1', {
       world: {
         nodes: {
-          'K-02': { id: 'K-02', type: 'trait', content: 'ancient' },
+          'K-2': { id: 'K-2', type: 'trait', content: 'ancient' },
         },
         edges: [],
       },
     });
-    const artA = makeArtifact('A-01', {
+    const artA = makeArtifact('A-1', {
       world: {
         nodes: {
-          'K-03': { id: 'K-03', type: 'trait', content: 'cursed' },
+          'K-3': { id: 'K-3', type: 'trait', content: 'cursed' },
         },
         edges: [],
       },
     });
-    const threadA = makeThread('T-01');
-    const sceneA = makeScene('S-001', 'ARC-1');
+    const threadA = makeThread('T-1');
+    const sceneA = makeScene('S-1', 'ARC-1');
     const arcA = makeArc('ARC-1');
     const narrative = makeNarrative({
-      characters: { 'C-01': charA },
-      locations: { 'L-01': locA },
-      artifacts: { 'A-01': artA },
-      threads: { 'T-01': threadA },
-      scenes: { 'S-001': sceneA },
+      characters: { 'C-1': charA },
+      locations: { 'L-1': locA },
+      artifacts: { 'A-1': artA },
+      threads: { 'T-1': threadA },
+      scenes: { 'S-1': sceneA },
       arcs: { 'ARC-1': arcA },
       systemGraph: {
         nodes: {
-          'SYS-001': { id: 'SYS-001', type: 'rule', concept: 'gravity' } as never,
+          'SYS-1': { id: 'SYS-1', type: 'rule', concept: 'gravity' } as never,
         },
         edges: [],
       },
@@ -181,15 +181,15 @@ describe('buildTakenFromNarrative', () => {
     const taken = buildTakenFromNarrative(narrative);
 
     expect(taken.arc.has('ARC-1')).toBe(true);
-    expect(taken.scene.has('S-001')).toBe(true);
-    expect(taken.char.has('C-01')).toBe(true);
-    expect(taken.loc.has('L-01')).toBe(true);
-    expect(taken.art.has('A-01')).toBe(true);
-    expect(taken.thread.has('T-01')).toBe(true);
-    expect(taken.k.has('K-01')).toBe(true);
-    expect(taken.k.has('K-02')).toBe(true);
-    expect(taken.k.has('K-03')).toBe(true);
-    expect(taken.sys.has('SYS-001')).toBe(true);
+    expect(taken.scene.has('S-1')).toBe(true);
+    expect(taken.char.has('C-1')).toBe(true);
+    expect(taken.loc.has('L-1')).toBe(true);
+    expect(taken.art.has('A-1')).toBe(true);
+    expect(taken.thread.has('T-1')).toBe(true);
+    expect(taken.k.has('K-1')).toBe(true);
+    expect(taken.k.has('K-2')).toBe(true);
+    expect(taken.k.has('K-3')).toBe(true);
+    expect(taken.sys.has('SYS-1')).toBe(true);
   });
 
   it('returns empty sets for an empty narrative', () => {
@@ -220,34 +220,34 @@ describe('remapScenarioCommit — no collisions', () => {
       sys: new Set(),
     };
     const arc = makeArc('ARC-1', {
-      sceneIds: ['S-001'],
-      locationIds: ['L-01'],
-      activeCharacterIds: ['C-01'],
-      initialCharacterLocations: { 'C-01': 'L-01' },
-      develops: ['C-01'],
+      sceneIds: ['S-1'],
+      locationIds: ['L-1'],
+      activeCharacterIds: ['C-1'],
+      initialCharacterLocations: { 'C-1': 'L-1' },
+      develops: ['C-1'],
     });
-    const scene = makeScene('S-001', 'ARC-1', {
-      povId: 'C-01',
-      locationId: 'L-01',
-      participantIds: ['C-01'],
-      newCharacters: [makeCharacter('C-01')],
-      newLocations: [makeLocation('L-01')],
+    const scene = makeScene('S-1', 'ARC-1', {
+      povId: 'C-1',
+      locationId: 'L-1',
+      participantIds: ['C-1'],
+      newCharacters: [makeCharacter('C-1')],
+      newLocations: [makeLocation('L-1')],
     });
 
     const out = remapScenarioCommit(arc, [scene], taken);
 
     expect(out.arc.id).toBe('ARC-1');
-    expect(out.scenes[0].id).toBe('S-001');
+    expect(out.scenes[0].id).toBe('S-1');
     expect(out.scenes[0].arcId).toBe('ARC-1');
-    expect(out.scenes[0].povId).toBe('C-01');
-    expect(out.arc.sceneIds).toEqual(['S-001']);
-    expect(out.arc.initialCharacterLocations).toEqual({ 'C-01': 'L-01' });
+    expect(out.scenes[0].povId).toBe('C-1');
+    expect(out.arc.sceneIds).toEqual(['S-1']);
+    expect(out.arc.initialCharacterLocations).toEqual({ 'C-1': 'L-1' });
 
     // Cumulative taken set has grown.
     expect(taken.arc.has('ARC-1')).toBe(true);
-    expect(taken.scene.has('S-001')).toBe(true);
-    expect(taken.char.has('C-01')).toBe(true);
-    expect(taken.loc.has('L-01')).toBe(true);
+    expect(taken.scene.has('S-1')).toBe(true);
+    expect(taken.char.has('C-1')).toBe(true);
+    expect(taken.loc.has('L-1')).toBe(true);
   });
 });
 
@@ -257,7 +257,7 @@ describe('remapScenarioCommit — arc + scene collisions', () => {
   it('mints fresh arc and scene ids and keeps scene.arcId / arc.sceneIds consistent', () => {
     const taken: TakenIds = {
       arc: new Set(['ARC-1']),
-      scene: new Set(['S-001', 'S-002']),
+      scene: new Set(['S-1', 'S-2']),
       char: new Set(),
       loc: new Set(),
       art: new Set(),
@@ -265,17 +265,17 @@ describe('remapScenarioCommit — arc + scene collisions', () => {
       k: new Set(),
       sys: new Set(),
     };
-    const arc = makeArc('ARC-1', { sceneIds: ['S-001', 'S-002'] });
+    const arc = makeArc('ARC-1', { sceneIds: ['S-1', 'S-2'] });
     const scenes = [
-      makeScene('S-001', 'ARC-1'),
-      makeScene('S-002', 'ARC-1'),
+      makeScene('S-1', 'ARC-1'),
+      makeScene('S-2', 'ARC-1'),
     ];
 
     const out = remapScenarioCommit(arc, scenes, taken);
 
     expect(out.arc.id).not.toBe('ARC-1');
-    expect(out.scenes[0].id).not.toBe('S-001');
-    expect(out.scenes[1].id).not.toBe('S-002');
+    expect(out.scenes[0].id).not.toBe('S-1');
+    expect(out.scenes[1].id).not.toBe('S-2');
     // arc.sceneIds and scene.arcId are kept consistent post-remap.
     expect(out.arc.sceneIds).toEqual([out.scenes[0].id, out.scenes[1].id]);
     expect(out.scenes[0].arcId).toBe(out.arc.id);
@@ -292,7 +292,7 @@ describe('remapScenarioCommit — character collisions', () => {
     const taken: TakenIds = {
       arc: new Set(),
       scene: new Set(),
-      char: new Set(['C-01']),
+      char: new Set(['C-1']),
       loc: new Set(),
       art: new Set(),
       thread: new Set(),
@@ -300,33 +300,33 @@ describe('remapScenarioCommit — character collisions', () => {
       sys: new Set(),
     };
     const arc = makeArc('ARC-1', {
-      activeCharacterIds: ['C-01', 'C-99'],
-      initialCharacterLocations: { 'C-01': 'L-01', 'C-99': 'L-01' },
-      develops: ['C-01'],
+      activeCharacterIds: ['C-1', 'C-99'],
+      initialCharacterLocations: { 'C-1': 'L-1', 'C-99': 'L-1' },
+      develops: ['C-1'],
     });
-    const scene = makeScene('S-001', 'ARC-1', {
-      povId: 'C-01',
-      participantIds: ['C-01', 'C-99'],
+    const scene = makeScene('S-1', 'ARC-1', {
+      povId: 'C-1',
+      participantIds: ['C-1', 'C-99'],
       characterMovements: {
-        'C-01': { locationId: 'L-02', reason: 'flees' } as never,
+        'C-1': { locationId: 'L-2', reason: 'flees' } as never,
       },
       relationshipDeltas: [
-        { from: 'C-01', to: 'C-99', type: 'rival', valenceDelta: -1 },
+        { from: 'C-1', to: 'C-99', type: 'rival', valenceDelta: -1 },
       ],
-      tieDeltas: [{ locationId: 'L-01', characterId: 'C-01', action: 'add' }],
-      newCharacters: [makeCharacter('C-01')],
+      tieDeltas: [{ locationId: 'L-1', characterId: 'C-1', action: 'add' }],
+      newCharacters: [makeCharacter('C-1')],
     });
 
     const out = remapScenarioCommit(arc, [scene], taken);
     const newCharId = out.scenes[0].newCharacters![0].id;
 
-    expect(newCharId).not.toBe('C-01');
+    expect(newCharId).not.toBe('C-1');
     expect(newCharId).toMatch(/^C-\d+$/);
 
     // Arc-level character refs
     expect(out.arc.activeCharacterIds).toContain(newCharId);
     expect(out.arc.activeCharacterIds).toContain('C-99'); // not in payload — pass-through
-    expect(out.arc.initialCharacterLocations[newCharId]).toBe('L-01');
+    expect(out.arc.initialCharacterLocations[newCharId]).toBe('L-1');
     expect(out.arc.develops).toContain(newCharId);
 
     // Scene-level character refs
@@ -334,7 +334,7 @@ describe('remapScenarioCommit — character collisions', () => {
     expect(out.scenes[0].participantIds).toContain(newCharId);
     expect(out.scenes[0].participantIds).toContain('C-99'); // pass-through
     expect(out.scenes[0].characterMovements?.[newCharId]).toBeDefined();
-    expect(out.scenes[0].characterMovements?.['C-01']).toBeUndefined();
+    expect(out.scenes[0].characterMovements?.['C-1']).toBeUndefined();
     expect(out.scenes[0].relationshipDeltas[0].from).toBe(newCharId);
     expect(out.scenes[0].relationshipDeltas[0].to).toBe('C-99');
     expect(out.scenes[0].tieDeltas?.[0].characterId).toBe(newCharId);
@@ -347,37 +347,37 @@ describe('remapScenarioCommit — location collisions', () => {
       arc: new Set(),
       scene: new Set(),
       char: new Set(),
-      loc: new Set(['L-01']),
+      loc: new Set(['L-1']),
       art: new Set(),
       thread: new Set(),
       k: new Set(),
       sys: new Set(),
     };
     const arc = makeArc('ARC-1', {
-      locationIds: ['L-01'],
-      initialCharacterLocations: { 'C-01': 'L-01' },
-      develops: ['L-01'],
+      locationIds: ['L-1'],
+      initialCharacterLocations: { 'C-1': 'L-1' },
+      develops: ['L-1'],
     });
-    const scene = makeScene('S-001', 'ARC-1', {
-      locationId: 'L-01',
+    const scene = makeScene('S-1', 'ARC-1', {
+      locationId: 'L-1',
       characterMovements: {
-        'C-01': { locationId: 'L-01', reason: 'arrives' } as never,
+        'C-1': { locationId: 'L-1', reason: 'arrives' } as never,
       },
-      tieDeltas: [{ locationId: 'L-01', characterId: 'C-01', action: 'add' }],
-      newLocations: [makeLocation('L-01', { tiedCharacterIds: ['C-01'] })],
+      tieDeltas: [{ locationId: 'L-1', characterId: 'C-1', action: 'add' }],
+      newLocations: [makeLocation('L-1', { tiedCharacterIds: ['C-1'] })],
     });
 
     const out = remapScenarioCommit(arc, [scene], taken);
     const newLocId = out.scenes[0].newLocations![0].id;
 
-    expect(newLocId).not.toBe('L-01');
+    expect(newLocId).not.toBe('L-1');
     expect(newLocId).toMatch(/^L-\d+$/);
 
     expect(out.arc.locationIds).toEqual([newLocId]);
-    expect(out.arc.initialCharacterLocations['C-01']).toBe(newLocId);
+    expect(out.arc.initialCharacterLocations['C-1']).toBe(newLocId);
     expect(out.arc.develops).toContain(newLocId);
     expect(out.scenes[0].locationId).toBe(newLocId);
-    expect(out.scenes[0].characterMovements?.['C-01']?.locationId).toBe(newLocId);
+    expect(out.scenes[0].characterMovements?.['C-1']?.locationId).toBe(newLocId);
     expect(out.scenes[0].tieDeltas?.[0].locationId).toBe(newLocId);
   });
 
@@ -386,25 +386,25 @@ describe('remapScenarioCommit — location collisions', () => {
       arc: new Set(),
       scene: new Set(),
       char: new Set(),
-      loc: new Set(['L-01', 'L-02']),
+      loc: new Set(['L-1', 'L-2']),
       art: new Set(),
       thread: new Set(),
       k: new Set(),
       sys: new Set(),
     };
     const arc = makeArc('ARC-1');
-    const scene = makeScene('S-001', 'ARC-1', {
+    const scene = makeScene('S-1', 'ARC-1', {
       newLocations: [
-        makeLocation('L-01'),
-        makeLocation('L-02', { parentId: 'L-01' }),
+        makeLocation('L-1'),
+        makeLocation('L-2', { parentId: 'L-1' }),
       ],
     });
 
     const out = remapScenarioCommit(arc, [scene], taken);
     const parentId = out.scenes[0].newLocations![0].id;
     const childId = out.scenes[0].newLocations![1].id;
-    expect(parentId).not.toBe('L-01');
-    expect(childId).not.toBe('L-02');
+    expect(parentId).not.toBe('L-1');
+    expect(childId).not.toBe('L-2');
     expect(out.scenes[0].newLocations![1].parentId).toBe(parentId);
   });
 });
@@ -416,48 +416,48 @@ describe('remapScenarioCommit — artifact collisions', () => {
       scene: new Set(),
       char: new Set(),
       loc: new Set(),
-      art: new Set(['A-01']),
+      art: new Set(['A-1']),
       thread: new Set(),
       k: new Set(),
       sys: new Set(),
     };
-    const arc = makeArc('ARC-1', { develops: ['A-01'] });
-    const scene = makeScene('S-001', 'ARC-1', {
+    const arc = makeArc('ARC-1', { develops: ['A-1'] });
+    const scene = makeScene('S-1', 'ARC-1', {
       artifactUsages: [
-        { artifactId: 'A-01', characterId: 'C-01', usage: 'wields' },
+        { artifactId: 'A-1', characterId: 'C-1', usage: 'wields' },
       ],
-      ownershipDeltas: [{ artifactId: 'A-01', fromId: 'C-01', toId: 'L-01' }],
-      newArtifacts: [makeArtifact('A-01')],
+      ownershipDeltas: [{ artifactId: 'A-1', fromId: 'C-1', toId: 'L-1' }],
+      newArtifacts: [makeArtifact('A-1')],
     });
 
     const out = remapScenarioCommit(arc, [scene], taken);
     const newArtId = out.scenes[0].newArtifacts![0].id;
 
-    expect(newArtId).not.toBe('A-01');
+    expect(newArtId).not.toBe('A-1');
     expect(newArtId).toMatch(/^A-\d+$/);
     expect(out.arc.develops).toContain(newArtId);
     expect(out.scenes[0].artifactUsages?.[0].artifactId).toBe(newArtId);
-    expect(out.scenes[0].artifactUsages?.[0].characterId).toBe('C-01'); // pass-through
+    expect(out.scenes[0].artifactUsages?.[0].characterId).toBe('C-1'); // pass-through
     expect(out.scenes[0].ownershipDeltas?.[0].artifactId).toBe(newArtId);
-    expect(out.scenes[0].ownershipDeltas?.[0].fromId).toBe('C-01');
-    expect(out.scenes[0].ownershipDeltas?.[0].toId).toBe('L-01');
+    expect(out.scenes[0].ownershipDeltas?.[0].fromId).toBe('C-1');
+    expect(out.scenes[0].ownershipDeltas?.[0].toId).toBe('L-1');
   });
 
   it('remaps ownership fromId/toId when they reference a colliding new character/location', () => {
     const taken: TakenIds = {
       arc: new Set(),
       scene: new Set(),
-      char: new Set(['C-01']),
-      loc: new Set(['L-01']),
+      char: new Set(['C-1']),
+      loc: new Set(['L-1']),
       art: new Set(),
       thread: new Set(),
       k: new Set(),
       sys: new Set(),
     };
-    const scene = makeScene('S-001', 'ARC-1', {
-      ownershipDeltas: [{ artifactId: 'A-99', fromId: 'C-01', toId: 'L-01' }],
-      newCharacters: [makeCharacter('C-01')],
-      newLocations: [makeLocation('L-01')],
+    const scene = makeScene('S-1', 'ARC-1', {
+      ownershipDeltas: [{ artifactId: 'A-99', fromId: 'C-1', toId: 'L-1' }],
+      newCharacters: [makeCharacter('C-1')],
+      newLocations: [makeLocation('L-1')],
     });
 
     const out = remapScenarioCommit(makeArc('ARC-1'), [scene], taken);
@@ -478,15 +478,15 @@ describe('remapScenarioCommit — thread collisions', () => {
       char: new Set(),
       loc: new Set(),
       art: new Set(),
-      thread: new Set(['T-01']),
+      thread: new Set(['T-1']),
       k: new Set(),
       sys: new Set(),
     };
-    const arc = makeArc('ARC-1', { develops: ['T-01'] });
-    const scene = makeScene('S-001', 'ARC-1', {
+    const arc = makeArc('ARC-1', { develops: ['T-1'] });
+    const scene = makeScene('S-1', 'ARC-1', {
       threadDeltas: [
         {
-          threadId: 'T-01',
+          threadId: 'T-1',
           logType: 'setup',
           updates: [{ outcome: 'yes', evidence: 2 }],
           volumeDelta: 1,
@@ -494,8 +494,8 @@ describe('remapScenarioCommit — thread collisions', () => {
         },
       ],
       newThreads: [
-        makeThread('T-01', {
-          participants: [{ id: 'C-01', kind: 'character' } as never],
+        makeThread('T-1', {
+          participants: [{ id: 'C-1', kind: 'character' } as never],
         }),
       ],
     });
@@ -503,30 +503,30 @@ describe('remapScenarioCommit — thread collisions', () => {
     const out = remapScenarioCommit(arc, [scene], taken);
     const newThreadId = out.scenes[0].newThreads![0].id;
 
-    expect(newThreadId).not.toBe('T-01');
+    expect(newThreadId).not.toBe('T-1');
     expect(newThreadId).toMatch(/^T-\d+$/);
     expect(out.arc.develops).toContain(newThreadId);
     expect(out.scenes[0].threadDeltas[0].threadId).toBe(newThreadId);
-    // Participant id is C-01 — not in maps, passes through.
-    expect(out.scenes[0].newThreads![0].participants[0].id).toBe('C-01');
+    // Participant id is C-1 — not in maps, passes through.
+    expect(out.scenes[0].newThreads![0].participants[0].id).toBe('C-1');
   });
 
   it('remaps thread participants when they reference a colliding new character', () => {
     const taken: TakenIds = {
       arc: new Set(),
       scene: new Set(),
-      char: new Set(['C-01']),
+      char: new Set(['C-1']),
       loc: new Set(),
       art: new Set(),
       thread: new Set(),
       k: new Set(),
       sys: new Set(),
     };
-    const scene = makeScene('S-001', 'ARC-1', {
-      newCharacters: [makeCharacter('C-01')],
+    const scene = makeScene('S-1', 'ARC-1', {
+      newCharacters: [makeCharacter('C-1')],
       newThreads: [
         makeThread('T-99', {
-          participants: [{ id: 'C-01', kind: 'character' } as never],
+          participants: [{ id: 'C-1', kind: 'character' } as never],
         }),
       ],
     });
@@ -542,21 +542,21 @@ describe('remapScenarioCommit — world node (K) collisions', () => {
     const taken: TakenIds = {
       arc: new Set(),
       scene: new Set(),
-      char: new Set(['C-01']),
+      char: new Set(['C-1']),
       loc: new Set(),
       art: new Set(),
       thread: new Set(),
-      k: new Set(['K-01']),
+      k: new Set(['K-1']),
       sys: new Set(),
     };
-    const scene = makeScene('S-001', 'ARC-1', {
+    const scene = makeScene('S-1', 'ARC-1', {
       worldDeltas: [
         {
-          entityId: 'C-01',
-          addedNodes: [{ id: 'K-01', content: 'new trait', type: 'trait' }],
+          entityId: 'C-1',
+          addedNodes: [{ id: 'K-1', content: 'new trait', type: 'trait' }],
         },
       ],
-      newCharacters: [makeCharacter('C-01')],
+      newCharacters: [makeCharacter('C-1')],
     });
 
     const out = remapScenarioCommit(makeArc('ARC-1'), [scene], taken);
@@ -564,7 +564,7 @@ describe('remapScenarioCommit — world node (K) collisions', () => {
     const remappedDelta = out.scenes[0].worldDeltas[0];
 
     expect(remappedDelta.entityId).toBe(newCharId);
-    expect(remappedDelta.addedNodes[0].id).not.toBe('K-01');
+    expect(remappedDelta.addedNodes[0].id).not.toBe('K-1');
     expect(remappedDelta.addedNodes[0].id).toMatch(/^K-\d+$/);
   });
 
@@ -576,19 +576,19 @@ describe('remapScenarioCommit — world node (K) collisions', () => {
       loc: new Set(),
       art: new Set(),
       thread: new Set(),
-      k: new Set(['K-01', 'K-02']),
+      k: new Set(['K-1', 'K-2']),
       sys: new Set(),
     };
     const character = makeCharacter('C-77', {
       world: {
         nodes: {
-          'K-01': { id: 'K-01', type: 'trait', content: 'brave' },
-          'K-02': { id: 'K-02', type: 'trait', content: 'loyal' },
+          'K-1': { id: 'K-1', type: 'trait', content: 'brave' },
+          'K-2': { id: 'K-2', type: 'trait', content: 'loyal' },
         },
-        edges: [{ from: 'K-01', to: 'K-02', relation: 'reinforces' }],
+        edges: [{ from: 'K-1', to: 'K-2', relation: 'reinforces' }],
       },
     });
-    const scene = makeScene('S-001', 'ARC-1', { newCharacters: [character] });
+    const scene = makeScene('S-1', 'ARC-1', { newCharacters: [character] });
 
     const out = remapScenarioCommit(makeArc('ARC-1'), [scene], taken);
     const rewrittenChar = out.scenes[0].newCharacters![0];
@@ -597,8 +597,8 @@ describe('remapScenarioCommit — world node (K) collisions', () => {
     expect(nodeIds).toHaveLength(2);
     for (const nid of nodeIds) {
       expect(nid).toMatch(/^K-\d+$/);
-      expect(nid).not.toBe('K-01');
-      expect(nid).not.toBe('K-02');
+      expect(nid).not.toBe('K-1');
+      expect(nid).not.toBe('K-2');
       // node.id field is kept consistent with the record key.
       expect(rewrittenChar.world.nodes[nid].id).toBe(nid);
     }
@@ -619,22 +619,22 @@ describe('remapScenarioCommit — system node (SYS) collisions', () => {
       art: new Set(),
       thread: new Set(),
       k: new Set(),
-      sys: new Set(['SYS-001']),
+      sys: new Set(['SYS-1']),
     };
-    const scene = makeScene('S-001', 'ARC-1', {
+    const scene = makeScene('S-1', 'ARC-1', {
       systemDeltas: {
         addedNodes: [
-          { id: 'SYS-001', concept: 'mana scarcity', type: 'rule' as never },
+          { id: 'SYS-1', concept: 'mana scarcity', type: 'rule' as never },
         ],
-        addedEdges: [{ from: 'SYS-001', to: 'SYS-999', relation: 'constrains' }],
+        addedEdges: [{ from: 'SYS-1', to: 'SYS-999', relation: 'constrains' }],
       },
-      systemAttributions: ['SYS-001', 'SYS-999'],
+      systemAttributions: ['SYS-1', 'SYS-999'],
     });
 
     const out = remapScenarioCommit(makeArc('ARC-1'), [scene], taken);
     const newSysId = out.scenes[0].systemDeltas!.addedNodes[0].id;
 
-    expect(newSysId).not.toBe('SYS-001');
+    expect(newSysId).not.toBe('SYS-1');
     expect(newSysId).toMatch(/^SYS-\d+$/);
     expect(out.scenes[0].systemDeltas!.addedEdges[0].from).toBe(newSysId);
     // SYS-999 isn't in the payload — passes through.
@@ -650,9 +650,9 @@ describe('remapScenarioCommit — cumulative taken set', () => {
   it('two scenarios with identical payload ids produce three globally-unique id sets', () => {
     const taken: TakenIds = {
       arc: new Set(['ARC-1']),
-      scene: new Set(['S-001']),
-      char: new Set(['C-01']),
-      loc: new Set(['L-01']),
+      scene: new Set(['S-1']),
+      char: new Set(['C-1']),
+      loc: new Set(['L-1']),
       art: new Set(),
       thread: new Set(),
       k: new Set(),
@@ -662,16 +662,16 @@ describe('remapScenarioCommit — cumulative taken set', () => {
     // Two scenarios, both mint the same proposed IDs from the same root.
     const makePayload = () => ({
       arc: makeArc('ARC-1', {
-        sceneIds: ['S-001'],
-        activeCharacterIds: ['C-01'],
-        locationIds: ['L-01'],
+        sceneIds: ['S-1'],
+        activeCharacterIds: ['C-1'],
+        locationIds: ['L-1'],
       }),
       scenes: [
-        makeScene('S-001', 'ARC-1', {
-          povId: 'C-01',
-          locationId: 'L-01',
-          newCharacters: [makeCharacter('C-01')],
-          newLocations: [makeLocation('L-01')],
+        makeScene('S-1', 'ARC-1', {
+          povId: 'C-1',
+          locationId: 'L-1',
+          newCharacters: [makeCharacter('C-1')],
+          newLocations: [makeLocation('L-1')],
         }),
       ],
     });
@@ -720,7 +720,7 @@ describe('remapScenarioCommit — existing entity passthrough', () => {
       locationIds: ['L-EXIST'],
       initialCharacterLocations: { 'C-EXIST': 'L-EXIST' },
     });
-    const scene = makeScene('S-001', 'ARC-1', {
+    const scene = makeScene('S-1', 'ARC-1', {
       povId: 'C-EXIST',
       locationId: 'L-EXIST',
       participantIds: ['C-EXIST'],

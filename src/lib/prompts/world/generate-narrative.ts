@@ -263,8 +263,8 @@ Return JSON with this exact structure:
     <example>{value: -10, unit: "year", transition: "flashback to her schooldays"}</example>
     <example>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</example>
     <special-case kind="concurrent">{value: 0} — same moment, different POV / vantage, OR the first scene of the arc. Do NOT default to 0 for anything else.</special-case>
-    <special-case kind="flashback">Negative value, narrative RETURNS. A later forward-scene cancels the jump.</special-case>
-    <special-case kind="time-travel">Negative value, narrative LIVES in the new time. No return; subsequent deltas relative to the new position.</special-case>
+    <special-case kind="flashback">ONE negative value OPENS the excursion. Scenes INSIDE move FORWARD with normal positive deltas (time flows forward in the past). ONE eventual big positive delta snap-returns to the present, cancelling the entry plus motion accumulated inside.</special-case>
+    <special-case kind="time-travel">ONE negative value OPENS the travel. Scenes INSIDE move FORWARD from the new position (time flows forward in the new timeline). NO return; subsequent deltas relative to the new position.</special-case>
     <sign-alignment critical="true">Sign matches transition direction. Backward phrase (flashback, Time-Turner-style rewind, "earlier", "ago", "X before") = NEGATIVE. Forward phrase ("later", "next morning", "X after") = POSITIVE.
       <wrong>{value: 3, unit: "hour", transition: "three hours earlier, using the Time-Turner"} — phrase is backward, sign is forward.</wrong>
     </sign-alignment>

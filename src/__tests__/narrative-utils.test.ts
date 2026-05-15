@@ -35,11 +35,11 @@ import { describe, expect, it } from "vitest";
 function createScene(overrides: Partial<Scene> = {}): Scene {
   return {
     kind: "scene",
-    id: overrides.id ?? "S-001",
-    arcId: "ARC-01",
-    povId: "C-01",
-    locationId: "L-01",
-    participantIds: ["C-01"],
+    id: overrides.id ?? "S-1",
+    arcId: "ARC-1",
+    povId: "C-1",
+    locationId: "L-1",
+    participantIds: ["C-1"],
     events: [],
     threadDeltas: [],
     worldDeltas: [],
@@ -126,11 +126,11 @@ describe("resolveEntrySequence", () => {
         name: "Main",
         parentBranchId: null,
         forkEntryId: null,
-        entryIds: ["S-001", "S-002"],
+        entryIds: ["S-1", "S-2"],
         createdAt: 0,
       },
     };
-    expect(resolveEntrySequence(branches, "main")).toEqual(["S-001", "S-002"]);
+    expect(resolveEntrySequence(branches, "main")).toEqual(["S-1", "S-2"]);
   });
   it("includes parent entries up to fork point", () => {
     const branches: Record<string, Branch> = {
@@ -139,23 +139,23 @@ describe("resolveEntrySequence", () => {
         name: "Main",
         parentBranchId: null,
         forkEntryId: null,
-        entryIds: ["S-001", "S-002", "S-003"],
+        entryIds: ["S-1", "S-2", "S-3"],
         createdAt: 0,
       },
       child: {
         id: "child",
         name: "Child",
-        entryIds: ["S-004", "S-005"],
+        entryIds: ["S-4", "S-5"],
         parentBranchId: "main",
-        forkEntryId: "S-002",
+        forkEntryId: "S-2",
         createdAt: 1,
       },
     };
     expect(resolveEntrySequence(branches, "child")).toEqual([
-      "S-001",
-      "S-002",
-      "S-004",
-      "S-005",
+      "S-1",
+      "S-2",
+      "S-4",
+      "S-5",
     ]);
   });
   it("handles deeply nested branches", () => {
@@ -165,30 +165,30 @@ describe("resolveEntrySequence", () => {
         name: "Main",
         parentBranchId: null,
         forkEntryId: null,
-        entryIds: ["S-001", "S-002"],
+        entryIds: ["S-1", "S-2"],
         createdAt: 0,
       },
       child: {
         id: "child",
         name: "Child",
-        entryIds: ["S-003"],
+        entryIds: ["S-3"],
         parentBranchId: "main",
-        forkEntryId: "S-001",
+        forkEntryId: "S-1",
         createdAt: 1,
       },
       grandchild: {
         id: "grandchild",
         name: "Grandchild",
-        entryIds: ["S-004"],
+        entryIds: ["S-4"],
         parentBranchId: "child",
-        forkEntryId: "S-003",
+        forkEntryId: "S-3",
         createdAt: 2,
       },
     };
     expect(resolveEntrySequence(branches, "grandchild")).toEqual([
-      "S-001",
-      "S-003",
-      "S-004",
+      "S-1",
+      "S-3",
+      "S-4",
     ]);
   });
 });
@@ -291,22 +291,22 @@ describe("computeForceSnapshots", () => {
   it("computes z-score normalized forces", () => {
     const scenes: Scene[] = [
       createScene({
-        id: "S-001",
+        id: "S-1",
         threadDeltas: [
-          { threadId: "T-01", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→seeded" },
+          { threadId: "T-1", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→seeded" },
         ],
         worldDeltas: [],
         events: ["event1"],
       }),
       createScene({
-        id: "S-002",
+        id: "S-2",
         threadDeltas: [
-          { threadId: "T-01", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "seeded→active" },
+          { threadId: "T-1", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "seeded→active" },
         ],
         worldDeltas: [
           {
-            entityId: "C-01",
-            addedNodes: [{ id: "K-01", content: "secret", type: "secret" }],
+            entityId: "C-1",
+            addedNodes: [{ id: "K-1", content: "secret", type: "secret" }],
           },
         ],
         events: ["event1", "event2"],
@@ -314,8 +314,8 @@ describe("computeForceSnapshots", () => {
     ];
     const snapshots = computeForceSnapshots(scenes);
     expect(Object.keys(snapshots)).toHaveLength(2);
-    expect(snapshots["S-001"]).toBeDefined();
-    expect(snapshots["S-002"]).toBeDefined();
+    expect(snapshots["S-1"]).toBeDefined();
+    expect(snapshots["S-2"]).toBeDefined();
   });
 });
 describe("computeRawForceTotals", () => {
@@ -326,9 +326,9 @@ describe("computeRawForceTotals", () => {
   it("computes raw values without normalization", () => {
     const scenes: Scene[] = [
       createScene({
-        id: "S-001",
+        id: "S-1",
         threadDeltas: [
-          { threadId: "T-01", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "opens" },
+          { threadId: "T-1", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "opens" },
         ],
       }),
     ];
@@ -350,7 +350,7 @@ describe("fate formula invariants", () => {
     computeRawForceTotals([
       createScene({
         threadDeltas: [{
-          threadId: 'T-01',
+          threadId: 'T-1',
           logType: 'payoff',
           updates: [{ outcome: 'yes', evidence }],
           volumeDelta,
@@ -389,7 +389,7 @@ describe("fate formula invariants", () => {
   it("multiple updates within a delta use the peak", () => {
     const scene = createScene({
       threadDeltas: [{
-        threadId: 'T-01',
+        threadId: 'T-1',
         logType: 'payoff',
         updates: [
           { outcome: 'yes', evidence: 1 },
@@ -584,15 +584,15 @@ describe("computeWindowedForces", () => {
   });
   it("computes forces within window", () => {
     const scenes = [
-      createScene({ id: "S-001" }),
-      createScene({ id: "S-002" }),
-      createScene({ id: "S-003" }),
+      createScene({ id: "S-1" }),
+      createScene({ id: "S-2" }),
+      createScene({ id: "S-3" }),
     ];
     const result = computeWindowedForces(scenes, 2, 2);
     expect(result.windowStart).toBe(1);
     expect(result.windowEnd).toBe(2);
-    expect(Object.keys(result.forceMap)).toContain("S-002");
-    expect(Object.keys(result.forceMap)).toContain("S-003");
+    expect(Object.keys(result.forceMap)).toContain("S-2");
+    expect(Object.keys(result.forceMap)).toContain("S-3");
   });
 });
 // ── Grading Functions ────────────────────────────────────────────────────────
@@ -638,39 +638,39 @@ describe("rankSystemNodes", () => {
   it("ranks nodes by degree centrality", () => {
     const graph: SystemGraph = {
       nodes: {
-        "K-01": { id: "K-01", concept: "Magic", type: "system" },
-        "K-02": { id: "K-02", concept: "Wands", type: "system" },
-        "K-03": { id: "K-03", concept: "Spells", type: "concept" },
+        "K-1": { id: "K-1", concept: "Magic", type: "system" },
+        "K-2": { id: "K-2", concept: "Wands", type: "system" },
+        "K-3": { id: "K-3", concept: "Spells", type: "concept" },
       },
       edges: [
-        { from: "K-01", to: "K-02", relation: "enables" },
-        { from: "K-01", to: "K-03", relation: "enables" },
-        { from: "K-02", to: "K-03", relation: "produces" },
+        { from: "K-1", to: "K-2", relation: "enables" },
+        { from: "K-1", to: "K-3", relation: "enables" },
+        { from: "K-2", to: "K-3", relation: "produces" },
       ],
     };
     const ranked = rankSystemNodes(graph);
-    expect(ranked[0].node.id).toBe("K-01"); // degree 2
+    expect(ranked[0].node.id).toBe("K-1"); // degree 2
   });
 });
 describe("buildCumulativeSystemGraph", () => {
   it("accumulates deltas from scenes", () => {
     const scenes: Record<string, Scene> = {
-      "S-001": createScene({
-        id: "S-001",
+      "S-1": createScene({
+        id: "S-1",
         systemDeltas: {
-          addedNodes: [{ id: "K-01", concept: "Magic", type: "system" }],
+          addedNodes: [{ id: "K-1", concept: "Magic", type: "system" }],
           addedEdges: [],
         },
       }),
-      "S-002": createScene({
-        id: "S-002",
+      "S-2": createScene({
+        id: "S-2",
         systemDeltas: {
-          addedNodes: [{ id: "K-02", concept: "Wands", type: "system" }],
-          addedEdges: [{ from: "K-01", to: "K-02", relation: "enables" }],
+          addedNodes: [{ id: "K-2", concept: "Wands", type: "system" }],
+          addedEdges: [{ from: "K-1", to: "K-2", relation: "enables" }],
         },
       }),
     };
-    const graph = buildCumulativeSystemGraph(scenes, ["S-001", "S-002"], 1);
+    const graph = buildCumulativeSystemGraph(scenes, ["S-1", "S-2"], 1);
     expect(Object.keys(graph.nodes)).toHaveLength(2);
     expect(graph.edges).toHaveLength(1);
   });

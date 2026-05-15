@@ -20,10 +20,10 @@ import {
 // ── propKey ──────────────────────────────────────────────────────────────────
 describe('propKey', () => {
   it('creates correct key format', () => {
-    expect(propKey('S-001', 2, 3)).toBe('S-001:2:3');
+    expect(propKey('S-1', 2, 3)).toBe('S-1:2:3');
   });
   it('handles zero indices', () => {
-    expect(propKey('S-001', 0, 0)).toBe('S-001:0:0');
+    expect(propKey('S-1', 0, 0)).toBe('S-1:0:0');
   });
 });
 // ── classificationLabel ─────────────────────────────────────────────────────

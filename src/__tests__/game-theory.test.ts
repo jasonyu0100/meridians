@@ -57,10 +57,10 @@ function createGame(overrides: Partial<BeatGame> = {}): BeatGame {
     beatExcerpt: "test beat",
     gameType: "coordination",
     actionAxis: "disclosure",
-    playerAId: "C-01",
+    playerAId: "C-1",
     playerAName: "Alice",
     playerAActions: aActions,
-    playerBId: "C-02",
+    playerBId: "C-2",
     playerBName: "Bob",
     playerBActions: bActions,
     outcomes,
@@ -398,8 +398,8 @@ describe("eloUpdate", () => {
 describe("computeEloHistories", () => {
   it("initialises players at ELO_INITIAL with a baseline history point", () => {
     const game = createGame({
-      playerAId: "C-01",
-      playerBId: "C-02",
+      playerAId: "C-1",
+      playerBId: "C-2",
       // Tied cell → margin score 0.5 → no movement.
       outcomes: [
         cell("reveal", "press", 1, 1),
@@ -411,8 +411,8 @@ describe("computeEloHistories", () => {
       realizedBAction: "press",
     });
     const histories = computeEloHistories([game]);
-    const a = histories.get("C-01")!;
-    const b = histories.get("C-02")!;
+    const a = histories.get("C-1")!;
+    const b = histories.get("C-2")!;
     // Baseline + one game each.
     expect(a.ratings).toHaveLength(2);
     expect(b.ratings).toHaveLength(2);
@@ -427,22 +427,22 @@ describe("computeEloHistories", () => {
   it("records a full arc of games with correct game indices", () => {
     const g1 = createGame({
       beatIndex: 0,
-      playerAId: "C-01",
-      playerBId: "C-02",
+      playerAId: "C-1",
+      playerBId: "C-2",
       realizedAAction: "reveal",
       realizedBAction: "yield", // A wins 3-0
     });
     const g2 = createGame({
       beatIndex: 0,
-      playerAId: "C-01",
-      playerBId: "C-03",
+      playerAId: "C-1",
+      playerBId: "C-3",
       realizedAAction: "reveal",
       realizedBAction: "press",
     });
     const histories = computeEloHistories([g1, g2]);
-    const a = histories.get("C-01")!;
-    const b = histories.get("C-02")!;
-    const c = histories.get("C-03")!;
+    const a = histories.get("C-1")!;
+    const b = histories.get("C-2")!;
+    const c = histories.get("C-3")!;
     // A played games 0 and 1; B only game 0; C only game 1.
     expect(a.games).toEqual([0, 1]);
     expect(b.games).toEqual([0]);
@@ -456,12 +456,12 @@ describe("computeEloHistories", () => {
     // Two games between the same pair — the total delta between A and B
     // should remain mirrored after every update.
     const games = [
-      createGame({ playerAId: "C-01", playerBId: "C-02", realizedAAction: "reveal", realizedBAction: "yield" }),
-      createGame({ playerAId: "C-01", playerBId: "C-02", realizedAAction: "conceal", realizedBAction: "press" }),
+      createGame({ playerAId: "C-1", playerBId: "C-2", realizedAAction: "reveal", realizedBAction: "yield" }),
+      createGame({ playerAId: "C-1", playerBId: "C-2", realizedAAction: "conceal", realizedBAction: "press" }),
     ];
     const histories = computeEloHistories(games);
-    const a = histories.get("C-01")!;
-    const b = histories.get("C-02")!;
+    const a = histories.get("C-1")!;
+    const b = histories.get("C-2")!;
     for (let i = 0; i < a.ratings.length; i++) {
       expect(a.ratings[i] + b.ratings[i]).toBeCloseTo(2 * ELO_INITIAL, 6);
     }
@@ -575,8 +575,8 @@ describe("resolvePlayerName", () => {
   it("reads from characters when the ID matches", () => {
     const n = makeNarrative({
       characters: {
-        "C-01": {
-          id: "C-01",
+        "C-1": {
+          id: "C-1",
           name: "Alice",
           role: "anchor",
           world: { nodes: {}, edges: [] },
@@ -584,13 +584,13 @@ describe("resolvePlayerName", () => {
         },
       },
     });
-    expect(resolvePlayerName(n, "C-01", "stale-name")).toBe("Alice");
+    expect(resolvePlayerName(n, "C-1", "stale-name")).toBe("Alice");
   });
   it("falls back to locations, then artifacts", () => {
     const n = makeNarrative({
       locations: {
-        "L-01": {
-          id: "L-01",
+        "L-1": {
+          id: "L-1",
           name: "The Tavern",
           prominence: "place",
           parentId: null,
@@ -600,8 +600,8 @@ describe("resolvePlayerName", () => {
         },
       },
       artifacts: {
-        "A-01": {
-          id: "A-01",
+        "A-1": {
+          id: "A-1",
           name: "The Amulet",
           significance: "key",
           world: { nodes: {}, edges: [] },
@@ -610,8 +610,8 @@ describe("resolvePlayerName", () => {
         },
       },
     });
-    expect(resolvePlayerName(n, "L-01")).toBe("The Tavern");
-    expect(resolvePlayerName(n, "A-01")).toBe("The Amulet");
+    expect(resolvePlayerName(n, "L-1")).toBe("The Tavern");
+    expect(resolvePlayerName(n, "A-1")).toBe("The Amulet");
   });
   it("uses the stored fallback when the entity was deleted", () => {
     const n = makeNarrative();
@@ -626,8 +626,8 @@ describe("resolvePlayerName", () => {
   it("preserves live renames (reads the name at call time)", () => {
     const n = makeNarrative({
       characters: {
-        "C-01": {
-          id: "C-01",
+        "C-1": {
+          id: "C-1",
           name: "Alicia", // renamed since analysis
           role: "anchor",
           world: { nodes: {}, edges: [] },
@@ -635,7 +635,7 @@ describe("resolvePlayerName", () => {
         },
       },
     });
-    expect(resolvePlayerName(n, "C-01", "Alice")).toBe("Alicia");
+    expect(resolvePlayerName(n, "C-1", "Alice")).toBe("Alicia");
   });
 });
 

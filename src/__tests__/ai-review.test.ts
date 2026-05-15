@@ -106,7 +106,7 @@ function createLocation(id: string, overrides: Partial<Location> = {}): Location
 }
 function createMinimalNarrative(): NarrativeState {
   return {
-    id: 'N-001',
+    id: 'N-1',
     title: 'Test Narrative',
     description: 'A test story',
     characters: {
@@ -117,7 +117,7 @@ function createMinimalNarrative(): NarrativeState {
       'loc-1': createLocation('loc-1', { name: 'Castle' }),
     },
     threads: {
-      'T-001': createThread('T-001', { description: 'Main mystery' }),
+      'T-1': createThread('T-1', { description: 'Main mystery' }),
     },
     artifacts: {},
     scenes: {},
@@ -160,8 +160,8 @@ describe('evaluateBranch', () => {
     const mockResponse = JSON.stringify({
       overall: 'Good structure overall with some pacing issues.',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'ok', reason: 'Strong opening' },
-        { sceneId: 'S-002', verdict: 'edit', reason: 'Needs more tension' },
+        { sceneId: 'S-1', verdict: 'ok', reason: 'Strong opening' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Needs more tension' },
       ],
       repetitions: ['Location reuse', 'Similar dialogue'],
       thematicQuestion: 'What is the cost of power?',
@@ -169,10 +169,10 @@ describe('evaluateBranch', () => {
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { summary: 'Hero arrives' }),
-      'S-002': createScene('S-002', { summary: 'First challenge' }),
+      'S-1': createScene('S-1', { summary: 'Hero arrives' }),
+      'S-2': createScene('S-2', { summary: 'First challenge' }),
     };
-    const result = await reviewBranch(narrative, ['S-001', 'S-002'], 'main');
+    const result = await reviewBranch(narrative, ['S-1', 'S-2'], 'main');
     expect(result.overall).toBe('Good structure overall with some pacing issues.');
     expect(result.sceneEvals.length).toBe(2);
     expect(result.sceneEvals[0].verdict).toBe('ok');
@@ -184,12 +184,12 @@ describe('evaluateBranch', () => {
     const mockResponse = JSON.stringify({
       overall: 'Mixed results',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'ok', reason: 'Works' },
-        { sceneId: 'S-002', verdict: 'edit', reason: 'Needs work' },
-        { sceneId: 'S-003', verdict: 'merge', reason: 'Combine', mergeInto: 'S-002' },
-        { sceneId: 'S-004', verdict: 'cut', reason: 'Remove' },
-        { sceneId: 'S-005', verdict: 'move', reason: 'Reposition', moveAfter: 'S-001' },
-        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Add scene', insertAfter: 'S-001' },
+        { sceneId: 'S-1', verdict: 'ok', reason: 'Works' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Needs work' },
+        { sceneId: 'S-3', verdict: 'merge', reason: 'Combine', mergeInto: 'S-2' },
+        { sceneId: 'S-4', verdict: 'cut', reason: 'Remove' },
+        { sceneId: 'S-5', verdict: 'move', reason: 'Reposition', moveAfter: 'S-1' },
+        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Add scene', insertAfter: 'S-1' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -197,35 +197,35 @@ describe('evaluateBranch', () => {
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001'),
-      'S-002': createScene('S-002'),
-      'S-003': createScene('S-003'),
-      'S-004': createScene('S-004'),
-      'S-005': createScene('S-005'),
+      'S-1': createScene('S-1'),
+      'S-2': createScene('S-2'),
+      'S-3': createScene('S-3'),
+      'S-4': createScene('S-4'),
+      'S-5': createScene('S-5'),
     };
-    const result = await reviewBranch(narrative, ['S-001', 'S-002', 'S-003', 'S-004', 'S-005'], 'main');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-001')?.verdict).toBe('ok');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-002')?.verdict).toBe('edit');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-003')?.verdict).toBe('merge');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-003')?.mergeInto).toBe('S-002');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-004')?.verdict).toBe('cut');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-005')?.verdict).toBe('move');
-    expect(result.sceneEvals.find((e) => e.sceneId === 'S-005')?.moveAfter).toBe('S-001');
+    const result = await reviewBranch(narrative, ['S-1', 'S-2', 'S-3', 'S-4', 'S-5'], 'main');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-1')?.verdict).toBe('ok');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-2')?.verdict).toBe('edit');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-3')?.verdict).toBe('merge');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-3')?.mergeInto).toBe('S-2');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-4')?.verdict).toBe('cut');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-5')?.verdict).toBe('move');
+    expect(result.sceneEvals.find((e) => e.sceneId === 'S-5')?.moveAfter).toBe('S-1');
     expect(result.sceneEvals.find((e) => e.sceneId === 'INSERT-1')?.verdict).toBe('insert');
   });
   it('converts merge to cut when target is invalid', async () => {
     const mockResponse = JSON.stringify({
       overall: 'Analysis',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'merge', reason: 'Merge', mergeInto: 'NONEXISTENT' },
+        { sceneId: 'S-1', verdict: 'merge', reason: 'Merge', mergeInto: 'NONEXISTENT' },
       ],
       repetitions: [],
       thematicQuestion: '',
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001') };
-    const result = await reviewBranch(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1') };
+    const result = await reviewBranch(narrative, ['S-1'], 'main');
     // Should convert to cut because target doesn't exist
     expect(result.sceneEvals[0].verdict).toBe('cut');
     expect(result.sceneEvals[0].reason).toContain('merge target invalid');
@@ -234,15 +234,15 @@ describe('evaluateBranch', () => {
     const mockResponse = JSON.stringify({
       overall: 'Analysis',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'invalid_verdict', reason: 'Test' },
+        { sceneId: 'S-1', verdict: 'invalid_verdict', reason: 'Test' },
       ],
       repetitions: [],
       thematicQuestion: '',
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001') };
-    const result = await reviewBranch(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1') };
+    const result = await reviewBranch(narrative, ['S-1'], 'main');
     expect(result.sceneEvals[0].verdict).toBe('ok');
   });
   it('throws when the LLM response is not valid JSON', async () => {
@@ -252,25 +252,25 @@ describe('evaluateBranch', () => {
     vi.mocked(callGenerate).mockResolvedValue('Not valid JSON at all');
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001'),
-      'S-002': createScene('S-002'),
+      'S-1': createScene('S-1'),
+      'S-2': createScene('S-2'),
     };
-    await expect(reviewBranch(narrative, ['S-001', 'S-002'], 'main')).rejects.toThrow(
+    await expect(reviewBranch(narrative, ['S-1', 'S-2'], 'main')).rejects.toThrow(
       /Failed to parse JSON/,
     );
   });
   it('uses streaming when onReasoning callback provided', async () => {
     const mockResponse = JSON.stringify({
       overall: 'Streamed analysis',
-      sceneEvals: [{ sceneId: 'S-001', verdict: 'ok', reason: 'Good' }],
+      sceneEvals: [{ sceneId: 'S-1', verdict: 'ok', reason: 'Good' }],
       repetitions: [],
       thematicQuestion: 'Theme?',
     });
     vi.mocked(callGenerateStream).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001') };
+    narrative.scenes = { 'S-1': createScene('S-1') };
     const onReasoning = vi.fn();
-    const result = await reviewBranch(narrative, ['S-001'], 'main', undefined, onReasoning);
+    const result = await reviewBranch(narrative, ['S-1'], 'main', undefined, onReasoning);
     expect(callGenerateStream).toHaveBeenCalled();
     expect(callGenerate).not.toHaveBeenCalled();
     expect(result.overall).toBe('Streamed analysis');
@@ -284,8 +284,8 @@ describe('evaluateBranch', () => {
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001') };
-    await reviewBranch(narrative, ['S-001'], 'main', 'Focus on pacing issues');
+    narrative.scenes = { 'S-1': createScene('S-1') };
+    await reviewBranch(narrative, ['S-1'], 'main', 'Focus on pacing issues');
     const promptArg = vi.mocked(callGenerate).mock.calls[0][0];
     expect(promptArg).toContain('Focus on pacing issues');
     expect(promptArg).toContain('PRIORITY GUIDANCE');
@@ -294,7 +294,7 @@ describe('evaluateBranch', () => {
     const mockResponse = JSON.stringify({
       overall: 'Analysis',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'ok', reason: 'Good' },
+        { sceneId: 'S-1', verdict: 'ok', reason: 'Good' },
         { sceneId: 'S-NONEXISTENT', verdict: 'ok', reason: 'Bad' },
       ],
       repetitions: [],
@@ -302,10 +302,10 @@ describe('evaluateBranch', () => {
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001') };
-    const result = await reviewBranch(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1') };
+    const result = await reviewBranch(narrative, ['S-1'], 'main');
     expect(result.sceneEvals.length).toBe(1);
-    expect(result.sceneEvals[0].sceneId).toBe('S-001');
+    expect(result.sceneEvals[0].sceneId).toBe('S-1');
   });
   it('generates unique evaluation ID', async () => {
     vi.mocked(callGenerate).mockResolvedValue(JSON.stringify({
@@ -315,9 +315,9 @@ describe('evaluateBranch', () => {
       thematicQuestion: '',
     }));
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001') };
-    const result1 = await reviewBranch(narrative, ['S-001'], 'main');
-    const result2 = await reviewBranch(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1') };
+    const result1 = await reviewBranch(narrative, ['S-1'], 'main');
+    const result2 = await reviewBranch(narrative, ['S-1'], 'main');
     expect(result1.id).toMatch(/^EVAL-/);
     expect(result2.id).toMatch(/^EVAL-/);
   });
@@ -326,8 +326,8 @@ describe('evaluateBranch', () => {
 describe('evaluateProseQuality', () => {
   it('returns empty result when no scenes have prose', async () => {
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001', { prose: undefined }) };
-    const result = await reviewProseQuality(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1', { prose: undefined }) };
+    const result = await reviewProseQuality(narrative, ['S-1'], 'main');
     expect(result.overall).toBe('No scenes with prose to evaluate.');
     expect(result.sceneEvals).toEqual([]);
     expect(callGenerate).not.toHaveBeenCalled();
@@ -336,18 +336,18 @@ describe('evaluateProseQuality', () => {
     const mockResponse = JSON.stringify({
       overall: 'Strong prose with some repetition.',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'ok', issues: [] },
-        { sceneId: 'S-002', verdict: 'edit', issues: ['Dialogue too formal', 'Missing sensory detail'] },
+        { sceneId: 'S-1', verdict: 'ok', issues: [] },
+        { sceneId: 'S-2', verdict: 'edit', issues: ['Dialogue too formal', 'Missing sensory detail'] },
       ],
       patterns: ['Overuse of adverbs'],
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { prose: 'The hero walked into the room.' }),
-      'S-002': createScene('S-002', { prose: 'She said formally, "Good day."' }),
+      'S-1': createScene('S-1', { prose: 'The hero walked into the room.' }),
+      'S-2': createScene('S-2', { prose: 'She said formally, "Good day."' }),
     };
-    const result = await reviewProseQuality(narrative, ['S-001', 'S-002'], 'main');
+    const result = await reviewProseQuality(narrative, ['S-1', 'S-2'], 'main');
     expect(result.overall).toBe('Strong prose with some repetition.');
     expect(result.sceneEvals.length).toBe(2);
     expect(result.sceneEvals[0].verdict).toBe('ok');
@@ -359,9 +359,9 @@ describe('evaluateProseQuality', () => {
     vi.mocked(callGenerate).mockResolvedValue('Invalid JSON');
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { prose: 'Some prose text.' }),
+      'S-1': createScene('S-1', { prose: 'Some prose text.' }),
     };
-    await expect(reviewProseQuality(narrative, ['S-001'], 'main')).rejects.toThrow(
+    await expect(reviewProseQuality(narrative, ['S-1'], 'main')).rejects.toThrow(
       /Failed to parse JSON/,
     );
   });
@@ -373,7 +373,7 @@ describe('evaluateProseQuality', () => {
     }));
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { prose: 'Text' }),
+      'S-1': createScene('S-1', { prose: 'Text' }),
     };
     narrative.proseProfile = {
       register: 'literary',
@@ -386,7 +386,7 @@ describe('evaluateProseQuality', () => {
       rules: ['Show, don\'t tell'],
       antiPatterns: ['No adverbs in dialogue tags'],
     };
-    await reviewProseQuality(narrative, ['S-001'], 'main');
+    await reviewProseQuality(narrative, ['S-1'], 'main');
     const promptArg = vi.mocked(callGenerate).mock.calls[0][0];
     expect(promptArg).toContain('PROSE PROFILE');
     expect(promptArg).toContain('literary');
@@ -402,26 +402,26 @@ describe('evaluateProseQuality', () => {
     }));
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { prose: 'Text' }),
+      'S-1': createScene('S-1', { prose: 'Text' }),
     };
     const onReasoning = vi.fn();
-    await reviewProseQuality(narrative, ['S-001'], 'main', undefined, onReasoning);
+    await reviewProseQuality(narrative, ['S-1'], 'main', undefined, onReasoning);
     expect(callGenerateStream).toHaveBeenCalled();
   });
   it('filters issues to strings only', async () => {
     const mockResponse = JSON.stringify({
       overall: 'Analysis',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'edit', issues: ['Valid issue', 123, null, { obj: true }] },
+        { sceneId: 'S-1', verdict: 'edit', issues: ['Valid issue', 123, null, { obj: true }] },
       ],
       patterns: [],
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { prose: 'Text' }),
+      'S-1': createScene('S-1', { prose: 'Text' }),
     };
-    const result = await reviewProseQuality(narrative, ['S-001'], 'main');
+    const result = await reviewProseQuality(narrative, ['S-1'], 'main');
     expect(result.sceneEvals[0].issues).toEqual(['Valid issue']);
   });
   it('generates unique prose evaluation ID', async () => {
@@ -431,8 +431,8 @@ describe('evaluateProseQuality', () => {
       patterns: [],
     }));
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001', { prose: 'Text' }) };
-    const result = await reviewProseQuality(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1', { prose: 'Text' }) };
+    const result = await reviewProseQuality(narrative, ['S-1'], 'main');
     expect(result.id).toMatch(/^PEVAL-/);
   });
 });
@@ -440,8 +440,8 @@ describe('evaluateProseQuality', () => {
 describe('evaluatePlanQuality', () => {
   it('returns empty result when no scenes have plans', async () => {
     const narrative = createMinimalNarrative();
-    narrative.scenes = { 'S-001': createScene('S-001', { plan: undefined }) };
-    const result = await reviewPlanQuality(narrative, ['S-001'], 'main');
+    narrative.scenes = { 'S-1': createScene('S-1', { plan: undefined }) };
+    const result = await reviewPlanQuality(narrative, ['S-1'], 'main');
     expect(result.overall).toBe('No scenes with beat plans to evaluate.');
     expect(result.sceneEvals).toEqual([]);
     expect(callGenerate).not.toHaveBeenCalled();
@@ -450,22 +450,22 @@ describe('evaluatePlanQuality', () => {
     const mockResponse = JSON.stringify({
       overall: 'Plans are well-structured with some continuity issues.',
       sceneEvals: [
-        { sceneId: 'S-001', verdict: 'ok', issues: [] },
-        { sceneId: 'S-002', verdict: 'edit', issues: ['Beat 3: Character knowledge leak'] },
+        { sceneId: 'S-1', verdict: 'ok', issues: [] },
+        { sceneId: 'S-2', verdict: 'edit', issues: ['Beat 3: Character knowledge leak'] },
       ],
       patterns: ['Rushed transitions between beats'],
     });
     vi.mocked(callGenerate).mockResolvedValue(mockResponse);
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', {
+      'S-1': createScene('S-1', {
         plan: {
           beats: [
             { fn: 'breathe', mechanism: 'environment', what: 'Intro scene', propositions: [{ content: 'The door opens' }] },
           ],
         },
       }),
-      'S-002': createScene('S-002', {
+      'S-2': createScene('S-2', {
         plan: {
           beats: [
             { fn: 'advance', mechanism: 'action', what: 'Discovery', propositions: [{ content: 'She finds the letter' }] },
@@ -473,7 +473,7 @@ describe('evaluatePlanQuality', () => {
         },
       }),
     };
-    const result = await reviewPlanQuality(narrative, ['S-001', 'S-002'], 'main');
+    const result = await reviewPlanQuality(narrative, ['S-1', 'S-2'], 'main');
     expect(result.overall).toBe('Plans are well-structured with some continuity issues.');
     expect(result.sceneEvals.length).toBe(2);
     expect(result.sceneEvals[0].verdict).toBe('ok');
@@ -485,11 +485,11 @@ describe('evaluatePlanQuality', () => {
     vi.mocked(callGenerate).mockResolvedValue('Not JSON');
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', {
+      'S-1': createScene('S-1', {
         plan: { beats: [{ fn: 'breathe', mechanism: 'environment', what: 'Test', propositions: [{ content: 'Anchor' }] }] },
       }),
     };
-    await expect(reviewPlanQuality(narrative, ['S-001'], 'main')).rejects.toThrow(
+    await expect(reviewPlanQuality(narrative, ['S-1'], 'main')).rejects.toThrow(
       /Failed to parse JSON/,
     );
   });
@@ -511,11 +511,11 @@ describe('evaluatePlanQuality', () => {
       },
     });
     narrative.scenes = {
-      'S-001': createScene('S-001', {
+      'S-1': createScene('S-1', {
         plan: { beats: [{ fn: 'breathe', mechanism: 'environment', what: 'Test', propositions: [{ content: 'A' }] }] },
       }),
     };
-    await reviewPlanQuality(narrative, ['S-001'], 'main');
+    await reviewPlanQuality(narrative, ['S-1'], 'main');
     const promptArg = vi.mocked(callGenerate).mock.calls[0][0];
     expect(promptArg).toContain('<entity-knowledge>');
     expect(promptArg).toContain('Alice');
@@ -529,12 +529,12 @@ describe('evaluatePlanQuality', () => {
     }));
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', {
+      'S-1': createScene('S-1', {
         plan: { beats: [{ fn: 'breathe', mechanism: 'environment', what: 'Test', propositions: [{ content: 'A' }] }] },
       }),
     };
     const onReasoning = vi.fn();
-    await reviewPlanQuality(narrative, ['S-001'], 'main', undefined, onReasoning);
+    await reviewPlanQuality(narrative, ['S-1'], 'main', undefined, onReasoning);
     expect(callGenerateStream).toHaveBeenCalled();
   });
   it('generates unique plan evaluation ID', async () => {
@@ -545,29 +545,29 @@ describe('evaluatePlanQuality', () => {
     }));
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', {
+      'S-1': createScene('S-1', {
         plan: { beats: [{ fn: 'breathe', mechanism: 'environment', what: 'Test', propositions: [{ content: 'A' }] }] },
       }),
     };
-    const result = await reviewPlanQuality(narrative, ['S-001'], 'main');
+    const result = await reviewPlanQuality(narrative, ['S-1'], 'main');
     expect(result.id).toMatch(/^PLEVAL-/);
   });
   it('skips scenes without beats', async () => {
     vi.mocked(callGenerate).mockResolvedValue(JSON.stringify({
       overall: 'Analysis',
-      sceneEvals: [{ sceneId: 'S-002', verdict: 'ok', issues: [] }],
+      sceneEvals: [{ sceneId: 'S-2', verdict: 'ok', issues: [] }],
       patterns: [],
     }));
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', { plan: { beats: [] } }), // Empty beats
-      'S-002': createScene('S-002', {
+      'S-1': createScene('S-1', { plan: { beats: [] } }), // Empty beats
+      'S-2': createScene('S-2', {
         plan: { beats: [{ fn: 'breathe', mechanism: 'environment', what: 'Test', propositions: [{ content: 'A' }] }] },
       }),
     };
-    const result = await reviewPlanQuality(narrative, ['S-001', 'S-002'], 'main');
+    const result = await reviewPlanQuality(narrative, ['S-1', 'S-2'], 'main');
     expect(result.sceneEvals.length).toBe(1);
-    expect(result.sceneEvals[0].sceneId).toBe('S-002');
+    expect(result.sceneEvals[0].sceneId).toBe('S-2');
   });
   it('includes guidance in prompt when provided', async () => {
     vi.mocked(callGenerate).mockResolvedValue(JSON.stringify({
@@ -577,11 +577,11 @@ describe('evaluatePlanQuality', () => {
     }));
     const narrative = createMinimalNarrative();
     narrative.scenes = {
-      'S-001': createScene('S-001', {
+      'S-1': createScene('S-1', {
         plan: { beats: [{ fn: 'breathe', mechanism: 'environment', what: 'Test', propositions: [{ content: 'A' }] }] },
       }),
     };
-    await reviewPlanQuality(narrative, ['S-001'], 'main', 'Check beat consistency');
+    await reviewPlanQuality(narrative, ['S-1'], 'main', 'Check beat consistency');
     const promptArg = vi.mocked(callGenerate).mock.calls[0][0];
     expect(promptArg).toContain('Check beat consistency');
     expect(promptArg).toContain('PRIORITY GUIDANCE');

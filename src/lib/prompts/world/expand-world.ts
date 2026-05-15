@@ -185,7 +185,7 @@ Return JSON with this exact structure:
   <rule>Thread IDs: continue sequentially from ${nextThreadId} (e.g., ${nextThreadId}, T-${parseInt(nextThreadId.split('-').pop()!) + 1}, ...).</rule>
   <rule>Artifact IDs: continue sequentially from ${nextArtifactId} (e.g., ${nextArtifactId}, A-${parseInt(nextArtifactId.split('-').pop()!) + 1}, ...).</rule>
   <rule>Knowledge node IDs: continue sequentially from ${nextKId} (e.g., ${nextKId}, K-${parseInt(nextKId.split('-').pop()!) + 1}, ...).</rule>
-  <rule>No leading zeros — write C-7, not C-07. The pipeline rejects zero-padded duplicates.</rule>
+  <rule>No leading zeros — write C-7, not C-7. The pipeline rejects zero-padded duplicates.</rule>
   <rule>ALL knowledge nodes (in both characters and locations) use the K- prefix and share one sequence.</rule>
 </id-rules>
 

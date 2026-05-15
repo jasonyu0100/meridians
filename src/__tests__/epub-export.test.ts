@@ -68,9 +68,9 @@ afterEach(() => {
 // Helper to create minimal narrative
 function createMinimalNarrative(): NarrativeState {
   const arc: Arc = {
-    id: 'ARC-01',
+    id: 'ARC-1',
     name: 'Chapter One',
-    sceneIds: ['S-01', 'S-02'],
+    sceneIds: ['S-1', 'S-2'],
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
@@ -81,21 +81,21 @@ function createMinimalNarrative(): NarrativeState {
     title: 'Test Story',
     worldSummary: 'A test world.',
     characters: {
-      'C-01': { id: 'C-01', name: 'Hero', role: 'anchor', world: { nodes: {}, edges: [] }, threadIds: [] },
+      'C-1': { id: 'C-1', name: 'Hero', role: 'anchor', world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     locations: {
-      'L-01': { id: 'L-01', name: 'Village', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
+      'L-1': { id: 'L-1', name: 'Village', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     threads: {},
-    arcs: { 'ARC-01': arc },
+    arcs: { 'ARC-1': arc },
     scenes: {
-      'S-01': {
+      'S-1': {
         kind: 'scene',
-        id: 'S-01',
-        arcId: 'ARC-01',
-        locationId: 'L-01',
-        povId: 'C-01',
-        participantIds: ['C-01'],
+        id: 'S-1',
+        arcId: 'ARC-1',
+        locationId: 'L-1',
+        povId: 'C-1',
+        participantIds: ['C-1'],
         events: [],
         threadDeltas: [],
         worldDeltas: [],
@@ -103,19 +103,19 @@ function createMinimalNarrative(): NarrativeState {
         summary: 'First scene',
         proseVersions: [{
           version: '1.0.0',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           prose: 'The sun rose over the village. Hero stepped outside.',
           timestamp: Date.now(),
           versionType: 'generate',
         }],
       },
-      'S-02': {
+      'S-2': {
         kind: 'scene',
-        id: 'S-02',
-        arcId: 'ARC-01',
-        locationId: 'L-01',
-        povId: 'C-01',
-        participantIds: ['C-01'],
+        id: 'S-2',
+        arcId: 'ARC-1',
+        locationId: 'L-1',
+        povId: 'C-1',
+        participantIds: ['C-1'],
         events: [],
         threadDeltas: [],
         worldDeltas: [],
@@ -123,7 +123,7 @@ function createMinimalNarrative(): NarrativeState {
         summary: 'Second scene',
         proseVersions: [{
           version: '1.0.0',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           prose: 'The adventure begins. Hero walked into the forest.',
           timestamp: Date.now(),
           versionType: 'generate',
@@ -131,12 +131,12 @@ function createMinimalNarrative(): NarrativeState {
       },
     },
     branches: {
-      'BR-01': {
-        id: 'BR-01',
+      'BR-1': {
+        id: 'BR-1',
         name: 'main',
         parentBranchId: null,
         forkEntryId: null,
-        entryIds: ['S-01', 'S-02'],
+        entryIds: ['S-1', 'S-2'],
         createdAt: Date.now(),
       },
     },
@@ -153,7 +153,7 @@ describe('exportEpub', () => {
   it('creates a downloadable EPUB file', async () => {
     const narrative = createMinimalNarrative();
     const proseCache: Record<string, { text: string; status: string }> = {};
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
     expect(mockAppendChild).toHaveBeenCalled();
     expect(mockClick).toHaveBeenCalled();
     expect(mockRemoveChild).toHaveBeenCalled();
@@ -163,18 +163,18 @@ describe('exportEpub', () => {
   it('uses prose from cache when available', async () => {
     const narrative = createMinimalNarrative();
     const proseCache: Record<string, { text: string; status: string }> = {
-      'S-01': { text: 'Cached prose for scene one.', status: 'ready' },
-      'S-02': { text: 'Cached prose for scene two.', status: 'ready' },
+      'S-1': { text: 'Cached prose for scene one.', status: 'ready' },
+      'S-2': { text: 'Cached prose for scene two.', status: 'ready' },
     };
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
     expect(mockClick).toHaveBeenCalled();
   });
   it('skips scenes without prose', () => {
     const narrative = createMinimalNarrative();
-    narrative.scenes['S-01'].proseVersions = [];
-    narrative.scenes['S-02'].proseVersions = [];
+    narrative.scenes['S-1'].proseVersions = [];
+    narrative.scenes['S-2'].proseVersions = [];
     const proseCache: Record<string, { text: string; status: string }> = {};
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
     // Should not create download since no prose
     expect(mockClick).not.toHaveBeenCalled();
   });
@@ -182,28 +182,28 @@ describe('exportEpub', () => {
     const narrative = createMinimalNarrative();
     narrative.title = 'My Story: A Tale of <Adventure> & "Danger"';
     const proseCache: Record<string, { text: string; status: string }> = {};
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
     // Non-alphanumeric chars become underscores, consecutive underscores collapsed, leading/trailing trimmed
     expect(capturedFilename).toBe('my_story_a_tale_of_adventure_danger.epub');
   });
   it('groups scenes by arc', async () => {
     const narrative = createMinimalNarrative();
-    narrative.arcs['ARC-02'] = {
-      id: 'ARC-02',
+    narrative.arcs['ARC-2'] = {
+      id: 'ARC-2',
       name: 'Chapter Two',
-      sceneIds: ['S-03'],
+      sceneIds: ['S-3'],
       develops: [],
       locationIds: [],
       activeCharacterIds: [],
       initialCharacterLocations: {},
     };
-    narrative.scenes['S-03'] = {
+    narrative.scenes['S-3'] = {
       kind: 'scene',
-      id: 'S-03',
-      arcId: 'ARC-02',
-      locationId: 'L-01',
-      povId: 'C-01',
-      participantIds: ['C-01'],
+      id: 'S-3',
+      arcId: 'ARC-2',
+      locationId: 'L-1',
+      povId: 'C-1',
+      participantIds: ['C-1'],
       events: [],
       threadDeltas: [],
       worldDeltas: [],
@@ -211,53 +211,53 @@ describe('exportEpub', () => {
       summary: 'Third scene',
       proseVersions: [{
         version: '1.0.0',
-        branchId: 'BR-01',
+        branchId: 'BR-1',
         prose: 'Chapter two begins.',
         timestamp: Date.now(),
         versionType: 'generate',
       }],
     };
     const proseCache: Record<string, { text: string; status: string }> = {};
-    exportEpub(narrative, ['S-01', 'S-02', 'S-03'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2', 'S-3'], 'BR-1', proseCache);
     expect(mockClick).toHaveBeenCalled();
   });
   it('escapes special XML characters in content', () => {
     const narrative = createMinimalNarrative();
     narrative.title = 'Test & Story';
-    narrative.scenes['S-01'].proseVersions = [{
+    narrative.scenes['S-1'].proseVersions = [{
       version: '1.0.0',
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       prose: 'He said "Hello" & waved. The <tag> was visible.',
       timestamp: Date.now(),
       versionType: 'generate',
     }];
     const proseCache: Record<string, { text: string; status: string }> = {};
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
     expect(mockClick).toHaveBeenCalled();
   });
   it('handles scenes from prose cache with pending status', () => {
     const narrative = createMinimalNarrative();
-    // S-01 has no versioned prose
-    narrative.scenes['S-01'].proseVersions = [];
-    // S-02 has fallback prose
-    narrative.scenes['S-02'].proseVersions = [{
+    // S-1 has no versioned prose
+    narrative.scenes['S-1'].proseVersions = [];
+    // S-2 has fallback prose
+    narrative.scenes['S-2'].proseVersions = [{
       version: '1.0.0',
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       prose: 'Fallback prose.',
       timestamp: Date.now(),
       versionType: 'generate',
     }];
     const proseCache: Record<string, { text: string; status: string }> = {
-      'S-01': { text: 'This should not be used', status: 'pending' },
+      'S-1': { text: 'This should not be used', status: 'pending' },
     };
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
-    // S-02 has fallback prose and should work
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
+    // S-2 has fallback prose and should work
     expect(mockClick).toHaveBeenCalled();
   });
   it('includes location and POV metadata in chapter', () => {
     const narrative = createMinimalNarrative();
     const proseCache: Record<string, { text: string; status: string }> = {};
-    exportEpub(narrative, ['S-01', 'S-02'], 'BR-01', proseCache);
+    exportEpub(narrative, ['S-1', 'S-2'], 'BR-1', proseCache);
     // The export should complete without errors
     expect(mockClick).toHaveBeenCalled();
   });

@@ -91,7 +91,7 @@ function createLocation(
 }
 function createMinimalNarrative(): NarrativeState {
   return {
-    id: "N-001",
+    id: "N-1",
     title: "Test Narrative",
     description: "A test story",
     characters: {
@@ -101,7 +101,7 @@ function createMinimalNarrative(): NarrativeState {
       "loc-1": createLocation("loc-1", { name: "Castle" }),
     },
     threads: {
-      "T-001": createThread("T-001", { description: "Main mystery" }),
+      "T-1": createThread("T-1", { description: "Main mystery" }),
     },
     artifacts: {},
     scenes: {},
@@ -451,8 +451,8 @@ describe("checkEndConditions", () => {
   it("returns all_threads_resolved when all terminal", () => {
     const narrative = createMinimalNarrative();
     narrative.threads = {
-      "T-001": createThread("T-001", { closedAt: "s-10", closeOutcome: 0 }),
-      "T-002": createThread("T-002", { closedAt: "s-12", closeOutcome: 1 }),
+      "T-1": createThread("T-1", { closedAt: "s-10", closeOutcome: 0 }),
+      "T-2": createThread("T-2", { closedAt: "s-12", closeOutcome: 1 }),
     };
     const config = createAutoConfig({
       endConditions: [{ type: "all_threads_resolved" }],
@@ -463,8 +463,8 @@ describe("checkEndConditions", () => {
   it("returns null when some threads still active", () => {
     const narrative = createMinimalNarrative();
     narrative.threads = {
-      "T-001": createThread("T-001", {}),
-      "T-002": createThread("T-002", {}),
+      "T-1": createThread("T-1", {}),
+      "T-2": createThread("T-2", {}),
     };
     const config = createAutoConfig({
       endConditions: [{ type: "all_threads_resolved" }],
@@ -536,7 +536,7 @@ describe("checkEndConditions", () => {
   it("returns first met condition when multiple exist", () => {
     const narrative = createMinimalNarrative();
     narrative.threads = {
-      "T-001": createThread("T-001", {}),
+      "T-1": createThread("T-1", {}),
     };
     const config = createAutoConfig({
       endConditions: [
@@ -654,7 +654,7 @@ describe("evaluateNarrativeState", () => {
   it("analyzes stagnant threads", () => {
     const narrative = createMinimalNarrative();
     narrative.threads = {
-      "T-001": createThread("T-001", {}),
+      "T-1": createThread("T-1", {}),
     };
     // Add scenes without any thread deltas
     for (let i = 0; i < 5; i++) {
@@ -738,9 +738,9 @@ describe("auto-engine edge cases", () => {
   it("handles narrative with only terminal threads", () => {
     const narrative = createMinimalNarrative();
     narrative.threads = {
-      "T-001": createThread("T-001", {}),
-      "T-002": createThread("T-002", {}),
-      "T-003": createThread("T-003", {}),
+      "T-1": createThread("T-1", {}),
+      "T-2": createThread("T-2", {}),
+      "T-3": createThread("T-3", {}),
     };
     const config = createAutoConfig({
       endConditions: [{ type: "scene_count", target: 50 }],
@@ -753,9 +753,9 @@ describe("auto-engine edge cases", () => {
     const narrative = createMinimalNarrative();
     // Need > 2 latent threads to trigger the boost
     narrative.threads = {
-      "T-001": createThread("T-001", {}),
-      "T-002": createThread("T-002", {}),
-      "T-003": createThread("T-003", {}),
+      "T-1": createThread("T-1", {}),
+      "T-2": createThread("T-2", {}),
+      "T-3": createThread("T-3", {}),
     };
     const config = createAutoConfig({
       endConditions: [{ type: "scene_count", target: 50 }],

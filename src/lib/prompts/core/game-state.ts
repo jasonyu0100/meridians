@@ -26,7 +26,7 @@ export const PROMPT_ARC_STATE_GUIDANCE = `<arc-metadata hint="DIRECTION VECTOR (
   </domain-adaptive>
 
   <rules>
-    <rule critical="true">Use ENTITY NAMES and THREAD DESCRIPTIONS in natural language. NEVER emit raw IDs. Forbidden: "T-HEA-01", "T-001", "C-03", "L-12", "ARC-04", or any "PREFIX-NUMBER" token. Threads are identified by what they're ABOUT ("the elder's allegiance", "the orphan-trade investigation", "the dataset's provenance"), not by their slug. If a thread has no clear description, paraphrase its question in 2-5 words.</rule>
+    <rule critical="true">Use ENTITY NAMES and THREAD DESCRIPTIONS in natural language. NEVER emit raw IDs. Forbidden: "T-HEA-1", "T-1", "C-3", "L-12", "ARC-4", or any "PREFIX-NUMBER" token. Threads are identified by what they're ABOUT ("the elder's allegiance", "the orphan-trade investigation", "the dataset's provenance"), not by their slug. If a thread has no clear description, paraphrase its question in 2-5 words.</rule>
     <rule>No speculation about what happens next — that belongs in directionVector.</rule>
     <rule>No narration or scene retelling — STATE ONLY.</rule>
     <rule>Prefer compact structured phrasing ("Akira at the southern outpost; holds the cipher map; the elder's allegiance escalating; alliance with Mei seeded" / "the calibration claim established; the replication line still open; objection from reviewer 2 unanswered" / "infection rate at 1.7×; containment threshold not yet crossed; policy intervention scheduled t+3; supply-chain gate degrading") over flowing prose.</rule>

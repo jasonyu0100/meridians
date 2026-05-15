@@ -11,22 +11,22 @@ describe('store reducer', () => {
   beforeEach(() => {
     // Setup test narrative
     testBranch = {
-      id: 'BR-01',
+      id: 'BR-1',
       name: 'main',
       parentBranchId: null,
       forkEntryId: null,
-      entryIds: ['S-001', 'S-002'],
+      entryIds: ['S-1', 'S-2'],
       createdAt: Date.now(),
       versionPointers: {},
     };
     testScene = {
       kind: 'scene' as const,
-      id: 'S-001',
-      arcId: 'A-001',
+      id: 'S-1',
+      arcId: 'A-1',
       summary: 'Hero discovers ancient artifact',
-      povId: 'C-001',
-      locationId: 'L-001',
-      participantIds: ['C-001', 'C-002'],
+      povId: 'C-1',
+      locationId: 'L-1',
+      participantIds: ['C-1', 'C-2'],
       events: [],
       threadDeltas: [],
       worldDeltas: [],
@@ -37,7 +37,7 @@ describe('store reducer', () => {
       planVersions: [],
     };
     testNarrative = {
-      id: 'N-001',
+      id: 'N-1',
       title: 'Test Story',
       description: 'A test story for unit tests',
       characters: {},
@@ -46,12 +46,12 @@ describe('store reducer', () => {
       artifacts: {},
       arcs: {},
       scenes: {
-        'S-001': testScene,
-        'S-002': { ...testScene, id: 'S-002', summary: 'Hero returns home' },
+        'S-1': testScene,
+        'S-2': { ...testScene, id: 'S-2', summary: 'Hero returns home' },
       },
       worldBuilds: {},
       branches: {
-        'BR-01': testBranch,
+        'BR-1': testBranch,
       },
       relationships: [],
       systemGraph: { nodes: {}, edges: [] },
@@ -61,10 +61,10 @@ describe('store reducer', () => {
     };
     initialState = {
       narratives: [],
-      activeNarrativeId: 'N-001',
+      activeNarrativeId: 'N-1',
       activeNarrative: testNarrative,
       hydrationComplete: true,
-      resolvedEntryKeys: ['S-001', 'S-002'],
+      resolvedEntryKeys: ['S-1', 'S-2'],
       graphViewMode: 'search',
       autoConfig: {
         endConditions: [{ type: 'scene_count', target: 50 }],
@@ -82,7 +82,7 @@ describe('store reducer', () => {
       },
       analysisJobs: [],
       viewState: {
-        activeBranchId: 'BR-01',
+        activeBranchId: 'BR-1',
         currentSceneIndex: 1,
         inspectorContext: null,
         inspectorHistory: [],
@@ -104,7 +104,7 @@ describe('store reducer', () => {
       // Simulate UPDATE_SCENE action
       const action = {
         type: 'UPDATE_SCENE' as const,
-        sceneId: 'S-001',
+        sceneId: 'S-1',
         updates: {
           prose: 'The sun rose over the ancient temple...',
           beatProseMap: {
@@ -126,7 +126,7 @@ describe('store reducer', () => {
           ],
           createdAt: Date.now(),
         },
-        branchId: 'BR-01',
+        branchId: 'BR-1',
         timestamp: expect.any(Number),
         versionType: 'generate',
       };
@@ -143,13 +143,13 @@ describe('store reducer', () => {
       expect(updatedScene.proseVersions).toHaveLength(1);
       expect(updatedScene.proseVersions![0].version).toBe('1');
       expect(updatedScene.proseVersions![0].prose).toBe('The sun rose over the ancient temple...');
-      expect(updatedScene.proseVersions![0].branchId).toBe('BR-01');
+      expect(updatedScene.proseVersions![0].branchId).toBe('BR-1');
       expect(updatedScene.proseVersions![0].versionType).toBe('generate');
     });
     it('should create a new plan version when plan is updated', () => {
       const action = {
         type: 'UPDATE_SCENE' as const,
-        sceneId: 'S-001',
+        sceneId: 'S-1',
         updates: {
           plan: {
             beats: [
@@ -176,7 +176,7 @@ describe('store reducer', () => {
             },
           ],
         },
-        branchId: 'BR-01',
+        branchId: 'BR-1',
         timestamp: expect.any(Number),
         versionType: 'generate',
       };
@@ -186,7 +186,7 @@ describe('store reducer', () => {
       };
       expect(updatedScene.planVersions).toHaveLength(1);
       expect(updatedScene.planVersions![0].version).toBe('1');
-      expect(updatedScene.planVersions![0].branchId).toBe('BR-01');
+      expect(updatedScene.planVersions![0].branchId).toBe('BR-1');
       expect(updatedScene.planVersions![0].versionType).toBe('generate');
     });
     it('should increment version number correctly for rewrites', () => {
@@ -197,7 +197,7 @@ describe('store reducer', () => {
           {
             version: '1',
             prose: 'Original prose',
-            branchId: 'BR-01',
+            branchId: 'BR-1',
             timestamp: Date.now() - 1000,
             versionType: 'generate',
           },
@@ -207,7 +207,7 @@ describe('store reducer', () => {
       const rewriteVersion: ProseVersion = {
         version: '1.1',
         prose: 'Rewritten prose',
-        branchId: 'BR-01',
+        branchId: 'BR-1',
         timestamp: Date.now(),
         versionType: 'rewrite',
         parentVersion: '1',
@@ -227,14 +227,14 @@ describe('store reducer', () => {
           {
             version: '1',
             prose: 'Original prose',
-            branchId: 'BR-01',
+            branchId: 'BR-1',
             timestamp: Date.now() - 2000,
             versionType: 'generate',
           },
           {
             version: '1.1',
             prose: 'Rewritten prose',
-            branchId: 'BR-01',
+            branchId: 'BR-1',
             timestamp: Date.now() - 1000,
             versionType: 'rewrite',
             parentVersion: '1',
@@ -245,7 +245,7 @@ describe('store reducer', () => {
       const editVersion: ProseVersion = {
         version: '1.1.1',
         prose: 'Edited prose',
-        branchId: 'BR-01',
+        branchId: 'BR-1',
         timestamp: Date.now(),
         versionType: 'edit',
         parentVersion: '1.1',
@@ -261,7 +261,7 @@ describe('store reducer', () => {
     it('should update non-versioned fields directly', () => {
       const action = {
         type: 'UPDATE_SCENE' as const,
-        sceneId: 'S-001',
+        sceneId: 'S-1',
         updates: {
           summary: 'Updated summary',
           events: ['Event 1', 'Event 2'],
@@ -287,12 +287,12 @@ describe('store reducer', () => {
       const updatedBranch: Branch = {
         ...branch,
         versionPointers: {
-          'S-001': {
+          'S-1': {
             proseVersion: '1.1',
           },
         },
       };
-      expect(updatedBranch.versionPointers!['S-001'].proseVersion).toBe('1.1');
+      expect(updatedBranch.versionPointers!['S-1'].proseVersion).toBe('1.1');
     });
     it('should set plan version pointer', () => {
       const branch: Branch = {
@@ -302,46 +302,46 @@ describe('store reducer', () => {
       const updatedBranch: Branch = {
         ...branch,
         versionPointers: {
-          'S-001': {
+          'S-1': {
             planVersion: '1.1',
           },
         },
       };
-      expect(updatedBranch.versionPointers!['S-001'].planVersion).toBe('1.1');
+      expect(updatedBranch.versionPointers!['S-1'].planVersion).toBe('1.1');
     });
     it('should update existing pointer without affecting other pointers', () => {
       const branch: Branch = {
         ...testBranch,
         versionPointers: {
-          'S-001': {
+          'S-1': {
             proseVersion: '1',
             planVersion: '1',
           },
-          'S-002': {
+          'S-2': {
             proseVersion: '1',
           },
         },
       };
-      // Update prose pointer for S-001
+      // Update prose pointer for S-1
       const updatedBranch: Branch = {
         ...branch,
         versionPointers: {
           ...branch.versionPointers,
-          'S-001': {
-            ...branch.versionPointers!['S-001'],
+          'S-1': {
+            ...branch.versionPointers!['S-1'],
             proseVersion: '1.1',
           },
         },
       };
-      expect(updatedBranch.versionPointers!['S-001'].proseVersion).toBe('1.1');
-      expect(updatedBranch.versionPointers!['S-001'].planVersion).toBe('1');
-      expect(updatedBranch.versionPointers!['S-002'].proseVersion).toBe('1');
+      expect(updatedBranch.versionPointers!['S-1'].proseVersion).toBe('1.1');
+      expect(updatedBranch.versionPointers!['S-1'].planVersion).toBe('1');
+      expect(updatedBranch.versionPointers!['S-2'].proseVersion).toBe('1');
     });
     it('should clean up empty scene pointers', () => {
       const branch: Branch = {
         ...testBranch,
         versionPointers: {
-          'S-001': {
+          'S-1': {
             proseVersion: '1',
           },
         },
@@ -357,11 +357,11 @@ describe('store reducer', () => {
   describe('CREATE_BRANCH', () => {
     it('should create a new branch and switch to it', () => {
       const newBranch: Branch = {
-        id: 'BR-02',
+        id: 'BR-2',
         name: 'alternate-ending',
-        parentBranchId: 'BR-01',
-        forkEntryId: 'S-002',
-        entryIds: ['S-001', 'S-002'], // Inherits from parent
+        parentBranchId: 'BR-1',
+        forkEntryId: 'S-2',
+        entryIds: ['S-1', 'S-2'], // Inherits from parent
         createdAt: Date.now(),
         versionPointers: {},
       };
@@ -369,20 +369,20 @@ describe('store reducer', () => {
         ...testNarrative,
         branches: {
           ...testNarrative.branches,
-          'BR-02': newBranch,
+          'BR-2': newBranch,
         },
       };
-      expect(updatedNarrative.branches['BR-02']).toBeDefined();
-      expect(updatedNarrative.branches['BR-02'].name).toBe('alternate-ending');
-      expect(updatedNarrative.branches['BR-02'].parentBranchId).toBe('BR-01');
-      expect(updatedNarrative.branches['BR-02'].entryIds).toEqual(['S-001', 'S-002']);
+      expect(updatedNarrative.branches['BR-2']).toBeDefined();
+      expect(updatedNarrative.branches['BR-2'].name).toBe('alternate-ending');
+      expect(updatedNarrative.branches['BR-2'].parentBranchId).toBe('BR-1');
+      expect(updatedNarrative.branches['BR-2'].entryIds).toEqual(['S-1', 'S-2']);
     });
     it('should update activeBranchId when creating a branch', () => {
       const newState: AppState = {
         ...initialState,
-        viewState: { ...initialState.viewState, activeBranchId: 'BR-02' },
+        viewState: { ...initialState.viewState, activeBranchId: 'BR-2' },
       };
-      expect(newState.viewState.activeBranchId).toBe('BR-02');
+      expect(newState.viewState.activeBranchId).toBe('BR-2');
     });
   });
   describe('DELETE_BRANCH', () => {
@@ -391,90 +391,90 @@ describe('store reducer', () => {
       const narrative: NarrativeState = {
         ...testNarrative,
         branches: {
-          'BR-01': testBranch,
-          'BR-02': {
-            id: 'BR-02',
+          'BR-1': testBranch,
+          'BR-2': {
+            id: 'BR-2',
             name: 'child1',
-            parentBranchId: 'BR-01',
-            forkEntryId: 'S-002',
-            entryIds: ['S-001', 'S-002', 'S-003'],
+            parentBranchId: 'BR-1',
+            forkEntryId: 'S-2',
+            entryIds: ['S-1', 'S-2', 'S-3'],
             createdAt: Date.now(),
             versionPointers: {},
           },
-          'BR-03': {
-            id: 'BR-03',
+          'BR-3': {
+            id: 'BR-3',
             name: 'child2',
-            parentBranchId: 'BR-02',
-            forkEntryId: 'S-003',
-            entryIds: ['S-001', 'S-002', 'S-003', 'S-004'],
+            parentBranchId: 'BR-2',
+            forkEntryId: 'S-3',
+            entryIds: ['S-1', 'S-2', 'S-3', 'S-4'],
             createdAt: Date.now(),
             versionPointers: {},
           },
         },
         scenes: {
           ...testNarrative.scenes,
-          'S-003': { ...testScene, id: 'S-003' },
-          'S-004': { ...testScene, id: 'S-004' },
+          'S-3': { ...testScene, id: 'S-3' },
+          'S-4': { ...testScene, id: 'S-4' },
         },
       };
-      // Delete BR-02 (should cascade to BR-03)
+      // Delete BR-2 (should cascade to BR-3)
       const updatedNarrative: NarrativeState = {
         ...narrative,
         branches: {
-          'BR-01': testBranch,
+          'BR-1': testBranch,
         },
-        // S-003 and S-004 are exclusive to deleted branches
+        // S-3 and S-4 are exclusive to deleted branches
         scenes: {
-          'S-001': narrative.scenes['S-001'],
-          'S-002': narrative.scenes['S-002'],
+          'S-1': narrative.scenes['S-1'],
+          'S-2': narrative.scenes['S-2'],
         },
       };
-      expect(updatedNarrative.branches['BR-02']).toBeUndefined();
-      expect(updatedNarrative.branches['BR-03']).toBeUndefined();
-      expect(updatedNarrative.scenes['S-003']).toBeUndefined();
-      expect(updatedNarrative.scenes['S-004']).toBeUndefined();
+      expect(updatedNarrative.branches['BR-2']).toBeUndefined();
+      expect(updatedNarrative.branches['BR-3']).toBeUndefined();
+      expect(updatedNarrative.scenes['S-3']).toBeUndefined();
+      expect(updatedNarrative.scenes['S-4']).toBeUndefined();
     });
     it('should not delete scenes shared with surviving branches', () => {
       const narrative: NarrativeState = {
         ...testNarrative,
         branches: {
-          'BR-01': testBranch,
-          'BR-02': {
-            id: 'BR-02',
+          'BR-1': testBranch,
+          'BR-2': {
+            id: 'BR-2',
             name: 'child1',
-            parentBranchId: 'BR-01',
-            forkEntryId: 'S-002',
-            entryIds: ['S-001', 'S-002', 'S-003'],
+            parentBranchId: 'BR-1',
+            forkEntryId: 'S-2',
+            entryIds: ['S-1', 'S-2', 'S-3'],
             createdAt: Date.now(),
             versionPointers: {},
           },
         },
         scenes: {
           ...testNarrative.scenes,
-          'S-003': { ...testScene, id: 'S-003' },
+          'S-3': { ...testScene, id: 'S-3' },
         },
       };
-      // Delete BR-02, but S-001 and S-002 are in BR-01
+      // Delete BR-2, but S-1 and S-2 are in BR-1
       const updatedNarrative: NarrativeState = {
         ...narrative,
         branches: {
-          'BR-01': testBranch,
+          'BR-1': testBranch,
         },
         scenes: {
-          'S-001': narrative.scenes['S-001'],
-          'S-002': narrative.scenes['S-002'],
+          'S-1': narrative.scenes['S-1'],
+          'S-2': narrative.scenes['S-2'],
         },
       };
-      expect(updatedNarrative.branches['BR-02']).toBeUndefined();
-      expect(updatedNarrative.scenes['S-001']).toBeDefined();
-      expect(updatedNarrative.scenes['S-002']).toBeDefined();
-      expect(updatedNarrative.scenes['S-003']).toBeUndefined();
+      expect(updatedNarrative.branches['BR-2']).toBeUndefined();
+      expect(updatedNarrative.scenes['S-1']).toBeDefined();
+      expect(updatedNarrative.scenes['S-2']).toBeDefined();
+      expect(updatedNarrative.scenes['S-3']).toBeUndefined();
     });
     it('should prevent deleting the active branch', () => {
-      // Attempting to delete BR-01 (active) should return unchanged state
+      // Attempting to delete BR-1 (active) should return unchanged state
       const newState = { ...initialState };
-      expect(newState.viewState.activeBranchId).toBe('BR-01');
-      expect(newState.activeNarrative?.branches['BR-01']).toBeDefined();
+      expect(newState.viewState.activeBranchId).toBe('BR-1');
+      expect(newState.activeNarrative?.branches['BR-1']).toBeDefined();
     });
   });
   describe('SWITCH_BRANCH', () => {
@@ -482,13 +482,13 @@ describe('store reducer', () => {
       const narrative: NarrativeState = {
         ...testNarrative,
         branches: {
-          'BR-01': testBranch,
-          'BR-02': {
-            id: 'BR-02',
+          'BR-1': testBranch,
+          'BR-2': {
+            id: 'BR-2',
             name: 'alternate',
-            parentBranchId: 'BR-01',
-            forkEntryId: 'S-002',
-            entryIds: ['S-001', 'S-002', 'S-003'],
+            parentBranchId: 'BR-1',
+            forkEntryId: 'S-2',
+            entryIds: ['S-1', 'S-2', 'S-3'],
             createdAt: Date.now(),
             versionPointers: {},
           },
@@ -497,15 +497,15 @@ describe('store reducer', () => {
       const newState: AppState = {
         ...initialState,
         activeNarrative: narrative,
-        resolvedEntryKeys: ['S-001', 'S-002', 'S-003'],
+        resolvedEntryKeys: ['S-1', 'S-2', 'S-3'],
         viewState: {
           ...initialState.viewState,
-          activeBranchId: 'BR-02',
+          activeBranchId: 'BR-2',
           currentSceneIndex: 2,
         },
       };
-      expect(newState.viewState.activeBranchId).toBe('BR-02');
-      expect(newState.resolvedEntryKeys).toEqual(['S-001', 'S-002', 'S-003']);
+      expect(newState.viewState.activeBranchId).toBe('BR-2');
+      expect(newState.resolvedEntryKeys).toEqual(['S-1', 'S-2', 'S-3']);
       expect(newState.viewState.currentSceneIndex).toBe(2);
     });
     it('should clear knowledge entity selection when switching branches', () => {
@@ -513,7 +513,7 @@ describe('store reducer', () => {
         ...initialState,
         viewState: {
           ...initialState.viewState,
-          activeBranchId: 'BR-02',
+          activeBranchId: 'BR-2',
           selectedKnowledgeEntity: null,
         },
       };
@@ -525,35 +525,35 @@ describe('store reducer', () => {
       const narrative: NarrativeState = {
         ...testNarrative,
         branches: {
-          'BR-01': {
+          'BR-1': {
             ...testBranch,
-            entryIds: ['S-001', 'S-002'],
+            entryIds: ['S-1', 'S-2'],
           },
         },
       };
       const updatedNarrative: NarrativeState = {
         ...narrative,
         branches: {
-          'BR-01': {
+          'BR-1': {
             ...testBranch,
-            entryIds: ['S-001'],
+            entryIds: ['S-1'],
           },
         },
         scenes: {
-          'S-001': narrative.scenes['S-001'],
+          'S-1': narrative.scenes['S-1'],
         },
       };
-      expect(updatedNarrative.scenes['S-002']).toBeUndefined();
-      expect(updatedNarrative.branches['BR-01'].entryIds).toEqual(['S-001']);
+      expect(updatedNarrative.scenes['S-2']).toBeUndefined();
+      expect(updatedNarrative.branches['BR-1'].entryIds).toEqual(['S-1']);
     });
     it('should remove scene from arcs', () => {
       const narrative: NarrativeState = {
         ...testNarrative,
         arcs: {
-          'A-001': {
-            id: 'A-001',
+          'A-1': {
+            id: 'A-1',
             name: 'Test Arc',
-            sceneIds: ['S-001', 'S-002'],
+            sceneIds: ['S-1', 'S-2'],
             develops: [],
             locationIds: [],
             activeCharacterIds: [],
@@ -564,16 +564,16 @@ describe('store reducer', () => {
       const updatedNarrative: NarrativeState = {
         ...narrative,
         arcs: {
-          'A-001': {
-            ...narrative.arcs['A-001'],
-            sceneIds: ['S-001'],
+          'A-1': {
+            ...narrative.arcs['A-1'],
+            sceneIds: ['S-1'],
           },
         },
         scenes: {
-          'S-001': narrative.scenes['S-001'],
+          'S-1': narrative.scenes['S-1'],
         },
       };
-      expect(updatedNarrative.arcs['A-001'].sceneIds).toEqual(['S-001']);
+      expect(updatedNarrative.arcs['A-1'].sceneIds).toEqual(['S-1']);
     });
   });
   describe('State immutability', () => {
@@ -611,14 +611,14 @@ describe('store reducer', () => {
         {
           version: '1',
           prose: 'V1',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 3000,
           versionType: 'generate',
         },
         {
           version: '1.1',
           prose: 'V1.1',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 2000,
           versionType: 'rewrite',
           parentVersion: '1',
@@ -626,7 +626,7 @@ describe('store reducer', () => {
         {
           version: '1.1.1',
           prose: 'V1.1.1',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 1000,
           versionType: 'edit',
           parentVersion: '1.1',
@@ -643,14 +643,14 @@ describe('store reducer', () => {
         {
           version: '1',
           prose: 'V1',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 3000,
           versionType: 'generate',
         },
         {
           version: '1.1',
           prose: 'V1.1',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 2000,
           versionType: 'rewrite',
           parentVersion: '1',
@@ -658,7 +658,7 @@ describe('store reducer', () => {
         {
           version: '1.2',
           prose: 'V1.2',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 1000,
           versionType: 'rewrite',
           parentVersion: '1',
@@ -673,14 +673,14 @@ describe('store reducer', () => {
         {
           version: '1',
           prose: 'V1',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 2000,
           versionType: 'generate',
         },
         {
           version: '2',
           prose: 'V2',
-          branchId: 'BR-01',
+          branchId: 'BR-1',
           timestamp: Date.now() - 1000,
           versionType: 'generate',
           parentVersion: '1',

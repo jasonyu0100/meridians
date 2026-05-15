@@ -2,10 +2,10 @@
  * ID remapping for Experimentation commits.
  *
  * Every parallel scenario worker calls `generateScenes` against the SAME
- * root narrative, so each worker mints IDs (`ARC-N`, `S-NNN`, `C-NN`,
- * `L-NN`, `A-NN`, `T-NN`, `K-NN`, system node ids) from an identical
+ * root narrative, so each worker mints IDs (`ARC-N`, `S-N`, `C-N`,
+ * `L-N`, `A-N`, `T-N`, `K-N`, system node ids) from an identical
  * starting state. On commit, every freshly-introduced ID across N
- * scenarios collides on the same `C-15`, `L-08`, etc.
+ * scenarios collides on the same `C-15`, `L-8`, etc.
  *
  * This module performs a per-scenario remap, walking every reference
  * field in the scenes + arc and substituting fresh ids drawn from a

@@ -46,7 +46,7 @@ function makeArc(id: string, overrides: Partial<Arc> = {}): Arc {
 
 function makeNarrative(overrides: Partial<NarrativeState> = {}): NarrativeState {
   return {
-    id: 'N-01',
+    id: 'N-1',
     title: 'Test',
     description: '',
     characters: {},
@@ -105,21 +105,21 @@ describe('stampScenarioVariables', () => {
     const arc = makeArc('ARC-1', {
       name: 'Opening',
       directionVector: 'toward the cave',
-      sceneIds: ['S-001', 'S-002'],
-      develops: ['C-01'],
-      locationIds: ['L-01'],
-      activeCharacterIds: ['C-01', 'C-02'],
-      initialCharacterLocations: { 'C-01': 'L-01' },
+      sceneIds: ['S-1', 'S-2'],
+      develops: ['C-1'],
+      locationIds: ['L-1'],
+      activeCharacterIds: ['C-1', 'C-2'],
+      initialCharacterLocations: { 'C-1': 'L-1' },
     });
     const stamped = stampScenarioVariables(arc, [makeVariable('var-a', 2)]);
     expect(stamped.id).toBe('ARC-1');
     expect(stamped.name).toBe('Opening');
     expect(stamped.directionVector).toBe('toward the cave');
-    expect(stamped.sceneIds).toEqual(['S-001', 'S-002']);
-    expect(stamped.develops).toEqual(['C-01']);
-    expect(stamped.locationIds).toEqual(['L-01']);
-    expect(stamped.activeCharacterIds).toEqual(['C-01', 'C-02']);
-    expect(stamped.initialCharacterLocations).toEqual({ 'C-01': 'L-01' });
+    expect(stamped.sceneIds).toEqual(['S-1', 'S-2']);
+    expect(stamped.develops).toEqual(['C-1']);
+    expect(stamped.locationIds).toEqual(['L-1']);
+    expect(stamped.activeCharacterIds).toEqual(['C-1', 'C-2']);
+    expect(stamped.initialCharacterLocations).toEqual({ 'C-1': 'L-1' });
   });
 
   it('does not mutate the input arc', () => {
@@ -170,7 +170,7 @@ describe('buildVirtualState', () => {
     // arc that already lives in the root narrative — the variables still need to
     // override the stale ones so the resulting branch reflects this scenario.
     const arc = makeArc('ARC-1', {
-      sceneIds: ['S-001'],
+      sceneIds: ['S-1'],
       presentVariables: [makeVariable('var-old', 4)],
     });
     const narrative = makeNarrative({
@@ -181,17 +181,17 @@ describe('buildVirtualState', () => {
           name: 'main',
           parentBranchId: null,
           forkEntryId: null,
-          entryIds: ['S-001'],
+          entryIds: ['S-1'],
           createdAt: 1,
         },
       },
     });
-    const incomingArc = makeArc('ARC-1', { sceneIds: ['S-002'] });
+    const incomingArc = makeArc('ARC-1', { sceneIds: ['S-2'] });
     const vars: Variable[] = [makeVariable('var-new', 2)];
-    const virtual = buildVirtualState(narrative, ['S-001'], incomingArc, [], 'br-main', vars);
+    const virtual = buildVirtualState(narrative, ['S-1'], incomingArc, [], 'br-main', vars);
     const merged = virtual.narrative.arcs['ARC-1'];
     expect(merged.presentVariables?.map((v) => v.id)).toEqual(['var-new']);
-    expect(merged.sceneIds).toEqual(['S-001', 'S-002']);
+    expect(merged.sceneIds).toEqual(['S-1', 'S-2']);
   });
 
   it('does not mutate the root narrative', () => {

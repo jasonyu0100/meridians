@@ -15,7 +15,7 @@ function scene(id: string, arcId: string, summary: string): Scene {
     id,
     arcId,
     povId: null,
-    locationId: 'L-01',
+    locationId: 'L-1',
     participantIds: [],
     events: [],
     threadDeltas: [],
@@ -54,15 +54,15 @@ function makeNarrative(opts: {
   branches: Branch[];
 }): NarrativeState {
   return {
-    id: 'N-01',
+    id: 'N-1',
     title: 'Test',
     scenes: Object.fromEntries(opts.scenes.map((s) => [s.id, s])),
     arcs: Object.fromEntries(opts.arcs.map((a) => [a.id, a])),
     branches: Object.fromEntries(opts.branches.map((b) => [b.id, b])),
     characters: {},
     locations: {
-      'L-01': {
-        id: 'L-01',
+      'L-1': {
+        id: 'L-1',
         name: 'TestLoc',
         prominence: 'place',
         threadIds: [],

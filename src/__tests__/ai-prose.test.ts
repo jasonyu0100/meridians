@@ -43,27 +43,27 @@ function createMinimalNarrative(): NarrativeState {
     description: 'A test story',
     worldSummary: 'A test world with magic and adventure.',
     characters: {
-      'C-01': { id: 'C-01', name: 'Hero', role: 'anchor', world: { nodes: {}, edges: [] }, threadIds: [] },
-      'C-02': { id: 'C-02', name: 'Mentor', role: 'recurring', world: { nodes: {}, edges: [] }, threadIds: [] },
+      'C-1': { id: 'C-1', name: 'Hero', role: 'anchor', world: { nodes: {}, edges: [] }, threadIds: [] },
+      'C-2': { id: 'C-2', name: 'Mentor', role: 'recurring', world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     locations: {
-      'L-01': { id: 'L-01', name: 'Village', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
-      'L-02': { id: 'L-02', name: 'Forest', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
+      'L-1': { id: 'L-1', name: 'Village', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
+      'L-2': { id: 'L-2', name: 'Forest', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     threads: {
-      'T-01': { id: 'T-01', description: 'Save the kingdom', outcomes: ["yes", "no"], beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-01', threadLog: { nodes: {}, edges: [] } },
+      'T-1': { id: 'T-1', description: 'Save the kingdom', outcomes: ["yes", "no"], beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-1', threadLog: { nodes: {}, edges: [] } },
     },
     arcs: {
-      'ARC-01': { id: 'ARC-01', name: 'Beginning', sceneIds: ['S-01', 'S-02', 'S-03'], develops: [], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
+      'ARC-1': { id: 'ARC-1', name: 'Beginning', sceneIds: ['S-1', 'S-2', 'S-3'], develops: [], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
     },
     scenes: {
-      'S-01': {
+      'S-1': {
         kind: 'scene',
-        id: 'S-01',
-        arcId: 'ARC-01',
-        locationId: 'L-01',
-        povId: 'C-01',
-        participantIds: ['C-01'],
+        id: 'S-1',
+        arcId: 'ARC-1',
+        locationId: 'L-1',
+        povId: 'C-1',
+        participantIds: ['C-1'],
         events: ['Wakes up'],
         threadDeltas: [],
         worldDeltas: [],
@@ -77,13 +77,13 @@ function createMinimalNarrative(): NarrativeState {
           versionType: 'generate' as const,
         }],
       },
-      'S-02': {
+      'S-2': {
         kind: 'scene',
-        id: 'S-02',
-        arcId: 'ARC-01',
-        locationId: 'L-01',
-        povId: 'C-01',
-        participantIds: ['C-01', 'C-02'],
+        id: 'S-2',
+        arcId: 'ARC-1',
+        locationId: 'L-1',
+        povId: 'C-1',
+        participantIds: ['C-1', 'C-2'],
         events: ['Meets mentor'],
         threadDeltas: [],
         worldDeltas: [],
@@ -97,13 +97,13 @@ function createMinimalNarrative(): NarrativeState {
           versionType: 'generate' as const,
         }],
       },
-      'S-03': {
+      'S-3': {
         kind: 'scene',
-        id: 'S-03',
-        arcId: 'ARC-01',
-        locationId: 'L-02',
-        povId: 'C-01',
-        participantIds: ['C-01'],
+        id: 'S-3',
+        arcId: 'ARC-1',
+        locationId: 'L-2',
+        povId: 'C-1',
+        participantIds: ['C-1'],
         events: ['Enters forest'],
         threadDeltas: [],
         worldDeltas: [],
@@ -141,11 +141,11 @@ describe('rewriteSceneProse', () => {
     vi.mocked(parseJson)
       .mockImplementation((raw: string, _label?: string) => JSON.parse(raw));
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     const result = await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose here',
       'Add more tension in the dialogue',
     );
@@ -161,11 +161,11 @@ describe('rewriteSceneProse', () => {
     vi.mocked(callGenerate).mockResolvedValue(changelogResponse);
     vi.mocked(parseJson).mockImplementation((raw: string) => JSON.parse(raw));
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     const result = await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
       0,
@@ -186,11 +186,11 @@ describe('rewriteSceneProse', () => {
       .mockReturnValueOnce({ prose: mockProse })
       .mockReturnValueOnce({ changelog: '' });
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
       1, // contextPast = 1
@@ -208,11 +208,11 @@ describe('rewriteSceneProse', () => {
       .mockReturnValueOnce({ prose: mockProse })
       .mockReturnValueOnce({ changelog: '' });
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
       0,
@@ -231,16 +231,16 @@ describe('rewriteSceneProse', () => {
       .mockReturnValueOnce({ prose: mockProse })
       .mockReturnValueOnce({ changelog: '' });
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
       0,
       0,
-      ['S-03'], // Reference scene
+      ['S-3'], // Reference scene
     );
     const promptCall = vi.mocked(callGenerate).mock.calls[0]![0];
     expect(promptCall).toContain('PINNED REFERENCE SCENES');
@@ -255,16 +255,16 @@ describe('rewriteSceneProse', () => {
       .mockReturnValueOnce({ prose: mockProse })
       .mockReturnValueOnce({ changelog: '' });
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
       0,
       0,
-      ['S-02'], // Same as current scene
+      ['S-2'], // Same as current scene
     );
     const promptCall = vi.mocked(callGenerate).mock.calls[0]![0];
     expect(promptCall).not.toContain('PINNED REFERENCE SCENES');
@@ -279,11 +279,11 @@ describe('rewriteSceneProse', () => {
       .mockReturnValueOnce({ changelog: '' });
     const narrative = createMinimalNarrative();
     narrative.storySettings = { ...DEFAULT_STORY_SETTINGS, proseVoice: 'Write in a lyrical, poetic style with rich metaphors.' };
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
     );
@@ -301,11 +301,11 @@ describe('rewriteSceneProse', () => {
       .mockResolvedValueOnce(changelogResponse);
     vi.mocked(parseJson).mockImplementation((raw: string) => JSON.parse(raw));
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     const result = await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
     );
@@ -321,9 +321,9 @@ describe('rewriteSceneProse', () => {
       .mockRejectedValueOnce(new Error('Changelog failed'));
     vi.mocked(parseJson).mockImplementation((raw: string) => JSON.parse(raw));
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await expect(
-      rewriteSceneProse(narrative, scene, ['S-01', 'S-02', 'S-03'], 'Original prose', 'Analysis'),
+      rewriteSceneProse(narrative, scene, ['S-1', 'S-2', 'S-3'], 'Original prose', 'Analysis'),
     ).rejects.toThrow('Changelog failed');
   });
   it('uses default paragraph context when no expanded context', async () => {
@@ -335,11 +335,11 @@ describe('rewriteSceneProse', () => {
       .mockReturnValueOnce({ prose: mockProse })
       .mockReturnValueOnce({ changelog: '' });
     const narrative = createMinimalNarrative();
-    const scene = narrative.scenes['S-02']!;
+    const scene = narrative.scenes['S-2']!;
     await rewriteSceneProse(
       narrative,
       scene,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       'Original prose',
       'Analysis',
       0, // contextPast = 0
@@ -363,10 +363,10 @@ describe('rewriteSceneProse', () => {
     const orphanScene: Scene = {
       kind: 'scene',
       id: 'S-ORPHAN',
-      arcId: 'ARC-01',
-      locationId: 'L-01',
-      povId: 'C-01',
-      participantIds: ['C-01'],
+      arcId: 'ARC-1',
+      locationId: 'L-1',
+      povId: 'C-1',
+      participantIds: ['C-1'],
       events: [],
       threadDeltas: [],
       worldDeltas: [],
@@ -377,7 +377,7 @@ describe('rewriteSceneProse', () => {
     const result = await rewriteSceneProse(
       narrative,
       orphanScene,
-      ['S-01', 'S-02', 'S-03'], // Does not include S-ORPHAN
+      ['S-1', 'S-2', 'S-3'], // Does not include S-ORPHAN
       'Original prose',
       'Analysis',
     );

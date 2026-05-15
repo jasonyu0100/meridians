@@ -1840,7 +1840,7 @@ describe('assembleNarrative — world-only extraction', () => {
       onWorldBuildSummariesResolved: (s) => { capturedSummaries = s; },
       onMetaResolved: (m) => { capturedMeta = m; },
     });
-    // Summaries map keys by WorldBuild id ("WB-PFX-001"). At minimum the
+    // Summaries map keys by WorldBuild id ("WB-PFX-1"). At minimum the
     // initial commit gets a summary; expect at least one entry.
     expect(capturedSummaries).not.toBeNull();
     expect(Object.keys(capturedSummaries!).length).toBeGreaterThan(0);

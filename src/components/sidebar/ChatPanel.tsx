@@ -41,7 +41,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 /** Sentinel persona IDs for the two force-entities. These coalesce all of
  *  a narrative's threads (FATE) or system graph (SYSTEM) into a single
  *  conversational entity. Prefixed so they can't collide with real
- *  character IDs (which are "C-01", "C-02", ...). */
+ *  character IDs (which are "C-1", "C-2", ...). */
 const PERSONA_FATE = "__fate__";
 const PERSONA_SYSTEM = "__system__";
 

@@ -712,7 +712,7 @@ describe('AnalysisRunner — Resume from partial progress', () => {
 
   it('skips thread-deps LLM when threadDependencies already on the job', async () => {
     const job = createMockJob({
-      threadDependencies: { 'T-01': ['T-02'] },
+      threadDependencies: { 'T-1': ['T-2'] },
     });
     await analysisRunner.start(job, () => {});
     expect(analyzeThreading).not.toHaveBeenCalled();
@@ -720,7 +720,7 @@ describe('AnalysisRunner — Resume from partial progress', () => {
 
   it('passes worldBuildSummaries + meta through to assembly when persisted', async () => {
     const job = createMockJob({
-      worldBuildSummaries: { 'WB-TST-001': 'persisted summary' },
+      worldBuildSummaries: { 'WB-TST-1': 'persisted summary' },
       meta: { imageStyle: 'persisted-style', patterns: ['p1'] },
     });
     await analysisRunner.start(job, () => {});
@@ -728,7 +728,7 @@ describe('AnalysisRunner — Resume from partial progress', () => {
       worldBuildSummaries?: Record<string, string>;
       meta?: { imageStyle?: string; patterns?: string[] };
     } | undefined;
-    expect(opts?.worldBuildSummaries?.['WB-TST-001']).toBe('persisted summary');
+    expect(opts?.worldBuildSummaries?.['WB-TST-1']).toBe('persisted summary');
     expect(opts?.meta?.imageStyle).toBe('persisted-style');
   });
 
@@ -762,7 +762,7 @@ describe('AnalysisRunner — Resume from partial progress', () => {
       arcGroups: [{ name: 'Done', sceneIndices: [0, 1] }],
       reconciledAt: 1,
       fateReextractedAt: 1,
-      threadDependencies: { 'T-01': [] },
+      threadDependencies: { 'T-1': [] },
     });
     await analysisRunner.start(job, () => {});
     // Only assembly runs — every LLM-bearing phase is skipped.

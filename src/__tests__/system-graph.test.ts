@@ -33,74 +33,74 @@ describe('EMPTY_SYSTEM_GRAPH', () => {
 // ── systemEdgeKey ────────────────────────────────────────────────────────────────
 describe('systemEdgeKey', () => {
   it('produces a stable key from from/to/relation', () => {
-    expect(systemEdgeKey(edge('SYS-01', 'SYS-02', 'enables'))).toBe('SYS-01→SYS-02→enables');
+    expect(systemEdgeKey(edge('SYS-1', 'SYS-2', 'enables'))).toBe('SYS-1→SYS-2→enables');
   });
   it('differentiates edges that share endpoints but not relation', () => {
-    const a = systemEdgeKey(edge('SYS-01', 'SYS-02', 'enables'));
-    const b = systemEdgeKey(edge('SYS-01', 'SYS-02', 'blocks'));
+    const a = systemEdgeKey(edge('SYS-1', 'SYS-2', 'enables'));
+    const b = systemEdgeKey(edge('SYS-1', 'SYS-2', 'blocks'));
     expect(a).not.toBe(b);
   });
   it('is directional', () => {
-    const a = systemEdgeKey(edge('SYS-01', 'SYS-02', 'enables'));
-    const b = systemEdgeKey(edge('SYS-02', 'SYS-01', 'enables'));
+    const a = systemEdgeKey(edge('SYS-1', 'SYS-2', 'enables'));
+    const b = systemEdgeKey(edge('SYS-2', 'SYS-1', 'enables'));
     expect(a).not.toBe(b);
   });
 });
 // ── sanitizeSystemDelta ───────────────────────────────────────────
 describe('sanitizeSystemDelta', () => {
   it('filters self-loops (from === to)', () => {
-    const m = makeDelta([], [edge('SYS-01', 'SYS-01', 'enables'), edge('SYS-01', 'SYS-02', 'enables')]);
-    sanitizeSystemDelta(m, new Set(['SYS-01', 'SYS-02']), new Set());
+    const m = makeDelta([], [edge('SYS-1', 'SYS-1', 'enables'), edge('SYS-1', 'SYS-2', 'enables')]);
+    sanitizeSystemDelta(m, new Set(['SYS-1', 'SYS-2']), new Set());
     expect(m.addedEdges).toHaveLength(1);
-    expect(m.addedEdges[0]).toEqual({ from: 'SYS-01', to: 'SYS-02', relation: 'enables' });
+    expect(m.addedEdges[0]).toEqual({ from: 'SYS-1', to: 'SYS-2', relation: 'enables' });
   });
   it('filters orphan edges (endpoint not in validIds)', () => {
-    const m = makeDelta([], [edge('SYS-01', 'SYS-02'), edge('SYS-01', 'SYS-99'), edge('SYS-88', 'SYS-02')]);
-    sanitizeSystemDelta(m, new Set(['SYS-01', 'SYS-02']), new Set());
+    const m = makeDelta([], [edge('SYS-1', 'SYS-2'), edge('SYS-1', 'SYS-99'), edge('SYS-88', 'SYS-2')]);
+    sanitizeSystemDelta(m, new Set(['SYS-1', 'SYS-2']), new Set());
     expect(m.addedEdges).toHaveLength(1);
-    expect(m.addedEdges[0].to).toBe('SYS-02');
+    expect(m.addedEdges[0].to).toBe('SYS-2');
   });
   it('filters edges missing from, to, or relation', () => {
     const m: SystemDelta = {
       addedNodes: [],
       addedEdges: [
-        { from: 'SYS-01', to: 'SYS-02', relation: '' },
-        { from: '', to: 'SYS-02', relation: 'enables' },
-        { from: 'SYS-01', to: '', relation: 'enables' },
-        { from: 'SYS-01', to: 'SYS-02', relation: 'enables' },
+        { from: 'SYS-1', to: 'SYS-2', relation: '' },
+        { from: '', to: 'SYS-2', relation: 'enables' },
+        { from: 'SYS-1', to: '', relation: 'enables' },
+        { from: 'SYS-1', to: 'SYS-2', relation: 'enables' },
       ],
     };
-    sanitizeSystemDelta(m, new Set(['SYS-01', 'SYS-02']), new Set());
+    sanitizeSystemDelta(m, new Set(['SYS-1', 'SYS-2']), new Set());
     expect(m.addedEdges).toHaveLength(1);
   });
   it('filters cross-delta duplicates using the shared seenEdgeKeys set', () => {
-    const valid = new Set(['SYS-01', 'SYS-02']);
+    const valid = new Set(['SYS-1', 'SYS-2']);
     const seen = new Set<string>();
-    const m1 = makeDelta([], [edge('SYS-01', 'SYS-02', 'enables')]);
-    const m2 = makeDelta([], [edge('SYS-01', 'SYS-02', 'enables'), edge('SYS-02', 'SYS-01', 'enables')]);
+    const m1 = makeDelta([], [edge('SYS-1', 'SYS-2', 'enables')]);
+    const m2 = makeDelta([], [edge('SYS-1', 'SYS-2', 'enables'), edge('SYS-2', 'SYS-1', 'enables')]);
     sanitizeSystemDelta(m1, valid, seen);
     sanitizeSystemDelta(m2, valid, seen);
     // m1 keeps its one edge, m2 keeps only the reverse-direction one.
     expect(m1.addedEdges).toHaveLength(1);
     expect(m2.addedEdges).toHaveLength(1);
-    expect(m2.addedEdges[0]).toEqual({ from: 'SYS-02', to: 'SYS-01', relation: 'enables' });
+    expect(m2.addedEdges[0]).toEqual({ from: 'SYS-2', to: 'SYS-1', relation: 'enables' });
   });
   it('filters nodes missing concept or type', () => {
     const m: SystemDelta = {
       addedNodes: [
-        { id: 'SYS-01', concept: 'Magic', type: 'system' },
+        { id: 'SYS-1', concept: 'Magic', type: 'system' },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { id: 'SYS-02', concept: '', type: 'concept' } as any,
+        { id: 'SYS-2', concept: '', type: 'concept' } as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { id: 'SYS-03', concept: 'Ether', type: '' } as any,
+        { id: 'SYS-3', concept: 'Ether', type: '' } as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { id: '', concept: 'Ley', type: 'concept' } as any,
       ],
       addedEdges: [],
     };
-    sanitizeSystemDelta(m, new Set(['SYS-01', 'SYS-02', 'SYS-03']), new Set());
+    sanitizeSystemDelta(m, new Set(['SYS-1', 'SYS-2', 'SYS-3']), new Set());
     expect(m.addedNodes).toHaveLength(1);
-    expect(m.addedNodes[0].id).toBe('SYS-01');
+    expect(m.addedNodes[0].id).toBe('SYS-1');
   });
   it('handles undefined addedNodes/addedEdges gracefully', () => {
     const m = { addedNodes: undefined, addedEdges: undefined } as unknown as SystemDelta;
@@ -118,34 +118,34 @@ describe('sanitizeSystemDelta', () => {
 describe('applySystemDelta', () => {
   it('adds new nodes to the graph', () => {
     const graph: SystemGraph = { nodes: {}, edges: [] };
-    applySystemDelta(graph, makeDelta([node('SYS-01', 'Magic', 'system')], []));
-    expect(graph.nodes['SYS-01']).toEqual({ id: 'SYS-01', concept: 'Magic', type: 'system' });
+    applySystemDelta(graph, makeDelta([node('SYS-1', 'Magic', 'system')], []));
+    expect(graph.nodes['SYS-1']).toEqual({ id: 'SYS-1', concept: 'Magic', type: 'system' });
   });
   it('does not overwrite existing nodes', () => {
-    const graph: SystemGraph = { nodes: { 'SYS-01': node('SYS-01', 'Magic', 'system') }, edges: [] };
-    applySystemDelta(graph, makeDelta([node('SYS-01', 'OTHER CONCEPT', 'principle')], []));
-    expect(graph.nodes['SYS-01'].concept).toBe('Magic');
-    expect(graph.nodes['SYS-01'].type).toBe('system');
+    const graph: SystemGraph = { nodes: { 'SYS-1': node('SYS-1', 'Magic', 'system') }, edges: [] };
+    applySystemDelta(graph, makeDelta([node('SYS-1', 'OTHER CONCEPT', 'principle')], []));
+    expect(graph.nodes['SYS-1'].concept).toBe('Magic');
+    expect(graph.nodes['SYS-1'].type).toBe('system');
   });
   it('adds new edges', () => {
     const graph: SystemGraph = { nodes: {}, edges: [] };
-    applySystemDelta(graph, makeDelta([], [edge('SYS-01', 'SYS-02', 'enables')]));
+    applySystemDelta(graph, makeDelta([], [edge('SYS-1', 'SYS-2', 'enables')]));
     expect(graph.edges).toHaveLength(1);
   });
   it('does not duplicate existing edges', () => {
     const graph: SystemGraph = {
       nodes: {},
-      edges: [edge('SYS-01', 'SYS-02', 'enables')],
+      edges: [edge('SYS-1', 'SYS-2', 'enables')],
     };
-    applySystemDelta(graph, makeDelta([], [edge('SYS-01', 'SYS-02', 'enables')]));
+    applySystemDelta(graph, makeDelta([], [edge('SYS-1', 'SYS-2', 'enables')]));
     expect(graph.edges).toHaveLength(1);
   });
   it('treats different relations as different edges', () => {
     const graph: SystemGraph = {
       nodes: {},
-      edges: [edge('SYS-01', 'SYS-02', 'enables')],
+      edges: [edge('SYS-1', 'SYS-2', 'enables')],
     };
-    applySystemDelta(graph, makeDelta([], [edge('SYS-01', 'SYS-02', 'blocks')]));
+    applySystemDelta(graph, makeDelta([], [edge('SYS-1', 'SYS-2', 'blocks')]));
     expect(graph.edges).toHaveLength(2);
   });
 });
@@ -154,11 +154,11 @@ describe('seenSystemEdgeKeysFromGraph', () => {
   it('returns a set of edge keys from the graph', () => {
     const graph: SystemGraph = {
       nodes: {},
-      edges: [edge('SYS-01', 'SYS-02', 'enables'), edge('SYS-02', 'SYS-03', 'blocks')],
+      edges: [edge('SYS-1', 'SYS-2', 'enables'), edge('SYS-2', 'SYS-3', 'blocks')],
     };
     const seen = seenSystemEdgeKeysFromGraph(graph);
-    expect(seen.has('SYS-01→SYS-02→enables')).toBe(true);
-    expect(seen.has('SYS-02→SYS-03→blocks')).toBe(true);
+    expect(seen.has('SYS-1→SYS-2→enables')).toBe(true);
+    expect(seen.has('SYS-2→SYS-3→blocks')).toBe(true);
     expect(seen.size).toBe(2);
   });
   it('handles undefined graph', () => {
@@ -243,33 +243,33 @@ describe('resolveSystemConceptIds', () => {
     expect(newNodes[0]).toEqual({ id: 'SYS-1', concept: 'Mana Binding', type: 'system' });
   });
   it('collapses a raw node whose concept exists in the existing graph', () => {
-    const existing = { 'SYS-07': node('SYS-07', 'Mana Binding', 'system') };
+    const existing = { 'SYS-7': node('SYS-7', 'Mana Binding', 'system') };
     const { idMap, newNodes } = resolveSystemConceptIds(
       [{ id: 'SYS-GEN-1', concept: 'Mana Binding', type: 'principle' }],
       existing,
-      alloc(['SYS-07']),
+      alloc(['SYS-7']),
     );
-    expect(idMap['SYS-GEN-1']).toBe('SYS-07');
+    expect(idMap['SYS-GEN-1']).toBe('SYS-7');
     expect(newNodes).toHaveLength(0);
   });
   it('is case-insensitive when matching existing concepts', () => {
-    const existing = { 'SYS-05': node('SYS-05', 'Mana Binding', 'system') };
+    const existing = { 'SYS-5': node('SYS-5', 'Mana Binding', 'system') };
     const { idMap, newNodes } = resolveSystemConceptIds(
       [{ id: 'SYS-GEN-1', concept: 'MANA BINDING', type: 'system' }],
       existing,
-      alloc(['SYS-05']),
+      alloc(['SYS-5']),
     );
-    expect(idMap['SYS-GEN-1']).toBe('SYS-05');
+    expect(idMap['SYS-GEN-1']).toBe('SYS-5');
     expect(newNodes).toHaveLength(0);
   });
   it('is whitespace-insensitive when matching existing concepts', () => {
-    const existing = { 'SYS-05': node('SYS-05', 'Mana Binding', 'system') };
+    const existing = { 'SYS-5': node('SYS-5', 'Mana Binding', 'system') };
     const { idMap, newNodes } = resolveSystemConceptIds(
       [{ id: 'SYS-GEN-1', concept: '  mana binding  ', type: 'system' }],
       existing,
-      alloc(['SYS-05']),
+      alloc(['SYS-5']),
     );
-    expect(idMap['SYS-GEN-1']).toBe('SYS-05');
+    expect(idMap['SYS-GEN-1']).toBe('SYS-5');
     expect(newNodes).toHaveLength(0);
   });
   it('collapses within-batch duplicates to a single fresh id', () => {
@@ -332,14 +332,14 @@ describe('resolveSystemConceptIds', () => {
   });
   it('idMap enables correct edge remapping end-to-end', () => {
     // Simulates the caller pattern: resolve, then remap edges via idMap.
-    const existing = { 'SYS-05': node('SYS-05', 'Magic', 'system') };
+    const existing = { 'SYS-5': node('SYS-5', 'Magic', 'system') };
     const { idMap, newNodes } = resolveSystemConceptIds(
       [
-        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' }, // → SYS-05 (existing)
+        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' }, // → SYS-5 (existing)
         { id: 'SYS-GEN-2', concept: 'Runes', type: 'concept' }, // → fresh
       ],
       existing,
-      alloc(['SYS-05']),
+      alloc(['SYS-5']),
     );
     const rawEdges = [edge('SYS-GEN-1', 'SYS-GEN-2', 'enables')];
     const remapped = rawEdges.map((e) => ({
@@ -348,28 +348,28 @@ describe('resolveSystemConceptIds', () => {
       relation: e.relation,
     }));
     expect(newNodes).toHaveLength(1);
-    expect(remapped[0]).toEqual({ from: 'SYS-05', to: 'SYS-6', relation: 'enables' });
+    expect(remapped[0]).toEqual({ from: 'SYS-5', to: 'SYS-6', relation: 'enables' });
   });
   it('reports existing-node ids that were re-mentioned as attributedExistingIds', () => {
     const existing = {
-      'SYS-05': node('SYS-05', 'Magic', 'system'),
-      'SYS-06': node('SYS-06', 'Runes', 'concept'),
+      'SYS-5': node('SYS-5', 'Magic', 'system'),
+      'SYS-6': node('SYS-6', 'Runes', 'concept'),
     };
     const { attributedExistingIds, newNodes } = resolveSystemConceptIds(
       [
-        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' }, // → SYS-05 (re-mention)
-        { id: 'SYS-GEN-2', concept: 'Runes', type: 'concept' }, // → SYS-06 (re-mention)
+        { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' }, // → SYS-5 (re-mention)
+        { id: 'SYS-GEN-2', concept: 'Runes', type: 'concept' }, // → SYS-6 (re-mention)
         { id: 'SYS-GEN-3', concept: 'Wards', type: 'concept' }, // → fresh, not an attribution
       ],
       existing,
-      alloc(['SYS-05', 'SYS-06']),
+      alloc(['SYS-5', 'SYS-6']),
     );
     expect(newNodes).toHaveLength(1);
     expect(newNodes[0].concept).toBe('Wards');
-    expect(attributedExistingIds.sort()).toEqual(['SYS-05', 'SYS-06']);
+    expect(attributedExistingIds.sort()).toEqual(['SYS-5', 'SYS-6']);
   });
   it('does not duplicate attributedExistingIds when a concept re-mentioned multiple times', () => {
-    const existing = { 'SYS-05': node('SYS-05', 'Magic', 'system') };
+    const existing = { 'SYS-5': node('SYS-5', 'Magic', 'system') };
     const { attributedExistingIds } = resolveSystemConceptIds(
       [
         { id: 'SYS-GEN-1', concept: 'Magic', type: 'system' },
@@ -377,9 +377,9 @@ describe('resolveSystemConceptIds', () => {
         { id: 'SYS-GEN-3', concept: 'MAGIC', type: 'principle' },
       ],
       existing,
-      alloc(['SYS-05']),
+      alloc(['SYS-5']),
     );
-    expect(attributedExistingIds).toEqual(['SYS-05']);
+    expect(attributedExistingIds).toEqual(['SYS-5']);
   });
   it('within-batch duplicates do NOT count as attributions (only existing-graph re-mentions do)', () => {
     const { attributedExistingIds, newNodes } = resolveSystemConceptIds(
@@ -408,10 +408,10 @@ describe('getSceneSystemAttributions', () => {
   }): Scene {
     // Minimal Scene shape — only the system fields matter for this helper.
     return {
-      id: 'S-01',
-      arcId: 'ARC-01',
+      id: 'S-1',
+      arcId: 'ARC-1',
       povId: null,
-      locationId: 'L-01',
+      locationId: 'L-1',
       participantIds: [],
       events: [],
       threadDeltas: [],
@@ -434,25 +434,25 @@ describe('getSceneSystemAttributions', () => {
 
   it('attributes every introduced node — every system delta starts with 1 attribution', () => {
     const scene = makeScene({
-      addedNodes: [node('SYS-01', 'A'), node('SYS-02', 'B')],
+      addedNodes: [node('SYS-1', 'A'), node('SYS-2', 'B')],
     });
-    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-02']);
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-1', 'SYS-2']);
   });
 
   it('merges explicit systemAttributions with introduced ids', () => {
     const scene = makeScene({
-      addedNodes: [node('SYS-01', 'A')],
+      addedNodes: [node('SYS-1', 'A')],
       explicitAttributions: ['SYS-99', 'SYS-77'],
     });
-    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-99', 'SYS-77']);
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-1', 'SYS-99', 'SYS-77']);
   });
 
   it('deduplicates when an id appears in both addedNodes and systemAttributions', () => {
     const scene = makeScene({
-      addedNodes: [node('SYS-01', 'A')],
-      explicitAttributions: ['SYS-01', 'SYS-99'],
+      addedNodes: [node('SYS-1', 'A')],
+      explicitAttributions: ['SYS-1', 'SYS-99'],
     });
-    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-99']);
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-1', 'SYS-99']);
   });
 
   it('preserves order: introductions first, then explicit attributions', () => {
@@ -465,7 +465,7 @@ describe('getSceneSystemAttributions', () => {
   });
 
   it('handles scene with only attributions, no deltas', () => {
-    const scene = makeScene({ explicitAttributions: ['SYS-01', 'SYS-02'] });
-    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-01', 'SYS-02']);
+    const scene = makeScene({ explicitAttributions: ['SYS-1', 'SYS-2'] });
+    expect(getSceneSystemAttributions(scene)).toEqual(['SYS-1', 'SYS-2']);
   });
 });

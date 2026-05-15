@@ -11,14 +11,14 @@ import { getMarketProbs } from '@/lib/narrative-utils';
 function makeThread(overrides: Partial<Thread> = {}): Thread {
   const outcomes = overrides.outcomes ?? ['yes', 'no'];
   return {
-    id: 'T-01',
+    id: 'T-1',
     description: 'Will Harry claim the Stone?',
     participants: [],
     outcomes,
     beliefs: {
       [NARRATOR_AGENT_ID]: newNarratorBelief(outcomes.length),
     },
-    openedAt: 'S-01',
+    openedAt: 'S-1',
     dependents: [],
     threadLog: { ...EMPTY_THREAD_LOG },
     ...overrides,
@@ -29,20 +29,20 @@ describe('applyThreadDelta — logit updates', () => {
   it('applies evidence to the named outcome via log-odds arithmetic', () => {
     const thread = makeThread();
     const delta: ThreadDelta = {
-      threadId: 'T-01',
+      threadId: 'T-1',
       logType: 'setup',
       updates: [{ outcome: 'yes', evidence: 2 }],
       volumeDelta: 1,
       rationale: 'Harry learns where the Mirror is kept.',
     };
-    const next = applyThreadDelta(thread, delta, 'S-02');
+    const next = applyThreadDelta(thread, delta, 'S-2');
     // evidence +2 / sensitivity 2 = +1 logit on "yes".
     expect(next.beliefs[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(1, 5);
     expect(next.beliefs[NARRATOR_AGENT_ID].logits[1]).toBeCloseTo(0, 5);
     // Volume grew by the delta.
     expect(next.beliefs[NARRATOR_AGENT_ID].volume).toBeCloseTo(3, 5);
     // A log node was appended with the prose rationale.
-    const nodeId = 'T-01:S-02';
+    const nodeId = 'T-1:S-2';
     expect(next.threadLog.nodes[nodeId]?.content).toBe('Harry learns where the Mirror is kept.');
     expect(next.threadLog.nodes[nodeId]?.type).toBe('setup');
   });
@@ -50,7 +50,7 @@ describe('applyThreadDelta — logit updates', () => {
   it('moves multiple outcomes in one delta (correlated reveal)', () => {
     const thread = makeThread({ outcomes: ['Harry', 'Voldemort', 'destroyed'] });
     const delta: ThreadDelta = {
-      threadId: 'T-01',
+      threadId: 'T-1',
       logType: 'escalation',
       updates: [
         { outcome: 'Harry', evidence: 2 },
@@ -59,7 +59,7 @@ describe('applyThreadDelta — logit updates', () => {
       volumeDelta: 1,
       rationale: 'Dumbledore confirms the Mirror yields only to one who wants the Stone without using it.',
     };
-    const next = applyThreadDelta(thread, delta, 'S-03');
+    const next = applyThreadDelta(thread, delta, 'S-3');
     expect(next.beliefs[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(1, 5);
     expect(next.beliefs[NARRATOR_AGENT_ID].logits[1]).toBeCloseTo(-0.5, 5);
     expect(next.beliefs[NARRATOR_AGENT_ID].logits[2]).toBeCloseTo(0, 5);
@@ -71,13 +71,13 @@ describe('applyThreadDelta — logit updates', () => {
   it('clamps evidence into [-4, +4]', () => {
     const thread = makeThread();
     const delta: ThreadDelta = {
-      threadId: 'T-01',
+      threadId: 'T-1',
       logType: 'payoff',
       updates: [{ outcome: 'yes', evidence: 99 }],
       volumeDelta: 1,
       rationale: 'clamp test',
     };
-    const next = applyThreadDelta(thread, delta, 'S-02');
+    const next = applyThreadDelta(thread, delta, 'S-2');
     // +4 / 2 = +2 logit shift.
     expect(next.beliefs[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(2, 5);
   });
@@ -87,32 +87,32 @@ describe('applyThreadDelta — outcome expansion', () => {
   it('adds a new outcome with neutral prior (logit=0)', () => {
     const thread = makeThread();
     let next = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'escalation',
+      threadId: 'T-1', logType: 'escalation',
       updates: [{ outcome: 'yes', evidence: 2 }],
       volumeDelta: 1, rationale: 'build up',
-    }, 'S-02');
+    }, 'S-2');
     expect(next.outcomes).toEqual(['yes', 'no']);
     next = applyThreadDelta(next, {
-      threadId: 'T-01', logType: 'twist',
+      threadId: 'T-1', logType: 'twist',
       addOutcomes: ['Voldemort'],
       updates: [],
       volumeDelta: 2,
       rationale: 'Voldemort is revealed to be after the Stone.',
-    }, 'S-03');
+    }, 'S-3');
     expect(next.outcomes).toEqual(['yes', 'no', 'Voldemort']);
     expect(next.beliefs[NARRATOR_AGENT_ID].logits).toEqual([1, 0, 0]);
-    expect(next.threadLog.nodes['T-01:S-03']?.addedOutcomes).toEqual(['Voldemort']);
+    expect(next.threadLog.nodes['T-1:S-3']?.addedOutcomes).toEqual(['Voldemort']);
   });
 
   it('allows same-scene evidence on a newly-added outcome', () => {
     const thread = makeThread();
     const next = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'twist',
+      threadId: 'T-1', logType: 'twist',
       addOutcomes: ['Voldemort'],
       updates: [{ outcome: 'Voldemort', evidence: 3 }],
       volumeDelta: 2,
       rationale: 'Voldemort already has the Stone in hand.',
-    }, 'S-03');
+    }, 'S-3');
     expect(next.outcomes).toEqual(['yes', 'no', 'Voldemort']);
     expect(next.beliefs[NARRATOR_AGENT_ID].logits).toEqual([0, 0, 1.5]);
   });
@@ -120,26 +120,26 @@ describe('applyThreadDelta — outcome expansion', () => {
   it('rejects duplicate outcomes (case-insensitive) during expansion', () => {
     const thread = makeThread();
     const next = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'setup',
+      threadId: 'T-1', logType: 'setup',
       addOutcomes: ['Yes', 'no', 'Voldemort'],
       updates: [],
       volumeDelta: 1,
       rationale: 'expansion with duplicates',
-    }, 'S-02');
+    }, 'S-2');
     expect(next.outcomes).toEqual(['yes', 'no', 'Voldemort']);
   });
 
   it('refuses to expand a closed thread', () => {
     const base = makeThread();
     const closed = applyThreadDelta(base, {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       updates: [{ outcome: 'yes', evidence: 4 }, { outcome: 'no', evidence: -4 }],
       volumeDelta: 1, rationale: 'Harry claims the Stone.',
     }, 'S-10');
     expect(closed.closedAt).toBe('S-10');
     expect(closed.closeOutcome).toBe(0);
     const next = applyThreadDelta(closed, {
-      threadId: 'T-01', logType: 'twist',
+      threadId: 'T-1', logType: 'twist',
       addOutcomes: ['Voldemort'],
       updates: [],
       volumeDelta: 0, rationale: 'too late',
@@ -152,7 +152,7 @@ describe('applyThreadDelta — closure rules', () => {
   it('closes when margin ≥ τ AND logType is payoff with |evidence| ≥ 3', () => {
     const thread = makeThread();
     const next = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       updates: [
         { outcome: 'yes', evidence: 4 },
         { outcome: 'no', evidence: -4 },
@@ -166,32 +166,32 @@ describe('applyThreadDelta — closure rules', () => {
   it('does NOT close on weak evidence even if margin would hit', () => {
     const thread = makeThread();
     const primed = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'escalation',
+      threadId: 'T-1', logType: 'escalation',
       updates: [{ outcome: 'yes', evidence: 4 }],
       volumeDelta: 1, rationale: 'heavy escalation',
-    }, 'S-02');
+    }, 'S-2');
     const next = applyThreadDelta(primed, {
-      threadId: 'T-01', logType: 'pulse',
+      threadId: 'T-1', logType: 'pulse',
       updates: [{ outcome: 'yes', evidence: 1 }],
       volumeDelta: 1, rationale: 'minor reinforcement',
-    }, 'S-03');
+    }, 'S-3');
     expect(next.closedAt).toBeUndefined();
   });
 
   it('does NOT close on an outcome-expansion delta', () => {
     const thread = makeThread();
     const primed = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'escalation',
+      threadId: 'T-1', logType: 'escalation',
       updates: [{ outcome: 'yes', evidence: 4 }],
       volumeDelta: 1, rationale: 'pre-load',
-    }, 'S-02');
+    }, 'S-2');
     const next = applyThreadDelta(primed, {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       addOutcomes: ['Voldemort'],
       updates: [{ outcome: 'yes', evidence: 3 }],
       volumeDelta: 2,
       rationale: 'expansion + payoff same scene',
-    }, 'S-03');
+    }, 'S-3');
     expect(next.closedAt).toBeUndefined();
   });
 
@@ -201,7 +201,7 @@ describe('applyThreadDelta — closure rules', () => {
     // hold it open — meaningful resolution demands proportionally more for
     // threads the story has paid attention to.
     const freshClose = applyThreadDelta(makeThread(), {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       updates: [{ outcome: 'yes', evidence: 3 }, { outcome: 'no', evidence: -3 }],
       volumeDelta: 0, rationale: 'fresh close',
     }, 'S-fresh');
@@ -210,12 +210,12 @@ describe('applyThreadDelta — closure rules', () => {
     let thread = makeThread();
     for (let i = 0; i < 6; i++) {
       thread = applyThreadDelta(thread, {
-        threadId: 'T-01', logType: 'pulse',
+        threadId: 'T-1', logType: 'pulse',
         updates: [], volumeDelta: 3, rationale: `attention ${i}`,
       }, `S-pulse-${i}`);
     }
     const attempt = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       updates: [{ outcome: 'yes', evidence: 3 }, { outcome: 'no', evidence: -3 }],
       volumeDelta: 0, rationale: 'attempted close',
     }, 'S-close');
@@ -225,7 +225,7 @@ describe('applyThreadDelta — closure rules', () => {
   it('records resolutionQuality in [0,1] on close', () => {
     const thread = makeThread();
     const next = applyThreadDelta(thread, {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       updates: [
         { outcome: 'yes', evidence: 4 },
         { outcome: 'no', evidence: -4 },
@@ -244,19 +244,19 @@ describe('applyThreadDelta — closure rules', () => {
       let t = makeThread();
       for (let i = 0; i < 4; i++) {
         t = applyThreadDelta(t, {
-          threadId: 'T-01', logType: 'escalation',
+          threadId: 'T-1', logType: 'escalation',
           updates: [{ outcome: 'yes', evidence: 2 }],
           volumeDelta: 2, rationale: `build ${i}`,
         }, `S-${i}`);
       }
       return applyThreadDelta(t, {
-        threadId: 'T-01', logType: 'payoff',
+        threadId: 'T-1', logType: 'payoff',
         updates: [{ outcome: 'yes', evidence: 4 }, { outcome: 'no', evidence: -4 }],
         volumeDelta: 2, rationale: 'decisive',
       }, 'S-close');
     })();
     const thinMarket = applyThreadDelta(makeThread(), {
-      threadId: 'T-01', logType: 'payoff',
+      threadId: 'T-1', logType: 'payoff',
       updates: [{ outcome: 'yes', evidence: 3 }, { outcome: 'no', evidence: -3 }],
       volumeDelta: 0, rationale: 'bare close',
     }, 'S-close');

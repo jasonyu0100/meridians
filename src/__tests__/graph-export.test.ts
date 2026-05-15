@@ -56,9 +56,9 @@ function makeScene(overrides: Partial<Scene> = {}): Scene {
     id: "S-1",
     arcId: "A-1",
     summary: "A meeting at the gates",
-    povId: "C-01",
-    locationId: "L-01",
-    participantIds: ["C-01", "C-02"],
+    povId: "C-1",
+    locationId: "L-1",
+    participantIds: ["C-1", "C-2"],
     events: [],
     threadDeltas: [],
     worldDeltas: [],
@@ -117,10 +117,10 @@ describe("exportGraphView", () => {
   it("exports scene-world with POV, location, and participants", () => {
     const narrative = baseNarrative({
       characters: {
-        "C-01": makeChar("C-01", "anchor", "Anchor"),
-        "C-02": makeChar("C-02", "recurring", "Ally"),
+        "C-1": makeChar("C-1", "anchor", "Anchor"),
+        "C-2": makeChar("C-2", "recurring", "Ally"),
       },
-      locations: { "L-01": makeLoc("L-01", "domain", "Gates") },
+      locations: { "L-1": makeLoc("L-1", "domain", "Gates") },
       scenes: { "S-1": makeScene() },
     });
     const out = exportGraphView({
@@ -193,7 +193,7 @@ describe("exportGraphView", () => {
   });
 
   it("exports entity inner-world when selectedEntityId is provided", () => {
-    const char = makeChar("C-01", "anchor", "Anchor");
+    const char = makeChar("C-1", "anchor", "Anchor");
     char.world = {
       nodes: {
         n1: { id: "n1", type: "belief", content: "change is possible" },
@@ -202,11 +202,11 @@ describe("exportGraphView", () => {
       edges: [],
     };
     const out = exportGraphView({
-      narrative: baseNarrative({ characters: { "C-01": char } }),
+      narrative: baseNarrative({ characters: { "C-1": char } }),
       mode: "spatial",
       resolvedKeys: [],
       currentSceneIndex: 0,
-      selectedEntityId: "C-01",
+      selectedEntityId: "C-1",
     });
     expect(out).toContain("Anchor · Inner World");
     expect(out).toContain("change is possible");

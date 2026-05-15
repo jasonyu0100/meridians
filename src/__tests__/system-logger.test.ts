@@ -18,7 +18,7 @@ describe('system-logger', () => {
       const context: LogContext = {
         source: 'auto-play',
         operation: 'generate-scene',
-        details: { sceneId: 'S-001', attempt: 1 },
+        details: { sceneId: 'S-1', attempt: 1 },
       };
       const id = logError('Failed to generate scene', new Error('Network timeout'), context);
       expect(id).toMatch(/^err-\d+-\d+$/);
@@ -30,7 +30,7 @@ describe('system-logger', () => {
           errorMessage: 'Network timeout',
           source: 'auto-play',
           operation: 'generate-scene',
-          details: { sceneId: 'S-001', attempt: 1 },
+          details: { sceneId: 'S-1', attempt: 1 },
         })
       );
     });
@@ -64,9 +64,9 @@ describe('system-logger', () => {
     it('includes narrative ID when set', () => {
       const listener = vi.fn();
       onSystemLog(listener);
-      setSystemLoggerNarrativeId('N-001');
+      setSystemLoggerNarrativeId('N-1');
       logError('Test', new Error('Test error'), { source: 'other' });
-      expect(listener).toHaveBeenCalledWith(expect.objectContaining({ narrativeId: 'N-001' }));
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({ narrativeId: 'N-1' }));
     });
     it('excludes narrative ID when not set', () => {
       const listener = vi.fn();
@@ -144,12 +144,12 @@ describe('system-logger', () => {
     it('updates narrative ID for subsequent logs', () => {
       const listener = vi.fn();
       onSystemLog(listener);
-      setSystemLoggerNarrativeId('N-001');
+      setSystemLoggerNarrativeId('N-1');
       logError('Error 1', new Error('Test'), { source: 'other' });
-      setSystemLoggerNarrativeId('N-002');
+      setSystemLoggerNarrativeId('N-2');
       logError('Error 2', new Error('Test'), { source: 'other' });
-      expect(listener).toHaveBeenNthCalledWith(1, expect.objectContaining({ narrativeId: 'N-001' }));
-      expect(listener).toHaveBeenNthCalledWith(2, expect.objectContaining({ narrativeId: 'N-002' }));
+      expect(listener).toHaveBeenNthCalledWith(1, expect.objectContaining({ narrativeId: 'N-1' }));
+      expect(listener).toHaveBeenNthCalledWith(2, expect.objectContaining({ narrativeId: 'N-2' }));
     });
   });
   describe('onSystemLog', () => {

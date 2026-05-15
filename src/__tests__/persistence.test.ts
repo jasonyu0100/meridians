@@ -97,12 +97,12 @@ describe('loadNarratives', () => {
     expect(mockIdbGetAll).toHaveBeenCalledWith('narratives');
   });
   it('returns all stored narratives', async () => {
-    const n1 = createMinimalNarrative('N-001');
-    const n2 = createMinimalNarrative('N-002');
+    const n1 = createMinimalNarrative('N-1');
+    const n2 = createMinimalNarrative('N-2');
     mockIdbGetAll.mockResolvedValue([n1, n2]);
     const narratives = await loadNarratives();
     expect(narratives.length).toBe(2);
-    expect(narratives.map((n) => n.id).sort()).toEqual(['N-001', 'N-002']);
+    expect(narratives.map((n) => n.id).sort()).toEqual(['N-1', 'N-2']);
   });
   it('throws error on failure', async () => {
     mockIdbGetAll.mockRejectedValue(new Error('DB error'));
@@ -111,34 +111,34 @@ describe('loadNarratives', () => {
 });
 describe('saveNarrative', () => {
   it('saves narrative to store', async () => {
-    const narrative = createMinimalNarrative('N-001');
+    const narrative = createMinimalNarrative('N-1');
     await saveNarrative(narrative);
-    expect(mockIdbPut).toHaveBeenCalledWith('narratives', 'N-001', narrative);
+    expect(mockIdbPut).toHaveBeenCalledWith('narratives', 'N-1', narrative);
   });
   it('throws error on failure', async () => {
     mockIdbPut.mockRejectedValue(new Error('DB error'));
-    const narrative = createMinimalNarrative('N-001');
+    const narrative = createMinimalNarrative('N-1');
     await expect(saveNarrative(narrative)).rejects.toThrow('Failed to save narrative');
   });
 });
 describe('deleteNarrative', () => {
   it('removes narrative from store', async () => {
-    await deleteNarrative('N-001');
-    expect(mockIdbDelete).toHaveBeenCalledWith('narratives', 'N-001');
+    await deleteNarrative('N-1');
+    expect(mockIdbDelete).toHaveBeenCalledWith('narratives', 'N-1');
   });
   it('handles errors gracefully', async () => {
     mockIdbDelete.mockRejectedValue(new Error('DB error'));
     // Should not throw
-    await expect(deleteNarrative('N-001')).resolves.not.toThrow();
+    await expect(deleteNarrative('N-1')).resolves.not.toThrow();
   });
 });
 describe('loadNarrative', () => {
   it('returns narrative when it exists', async () => {
-    const narrative = createMinimalNarrative('N-001');
+    const narrative = createMinimalNarrative('N-1');
     mockIdbGet.mockResolvedValue(narrative);
-    const loaded = await loadNarrative('N-001');
+    const loaded = await loadNarrative('N-1');
     expect(loaded).toEqual(narrative);
-    expect(mockIdbGet).toHaveBeenCalledWith('narratives', 'N-001');
+    expect(mockIdbGet).toHaveBeenCalledWith('narratives', 'N-1');
   });
   it('returns null when narrative does not exist', async () => {
     mockIdbGet.mockResolvedValue(undefined);
@@ -147,15 +147,15 @@ describe('loadNarrative', () => {
   });
   it('returns null on error', async () => {
     mockIdbGet.mockRejectedValue(new Error('DB error'));
-    const loaded = await loadNarrative('N-001');
+    const loaded = await loadNarrative('N-1');
     expect(loaded).toBeNull();
   });
 });
 // ── Active Narrative ID ──────────────────────────────────────────────────────
 describe('saveActiveNarrativeId', () => {
   it('saves active narrative ID', async () => {
-    await saveActiveNarrativeId('N-001');
-    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeNarrativeId', 'N-001');
+    await saveActiveNarrativeId('N-1');
+    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeNarrativeId', 'N-1');
   });
   it('deletes active ID when null is passed', async () => {
     await saveActiveNarrativeId(null);
@@ -164,9 +164,9 @@ describe('saveActiveNarrativeId', () => {
 });
 describe('loadActiveNarrativeId', () => {
   it('returns active narrative ID when set', async () => {
-    mockIdbGet.mockResolvedValue('N-001');
+    mockIdbGet.mockResolvedValue('N-1');
     const id = await loadActiveNarrativeId();
-    expect(id).toBe('N-001');
+    expect(id).toBe('N-1');
     expect(mockIdbGet).toHaveBeenCalledWith('meta', 'activeNarrativeId');
   });
   it('returns null when no active ID set', async () => {
@@ -178,18 +178,18 @@ describe('loadActiveNarrativeId', () => {
 // ── Active Branch ID (per-narrative) ────────────────────────────────────────
 describe('saveActiveBranchId', () => {
   it('saves active branch ID scoped to the narrative', async () => {
-    await saveActiveBranchId('N-01', 'branch-01');
-    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeBranch:N-01', 'branch-01');
+    await saveActiveBranchId('N-1', 'branch-01');
+    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeBranch:N-1', 'branch-01');
   });
   it('uses a distinct key per narrative so switching does not clobber', async () => {
-    await saveActiveBranchId('N-01', 'branch-01');
-    await saveActiveBranchId('N-02', 'branch-02');
-    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeBranch:N-01', 'branch-01');
-    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeBranch:N-02', 'branch-02');
+    await saveActiveBranchId('N-1', 'branch-01');
+    await saveActiveBranchId('N-2', 'branch-02');
+    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeBranch:N-1', 'branch-01');
+    expect(mockIdbPut).toHaveBeenCalledWith('meta', 'activeBranch:N-2', 'branch-02');
   });
   it('deletes the key when branchId is null', async () => {
-    await saveActiveBranchId('N-01', null);
-    expect(mockIdbDelete).toHaveBeenCalledWith('meta', 'activeBranch:N-01');
+    await saveActiveBranchId('N-1', null);
+    expect(mockIdbDelete).toHaveBeenCalledWith('meta', 'activeBranch:N-1');
   });
   it('is a no-op when narrativeId is null', async () => {
     await saveActiveBranchId(null, 'branch-01');
@@ -200,13 +200,13 @@ describe('saveActiveBranchId', () => {
 describe('loadActiveBranchId', () => {
   it('returns the branch saved for the specific narrative', async () => {
     mockIdbGet.mockResolvedValue('branch-01');
-    const id = await loadActiveBranchId('N-01');
+    const id = await loadActiveBranchId('N-1');
     expect(id).toBe('branch-01');
-    expect(mockIdbGet).toHaveBeenCalledWith('meta', 'activeBranch:N-01');
+    expect(mockIdbGet).toHaveBeenCalledWith('meta', 'activeBranch:N-1');
   });
   it('returns null when no branch is saved for this narrative', async () => {
     mockIdbGet.mockResolvedValue(undefined);
-    const id = await loadActiveBranchId('N-01');
+    const id = await loadActiveBranchId('N-1');
     expect(id).toBeNull();
   });
   it('returns null when narrativeId is null', async () => {
@@ -246,9 +246,9 @@ describe('saveAnalysisJobs', () => {
 describe('loadApiLogs', () => {
   it('returns empty array when no logs exist', async () => {
     mockIdbGet.mockResolvedValue(undefined);
-    const logs = await loadApiLogs('N-001');
+    const logs = await loadApiLogs('N-1');
     expect(logs).toEqual([]);
-    expect(mockIdbGet).toHaveBeenCalledWith('apiLogs', 'N-001');
+    expect(mockIdbGet).toHaveBeenCalledWith('apiLogs', 'N-1');
   });
   it('returns logs for narrative', async () => {
     const logs: ApiLogEntry[] = [
@@ -266,7 +266,7 @@ describe('loadApiLogs', () => {
       },
     ];
     mockIdbGet.mockResolvedValue(logs);
-    const loaded = await loadApiLogs('N-001');
+    const loaded = await loadApiLogs('N-1');
     expect(loaded).toEqual(logs);
   });
 });
@@ -286,14 +286,14 @@ describe('saveApiLogs', () => {
         responsePreview: 'test',
       },
     ];
-    await saveApiLogs('N-001', logs);
-    expect(mockIdbPut).toHaveBeenCalledWith('apiLogs', 'N-001', logs);
+    await saveApiLogs('N-1', logs);
+    expect(mockIdbPut).toHaveBeenCalledWith('apiLogs', 'N-1', logs);
   });
 });
 describe('deleteApiLogs', () => {
   it('removes logs for narrative', async () => {
-    await deleteApiLogs('N-001');
-    expect(mockIdbDelete).toHaveBeenCalledWith('apiLogs', 'N-001');
+    await deleteApiLogs('N-1');
+    expect(mockIdbDelete).toHaveBeenCalledWith('apiLogs', 'N-1');
   });
 });
 // ── Discovery Inquiries ──────────────────────────────────────────────────────

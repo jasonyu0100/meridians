@@ -69,7 +69,7 @@ Return JSON with this exact structure.
   "worldState": "Compact state snapshot at END of arc — the chess-board position.",
   "scenes": [
     {
-      "id": "S-GEN-001",
+      "id": "S-GEN-1",
       "arcId": "${arcId}",
       "locationId": "existing location ID",
       "povId": "viewpoint entity ID OR null. Set to a participant character (fiction) or named author entity (memoir/essay/first-person non-fiction) when the source narrates from that vantage. Set to null for omniscient simulation, impersonal analytical writing, polyphonic / dialogic sources — registers that have no viewpoint entity. Do not appoint a 'modelled agent' inside a simulation as POV. See pov-discipline for the full rule.${povRestrictedHint}",
@@ -129,17 +129,23 @@ Return JSON with this exact structure.
       • if the world's rules/institutions/conventions shifted during the gap, ≥1 systemDelta captures it
       • summary opens by naming what the gap changed — the scene now operates on those facts, not on the pre-gap state
     </mode>
-    <mode name="flashback" hint="Excursion into the past; narrative returns.">
-      Negative value. Reveal-weighted: the present POV/reader LEARNS; the past does not re-mutate. worldDeltas favour belief/state/secret nodes on the present-self. A later scene MUST cancel the jump with a positive delta. e.g. {-10, year, "flashback to her schooldays"} → eventually {10, year, "back in the present"}.
+    <mode name="flashback" hint="Excursion into the past; time flows FORWARD inside the past span; narrative EVENTUALLY snaps back to present.">
+      <entry>One big NEGATIVE value opens the flashback. e.g. {-10, year, "flashback to her schooldays"}.</entry>
+      <inside>Subsequent scenes in the flashback use NORMAL POSITIVE deltas — time flows forward inside the past span exactly like ordinary continuity (e.g. {1, hour, "later that afternoon"}, {1, day, "the next morning"}). Flashbacks can span multiple scenes; do NOT force the very next scene to be the return.</inside>
+      <exit>ONE eventual scene snap-returns to present with a big POSITIVE delta sized to cancel the entry PLUS the forward motion accumulated inside. e.g. after a 10-year flashback covering ~2 days of past-time: ~{10, year, "back in the present"}.</exit>
+      <invariant>Reveal-weighted for the FRAME: the present POV/reader LEARNS through the flashback; worldDeltas on the return scene favour belief/state/secret nodes on the PRESENT-self. Within the past span itself, scenes canonise past events at their past-time position (this is when the reader first sees them) — but the prior present-day state is NOT mutated by the flashback's events.</invariant>
     </mode>
-    <mode name="time-travel" hint="Diegetic travel — timeline forks, no return.">
-      Negative value. Unlike flashback, the narrative now LIVES in the new time; subsequent deltas are relative to the new position.
-      • traveller carries memory forward (worldDeltas flag knowledge "carried from later")
-      • world snaps to its earlier state; do NOT propagate present-day deltas backward
-      • surface the mechanic as a systemDelta; add a chaos/rupture marker for paradox-prone travel
-      e.g. {-3, hour, "three hours earlier, using the Time-Turner"} → next scene {1, hour, "an hour after arrival"}.
+    <mode name="time-travel" hint="Diegetic travel — timeline forks; time flows FORWARD from the new position; NO return.">
+      <entry>One NEGATIVE value opens the travel. e.g. {-3, hour, "three hours earlier, using the Time-Turner"}.</entry>
+      <inside>Subsequent scenes use NORMAL POSITIVE deltas — time flows forward from the new earlier position exactly like ordinary continuity. e.g. {1, hour, "an hour after arrival"}.</inside>
+      <no-return>The narrative LIVES in the new time. Subsequent deltas are relative to the new position, NOT to the pre-travel present. There is no snap-back.</no-return>
+      <invariant>
+        • traveller carries memory forward (worldDeltas flag knowledge "carried from later")
+        • world snaps to its earlier state; do NOT propagate present-day deltas backward
+        • surface the mechanic as a systemDelta; add a chaos/rupture marker for paradox-prone travel
+      </invariant>
     </mode>
-    <decision-test>Flashback returns; time-travel doesn't. Continuous vs skip: ≥1 week with active anchors = skip, compensate.</decision-test>
+    <decision-test>Both modes share the shape: negative entry, then forward motion. Flashback EVENTUALLY snap-returns to present; time-travel does NOT. Continuous vs skip: ≥1 week with active anchors = skip, compensate.</decision-test>
   </rule>
 
   <rule name="tag-richly-discipline" hint="Floors and per-tier density bands live in force-standards / deltas; this rule adds scene-shape-specific guidance.">

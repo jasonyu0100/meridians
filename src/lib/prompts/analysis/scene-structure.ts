@@ -319,8 +319,8 @@ ${PROMPT_MARKET_PRINCIPLES}
   <example>{value: -10, unit: "year", transition: "flashback to her schooldays"}</example>
   <example>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</example>
   <special-case kind="concurrent">{value: 0, unit: "minute"} — same moment, different POV / vantage, OR the FIRST scene. Do NOT default to 0 for anything else.</special-case>
-  <special-case kind="flashback">Negative value, narrative RETURNS. Memory, excerpt, or recalled scene; a later forward-scene cancels the jump.</special-case>
-  <special-case kind="time-travel">Negative value, narrative LIVES in the new time. No return; subsequent deltas relative to the new position.</special-case>
+  <special-case kind="flashback">ONE negative value OPENS the excursion (memory, excerpt, recalled scene). Scenes INSIDE the flashback span move FORWARD with normal positive deltas — time flows forward in the past exactly like ordinary continuity. ONE eventual scene snap-returns to the present with a big positive delta that cancels the entry PLUS the forward motion accumulated inside.</special-case>
+  <special-case kind="time-travel">ONE negative value OPENS the travel. Scenes INSIDE move FORWARD from the NEW earlier position (time flows forward in the new timeline). NO return; subsequent deltas are relative to the new position.</special-case>
   <sign-alignment critical="true">Sign matches transition direction. Backward phrase ("earlier", "ago", "X before", flashback, Time-Turner-style rewind) = NEGATIVE value. Forward phrase ("later", "next morning", "X after") = POSITIVE value.
     <correct>{value: -3, unit: "hour", transition: "three hours earlier, using the Time-Turner"}</correct>
     <correct>{value: -10, unit: "year", transition: "flashback to her schooldays"}</correct>

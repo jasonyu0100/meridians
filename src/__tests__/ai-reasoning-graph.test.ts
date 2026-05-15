@@ -7,9 +7,9 @@ import type { ReasoningGraphSnapshot, WorldBuild, NarrativeState } from '@/types
 function createReasoningGraph(overrides: Partial<ReasoningGraph> = {}): ReasoningGraph {
   return {
     nodes: [
-      { id: 'F1', index: 0, order: 0, type: 'fate', label: 'Thread needs escalation', threadId: 'T-01', detail: 'Fate pulls toward confrontation' },
+      { id: 'F1', index: 0, order: 0, type: 'fate', label: 'Thread needs escalation', threadId: 'T-1', detail: 'Fate pulls toward confrontation' },
       { id: 'R1', index: 1, order: 1, type: 'reasoning', label: 'Character must act', detail: 'Sets up the logic' },
-      { id: 'C1', index: 2, order: 2, type: 'character', label: 'Character action', entityId: 'C-01' },
+      { id: 'C1', index: 2, order: 2, type: 'character', label: 'Character action', entityId: 'C-1' },
     ],
     edges: [
       { id: 'e1', from: 'F1', to: 'R1', type: 'requires' },
@@ -25,10 +25,10 @@ function createReasoningGraph(overrides: Partial<ReasoningGraph> = {}): Reasonin
 function createExpansionReasoningGraph(overrides: Partial<ExpansionReasoningGraph> = {}): ExpansionReasoningGraph {
   return {
     nodes: [
-      { id: 'F1', index: 0, order: 0, type: 'fate', label: 'Thread needs antagonist', threadId: 'T-01', detail: 'Fate demands opposition' },
+      { id: 'F1', index: 0, order: 0, type: 'fate', label: 'Thread needs antagonist', threadId: 'T-1', detail: 'Fate demands opposition' },
       { id: 'R1', index: 1, order: 1, type: 'reasoning', label: 'Faction provides conflict', detail: 'Creates opposition' },
       { id: 'G1', index: 2, order: 2, type: 'system', label: 'Gap identified', detail: 'Missing antagonist faction' },
-      { id: 'C1', index: 3, order: 3, type: 'character', label: 'New character fills gap', entityId: 'C-02' },
+      { id: 'C1', index: 3, order: 3, type: 'character', label: 'New character fills gap', entityId: 'C-2' },
       { id: 'P1', index: 4, order: 4, type: 'pattern', label: 'Variety opportunity', detail: 'Fresh direction' },
       { id: 'W1', index: 5, order: 5, type: 'warning', label: 'Avoid repetition', detail: 'Risk of staleness' },
     ],
@@ -49,7 +49,7 @@ function createWorldBuildWithReasoning(): WorldBuild {
   const expansionGraph = createExpansionReasoningGraph();
   return {
     kind: 'world_build',
-    id: 'WB-001',
+    id: 'WB-1',
     summary: 'Test world expansion',
     expansionManifest: {
       newCharacters: [],
@@ -89,8 +89,8 @@ describe('buildSequentialPath', () => {
     const graph = createReasoningGraph();
     const path = buildSequentialPath(graph);
 
-    expect(path).toContain('@C-01'); // entityId reference
-    expect(path).toContain('#T-01'); // threadId reference
+    expect(path).toContain('@C-1'); // entityId reference
+    expect(path).toContain('#T-1'); // threadId reference
   });
 
   it('should include node details', () => {

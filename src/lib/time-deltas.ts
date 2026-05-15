@@ -3,10 +3,21 @@
  *
  * Scenes are instants; the gap between consecutive scenes is a TimeDelta
  * ({value, unit}). `value: 0` marks a concurrent scene (same moment as the
- * prior scene — parallel POV, cutaway, or simultaneous vantage). Negative
- * values mark flashbacks — the next scene sits at an earlier point on the
- * timeline. A flashback that returns to "now" needs a positive timeDelta
- * roughly cancelling the jump back, so the cumulative offset realigns.
+ * prior scene — parallel POV, cutaway, or simultaneous vantage). A negative
+ * value marks a BACKWARD jump on the timeline — one of two modes:
+ *
+ *   FLASHBACK — one negative entry opens the excursion; subsequent scenes
+ *   INSIDE the flashback move FORWARD with normal positive deltas (time flows
+ *   forward in the past); ONE eventual big positive delta snap-returns to
+ *   the present, cancelling the entry plus the motion accumulated inside.
+ *
+ *   TIME-TRAVEL — one negative entry opens the travel; subsequent scenes
+ *   move FORWARD from the new earlier position; the narrative LIVES in the
+ *   new time, NO snap-return.
+ *
+ * Both modes share the shape (negative entry, then forward motion); only the
+ * flashback eventually returns. The helpers below do not enforce mode — they
+ * format and accumulate. Mode discipline lives in the LLM prompts.
  *
  * Time is tracked relative to the first scene only — there is no absolute
  * calendar anchor. Offsets give scale ("T+2 weeks", "T-3 years") without
@@ -134,7 +145,7 @@ export function describeTimeGap(d: TimeDelta | null | undefined): string {
   }
   if (d.value < 0) {
     const elapsed = formatTimeDelta(d);
-    return `${elapsed} — FLASHBACK to an earlier point on the timeline. Anchor the jump explicitly so the reader knows we've moved backward (a memory triggered, an excerpt from earlier records, an embedded dispatch from before the prior scene). The next scene's timeDelta should bring the cumulative offset roughly back to where it was, unless the work continues in the past.`;
+    return `${elapsed} — BACKWARD JUMP on the timeline (flashback OR time-travel). Anchor the jump explicitly so the reader knows we've moved backward (a memory triggered, an excerpt from earlier records, the diegetic travel mechanism). After this entry, time flows FORWARD from the new earlier position — subsequent scenes use normal positive deltas like ordinary continuity. A FLASHBACK eventually snap-returns to the present with one big positive delta (cancelling the entry plus motion accumulated inside). A TIME-TRAVEL never returns — the narrative lives in the new time.`;
   }
   const seconds = timeDeltaToSeconds(d);
   const elapsed = formatTimeDelta(d);

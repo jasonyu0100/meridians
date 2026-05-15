@@ -15,7 +15,7 @@ import {
 function mkThread(overrides: Partial<Thread> = {}): Thread {
   const outcomes = overrides.outcomes ?? ['yes', 'no'];
   return {
-    id: 'T-01',
+    id: 'T-1',
     description: 'Test thread',
     participants: [],
     outcomes,
@@ -24,10 +24,10 @@ function mkThread(overrides: Partial<Thread> = {}): Thread {
         logits: new Array(outcomes.length).fill(0),
         volume: 2,
         volatility: 0,
-        lastTouchedScene: 'S-01',
+        lastTouchedScene: 'S-1',
       },
     },
-    openedAt: 'S-00',
+    openedAt: 'S-0',
     dependents: [],
     threadLog: { nodes: {}, edges: [] },
     ...overrides,
@@ -91,9 +91,9 @@ describe('classifyThreadCategory — volatile via windowed log energy', () => {
     // totalling 3.0 logits of absolute motion. EWMA volatility may have
     // decayed, but the windowed energy surfaces the real activity.
     const nodes: Record<string, ThreadLogNode> = {
-      'T-01:S-02': mkLogNode('T-01:S-02', [{ outcome: 'yes', evidence: 2 }]),
-      'T-01:S-03': mkLogNode('T-01:S-03', [{ outcome: 'yes', evidence: 2 }]),
-      'T-01:S-04': mkLogNode('T-01:S-04', [{ outcome: 'yes', evidence: 2 }]),
+      'T-1:S-2': mkLogNode('T-1:S-2', [{ outcome: 'yes', evidence: 2 }]),
+      'T-1:S-3': mkLogNode('T-1:S-3', [{ outcome: 'yes', evidence: 2 }]),
+      'T-1:S-4': mkLogNode('T-1:S-4', [{ outcome: 'yes', evidence: 2 }]),
     };
     const t = mkThread({
       beliefs: { [NARRATOR_AGENT_ID]: { logits: [3, -3], volume: 2, volatility: 0.15 } },
@@ -114,7 +114,7 @@ describe('classifyThreadCategory — volatile via windowed log energy', () => {
 
   it('does NOT fire on log energy below threshold', () => {
     const nodes: Record<string, ThreadLogNode> = {
-      'T-01:S-02': mkLogNode('T-01:S-02', [{ outcome: 'yes', evidence: 1 }]),
+      'T-1:S-2': mkLogNode('T-1:S-2', [{ outcome: 'yes', evidence: 1 }]),
     };
     const t = mkThread({
       beliefs: { [NARRATOR_AGENT_ID]: { logits: [0.1, -0.1], volume: 2, volatility: 0.1 } },
@@ -156,7 +156,7 @@ describe('classifyThreadCategory — developing vs dormant', () => {
 
   it('without scene context: developing when log has non-trivial recent energy', () => {
     const nodes: Record<string, ThreadLogNode> = {
-      'T-01:S-02': mkLogNode('T-01:S-02', [{ outcome: 'a', evidence: 1 }]),
+      'T-1:S-2': mkLogNode('T-1:S-2', [{ outcome: 'a', evidence: 1 }]),
     };
     const t = mkThread({
       outcomes: ['a', 'b', 'c'],
@@ -183,11 +183,11 @@ describe('classifyThreadCategory — screenshot regression', () => {
   it('classifies a recently-breaking-out thread as volatile or developing, never dormant', () => {
     const nodes: Record<string, ThreadLogNode> = {
       // Two +2 evidence pushes on "trapped" over the last two scenes.
-      'T-ALI-06:S-20': mkLogNode('T-ALI-06:S-20', [{ outcome: 'trapped', evidence: 2 }]),
-      'T-ALI-06:S-21': mkLogNode('T-ALI-06:S-21', [{ outcome: 'trapped', evidence: 2 }]),
+      'T-ALI-6:S-20': mkLogNode('T-ALI-6:S-20', [{ outcome: 'trapped', evidence: 2 }]),
+      'T-ALI-6:S-21': mkLogNode('T-ALI-6:S-21', [{ outcome: 'trapped', evidence: 2 }]),
     };
     const t: Thread = {
-      id: 'T-ALI-06',
+      id: 'T-ALI-6',
       description: 'Can Alice navigate the absurdities of Wonderland?',
       participants: [],
       outcomes: ['trapped', 'loses identity', 'adapts', 'escapes'],
@@ -200,7 +200,7 @@ describe('classifyThreadCategory — screenshot regression', () => {
           lastTouchedScene: 'S-21',
         },
       },
-      openedAt: 'S-02',
+      openedAt: 'S-2',
       dependents: [],
       threadLog: { nodes, edges: [] },
     };
@@ -215,9 +215,9 @@ describe('classifyThreadCategory — screenshot regression', () => {
 describe('computeRecentLogitEnergy', () => {
   it('sums absolute logit shifts across the recent window', () => {
     const nodes: Record<string, ThreadLogNode> = {
-      'T-01:S-02': mkLogNode('T-01:S-02', [{ outcome: 'yes', evidence: 2 }]),  // +1 logit
-      'T-01:S-03': mkLogNode('T-01:S-03', [{ outcome: 'yes', evidence: -1 }]), // +0.5 abs
-      'T-01:S-04': mkLogNode('T-01:S-04', [{ outcome: 'yes', evidence: 3 }]),  // +1.5 logit
+      'T-1:S-2': mkLogNode('T-1:S-2', [{ outcome: 'yes', evidence: 2 }]),  // +1 logit
+      'T-1:S-3': mkLogNode('T-1:S-3', [{ outcome: 'yes', evidence: -1 }]), // +0.5 abs
+      'T-1:S-4': mkLogNode('T-1:S-4', [{ outcome: 'yes', evidence: 3 }]),  // +1.5 logit
     };
     const t = mkThread({ threadLog: { nodes, edges: [] } });
     expect(computeRecentLogitEnergy(t, 3)).toBeCloseTo(3.0, 5);
@@ -225,9 +225,9 @@ describe('computeRecentLogitEnergy', () => {
 
   it('only counts the last N log entries (window slides)', () => {
     const nodes: Record<string, ThreadLogNode> = {
-      'T-01:S-02': mkLogNode('T-01:S-02', [{ outcome: 'yes', evidence: 4 }]), // excluded
-      'T-01:S-03': mkLogNode('T-01:S-03', [{ outcome: 'yes', evidence: 2 }]),
-      'T-01:S-04': mkLogNode('T-01:S-04', [{ outcome: 'yes', evidence: 2 }]),
+      'T-1:S-2': mkLogNode('T-1:S-2', [{ outcome: 'yes', evidence: 4 }]), // excluded
+      'T-1:S-3': mkLogNode('T-1:S-3', [{ outcome: 'yes', evidence: 2 }]),
+      'T-1:S-4': mkLogNode('T-1:S-4', [{ outcome: 'yes', evidence: 2 }]),
     };
     const t = mkThread({ threadLog: { nodes, edges: [] } });
     expect(computeRecentLogitEnergy(t, 2)).toBeCloseTo(2.0, 5);

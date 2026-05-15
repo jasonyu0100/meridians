@@ -23,53 +23,53 @@ function createMinimalNarrative(): NarrativeState {
     description: 'A test story',
     worldSummary: 'A test world.',
     characters: {
-      'C-01': { id: 'C-01', name: 'Hero', role: 'anchor', world: { nodes: {}, edges: [] }, threadIds: [] },
-      'C-02': { id: 'C-02', name: 'Mentor', role: 'recurring', world: { nodes: {}, edges: [] }, threadIds: [] },
+      'C-1': { id: 'C-1', name: 'Hero', role: 'anchor', world: { nodes: {}, edges: [] }, threadIds: [] },
+      'C-2': { id: 'C-2', name: 'Mentor', role: 'recurring', world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     locations: {
-      'L-01': { id: 'L-01', name: 'Village', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
-      'L-02': { id: 'L-02', name: 'Forest', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
+      'L-1': { id: 'L-1', name: 'Village', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
+      'L-2': { id: 'L-2', name: 'Forest', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     threads: {
-      'T-01': { id: 'T-01', description: 'Main quest', outcomes: ["yes", "no"], beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-01', threadLog: { nodes: {}, edges: [] } },
+      'T-1': { id: 'T-1', description: 'Main quest', outcomes: ["yes", "no"], beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-1', threadLog: { nodes: {}, edges: [] } },
     },
     arcs: {
-      'ARC-01': { id: 'ARC-01', name: 'Beginning', sceneIds: ['S-01', 'S-02', 'S-03'], develops: [], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
+      'ARC-1': { id: 'ARC-1', name: 'Beginning', sceneIds: ['S-1', 'S-2', 'S-3'], develops: [], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
     },
     scenes: {
-      'S-01': {
+      'S-1': {
         kind: 'scene',
-        id: 'S-01',
-        arcId: 'ARC-01',
-        locationId: 'L-01',
-        povId: 'C-01',
-        participantIds: ['C-01'],
+        id: 'S-1',
+        arcId: 'ARC-1',
+        locationId: 'L-1',
+        povId: 'C-1',
+        participantIds: ['C-1'],
         events: ['wakes'],
-        threadDeltas: [{ threadId: 'T-01', logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→active" }],
+        threadDeltas: [{ threadId: 'T-1', logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→active" }],
         worldDeltas: [],
         relationshipDeltas: [],
         summary: 'Hero wakes in village',
       },
-      'S-02': {
+      'S-2': {
         kind: 'scene',
-        id: 'S-02',
-        arcId: 'ARC-01',
-        locationId: 'L-01',
-        povId: 'C-01',
-        participantIds: ['C-01', 'C-02'],
+        id: 'S-2',
+        arcId: 'ARC-1',
+        locationId: 'L-1',
+        povId: 'C-1',
+        participantIds: ['C-1', 'C-2'],
         events: ['meets_mentor'],
-        threadDeltas: [{ threadId: 'T-01', logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" }],
+        threadDeltas: [{ threadId: 'T-1', logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" }],
         worldDeltas: [],
         relationshipDeltas: [],
         summary: 'Hero meets mentor',
       },
-      'S-03': {
+      'S-3': {
         kind: 'scene',
-        id: 'S-03',
-        arcId: 'ARC-01',
-        locationId: 'L-02',
-        povId: 'C-01',
-        participantIds: ['C-01'],
+        id: 'S-3',
+        arcId: 'ARC-1',
+        locationId: 'L-2',
+        povId: 'C-1',
+        participantIds: ['C-1'],
         events: ['enters_forest'],
         threadDeltas: [],
         worldDeltas: [],
@@ -78,12 +78,12 @@ function createMinimalNarrative(): NarrativeState {
       },
     },
     branches: {
-      'BR-01': {
-        id: 'BR-01',
+      'BR-1': {
+        id: 'BR-1',
         name: 'main',
         parentBranchId: null,
         forkEntryId: null,
-        entryIds: ['S-01', 'S-02', 'S-03'],
+        entryIds: ['S-1', 'S-2', 'S-3'],
         createdAt: Date.now(),
       },
     },
@@ -117,11 +117,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: 'Good scene' },
-        { sceneId: 'S-02', verdict: 'ok', reason: 'Good scene' },
-        { sceneId: 'S-03', verdict: 'ok', reason: 'Good scene' },
+        { sceneId: 'S-1', verdict: 'ok', reason: 'Good scene' },
+        { sceneId: 'S-2', verdict: 'ok', reason: 'Good scene' },
+        { sceneId: 'S-3', verdict: 'ok', reason: 'Good scene' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -131,16 +131,16 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
     expect(result.scenes).toHaveLength(3);
     // ok scenes reuse their original IDs
-    expect(result.scenes[0].id).toBe('S-01');
-    expect(result.scenes[1].id).toBe('S-02');
-    expect(result.scenes[2].id).toBe('S-03');
+    expect(result.scenes[0].id).toBe('S-1');
+    expect(result.scenes[1].id).toBe('S-2');
+    expect(result.scenes[2].id).toBe('S-3');
     expect(callGenerate).not.toHaveBeenCalled();
   });
   it('removes cut scenes from timeline', async () => {
@@ -148,11 +148,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'cut', reason: 'Redundant scene' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'cut', reason: 'Redundant scene' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -162,20 +162,20 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
     expect(result.scenes).toHaveLength(2);
-    expect(result.scenes.map(s => s.id)).toEqual(['S-01', 'S-03']);
-    expect(result.branch.entryIds).toEqual(['S-01', 'S-03']);
+    expect(result.scenes.map(s => s.id)).toEqual(['S-1', 'S-3']);
+    expect(result.branch.entryIds).toEqual(['S-1', 'S-3']);
   });
   it('edits scenes with edit verdict via LLM', async () => {
     const editedScene = {
-      locationId: 'L-02',
-      povId: 'C-01',
-      participantIds: ['C-01', 'C-02'],
+      locationId: 'L-2',
+      povId: 'C-1',
+      participantIds: ['C-1', 'C-2'],
       events: ['revised_event'],
       threadDeltas: [],
       worldDeltas: [],
@@ -188,11 +188,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'edit', reason: 'Needs pacing fix' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Needs pacing fix' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -202,24 +202,24 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
     expect(result.scenes).toHaveLength(3);
     // Edited scenes get new IDs
-    expect(result.scenes[1].id).not.toBe('S-02');
+    expect(result.scenes[1].id).not.toBe('S-2');
     expect(result.scenes[1].summary).toBe('Revised scene with fixes');
     expect(callGenerate).toHaveBeenCalledTimes(1);
   });
   it('inserts new scenes via LLM', async () => {
     const insertedScene = {
-      locationId: 'L-01',
-      povId: 'C-02',
-      participantIds: ['C-02'],
+      locationId: 'L-1',
+      povId: 'C-2',
+      participantIds: ['C-2'],
       events: ['new_event'],
-      threadDeltas: [{ threadId: 'T-01', logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" }],
+      threadDeltas: [{ threadId: 'T-1', logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" }],
       worldDeltas: [],
       relationshipDeltas: [],
       summary: 'New transition scene',
@@ -230,12 +230,12 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Missing transition', insertAfter: 'S-02' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Missing transition', insertAfter: 'S-2' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -245,7 +245,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -259,11 +259,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'move', reason: 'Should come after S-03', moveAfter: 'S-03' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'move', reason: 'Should come after S-3', moveAfter: 'S-3' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -273,22 +273,22 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
     expect(result.scenes).toHaveLength(3);
-    // S-02 moved after S-03: order is now S-01, S-03, S-02
-    expect(result.scenes.map(s => s.id)).toEqual(['S-01', 'S-03', 'S-02']);
+    // S-2 moved after S-3: order is now S-1, S-3, S-2
+    expect(result.scenes.map(s => s.id)).toEqual(['S-1', 'S-3', 'S-2']);
   });
   it('merges scenes via LLM', async () => {
     const mergedScene = {
-      locationId: 'L-01',
-      povId: 'C-01',
-      participantIds: ['C-01', 'C-02'],
+      locationId: 'L-1',
+      povId: 'C-1',
+      participantIds: ['C-1', 'C-2'],
       events: ['combined_event'],
-      threadDeltas: [{ threadId: 'T-01', logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→active" }],
+      threadDeltas: [{ threadId: 'T-1', logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→active" }],
       worldDeltas: [],
       relationshipDeltas: [],
       summary: 'Combined scene with both beats',
@@ -299,11 +299,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'merge', reason: 'Absorb into S-01', mergeInto: 'S-01' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'merge', reason: 'Absorb into S-1', mergeInto: 'S-1' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -313,13 +313,13 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
     expect(result.scenes).toHaveLength(2);
-    // S-02 is removed, S-01 is merged
+    // S-2 is removed, S-1 is merged
     expect(result.scenes[0].summary).toBe('Combined scene with both beats');
     expect(callGenerate).toHaveBeenCalledTimes(1);
   });
@@ -328,11 +328,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -342,7 +342,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -353,7 +353,7 @@ describe('reconstructBranch', () => {
   it('preserves world builds in timeline order', async () => {
     const narrative = createMinimalNarrative();
     const worldBuild: WorldBuild = {
-      id: 'WB-01',
+      id: 'WB-1',
       kind: 'world_build',
       summary: 'World expansion',
       expansionManifest: {
@@ -364,17 +364,17 @@ describe('reconstructBranch', () => {
         systemDeltas: { addedNodes: [], addedEdges: [] },
       },
     };
-    narrative.worldBuilds['WB-01'] = worldBuild;
-    // World build appears between S-01 and S-02
-    narrative.branches['BR-01'].entryIds = ['S-01', 'WB-01', 'S-02', 'S-03'];
+    narrative.worldBuilds['WB-1'] = worldBuild;
+    // World build appears between S-1 and S-2
+    narrative.branches['BR-1'].entryIds = ['S-1', 'WB-1', 'S-2', 'S-3'];
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -384,24 +384,24 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'WB-01', 'S-02', 'S-03'],
+      ['S-1', 'WB-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
-    expect(result.branch.entryIds).toContain('WB-01');
-    expect(result.branch.entryIds.indexOf('WB-01')).toBe(1);
+    expect(result.branch.entryIds).toContain('WB-1');
+    expect(result.branch.entryIds.indexOf('WB-1')).toBe(1);
   });
   it('invokes progress callbacks', async () => {
     const narrative = createMinimalNarrative();
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -411,7 +411,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -423,9 +423,9 @@ describe('reconstructBranch', () => {
   });
   it('handles insert at START position', async () => {
     const insertedScene = {
-      locationId: 'L-01',
-      povId: 'C-01',
-      participantIds: ['C-01'],
+      locationId: 'L-1',
+      povId: 'C-1',
+      participantIds: ['C-1'],
       events: ['opening'],
       threadDeltas: [],
       worldDeltas: [],
@@ -438,12 +438,12 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
         { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Need an opening', insertAfter: 'START' },
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -453,7 +453,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -470,11 +470,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'edit', reason: 'Fix' },
-        { sceneId: 'S-02', verdict: 'edit', reason: 'Fix' },
-        { sceneId: 'S-03', verdict: 'edit', reason: 'Fix' },
+        { sceneId: 'S-1', verdict: 'edit', reason: 'Fix' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Fix' },
+        { sceneId: 'S-3', verdict: 'edit', reason: 'Fix' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -485,7 +485,7 @@ describe('reconstructBranch', () => {
     // Cancel immediately
     const promise = reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -502,11 +502,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'edit', reason: 'Fix pacing' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Fix pacing' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -516,7 +516,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -529,11 +529,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'cut', reason: 'Remove' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'cut', reason: 'Remove' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -543,18 +543,18 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
-    expect(result.arcs['ARC-01'].sceneIds).toEqual(['S-01', 'S-03']);
+    expect(result.arcs['ARC-1'].sceneIds).toEqual(['S-1', 'S-3']);
   });
   it('increments version when branch already has version suffix', async () => {
     const narrative = createMinimalNarrative();
-    narrative.branches['BR-01'].name = 'main v2';
-    narrative.branches['BR-02'] = {
-      id: 'BR-02',
+    narrative.branches['BR-1'].name = 'main v2';
+    narrative.branches['BR-2'] = {
+      id: 'BR-2',
       name: 'main v3',
       parentBranchId: null,
       forkEntryId: null,
@@ -564,11 +564,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -578,7 +578,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -593,11 +593,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'edit', reason: 'Fix' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Fix' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: ['Hero always wins', 'Mentor gives advice'],
       thematicQuestion: 'What defines true courage?',
@@ -607,7 +607,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -627,13 +627,13 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'First insert', insertAfter: 'S-01' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'First insert', insertAfter: 'S-1' },
         { sceneId: 'INSERT-2', verdict: 'insert', reason: 'Second insert', insertAfter: 'INSERT-1' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -643,17 +643,17 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
     );
     expect(result.scenes).toHaveLength(5);
-    // Order: S-01, INSERT-1, INSERT-2, S-02, S-03
-    expect(result.scenes[0].id).toBe('S-01');
+    // Order: S-1, INSERT-1, INSERT-2, S-2, S-3
+    expect(result.scenes[0].id).toBe('S-1');
     expect(result.scenes[1].summary).toBe('First insert');
     expect(result.scenes[2].summary).toBe('Second insert');
-    expect(result.scenes[3].id).toBe('S-02');
+    expect(result.scenes[3].id).toBe('S-2');
   });
   // ── Thread log preservation through reconstruction ────────────────────────
   // Locks in the fix for the bug where the reconstruct schemas omitted
@@ -661,12 +661,12 @@ describe('reconstructBranch', () => {
   // inserted scenes.
   it('preserves market evidence from LLM when editing a scene', async () => {
     const editedScene = {
-      locationId: 'L-02',
-      povId: 'C-01',
-      participantIds: ['C-01'],
+      locationId: 'L-2',
+      povId: 'C-1',
+      participantIds: ['C-1'],
       events: ['revised'],
       threadDeltas: [{
-        threadId: 'T-01',
+        threadId: 'T-1',
         logType: 'escalation',
         updates: [{ outcome: 'yes', evidence: 3 }],
         volumeDelta: 2,
@@ -682,11 +682,11 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'edit', reason: 'Needs stakes' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'edit', reason: 'Needs stakes' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -696,7 +696,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,
@@ -714,12 +714,12 @@ describe('reconstructBranch', () => {
   });
   it('preserves market evidence from LLM when inserting a new scene', async () => {
     const insertedScene = {
-      locationId: 'L-01',
-      povId: 'C-02',
-      participantIds: ['C-02'],
+      locationId: 'L-1',
+      povId: 'C-2',
+      participantIds: ['C-2'],
       events: ['bridge_beat'],
       threadDeltas: [{
-        threadId: 'T-01',
+        threadId: 'T-1',
         logType: 'pulse',
         updates: [],
         volumeDelta: 1,
@@ -735,12 +735,12 @@ describe('reconstructBranch', () => {
     const evaluation: StructureReview = {
       id: 'EVAL-1',
       createdAt: new Date().toISOString(),
-      branchId: 'BR-01',
+      branchId: 'BR-1',
       sceneEvals: [
-        { sceneId: 'S-01', verdict: 'ok', reason: '' },
-        { sceneId: 'S-02', verdict: 'ok', reason: '' },
-        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Missing bridge', insertAfter: 'S-02' },
-        { sceneId: 'S-03', verdict: 'ok', reason: '' },
+        { sceneId: 'S-1', verdict: 'ok', reason: '' },
+        { sceneId: 'S-2', verdict: 'ok', reason: '' },
+        { sceneId: 'INSERT-1', verdict: 'insert', reason: 'Missing bridge', insertAfter: 'S-2' },
+        { sceneId: 'S-3', verdict: 'ok', reason: '' },
       ],
       repetitions: [],
       thematicQuestion: '',
@@ -750,7 +750,7 @@ describe('reconstructBranch', () => {
     const cancelledRef = { current: false };
     const result = await reconstructBranch(
       narrative,
-      ['S-01', 'S-02', 'S-03'],
+      ['S-1', 'S-2', 'S-3'],
       evaluation,
       callbacks,
       cancelledRef,

@@ -143,10 +143,10 @@ function createScene(
   return {
     kind: "scene",
     id,
-    arcId: "ARC-01",
-    povId: "C-01",
-    locationId: "L-01",
-    participantIds: ["C-01"],
+    arcId: "ARC-1",
+    povId: "C-1",
+    locationId: "L-1",
+    participantIds: ["C-1"],
     summary: `Scene ${id} summary`,
     events: ["event_1"],
     threadDeltas: [],
@@ -212,20 +212,20 @@ function createThread(id: string, overrides: Partial<Thread> = {}): Thread {
 }
 function createMinimalNarrative(): NarrativeState {
   return {
-    id: "N-001",
+    id: "N-1",
     title: "Test Narrative",
     description: "A test story",
     characters: {
-      "C-01": createCharacter("C-01", { name: "Alice" }),
-      "C-02": createCharacter("C-02", { name: "Bob" }),
+      "C-1": createCharacter("C-1", { name: "Alice" }),
+      "C-2": createCharacter("C-2", { name: "Bob" }),
     },
     locations: {
-      "L-01": createLocation("L-01", { name: "Castle" }),
-      "L-02": createLocation("L-02", { name: "Forest" }),
+      "L-1": createLocation("L-1", { name: "Castle" }),
+      "L-2": createLocation("L-2", { name: "Forest" }),
     },
     threads: {
-      "T-01": createThread("T-01", { description: "Main quest" }),
-      "T-02": createThread("T-02", { description: "Side quest" }),
+      "T-1": createThread("T-1", { description: "Main quest" }),
+      "T-2": createThread("T-2", { description: "Side quest" }),
     },
     artifacts: {},
     scenes: {},
@@ -260,14 +260,14 @@ describe("generateScenes", () => {
       directionVector: "Alice leads the defense while Bob scouts.",
       scenes: [
         {
-          id: "S-GEN-001",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01", "C-02"],
+          id: "S-GEN-1",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1", "C-2"],
           events: ["battle_prep"],
           threadDeltas: [
-            { threadId: "T-01", logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" },
+            { threadId: "T-1", logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" },
           ],
           worldDeltas: [],
           relationshipDeltas: [],
@@ -287,11 +287,11 @@ describe("generateScenes", () => {
       arcName: "Test Arc",
       scenes: [
         {
-          id: "S-GEN-001",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01"],
+          id: "S-GEN-1",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1"],
           events: [],
           threadDeltas: [],
           worldDeltas: [],
@@ -299,11 +299,11 @@ describe("generateScenes", () => {
           summary: "Scene 1",
         },
         {
-          id: "S-GEN-002",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01"],
+          id: "S-GEN-2",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1"],
           events: [],
           threadDeltas: [],
           worldDeltas: [],
@@ -311,11 +311,11 @@ describe("generateScenes", () => {
           summary: "Scene 2",
         },
         {
-          id: "S-GEN-003",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01"],
+          id: "S-GEN-3",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1"],
           events: [],
           threadDeltas: [],
           worldDeltas: [],
@@ -336,11 +336,11 @@ describe("generateScenes", () => {
       arcName: "Test Arc",
       scenes: [
         {
-          id: "S-GEN-001",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01", "C-INVALID", "C-02"],
+          id: "S-GEN-1",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1", "C-INVALID", "C-2"],
           events: [],
           threadDeltas: [],
           worldDeltas: [],
@@ -353,18 +353,18 @@ describe("generateScenes", () => {
     const narrative = createMinimalNarrative();
     const result = await generateScenes(narrative, [], 0, 1, "Test");
     // Invalid character should be stripped
-    expect(result.scenes[0].participantIds).toEqual(["C-01", "C-02"]);
+    expect(result.scenes[0].participantIds).toEqual(["C-1", "C-2"]);
   });
   it("sanitizes invalid location IDs", async () => {
     const mockResponse = JSON.stringify({
       arcName: "Test Arc",
       scenes: [
         {
-          id: "S-GEN-001",
-          arcId: "ARC-01",
+          id: "S-GEN-1",
+          arcId: "ARC-1",
           locationId: "L-INVALID",
-          povId: "C-01",
-          participantIds: ["C-01"],
+          povId: "C-1",
+          participantIds: ["C-1"],
           events: [],
           threadDeltas: [],
           worldDeltas: [],
@@ -377,21 +377,21 @@ describe("generateScenes", () => {
     const narrative = createMinimalNarrative();
     const result = await generateScenes(narrative, [], 0, 1, "Test");
     // Invalid location should be replaced with first valid location
-    expect(result.scenes[0].locationId).toBe("L-01");
+    expect(result.scenes[0].locationId).toBe("L-1");
   });
   it("sanitizes invalid thread IDs in threadDeltas", async () => {
     const mockResponse = JSON.stringify({
       arcName: "Test Arc",
       scenes: [
         {
-          id: "S-GEN-001",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01"],
+          id: "S-GEN-1",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1"],
           events: [],
           threadDeltas: [
-            { threadId: "T-01", logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" },
+            { threadId: "T-1", logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" },
             { threadId: "T-INVALID", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "active→critical" },
           ],
           worldDeltas: [],
@@ -399,16 +399,16 @@ describe("generateScenes", () => {
           summary: "Scene 1",
         },
         {
-          id: "S-GEN-002",
-          arcId: "ARC-01",
-          locationId: "L-02",
-          povId: "C-02",
-          participantIds: ["C-02"],
+          id: "S-GEN-2",
+          arcId: "ARC-1",
+          locationId: "L-2",
+          povId: "C-2",
+          participantIds: ["C-2"],
           events: [],
           threadDeltas: [
-            { threadId: "T-02", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "First knowledge" },
+            { threadId: "T-2", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "First knowledge" },
             // Pulse with no log entries — should synthesize one too.
-            { threadId: "T-02", logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" },
+            { threadId: "T-2", logType: "pulse", updates: [], volumeDelta: 1, rationale: "active→active" },
           ],
           worldDeltas: [],
           relationshipDeltas: [],
@@ -420,9 +420,9 @@ describe("generateScenes", () => {
     const narrative = createMinimalNarrative();
     const result = await generateScenes(narrative, [], 0, 1, "Test");
     // The T-INVALID delta references a non-existent thread and should be
-    // dropped; the T-01 delta survives.
+    // dropped; the T-1 delta survives.
     expect(result.scenes[0].threadDeltas).toHaveLength(1);
-    expect(result.scenes[0].threadDeltas[0].threadId).toBe("T-01");
+    expect(result.scenes[0].threadDeltas[0].threadId).toBe("T-1");
     expect(result.scenes[0].threadDeltas[0].logType).toBe("pulse");
   });
   it('coerces invalid logType values to "pulse"', async () => {
@@ -432,17 +432,17 @@ describe("generateScenes", () => {
       arcName: "Test Arc",
       scenes: [
         {
-          id: "S-GEN-001",
-          arcId: "ARC-01",
-          locationId: "L-01",
-          povId: "C-01",
-          participantIds: ["C-01"],
+          id: "S-GEN-1",
+          arcId: "ARC-1",
+          locationId: "L-1",
+          povId: "C-1",
+          participantIds: ["C-1"],
           events: [],
           threadDeltas: [
             // Invalid: "nonsense" is not in the log-type vocabulary.
-            { threadId: "T-01", logType: "nonsense", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "will be coerced" },
+            { threadId: "T-1", logType: "nonsense", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "will be coerced" },
             // Valid pulse pattern: attention-only maintenance.
-            { threadId: "T-02", logType: "pulse", updates: [], volumeDelta: 1, rationale: "real pulse" },
+            { threadId: "T-2", logType: "pulse", updates: [], volumeDelta: 1, rationale: "real pulse" },
           ],
           worldDeltas: [],
           relationshipDeltas: [],
@@ -471,12 +471,12 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
   it("keeps newCharacter's id in participantIds", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01", "C-GEN-001"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1", "C-GEN-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newCharacters: [
         {
-          id: "C-GEN-001",
+          id: "C-GEN-1",
           name: "Liu He",
           role: "transient",
           threadIds: [],
@@ -485,19 +485,19 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
       ],
     } as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
-    expect(scene.participantIds).toContain("C-GEN-001");
-    expect(scene.newCharacters?.[0]?.id).toBe("C-GEN-001");
+    expect(scene.participantIds).toContain("C-GEN-1");
+    expect(scene.newCharacters?.[0]?.id).toBe("C-GEN-1");
   });
 
   it("keeps newLocation's id as the scene's locationId", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-GEN-001",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-GEN-1",
       newLocations: [
         {
-          id: "L-GEN-001",
+          id: "L-GEN-1",
           name: "Qing Mao Mountain's Edge",
           parentId: null,
           prominence: "place",
@@ -508,19 +508,19 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
       ],
     } as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
-    expect(scene.locationId).toBe("L-GEN-001");
+    expect(scene.locationId).toBe("L-GEN-1");
   });
 
   it("keeps newArtifact's id in artifactUsages", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
-      artifactUsages: [{ artifactId: "A-GEN-001", characterId: "C-01", usage: "inspects" }],
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
+      artifactUsages: [{ artifactId: "A-GEN-1", characterId: "C-1", usage: "inspects" }],
       newArtifacts: [
         {
-          id: "A-GEN-001",
+          id: "A-GEN-1",
           name: "Spring Autumn Cicada",
           significance: "key",
           parentId: null,
@@ -530,19 +530,19 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
       ],
     } as unknown as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
-    expect(scene.artifactUsages?.[0]?.artifactId).toBe("A-GEN-001");
+    expect(scene.artifactUsages?.[0]?.artifactId).toBe("A-GEN-1");
   });
 
   it("keeps newThread's id in threadDeltas", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
-      threadDeltas: [{ threadId: "T-GEN-001", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→seeded" }],
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
+      threadDeltas: [{ threadId: "T-GEN-1", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "latent→seeded" }],
       newThreads: [
         {
-          id: "T-GEN-001",
+          id: "T-GEN-1",
           description: "A fresh tension emerges",
           outcomes: ["yes", "no"],
           beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
@@ -554,24 +554,24 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
       ],
     } as unknown as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
-    expect(scene.threadDeltas.find((td) => td.threadId === "T-GEN-001")).toBeDefined();
+    expect(scene.threadDeltas.find((td) => td.threadId === "T-GEN-1")).toBeDefined();
   });
 
   it("keeps newCharacter's id as a worldDelta entityId", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01", "C-GEN-001"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1", "C-GEN-1"],
+      povId: "C-1",
+      locationId: "L-1",
       worldDeltas: [
         {
-          entityId: "C-GEN-001",
-          addedNodes: [{ id: "K-GEN-001", type: "trait", content: "calculating eyes" }],
+          entityId: "C-GEN-1",
+          addedNodes: [{ id: "K-GEN-1", type: "trait", content: "calculating eyes" }],
         },
       ],
       newCharacters: [
         {
-          id: "C-GEN-001",
+          id: "C-GEN-1",
           name: "Liu He",
           role: "transient",
           threadIds: [],
@@ -580,18 +580,18 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
       ],
     } as unknown as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
-    expect(scene.worldDeltas.find((wd) => wd.entityId === "C-GEN-001")).toBeDefined();
+    expect(scene.worldDeltas.find((wd) => wd.entityId === "C-GEN-1")).toBeDefined();
   });
 
   it("cross-scene: entity introduced in scene 1 is valid in scene 2", () => {
     const narrative = createMinimalNarrative();
     const scene1 = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newCharacters: [
         {
-          id: "C-GEN-001",
+          id: "C-GEN-1",
           name: "Liu He",
           role: "transient",
           threadIds: [],
@@ -600,32 +600,32 @@ describe("sanitizeScenes — introduced entities survive reference validation", 
       ],
     } as Partial<Scene>);
     const scene2 = createScene("S-2", {
-      participantIds: ["C-01", "C-GEN-001"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1", "C-GEN-1"],
+      povId: "C-1",
+      locationId: "L-1",
     } as Partial<Scene>);
     sanitizeScenes([scene1, scene2], narrative, "test");
-    expect(scene2.participantIds).toContain("C-GEN-001");
+    expect(scene2.participantIds).toContain("C-GEN-1");
   });
 
   it("still strips participantIds that reference genuinely unknown characters", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01", "C-DOES-NOT-EXIST"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1", "C-DOES-NOT-EXIST"],
+      povId: "C-1",
+      locationId: "L-1",
     } as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
-    expect(scene.participantIds).toContain("C-01");
+    expect(scene.participantIds).toContain("C-1");
     expect(scene.participantIds).not.toContain("C-DOES-NOT-EXIST");
   });
 
   it("auto-adds newCharacter ids to participantIds when the LLM forgot", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newCharacters: [
         {
           id: "C-GEN-777",
@@ -651,8 +651,8 @@ describe("sanitizeScenes — delta null handling", () => {
   it("keeps ownershipDelta with null fromId (artifact introduced from nowhere)", () => {
     const narrative = createMinimalNarrative();
     narrative.artifacts = {
-      "A-01": {
-        id: "A-01",
+      "A-1": {
+        id: "A-1",
         name: "Relic",
         significance: "notable",
         parentId: null,
@@ -661,63 +661,63 @@ describe("sanitizeScenes — delta null handling", () => {
       },
     };
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
-      ownershipDeltas: [{ artifactId: "A-01", fromId: null, toId: "C-01" } as unknown as { artifactId: string; fromId: string; toId: string }],
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
+      ownershipDeltas: [{ artifactId: "A-1", fromId: null, toId: "C-1" } as unknown as { artifactId: string; fromId: string; toId: string }],
     } as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
     expect(scene.ownershipDeltas?.[0]).toEqual(
-      expect.objectContaining({ artifactId: "A-01", fromId: null, toId: "C-01" }),
+      expect.objectContaining({ artifactId: "A-1", fromId: null, toId: "C-1" }),
     );
   });
 
   it("keeps ownershipDelta with null toId (artifact discarded to nowhere)", () => {
     const narrative = createMinimalNarrative();
     narrative.artifacts = {
-      "A-01": {
-        id: "A-01",
+      "A-1": {
+        id: "A-1",
         name: "Relic",
         significance: "notable",
-        parentId: "C-01",
+        parentId: "C-1",
         threadIds: [],
         world: { nodes: {}, edges: [] },
       },
     };
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
-      ownershipDeltas: [{ artifactId: "A-01", fromId: "C-01", toId: null } as unknown as { artifactId: string; fromId: string; toId: string }],
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
+      ownershipDeltas: [{ artifactId: "A-1", fromId: "C-1", toId: null } as unknown as { artifactId: string; fromId: string; toId: string }],
     } as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
     expect(scene.ownershipDeltas?.[0]).toEqual(
-      expect.objectContaining({ artifactId: "A-01", fromId: "C-01", toId: null }),
+      expect.objectContaining({ artifactId: "A-1", fromId: "C-1", toId: null }),
     );
   });
 
   it("strips worldDelta entries with missing entityId", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       worldDeltas: [
-        { entityId: "C-01", addedNodes: [{ id: "K-1", type: "trait", content: "x" }] },
+        { entityId: "C-1", addedNodes: [{ id: "K-1", type: "trait", content: "x" }] },
         { entityId: "", addedNodes: [{ id: "K-2", type: "trait", content: "y" }] } as never,
       ],
     } as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
     expect(scene.worldDeltas).toHaveLength(1);
-    expect(scene.worldDeltas[0].entityId).toBe("C-01");
+    expect(scene.worldDeltas[0].entityId).toBe("C-1");
   });
 
   it("strips newThread participants that reference unknown entities", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newThreads: [
         {
           id: "T-GEN-1",
@@ -725,7 +725,7 @@ describe("sanitizeScenes — delta null handling", () => {
           outcomes: ["yes", "no"],
           beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
           participants: [
-            { id: "C-01", type: "character" },
+            { id: "C-1", type: "character" },
             { id: "C-GHOST", type: "character" },
           ],
           dependents: [],
@@ -736,16 +736,16 @@ describe("sanitizeScenes — delta null handling", () => {
     } as unknown as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
     expect(scene.newThreads?.[0].participants).toEqual([
-      { id: "C-01", type: "character" },
+      { id: "C-1", type: "character" },
     ]);
   });
 
   it("drops phantom fields from newThread participants", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newThreads: [
         {
           id: "T-GEN-1",
@@ -753,7 +753,7 @@ describe("sanitizeScenes — delta null handling", () => {
           outcomes: ["yes", "no"],
           beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
           participants: [
-            { id: "C-01", type: "character", role: "active" } as unknown as { id: string; type: "character" },
+            { id: "C-1", type: "character", role: "active" } as unknown as { id: string; type: "character" },
           ],
           threadLog: { nodes: {}, edges: [] },
         },
@@ -761,7 +761,7 @@ describe("sanitizeScenes — delta null handling", () => {
     } as unknown as Partial<Scene>);
     sanitizeScenes([scene], narrative, "test");
     expect(scene.newThreads?.[0].participants[0]).toEqual({
-      id: "C-01",
+      id: "C-1",
       type: "character",
     });
     expect(scene.newThreads?.[0].participants[0]).not.toHaveProperty("role");
@@ -770,9 +770,9 @@ describe("sanitizeScenes — delta null handling", () => {
   it("defaults newThread openedAt and dependents when missing", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-7", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newThreads: [
         {
           id: "T-GEN-1",
@@ -795,9 +795,9 @@ describe("sanitizeScenes — new entity shape", () => {
   it("defaults newLocation prominence to 'place' when missing", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newLocations: [
         {
           id: "L-GEN-1",
@@ -819,9 +819,9 @@ describe("sanitizeScenes — new entity shape", () => {
   it("coerces invalid newLocation prominence to 'place'", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newLocations: [
         {
           id: "L-GEN-1",
@@ -844,9 +844,9 @@ describe("sanitizeScenes — new entity shape", () => {
   it("defaults newArtifact parentId to null when missing", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newArtifacts: [
         {
           id: "A-GEN-1",
@@ -867,9 +867,9 @@ describe("sanitizeScenes — new entity shape", () => {
   it("coerces invalid newArtifact significance to 'minor'", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newArtifacts: [
         {
           id: "A-GEN-1",
@@ -891,9 +891,9 @@ describe("sanitizeScenes — new entity shape", () => {
   it("drops phantom fields the LLM emits outside the Artifact type", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newArtifacts: [
         {
           id: "A-GEN-1",
@@ -918,9 +918,9 @@ describe("sanitizeScenes — new entity shape", () => {
   it("coerces invalid newCharacter role to 'transient'", () => {
     const narrative = createMinimalNarrative();
     const scene = createScene("S-1", {
-      participantIds: ["C-01"],
-      povId: "C-01",
-      locationId: "L-01",
+      participantIds: ["C-1"],
+      povId: "C-1",
+      locationId: "L-1",
       newCharacters: [
         {
           id: "C-GEN-1",

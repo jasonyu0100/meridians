@@ -19,11 +19,11 @@ import { describe, expect, it } from "vitest";
 function createScene(overrides: Partial<Scene> = {}): Scene {
   return {
     kind: "scene",
-    id: overrides.id ?? "S-001",
-    arcId: "ARC-01",
-    povId: "C-01",
-    locationId: "L-01",
-    participantIds: ["C-01"],
+    id: overrides.id ?? "S-1",
+    arcId: "ARC-1",
+    povId: "C-1",
+    locationId: "L-1",
+    participantIds: ["C-1"],
     events: [],
     threadDeltas: [],
     worldDeltas: [],
@@ -68,7 +68,7 @@ function createNarrative(scenes: Scene[] = []): NarrativeState {
 // ── Matrix Computation ───────────────────────────────────────────────────────
 describe("computeMatrixFromNarrative", () => {
   it("returns empty matrix for narrative with fewer than 3 scenes", () => {
-    const narrative = createNarrative([createScene({ id: "S-001" })]);
+    const narrative = createNarrative([createScene({ id: "S-1" })]);
     const matrix = computeMatrixFromNarrative(narrative);
     // Check all values are 0
     const corners: CubeCornerKey[] = [
@@ -91,37 +91,37 @@ describe("computeMatrixFromNarrative", () => {
     // Create scenes with varying delta profiles
     const scenes = [
       createScene({
-        id: "S-001",
+        id: "S-1",
         threadDeltas: [],
         worldDeltas: [],
         events: [],
       }),
       createScene({
-        id: "S-002",
+        id: "S-2",
         threadDeltas: [
-          { threadId: "T-01", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "dormant→active" },
+          { threadId: "T-1", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "dormant→active" },
         ],
         worldDeltas: [
           {
-            entityId: "C-01",
-            addedNodes: [{ id: "K-01", content: "x", type: "history" }],
+            entityId: "C-1",
+            addedNodes: [{ id: "K-1", content: "x", type: "history" }],
           },
         ],
         events: ["event1"],
       }),
       createScene({
-        id: "S-003",
+        id: "S-3",
         threadDeltas: [
-          { threadId: "T-01", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "active→critical" },
+          { threadId: "T-1", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "active→critical" },
         ],
         worldDeltas: [
           {
-            entityId: "C-01",
-            addedNodes: [{ id: "K-02", content: "y", type: "belief" }],
+            entityId: "C-1",
+            addedNodes: [{ id: "K-2", content: "y", type: "belief" }],
           },
           {
-            entityId: "C-02",
-            addedNodes: [{ id: "K-03", content: "z", type: "belief" }],
+            entityId: "C-2",
+            addedNodes: [{ id: "K-3", content: "z", type: "belief" }],
           },
         ],
         events: ["event2", "event3"],
@@ -236,32 +236,32 @@ describe("detectCurrentMode", () => {
     // Create scenes with high fate to push toward H** corners
     const scenes = [
       createScene({
-        id: "S-001",
+        id: "S-1",
         threadDeltas: [
-          { threadId: "T-01", logType: "payoff", updates: [{ outcome: "yes", evidence: 4 }], volumeDelta: 1, rationale: "dormant→resolved" },
-          { threadId: "T-02", logType: "payoff", updates: [{ outcome: "yes", evidence: 4 }], volumeDelta: 1, rationale: "dormant→resolved" },
+          { threadId: "T-1", logType: "payoff", updates: [{ outcome: "yes", evidence: 4 }], volumeDelta: 1, rationale: "dormant→resolved" },
+          { threadId: "T-2", logType: "payoff", updates: [{ outcome: "yes", evidence: 4 }], volumeDelta: 1, rationale: "dormant→resolved" },
         ],
         worldDeltas: Array(10).fill({
-          entityId: "C-01",
-          addedNodes: [{ id: "K-01", content: "x", type: "history" }],
+          entityId: "C-1",
+          addedNodes: [{ id: "K-1", content: "x", type: "history" }],
         }),
         events: Array(10).fill("event"),
         systemDeltas: {
           addedNodes: Array(5).fill({
-            id: "K-01",
+            id: "K-1",
             concept: "x",
             type: "system",
           }),
           addedEdges: Array(5).fill({
-            from: "K-01",
-            to: "K-02",
+            from: "K-1",
+            to: "K-2",
             relation: "x",
           }),
         },
       }),
     ];
     const narrative = createNarrative(scenes);
-    const mode = detectCurrentMode(narrative, ["S-001"]);
+    const mode = detectCurrentMode(narrative, ["S-1"]);
     // With high forces all around, should be in a high corner
     expect(mode).toBeDefined();
   });
@@ -351,27 +351,27 @@ describe("initMatrixPresets", () => {
   it("adds work presets with sufficient data", () => {
     const workNarrative = createNarrative([
       createScene({
-        id: "S-001",
+        id: "S-1",
         threadDeltas: [
-          { threadId: "T-01", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "dormant→active" },
+          { threadId: "T-1", logType: "setup", updates: [{ outcome: "yes", evidence: 1 }], volumeDelta: 1, rationale: "dormant→active" },
         ],
       }),
       createScene({
-        id: "S-002",
+        id: "S-2",
         threadDeltas: [
-          { threadId: "T-01", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "escalate" },
+          { threadId: "T-1", logType: "escalation", updates: [{ outcome: "yes", evidence: 2 }], volumeDelta: 1, rationale: "escalate" },
         ],
       }),
       createScene({
-        id: "S-003",
+        id: "S-3",
         threadDeltas: [
-          { threadId: "T-01", logType: "escalation", updates: [{ outcome: "yes", evidence: 3 }], volumeDelta: 1, rationale: "critical" },
+          { threadId: "T-1", logType: "escalation", updates: [{ outcome: "yes", evidence: 3 }], volumeDelta: 1, rationale: "critical" },
         ],
       }),
       createScene({
-        id: "S-004",
+        id: "S-4",
         threadDeltas: [
-          { threadId: "T-01", logType: "payoff", updates: [{ outcome: "yes", evidence: 4 }], volumeDelta: 1, rationale: "resolve" },
+          { threadId: "T-1", logType: "payoff", updates: [{ outcome: "yes", evidence: 4 }], volumeDelta: 1, rationale: "resolve" },
         ],
       }),
     ]);
