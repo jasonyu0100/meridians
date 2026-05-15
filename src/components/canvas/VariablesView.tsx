@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { narrativeContext } from '@/lib/ai/context';
 import { resolveReasoningBudget } from '@/lib/ai/api';
@@ -466,6 +466,24 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     }
   }, [focusedArc, narrative.title, contextSource, outline, modeSection, direction, dispatch]);
 
+  // Beaker quick-action — FloatingPalette sets this flag immediately before
+  // switching to the future view; consuming it here covers the render gap
+  // (a custom event would fire before this component mounts).
+  useEffect(() => {
+    if (mode !== 'future') return;
+    let pending = false;
+    try {
+      pending = sessionStorage.getItem('inktide:pending-generate-future') === '1';
+      if (pending) sessionStorage.removeItem('inktide:pending-generate-future');
+    } catch {
+      // sessionStorage unavailable — skip
+    }
+    if (pending && !busy) generateFuture();
+    // Run once per mount in future mode; generateFuture / busy intentionally
+    // omitted from deps to avoid retriggering on every closure change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   const removeActiveScenario = () => {
     if (!activeScenario) return;
     const next = scenarios.filter((s) => s.id !== activeScenario.id);
@@ -862,7 +880,7 @@ function ReasoningOverlay({
   reasoning: string;
 }) {
   return (
-    <div className="absolute inset-0 z-20 bg-bg-base/85 backdrop-blur-[2px] overflow-y-auto">
+    <div className="absolute inset-0 z-20 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
         <div className="flex items-center gap-2 mb-4">
           <div

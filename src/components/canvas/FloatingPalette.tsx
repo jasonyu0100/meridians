@@ -6,6 +6,7 @@ import {
   IconChevronRight,
   IconClose,
   IconEdit,
+  IconFlask,
   IconList,
   IconRefresh,
   IconReset,
@@ -1139,6 +1140,32 @@ export default function FloatingPalette({
                 title="Auto mode"
               >
                 <IconAutoLoop size={14} />
+              </button>
+
+              {/* Future — jump to Future view and kick off scenario generation */}
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-blue-400 bg-blue-500/10 hover:bg-blue-500/20"
+                onClick={() => {
+                  if (access.userApiKeys && !access.hasOpenRouterKey) {
+                    window.dispatchEvent(new Event("open-api-keys"));
+                    return;
+                  }
+                  // sessionStorage flag survives the view-switch render gap;
+                  // VariablesView consumes it on mount.
+                  try {
+                    sessionStorage.setItem(
+                      "inktide:pending-generate-future",
+                      "1",
+                    );
+                  } catch {
+                    // ignore — falls back to manual regenerate
+                  }
+                  dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "future" });
+                }}
+                title="Generate future scenarios"
+              >
+                <IconFlask size={14} />
               </button>
 
               {/* Divider */}
