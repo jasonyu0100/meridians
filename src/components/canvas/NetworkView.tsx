@@ -285,7 +285,7 @@ export default function NetworkView() {
             // weight so dominant adjacent edges stay dominant. Non-touching:
             // collapse to a near-invisible field that lets the focal cluster
             // breathe.
-            return touches ? Math.max(0.55, opacityFor(l.weight) + 0.2) : 0.04;
+            return touches ? Math.max(0.35, opacityFor(l.weight) + 0.15) : 0.03;
           });
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
           .attr('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.15));

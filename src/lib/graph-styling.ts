@@ -15,7 +15,7 @@
 export function edgeOpacityFor(t: number): number {
   const clamped = Math.max(0, Math.min(1, t));
   const gamma = Math.pow(clamped, 0.55);
-  return 0.10 + gamma * 0.70; // floor 0.10 → ceiling 0.80
+  return 0.06 + gamma * 0.42; // floor 0.06 → ceiling 0.48 — subtle by design
 }
 
 export function edgeWidthFor(t: number): number {
