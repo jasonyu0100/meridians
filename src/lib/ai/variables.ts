@@ -220,10 +220,17 @@ export function renderVariablesContextBlock(
 
 const EXTRACT_PRESENT_SYSTEM = `You name the load-bearing dynamic variables driving THIS arc — the levers whose movement most reshapes the trajectory. The arc's own basis vector set; no catalogue carries across arcs.
 
-DISCIPLINES.
-  • SURFACE vs SUBSTRATE. Variables name FORCES, not symptoms. Symptoms are what becomes visible (prices fall, characters argue, a study gets cited); forces are what cascade to produce them. Reach one layer below the visible.
-  • PIVOT CHECK. Read the arc's ending state. If it describes a fundamental shift — regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, one-way institutional/technological change — variables model the POST-shift situation. Pre-shift variables are history.
-  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world (an artifact's lore, an institution's charter, a method's assumptions, a regime's reaction function). Their world-graph nodes define what's POSSIBLE here. An unactivated mechanism is a strong variable candidate.
+REGISTER FIRST — what kind of work is this, and what KIND of force is load-bearing here?
+Identify the substrate from the context (outline, mode, roster, threads, prose profile). Then frame variables accordingly:
+  • NARRATIVE / FICTION — dramatic forces: character commitments, thread pressures, world reveals, alliance dynamics.
+  • SIMULATION — rule-driven forces: rule activations, threshold proximity, agent stances under the rule set, propagation regimes.
+  • PAPER / ESSAY / ARGUMENT — argumentative / evidentiary / methodological forces: live claims, methodological commitments, evidentiary pressures, counterposition reach, scope tension, sources contested, theoretical assumptions binding.
+Variables read in the register's native vocabulary. A paper's variables don't name "antagonist pressure"; a wargame's variables don't name "thesis tension". The substrate decides the form.
+
+DISCIPLINES (universal across registers).
+  • SURFACE vs SUBSTRATE. Variables name FORCES, not symptoms. Symptoms are what becomes visible (prices fall, characters argue, a study gets cited, a method gets criticised); forces are what cascade to produce them. Reach one layer below the visible.
+  • PIVOT CHECK. Read the arc's ending state. If it describes a fundamental shift — regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, methodological reframe that supersedes prior claims, one-way institutional/technological change — variables model the POST-shift situation. Pre-shift variables are history.
+  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world (an artifact's lore in fiction, a method's assumptions in argument, a regime's reaction function in simulation, an institution's charter anywhere). Their world-graph nodes define what's POSSIBLE here. An unactivated mechanism / unused method / unaddressed source is a strong variable candidate.
 
 What earns a place.
   • CONTINUATION — forces already firing, actively driving the present moment.
@@ -377,31 +384,39 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
 
 // ── Planning scenarios — each with its own custom variable set ────────────
 
-const SCENARIO_GENERATION_SYSTEM = `You generate a cohort of PLAUSIBLE ALTERNATIVE FUTURES for the next arc. All scenarios share ONE common POOL of variables. Each scenario is a different COORDINATION over that pool — its specific pattern of intensities.
+const SCENARIO_GENERATION_SYSTEM = `You generate a cohort of plausible alternative CONTINUATIONS for the next arc. All scenarios share ONE common POOL of variables. Each scenario is a different COORDINATION over that pool — its specific pattern of intensities.
 
-DISCIPLINES.
-  • SURFACE vs SUBSTRATE. Pool variables name FORCES, not symptoms. Symptoms are visible (prices fall, characters argue, a study gets retracted); forces are what cascade to produce them. Reach one layer below the visible.
-  • PIVOT CHECK. If the arc ends at a discontinuity (regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, one-way institutional/technological change), the cohort branches FROM the post-shift situation. A scenario in which the pivot didn't happen is mis-specified.
-  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world. Their world-graph nodes define what's POSSIBLE. An unactivated mechanism is a strong variable candidate; mechanism activation across scenarios is exactly the coordination signature this engine exists to model.
+REGISTER FIRST — what kind of work is this, and what does "continuation" mean here?
+Identify the substrate from the context (outline, mode, roster, threads, prose profile). Then frame the cohort accordingly:
+  • NARRATIVE / FICTION — story register (novel, screenplay, drama). Continuations are what HAPPENS NEXT: thread pivots, character commitments, scene-level inflections, world reveals.
+  • SIMULATION — rule-driven scenario register (wargame, economic / pandemic / climate model, historical counterfactual, agent-based study, LitRPG / cultivation under explicit world rules). Continuations are what the MODELLED SYSTEM does next under the rule set: state transitions, threshold crossings, rule-driven outcomes, agent reactions.
+  • PAPER / ESSAY / ARGUMENT / IDEA — non-fiction register (research paper, essay, reportage, case study, working note). Continuations are NEW DIRECTIONS the argument / inquiry / piece could take: new claims to advance, counter-arguments to engage, scope shifts, methodological pivots, sister-questions opened, follow-up studies, evidence to incorporate, objections to anticipate. NOT "what happens next in the simulated world" — there is no simulated world. The continuation is intellectual / argumentative motion, not causal-event motion.
+The cohort frames itself in the register the substrate actually is. A paper does not get a "load-bearing actor reverses" cohort; a wargame does not get a "scope shift in argument" cohort. Mixed-register works (a thinkpiece that uses a thought-experiment scenario inside it) pick the register the CURRENT arc is sitting in.
+
+DISCIPLINES (universal across registers).
+  • SURFACE vs SUBSTRATE. Pool variables name FORCES, not symptoms. Symptoms are visible (prices fall, a study gets cited, a character argues); forces are what cascade to produce them. Reach one layer below the visible.
+  • PIVOT CHECK. If the arc ends at a discontinuity — regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, methodological reframe that supersedes prior claims, one-way institutional/technological change — the cohort branches FROM the post-shift situation. A scenario in which the pivot didn't happen is mis-specified.
+  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world. In fiction these are powers and lore; in simulation they are the rule set itself; in argument they are methods, sources, theoretical commitments. Their world-graph nodes define what's POSSIBLE. An unactivated mechanism / unused method / unaddressed source is a strong variable candidate.
 
 THE SHAPE OF REALITY — power-law, not gradualism.
-Real futures distribute power-law: many cluster near modal continuation (substrate barely moves, a few intensities shift), a few rupture (a low-prior mechanism fires, an attractor catches, a load-bearing actor reverses). The world is mostly still, then changes overnight. The cohort should match the SHAPE of the distribution it's drawn from — not be forced toward gradualism, not be forced toward diversity. Let the situation govern the cohort: tight possibility space → tight cohort; bimodal possibility space → most scenarios near one mode, a few near the other; fat-tailed → a few extreme tails sit alongside the cluster. The probabilities (below) carry the rarity; intensity carries the magnitude.
+Real continuations distribute power-law: many cluster near modal continuation (substrate barely moves, a few intensities shift), a few rupture (a low-prior mechanism fires, an attractor catches, a load-bearing actor reverses, a paradigm break lands). The world is mostly still, then changes overnight; a paper mostly extends its thesis, then occasionally pivots into a counter-claim or a new methodology. The cohort should match the SHAPE of the distribution it's drawn from — not be forced toward gradualism, not be forced toward diversity. Let the situation govern the cohort: tight possibility space → tight cohort; bimodal → most scenarios near one mode, a few near the other; fat-tailed → a few extreme tails sit alongside the cluster. Probabilities (below) carry the rarity; intensity carries the magnitude.
 
 PROBABILITIES — RELATIVE, FULL RANGE.
 Displayed probability is softmax over priorLogits ACROSS THIS COHORT. No absolute scale. Two consequences:
   1. The cohort is a REPRESENTATIVE SAMPLE — not exhaustive. More scenarios fragments probability mass.
   2. Score relative to siblings, USE THE FULL [-4, +4] RANGE. A genuine tail event sits at -3/-4; a strongly-favoured continuation sits at +3/+4. Compressed scores collapse the softmax to uniform and erase information.
-PriorLogit is INDEPENDENT of intensity. A high-intensity earthquake can be high-prior if evidence supports it; a low-intensity continuation can be low-prior if it conflicts with the trajectory. Score the coordination's plausibility, not its amplitude.
+PriorLogit is INDEPENDENT of intensity. A high-intensity rupture can be high-prior if evidence supports it; a low-intensity continuation can be low-prior if it conflicts with the trajectory. Score the coordination's plausibility, not its amplitude.
 
 PIPELINE.
-  1. PIVOT CHECK on the arc's ending state.
-  2. Read mechanisms in the roster's artifacts and key-actor world-graphs.
-  3. Design the SHARED POOL — load-bearing forces only, substrate-level, orthogonal, dynamic.
-  4. Name 2–4 ORTHOGONAL AXES OF VARIATION that span the possibility space (e.g. axes of stance, timing, locus, magnitude — pick what the situation actually has, don't copy generic axes).
-  5. Draft scenarios as positions in axis space. Each is SELF-COHERENT, MEANINGFULLY DISTINCT (different axis position), and earns its place. Do not draft scenarios first and check coverage after; design the axes first.
-  6. Score priorLogits relative to the cohort, full range.
+  1. REGISTER RECOGNITION. What kind of work is this, what does continuation MEAN here?
+  2. PIVOT CHECK on the arc's ending state.
+  3. Read mechanisms in the roster's artifacts and key-actor world-graphs.
+  4. Design the SHARED POOL — load-bearing forces only, substrate-level, orthogonal, dynamic. Forces should be in the register's vocabulary: dramatic in fiction, rule-driven in simulation, argumentative / methodological / evidentiary in papers.
+  5. Name 2–4 ORTHOGONAL AXES OF VARIATION that span the possibility space (e.g. stance, timing, locus, magnitude in narrative; threshold, regime, intervention, time-horizon in simulation; scope, method, evidence type, counterposition in argument — pick what the situation actually has, don't copy generic axes).
+  6. Draft scenarios as positions in axis space. Each is SELF-COHERENT, MEANINGFULLY DISTINCT (different axis position), and earns its place. Do not draft scenarios first and check coverage after; design the axes first.
+  7. Score priorLogits relative to the cohort, full range.
 
-Each scenario carries: name (short phrase), tagline (one sentence), activations (variableId + intensity 1–4, omit 0), priorLogit ∈ [-4, +4], priorRationale (one sentence).
+Each scenario carries: name (short phrase), tagline (one sentence — in the work's own voice; for a paper this reads like a section heading, for fiction like a chapter epigraph, for simulation like a scenario name), activations (variableId + intensity 1–4, omit 0), priorLogit ∈ [-4, +4], priorRationale (one sentence).
 
 Output strict JSON:
 {
@@ -601,9 +616,11 @@ const RESCORE_SCENARIO_SYSTEM = `You re-evaluate the plausibility of ONE scenari
    -2  needs a specific catalyst
    -4  decisive evidence against / rare tail conditions
 
-DISCIPLINES.
+REGISTER FIRST. Identify the substrate (story / simulation / paper-essay-argument). Score continuations in the register's own vocabulary — a paper's "next direction" is argumentative / methodological / evidentiary motion, not causal-event motion in a simulated world.
+
+DISCIPLINES (universal).
   • SURFACE vs SUBSTRATE. Score coordinations of FORCES, not symptoms. A scenario built from symptoms reads as low signal regardless of intensities.
-  • PIVOT CHECK. If the arc ends at a discontinuity, a scenario that implicitly denies the pivot is mis-specified — score sharply low and say so.
+  • PIVOT CHECK. If the arc ends at a discontinuity (regime shift, paradigm break, methodological reframe), a scenario that implicitly denies the pivot is mis-specified — score sharply low and say so.
   • POWER-LAW. Rare-but-pivotal scenarios are real. Don't penalise low intensity merely because it's quiet, and don't penalise rupture merely because it's unusual. Score what the evidence supports.
 
 Probabilities are RELATIVE — softmax over priorLogits across this scenario and its siblings. Place this scenario in its right RELATIVE position; don't drift toward 0. Use the full [-4, +4] range when the coordination genuinely lands there.

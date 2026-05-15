@@ -41,20 +41,20 @@ export function buildDirectionFromScenario(
 
   const tagline = scenario.tagline ? `\nTagline: ${scenario.tagline}` : "";
   const rationale = scenario.priorRationale
-    ? `\nWhy this future is plausible: ${scenario.priorRationale}`
+    ? `\nWhy this continuation is plausible: ${scenario.priorRationale}`
     : "";
 
   let direction = `SCENARIO: ${scenario.name}${tagline}${rationale}
 
 PRIMARY GUIDANCE — VARIABLE COORDINATION
-This arc continuation must enact the following coordination of variables. Each named force should be expressed at its specified intensity through scene events, character choices, thread movements, and world deltas. The variables are the spine — let them shape what happens.
+This arc continuation must enact the following coordination of variables. Each named force should be expressed at its specified intensity in the form the work's register actually carries — scene events and character choices in fiction; rule activations and modelled state transitions in simulation; claims advanced, sources engaged, counter-arguments addressed, and methodological commitments shifted in a paper or essay. The variables are the spine — let them shape what the arc DOES, in whatever way that register registers "doing".
 
 ${variablesBlock}
 
-Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) should be a clear inflection driver across multiple scenes; intensity 4 (extreme) should reshape the arc; intensity 1 (weak) should be a background hint.`;
+Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) is a clear inflection driver across multiple scenes; intensity 4 (extreme) reshapes the arc; intensity 1 (weak) is a background hint.`;
 
   if (overallDirection?.trim()) {
-    direction = `STORY DIRECTION (steer the broader narrative toward this): ${overallDirection.trim()}\n\n${direction}`;
+    direction = `OVERALL DIRECTION (steer the broader work toward this): ${overallDirection.trim()}\n\n${direction}`;
   }
   if (constraintsPrompt?.trim()) {
     direction += `\n\nCONSTRAINTS (DO NOT do any of the following): ${constraintsPrompt.trim()}`;
