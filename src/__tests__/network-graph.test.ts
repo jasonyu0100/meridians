@@ -339,6 +339,91 @@ describe("aggregateNetworkGraph", () => {
     expect(network.graphCount).toBe(1);
     expect(network.nodes.find((n) => n.id === "C-1")!.firstSeenIndex).toBe(0);
   });
+
+  test("within-step edge dedup: same pair declared twice in one scene weights as one", () => {
+    const narrative = makeNarrative({
+      characters: { "C-1": makeCharacter("C-1"), "C-2": makeCharacter("C-2") },
+      scenes: {
+        "S-1": makeScene({
+          id: "S-1",
+          attributions: ["C-1", "C-2"],
+          attributionEdges: [
+            { from: "C-1", to: "C-2", relation: "develops" },
+            // Same pair (any direction, any relation) shouldn't double-weight
+            { from: "C-2", to: "C-1", relation: "causes" },
+            { from: "C-1", to: "C-2", relation: "develops" },
+          ],
+        }),
+      },
+    });
+    const network = aggregateNetworkGraph(narrative);
+    expect(network.edges).toHaveLength(1);
+    expect(network.edges[0].weight).toBe(1);
+  });
+
+  test("edge weight accumulates ONE per step, regardless of within-step repeats", () => {
+    const narrative = makeNarrative({
+      characters: { "C-1": makeCharacter("C-1"), "C-2": makeCharacter("C-2") },
+      scenes: {
+        "S-1": makeScene({
+          id: "S-1",
+          attributionEdges: [
+            { from: "C-1", to: "C-2", relation: "develops" },
+            { from: "C-1", to: "C-2", relation: "develops" }, // dup within step
+          ],
+        }),
+        "S-2": makeScene({
+          id: "S-2",
+          attributionEdges: [{ from: "C-1", to: "C-2", relation: "causes" }],
+        }),
+        "S-3": makeScene({
+          id: "S-3",
+          attributionEdges: [{ from: "C-2", to: "C-1", relation: "enables" }],
+        }),
+      },
+    });
+    const network = aggregateNetworkGraph(narrative);
+    expect(network.edges).toHaveLength(1);
+    // Three distinct steps wired the pair → weight 3.
+    expect(network.edges[0].weight).toBe(3);
+  });
+
+  test("network edge surfaces accumulated relation set", () => {
+    const narrative = makeNarrative({
+      characters: { "C-1": makeCharacter("C-1") },
+      threads: { "T-1": makeThread("T-1") },
+      scenes: {
+        "S-1": makeScene({
+          id: "S-1",
+          attributionEdges: [{ from: "C-1", to: "T-1", relation: "develops" }],
+        }),
+        "S-2": makeScene({
+          id: "S-2",
+          attributionEdges: [{ from: "T-1", to: "C-1", relation: "causes" }],
+        }),
+      },
+    });
+    const network = aggregateNetworkGraph(narrative);
+    expect(network.edges).toHaveLength(1);
+    expect(network.edges[0].relations).toBeDefined();
+    expect(new Set(network.edges[0].relations)).toEqual(
+      new Set(["develops", "causes"]),
+    );
+  });
+
+  test("self-loop edges are dropped", () => {
+    const narrative = makeNarrative({
+      characters: { "C-1": makeCharacter("C-1") },
+      scenes: {
+        "S-1": makeScene({
+          id: "S-1",
+          attributionEdges: [{ from: "C-1", to: "C-1", relation: "develops" }],
+        }),
+      },
+    });
+    const network = aggregateNetworkGraph(narrative);
+    expect(network.edges).toHaveLength(0);
+  });
 });
 
 describe("classifyTiers", () => {
