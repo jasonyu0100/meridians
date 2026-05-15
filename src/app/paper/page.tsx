@@ -1295,65 +1295,161 @@ const DENSITY_TIERS = [
 
 /* ── Navigation items ────────────────────────────────────────────────────── */
 
-const NAV = [
-  { id: "abstract", label: "Abstract" },
-  { id: "problem", label: "The Problem" },
-  { id: "approach", label: "Approach" },
-  { id: "hierarchy", label: "Hierarchy" },
-  { id: "forces", label: "Forces" },
-  { id: "fate-engine", label: "Fate Engine" },
-  { id: "validation", label: "Validation" },
-  { id: "grading", label: "Grading" },
-  { id: "embeddings", label: "Embeddings" },
-  { id: "planning", label: "Causal Reasoning" },
-  { id: "variables", label: "Variable Scenarios" },
-  { id: "research", label: "Research Methods" },
-  { id: "prose-profiles", label: "Prose Profiles" },
-  { id: "markov", label: "Markov Chains" },
-  { id: "revision", label: "Revision" },
-  { id: "classification", label: "Classification" },
-  { id: "economics", label: "Economics" },
-  { id: "open-source", label: "Open Source" },
-  { id: "coming-soon", label: "Coming Soon" },
+const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: string }> }> = [
+  {
+    label: "Frame",
+    items: [
+      { id: "abstract", label: "Abstract" },
+      { id: "problem", label: "The Problem" },
+      { id: "approach", label: "Approach" },
+    ],
+  },
+  {
+    label: "Foundations",
+    items: [
+      { id: "hierarchy", label: "Hierarchy" },
+      { id: "forces", label: "Forces" },
+      { id: "fate-engine", label: "Fate Engine" },
+    ],
+  },
+  {
+    label: "Validation",
+    items: [
+      { id: "validation", label: "Validation" },
+      { id: "grading", label: "Grading" },
+    ],
+  },
+  {
+    label: "Querying",
+    items: [
+      { id: "embeddings", label: "Embeddings" },
+      { id: "classification", label: "Classification" },
+      { id: "research", label: "Research Methods" },
+    ],
+  },
+  {
+    label: "Generation",
+    items: [
+      { id: "planning", label: "Causal Reasoning" },
+      { id: "variables", label: "Variable Scenarios" },
+    ],
+  },
+  {
+    label: "Prose",
+    items: [
+      { id: "prose-profiles", label: "Prose Profiles" },
+      { id: "markov", label: "Markov Chains" },
+    ],
+  },
+  {
+    label: "Iteration",
+    items: [{ id: "revision", label: "Revision" }],
+  },
+  {
+    label: "Meta",
+    items: [
+      { id: "economics", label: "Economics" },
+      { id: "open-source", label: "Open Source" },
+      { id: "coming-soon", label: "Coming Soon" },
+    ],
+  },
 ];
+
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 /* ── Side timeline nav ───────────────────────────────────────────────────── */
 
 function TimelineNav({ activeId }: { activeId: string }) {
+  // Find which group contains the active section so we can auto-expand it
+  // even after the user has manually collapsed others.
+  const activeGroupLabel = NAV_GROUPS.find((g) =>
+    g.items.some((it) => it.id === activeId),
+  )?.label;
+
+  // Start with only the active group expanded; the user can toggle the rest.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const g of NAV_GROUPS) init[g.label] = g.label === activeGroupLabel;
+    return init;
+  });
+
+  // Auto-expand whichever group the active section belongs to (so scrolling
+  // into a collapsed group opens it). Doesn't auto-collapse anything else.
+  useEffect(() => {
+    if (!activeGroupLabel) return;
+    setOpenGroups((prev) =>
+      prev[activeGroupLabel] ? prev : { ...prev, [activeGroupLabel]: true },
+    );
+  }, [activeGroupLabel]);
+
   return (
-    <nav className="hidden xl:flex flex-col gap-0 fixed top-1/2 -translate-y-1/2 left-[max(2rem,calc((100vw-56rem)/2-14rem))]">
-      {NAV.map(({ id, label }, i) => {
-        const active = id === activeId;
+    <nav className="hidden xl:flex flex-col gap-1 fixed top-1/2 -translate-y-1/2 left-[max(2rem,calc((100vw-56rem)/2-14rem))] max-h-[80vh] overflow-y-auto pr-2">
+      {NAV_GROUPS.map((group) => {
+        const isOpen = !!openGroups[group.label];
+        const groupActive = group.label === activeGroupLabel;
         return (
-          <a
-            key={id}
-            href={`#${id}`}
-            className="group flex items-center gap-3 py-2.5 transition-colors"
-          >
-            {/* Dot + line */}
-            <div className="relative flex flex-col items-center w-2">
-              <div
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                  active
-                    ? "bg-white/70 scale-125"
-                    : "bg-white/15 group-hover:bg-white/30"
-                }`}
-              />
-              {i < NAV.length - 1 && (
-                <div className="w-px h-6 bg-white/8 mt-0.5" />
-              )}
-            </div>
-            {/* Label */}
-            <span
-              className={`text-[11px] font-mono transition-colors duration-200 whitespace-nowrap ${
-                active
-                  ? "text-white/60"
-                  : "text-white/15 group-hover:text-white/35"
-              }`}
+          <div key={group.label} className="flex flex-col">
+            <button
+              type="button"
+              onClick={() =>
+                setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))
+              }
+              className="group flex items-center gap-2 py-1.5 select-none"
             >
-              {label}
-            </span>
-          </a>
+              <span
+                className={`text-[8px] font-mono leading-none transition-transform duration-200 ${
+                  isOpen ? "rotate-90" : ""
+                } ${groupActive ? "text-white/55" : "text-white/25 group-hover:text-white/45"}`}
+              >
+                ▶
+              </span>
+              <span
+                className={`text-[10px] font-mono uppercase tracking-[0.18em] transition-colors ${
+                  groupActive
+                    ? "text-white/65"
+                    : "text-white/30 group-hover:text-white/50"
+                }`}
+              >
+                {group.label}
+              </span>
+            </button>
+            {isOpen && (
+              <div className="flex flex-col gap-0 ml-1.5">
+                {group.items.map(({ id, label }, i) => {
+                  const active = id === activeId;
+                  return (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      className="group flex items-center gap-3 py-1.5 transition-colors"
+                    >
+                      <div className="relative flex flex-col items-center w-2">
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                            active
+                              ? "bg-white/70 scale-125"
+                              : "bg-white/15 group-hover:bg-white/30"
+                          }`}
+                        />
+                        {i < group.items.length - 1 && (
+                          <div className="w-px h-4 bg-white/8 mt-0.5" />
+                        )}
+                      </div>
+                      <span
+                        className={`text-[11px] font-mono transition-colors duration-200 whitespace-nowrap ${
+                          active
+                            ? "text-white/60"
+                            : "text-white/15 group-hover:text-white/35"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         );
       })}
     </nav>
