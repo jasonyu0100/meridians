@@ -325,7 +325,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                     Auto-clear after use
                   </span>
                   <span className="text-[9px] text-text-dim/50">
-                    Clear Story Direction + Constraints after they guide a scene generation, and World Direction after it guides a world expansion. Default on — prevents a one-off steer from silently shaping every subsequent run. Narrative Guidance is unaffected.
+                    Clear Story Direction + Constraints after they guide a scene generation, and World Direction after it guides a world expansion. Default on — prevents a one-off steer from silently shaping every subsequent run.
                   </span>
                 </div>
                 <button
@@ -337,21 +337,6 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                 >
                   <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${settings.autoClearDirection ? 'left-3.5' : 'left-0.5'}`} />
                 </button>
-              </div>
-
-              <div>
-                <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-                  Narrative Guidance
-                </label>
-                <textarea
-                  value={settings.narrativeGuidance}
-                  onChange={(e) => update({ narrativeGuidance: e.target.value })}
-                  placeholder={"e.g. \"Keep the opening scope local — academy, village, immediate survival. Don't sprawl into multi-faction politics until the first arc has paid off.\n\nThe protagonist wins through knowledge and shamelessness, not hidden power.\""}
-                  className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-32"
-                />
-                <p className="text-[9px] text-text-dim/50 mt-1">
-                  Editorial principles — scope discipline, reveal pacing, tonal rules. These override default generation instincts.
-                </p>
               </div>
             </>
           )}

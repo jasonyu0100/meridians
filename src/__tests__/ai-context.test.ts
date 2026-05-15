@@ -307,14 +307,6 @@ describe('buildStorySettingsBlock', () => {
     expect(block).toContain('<story-constraints');
     expect(block).toContain('No character deaths');
   });
-  it('includes narrative guidance when set', () => {
-    const n = createMinimalNarrative({
-      storySettings: { ...DEFAULT_STORY_SETTINGS, narrativeGuidance: 'Keep scenes tight and focused' },
-    });
-    const block = buildStorySettingsBlock(n);
-    expect(block).toContain('<narrative-guidance');
-    expect(block).toContain('tight and focused');
-  });
 });
 // ── sceneContext ─────────────────────────────────────────────────────────────
 describe('sceneContext', () => {

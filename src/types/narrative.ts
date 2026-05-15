@@ -1951,8 +1951,6 @@ export type StorySettings = {
   worldFocus: WorldFocusMode;
   /** Specific WorldBuild ID when worldFocus is 'custom' */
   worldFocusId?: string;
-  /** Editorial guidance — storytelling principles that shape how the narrative is told (scope, pacing philosophy, reveal discipline, tonal rules) */
-  narrativeGuidance: string;
   /** Default world expansion strategy — depth deepens the existing sandbox, breadth widens the map, dynamic auto-selects based on metrics */
   expansionStrategy: "depth" | "breadth" | "dynamic";
   /** Reasoning effort — how much thinking the model does before responding. Higher = better structural decisions, slower generation. */
@@ -2031,7 +2029,6 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   planGuidance: "",
   coverPrompt: "",
   worldFocus: "none",
-  narrativeGuidance: "",
   expansionStrategy: "dynamic",
   reasoningLevel: "low",
   beatProfilePreset: "",

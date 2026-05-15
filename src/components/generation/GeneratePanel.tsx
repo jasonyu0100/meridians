@@ -273,7 +273,7 @@ export function GeneratePanel({
   // the autoClearDirection setting (on by default). Prevents a one-off steer
   // from silently shaping every subsequent run without the user re-opting in.
   // Scene generation clears storyDirection + storyConstraints; world expansion
-  // clears worldDirection. Narrative Guidance is intentionally never cleared.
+  // clears worldDirection.
 
   const clearSceneDirectionAfterUse = useCallback(() => {
     const s = narrative?.storySettings;

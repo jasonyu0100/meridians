@@ -454,12 +454,6 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
       `<story-constraints hint="Do NOT do any of the following.">${s.storyConstraints.trim()}</story-constraints>`,
     );
   }
-  if (s.narrativeGuidance.trim()) {
-    elements.push(
-      `<narrative-guidance hint="Editorial principles. Override default instincts.">${s.narrativeGuidance.trim()}</narrative-guidance>`,
-    );
-  }
-
   // Patterns / anti-patterns
   if (n.patterns && n.patterns.length > 0) {
     const items = n.patterns.map((p) => `  <pattern>${p}</pattern>`).join('\n');
