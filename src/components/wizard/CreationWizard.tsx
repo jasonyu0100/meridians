@@ -9,6 +9,7 @@ import { generateNarrative } from "@/lib/ai/world";
 import { suggestPremise } from "@/lib/ai/premise";
 import { useStore } from "@/lib/store";
 import { useWizard } from "@/lib/wizard-context";
+import { Modal } from "@/components/Modal";
 import type {
   CharacterSketch,
   LocationSketch,
@@ -187,11 +188,18 @@ export function CreationWizard() {
 
   if (!wizardState.isOpen) return null;
 
+  const closeWizard = () => wizardDispatch({ type: "CLOSE" });
+
   // ── Generate view ────────────────────────────────────────────────────
   if (isGenerating) {
     return (
-      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div className="glass max-w-2xl w-full rounded-2xl p-6 relative">
+      <Modal
+        onClose={loading ? () => {} : closeWizard}
+        size="2xl"
+        maxHeight="85vh"
+        panelClassName="glass"
+      >
+        <div className="p-6">
           <div className="flex flex-col gap-5">
             {loading ? (
               <div className="flex flex-col gap-3">
@@ -247,17 +255,17 @@ export function CreationWizard() {
             </div>
           </div>
         </div>
-      </div>
+      </Modal>
     );
   }
 
   // ── Step 2: Details view ───────────────────────────────────────────
   if (isDetails) {
     return (
-      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div className="glass max-w-2xl w-full rounded-2xl p-6 relative">
+      <Modal onClose={closeWizard} size="2xl" maxHeight="85vh" panelClassName="glass">
+        <div className="p-6 relative">
           <button
-            onClick={() => wizardDispatch({ type: "CLOSE" })}
+            onClick={closeWizard}
             className="absolute top-4 right-4 text-text-dim hover:text-text-primary text-lg leading-none"
           >
             &times;
@@ -513,16 +521,16 @@ export function CreationWizard() {
             </div>
           </div>
         </div>
-      </div>
+      </Modal>
     );
   }
 
   // ── Step 1: Title & Premise ────────────────────────────────────────
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="glass max-w-2xl w-full rounded-2xl p-6 relative">
+    <Modal onClose={closeWizard} size="2xl" maxHeight="85vh" panelClassName="glass">
+      <div className="p-6 relative">
         <button
-          onClick={() => wizardDispatch({ type: "CLOSE" })}
+          onClick={closeWizard}
           className="absolute top-4 right-4 text-text-dim hover:text-text-primary text-lg leading-none"
         >
           &times;
@@ -610,6 +618,6 @@ export function CreationWizard() {
 
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
