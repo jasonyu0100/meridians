@@ -67,7 +67,15 @@ const CRAFT_DOCTRINE = `
       <constraint id="world">The POV perceives only what its senses and existing knowledge allow. New world deltas arrive through specific moments in the scene; not referenced before established.</constraint>
       <constraint id="threads">Each thread shift lands at a specific moment. Action, naming, statement, image — whichever the profile calls for.</constraint>
       <constraint id="system">New system concepts arrive with grounding — demonstration, citation, consequence, worked example, or framing. What counts as "earning" is register-dependent.</constraint>
-    </three-continuity-constraints>`;
+    </three-continuity-constraints>
+
+    <no-raw-ids critical="true">
+      <rule>NEVER write an engine identifier into prose. Forbidden tokens: any "PREFIX-NUMBER" form — C-N, L-N, T-N, A-N, S-N, ARC-N, K-N, SYS-N, SYS-GEN-N. These are bookkeeping slugs, not language.</rule>
+      <rule>Where the scene context surfaces a system node as <code>id="SYS-N"</code> with a concept, render the CONCEPT as in-world language ("the moonlight-wolf coaxing technique", "the assessment-cycle rule", "the propagation law that gates retaliation") — never the slug.</rule>
+      <rule>Same for threads, characters, locations, artifacts: lift the NAME (or the question the thread is about). The ID is metadata; the concept is the world.</rule>
+      <example type="bad">"He invoked SYS-12 to overrule the ruling."</example>
+      <example type="good">"He invoked the elder-precedence rule to overrule the ruling."</example>
+    </no-raw-ids>`;
 
 export function buildProseInstructionsWithPlan(args: { wordsPerBeat: number }): string {
   const { wordsPerBeat } = args;

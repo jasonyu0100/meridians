@@ -48,7 +48,13 @@ ${inputBlocks}
 ${priorities}
 </integration-hierarchy>
 
-<summary-discipline>The summary IS the delta budget. Write the summary so every intended delta has a source sentence — every entity-change, rule-surfacing, thread-move, and off-screen-affected party traceable to a sentence. Use NAMES not IDs. Under-tagging is the dominant failure mode.</summary-discipline>
+<summary-discipline>The summary IS the delta budget. Write the summary so every intended delta has a source sentence — every entity-change, rule-surfacing, thread-move, and off-screen-affected party traceable to a sentence. Under-tagging is the dominant failure mode.
+  <rule name="no-raw-ids" critical="true">NEVER echo engine identifiers in summary prose. Forbidden tokens: any "PREFIX-NUMBER" form — C-N, L-N, T-N, A-N, S-N, ARC-N, K-N, SYS-N, SYS-GEN-N, etc. The summary is read by downstream prose and plan stages as the authoritative scene brief; an ID slug inside prose ("using SYS-98", "via T-12") leaks engine bookkeeping into the rendered text. Translate every reference to its in-world name or concept:
+    <example bad="Using techniques from SYS-98 (Moonlight Wolf Gu larvae coaxing), Chun coaxes three larvae." good="Using the moonlight-wolf coaxing technique, Chun coaxes three larvae." />
+    <example bad="The market on T-12 escalated when Fang Yuan revealed the timeline." good="The question of whether the sect would commit to early defence escalated when Fang Yuan revealed the timeline." />
+    Structured ID fields (systemAttributions, participantIds, threadDeltas.threadId, etc.) carry the IDs separately — that is where they belong, never inside summary prose.
+  </rule>
+</summary-discipline>
 
 <non-repetition critical="true" hint="Scenes must each commit something the prior scenes did not. Read <scene-history> before emitting; cross-check every scene you draft against the most recent ~6-8 entries.">
   <check name="beat-shape">Two scenes with the same beat shape (same POV reflecting, same confrontation, same revelation, same task-completion) is repetition unless the recurrence is itself the point (a refrain, a ritual, a deliberate echo). Default: VARY the shape.</check>
