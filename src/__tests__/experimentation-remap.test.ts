@@ -628,7 +628,7 @@ describe('remapScenarioCommit — system node (SYS) collisions', () => {
         ],
         addedEdges: [{ from: 'SYS-1', to: 'SYS-999', relation: 'constrains' }],
       },
-      systemAttributions: ['SYS-1', 'SYS-999'],
+      attributions: ['SYS-1', 'SYS-999'],
     });
 
     const out = remapScenarioCommit(makeArc('ARC-1'), [scene], taken);
@@ -639,8 +639,8 @@ describe('remapScenarioCommit — system node (SYS) collisions', () => {
     expect(out.scenes[0].systemDeltas!.addedEdges[0].from).toBe(newSysId);
     // SYS-999 isn't in the payload — passes through.
     expect(out.scenes[0].systemDeltas!.addedEdges[0].to).toBe('SYS-999');
-    expect(out.scenes[0].systemAttributions).toContain(newSysId);
-    expect(out.scenes[0].systemAttributions).toContain('SYS-999');
+    expect(out.scenes[0].attributions).toContain(newSysId);
+    expect(out.scenes[0].attributions).toContain('SYS-999');
   });
 });
 

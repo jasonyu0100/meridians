@@ -1,13 +1,14 @@
 /**
- * Network graph — the cumulative activation pattern of all reasoning across
- * the narrative. Aggregates attributions from every reasoning graph (per-arc
- * and per-world-build) onto the real narrative entities/threads/system nodes.
+ * Network graph — the cumulative activation pattern across the narrative.
+ * Aggregates attributions from every scene and world-build onto the real
+ * entities/threads/system nodes. Scenes and world builds explicitly declare
+ * which IDs they structurally lean on (`scene.attributions`) and how they
+ * connect (`scene.attributionEdges`); the network walks them in timeline
+ * order and grows.
  *
  * Network nodes: characters, locations, artifacts, threads, system nodes.
- * Network edges: explicit reasoning-graph edges that connect two typed
- *   reasoning nodes (chaos / pattern / warning / reasoning are skipped — they
- *   are outside forces that influence the network without being part of it;
- *   chaos's signature shows up indirectly via the entities it spawns).
+ * Network edges: typed connections declared via attributionEdges, using the
+ *   shared CRG edge ontology (enables / constrains / requires / etc.).
  *
  * Each node carries two annotation dimensions:
  *
@@ -25,7 +26,7 @@ import type { NarrativeState } from "@/types/narrative";
 
 /** Window in graphs where freshly-introduced nodes get the "fresh" tier
  *  regardless of count. Set to 1 — only nodes first seen in the LATEST
- *  reasoning graph qualify as fresh. Wider windows preempt the hot/warm/cold
+ *  attribution step qualify as fresh. Wider windows preempt the hot/warm/cold
  *  tertile classifier in early game (3 graphs × FRESH_WINDOW=3 means every
  *  attributed node is fresh) — keeping it tight makes freshness a small,
  *  meaningful cohort. */
@@ -53,12 +54,13 @@ export type NetworkNode = {
   id: string;
   kind: NetworkNodeKind;
   label: string;
-  /** Total attributions across all aggregated reasoning graphs. */
+  /** Total attributions across every scene/world-build that referenced this id. */
   attributions: number;
-  /** Reasoning-graph index where this node first received an attribution.
-   *  -1 if the node has never been referenced. */
+  /** Attribution-step index (scene/world-build position in the timeline) where
+   *  this node first received an attribution. -1 if the node has never been
+   *  referenced. */
   firstSeenIndex: number;
-  /** Reasoning-graph index of the most recent attribution. -1 if never. */
+  /** Attribution-step index of the most recent reference. -1 if never. */
   lastSeenIndex: number;
   /** Heat snapshot — relative to the rest of the network. */
   tier: HeatTier;
@@ -71,28 +73,33 @@ export type NetworkNode = {
 export type NetworkEdge = {
   from: string;
   to: string;
-  /** Number of times an explicit reasoning-graph edge connected these two
-   *  typed nodes across the aggregated graphs. */
+  /** Number of times an attributionEdge connected these two ids across the
+   *  aggregated scenes / world builds. */
   weight: number;
 };
 
 export type NetworkGraph = {
   nodes: NetworkNode[];
   edges: NetworkEdge[];
-  /** Total number of reasoning graphs aggregated. */
+  /** Total number of attribution steps (scenes + world builds) aggregated. */
   graphCount: number;
 };
 
 // ── Aggregation ──────────────────────────────────────────────────────────────
 
 /**
- * Walk reasoning graphs in the narrative and accumulate attribution counts +
- * edges + annotations onto the real entities/threads/system nodes.
+ * Walk scenes + world builds in timeline order and accumulate attribution
+ * counts and edges onto the real entities/threads/system nodes. Each scene
+ * and world build that declares `attributions` / `attributionEdges` counts
+ * as one step in the cumulative network; ids appearing in the attribution
+ * list bump their count by one, and declared edges add weight between
+ * endpoints.
  *
  * When `resolvedKeys` + `currentIndex` are provided, aggregation is
- * PROGRESSIVE: only reasoning graphs attached to scenes / world builds at or
- * before `currentIndex` in the resolved timeline are visited. When omitted,
- * every reasoning graph in the narrative is visited.
+ * PROGRESSIVE: only scenes / world builds at or before `currentIndex` in the
+ * resolved timeline are visited. When omitted, every scene and world build
+ * in the narrative is visited (in the order they appear in their record
+ * objects — branch-aware progressive mode is the supported path).
  */
 export function aggregateNetworkGraph(
   narrative: NarrativeState,
@@ -102,61 +109,67 @@ export function aggregateNetworkGraph(
   const attributions = new Map<string, number>();
   const firstSeen = new Map<string, number>();
   const lastSeen = new Map<string, number>();
-  const attributionPerGraph = new Map<string, number[]>(); // ref → array indexed by graph
   const edgeWeights = new Map<string, number>();
 
-  let graphIndex = 0;
-  let graphCount = 0;
+  let stepIndex = 0;
+  let stepCount = 0;
 
-  const visitGraph = (graph: { nodes: ReadonlyArray<{ type: string; entityId?: string; threadId?: string; systemNodeId?: string; id: string }>; edges: ReadonlyArray<{ from: string; to: string }> }) => {
-    graphCount += 1;
-    const nodeRef = new Map<string, string>();
-
-    for (const node of graph.nodes) {
-      const ref = refOf(node);
-      if (!ref) continue;
-      nodeRef.set(node.id, ref);
+  const visitStep = (
+    attributionList: ReadonlyArray<string> | undefined,
+    edgeList: ReadonlyArray<{ from: string; to: string }> | undefined,
+  ) => {
+    if ((!attributionList || attributionList.length === 0) &&
+        (!edgeList || edgeList.length === 0)) {
+      // No attribution data on this step — skip without advancing stepIndex
+      // so empty steps don't dilute freshness windows.
+      return;
+    }
+    stepCount += 1;
+    const seenThisStep = new Set<string>();
+    for (const ref of attributionList ?? []) {
+      if (!ref || seenThisStep.has(ref)) continue;
+      seenThisStep.add(ref);
       attributions.set(ref, (attributions.get(ref) ?? 0) + 1);
-      if (!firstSeen.has(ref)) firstSeen.set(ref, graphIndex);
-      lastSeen.set(ref, graphIndex);
-      let perGraph = attributionPerGraph.get(ref);
-      if (!perGraph) {
-        perGraph = [];
-        attributionPerGraph.set(ref, perGraph);
-      }
-      perGraph[graphIndex] = (perGraph[graphIndex] ?? 0) + 1;
+      if (!firstSeen.has(ref)) firstSeen.set(ref, stepIndex);
+      lastSeen.set(ref, stepIndex);
     }
-
-    for (const edge of graph.edges) {
-      const fromRef = nodeRef.get(edge.from);
-      const toRef = nodeRef.get(edge.to);
-      if (!fromRef || !toRef || fromRef === toRef) continue;
-      const key = fromRef < toRef ? `${fromRef}|${toRef}` : `${toRef}|${fromRef}`;
+    for (const edge of edgeList ?? []) {
+      if (!edge?.from || !edge?.to || edge.from === edge.to) continue;
+      const key = edge.from < edge.to
+        ? `${edge.from}|${edge.to}`
+        : `${edge.to}|${edge.from}`;
       edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
+      // Edge endpoints that weren't in the explicit attribution list still
+      // count as referenced — declaring an edge IS attribution.
+      for (const ref of [edge.from, edge.to]) {
+        if (seenThisStep.has(ref)) continue;
+        seenThisStep.add(ref);
+        attributions.set(ref, (attributions.get(ref) ?? 0) + 1);
+        if (!firstSeen.has(ref)) firstSeen.set(ref, stepIndex);
+        lastSeen.set(ref, stepIndex);
+      }
     }
-
-    graphIndex += 1;
+    stepIndex += 1;
   };
 
-  // Decide which arcs and world builds are in scope for the current cutoff.
+  // Decide which scenes and world builds are in scope for the current cutoff.
   // In progressive mode we also collect the set of entity / system ids that
   // have actually been introduced by scenes or world builds at or before the
   // cutoff, so a later world expansion's nodes don't leak into earlier views.
   const useProgressive = resolvedKeys !== undefined && currentIndex !== undefined;
-  let timelineOrderedItems: Array<{ kind: "arc"; id: string } | { kind: "world_build"; id: string }> = [];
+  type Step =
+    | { kind: "scene"; id: string }
+    | { kind: "world_build"; id: string };
+  let timelineOrderedItems: Step[] = [];
   const introducedEntityIds = new Set<string>();
   const introducedSystemIds = new Set<string>();
 
   if (useProgressive) {
     const keysInRange = resolvedKeys!.slice(0, currentIndex! + 1);
-    const seenArcs = new Set<string>();
     for (const key of keysInRange) {
       const scene = narrative.scenes[key];
       if (scene) {
-        if (scene.arcId && !seenArcs.has(scene.arcId)) {
-          seenArcs.add(scene.arcId);
-          timelineOrderedItems.push({ kind: "arc", id: scene.arcId });
-        }
+        timelineOrderedItems.push({ kind: "scene", id: scene.id });
         for (const c of scene.newCharacters ?? []) introducedEntityIds.add(c.id);
         for (const l of scene.newLocations ?? []) introducedEntityIds.add(l.id);
         for (const a of scene.newArtifacts ?? []) introducedEntityIds.add(a.id);
@@ -176,22 +189,28 @@ export function aggregateNetworkGraph(
     }
   } else {
     timelineOrderedItems = [
-      ...Object.values(narrative.arcs).map((a) => ({ kind: "arc" as const, id: a.id })),
+      ...Object.values(narrative.scenes).map((s) => ({ kind: "scene" as const, id: s.id })),
       ...Object.values(narrative.worldBuilds).map((w) => ({ kind: "world_build" as const, id: w.id })),
     ];
   }
 
   for (const item of timelineOrderedItems) {
-    if (item.kind === "arc") {
-      const arc = narrative.arcs[item.id];
-      if (arc?.reasoningGraph) visitGraph(arc.reasoningGraph);
+    if (item.kind === "scene") {
+      const scene = narrative.scenes[item.id];
+      if (scene) visitStep(scene.attributions, scene.attributionEdges);
     } else {
       const wb = narrative.worldBuilds[item.id];
-      if (wb?.reasoningGraph) visitGraph(wb.reasoningGraph);
+      if (wb) visitStep(
+        wb.expansionManifest.attributions,
+        wb.expansionManifest.attributionEdges,
+      );
     }
   }
 
-  void attributionPerGraph; // per-graph history no longer consumed
+  // graphCount is the legacy field name; preserve it on the return so callers
+  // that already render "across N reasoning graphs" continue to work — but
+  // populate it with stepCount (scenes + world builds visited).
+  const graphCount = stepCount;
 
   // Build the raw nodes — one per real entity/thread/system node, including
   // unreferenced ones (they appear cold/isolated). In progressive mode skip
@@ -319,7 +338,7 @@ export function summarizeNetworkState(network: NetworkGraph): string {
     return "NETWORK STATE: empty.";
   }
   if (network.graphCount === 0) {
-    return `NETWORK STATE: ${network.nodes.length} nodes total, no reasoning graphs yet (everything dormant).`;
+    return `NETWORK STATE: ${network.nodes.length} nodes total, no attributions yet (everything dormant).`;
   }
 
   const buckets: Record<Force, NetworkNode[]> = { fate: [], world: [], system: [] };
@@ -346,7 +365,7 @@ export function summarizeNetworkState(network: NetworkGraph): string {
   const hubs = network.nodes.filter((n) => n.topology === "hub").length;
 
   return [
-    `NETWORK STATE — cumulative across ${network.graphCount} reasoning graph${network.graphCount === 1 ? "" : "s"}:`,
+    `NETWORK STATE — cumulative across ${network.graphCount} attribution step${network.graphCount === 1 ? "" : "s"} (scenes + world builds):`,
     cohortLine("fate", "Fate"),
     cohortLine("world", "World"),
     cohortLine("system", "System"),
@@ -355,24 +374,6 @@ export function summarizeNetworkState(network: NetworkGraph): string {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Resolve a reasoning node to its typed reference id. Returns null for
- *  chaos / pattern / warning / reasoning nodes (outside forces) and for
- *  typed nodes whose reference is missing. */
-function refOf(node: { type: string; entityId?: string; threadId?: string; systemNodeId?: string }): string | null {
-  switch (node.type) {
-    case "character":
-    case "location":
-    case "artifact":
-      return node.entityId ?? null;
-    case "fate":
-      return node.threadId ?? null;
-    case "system":
-      return node.systemNodeId ?? null;
-    default:
-      return null;
-  }
-}
 
 /** Map a network-node kind to its narrative force axis. */
 export function forceOfKind(kind: NetworkNodeKind): Force {

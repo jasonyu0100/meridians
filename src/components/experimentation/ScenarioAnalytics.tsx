@@ -615,7 +615,9 @@ export function SceneDetail({
   // — mirrors the canvas SceneDetail so attributions surface what the
   // scene is *acting on*, not what it just minted.
   const addedSystemIds = new Set((scene.systemDeltas?.addedNodes ?? []).map((n) => n.id));
-  const attributionsOnly = (scene.systemAttributions ?? []).filter((id) => !addedSystemIds.has(id));
+  const attributionsOnly = (scene.attributions ?? []).filter(
+    (id: string) => id.startsWith('SYS-') && !addedSystemIds.has(id),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -1091,7 +1093,7 @@ export function SceneDetail({
             </span>
           </h3>
           <div className="flex flex-wrap gap-1">
-            {attributionsOnly.map((attrId) => {
+            {attributionsOnly.map((attrId: string) => {
               const node = narrative.systemGraph?.nodes?.[attrId];
               const shortName = (concept: string) => {
                 const dash = concept.indexOf(' — ');

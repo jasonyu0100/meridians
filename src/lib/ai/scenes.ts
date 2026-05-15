@@ -521,6 +521,20 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
         id: charIdMap[p.id] ?? locIdMap[p.id] ?? artIdMap[p.id] ?? p.id,
       }));
     }
+    // Remap unified attribution ids (non-system kinds). SYS ids are handled
+    // by the wkIdMap pass after concept-resolution below.
+    const remapAny = (id: string): string =>
+      charIdMap[id] ?? locIdMap[id] ?? artIdMap[id] ?? threadIdMap[id] ?? id;
+    if (scene.attributions) {
+      scene.attributions = scene.attributions.map(remapAny);
+    }
+    if (scene.attributionEdges) {
+      scene.attributionEdges = scene.attributionEdges.map((e) => ({
+        from: remapAny(e.from),
+        to: remapAny(e.to),
+        relation: e.relation,
+      }));
+    }
   }
 
   // Fix world node IDs to be unique and sequential
@@ -623,18 +637,40 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
       cumulativeSysNodes[n.id] = n;
       validSysIds.add(n.id);
     }
-    // Merge re-mention attributions: nodes that the model emitted as new but
-    // collapsed into existing concepts earn an attribution on the existing
-    // node. Plus remap any explicit systemAttributions through wkIdMap so
-    // GEN-* placeholder ids resolve to the real ids.
-    const mappedExplicit = (scene.systemAttributions ?? [])
-      .map((id) => wkIdMap[id] ?? id)
-      .filter((id) => validSysIds.has(id));
-    const attrSet = new Set<string>([
-      ...mappedExplicit,
-      ...resolved.attributedExistingIds,
-    ]);
-    scene.systemAttributions = Array.from(attrSet);
+    // Walk the unified attribution list:
+    //   - SYS ids pass through wkIdMap so SYS-GEN-* placeholders become real
+    //     SYS-N. Re-mention attributions from concept-resolution (existing-
+    //     graph collapses) merge in here.
+    //   - non-SYS ids (C/L/A/T) were already remapped above against the
+    //     entity-introduction maps; pass through untouched.
+    // The result replaces scene.attributions as the canonical unified list.
+    const rawAttrs = scene.attributions ?? [];
+    const seenAttrs = new Set<string>();
+    const mergedAttrs: string[] = [];
+    const pushAttr = (id: string) => {
+      if (!id || seenAttrs.has(id)) return;
+      seenAttrs.add(id);
+      mergedAttrs.push(id);
+    };
+    for (const id of rawAttrs) {
+      if (id.startsWith('SYS-')) {
+        const mapped = wkIdMap[id] ?? id;
+        if (validSysIds.has(mapped)) pushAttr(mapped);
+      } else {
+        pushAttr(id);
+      }
+    }
+    for (const id of resolved.attributedExistingIds) pushAttr(id);
+    scene.attributions = mergedAttrs;
+    // Remap SYS edge references in scene.attributionEdges through wkIdMap so
+    // the cumulative network sees real SYS ids on both endpoints.
+    if (scene.attributionEdges) {
+      scene.attributionEdges = scene.attributionEdges.map((e) => ({
+        from: e.from.startsWith('SYS-') ? (wkIdMap[e.from] ?? e.from) : e.from,
+        to: e.to.startsWith('SYS-') ? (wkIdMap[e.to] ?? e.to) : e.to,
+        relation: e.relation,
+      }));
+    }
     // Remap edge references using the cumulative map (LLM GEN ids, prior-
     // scene real ids, and existing graph ids all pass through correctly).
     scene.systemDeltas.addedEdges = scene.systemDeltas.addedEdges.map((edge) => ({

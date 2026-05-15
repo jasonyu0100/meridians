@@ -725,6 +725,36 @@ export type WorldExpansion = {
   relationshipDeltas?: RelationshipDelta[];
   ownershipDeltas?: OwnershipDelta[];
   tieDeltas?: TieDelta[];
+  // ── Network attributions (commit-level structural skeleton) ──────────────
+  /** IDs (any kind — C/L/A/T/SYS) this expansion structurally leans on. */
+  attributions?: string[];
+  /** Edges between attributed ids using the CRG edge vocabulary. Feeds the
+   *  cumulative network graph alongside per-scene attribution edges. */
+  attributionEdges?: AttributionEdge[];
+};
+
+/**
+ * Network attribution edge — typed connection between two attributed IDs
+ * (any kind: C-, L-, A-, T-, SYS-). Reuses the CRG `ReasoningEdgeType`
+ * vocabulary so generation, analysis, and CRG share one edge ontology
+ * across the engine. Accumulated across scenes and world builds to grow
+ * the cumulative network graph over time.
+ */
+export type AttributionEdgeRelation =
+  | "enables"
+  | "constrains"
+  | "risks"
+  | "requires"
+  | "causes"
+  | "reveals"
+  | "develops"
+  | "resolves"
+  | "supersedes";
+
+export type AttributionEdge = {
+  from: string;
+  to: string;
+  relation: AttributionEdgeRelation;
 };
 
 export type CharacterMovement = {
@@ -834,12 +864,20 @@ export type Scene = {
   relationshipDeltas: RelationshipDelta[];
   /** System knowledge graph deltas — new concepts and connections about how the world works */
   systemDeltas?: SystemDelta;
-  /** IDs of *existing* system nodes this scene activates / leans on. Distinct
-   *  from `systemDeltas.addedNodes` (which records creation): this is reference
-   *  tracking for nodes already in the graph. Drives per-node usefulness
-   *  metrics — node sizing in graph view, activation timeline in inspector,
-   *  and signals which rules are doing structural work vs. sitting idle. */
-  systemAttributions?: string[];
+  /** IDs (any kind — C/L/A/T/SYS) this scene structurally leans on. Unified
+   *  attribution surface: introductions (new entities, new system nodes), deltas
+   *  (threads moved, world graphs grown, system rules added), and structural
+   *  references (rules invoked but not mutated, threads acknowledged, entities
+   *  off-screen-affected) all flow through this single list. Drives node
+   *  sizing / heat in the cumulative network graph and per-node usefulness
+   *  metrics across the inspector and analytics views. */
+  attributions?: string[];
+  /** Typed edges between attributed ids using the CRG edge vocabulary —
+   *  the scene's contribution to the cumulative network graph's structural
+   *  skeleton. Captures cross-kind connections (character ↔ system rule,
+   *  thread ↔ location, etc.) the LLM is asked to declare explicitly so the
+   *  network grows over time rather than being inferred. */
+  attributionEdges?: AttributionEdge[];
   /** Artifact ownership changes — objects changing hands between characters/locations */
   ownershipDeltas?: OwnershipDelta[];
   /** Tie changes — characters forming or breaking ties with locations */

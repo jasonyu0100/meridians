@@ -25,9 +25,9 @@ export const EMPTY_SYSTEM_GRAPH: SystemGraph = { nodes: {}, edges: [] };
  * Effective set of system node IDs *attributed* by a scene. Every system
  * delta a scene introduces counts as 1 attribution automatically — every
  * reference is a usage, and the introduction is the first one. Plus any
- * explicit `systemAttributions` for already-existing nodes the scene leans
- * on. Returns a unique array preserving original order (introductions first,
- * then explicit attributions not already present).
+ * `SYS-` ids in the unified `attributions` list (the scene leaned on the
+ * rule structurally). Returns a unique array preserving original order
+ * (introductions first, then attributed-but-not-introduced).
  *
  * Use this anywhere code asks "which system nodes did this scene use?" so
  * the rule "every system delta starts with 1 attribution" stays automatic
@@ -42,7 +42,8 @@ export function getSceneSystemAttributions(scene: Scene): string[] {
       out.push(n.id);
     }
   }
-  for (const id of scene.systemAttributions ?? []) {
+  for (const id of scene.attributions ?? []) {
+    if (!id.startsWith('SYS-')) continue;
     if (!seen.has(id)) {
       seen.add(id);
       out.push(id);

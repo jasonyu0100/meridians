@@ -151,7 +151,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
       const addedIds = scene
         ? (scene.systemDeltas?.addedNodes ?? []).map((n) => n.id)
         : (wb?.expansionManifest?.systemDeltas?.addedNodes ?? []).map((n) => n.id);
-      const attrs = scene?.systemAttributions ?? [];
+      const attrs = (scene?.attributions ?? []).filter((id: string) => id.startsWith('SYS-'));
       const isIntroduction = addedIds.includes(nodeId);
       const isAttributed = attrs.includes(nodeId);
       if (!isIntroduction && !isAttributed) continue;

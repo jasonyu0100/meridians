@@ -614,6 +614,8 @@ export function GeneratePanel({
         relationshipDeltas: expansion.relationshipDeltas,
         ownershipDeltas: expansion.ownershipDeltas,
         tieDeltas: expansion.tieDeltas,
+        attributions: expansion.attributions,
+        attributionEdges: expansion.attributionEdges,
       });
 
       clearWorldDirectionAfterUse();

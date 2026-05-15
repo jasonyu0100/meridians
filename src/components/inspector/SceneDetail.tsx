@@ -1190,8 +1190,8 @@ export default function SceneDetail({ sceneId }: Props) {
         const addedIds = new Set(
           (scene.systemDeltas?.addedNodes ?? []).map((n) => n.id),
         );
-        const attributionsOnly = (scene.systemAttributions ?? []).filter(
-          (id) => !addedIds.has(id),
+        const attributionsOnly = (scene.attributions ?? []).filter(
+          (id: string) => id.startsWith('SYS-') && !addedIds.has(id),
         );
         if (attributionsOnly.length === 0) return null;
         return (
@@ -1203,7 +1203,7 @@ export default function SceneDetail({ sceneId }: Props) {
               </span>
             </h3>
             <div className="flex flex-wrap gap-1">
-              {attributionsOnly.map((attrId) => {
+              {attributionsOnly.map((attrId: string) => {
                 const node = narrative.systemGraph.nodes[attrId];
                 const shortName = (concept: string) => {
                   const dash = concept.indexOf(" — ");

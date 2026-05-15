@@ -186,7 +186,8 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       for (const n of scene.systemDeltas?.addedNodes ?? []) {
         activationMap.set(n.id, (activationMap.get(n.id) ?? 0) + 1);
       }
-      for (const id of scene.systemAttributions ?? []) {
+      for (const id of scene.attributions ?? []) {
+        if (!id.startsWith('SYS-')) continue;
         activationMap.set(id, (activationMap.get(id) ?? 0) + 1);
       }
     }

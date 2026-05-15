@@ -122,6 +122,8 @@ export type WorldExpansionResponse = {
   relationshipDeltas?: RelationshipDelta[];
   ownershipDeltas?: OwnershipDelta[];
   tieDeltas?: TieDelta[];
+  attributions?: string[];
+  attributionEdges?: import('@/types/narrative').AttributionEdge[];
 };
 
 export type DirectionSuggestion = {
@@ -600,6 +602,15 @@ ${m.recommendation === 'depth' ? EXPANSION_STRATEGY_PROMPTS.depth : m.recommenda
     relationshipDeltas: f.relationshipDeltas ? mergedRelDeltas : [],
     ownershipDeltas: f.ownershipDeltas ? (parsed.ownershipDeltas ?? []) : [],
     tieDeltas: f.tieDeltas ? (parsed.tieDeltas ?? []) : [],
+    attributions: Array.isArray(parsed.attributions)
+      ? parsed.attributions.filter((id: unknown): id is string => typeof id === 'string')
+      : undefined,
+    attributionEdges: Array.isArray(parsed.attributionEdges)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? parsed.attributionEdges.filter((e: any) =>
+          e && typeof e.from === 'string' && typeof e.to === 'string' && typeof e.relation === 'string',
+        )
+      : undefined,
   };
 
   logInfo('Completed world expansion', {
@@ -753,6 +764,19 @@ export async function generateNarrative(
           from: r.from, to: r.to, type: r.type, valenceDelta: r.valenceDelta ?? r.valence ?? 0,
         })),
       ],
+      // Attribution skeleton — initial commit's contribution to the cumulative
+      // network graph. Sanitisation is deferred to the consumer; here we just
+      // pass the LLM's payload through.
+      attributions: Array.isArray(parsed.attributions)
+        ? parsed.attributions.filter((id: unknown): id is string => typeof id === 'string')
+        : undefined,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      attributionEdges: Array.isArray(parsed.attributionEdges)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? parsed.attributionEdges.filter((e: any) =>
+            e && typeof e.from === 'string' && typeof e.to === 'string' && typeof e.relation === 'string',
+          )
+        : undefined,
     },
   };
 
@@ -826,18 +850,33 @@ export async function generateNarrative(
     }));
     sanitizeSystemDelta(scene.systemDeltas, validSysIds, seenSysEdgeKeys);
 
-    // Re-mentions collapsed during reconciliation become attributions on the
-    // existing node. Plus remap any explicit systemAttributions through the
-    // resolver's idMap (GEN-* placeholders → real ids).
-    const mappedExplicit = (scene.systemAttributions ?? [])
-      .map((id) => resolved.idMap[id] ?? id)
-      .filter((id) => validSysIds.has(id));
-    const attrSet = new Set<string>([
-      ...mappedExplicit,
-      ...resolved.attributedExistingIds,
-    ]);
-    if (attrSet.size > 0) {
-      scene.systemAttributions = Array.from(attrSet);
+    // Walk the unified attribution list. SYS ids route through the resolver
+    // idMap (SYS-GEN-* → real); non-SYS ids pass through. Re-mention
+    // attributions from concept-resolution merge in.
+    const rawAttrs = scene.attributions ?? [];
+    const seenAttrs = new Set<string>();
+    const mergedAttrs: string[] = [];
+    const pushAttr = (id: string) => {
+      if (!id || seenAttrs.has(id)) return;
+      seenAttrs.add(id);
+      mergedAttrs.push(id);
+    };
+    for (const id of rawAttrs) {
+      if (id.startsWith('SYS-')) {
+        const mapped = resolved.idMap[id] ?? id;
+        if (validSysIds.has(mapped)) pushAttr(mapped);
+      } else {
+        pushAttr(id);
+      }
+    }
+    for (const id of resolved.attributedExistingIds) pushAttr(id);
+    if (mergedAttrs.length > 0) scene.attributions = mergedAttrs;
+    if (scene.attributionEdges) {
+      scene.attributionEdges = scene.attributionEdges.map((e) => ({
+        from: e.from.startsWith('SYS-') ? (resolved.idMap[e.from] ?? e.from) : e.from,
+        to: e.to.startsWith('SYS-') ? (resolved.idMap[e.to] ?? e.to) : e.to,
+        relation: e.relation,
+      }));
     }
   }
 

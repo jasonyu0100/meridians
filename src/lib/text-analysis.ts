@@ -2082,18 +2082,41 @@ export async function assembleNarrative(
                   (mm.action === "add" || mm.action === "remove"),
               );
           })() || undefined,
-        // Re-mentioned system concepts in this scene get redistributed as
-        // attributions on the canonical (already-seen) node id. Captured
-        // BEFORE the systemDeltas IIFE mutates seenSysNodeIds so we can
-        // distinguish re-mentions (existing → attribute) from genuinely
-        // new ones (added → introduction).
-        systemAttributions: (() => {
-          const wkm = s.systemDeltas;
-          if (!wkm?.addedNodes?.length) return undefined;
+        // Unified attribution list: every ID this scene structurally leans
+        // on, derived from the scene's own structural fields. SYS-side: re-
+        // mentioned system concepts get redistributed onto the canonical
+        // (already-seen) node id. Captured BEFORE the systemDeltas IIFE
+        // mutates seenSysNodeIds so we can distinguish re-mentions
+        // (existing → attribute) from genuinely new ones (added → introduction).
+        attributions: (() => {
           const attrs = new Set<string>();
-          for (const n of wkm.addedNodes) {
-            const id = getSysId(n.concept);
-            if (seenSysNodeIds.has(id)) attrs.add(id);
+          // Participants + POV — the scene is "about" these characters.
+          if (povId) attrs.add(povId);
+          for (const pid of participantIds) attrs.add(pid);
+          // Location — the scene happens here.
+          if (locationId) attrs.add(locationId);
+          // Threads moved.
+          for (const tm of s.threadDeltas ?? []) {
+            const tid = getThreadId(tm.threadDescription);
+            if (tid) attrs.add(tid);
+          }
+          // Entities whose world graphs grew.
+          for (const wd of s.worldDeltas ?? []) {
+            const eid = getEntityId(wd.entityName);
+            if (eid) attrs.add(eid);
+          }
+          // Artifact usages — the artifact and the wielder.
+          for (const au of s.artifactUsages ?? []) {
+            if (au.artifactName) attrs.add(getArtifactId(au.artifactName));
+            if (au.characterName) attrs.add(getCharId(au.characterName));
+          }
+          // Re-mentioned system rules.
+          const wkm = s.systemDeltas;
+          if (wkm?.addedNodes?.length) {
+            for (const n of wkm.addedNodes) {
+              const id = getSysId(n.concept);
+              if (seenSysNodeIds.has(id)) attrs.add(id);
+            }
           }
           return attrs.size > 0 ? Array.from(attrs) : undefined;
         })(),

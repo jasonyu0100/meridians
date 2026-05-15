@@ -342,7 +342,14 @@ export function remapScenarioCommit(
         })()),
       ),
       systemDeltas: s.systemDeltas ? remapSystemDelta(s.systemDeltas, maps.sys) : s.systemDeltas,
-      systemAttributions: (s.systemAttributions ?? []).map((id) => remap(id, maps.sys)),
+      attributions: (s.attributions ?? []).map((id) =>
+        remapAny(id, maps.char, maps.loc, maps.art, maps.thread, maps.sys),
+      ),
+      attributionEdges: (s.attributionEdges ?? []).map((e) => ({
+        from: remapAny(e.from, maps.char, maps.loc, maps.art, maps.thread, maps.sys),
+        to: remapAny(e.to, maps.char, maps.loc, maps.art, maps.thread, maps.sys),
+        relation: e.relation,
+      })),
       ownershipDeltas: (s.ownershipDeltas ?? []).map((om) => ({
         ...om,
         artifactId: remap(om.artifactId, maps.art),

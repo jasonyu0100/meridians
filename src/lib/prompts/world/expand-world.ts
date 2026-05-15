@@ -175,7 +175,9 @@ Return JSON with this exact structure:
   "worldDeltas": [{"entityId": "existing C-XX, L-XX, or A-XX", "addedNodes": [{"id": "K-next", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
   "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX or L-XX", "toId": "C-YY or L-YY"}],
-  "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}]
+  "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
+  "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
+  "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
 }
 </output-format>
 
@@ -185,7 +187,7 @@ Return JSON with this exact structure:
   <rule>Thread IDs: continue sequentially from ${nextThreadId} (e.g., ${nextThreadId}, T-${parseInt(nextThreadId.split('-').pop()!) + 1}, ...).</rule>
   <rule>Artifact IDs: continue sequentially from ${nextArtifactId} (e.g., ${nextArtifactId}, A-${parseInt(nextArtifactId.split('-').pop()!) + 1}, ...).</rule>
   <rule>Knowledge node IDs: continue sequentially from ${nextKId} (e.g., ${nextKId}, K-${parseInt(nextKId.split('-').pop()!) + 1}, ...).</rule>
-  <rule>No leading zeros — write C-7, not C-7. The pipeline rejects zero-padded duplicates.</rule>
+  <rule>No leading zeros — write C-7, not C-07. The pipeline rejects zero-padded duplicates.</rule>
   <rule>ALL knowledge nodes (in both characters and locations) use the K- prefix and share one sequence.</rule>
 </id-rules>
 
@@ -231,5 +233,11 @@ ${PROMPT_ENTITY_INTEGRATION}
   <rule>Generate ${size === 'small' ? '4-6' : size === 'medium' ? '8-12' : size === 'exact' ? 'as many as the directive calls for' : '15-25'} system knowledge nodes with a comparable number of edges. Each must be a genuine structural rule, mechanism, or gate that the new entities operate within. EDGES ARE CRITICAL — an isolated node contributes 1 to system, but an edge connecting it to an existing SYS node adds √1 more AND wires the expansion into the existing graph.</rule>
   <rule>At least HALF of your edges should cross the new/existing boundary — use existing SYS IDs from the narrative context, not just SYS-GEN-* → SYS-GEN-*. This is how expansions deepen the foundation instead of floating free.</rule>
   <rule>Focus on the structural WHY behind the expansion — what abstract rules, mechanisms, gate conditions, propagation laws, power structures, or tensions make these new entities meaningful?</rule>
-</system-knowledge-deltas>`;
+</system-knowledge-deltas>
+
+<attribution-skeleton hint="The expansion's contribution to the cumulative network graph. Names which existing ids this expansion structurally leans on and how new + existing ids wire together across kinds.">
+  <rule>Populate \`attributions\` with EXISTING IDs (any kind — C-N, L-N, A-N, T-N, SYS-N) that this expansion structurally engages. Newly-introduced entities and system nodes get attribution credit automatically downstream; don't double-list them. Cite an id only when removing it would change the expansion's meaning. 0–15 typical.</rule>
+  <rule>Populate \`attributionEdges\` with typed cross-kind connections between attributed ids (or new ids the expansion introduces) — character ↔ system rule, thread ↔ location, artifact ↔ character, system ↔ system. Use the CRG relation vocabulary: enables, constrains, requires, risks, causes, reveals, develops, resolves, supersedes.</rule>
+  <rule>Bias toward CROSS-KIND edges that no typed delta already captures. relationshipDeltas already covers character↔character; systemDeltas.addedEdges already covers system↔system. attributionEdges earns its keep on the cross-kind wiring (character→system, thread→location, etc.) that builds the structural skeleton over time.</rule>
+</attribution-skeleton>`;
 }

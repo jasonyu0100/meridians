@@ -420,7 +420,7 @@ describe('getSceneSystemAttributions', () => {
       systemDeltas: opts.addedNodes
         ? { addedNodes: opts.addedNodes, addedEdges: [] }
         : undefined,
-      systemAttributions: opts.explicitAttributions,
+      attributions: opts.explicitAttributions,
       summary: '',
       timeDelta: { value: 0, unit: 'minute' },
       kind: 'scene',

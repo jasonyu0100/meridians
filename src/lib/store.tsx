@@ -844,6 +844,8 @@ export type Action =
       relationshipDeltas?: RelationshipDelta[];
       ownershipDeltas?: OwnershipDelta[];
       tieDeltas?: TieDelta[];
+      attributions?: string[];
+      attributionEdges?: import("@/types/narrative").AttributionEdge[];
       reasoningGraph?: ReasoningGraphSnapshot;
     }
   // Auto mode
@@ -2154,6 +2156,8 @@ function reducer(state: AppState, action: Action): AppState {
           relationshipDeltas: action.relationshipDeltas,
           ownershipDeltas: action.ownershipDeltas,
           tieDeltas: action.tieDeltas,
+          attributions: action.attributions,
+          attributionEdges: action.attributionEdges,
         },
         reasoningGraph: action.reasoningGraph,
       };
