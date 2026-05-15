@@ -1387,13 +1387,15 @@ function TimelineNav({ activeId }: { activeId: string }) {
     return init;
   });
 
-  // Auto-expand whichever group the active section belongs to (so scrolling
-  // into a collapsed group opens it). Doesn't auto-collapse anything else.
+  // As the reader scrolls between groups, keep only the active one open —
+  // completed groups collapse so the rail stays focused on where you are.
   useEffect(() => {
     if (!activeGroupLabel) return;
-    setOpenGroups((prev) =>
-      prev[activeGroupLabel] ? prev : { ...prev, [activeGroupLabel]: true },
-    );
+    setOpenGroups(() => {
+      const next: Record<string, boolean> = {};
+      for (const g of NAV_GROUPS) next[g.label] = g.label === activeGroupLabel;
+      return next;
+    });
   }, [activeGroupLabel]);
 
   return (
