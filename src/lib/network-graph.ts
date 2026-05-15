@@ -132,6 +132,7 @@ export function aggregateNetworkGraph(
     }
     stepCount += 1;
     const seenThisStep = new Set<string>();
+    const seenEdgeKeysThisStep = new Set<string>();
     for (const ref of attributionList ?? []) {
       if (!ref || seenThisStep.has(ref)) continue;
       seenThisStep.add(ref);
@@ -144,6 +145,12 @@ export function aggregateNetworkGraph(
       const key = edge.from < edge.to
         ? `${edge.from}|${edge.to}`
         : `${edge.to}|${edge.from}`;
+      // Within-step dedup: merging LLM-emitted edges with derive-from-deltas
+      // can yield the same pair twice. Count it once per step so weight
+      // reflects "how many distinct scenes wired this pair", not "how many
+      // delta paths happen to imply it within one scene".
+      if (seenEdgeKeysThisStep.has(key)) continue;
+      seenEdgeKeysThisStep.add(key);
       edgeWeights.set(key, (edgeWeights.get(key) ?? 0) + 1);
       if (edge.relation) {
         let relSet = edgeRelations.get(key);

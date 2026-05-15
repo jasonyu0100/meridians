@@ -16,7 +16,26 @@
  * deduplicating.
  */
 
-import type { Scene, WorldExpansion } from "@/types/narrative";
+import type {
+  AttributionEdge,
+  AttributionEdgeRelation,
+  Scene,
+  WorldExpansion,
+} from "@/types/narrative";
+
+/** Map the old systemDeltas edge vocabulary onto the CRG/attribution one. */
+function mapSysRelation(rel: string): AttributionEdgeRelation {
+  switch (rel) {
+    case "enables": return "enables";
+    case "governs": return "constrains";
+    case "opposes": return "constrains";
+    case "extends": return "develops";
+    case "created_by": return "causes";
+    case "constrains": return "constrains";
+    case "exist_within": return "requires";
+    default: return "develops";
+  }
+}
 
 /**
  * Lift every load-bearing existing id out of a scene's structural fields.
@@ -97,19 +116,111 @@ export function deriveSceneAttributions(scene: Scene): string[] {
 }
 
 /**
- * Merge LLM-emitted attributions with the derived baseline. Preserves the
- * LLM's order at the head (its emphasis tells us which ids it considered
- * most load-bearing) and appends derived-only ids after.
+ * Cross-kind attribution edges lifted from a scene's typed delta fields.
+ * Same purpose as deriveSceneAttributions but for connections. The CRG
+ * relation vocabulary is mapped from delta semantics:
+ *   - relationshipDeltas (char↔char)         → develops
+ *   - artifactUsages (char↔artifact)         → requires
+ *   - ownershipDeltas (artifact transfer)    → causes (new owner) +
+ *                                              supersedes (prior owner)
+ *   - tieDeltas (char↔location)              → develops
+ *   - characterMovements (char↔destination)  → develops
+ *   - threadDeltas + povId / locationId      → develops
+ *   - systemDeltas.addedEdges (sys↔sys)      → mapped via mapSysRelation
+ *
+ * Network aggregation collapses direction and dedups within step, so the
+ * exact direction picked here only matters for scene-scope rendering where
+ * the relation label is shown. Picked to read sensibly in that context.
+ */
+export function deriveSceneAttributionEdges(scene: Scene): AttributionEdge[] {
+  const out: AttributionEdge[] = [];
+  const push = (from: string | null | undefined, to: string | null | undefined, relation: AttributionEdgeRelation) => {
+    if (!from || !to || from === to) return;
+    out.push({ from, to, relation });
+  };
+
+  for (const rm of scene.relationshipDeltas ?? []) {
+    push(rm.from, rm.to, "develops");
+  }
+  for (const au of scene.artifactUsages ?? []) {
+    push(au.characterId, au.artifactId, "requires");
+  }
+  for (const om of scene.ownershipDeltas ?? []) {
+    push(om.toId, om.artifactId, "causes");
+    push(om.fromId, om.artifactId, "supersedes");
+  }
+  for (const td of scene.tieDeltas ?? []) {
+    push(td.characterId, td.locationId, "develops");
+  }
+  for (const [charId, mv] of Object.entries(scene.characterMovements ?? {})) {
+    push(charId, mv.locationId, "develops");
+  }
+  // Threads engaged in this scene wire to its POV and to its location, so the
+  // network surfaces "where is this thread playing out" and "who is carrying it".
+  for (const tm of scene.threadDeltas ?? []) {
+    push(scene.povId, tm.threadId, "develops");
+    push(tm.threadId, scene.locationId, "develops");
+  }
+  for (const se of scene.systemDeltas?.addedEdges ?? []) {
+    push(se.from, se.to, mapSysRelation(se.relation));
+  }
+  return out;
+}
+
+/** Edge version of deriveSceneAttributions for world expansions. World builds
+ *  have no POV / locationId / artifactUsages / characterMovements, so the
+ *  surface is narrower. */
+export function deriveExpansionAttributionEdges(expansion: WorldExpansion): AttributionEdge[] {
+  const out: AttributionEdge[] = [];
+  const push = (from: string | null | undefined, to: string | null | undefined, relation: AttributionEdgeRelation) => {
+    if (!from || !to || from === to) return;
+    out.push({ from, to, relation });
+  };
+
+  for (const rm of expansion.relationshipDeltas ?? []) {
+    push(rm.from, rm.to, "develops");
+  }
+  for (const om of expansion.ownershipDeltas ?? []) {
+    push(om.toId, om.artifactId, "causes");
+    push(om.fromId, om.artifactId, "supersedes");
+  }
+  for (const td of expansion.tieDeltas ?? []) {
+    push(td.characterId, td.locationId, "develops");
+  }
+  for (const se of expansion.systemDeltas?.addedEdges ?? []) {
+    push(se.from, se.to, mapSysRelation(se.relation));
+  }
+  return out;
+}
+
+/**
+ * Merge LLM-emitted attributions + attributionEdges with the derived
+ * baselines. Preserves the LLM's order at the head (its emphasis tells us
+ * which ids it considered most load-bearing); appends derived-only entries
+ * after. Edges dedupe by (min(from,to) | max(from,to)) so direction doesn't
+ * matter for collision detection — this matches the network aggregator.
  */
 export function ensureSceneAttributions(scene: Scene): void {
   const seen = new Set<string>(scene.attributions ?? []);
-  const merged = [...(scene.attributions ?? [])];
+  const mergedIds = [...(scene.attributions ?? [])];
   for (const id of deriveSceneAttributions(scene)) {
     if (seen.has(id)) continue;
     seen.add(id);
-    merged.push(id);
+    mergedIds.push(id);
   }
-  if (merged.length > 0) scene.attributions = merged;
+  if (mergedIds.length > 0) scene.attributions = mergedIds;
+
+  const edgeKey = (e: { from: string; to: string }) =>
+    e.from < e.to ? `${e.from}|${e.to}` : `${e.to}|${e.from}`;
+  const seenEdges = new Set<string>((scene.attributionEdges ?? []).map(edgeKey));
+  const mergedEdges = [...(scene.attributionEdges ?? [])];
+  for (const e of deriveSceneAttributionEdges(scene)) {
+    const k = edgeKey(e);
+    if (seenEdges.has(k)) continue;
+    seenEdges.add(k);
+    mergedEdges.push(e);
+  }
+  if (mergedEdges.length > 0) scene.attributionEdges = mergedEdges;
 }
 
 /**
@@ -161,4 +272,17 @@ export function ensureExpansionAttributions(expansion: WorldExpansion): void {
   ]);
   const final = merged.filter((id) => !newIds.has(id));
   if (final.length > 0) expansion.attributions = final;
+
+  // Same merge for edges.
+  const edgeKey = (e: { from: string; to: string }) =>
+    e.from < e.to ? `${e.from}|${e.to}` : `${e.to}|${e.from}`;
+  const seenEdges = new Set<string>((expansion.attributionEdges ?? []).map(edgeKey));
+  const mergedEdges = [...(expansion.attributionEdges ?? [])];
+  for (const e of deriveExpansionAttributionEdges(expansion)) {
+    const k = edgeKey(e);
+    if (seenEdges.has(k)) continue;
+    seenEdges.add(k);
+    mergedEdges.push(e);
+  }
+  if (mergedEdges.length > 0) expansion.attributionEdges = mergedEdges;
 }
