@@ -4,6 +4,7 @@ import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/store';
 import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/network-graph';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
 import type { AttributionEdgeRelation } from '@/types/narrative';
 
 type NNode = d3.SimulationNodeDatum & NetworkNode & { degree: number };
@@ -206,20 +207,10 @@ export default function NetworkView() {
       adjacency.get(b)!.add(a);
     }
 
-    // Links — opacity AND width scale with connection strength so frequently-
-    // reinforced pairs read as prominent in arc / narrative views while
-    // single-occurrence edges stay legible. Gamma below 1 favours the high
-    // end so a small handful of heavyweight edges visibly dominate the field
-    // rather than getting washed out by a sea of warm middle-weight ones.
-    const opacityFor = (weight: number) => {
-      const t = Math.min(1, weight / maxWeight);
-      const gamma = Math.pow(t, 0.55);
-      return 0.10 + gamma * 0.70; // 0.10 floor → 0.80 ceiling
-    };
-    const widthFor = (weight: number) => {
-      const t = Math.min(1, weight / maxWeight);
-      return 0.6 + Math.pow(t, 0.7) * 3.4; // 0.6 → 4.0
-    };
+    // Links — opacity AND width scale with edge weight via shared helper so
+    // every canvas graph view speaks the same visual language.
+    const opacityFor = (weight: number) => edgeOpacityFor(weight / maxWeight);
+    const widthFor = (weight: number) => edgeWidthFor(weight / maxWeight);
     const linkSel = g.select<SVGGElement>('g.n-links')
       .selectAll<SVGLineElement, NLink>('line')
       .data(simLinks, (d) => `${(d.source as NNode).id}-${(d.target as NNode).id}`);
@@ -334,9 +325,7 @@ export default function NetworkView() {
 
     sim.nodes(simNodes);
     sim.force<d3.ForceLink<NNode, NLink>>('link')!.links(simLinks);
-    // Lower starting alpha + faster cooldown — the simulation was running hot
-    // on every scrub. 0.3 / 0.04 settles in ~1s instead of multi-second drift.
-    sim.alpha(0.3).alphaDecay(0.04).restart();
+    sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
 
     // Cache the tick-frequency selections OUTSIDE the tick callback so we
     // don't re-query the DOM at 60Hz. This is the dominant per-frame cost.

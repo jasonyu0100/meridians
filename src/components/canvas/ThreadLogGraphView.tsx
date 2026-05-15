@@ -7,6 +7,7 @@ import { THREAD_LOG_FILL } from './graph-utils';
 import { getThreadLogAtScene } from '@/lib/scene-filter';
 import type { ThreadLog, Scene } from '@/types/narrative';
 import { THREAD_LOG_NODE_TYPES } from '@/types/narrative';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
 
 type TLNode = d3.SimulationNodeDatum & { id: string; content: string; type: string; degree: number };
 type TLLink = d3.SimulationLinkDatum<TLNode> & { relation: string };
@@ -51,20 +52,8 @@ export default function ThreadLogGraphView({
     const g = svg.append('g');
     gRef.current = g;
 
-    // Glow filters per type
-    const defs = svg.append('defs');
-    for (const type of THREAD_LOG_NODE_TYPES) {
-      const color = THREAD_LOG_FILL[type] ?? '#fff';
-      const filter = defs.append('filter').attr('id', `tl-glow-${type}`).attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-      filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.5').attr('result', 'color');
-      filter.append('feComposite').attr('in', 'color').attr('in2', 'blur').attr('operator', 'in').attr('result', 'glow');
-      const merge = filter.append('feMerge');
-      merge.append('feMergeNode').attr('in', 'glow');
-      merge.append('feMergeNode').attr('in', 'SourceGraphic');
-    }
-
     // Arrow marker for directed sequential edges
+    const defs = svg.append('defs');
     defs.append('marker')
       .attr('id', 'tl-arrow')
       .attr('viewBox', '0 0 10 10')
@@ -133,9 +122,14 @@ export default function ThreadLogGraphView({
       .data(simLinks, (d) => `${(d.source as TLNode).id}-${(d.target as TLNode).id}`);
     linkSel.exit().remove();
     const linkAll = linkSel.enter().append('line').merge(linkSel);
+    // Edge intensity: opacity + width scale with mean endpoint degree via
+    // the shared canvas-graph helper. Directional arrows still mark sequence.
+    const edgeT = (d: TLLink) =>
+      ((d.source as TLNode).degree + (d.target as TLNode).degree) / (maxDegree * 2);
     linkAll
-      .attr('stroke', '#ffffff25')
-      .attr('stroke-width', 1)
+      .attr('stroke', '#ffffff')
+      .attr('stroke-opacity', d => edgeOpacityFor(edgeT(d)))
+      .attr('stroke-width', d => edgeWidthFor(edgeT(d)))
       .attr('marker-end', 'url(#tl-arrow)');
 
     // Nodes
@@ -147,7 +141,6 @@ export default function ThreadLogGraphView({
     nodeAll
       .attr('r', nodeRadius)
       .attr('fill', (d) => showTypes ? (THREAD_LOG_FILL[d.type] ?? '#888') : '#888')
-      .attr('filter', (d) => showTypes ? `url(#tl-glow-${d.type})` : 'none')
       .attr('opacity', 0.9);
 
     // Drag
@@ -213,7 +206,7 @@ export default function ThreadLogGraphView({
         .attr('x', (d) => ((d.source as TLNode).x! + (d.target as TLNode).x!) / 2)
         .attr('y', (d) => ((d.source as TLNode).y! + (d.target as TLNode).y!) / 2);
     });
-    sim.alpha(0.5).restart();
+    sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
   }, [graphData, showLabels, showRelations, showTypes, threadId, dispatch]);
 
   const legendItems = [

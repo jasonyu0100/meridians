@@ -7,6 +7,7 @@ import { buildCumulativeSystemGraph } from '@/lib/narrative-utils';
 import type { NarrativeState, SystemNode } from '@/types/narrative';
 import EvalBar from '@/components/timeline/EvalBar';
 import { computeGroups, SYS_TYPE_COLORS, type SysNode, type SysLink } from './graph-utils';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
 
 // ── Fullscreen button ────────────────────────────────────────────────────────
 
@@ -120,18 +121,6 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     const g = svg.append('g');
     gRef.current = g;
 
-    // Glow filters
-    const defs = svg.append('defs');
-    for (const [type, color] of Object.entries(SYS_TYPE_COLORS)) {
-      const filter = defs.append('filter').attr('id', `glow-${type}`).attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-      filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.6').attr('result', 'color');
-      filter.append('feComposite').attr('in', 'color').attr('in2', 'blur').attr('operator', 'in').attr('result', 'glow');
-      const merge = filter.append('feMerge');
-      merge.append('feMergeNode').attr('in', 'glow');
-      merge.append('feMergeNode').attr('in', 'SourceGraphic');
-    }
-
     // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 4])
@@ -219,18 +208,23 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     linkSel.exit().remove();
     const linkEnter = linkSel.enter().append('line');
     const linkAll = linkEnter.merge(linkSel);
+    // Edge intensity: opacity + width scale with mean endpoint degree via
+    // the shared canvas-graph helper. Codex mode dims edges not touching a
+    // scene node so the highlighted set stays focal.
+    const edgeT = (d: SysLink) =>
+      ((d.source as SysNode).degree + (d.target as SysNode).degree) / (maxDegree * 2);
     linkAll
-      .attr('stroke', (d) => {
+      .attr('stroke', '#ffffff')
+      .attr('stroke-opacity', (d) => {
+        const base = edgeOpacityFor(edgeT(d));
         if (mode === 'codex' && sceneNodeIds.size > 0) {
-          return sceneNodeIds.has((d.source as SysNode).id) || sceneNodeIds.has((d.target as SysNode).id) ? '#ffffff40' : '#ffffff10';
+          const touches = sceneNodeIds.has((d.source as SysNode).id) ||
+            sceneNodeIds.has((d.target as SysNode).id);
+          return touches ? base : Math.max(0.04, base * 0.25);
         }
-        return '#ffffff20';
+        return base;
       })
-      .attr('stroke-width', (d) => {
-        const srcDeg = (d.source as SysNode).degree;
-        const tgtDeg = (d.target as SysNode).degree;
-        return Math.max(0.5, 0.5 + ((srcDeg + tgtDeg) / (maxDegree * 2)) * 3);
-      });
+      .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)));
 
     // Update nodes
     const nodeSel = g.select<SVGGElement>('g.wk-nodes')
@@ -242,7 +236,6 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     nodeAll
       .attr('r', nodeRadius)
       .attr('fill', (d) => showTypes ? (SYS_TYPE_COLORS[d.type] ?? '#888') : '#888')
-      .attr('filter', (d) => showTypes ? `url(#glow-${d.type})` : 'none')
       .attr('opacity', (d) => mode === 'codex' && sceneNodeIds.size > 0 ? (sceneNodeIds.has(d.id) ? 1 : 0.35) : 0.9)
       .attr('stroke', (d) => mode === 'codex' && sceneNodeIds.has(d.id) ? '#fff' : 'transparent')
       .attr('stroke-width', 2);
@@ -334,7 +327,7 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
         .attr('x', (d) => ((d.source as SysNode).x! + (d.target as SysNode).x!) / 2)
         .attr('y', (d) => ((d.source as SysNode).y! + (d.target as SysNode).y!) / 2);
     });
-    sim.alpha(0.5).restart();
+    sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
 
     // Compute connected groups and reset focus
     setSysGroups(computeGroups(simNodes, simLinks));

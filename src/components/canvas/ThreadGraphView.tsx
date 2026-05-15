@@ -18,6 +18,7 @@ import { replayThreadsAtIndex } from '@/lib/portfolio-analytics';
 import { computeGroups } from './graph-utils';
 import { IconChevronLeft, IconChevronRight, IconRefresh } from '@/components/icons';
 import EvalBar from '@/components/timeline/EvalBar';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
 
 const TERMINAL = new Set<ThreadCategory>(THREAD_CATEGORY_TERMINAL);
 
@@ -174,20 +175,6 @@ export default function ThreadGraphView({
     const g = svg.append('g');
     gRef.current = g;
 
-    // Glow filter per thread category — keyed by category name so the node
-    // render can reference it via `url(#tglow-${category})`.
-    const defs = svg.append('defs');
-    for (const cat of THREAD_CATEGORY_ORDER) {
-      const color = THREAD_CATEGORY_HEX[cat];
-      const filter = defs.append('filter').attr('id', `tglow-${cat}`).attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-      filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.6').attr('result', 'color');
-      filter.append('feComposite').attr('in', 'color').attr('in2', 'blur').attr('operator', 'in').attr('result', 'glow');
-      const merge = filter.append('feMerge');
-      merge.append('feMergeNode').attr('in', 'glow');
-      merge.append('feMergeNode').attr('in', 'SourceGraphic');
-    }
-
     // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 4])
@@ -258,9 +245,14 @@ export default function ThreadGraphView({
     linkSel.exit().remove();
     const linkEnter = linkSel.enter().append('line');
     const linkAll = linkEnter.merge(linkSel);
+    // Edge intensity: opacity + width scale with relation kind. Dependent
+    // links are structural (thread→thread convergence) and read prominent;
+    // participant links are softer dotted lines connecting threads to their
+    // entities.
     linkAll
-      .attr('stroke', d => d.relation === 'dependent' ? '#ffffff25' : '#ffffff10')
-      .attr('stroke-width', d => d.relation === 'dependent' ? 1.5 : 0.8)
+      .attr('stroke', '#ffffff')
+      .attr('stroke-opacity', d => d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25))
+      .attr('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
       .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none');
 
     // Nodes
@@ -273,7 +265,6 @@ export default function ThreadGraphView({
     nodeAll
       .attr('r', nodeRadius)
       .attr('fill', d => showTypes ? THREAD_CATEGORY_HEX[d.category] : '#888')
-      .attr('filter', d => showTypes ? `url(#tglow-${d.category})` : 'none')
       .attr('opacity', d => {
         if (mode === 'pulse') return 0.9;
         if (d.hasDeltaAtScene) return 1;
@@ -368,7 +359,7 @@ export default function ThreadGraphView({
         .attr('x', d => ((d.source as TNode).x! + (d.target as TNode).x!) / 2)
         .attr('y', d => ((d.source as TNode).y! + (d.target as TNode).y!) / 2);
     });
-    sim.alpha(0.5).restart();
+    sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
 
     setGroups(computeGroups(simNodes, simLinks));
     setFocusedGroup(null);

@@ -7,6 +7,7 @@ import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/scene-filter';
 import { WORLD_FILL } from './graph-utils';
 import type { WorldNode, WorldEdge, World } from '@/types/narrative';
 import { WORLD_NODE_TYPES } from '@/types/narrative';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
 
 type CNode = d3.SimulationNodeDatum & { id: string; content: string; type: string; degree: number };
 type CLink = d3.SimulationLinkDatum<CNode> & { relation: string };
@@ -44,19 +45,6 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
     svg.selectAll('*').remove();
     const g = svg.append('g');
     gRef.current = g;
-
-    // Glow filters per type
-    const defs = svg.append('defs');
-    for (const type of WORLD_NODE_TYPES) {
-      const color = WORLD_FILL[type] ?? '#fff';
-      const filter = defs.append('filter').attr('id', `c-glow-${type}`).attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-      filter.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'blur');
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.5').attr('result', 'color');
-      filter.append('feComposite').attr('in', 'color').attr('in2', 'blur').attr('operator', 'in').attr('result', 'glow');
-      const merge = filter.append('feMerge');
-      merge.append('feMergeNode').attr('in', 'glow');
-      merge.append('feMergeNode').attr('in', 'SourceGraphic');
-    }
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 4])
@@ -117,9 +105,13 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
       .data(simLinks, (d) => `${(d.source as CNode).id}-${(d.target as CNode).id}`);
     linkSel.exit().remove();
     const linkAll = linkSel.enter().append('line').merge(linkSel);
+    // Edge intensity: opacity + width scale with mean endpoint degree.
+    const edgeT = (d: CLink) =>
+      ((d.source as CNode).degree + (d.target as CNode).degree) / (maxDegree * 2);
     linkAll
-      .attr('stroke', '#ffffff20')
-      .attr('stroke-width', (d) => Math.max(0.5, 0.5 + (((d.source as CNode).degree + (d.target as CNode).degree) / (maxDegree * 2)) * 3));
+      .attr('stroke', '#ffffff')
+      .attr('stroke-opacity', (d) => edgeOpacityFor(edgeT(d)))
+      .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)));
 
     // Nodes
     const nodeSel = g.select<SVGGElement>('g.c-nodes')
@@ -130,7 +122,6 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
     nodeAll
       .attr('r', nodeRadius)
       .attr('fill', (d) => showTypes ? (WORLD_FILL[d.type] ?? '#888') : '#888')
-      .attr('filter', (d) => showTypes ? `url(#c-glow-${d.type})` : 'none')
       .attr('opacity', 0.9);
 
     // Drag
@@ -195,7 +186,7 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
         .attr('x', (d) => ((d.source as CNode).x! + (d.target as CNode).x!) / 2)
         .attr('y', (d) => ((d.source as CNode).y! + (d.target as CNode).y!) / 2);
     });
-    sim.alpha(0.5).restart();
+    sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
   }, [graphData, showLabels, showRelations, showTypes]);
 
   const legendItems = [
