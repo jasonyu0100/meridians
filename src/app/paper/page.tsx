@@ -2916,6 +2916,389 @@ export default function PaperPage() {
             </P>
           </Section>
 
+          {/* ── Classification ──────────────────────────────────────── */}
+          <Section id="classification" label="Classification">
+            <P>
+              Classification operates at two levels: <B>propositions</B> (the
+              atomic claims within prose) and <B>narratives</B> (the overall
+              structural profile). Proposition classification identifies
+              load-bearing content for generation. Narrative classification
+              categorizes works by force dominance for comparative analysis.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Propositions
+            </h3>
+            <P>
+              Each proposition is classified along three axes: backward{" "}
+              <a href="#embeddings" className="text-accent hover:underline">
+                activation
+              </a>{" "}
+              (does it resolve prior content?), forward activation (does it
+              plant future content?), and temporal reach (how far its
+              connections span). The hybrid activation score (
+              <Tex>
+                {"0.5 \\cdot \\max + 0.5 \\cdot \\bar{x}_{\\text{top-}k}"}
+              </Tex>
+              ) is thresholded at <B>0.65</B>, calibrated by parameter sweep
+              across four structurally distinct works. Reach is local
+              (within-arc) or global (cross-arc), with the threshold set at 25%
+              of total scenes (minimum 5) so &ldquo;global&rdquo; means the same
+              thing whether the narrative has 20 scenes or 200. The combination
+              yields eight categories:
+            </P>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {[
+                {
+                  name: "anchor",
+                  color: "#6366f1",
+                  signal: "HI back / HI fwd · local",
+                  desc: "Load-bearing within an arc. Immediate structural tension that connects what just happened to what comes next.",
+                },
+                {
+                  name: "foundation",
+                  color: "#4338ca",
+                  signal: "HI back / HI fwd · global",
+                  desc: "Thematic spine. Load-bearing both directions with connections spanning the full narrative.",
+                },
+                {
+                  name: "seed",
+                  color: "#10b981",
+                  signal: "LO back / HI fwd · local",
+                  desc: "Short-range foreshadowing — the Remembrall leading to Harry becoming Seeker one scene later.",
+                },
+                {
+                  name: "foreshadow",
+                  color: "#047857",
+                  signal: "LO back / HI fwd · global",
+                  desc: "Cross-arc Chekhov's gun — Harry's scar mentioned in chapter one, structurally active in the climax.",
+                },
+                {
+                  name: "close",
+                  color: "#f59e0b",
+                  signal: "HI back / LO fwd · local",
+                  desc: "Resolves recent setups. Terminal within the arc — satisfying fate that doesn't seed further.",
+                },
+                {
+                  name: "ending",
+                  color: "#b45309",
+                  signal: "HI back / LO fwd · global",
+                  desc: "Resolves distant seeds — “Snape hated Harry's father” closing a thread from 46 scenes back.",
+                },
+                {
+                  name: "texture",
+                  color: "#6b7280",
+                  signal: "LO back / LO fwd · local",
+                  desc: "Scene-level atmosphere and sensory grounding. Structurally inert but narratively essential.",
+                },
+                {
+                  name: "atmosphere",
+                  color: "#4b5563",
+                  signal: "LO back / LO fwd · global",
+                  desc: "Ambient world-color across time. Recurring tonal motifs that persist without driving structure.",
+                },
+              ].map(({ name, color, signal, desc }) => (
+                <div
+                  key={name}
+                  className="px-3 py-3 rounded-lg border border-white/6 bg-white/2"
+                >
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span
+                      className="text-[12px] font-semibold"
+                      style={{ color }}
+                    >
+                      {name}
+                    </span>
+                    <span className="text-[9px] font-mono text-white/25">
+                      {signal}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/40 leading-relaxed">
+                    {desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-sm font-semibold text-white/60 mt-6 mb-1">
+              Causal Continuity
+            </h4>
+            <P>
+              Classification transforms generation into{" "}
+              <B>causal continuity management</B>. An LLM generating scene 45
+              receives not just recent context but the specific propositions
+              from scene 3 that embedding similarity identifies as structurally
+              connected — the foundations and foreshadows that new prose must
+              not contradict. A foreshadow in chapter one constrains what can be
+              validly stated in chapter twenty.
+            </P>
+            <P>
+              The resulting distributions align with structural expectations:{" "}
+              <em>Harry Potter</em> yields 29% Anchor — consistent with a
+              tightly plotted novel whose threads span the full narrative.{" "}
+              <em>Alice&apos;s Adventures in Wonderland</em> shows 25% Anchor —
+              lower, reflecting its episodic structure. LeCun&apos;s paper
+              scores 14% Anchor and 53% Texture, characteristic of academic
+              argumentation with section-local claims. A five-section methods
+              paper (<em>Quantifying Narrative Force</em>) reaches 67% Texture.
+              These distributions emerge from cosine similarity alone — the same
+              threshold and the same formula applied uniformly across fiction,
+              academic writing, and methods papers.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Archetypes
+            </h3>
+            <P>
+              At the narrative level, each text is classified by which forces
+              dominate its profile — a force is dominant if it scores &ge; 21
+              and falls within 5 points of the maximum. A &ldquo;Chronicle&rdquo;
+              (World + System) and a &ldquo;Stage&rdquo; (World-driven) demand
+              different pacing, thread management, and revision priorities.
+            </P>
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              {ARCHETYPES.map(({ key, name, desc, color }) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
+                >
+                  <ArchetypeIcon archetypeKey={key} size={16} color={color} />
+                  <div>
+                    <span className="font-medium" style={{ color }}>
+                      {name}
+                    </span>
+                    <p className="text-white/35 mt-0.5">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Narrative Shapes
+            </h3>
+            <P>
+              Beyond archetypes, the Gaussian-smoothed activity curve is
+              classified into one of six shapes using overall slope, peak count,
+              peak dominance, peak position, trough depth, and recovery
+              strength.
+            </P>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]">
+              {SHAPES.map(({ name, desc, curve }) => (
+                <div
+                  key={name}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
+                >
+                  <ShapeCurve curve={curve} color="#fb923c" />
+                  <div>
+                    <span className="font-medium text-white/70">{name}</span>
+                    <p className="text-white/35 mt-0.5">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-sm font-semibold text-white/60 mt-6 mb-1">
+              Scale
+            </h3>
+            <P>
+              Scale classifies a narrative by structural length — scenes across
+              all arcs. Thresholds are derived from empirical analysis of a
+              reference corpus spanning short fiction (
+              <em>Alice&apos;s Adventures in Wonderland</em>, 22 scenes) through
+              novels (<em>Harry Potter</em>, 73 scenes) to epic-length serials.
+            </P>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
+              {SCALE_TIERS.map(({ key, name, desc, color }, i) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 18 18"
+                    className="shrink-0"
+                  >
+                    {[0, 1, 2, 3, 4].map((j) => (
+                      <rect
+                        key={j}
+                        x={2 + j * 3}
+                        y={14 - (j + 1) * 2.4}
+                        width={2}
+                        height={(j + 1) * 2.4}
+                        rx={0.5}
+                        fill={j <= i ? color : "#ffffff10"}
+                      />
+                    ))}
+                  </svg>
+                  <div>
+                    <span className="font-medium" style={{ color }}>
+                      {name}
+                    </span>
+                    <p className="text-white/35 mt-0.5">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-sm font-semibold text-white/60 mt-6 mb-1">
+              World Density
+            </h3>
+            <P>
+              World density measures narrative richness relative to length:
+              (characters + locations + threads + system knowledge nodes) /
+              scenes. Tier thresholds are derived from the same reference
+              corpus, spanning genre fiction, literary fiction, and academic
+              texts.
+            </P>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
+              {DENSITY_TIERS.map(({ key, name, desc, color }, i) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 18 18"
+                    className="shrink-0"
+                  >
+                    {[0, 1, 2, 3, 4].map((j) => (
+                      <circle
+                        key={j}
+                        cx={9}
+                        cy={9}
+                        r={2 + j * 1.8}
+                        fill="none"
+                        stroke={j <= i ? color : "#ffffff10"}
+                        strokeWidth={1}
+                      />
+                    ))}
+                  </svg>
+                  <div>
+                    <span className="font-medium" style={{ color }}>
+                      {name}
+                    </span>
+                    <p className="text-white/35 mt-0.5">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Reasoning Graph Nodes
+            </h3>
+            <P>
+              The{" "}
+              <a href="#planning" className="text-accent hover:underline">
+                causal reasoning graph
+              </a>{" "}
+              classifies every node into eight typed roles across three
+              tiers. <B>Pressure</B> (fate, warning) forces change.{" "}
+              <B>Substrate</B> (character, location, artifact, system) is
+              what&rsquo;s changed. <B>Bridge</B> (reasoning, pattern)
+              connects them.
+            </P>
+            <div className="mt-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+              {[
+                { name: "fate",      color: "#EF4444", body: "a thread's gravitational pull — what must resolve, and in which direction" },
+                { name: "reasoning", color: "#A855F7", body: "a logical step connecting what fate needs to what entities can supply" },
+                { name: "character", color: "#22C55E", body: "an active agent whose position, knowledge, or relationships move the arc" },
+                { name: "location",  color: "#22D3EE", body: "a setting that enables or constrains what can happen" },
+                { name: "artifact",  color: "#F59E0B", body: "an object whose presence, transfer, or loss carries narrative weight" },
+                { name: "system",    color: "#3B82F6", body: "a rule of the world — magic, economics, social norm — that shapes action" },
+                { name: "pattern",   color: "#84CC16", body: "an expansion agent — unexpected collisions, emergent properties, creative surprise" },
+                { name: "warning",   color: "#F43F5E", body: "a subversion agent — predictable trajectories or unpaid costs to disrupt" },
+              ].map(({ name, color, body }) => (
+                <div
+                  key={name}
+                  className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2"
+                >
+                  <span
+                    className="uppercase tracking-wider font-mono text-[10px] mr-2"
+                    style={{ color }}
+                  >
+                    {name}
+                  </span>
+                  <span className="text-white/55">{body}</span>
+                </div>
+              ))}
+            </div>
+            <P>
+              Edges carry equal semantic weight:{" "}
+              <em>requires</em> (the workhorse),{" "}
+              <em>enables</em>, <em>constrains</em>, <em>risks</em>,{" "}
+              <em>causes</em>, <em>reveals</em>, <em>develops</em>,{" "}
+              <em>resolves</em>. Edge type shapes both how the LLM walks
+              the graph during scene generation and how the visual tree
+              lays out.
+            </P>
+          </Section>
+
+          {/* ── Research Methods ──────────────────────────────────────── */}
+          <Section id="research" label="Research Methods">
+            <P>
+              Forces and embeddings measure what&rsquo;s <B>on the page</B>.
+              A knowledge graph becomes a living world only when it is{" "}
+              <em>probed</em>. Four instruments compose a{" "}
+              <B>four-layer diagnostic</B> of a world&rsquo;s interior —
+              each revealing a structure the prose never summarises:
+            </P>
+            <div className="mt-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+              {[
+                {
+                  name: "surveys",
+                  caption: "1 question · N respondents",
+                  body: "cast-wide distribution. Eight lenses tilt the axis (Personality / Values / Knowledge / Trust / Allegiance / Threat / Predictions / Backstory). Fifteen respondents on \u201cdo you trust X?\u201d produces a row of the trust matrix, not a number.",
+                  color: "#22D3EE",
+                },
+                {
+                  name: "interviews",
+                  caption: "1 subject · N questions",
+                  body: "single-mind depth. AI generates 5\u20137 questions tuned to the subject's continuity, mixing binary / likert / estimate / choice / open. Compose: survey to find outliers, interview to probe them.",
+                  color: "#FBBF24",
+                },
+                {
+                  name: "game theory",
+                  caption: "2\u00d72 decomposition per beat",
+                  body: "strategic structure beneath the prose. Each game carries an axis (14 types \u2014 disclosure / trust / stakes\u2026) and a shape (19 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. Additive: written to scene.gameAnalysis, never mutates deltas.",
+                  color: "#A855F7",
+                },
+                {
+                  name: "elo",
+                  caption: "continuous margin across games",
+                  body: "strategic trajectory across the story. Margin score folds stake-differential into expected-vs-actual math \u2014 a +4/\u22124 crush = 1.0, a +1/0 edge = 0.56, a tie = 0.5. Behavioural tags (extractor / schemer / dominant / steady / rival:X) fall out of the trajectory.",
+                  color: "#F97316",
+                },
+              ].map(({ name, caption, body, color }) => (
+                <div key={name} className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="uppercase tracking-wider font-mono text-[10px]" style={{ color }}>{name}</span>
+                    <span className="text-white/30 text-[10px]">{caption}</span>
+                  </div>
+                  <span className="text-white/55">{body}</span>
+                </div>
+              ))}
+            </div>
+            <P>
+              Every respondent answers in-character from its own world-
+              graph continuity, grounded in what that specific entity
+              knows. ELO uses a continuous margin rather than binary W/L:
+            </P>
+            <Eq
+              label="Margin score from A's perspective"
+              tex="s_A = \mathrm{clamp}\left(0.5 + \frac{\Delta_A - \Delta_B}{16},\ 0,\ 1\right)"
+            />
+            <P>
+              Surveys sample breadth, interviews profile one mind, game
+              theory names the strategic shape of a beat, ELO tracks who
+              accumulates advantage. Narrative and strategic structure
+              are orthogonal: a force-balanced scene can contain an
+              unresolved prisoner&rsquo;s dilemma, and that orthogonality
+              is what makes the fourth layer informative.
+            </P>
+          </Section>
+
           {/* ── Causal Reasoning ──────────────────────────────────────── */}
           <Section id="planning" label="Causal Reasoning">
             <P>
@@ -3174,70 +3557,6 @@ export default function PaperPage() {
               fingerprint that produced it, so the engine can compare what{" "}
               <em>actually</em> played out against the prior the model
               assigned.
-            </P>
-          </Section>
-
-          {/* ── Research Methods ──────────────────────────────────────── */}
-          <Section id="research" label="Research Methods">
-            <P>
-              Forces and embeddings measure what&rsquo;s <B>on the page</B>.
-              A knowledge graph becomes a living world only when it is{" "}
-              <em>probed</em>. Four instruments compose a{" "}
-              <B>four-layer diagnostic</B> of a world&rsquo;s interior —
-              each revealing a structure the prose never summarises:
-            </P>
-            <div className="mt-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-              {[
-                {
-                  name: "surveys",
-                  caption: "1 question · N respondents",
-                  body: "cast-wide distribution. Eight lenses tilt the axis (Personality / Values / Knowledge / Trust / Allegiance / Threat / Predictions / Backstory). Fifteen respondents on \u201cdo you trust X?\u201d produces a row of the trust matrix, not a number.",
-                  color: "#22D3EE",
-                },
-                {
-                  name: "interviews",
-                  caption: "1 subject · N questions",
-                  body: "single-mind depth. AI generates 5\u20137 questions tuned to the subject's continuity, mixing binary / likert / estimate / choice / open. Compose: survey to find outliers, interview to probe them.",
-                  color: "#FBBF24",
-                },
-                {
-                  name: "game theory",
-                  caption: "2\u00d72 decomposition per beat",
-                  body: "strategic structure beneath the prose. Each game carries an axis (14 types \u2014 disclosure / trust / stakes\u2026) and a shape (19 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. Additive: written to scene.gameAnalysis, never mutates deltas.",
-                  color: "#A855F7",
-                },
-                {
-                  name: "elo",
-                  caption: "continuous margin across games",
-                  body: "strategic trajectory across the story. Margin score folds stake-differential into expected-vs-actual math \u2014 a +4/\u22124 crush = 1.0, a +1/0 edge = 0.56, a tie = 0.5. Behavioural tags (extractor / schemer / dominant / steady / rival:X) fall out of the trajectory.",
-                  color: "#F97316",
-                },
-              ].map(({ name, caption, body, color }) => (
-                <div key={name} className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="uppercase tracking-wider font-mono text-[10px]" style={{ color }}>{name}</span>
-                    <span className="text-white/30 text-[10px]">{caption}</span>
-                  </div>
-                  <span className="text-white/55">{body}</span>
-                </div>
-              ))}
-            </div>
-            <P>
-              Every respondent answers in-character from its own world-
-              graph continuity, grounded in what that specific entity
-              knows. ELO uses a continuous margin rather than binary W/L:
-            </P>
-            <Eq
-              label="Margin score from A's perspective"
-              tex="s_A = \mathrm{clamp}\left(0.5 + \frac{\Delta_A - \Delta_B}{16},\ 0,\ 1\right)"
-            />
-            <P>
-              Surveys sample breadth, interviews profile one mind, game
-              theory names the strategic shape of a beat, ELO tracks who
-              accumulates advantage. Narrative and strategic structure
-              are orthogonal: a force-balanced scene can contain an
-              unresolved prisoner&rsquo;s dilemma, and that orthogonality
-              is what makes the fourth layer informative.
             </P>
           </Section>
 
@@ -3920,325 +4239,6 @@ export default function PaperPage() {
               converges in 2–3 passes. Structural branching uses git-
               like reference sharing so a 200-scene narrative with 10
               branches stores far fewer than 2000 scene objects.
-            </P>
-          </Section>
-
-          {/* ── Classification ──────────────────────────────────────── */}
-          <Section id="classification" label="Classification">
-            <P>
-              Classification operates at two levels: <B>propositions</B> (the
-              atomic claims within prose) and <B>narratives</B> (the overall
-              structural profile). Proposition classification identifies
-              load-bearing content for generation. Narrative classification
-              categorizes works by force dominance for comparative analysis.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
-              Propositions
-            </h3>
-            <P>
-              Each proposition is classified along three axes: backward{" "}
-              <a href="#embeddings" className="text-accent hover:underline">
-                activation
-              </a>{" "}
-              (does it resolve prior content?), forward activation (does it
-              plant future content?), and temporal reach (how far its
-              connections span). The hybrid activation score (
-              <Tex>
-                {"0.5 \\cdot \\max + 0.5 \\cdot \\bar{x}_{\\text{top-}k}"}
-              </Tex>
-              ) is thresholded at <B>0.65</B>, calibrated by parameter sweep
-              across four structurally distinct works. Reach is local
-              (within-arc) or global (cross-arc), with the threshold set at 25%
-              of total scenes (minimum 5) so &ldquo;global&rdquo; means the same
-              thing whether the narrative has 20 scenes or 200. The combination
-              yields eight categories:
-            </P>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {[
-                {
-                  name: "anchor",
-                  color: "#6366f1",
-                  signal: "HI back / HI fwd · local",
-                  desc: "Load-bearing within an arc. Immediate structural tension that connects what just happened to what comes next.",
-                },
-                {
-                  name: "foundation",
-                  color: "#4338ca",
-                  signal: "HI back / HI fwd · global",
-                  desc: "Thematic spine. Load-bearing both directions with connections spanning the full narrative.",
-                },
-                {
-                  name: "seed",
-                  color: "#10b981",
-                  signal: "LO back / HI fwd · local",
-                  desc: "Short-range foreshadowing — the Remembrall leading to Harry becoming Seeker one scene later.",
-                },
-                {
-                  name: "foreshadow",
-                  color: "#047857",
-                  signal: "LO back / HI fwd · global",
-                  desc: "Cross-arc Chekhov's gun — Harry's scar mentioned in chapter one, structurally active in the climax.",
-                },
-                {
-                  name: "close",
-                  color: "#f59e0b",
-                  signal: "HI back / LO fwd · local",
-                  desc: "Resolves recent setups. Terminal within the arc — satisfying fate that doesn't seed further.",
-                },
-                {
-                  name: "ending",
-                  color: "#b45309",
-                  signal: "HI back / LO fwd · global",
-                  desc: "Resolves distant seeds — “Snape hated Harry's father” closing a thread from 46 scenes back.",
-                },
-                {
-                  name: "texture",
-                  color: "#6b7280",
-                  signal: "LO back / LO fwd · local",
-                  desc: "Scene-level atmosphere and sensory grounding. Structurally inert but narratively essential.",
-                },
-                {
-                  name: "atmosphere",
-                  color: "#4b5563",
-                  signal: "LO back / LO fwd · global",
-                  desc: "Ambient world-color across time. Recurring tonal motifs that persist without driving structure.",
-                },
-              ].map(({ name, color, signal, desc }) => (
-                <div
-                  key={name}
-                  className="px-3 py-3 rounded-lg border border-white/6 bg-white/2"
-                >
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span
-                      className="text-[12px] font-semibold"
-                      style={{ color }}
-                    >
-                      {name}
-                    </span>
-                    <span className="text-[9px] font-mono text-white/25">
-                      {signal}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-white/40 leading-relaxed">
-                    {desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <h4 className="text-sm font-semibold text-white/60 mt-6 mb-1">
-              Causal Continuity
-            </h4>
-            <P>
-              Classification transforms generation into{" "}
-              <B>causal continuity management</B>. An LLM generating scene 45
-              receives not just recent context but the specific propositions
-              from scene 3 that embedding similarity identifies as structurally
-              connected — the foundations and foreshadows that new prose must
-              not contradict. A foreshadow in chapter one constrains what can be
-              validly stated in chapter twenty.
-            </P>
-            <P>
-              The resulting distributions align with structural expectations:{" "}
-              <em>Harry Potter</em> yields 29% Anchor — consistent with a
-              tightly plotted novel whose threads span the full narrative.{" "}
-              <em>Alice&apos;s Adventures in Wonderland</em> shows 25% Anchor —
-              lower, reflecting its episodic structure. LeCun&apos;s paper
-              scores 14% Anchor and 53% Texture, characteristic of academic
-              argumentation with section-local claims. A five-section methods
-              paper (<em>Quantifying Narrative Force</em>) reaches 67% Texture.
-              These distributions emerge from cosine similarity alone — the same
-              threshold and the same formula applied uniformly across fiction,
-              academic writing, and methods papers.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
-              Archetypes
-            </h3>
-            <P>
-              At the narrative level, each text is classified by which forces
-              dominate its profile — a force is dominant if it scores &ge; 21
-              and falls within 5 points of the maximum. A &ldquo;Chronicle&rdquo;
-              (World + System) and a &ldquo;Stage&rdquo; (World-driven) demand
-              different pacing, thread management, and revision priorities.
-            </P>
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-              {ARCHETYPES.map(({ key, name, desc, color }) => (
-                <div
-                  key={key}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
-                >
-                  <ArchetypeIcon archetypeKey={key} size={16} color={color} />
-                  <div>
-                    <span className="font-medium" style={{ color }}>
-                      {name}
-                    </span>
-                    <p className="text-white/35 mt-0.5">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
-              Narrative Shapes
-            </h3>
-            <P>
-              Beyond archetypes, the Gaussian-smoothed activity curve is
-              classified into one of six shapes using overall slope, peak count,
-              peak dominance, peak position, trough depth, and recovery
-              strength.
-            </P>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]">
-              {SHAPES.map(({ name, desc, curve }) => (
-                <div
-                  key={name}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
-                >
-                  <ShapeCurve curve={curve} color="#fb923c" />
-                  <div>
-                    <span className="font-medium text-white/70">{name}</span>
-                    <p className="text-white/35 mt-0.5">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <h3 className="text-sm font-semibold text-white/60 mt-6 mb-1">
-              Scale
-            </h3>
-            <P>
-              Scale classifies a narrative by structural length — scenes across
-              all arcs. Thresholds are derived from empirical analysis of a
-              reference corpus spanning short fiction (
-              <em>Alice&apos;s Adventures in Wonderland</em>, 22 scenes) through
-              novels (<em>Harry Potter</em>, 73 scenes) to epic-length serials.
-            </P>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
-              {SCALE_TIERS.map(({ key, name, desc, color }, i) => (
-                <div
-                  key={key}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 18 18"
-                    className="shrink-0"
-                  >
-                    {[0, 1, 2, 3, 4].map((j) => (
-                      <rect
-                        key={j}
-                        x={2 + j * 3}
-                        y={14 - (j + 1) * 2.4}
-                        width={2}
-                        height={(j + 1) * 2.4}
-                        rx={0.5}
-                        fill={j <= i ? color : "#ffffff10"}
-                      />
-                    ))}
-                  </svg>
-                  <div>
-                    <span className="font-medium" style={{ color }}>
-                      {name}
-                    </span>
-                    <p className="text-white/35 mt-0.5">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <h3 className="text-sm font-semibold text-white/60 mt-6 mb-1">
-              World Density
-            </h3>
-            <P>
-              World density measures narrative richness relative to length:
-              (characters + locations + threads + system knowledge nodes) /
-              scenes. Tier thresholds are derived from the same reference
-              corpus, spanning genre fiction, literary fiction, and academic
-              texts.
-            </P>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
-              {DENSITY_TIERS.map(({ key, name, desc, color }, i) => (
-                <div
-                  key={key}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/6 bg-white/2"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 18 18"
-                    className="shrink-0"
-                  >
-                    {[0, 1, 2, 3, 4].map((j) => (
-                      <circle
-                        key={j}
-                        cx={9}
-                        cy={9}
-                        r={2 + j * 1.8}
-                        fill="none"
-                        stroke={j <= i ? color : "#ffffff10"}
-                        strokeWidth={1}
-                      />
-                    ))}
-                  </svg>
-                  <div>
-                    <span className="font-medium" style={{ color }}>
-                      {name}
-                    </span>
-                    <p className="text-white/35 mt-0.5">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
-              Reasoning Graph Nodes
-            </h3>
-            <P>
-              The{" "}
-              <a href="#planning" className="text-accent hover:underline">
-                causal reasoning graph
-              </a>{" "}
-              classifies every node into eight typed roles across three
-              tiers. <B>Pressure</B> (fate, warning) forces change.{" "}
-              <B>Substrate</B> (character, location, artifact, system) is
-              what&rsquo;s changed. <B>Bridge</B> (reasoning, pattern)
-              connects them.
-            </P>
-            <div className="mt-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-              {[
-                { name: "fate",      color: "#EF4444", body: "a thread's gravitational pull — what must resolve, and in which direction" },
-                { name: "reasoning", color: "#A855F7", body: "a logical step connecting what fate needs to what entities can supply" },
-                { name: "character", color: "#22C55E", body: "an active agent whose position, knowledge, or relationships move the arc" },
-                { name: "location",  color: "#22D3EE", body: "a setting that enables or constrains what can happen" },
-                { name: "artifact",  color: "#F59E0B", body: "an object whose presence, transfer, or loss carries narrative weight" },
-                { name: "system",    color: "#3B82F6", body: "a rule of the world — magic, economics, social norm — that shapes action" },
-                { name: "pattern",   color: "#84CC16", body: "an expansion agent — unexpected collisions, emergent properties, creative surprise" },
-                { name: "warning",   color: "#F43F5E", body: "a subversion agent — predictable trajectories or unpaid costs to disrupt" },
-              ].map(({ name, color, body }) => (
-                <div
-                  key={name}
-                  className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2"
-                >
-                  <span
-                    className="uppercase tracking-wider font-mono text-[10px] mr-2"
-                    style={{ color }}
-                  >
-                    {name}
-                  </span>
-                  <span className="text-white/55">{body}</span>
-                </div>
-              ))}
-            </div>
-            <P>
-              Edges carry equal semantic weight:{" "}
-              <em>requires</em> (the workhorse),{" "}
-              <em>enables</em>, <em>constrains</em>, <em>risks</em>,{" "}
-              <em>causes</em>, <em>reveals</em>, <em>develops</em>,{" "}
-              <em>resolves</em>. Edge type shapes both how the LLM walks
-              the graph during scene generation and how the visual tree
-              lays out.
             </P>
           </Section>
 
