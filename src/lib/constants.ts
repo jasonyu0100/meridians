@@ -11,7 +11,6 @@ export const ANALYSIS_CONCURRENCY = 20;
 /** Delay (ms) between launching each call in the initial analysis batch */
 export const ANALYSIS_STAGGER_DELAY_MS = 200;
 
-
 /** Max corpus size (words) accepted for analysis */
 export const ANALYSIS_MAX_CORPUS_WORDS = 500_000;
 
@@ -25,6 +24,9 @@ export const DEFAULT_MODEL = "google/gemini-2.5-flash";
 /** Model for scene generation — generateScenes, generateNarrative (intro arc),
  *  reconstruction edits/inserts/merges. */
 export const GENERATE_MODEL = "deepseek/deepseek-v4-flash";
+
+/** Model for present, future and rescoring variable model */
+export const PREDICTIVE_MODEL = "deepseek/deepseek-v4-flash";
 
 /** Model for scene generation when a reasoning graph (CRG) is the brief.
  *  The graph carries the causal/structural burden, so the scene pass becomes
@@ -50,7 +52,7 @@ export const INTERACTION_MODEL = "deepseek/deepseek-v4-flash";
 export const MODEL_PRICING: Record<string, { input: number; output: number }> =
   {
     "deepseek/deepseek-v4-flash": { input: 0.14, output: 0.28 },
-    "google/gemini-2.5-flash": { input: 0.30, output: 2.50 },
+    "google/gemini-2.5-flash": { input: 0.3, output: 2.5 },
   };
 
 /** Fallback pricing when model is unknown */
@@ -106,9 +108,9 @@ export const FORCE_WINDOW_SIZE = 10;
  */
 export const FORCE_DOMINANCE_WEIGHTS = {
   classic: { fate: 0.55, world: 0.225, system: 0.225 },
-  show:    { fate: 0.225, world: 0.55, system: 0.225 },
-  paper:   { fate: 0.225, world: 0.225, system: 0.55 },
-  opus:    { fate: 1 / 3, world: 1 / 3, system: 1 / 3 },
+  show: { fate: 0.225, world: 0.55, system: 0.225 },
+  paper: { fate: 0.225, world: 0.225, system: 0.55 },
+  opus: { fate: 1 / 3, world: 1 / 3, system: 1 / 3 },
 } as const;
 
 /** Activity smoothing σ, in scenes. 1.5 is the canonical σ used by the
@@ -178,7 +180,9 @@ export const SCENES_PER_ARC = 4;
 /** Derived: words per scene (~1,000) */
 export const WORDS_PER_SCENE = WORDS_PER_BEAT * BEATS_PER_SCENE;
 /** Derived: beats per 1000 words (10) — for prose profile compatibility */
-export const BEATS_PER_KWORD = Math.round(BEATS_PER_SCENE / (WORDS_PER_SCENE / 1000));
+export const BEATS_PER_KWORD = Math.round(
+  BEATS_PER_SCENE / (WORDS_PER_SCENE / 1000),
+);
 
 // Legacy aliases — used by beat profiles and prose density validation
 export const BEAT_DENSITY_MIN = 8;
@@ -191,7 +195,7 @@ export const WORDS_PER_BEAT_DEFAULT = WORDS_PER_BEAT;
 // ── Embeddings & Semantic Search ─────────────────────────────────────────────
 
 /** OpenAI embedding model for semantic search */
-export const EMBEDDING_MODEL = 'text-embedding-3-small';
+export const EMBEDDING_MODEL = "text-embedding-3-small";
 
 /** Embedding vector dimensions (OpenAI text-embedding-3-small) */
 export const EMBEDDING_DIMENSIONS = 1536;
@@ -273,7 +277,7 @@ export const MARKET_OPENING_VOLUME = 2;
 
 /** Opening-price guardrails — don't seed threads near saturation. */
 export const MARKET_OPENING_MIN_LOGIT = -1.2; // p ≈ 0.23
-export const MARKET_OPENING_MAX_LOGIT = 1.2;  // p ≈ 0.77
+export const MARKET_OPENING_MAX_LOGIT = 1.2; // p ≈ 0.77
 
 /** Focus window size — top-K threads by focus score feed generation. */
 export const MARKET_FOCUS_K = 6;

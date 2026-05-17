@@ -11,25 +11,25 @@
  * on each scenario; intensity is NOT used as a probability proxy.
  */
 
+import {
+  ANALYSIS_TEMPERATURE,
+  MARKET_EVIDENCE_MAX,
+  MARKET_EVIDENCE_MIN,
+  MAX_TOKENS_DEFAULT,
+  PREDICTIVE_MODEL,
+} from "@/lib/constants";
 import type {
-  Variable,
-  PlanningScenario,
   Arc,
-  Scene,
+  Artifact,
   Character,
   Location,
-  Artifact,
+  PlanningScenario,
+  Scene,
   Thread,
-} from '@/types/narrative';
-import {
-  ANALYSIS_MODEL,
-  ANALYSIS_TEMPERATURE,
-  MAX_TOKENS_DEFAULT,
-  MARKET_EVIDENCE_MIN,
-  MARKET_EVIDENCE_MAX,
-} from '@/lib/constants';
-import { callGenerate, callGenerateStream } from './api';
-import { parseJson } from './json';
+  Variable,
+} from "@/types/narrative";
+import { callGenerate, callGenerateStream } from "./api";
+import { parseJson } from "./json";
 
 /** Plausibility scale for scenario priors. Reuses the prediction market's
  *  evidence range so the two surfaces share a vocabulary: +4 = decisive
@@ -59,8 +59,8 @@ interface RenderOptions {
 }
 
 function clean(s: string | undefined): string {
-  if (!s) return '';
-  return s.replace(/\s+/g, ' ').trim();
+  if (!s) return "";
+  return s.replace(/\s+/g, " ").trim();
 }
 
 function cutoffSceneIds(src: VariablesContextSource): string[] {
@@ -83,20 +83,22 @@ function renderArcsBlock(src: VariablesContextSource): string {
     .sort((a, b) => a[1] - b[1])
     .map(([arcId]) => src.arcs[arcId])
     .filter((a): a is Arc => !!a);
-  if (arcsOrdered.length === 0) return '';
+  if (arcsOrdered.length === 0) return "";
   return arcsOrdered
     .map((arc) => {
-      const dir = arc.directionVector ? `\n    direction: ${clean(arc.directionVector)}` : '';
-      const ws = arc.worldState ? `\n    state: ${clean(arc.worldState)}` : '';
+      const dir = arc.directionVector
+        ? `\n    direction: ${clean(arc.directionVector)}`
+        : "";
+      const ws = arc.worldState ? `\n    state: ${clean(arc.worldState)}` : "";
       return `  - id: ${arc.id}\n    name: "${arc.name}"${dir}${ws}`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function renderScenesBlock(src: VariablesContextSource): string {
   const ordered = cutoffSceneIds(src);
   const total = ordered.length;
-  if (total === 0) return '';
+  if (total === 0) return "";
   const lines: string[] = [];
   ordered.forEach((sid, i) => {
     const sc = src.scenes[sid];
@@ -107,11 +109,14 @@ function renderScenesBlock(src: VariablesContextSource): string {
     const pov = sc.povId ? src.characters[sc.povId]?.name : null;
     const arcPrefix = arc ? `${arc.name}` : sc.arcId;
     const locName = loc ? loc.name : sc.locationId;
-    const povStr = pov ? `pov=${pov}` : 'pov=—';
-    const summary = sc.events.length > 0 ? clean(sc.events.join(' · ')) : '(no events)';
-    lines.push(`  [${idx}] arc=${arcPrefix} loc=${locName} ${povStr} :: ${summary}`);
+    const povStr = pov ? `pov=${pov}` : "pov=—";
+    const summary =
+      sc.events.length > 0 ? clean(sc.events.join(" · ")) : "(no events)";
+    lines.push(
+      `  [${idx}] arc=${arcPrefix} loc=${locName} ${povStr} :: ${summary}`,
+    );
   });
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 function renderThreadsBlock(src: VariablesContextSource): string {
@@ -124,11 +129,22 @@ function renderThreadsBlock(src: VariablesContextSource): string {
     if (lastScene && t.openedAt && !orderedSet.has(t.openedAt)) continue;
     const isClosed = !!t.closedAt && orderedSet.has(t.closedAt);
     const participants = t.participants
-      .map((p) => src.characters[p.id]?.name || src.locations[p.id]?.name || src.artifacts[p.id]?.name || p.id)
-      .join(', ');
-    const beliefs = t.beliefs?.['__NARRATOR__'] ?? Object.values(t.beliefs ?? {})[0];
-    let priceLine = '';
-    if (beliefs && Array.isArray(beliefs.logits) && t.outcomes.length === beliefs.logits.length) {
+      .map(
+        (p) =>
+          src.characters[p.id]?.name ||
+          src.locations[p.id]?.name ||
+          src.artifacts[p.id]?.name ||
+          p.id,
+      )
+      .join(", ");
+    const beliefs =
+      t.beliefs?.["__NARRATOR__"] ?? Object.values(t.beliefs ?? {})[0];
+    let priceLine = "";
+    if (
+      beliefs &&
+      Array.isArray(beliefs.logits) &&
+      t.outcomes.length === beliefs.logits.length
+    ) {
       const max = Math.max(...beliefs.logits);
       const exps = beliefs.logits.map((l) => Math.exp(l - max));
       const sum = exps.reduce((a, b) => a + b, 0) || 1;
@@ -136,68 +152,92 @@ function renderThreadsBlock(src: VariablesContextSource): string {
       const top = probs
         .map((p, i) => ({ p, name: t.outcomes[i] }))
         .sort((a, b) => b.p - a.p);
-      priceLine = ` — price: ${top.map((x) => `${x.name} ${(x.p * 100).toFixed(0)}%`).join(' / ')}`;
+      priceLine = ` — price: ${top.map((x) => `${x.name} ${(x.p * 100).toFixed(0)}%`).join(" / ")}`;
     }
     if (isClosed) {
-      const winner = t.closeOutcome != null ? t.outcomes[t.closeOutcome] : '?';
+      const winner = t.closeOutcome != null ? t.outcomes[t.closeOutcome] : "?";
       const idx = ordered.indexOf(t.closedAt!);
       closedLines.push({
-        line: `  ${t.id}: "${clean(t.description)}" — closed ${winner}${t.resolutionQuality != null ? ` (q=${t.resolutionQuality.toFixed(2)})` : ''} :: ${participants}`,
+        line: `  ${t.id}: "${clean(t.description)}" — closed ${winner}${t.resolutionQuality != null ? ` (q=${t.resolutionQuality.toFixed(2)})` : ""} :: ${participants}`,
         ord: idx,
       });
     } else {
-      liveLines.push(`  ${t.id}: "${clean(t.description)}"${priceLine} :: ${participants}`);
+      liveLines.push(
+        `  ${t.id}: "${clean(t.description)}"${priceLine} :: ${participants}`,
+      );
     }
   }
   closedLines.sort((a, b) => b.ord - a.ord);
   const sections: string[] = [];
-  if (liveLines.length > 0) sections.push(`<threads-live>\n${liveLines.join('\n')}\n</threads-live>`);
+  if (liveLines.length > 0)
+    sections.push(`<threads-live>\n${liveLines.join("\n")}\n</threads-live>`);
   if (closedLines.length > 0) {
-    sections.push(`<threads-closed>\n${closedLines.map((c) => c.line).join('\n')}\n</threads-closed>`);
+    sections.push(
+      `<threads-closed>\n${closedLines.map((c) => c.line).join("\n")}\n</threads-closed>`,
+    );
   }
-  return sections.join('\n');
+  return sections.join("\n");
 }
 
 function renderRosterBlock(src: VariablesContextSource): string {
-  const chars = Object.values(src.characters).filter((c) => c.role !== 'transient');
+  const chars = Object.values(src.characters).filter(
+    (c) => c.role !== "transient",
+  );
   chars.sort((a, b) => {
-    const rank = (r: string) => (r === 'anchor' ? 0 : r === 'recurring' ? 1 : 2);
+    const rank = (r: string) =>
+      r === "anchor" ? 0 : r === "recurring" ? 1 : 2;
     const dr = rank(a.role) - rank(b.role);
     return dr !== 0 ? dr : a.name.localeCompare(b.name);
   });
-  const locs = Object.values(src.locations).filter((l) => l.prominence !== 'margin');
+  const locs = Object.values(src.locations).filter(
+    (l) => l.prominence !== "margin",
+  );
   locs.sort((a, b) => {
-    const rank = (p: string) => (p === 'domain' ? 0 : p === 'place' ? 1 : 2);
+    const rank = (p: string) => (p === "domain" ? 0 : p === "place" ? 1 : 2);
     const dr = rank(a.prominence) - rank(b.prominence);
     return dr !== 0 ? dr : a.name.localeCompare(b.name);
   });
-  const arts = Object.values(src.artifacts).filter((a) => a.significance !== 'minor');
+  const arts = Object.values(src.artifacts).filter(
+    (a) => a.significance !== "minor",
+  );
   arts.sort((a, b) => {
-    const rank = (s: string) => (s === 'key' ? 0 : s === 'notable' ? 1 : 2);
+    const rank = (s: string) => (s === "key" ? 0 : s === "notable" ? 1 : 2);
     const dr = rank(a.significance) - rank(b.significance);
     return dr !== 0 ? dr : a.name.localeCompare(b.name);
   });
 
-  const charLines = chars.map((c) => {
-    const worldHead = Object.values(c.world?.nodes ?? {}).map((n) => n.content).join('; ');
-    const sketch = worldHead ? ` — ${clean(worldHead)}` : '';
-    return `  * ${c.role}: ${c.name}${sketch}`;
-  }).join('\n');
-  const locLines = locs.map((l) => {
-    const worldHead = Object.values(l.world?.nodes ?? {}).map((n) => n.content).join('; ');
-    const sketch = worldHead ? ` — ${clean(worldHead)}` : '';
-    return `  * ${l.prominence}: ${l.name}${sketch}`;
-  }).join('\n');
-  const artLines = arts.map((a) => {
-    const worldHead = Object.values(a.world?.nodes ?? {}).map((n) => n.content).join('; ');
-    const sketch = worldHead ? ` — ${clean(worldHead)}` : '';
-    return `  * ${a.significance}: ${a.name}${sketch}`;
-  }).join('\n');
+  const charLines = chars
+    .map((c) => {
+      const worldHead = Object.values(c.world?.nodes ?? {})
+        .map((n) => n.content)
+        .join("; ");
+      const sketch = worldHead ? ` — ${clean(worldHead)}` : "";
+      return `  * ${c.role}: ${c.name}${sketch}`;
+    })
+    .join("\n");
+  const locLines = locs
+    .map((l) => {
+      const worldHead = Object.values(l.world?.nodes ?? {})
+        .map((n) => n.content)
+        .join("; ");
+      const sketch = worldHead ? ` — ${clean(worldHead)}` : "";
+      return `  * ${l.prominence}: ${l.name}${sketch}`;
+    })
+    .join("\n");
+  const artLines = arts
+    .map((a) => {
+      const worldHead = Object.values(a.world?.nodes ?? {})
+        .map((n) => n.content)
+        .join("; ");
+      const sketch = worldHead ? ` — ${clean(worldHead)}` : "";
+      return `  * ${a.significance}: ${a.name}${sketch}`;
+    })
+    .join("\n");
   const out: string[] = [];
   if (charLines) out.push(`<characters>\n${charLines}\n</characters>`);
   if (locLines) out.push(`<locations>\n${locLines}\n</locations>`);
   if (artLines) out.push(`<artifacts>\n${artLines}\n</artifacts>`);
-  return out.join('\n');
+  return out.join("\n");
 }
 
 export function renderVariablesContextBlock(
@@ -205,15 +245,16 @@ export function renderVariablesContextBlock(
   opts: RenderOptions = {},
 ): string {
   const sections: string[] = [];
-  const arcs = opts.includeArcStates !== false ? renderArcsBlock(src) : '';
+  const arcs = opts.includeArcStates !== false ? renderArcsBlock(src) : "";
   if (arcs) sections.push(`<arcs-ordered>\n${arcs}\n</arcs-ordered>`);
   const scenes = renderScenesBlock(src);
-  if (scenes) sections.push(`<scenes-up-to-current>\n${scenes}\n</scenes-up-to-current>`);
+  if (scenes)
+    sections.push(`<scenes-up-to-current>\n${scenes}\n</scenes-up-to-current>`);
   const threads = renderThreadsBlock(src);
   if (threads) sections.push(threads);
   const roster = renderRosterBlock(src);
   if (roster) sections.push(roster);
-  return sections.join('\n\n');
+  return sections.join("\n\n");
 }
 
 // ── Per-arc Present extraction ─────────────────────────────────────────────
@@ -281,18 +322,27 @@ export interface ExtractPresentInput {
 }
 
 function sanitizeVariable(raw: unknown): Variable | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as { id?: unknown; name?: unknown; description?: unknown; category?: unknown; intensity?: unknown };
-  const id = typeof r.id === 'string' ? r.id.trim() : '';
-  const name = typeof r.name === 'string' ? r.name.trim() : '';
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as {
+    id?: unknown;
+    name?: unknown;
+    description?: unknown;
+    category?: unknown;
+    intensity?: unknown;
+  };
+  const id = typeof r.id === "string" ? r.id.trim() : "";
+  const name = typeof r.name === "string" ? r.name.trim() : "";
   if (!id || !name) return null;
-  const intensity = typeof r.intensity === 'number' ? Math.max(0, Math.min(4, Math.round(r.intensity))) : 0;
+  const intensity =
+    typeof r.intensity === "number"
+      ? Math.max(0, Math.min(4, Math.round(r.intensity)))
+      : 0;
   if (intensity === 0) return null;
   return {
     id,
     name,
-    description: typeof r.description === 'string' ? r.description.trim() : '',
-    category: typeof r.category === 'string' ? r.category.trim() : 'general',
+    description: typeof r.description === "string" ? r.description.trim() : "",
+    category: typeof r.category === "string" ? r.category.trim() : "general",
     intensity,
   };
 }
@@ -306,19 +356,25 @@ export interface ExtractPresentResult {
   priorLogit?: number;
 }
 
-export async function extractArcPresent(input: ExtractPresentInput): Promise<ExtractPresentResult> {
+export async function extractArcPresent(
+  input: ExtractPresentInput,
+): Promise<ExtractPresentResult> {
   const arc = input.arc;
-  const summary = (arc.summary ?? '(no summary)').replace(/\s+/g, ' ').trim();
-  const dirVec = arc.directionVector ? `\n  direction: ${arc.directionVector}` : '';
-  const contextBlock = input.context ? renderVariablesContextBlock(input.context, { focusArcId: arc.id }) : '';
+  const summary = (arc.summary ?? "(no summary)").replace(/\s+/g, " ").trim();
+  const dirVec = arc.directionVector
+    ? `\n  direction: ${arc.directionVector}`
+    : "";
+  const contextBlock = input.context
+    ? renderVariablesContextBlock(input.context, { focusArcId: arc.id })
+    : "";
   const directionBlock = input.direction
     ? `\n<direction>\n${input.direction.trim()}\n</direction>\n`
-    : '';
+    : "";
   // Outline + Mode sections are the highest-signal context blocks: a tight
   // arc-by-arc recap up to the current scene, and the working-machinery
   // substrate the variables should inherit from.
-  const outlineBlock = input.outline ? `\n${input.outline}\n` : '';
-  const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : '';
+  const outlineBlock = input.outline ? `\n${input.outline}\n` : "";
+  const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
   const prompt = `<narrative>
 title: ${input.narrativeTitle}
@@ -329,7 +385,7 @@ title: ${input.narrativeTitle}
   name: "${arc.name}"${dirVec}
   state: ${summary}
 </arc>
-${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ''}${directionBlock}
+${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ""}${directionBlock}
 Identify this arc's Present variable set. Apply the disciplines above to the current-arc state and the supporting context (outline, mode substrate, roster, threads). Variables distil pieces of the substrate — not paraphrase them, distil them. Output strict JSON only.`;
 
   const raw = input.onReasoning
@@ -338,8 +394,8 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
         EXTRACT_PRESENT_SYSTEM,
         () => {},
         MAX_TOKENS_DEFAULT,
-        'extractArcPresent',
-        ANALYSIS_MODEL,
+        "extractArcPresent",
+        PREDICTIVE_MODEL,
         input.reasoningBudget,
         input.onReasoning,
         ANALYSIS_TEMPERATURE,
@@ -348,14 +404,14 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
         prompt,
         EXTRACT_PRESENT_SYSTEM,
         MAX_TOKENS_DEFAULT,
-        'extractArcPresent',
-        ANALYSIS_MODEL,
+        "extractArcPresent",
+        PREDICTIVE_MODEL,
         input.reasoningBudget,
         true,
         ANALYSIS_TEMPERATURE,
       );
 
-  const parsed = parseJson(raw, 'extractArcPresent') as {
+  const parsed = parseJson(raw, "extractArcPresent") as {
     variables?: unknown[];
     tagline?: unknown;
     reasoning?: unknown;
@@ -369,11 +425,14 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
     seenIds.add(v.id);
     variables.push(v);
   }
-  const tagline = typeof parsed.tagline === 'string' ? parsed.tagline.trim() : '';
-  const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
-  const priorLogit = typeof parsed.priorLogit === 'number' && Number.isFinite(parsed.priorLogit)
-    ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
-    : undefined;
+  const tagline =
+    typeof parsed.tagline === "string" ? parsed.tagline.trim() : "";
+  const reasoning =
+    typeof parsed.reasoning === "string" ? parsed.reasoning.trim() : "";
+  const priorLogit =
+    typeof parsed.priorLogit === "number" && Number.isFinite(parsed.priorLogit)
+      ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
+      : undefined;
   return {
     variables,
     tagline: tagline || undefined,
@@ -461,17 +520,23 @@ export async function generatePlanningScenarios(
   // re-cover ground" so even larger targets self-limit.
   const target = Math.max(3, Math.min(8, input.count ?? 5));
 
-  const dirVec = input.arc.directionVector ? `\n  direction: ${input.arc.directionVector}` : '';
-  const summary = (input.arc.summary ?? '(no summary)').replace(/\s+/g, ' ').trim();
-  const contextBlock = input.context ? renderVariablesContextBlock(input.context, { focusArcId: input.arc.id }) : '';
+  const dirVec = input.arc.directionVector
+    ? `\n  direction: ${input.arc.directionVector}`
+    : "";
+  const summary = (input.arc.summary ?? "(no summary)")
+    .replace(/\s+/g, " ")
+    .trim();
+  const contextBlock = input.context
+    ? renderVariablesContextBlock(input.context, { focusArcId: input.arc.id })
+    : "";
   const directionBlock = input.direction
     ? `\n<direction>\n${input.direction.trim()}\n</direction>\n`
-    : '';
+    : "";
   // Outline + Mode sections — same high-signal context blocks used by
   // Present extraction. Scenarios inherit the same substrate so the
   // coordinations they propose are grounded in the world's machinery.
-  const outlineBlock = input.outline ? `\n${input.outline}\n` : '';
-  const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : '';
+  const outlineBlock = input.outline ? `\n${input.outline}\n` : "";
+  const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
   // Future generation is INDEPENDENT of Present. It is a fresh look at the
   // situation grounded in narrative context (outline, mode substrate,
@@ -484,7 +549,7 @@ title: ${input.narrativeTitle}
 <current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
   state: ${summary}
 </current-arc>
-${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ''}${directionBlock}
+${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ""}${directionBlock}
 Produce a cohort of around ${target} scenarios for this arc. Apply the disciplines and pipeline above to the current-arc state and supporting context (outline, mode substrate, roster, threads). Let the situation's actual shape govern the cohort — don't pad, don't force diversity. Fresh look from the historical record, not a projection from the arc's Present variables. Output strict JSON only.`;
 
   const raw = input.onReasoning
@@ -493,8 +558,8 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
         SCENARIO_GENERATION_SYSTEM,
         () => {},
         MAX_TOKENS_DEFAULT,
-        'generatePlanningScenarios',
-        ANALYSIS_MODEL,
+        "generatePlanningScenarios",
+        PREDICTIVE_MODEL,
         input.reasoningBudget,
         input.onReasoning,
         ANALYSIS_TEMPERATURE,
@@ -503,15 +568,20 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
         prompt,
         SCENARIO_GENERATION_SYSTEM,
         MAX_TOKENS_DEFAULT,
-        'generatePlanningScenarios',
-        ANALYSIS_MODEL,
+        "generatePlanningScenarios",
+        PREDICTIVE_MODEL,
         input.reasoningBudget,
         true,
         ANALYSIS_TEMPERATURE,
       );
 
-  const parsed = parseJson(raw, 'generatePlanningScenarios') as {
-    pool?: Array<{ id?: unknown; name?: unknown; description?: unknown; category?: unknown }>;
+  const parsed = parseJson(raw, "generatePlanningScenarios") as {
+    pool?: Array<{
+      id?: unknown;
+      name?: unknown;
+      description?: unknown;
+      category?: unknown;
+    }>;
     scenarios?: Array<{
       name?: unknown;
       tagline?: unknown;
@@ -527,24 +597,28 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
 
   // Pool: name → {id, name, description, category} (no intensity — pool entries
   // are variable definitions; intensity lives per scenario via activations).
-  const poolById = new Map<string, { id: string; name: string; description: string; category: string }>();
+  const poolById = new Map<
+    string,
+    { id: string; name: string; description: string; category: string }
+  >();
   for (const r of parsed.pool ?? []) {
-    if (!r || typeof r !== 'object') continue;
-    const id = typeof r.id === 'string' ? r.id.trim() : '';
-    const name = typeof r.name === 'string' ? r.name.trim() : '';
+    if (!r || typeof r !== "object") continue;
+    const id = typeof r.id === "string" ? r.id.trim() : "";
+    const name = typeof r.name === "string" ? r.name.trim() : "";
     if (!id || !name || poolById.has(id)) continue;
     poolById.set(id, {
       id,
       name,
-      description: typeof r.description === 'string' ? r.description.trim() : '',
-      category: typeof r.category === 'string' ? r.category.trim() : 'general',
+      description:
+        typeof r.description === "string" ? r.description.trim() : "",
+      category: typeof r.category === "string" ? r.category.trim() : "general",
     });
   }
 
   const out: PlanningScenario[] = [];
   for (const s of parsed.scenarios ?? []) {
-    if (typeof s !== 'object' || s === null) continue;
-    const name = typeof s.name === 'string' ? s.name.trim() : '';
+    if (typeof s !== "object" || s === null) continue;
+    const name = typeof s.name === "string" ? s.name.trim() : "";
     if (!name) continue;
 
     const seen = new Set<string>();
@@ -556,10 +630,14 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
     // generation) keep working without a schema migration.
     if (Array.isArray(s.activations)) {
       for (const a of s.activations) {
-        if (!a || typeof a !== 'object') continue;
+        if (!a || typeof a !== "object") continue;
         const ar = a as { variableId?: unknown; intensity?: unknown };
-        const variableId = typeof ar.variableId === 'string' ? ar.variableId.trim() : '';
-        const intensity = typeof ar.intensity === 'number' ? Math.max(0, Math.min(4, Math.round(ar.intensity))) : 0;
+        const variableId =
+          typeof ar.variableId === "string" ? ar.variableId.trim() : "";
+        const intensity =
+          typeof ar.intensity === "number"
+            ? Math.max(0, Math.min(4, Math.round(ar.intensity)))
+            : 0;
         if (!variableId || intensity === 0 || seen.has(variableId)) continue;
         const def = poolById.get(variableId);
         if (!def) continue;
@@ -579,15 +657,20 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
     }
 
     if (variables.length === 0) continue;
-    const priorLogit = typeof s.priorLogit === 'number'
-      ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, s.priorLogit))
-      : 0;
-    const priorRationale = typeof s.priorRationale === 'string' ? s.priorRationale.trim() : undefined;
+    const priorLogit =
+      typeof s.priorLogit === "number"
+        ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, s.priorLogit))
+        : 0;
+    const priorRationale =
+      typeof s.priorRationale === "string"
+        ? s.priorRationale.trim()
+        : undefined;
     out.push({
       id: `pl-${out.length + 1}-${Math.random().toString(36).slice(2, 8)}`,
       name,
-      tagline: typeof s.tagline === 'string' ? s.tagline.trim() : undefined,
-      description: typeof s.description === 'string' ? s.description.trim() : undefined,
+      tagline: typeof s.tagline === "string" ? s.tagline.trim() : undefined,
+      description:
+        typeof s.description === "string" ? s.description.trim() : undefined,
       color: SCENARIO_COLORS[out.length % SCENARIO_COLORS.length],
       variables,
       priorLogit,
@@ -656,29 +739,48 @@ export interface RescoreScenarioResult {
   priorRationale: string;
 }
 
-export async function rescoreScenario(input: RescoreScenarioInput): Promise<RescoreScenarioResult> {
-  const dispoBlock = input.scenario.variables.length > 0
-    ? input.scenario.variables
-        .map((v) => `  - ${v.name} (${v.category}) @ ${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? '?'} — ${v.description}`)
-        .join('\n')
-    : '  (no variables active)';
+export async function rescoreScenario(
+  input: RescoreScenarioInput,
+): Promise<RescoreScenarioResult> {
+  const dispoBlock =
+    input.scenario.variables.length > 0
+      ? input.scenario.variables
+          .map(
+            (v) =>
+              `  - ${v.name} (${v.category}) @ ${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? "?"} — ${v.description}`,
+          )
+          .join("\n")
+      : "  (no variables active)";
 
   const cohortBlock = input.cohort
     .filter((s) => s.id !== input.scenario.id)
     .map((s) => {
-      const variables = s.variables.length > 0
-        ? s.variables.map((v) => `${v.name}@${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? '?'}`).join(', ')
-        : '(none)';
-      const prior = typeof s.priorLogit === 'number' ? s.priorLogit.toFixed(1) : '0';
-      return `  • ${s.name} [priorLogit ${prior}]${s.tagline ? ` — ${s.tagline}` : ''}\n    variables: ${variables}`;
+      const variables =
+        s.variables.length > 0
+          ? s.variables
+              .map(
+                (v) =>
+                  `${v.name}@${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? "?"}`,
+              )
+              .join(", ")
+          : "(none)";
+      const prior =
+        typeof s.priorLogit === "number" ? s.priorLogit.toFixed(1) : "0";
+      return `  • ${s.name} [priorLogit ${prior}]${s.tagline ? ` — ${s.tagline}` : ""}\n    variables: ${variables}`;
     })
-    .join('\n');
+    .join("\n");
 
-  const dirVec = input.arc.directionVector ? `\n  direction: ${input.arc.directionVector}` : '';
-  const summary = (input.arc.summary ?? '(no summary)').replace(/\s+/g, ' ').trim();
-  const contextBlock = input.context ? renderVariablesContextBlock(input.context, { focusArcId: input.arc.id }) : '';
-  const outlineBlock = input.outline ? `\n${input.outline}\n` : '';
-  const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : '';
+  const dirVec = input.arc.directionVector
+    ? `\n  direction: ${input.arc.directionVector}`
+    : "";
+  const summary = (input.arc.summary ?? "(no summary)")
+    .replace(/\s+/g, " ")
+    .trim();
+  const contextBlock = input.context
+    ? renderVariablesContextBlock(input.context, { focusArcId: input.arc.id })
+    : "";
+  const outlineBlock = input.outline ? `\n${input.outline}\n` : "";
+  const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
   const prompt = `<narrative>
 title: ${input.narrativeTitle}
@@ -688,39 +790,46 @@ title: ${input.narrativeTitle}
   state: ${summary}
 </current-arc>
 
-<scenario-under-review name="${input.scenario.name}"${input.scenario.tagline ? ` tagline="${input.scenario.tagline}"` : ''}>
+<scenario-under-review name="${input.scenario.name}"${input.scenario.tagline ? ` tagline="${input.scenario.tagline}"` : ""}>
 ${dispoBlock}
 </scenario-under-review>
 
 <sibling-scenarios>
-${cohortBlock || '  (no siblings)'}
+${cohortBlock || "  (no siblings)"}
 </sibling-scenarios>
-${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ''}
+${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ""}
 Re-score this scenario's priorLogit given its edited coordination, the cohort context, and the substrate (outline + Mode). Output strict JSON only.`;
 
   const raw = await callGenerate(
     prompt,
     RESCORE_SCENARIO_SYSTEM,
     MAX_TOKENS_DEFAULT,
-    'rescoreScenario',
-    ANALYSIS_MODEL,
+    "rescoreScenario",
+    PREDICTIVE_MODEL,
     undefined,
     true,
     ANALYSIS_TEMPERATURE,
   );
 
-  const parsed = parseJson(raw, 'rescoreScenario') as { priorLogit?: unknown; priorRationale?: unknown };
-  const priorLogit = typeof parsed.priorLogit === 'number'
-    ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
-    : 0;
-  const priorRationale = typeof parsed.priorRationale === 'string' ? parsed.priorRationale.trim() : '';
+  const parsed = parseJson(raw, "rescoreScenario") as {
+    priorLogit?: unknown;
+    priorRationale?: unknown;
+  };
+  const priorLogit =
+    typeof parsed.priorLogit === "number"
+      ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
+      : 0;
+  const priorRationale =
+    typeof parsed.priorRationale === "string"
+      ? parsed.priorRationale.trim()
+      : "";
   return { priorLogit, priorRationale };
 }
 
 // ── Probability model ──────────────────────────────────────────────────────
 
 export function scenarioLogit(scenario: PlanningScenario): number {
-  return typeof scenario.priorLogit === 'number' ? scenario.priorLogit : 0;
+  return typeof scenario.priorLogit === "number" ? scenario.priorLogit : 0;
 }
 
 export function scenarioProbabilities(
@@ -734,29 +843,44 @@ export function scenarioProbabilities(
   const exps = logits.map((l) => Math.exp(l - maxL));
   const sum = exps.reduce((a, b) => a + b, 0) || 1;
   const out: Record<string, number> = {};
-  scenarios.forEach((s, i) => { out[s.id] = exps[i] / sum; });
+  scenarios.forEach((s, i) => {
+    out[s.id] = exps[i] / sum;
+  });
   return out;
 }
-
 
 // ── Intensity scale + palettes ─────────────────────────────────────────────
 
 export const VARIABLE_INTENSITY_LEVELS = [
-  { idx: 0, label: '—',       desc: 'off' },
-  { idx: 1, label: 'weak',    desc: 'a hint, easily missed' },
-  { idx: 2, label: 'mild',    desc: 'present but contained' },
-  { idx: 3, label: 'strong',  desc: 'a clear inflection' },
-  { idx: 4, label: 'extreme', desc: 'tail-event amplitude' },
+  { idx: 0, label: "—", desc: "off" },
+  { idx: 1, label: "weak", desc: "a hint, easily missed" },
+  { idx: 2, label: "mild", desc: "present but contained" },
+  { idx: 3, label: "strong", desc: "a clear inflection" },
+  { idx: 4, label: "extreme", desc: "tail-event amplitude" },
 ] as const;
 
 export const SCENARIO_COLORS: readonly string[] = [
-  '#34d399', '#a78bfa', '#fbbf24', '#fb7185', '#fb923c',
-  '#f87171', '#38bdf8', '#22d3ee', '#f472b6', '#facc15',
+  "#34d399",
+  "#a78bfa",
+  "#fbbf24",
+  "#fb7185",
+  "#fb923c",
+  "#f87171",
+  "#38bdf8",
+  "#22d3ee",
+  "#f472b6",
+  "#facc15",
 ] as const;
 
 export const CATEGORY_PALETTE: readonly string[] = [
-  '#a78bfa', '#34d399', '#fbbf24', '#fb7185',
-  '#38bdf8', '#fb923c', '#22d3ee', '#f472b6',
+  "#a78bfa",
+  "#34d399",
+  "#fbbf24",
+  "#fb7185",
+  "#38bdf8",
+  "#fb923c",
+  "#22d3ee",
+  "#f472b6",
 ] as const;
 
 export function categoryColor(category: string): string {
