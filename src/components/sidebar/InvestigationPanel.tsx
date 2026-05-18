@@ -38,13 +38,10 @@ export default function InvestigationPanel() {
     const visible = all.filter(
       (inv) => arcLastSceneIndex.has(inv.arcId) || inv.source === "coordination-plan",
     );
-    return visible.sort((a, b) => {
-      const pa = arcLastSceneIndex.get(a.arcId) ?? Number.POSITIVE_INFINITY;
-      const pb = arcLastSceneIndex.get(b.arcId) ?? Number.POSITIVE_INFINITY;
-      if (pa !== pb) return pa - pb;
-      // Within the same arc, oldest first so the cycle UI reads chronologically.
-      return a.createdAt - b.createdAt;
-    });
+    // Latest-first ordering — most recently created investigations bubble to
+    // the top regardless of host arc. The user's primary navigation pattern
+    // is "what did I just generate?", so recency beats arc-chronology.
+    return visible.sort((a, b) => b.createdAt - a.createdAt);
   }, [narrative?.investigations, arcLastSceneIndex]);
 
   function openInvestigation(inv: ArcInvestigation) {

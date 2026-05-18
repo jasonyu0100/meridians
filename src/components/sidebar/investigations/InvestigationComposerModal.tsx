@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/Modal";
+import { Modal, ModalBody, ModalHeader, StreamingStatus } from "@/components/Modal";
 import { generateReasoningGraph } from "@/lib/ai/reasoning-graph";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
@@ -128,23 +128,7 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
       </ModalHeader>
       <ModalBody className="p-5 space-y-4">
         {loading ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] text-text-secondary">Generating reasoning graph…</span>
-            </div>
-            {streamText ? (
-              <pre className="text-[11px] text-text-dim font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-white/3 rounded-lg p-3 leading-relaxed">
-                {streamText}
-              </pre>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <div className="h-3 w-3/4 bg-white/6 rounded animate-pulse" />
-                <div className="h-3 w-2/3 bg-white/6 rounded animate-pulse" />
-                <div className="h-3 w-5/6 bg-white/6 rounded animate-pulse" />
-              </div>
-            )}
-          </div>
+          <StreamingStatus label="Generating reasoning graph…" streamText={streamText} />
         ) : (
           <>
             <div>
@@ -204,25 +188,23 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
                 <p className="text-[11px] text-fate/80">{error}</p>
               </div>
             )}
+
+            {/* Full-width primary action — matches the Generate Plan button
+                in CoordinationPlanSetupModal so all "generate from this
+                setup" modals share the same affordance. ESC / backdrop click
+                cancel; no inline Cancel button. */}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleGenerate}
+                disabled={loading || !selectedArc}
+                className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold transition disabled:opacity-30"
+              >
+                Generate
+              </button>
+            </div>
           </>
         )}
       </ModalBody>
-      <ModalFooter>
-        <button
-          onClick={onClose}
-          disabled={loading}
-          className="text-text-dim hover:text-text-primary text-xs px-3 py-1.5 transition disabled:opacity-30"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleGenerate}
-          disabled={loading || !selectedArc}
-          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition disabled:opacity-30"
-        >
-          Generate
-        </button>
-      </ModalFooter>
     </Modal>
   );
 }

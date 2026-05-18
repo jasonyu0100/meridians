@@ -9,7 +9,7 @@ import { generateNarrative } from "@/lib/ai/world";
 import { suggestPremise } from "@/lib/ai/premise";
 import { useStore } from "@/lib/store";
 import { useWizard } from "@/lib/wizard-context";
-import { Modal } from "@/components/Modal";
+import { Modal, StreamingStatus } from "@/components/Modal";
 import type {
   CharacterSketch,
   LocationSketch,
@@ -202,25 +202,7 @@ export function CreationWizard() {
         <div className="p-6">
           <div className="flex flex-col gap-5">
             {loading ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <h2 className="text-sm font-semibold text-text-primary">
-                    Generating world&hellip;
-                  </h2>
-                </div>
-                {streamText ? (
-                  <pre className="text-[11px] text-text-dim font-mono whitespace-pre-wrap max-h-72 overflow-y-auto bg-white/3 rounded-lg p-3 leading-relaxed">
-                    {streamText}
-                  </pre>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <div className="h-3 w-3/4 bg-white/6 rounded animate-pulse" />
-                    <div className="h-3 w-1/2 bg-white/6 rounded animate-pulse" />
-                    <div className="h-3 w-5/6 bg-white/6 rounded animate-pulse" />
-                  </div>
-                )}
-              </div>
+              <StreamingStatus label="Generating world…" streamText={streamText} maxHeight="max-h-72" />
             ) : (
               <h2 className="text-sm font-semibold text-text-primary">
                 Generation failed

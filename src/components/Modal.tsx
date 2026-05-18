@@ -94,3 +94,45 @@ export function ModalFooter({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+// ── StreamingStatus ─────────────────────────────────────────────────────
+//
+// Shared streaming UI for modal bodies: a pulsing green status dot + label
+// at the top, the streaming text (when present) in a scrollable monospace
+// pane below, or skeleton placeholder lines while waiting for the first
+// token. The same pattern lives across every modal that fires a streaming
+// generation so the user sees a consistent affordance — green dot means
+// "working", label says what's being generated, text streams in below.
+
+export function StreamingStatus({
+  label,
+  streamText,
+  maxHeight = 'max-h-80',
+}: {
+  /** Active-tense status, e.g. "Generating reasoning graph…". */
+  label: string;
+  /** Streaming reasoning text — empty/undefined renders the skeleton. */
+  streamText?: string;
+  /** Tailwind max-height class for the stream pane. */
+  maxHeight?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="text-[11px] text-text-secondary">{label}</span>
+      </div>
+      {streamText ? (
+        <pre className={`text-[11px] text-text-dim font-mono whitespace-pre-wrap ${maxHeight} overflow-y-auto bg-white/3 rounded-lg p-3 leading-relaxed`}>
+          {streamText}
+        </pre>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="h-3 w-3/4 bg-white/6 rounded animate-pulse" />
+          <div className="h-3 w-2/3 bg-white/6 rounded animate-pulse" />
+          <div className="h-3 w-5/6 bg-white/6 rounded animate-pulse" />
+        </div>
+      )}
+    </div>
+  );
+}

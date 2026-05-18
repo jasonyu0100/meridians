@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
+import { Modal, ModalBody, ModalHeader, StreamingStatus } from "@/components/Modal";
 import { generateCoordinationPlan, type ThinkingResource, type PlanGuidance, type ThinkingStyle, type ThreadTarget } from "@/lib/ai";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
@@ -14,32 +14,6 @@ import {
   type ReasoningSize,
   type NetworkBias,
 } from "./ThinkingPicker";
-
-// ── Streaming Output ─────────────────────────────────────────────────────────
-
-function StreamingOutput({ label, text }: { label: string; text: string }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <h2 className="text-sm font-semibold text-text-primary">
-          {label}&hellip;
-        </h2>
-      </div>
-      {text ? (
-        <pre className="text-[11px] text-text-dim font-mono whitespace-pre-wrap max-h-60 overflow-y-auto bg-white/3 rounded-lg p-3 leading-relaxed">
-          {text}
-        </pre>
-      ) : (
-        <div className="flex flex-col gap-3">
-          <div className="h-3 w-3/4 bg-white/6 rounded animate-pulse" />
-          <div className="h-3 w-1/2 bg-white/6 rounded animate-pulse" />
-          <div className="h-3 w-5/6 bg-white/6 rounded animate-pulse" />
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Thread Target Types ─────────────────────────────────────────────────────
 
@@ -310,7 +284,7 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
         </ModalHeader>
         <ModalBody className="p-6 space-y-5">
           {loading ? (
-            <StreamingOutput label="Planning narrative trajectory" text={streamText} />
+            <StreamingStatus label="Planning narrative trajectory…" streamText={streamText} maxHeight="max-h-60" />
           ) : (
             <>
               {/* Tab buttons */}
