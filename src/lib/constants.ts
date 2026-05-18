@@ -26,7 +26,7 @@ export const DEFAULT_MODEL = "google/gemini-2.5-flash";
 export const GENERATE_MODEL = "deepseek/deepseek-v4-flash";
 
 /** Model for present, future and rescoring variable model */
-export const PREDICTIVE_MODEL = "deepseek/deepseek-v4-flash";
+export const PREDICTIVE_MODEL = "google/gemini-2.5-flash";
 
 /** Model for scene generation when a reasoning graph (CRG) is the brief.
  *  The graph carries the causal/structural burden, so the scene pass becomes
