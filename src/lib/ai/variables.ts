@@ -84,11 +84,25 @@ function renderArcsBlock(src: VariablesContextSource): string {
     .map(([arcId]) => src.arcs[arcId])
     .filter((a): a is Arc => !!a);
   if (arcsOrdered.length === 0) return '';
+  // For each arc, surface its Present coordination annotation when one was
+  // recorded — description + reasoning + the universal inference-shape
+  // fields. This lets downstream variable / scenario generation inherit the
+  // comparative + falsification reasoning a prior arc already produced,
+  // rather than re-deriving it from scratch.
   return arcsOrdered
     .map((arc) => {
       const dir = arc.directionVector ? `\n    direction: ${clean(arc.directionVector)}` : '';
       const ws = arc.worldState ? `\n    state: ${clean(arc.worldState)}` : '';
-      return `  - id: ${arc.id}\n    name: "${arc.name}"${dir}${ws}`;
+      const presentParts: string[] = [];
+      if (arc.presentDescription) presentParts.push(`      description: ${clean(arc.presentDescription)}`);
+      if (arc.presentReasoning) presentParts.push(`      reasoning: ${clean(arc.presentReasoning)}`);
+      if (arc.presentConsidered) presentParts.push(`      × considered: ${clean(arc.presentConsidered)}`);
+      if (arc.presentBreaks) presentParts.push(`      ! breaks: ${clean(arc.presentBreaks)}`);
+      if (arc.presentOpens) presentParts.push(`      ⇒ opens: ${clean(arc.presentOpens)}`);
+      const present = presentParts.length > 0
+        ? `\n    present:\n${presentParts.join('\n')}`
+        : '';
+      return `  - id: ${arc.id}\n    name: "${arc.name}"${dir}${ws}${present}`;
     })
     .join('\n');
 }

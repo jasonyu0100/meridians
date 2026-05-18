@@ -43,15 +43,30 @@ export function buildDirectionFromScenario(
   const reasoning = scenario.reasoning
     ? `\nWhy this continuation is plausible: ${scenario.reasoning}`
     : "";
+  // Universal inference-shape: the three handles the scenario already
+  // surfaced — rejected alternatives, falsification, downstream cascade.
+  // Threading them into the direction string lets scene generation INHERIT
+  // the comparative + falsification reasoning rather than re-derive it.
+  const considered = scenario.considered
+    ? `\nAlternatives this continuation rejects (× considered): ${scenario.considered}`
+    : "";
+  const breaks = scenario.breaks
+    ? `\nWhat would invalidate this continuation (! breaks): ${scenario.breaks}`
+    : "";
+  const opens = scenario.opens
+    ? `\nWhat this continuation opens for arcs beyond this one (⇒ opens): ${scenario.opens}`
+    : "";
 
-  let direction = `SCENARIO: ${scenario.name}${description}${reasoning}
+  let direction = `SCENARIO: ${scenario.name}${description}${reasoning}${considered}${breaks}${opens}
 
 PRIMARY GUIDANCE — VARIABLE COORDINATION
 This arc continuation must enact the following coordination of variables. Each named force should be expressed at its specified intensity in the form the work's register actually carries — scene events and character choices in fiction; rule activations and modelled state transitions in simulation; claims advanced, sources engaged, counter-arguments addressed, and methodological commitments shifted in a paper or essay. The variables are the spine — let them shape what the arc DOES, in whatever way that register registers "doing".
 
 ${variablesBlock}
 
-Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) is a clear inflection driver across multiple scenes; intensity 4 (extreme) reshapes the arc; intensity 1 (weak) is a background hint.`;
+Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) is a clear inflection driver across multiple scenes; intensity 4 (extreme) reshapes the arc; intensity 1 (weak) is a background hint.
+
+Steer AGAINST the rejected alternatives in \`considered\` — those routings were considered and explicitly discarded by this scenario, so scenes that drift toward them violate the brief. Honour \`breaks\` as the test: if the arc's events would no longer satisfy this scenario's falsifying condition, the scenario isn't being enacted. Let \`opens\` shape the END of the arc — leave the threads it names primed for the arc-after-next.`;
 
   if (overallDirection?.trim()) {
     direction = `OVERALL DIRECTION (steer the broader work toward this): ${overallDirection.trim()}\n\n${direction}`;
