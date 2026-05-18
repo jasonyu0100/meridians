@@ -19,7 +19,9 @@ export default function InvestigationPanel() {
   const [composerOpen, setComposerOpen] = useState(false);
 
   // Last scene index per arc — used to sort the list in narrative order and
-  // to navigate to an arc when an investigation is opened.
+  // to navigate to an arc when an investigation is opened. Indices are
+  // into resolvedEntryKeys (which includes world commits) because
+  // SET_SCENE_INDEX takes a resolvedKeys index.
   const arcLastSceneIndex = useMemo(() => {
     const map = new Map<string, number>();
     if (!narrative) return map;
@@ -27,6 +29,27 @@ export default function InvestigationPanel() {
       const scene = narrative.scenes[key];
       if (scene?.arcId) map.set(scene.arcId, i);
     });
+    return map;
+  }, [narrative, state.resolvedEntryKeys]);
+
+  // Scene-only range per arc — start / end scene numbers EXCLUDING world
+  // commits, so the card shows the arc's narrative position (e.g.
+  // "Scenes 12–18") rather than a noisy mixed index. Used purely for
+  // display; navigation still goes through `arcLastSceneIndex` against
+  // resolvedEntryKeys.
+  const arcSceneRange = useMemo(() => {
+    const map = new Map<string, { start: number; end: number }>();
+    if (!narrative) return map;
+    let sceneNum = 0;
+    for (const key of state.resolvedEntryKeys) {
+      const scene = narrative.scenes[key];
+      if (!scene) continue;
+      sceneNum++;
+      if (!scene.arcId) continue;
+      const existing = map.get(scene.arcId);
+      if (!existing) map.set(scene.arcId, { start: sceneNum, end: sceneNum });
+      else existing.end = sceneNum;
+    }
     return map;
   }, [narrative, state.resolvedEntryKeys]);
 
@@ -88,26 +111,43 @@ export default function InvestigationPanel() {
           </p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-2">
           {investigations.map((inv) => {
             const arc = narrative.arcs[inv.arcId];
-            const arcPosition = arcLastSceneIndex.get(inv.arcId);
+            const nodes = inv.graph?.nodes?.length ?? 0;
+            const edges = inv.graph?.edges?.length ?? 0;
+            const style = inv.settings?.thinkingStyle;
+            const resource = inv.settings?.thinkingResource;
+            const range = arcSceneRange.get(inv.arcId);
+            const rangeLabel = range
+              ? range.start === range.end
+                ? `Scene ${range.start}`
+                : `Scenes ${range.start}–${range.end}`
+              : null;
             return (
               <div
                 key={inv.id}
-                className="group border-b border-white/5 px-3 py-2.5 hover:bg-white/3 transition-colors cursor-pointer"
                 onClick={() => openInvestigation(inv)}
+                className="group w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 cursor-pointer"
               >
+                {/* Header: source chip · thinking style · resource — same
+                    chip row pattern as SurveyCard's "questionType · category". */}
                 <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-[10px] font-mono text-text-dim/60 shrink-0">
-                    {arcPosition !== undefined ? `#${arcPosition + 1}` : "?"}
+                  <span
+                    className={`text-[9px] uppercase tracking-wider font-mono ${
+                      inv.source === "coordination-plan" ? "text-emerald-300/80" : "text-text-dim/70"
+                    }`}
+                  >
+                    {inv.source === "coordination-plan" ? "Plan" : "Manual"}
                   </span>
-                  <span className="text-[11px] text-text-primary truncate flex-1">
-                    {arc?.name ?? "Unknown arc"}
-                  </span>
-                  {inv.source === "coordination-plan" && (
-                    <span className="text-[9px] uppercase tracking-wider text-emerald-300/70 shrink-0">
-                      plan
+                  {style && style !== "freeform" && (
+                    <span className="text-[9px] uppercase tracking-wider font-mono text-violet-300/70">
+                      · {style}
+                    </span>
+                  )}
+                  {resource && resource !== "freeform" && (
+                    <span className="text-[9px] uppercase tracking-wider font-mono text-amber-300/70">
+                      · {resource}
                     </span>
                   )}
                   <button
@@ -115,17 +155,40 @@ export default function InvestigationPanel() {
                       e.stopPropagation();
                       dispatch({ type: "DELETE_INVESTIGATION", investigationId: inv.id });
                     }}
-                    className="text-text-dim/40 hover:text-fate opacity-0 group-hover:opacity-100 transition-opacity text-xs shrink-0"
+                    className="ml-auto text-text-dim/40 hover:text-fate opacity-0 group-hover:opacity-100 transition-opacity text-[14px] leading-none shrink-0"
                     title="Delete investigation"
                   >
                     &times;
                   </button>
                 </div>
+
+                {/* Body: arc name (the subject) + scene-only range +
+                    optional direction (the brief). Parallel to a survey's
+                    question + meta line. */}
+                <p className="text-[12px] text-text-primary leading-snug">
+                  {arc?.name ?? "Unknown arc"}
+                </p>
+                {rangeLabel && (
+                  <p className="mt-0.5 text-[10px] font-mono text-text-dim/60 tabular-nums">
+                    {rangeLabel}
+                  </p>
+                )}
                 {inv.direction && (
-                  <p className="text-[10px] text-text-dim/70 mt-1 line-clamp-2 italic">
+                  <p className="mt-1 text-[10px] text-text-dim/70 italic line-clamp-2 leading-snug">
                     {inv.direction}
                   </p>
                 )}
+
+                {/* Footer: graph dimensions + date — mirrors SurveyCard's
+                    sparkline/summary row. */}
+                <div className="mt-2 flex items-center gap-2 text-[9px] font-mono text-text-dim/60 tabular-nums">
+                  <span>{nodes} node{nodes !== 1 ? "s" : ""}</span>
+                  <span>·</span>
+                  <span>{edges} edge{edges !== 1 ? "s" : ""}</span>
+                  <span className="ml-auto">
+                    {new Date(inv.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                  </span>
+                </div>
               </div>
             );
           })}

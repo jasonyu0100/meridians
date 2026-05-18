@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useStore } from '@/lib/store';
-import { buildCumulativeSystemGraph } from '@/lib/narrative-utils';
+import { buildCumulativeSystemGraph, scoreSystemNodes } from '@/lib/narrative-utils';
 import type { SystemNodeType } from '@/types/narrative';
 import { CollapsibleSection } from './CollapsibleSection';
 
@@ -60,6 +60,32 @@ export default function KnowledgeDetail({ nodeId }: Props) {
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
 
   const node = graph.nodes[nodeId];
+
+  // Impact score components for this node — same formula the Knowledge
+  // panel ranks by (degree + attributions + reach). Surfacing here turns
+  // the score from a list-only sort key into a per-node legibility
+  // signal: the reader sees both the connections AND how genuinely
+  // load-bearing the concept is across the world.
+  const impact = useMemo(() => {
+    if (!narrative) return null;
+    const ranked = scoreSystemNodes(
+      narrative,
+      state.resolvedEntryKeys,
+      state.viewState.currentSceneIndex,
+    );
+    const entry = ranked.find((r) => r.node.id === nodeId);
+    if (!entry) return null;
+    const total = ranked.length;
+    const rank = ranked.findIndex((r) => r.node.id === nodeId) + 1;
+    return {
+      degree: entry.degree,
+      attributions: entry.attributions,
+      reach: entry.reach,
+      score: entry.score,
+      rank,
+      total,
+    };
+  }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex, nodeId]);
 
   // All edges involving this node
   const connections = useMemo(() => {
@@ -188,6 +214,37 @@ export default function KnowledgeDetail({ nodeId }: Props) {
           <span className="text-[10px] text-text-dim font-mono">{nodeId}</span>
         </div>
       </div>
+
+      {/* Impact metrics — degree + attributions + reach, the same three
+          signals that drive the Knowledge panel's ranking. Surfacing the
+          breakdown alongside the composite score keeps the formula
+          auditable from the per-node view, not just the directory. */}
+      {impact && (
+        <div className="flex items-center gap-3 px-2.5 py-1.5 rounded border border-white/8 bg-white/3">
+          <div className="flex flex-col leading-tight">
+            <span className="text-[9px] uppercase tracking-wider text-text-dim/70">Impact</span>
+            <span className="text-[13px] font-mono text-text-primary tabular-nums">{impact.score}</span>
+          </div>
+          <div className="w-px h-6 bg-white/8" aria-hidden />
+          <div className="grid grid-cols-3 gap-x-3 flex-1 text-[10px] font-mono tabular-nums">
+            <div className="flex flex-col">
+              <span className="text-text-dim/60 text-[9px] uppercase tracking-wider">Links</span>
+              <span className="text-text-secondary">{impact.degree}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-text-dim/60 text-[9px] uppercase tracking-wider">Cites</span>
+              <span className="text-text-secondary">{impact.attributions}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-text-dim/60 text-[9px] uppercase tracking-wider">Arcs</span>
+              <span className="text-text-secondary">{impact.reach}</span>
+            </div>
+          </div>
+          <div className="text-[10px] text-text-dim/60 font-mono tabular-nums shrink-0">
+            #{impact.rank}/{impact.total}
+          </div>
+        </div>
+      )}
 
       {/* Connections */}
       {grouped.length > 0 && (

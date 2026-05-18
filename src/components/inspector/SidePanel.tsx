@@ -5,6 +5,7 @@ import NotesPanel from "@/components/sidebar/NotesPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
 import InvestigationPanel from "@/components/sidebar/InvestigationPanel";
+import KnowledgePanel from "./KnowledgePanel";
 import BranchEval from "@/components/timeline/BranchEval";
 import PlanEval from "@/components/timeline/PlanEval";
 import ProseEval from "@/components/timeline/ProseEval";
@@ -26,12 +27,13 @@ import ThreadLogNodeDetail from "./ThreadLogNodeDetail";
 import ReasoningNodeDetail from "./ReasoningNodeDetail";
 import ModeNodeDetail from "./ModeNodeDetail";
 
-type Tab = "inspector" | "chat" | "notes" | "surveys" | "interviews" | "investigations" | "eval";
+type Tab = "inspector" | "chat" | "notes" | "knowledge" | "surveys" | "interviews" | "investigations" | "eval";
 
 const TAB_LABELS: Record<Tab, string> = {
   inspector: "Inspector",
   chat: "Chat",
   notes: "Notes",
+  knowledge: "Knowledge",
   surveys: "Surveys",
   interviews: "Interviews",
   investigations: "Investigations",
@@ -152,7 +154,7 @@ export default function SidePanel() {
     <aside className="h-full flex flex-row border-l border-border glass-panel">
       {/* Vertical tab rail */}
       <div className="shrink-0 flex flex-col items-center py-2 w-7 border-r border-border">
-        {(["inspector", "chat", "notes", "surveys", "interviews", "investigations", "eval"] as Tab[]).map((t) => (
+        {(["inspector", "chat", "notes", "knowledge", "surveys", "interviews", "investigations", "eval"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -210,6 +212,11 @@ export default function SidePanel() {
         {tab === "notes" && (
           <div className="flex-1 min-h-0 flex flex-col">
             <NotesPanel />
+          </div>
+        )}
+        {tab === "knowledge" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <KnowledgePanel />
           </div>
         )}
         {tab === "surveys" && (

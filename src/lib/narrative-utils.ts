@@ -1,4 +1,5 @@
 import type { Branch, NarrativeState, Scene, Thread, Belief, OutcomeEvidence, ThreadDelta, ForceSnapshot, CubeCornerKey, CubeCorner, SystemGraph, SystemNode, SystemEdge, SystemDelta, WorldBuild, Character, Location, Artifact } from '@/types/narrative';
+import { getSceneSystemAttributions } from '@/lib/system-graph';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
 import {
   MARKET_EVIDENCE_SENSITIVITY,
@@ -1005,6 +1006,83 @@ export function rankSystemNodes(graph: SystemGraph): { node: SystemNode; degree:
   return Object.values(graph.nodes)
     .map((node) => ({ node, degree: degree.get(node.id) ?? 0 }))
     .sort((a, b) => b.degree - a.degree);
+}
+
+/**
+ * Per-node impact score for the system graph.
+ *
+ * Combines three orthogonal signals so the score reflects KNOWLEDGE THAT
+ * GENUINELY DRIVES THE SYSTEM, not raw count of any one dimension:
+ *   - degree       : edges in the system graph touching this node
+ *                    (how the concept supports / depends on other concepts)
+ *   - attributions : scenes that reference this node — via either
+ *                    `scene.attributions` or as a system-delta introduction
+ *                    (how often the world actually USES it)
+ *   - reach        : distinct arcs those scenes span
+ *                    (cross-arc concept > 10-times-in-one-arc concept)
+ *
+ * score = degree + attributions + reach
+ *
+ * Additive, comparable scales, low ceremony. A node that fails any axis
+ * scores low naturally — a heavily-attributed concept with no graph
+ * connections is isolated trivia; a richly-connected concept never
+ * referenced by a scene is dead lore. The three components are returned
+ * alongside the score so the UI can show the auditable breakdown.
+ *
+ * The optional `upToIndex` parameter scopes attribution/reach to scenes
+ * up to and including a cursor position — matches how the rest of the
+ * pipeline treats "as of the currently-viewed scene".
+ */
+export function scoreSystemNodes(
+  narrative: NarrativeState,
+  resolvedKeys: string[],
+  upToIndex?: number,
+): Array<{
+  node: SystemNode;
+  degree: number;
+  attributions: number;
+  reach: number;
+  score: number;
+}> {
+  const graph = narrative.systemGraph;
+  if (!graph) return [];
+
+  // 1) Degree — edges touching each node, in either direction.
+  const degree = new Map<string, number>();
+  for (const edge of graph.edges) {
+    degree.set(edge.from, (degree.get(edge.from) ?? 0) + 1);
+    degree.set(edge.to, (degree.get(edge.to) ?? 0) + 1);
+  }
+
+  // 2) Attributions + reach — walk scenes up to the cursor (or all if
+  // unbounded). Every scene that attributes a SYS-id counts once toward
+  // attributions; each unique arcId it lives in counts toward reach.
+  const attributions = new Map<string, number>();
+  const arcsByNode = new Map<string, Set<string>>();
+  const cutoff = upToIndex == null ? resolvedKeys.length : Math.min(upToIndex + 1, resolvedKeys.length);
+  for (let i = 0; i < cutoff; i++) {
+    const key = resolvedKeys[i];
+    const scene = narrative.scenes[key];
+    if (!scene) continue;
+    const ids = getSceneSystemAttributions(scene);
+    for (const id of ids) {
+      attributions.set(id, (attributions.get(id) ?? 0) + 1);
+      if (scene.arcId) {
+        let set = arcsByNode.get(id);
+        if (!set) { set = new Set(); arcsByNode.set(id, set); }
+        set.add(scene.arcId);
+      }
+    }
+  }
+
+  return Object.values(graph.nodes)
+    .map((node) => {
+      const d = degree.get(node.id) ?? 0;
+      const a = attributions.get(node.id) ?? 0;
+      const r = arcsByNode.get(node.id)?.size ?? 0;
+      return { node, degree: d, attributions: a, reach: r, score: d + a + r };
+    })
+    .sort((x, y) => y.score - x.score);
 }
 
 /** Build the cumulative system graph up to a given scene index
