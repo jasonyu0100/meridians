@@ -9,11 +9,77 @@ import {
   buildPlanDirective,
   getArcSceneCount,
   getArcNode,
+  getVisibleNodesForArc,
   isPlanComplete,
 } from '@/lib/auto-engine';
 import { generateScenes, type CoordinationPlanContext } from '@/lib/ai';
 import { FatalApiError } from '@/lib/ai/errors';
 import { logError, logInfo } from '@/lib/system-logger';
+import type {
+  ArcInvestigation,
+  CoordinationNode,
+  CoordinationPlan,
+  ReasoningGraphSnapshot,
+  ReasoningNodeSnapshot,
+} from '@/types/narrative';
+
+// Coordination plan node types include peak/valley/moment which the
+// reasoning graph visualisation doesn't render directly. Map them onto
+// the nearest reasoning-graph types so the investigation visualisation
+// stays consistent with manually-created CRGs.
+const COORD_TO_REASONING_TYPE: Record<CoordinationNode['type'], ReasoningNodeSnapshot['type']> = {
+  fate: 'fate',
+  character: 'character',
+  location: 'location',
+  artifact: 'artifact',
+  system: 'system',
+  reasoning: 'reasoning',
+  pattern: 'pattern',
+  warning: 'warning',
+  chaos: 'chaos',
+  peak: 'fate',     // arc-anchor — surfaces as a fate node (thread culmination)
+  valley: 'fate',   // arc-anchor — surfaces as a fate node (turning point)
+  moment: 'reasoning',
+};
+
+/**
+ * Package the coordination plan's visible-for-arc subgraph into a
+ * reasoning-graph snapshot so it can be persisted as an arc-anchored
+ * investigation. No additional LLM call — the plan's per-arc reasoning is
+ * the artifact, just re-shaped to match the reasoning-graph contract.
+ */
+function buildCoordPlanInvestigationGraph(
+  plan: CoordinationPlan,
+  arcIndex: number,
+  arcLabel: string,
+  sceneCount: number,
+): ReasoningGraphSnapshot {
+  const visible = getVisibleNodesForArc(plan, arcIndex);
+  const visibleIds = new Set(visible.map((n) => n.id));
+
+  const nodes: ReasoningNodeSnapshot[] = visible.map((n) => ({
+    id: n.id,
+    index: n.index,
+    order: n.order,
+    type: COORD_TO_REASONING_TYPE[n.type] ?? 'reasoning',
+    label: n.label,
+    detail: n.detail,
+    entityId: n.entityId,
+    threadId: n.threadId,
+    systemNodeId: n.systemNodeId,
+  }));
+
+  const edges = plan.edges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to));
+
+  const arcNode = getArcNode(plan, arcIndex);
+  return {
+    nodes,
+    edges,
+    arcName: arcLabel,
+    sceneCount,
+    summary: arcNode?.detail ?? plan.summary,
+  };
+}
 
 export function useAutoPlay() {
   const { state, dispatch } = useStore();
@@ -116,6 +182,33 @@ export function useAutoPlay() {
           worldExpanded: false,
           hasError: false,
         });
+
+        // Persist the plan's per-arc reasoning as an arc-anchored investigation
+        // so the operator can browse / copy it from the sidebar. Anchored to
+        // the PRECEDING arc — the position the reasoning was "looking from".
+        // Mirrors the manual investigation flow. For the very first plan arc
+        // there is no preceding arc, so the artifact is skipped (the reasoning
+        // still guided scene generation in-flight).
+        const precedingArcId = (() => {
+          for (let i = resolvedEntryKeys.length - 1; i >= 0; i--) {
+            const scene = activeNarrative.scenes[resolvedEntryKeys[i]];
+            if (scene?.arcId && scene.arcId !== arc.id) return scene.arcId;
+          }
+          return null;
+        })();
+
+        if (precedingArcId) {
+          const investigation: ArcInvestigation = {
+            id: `investigation-${Date.now()}-${precedingArcId}`,
+            arcId: precedingArcId,
+            graph: buildCoordPlanInvestigationGraph(plan, executingArc, arcLabel, sceneCount),
+            direction: directive,
+            source: 'coordination-plan',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          dispatch({ type: 'CREATE_INVESTIGATION', investigation });
+        }
 
         // Advance to next arc
         dispatch({ type: 'ADVANCE_COORDINATION_PLAN', branchId: activeBranchId });
