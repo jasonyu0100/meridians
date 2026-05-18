@@ -7,7 +7,7 @@ import type { NarrativeState } from "@/types/narrative";
 import { resolveReasoningBudget } from "@/lib/ai/api";
 
 /** Which force dominates a reasoning graph / coordination plan. */
-export type ForcePreference =
+export type ThinkingResource =
   | "freeform"
   | "fate"
   | "world"

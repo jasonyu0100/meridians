@@ -39,19 +39,34 @@ export function buildDirectionFromScenario(
         .join("\n")
     : "  (no variables configured)";
 
-  const tagline = scenario.tagline ? `\nTagline: ${scenario.tagline}` : "";
-  const rationale = scenario.priorRationale
-    ? `\nWhy this continuation is plausible: ${scenario.priorRationale}`
+  const description = scenario.description ? `\nDescription: ${scenario.description}` : "";
+  const reasoning = scenario.reasoning
+    ? `\nWhy this continuation is plausible: ${scenario.reasoning}`
+    : "";
+  // Universal inference-shape: the three handles the scenario already
+  // surfaced — rejected alternatives, falsification, downstream cascade.
+  // Threading them into the direction string lets scene generation INHERIT
+  // the comparative + falsification reasoning rather than re-derive it.
+  const considered = scenario.considered
+    ? `\nAlternatives this continuation rejects (× considered): ${scenario.considered}`
+    : "";
+  const breaks = scenario.breaks
+    ? `\nWhat would invalidate this continuation (! breaks): ${scenario.breaks}`
+    : "";
+  const opens = scenario.opens
+    ? `\nWhat this continuation opens for arcs beyond this one (⇒ opens): ${scenario.opens}`
     : "";
 
-  let direction = `SCENARIO: ${scenario.name}${tagline}${rationale}
+  let direction = `SCENARIO: ${scenario.name}${description}${reasoning}${considered}${breaks}${opens}
 
 PRIMARY GUIDANCE — VARIABLE COORDINATION
 This arc continuation must enact the following coordination of variables. Each named force should be expressed at its specified intensity in the form the work's register actually carries — scene events and character choices in fiction; rule activations and modelled state transitions in simulation; claims advanced, sources engaged, counter-arguments addressed, and methodological commitments shifted in a paper or essay. The variables are the spine — let them shape what the arc DOES, in whatever way that register registers "doing".
 
 ${variablesBlock}
 
-Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) is a clear inflection driver across multiple scenes; intensity 4 (extreme) reshapes the arc; intensity 1 (weak) is a background hint.`;
+Generate scenes whose deltas and prose CAUSE the variables to fire at the stated intensities. A variable at intensity 3 (strong) is a clear inflection driver across multiple scenes; intensity 4 (extreme) reshapes the arc; intensity 1 (weak) is a background hint.
+
+Steer AGAINST the rejected alternatives in \`considered\` — those routings were considered and explicitly discarded by this scenario, so scenes that drift toward them violate the brief. Honour \`breaks\` as the test: if the arc's events would no longer satisfy this scenario's falsifying condition, the scenario isn't being enacted. Let \`opens\` shape the END of the arc — leave the threads it names primed for the arc-after-next.`;
 
   if (overallDirection?.trim()) {
     direction = `OVERALL DIRECTION (steer the broader work toward this): ${overallDirection.trim()}\n\n${direction}`;
@@ -77,17 +92,17 @@ export type VirtualState = {
  * dormant entries (intensity 0) filtered out so the arc reflects only
  * variables actually firing in the scenario.
  *
- * Also transfers the scenario's tagline + priorRationale onto the new arc
- * as `presentTagline` / `presentReasoning` so lineage is preserved — the
- * Future-scenario annotation becomes the new arc's Present annotation.
+ * Also transfers the scenario's description + reasoning onto the new arc
+ * as `presentDescription` / `presentReasoning` so lineage is preserved —
+ * the Future-scenario annotation becomes the new arc's Present annotation.
  *
  * Shared between the virtual preview (`buildVirtualState`) and the real
  * commit path (`useExperimentation.runScenario`) so both surfaces agree
  * on what gets stamped onto the new arc.
  *
- * Accepts either the raw variables array (legacy) or the full scenario
- * for richer transfer. Callers that pass only variables get the variable
- * stamp; callers that pass the scenario also get tagline + reasoning.
+ * Accepts either the raw variables array or the full scenario for richer
+ * transfer. Callers that pass only variables get the variable stamp;
+ * callers that pass the scenario also get description + reasoning.
  */
 export function stampScenarioVariables(
   arc: Arc,
@@ -95,11 +110,20 @@ export function stampScenarioVariables(
 ): Arc {
   const isScenario = !Array.isArray(scenarioOrVariables);
   const scenarioVariables = isScenario ? scenarioOrVariables.variables : scenarioOrVariables;
-  const tagline = isScenario && scenarioOrVariables.tagline?.trim()
-    ? scenarioOrVariables.tagline.trim()
+  const description = isScenario && scenarioOrVariables.description?.trim()
+    ? scenarioOrVariables.description.trim()
     : undefined;
-  const reasoning = isScenario && scenarioOrVariables.priorRationale?.trim()
-    ? scenarioOrVariables.priorRationale.trim()
+  const reasoning = isScenario && scenarioOrVariables.reasoning?.trim()
+    ? scenarioOrVariables.reasoning.trim()
+    : undefined;
+  const considered = isScenario && scenarioOrVariables.considered?.trim()
+    ? scenarioOrVariables.considered.trim()
+    : undefined;
+  const breaks = isScenario && scenarioOrVariables.breaks?.trim()
+    ? scenarioOrVariables.breaks.trim()
+    : undefined;
+  const opens = isScenario && scenarioOrVariables.opens?.trim()
+    ? scenarioOrVariables.opens.trim()
     : undefined;
   const logit = isScenario && typeof scenarioOrVariables.priorLogit === 'number'
     ? scenarioOrVariables.priorLogit
@@ -107,8 +131,11 @@ export function stampScenarioVariables(
   return {
     ...arc,
     presentVariables: scenarioVariables.filter((v) => v.intensity > 0),
-    presentTagline: tagline,
+    presentDescription: description,
     presentReasoning: reasoning,
+    presentConsidered: considered,
+    presentBreaks: breaks,
+    presentOpens: opens,
     presentLogit: logit,
   };
 }
@@ -147,8 +174,11 @@ export function buildVirtualState(
       ...existing,
       sceneIds: [...existing.sceneIds, ...deduped],
       presentVariables: stampedArc.presentVariables,
-      presentTagline: stampedArc.presentTagline,
+      presentDescription: stampedArc.presentDescription,
       presentReasoning: stampedArc.presentReasoning,
+      presentConsidered: stampedArc.presentConsidered,
+      presentBreaks: stampedArc.presentBreaks,
+      presentOpens: stampedArc.presentOpens,
       presentLogit: stampedArc.presentLogit,
     };
   }

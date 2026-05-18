@@ -136,8 +136,6 @@ function createAutoConfig(overrides: Partial<AutoConfig> = {}): AutoConfig {
     narrativeConstraints: "",
     characterRotationEnabled: true,
     minScenesBetweenCharacterFocus: 5,
-    mode: "extended",
-    operations: ["reasoning-graph", "scenes"],
     ...overrides,
   };
 }

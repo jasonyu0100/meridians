@@ -5,12 +5,10 @@ import { IconChevronRight, IconDice } from "@/components/icons";
 import {
   DEFAULT_EXPANSION_FILTER,
   expandWorld,
-  generateReasoningGraph,
   generateScenes,
   suggestWorldExpansion,
   type CoordinationPlanContext,
   type ExpansionEntityFilter,
-  type ReasoningGraph,
   type WorldExpansionSize,
   type WorldExpansionStrategy,
 } from "@/lib/ai";
@@ -20,7 +18,6 @@ import {
   getArcSceneCount,
   isPlanComplete,
 } from "@/lib/auto-engine";
-import { ReasoningGraphModal } from "./ReasoningGraphModal";
 import { nextId } from "@/lib/narrative-utils";
 import {
   buildPresetSequence,
@@ -41,12 +38,12 @@ import {
   resolveEntry,
 } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ForcePreference, ReasoningMode } from "@/lib/ai";
+import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
 import {
   ThinkingSettings,
   type ReasoningSize,
   type NetworkBias,
-} from "./ForcePreferencePicker";
+} from "./ThinkingPicker";
 import { GuidanceFields } from "./GuidanceFields";
 import { MarkovGraph } from "./MarkovGraph";
 import { CubeBadge, PacingStrip } from "./PacingStrip";
@@ -152,7 +149,9 @@ export function GeneratePanel({
   const [worldBuildFocusId, setWorldBuildFocusId] = useState<string | null>(
     initialWorldBuildFocusId,
   );
-  const [guidanceDirection, setGuidanceDirection] = useState("");
+  const [guidanceDirection, setGuidanceDirection] = useState(
+    initialContinuationMode && initialStoryDirection ? initialStoryDirection : "",
+  );
   const [guidanceConstraints, setGuidanceConstraints] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -179,29 +178,17 @@ export function GeneratePanel({
     ...DEFAULT_EXPANSION_FILTER,
   });
 
-  // Reasoning graph state (for scene generation)
-  const [reasoningGraph, setReasoningGraph] = useState<ReasoningGraph | null>(null);
-  // The direction string used to seed the CRG — passed through to scene
-  // generation so the prose phrasing (tonal / scope / register) survives
-  // alongside the compiled graph.
-  const [reasoningGraphDirection, setReasoningGraphDirection] = useState<string>("");
-  const [showReasoningModal, setShowReasoningModal] = useState(false);
-  const [generatingGraph, setGeneratingGraph] = useState(false);
-  // When true, the panel body is replaced by the extended-thinking launch
-  // surface — thinking controls + animation + a single confirm to start CRG
-  // generation. Closes on cancel or once generation begins.
-  const [extendedSetupOpen, setExtendedSetupOpen] = useState(false);
   // Arc reasoning options — initialized from story-level defaults so the
   // user doesn't have to re-pick their preferred thinking style each time.
   const thinkingDefaults = state.activeNarrative?.storySettings;
-  const [forcePreference, setForcePreference] = useState<ForcePreference>(
-    thinkingDefaults?.defaultForcePreference ?? "freeform",
+  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>(
+    thinkingDefaults?.defaultThinkingResource ?? "freeform",
   );
   const [reasoningSize, setReasoningSize] = useState<ReasoningSize>(
     thinkingDefaults?.defaultReasoningSize ?? "medium",
   );
-  const [reasoningMode, setReasoningMode] = useState<ReasoningMode>(
-    thinkingDefaults?.defaultReasoningMode ?? "abduction",
+  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>(
+    thinkingDefaults?.defaultThinkingStyle ?? "abduction",
   );
   const [networkBias, setNetworkBias] = useState<NetworkBias>(
     thinkingDefaults?.defaultNetworkBias ?? "neutral",
@@ -348,139 +335,6 @@ export function GeneratePanel({
     },
     [previewSequence],
   );
-
-  async function handleGenerateReasoningGraph(additionalPrompt?: string) {
-    if (!narrative) return;
-    setGeneratingGraph(true);
-    setStreamText("");
-    setError("");
-    try {
-      const finalArcName = newArc ? (arcName.trim() || "New Arc") : (currentArc?.name ?? "Continuation");
-      const baseDirection = direction || guidanceDirection;
-      const fullDirection = additionalPrompt
-        ? `${baseDirection}\n\nAdditional guidance: ${additionalPrompt}`
-        : baseDirection;
-
-      // Build coordination plan context for reasoning graph generation
-      const reasoningPlanContext: CoordinationPlanContext | undefined =
-        hasActivePlan && coordPlan ? {
-          arcIndex: planArcIndex,
-          arcCount: coordPlan.arcCount,
-          arcLabel: planArcName || `Arc ${planArcIndex}`,
-          sceneCount: planSceneCount,
-          forceMode: planArcNode?.forceMode,
-          directive: planDirective,
-        } : undefined;
-
-      const graph = await generateReasoningGraph(
-        narrative,
-        state.resolvedEntryKeys,
-        headIndex,
-        directionCount,
-        fullDirection,
-        finalArcName,
-        (token) => setStreamText((prev) => prev + token),
-        reasoningPlanContext,
-        { forcePreference, reasoningLevel: reasoningSize, reasoningMode, networkBias },
-      );
-      setReasoningGraph(graph);
-      setReasoningGraphDirection(fullDirection);
-      setShowReasoningModal(true);
-    } catch (err) {
-      logError("Reasoning graph generation failed", err, {
-        source: "manual-generation",
-        operation: "generate-reasoning-graph",
-        details: { sceneCount: directionCount },
-      });
-      setError(String(err));
-    } finally {
-      setGeneratingGraph(false);
-    }
-  }
-
-  async function handleConfirmReasoningGraph() {
-    if (!narrative || !reasoningGraph) return;
-    setShowReasoningModal(false);
-    setLoading(true);
-    setStreamText("");
-    setError("");
-    try {
-      // Guidance direction/constraints are PER-GENERATION overrides — they
-      // must NOT be persisted to story settings. Construct a transient
-      // narrative clone whose storySettings carry the guidance for this one
-      // call; buildStorySettingsBlock downstream picks them up from the
-      // clone while the real narrative stays clean.
-      const currentSettings = {
-        ...DEFAULT_STORY_SETTINGS,
-        ...narrative.storySettings,
-      };
-      const narrativeForRun: NarrativeState = {
-        ...narrative,
-        storySettings: {
-          ...currentSettings,
-          storyDirection: guidanceDirection,
-          storyConstraints: guidanceConstraints,
-        },
-      };
-
-      const existingArc = !newArc ? (currentArc ?? undefined) : undefined;
-      const worldBuildFocus = worldBuildFocusId
-        ? narrative.worldBuilds[worldBuildFocusId]
-        : undefined;
-
-      const { scenes, arc } = await generateScenes(
-        narrativeForRun,
-        state.resolvedEntryKeys,
-        headIndex,
-        reasoningGraph.sceneCount,
-        // The CRG was compiled from this direction; passing it through layers
-        // the prose phrasing under the graph so tonal / scope intent survives.
-        reasoningGraphDirection,
-        {
-          existingArc,
-          pacingSequence: previewSequence ?? undefined,
-          worldBuildFocus,
-          reasoningGraph,
-          onReasoning: (token) => setStreamText((prev) => prev + token),
-        },
-      );
-      dispatch({
-        type: "BULK_ADD_SCENES",
-        scenes,
-        arc,
-        branchId: state.viewState.activeBranchId!,
-      });
-      // Store the reasoning graph on the arc for canvas viewing
-      dispatch({
-        type: "SET_ARC_REASONING_GRAPH",
-        arcId: arc.id,
-        reasoningGraph: {
-          nodes: reasoningGraph.nodes,
-          edges: reasoningGraph.edges,
-          arcName: reasoningGraph.arcName,
-          sceneCount: reasoningGraph.sceneCount,
-          summary: reasoningGraph.summary,
-          arcSettings: reasoningGraph.arcSettings,
-        },
-      });
-      // Advance coordination plan if active (regardless of whether settings were changed)
-      if (hasActivePlan && activeBranchId) {
-        dispatch({ type: "ADVANCE_COORDINATION_PLAN", branchId: activeBranchId });
-      }
-      clearSceneDirectionAfterUse();
-      onClose();
-    } catch (err) {
-      logError("Scene generation from reasoning graph failed", err, {
-        source: "manual-generation",
-        operation: "generate-scenes-from-graph",
-        details: { sceneCount: reasoningGraph.sceneCount },
-      });
-      setError(String(err));
-    } finally {
-      setLoading(false);
-      setReasoningGraph(null);
-    }
-  }
 
   async function handleGenerateArc() {
     if (!narrative) return;
@@ -639,8 +493,8 @@ export function GeneratePanel({
   const showPreview = !!previewSequence && mode === "continuation" && !loading && narrative.storySettings?.usePacingChain;
 
   return (
-    <Modal onClose={loading || generatingGraph ? () => {} : onClose} size="xl" maxHeight="90vh">
-      <ModalHeader onClose={onClose} hideClose={loading || generatingGraph}>
+    <Modal onClose={loading ? () => {} : onClose} size="xl" maxHeight="90vh">
+      <ModalHeader onClose={onClose} hideClose={loading}>
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Generate</h2>
         </div>
@@ -658,7 +512,6 @@ export function GeneratePanel({
                 setMode(m.value);
                 setError("");
                 setPreviewSequence(null);
-                setExtendedSetupOpen(false);
               }}
               disabled={loading}
               className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors rounded-md ${
@@ -672,62 +525,17 @@ export function GeneratePanel({
           ))}
         </div>
 
-        {loading || generatingGraph ? (
+        {loading ? (
           <StreamingOutput
             label={
-              generatingGraph
-                ? "Planning arc"
-                : mode === "continuation"
-                  ? newArc
-                    ? "Generating arc"
-                    : "Continuing arc"
-                  : "Expanding world"
+              mode === "continuation"
+                ? newArc
+                  ? "Generating arc"
+                  : "Continuing arc"
+                : "Expanding world"
             }
             text={streamText}
           />
-        ) : extendedSetupOpen && mode === "continuation" ? (
-          /* ── Extended Thinking Launch ──────────────────────────── */
-          <div className="flex flex-col gap-6 py-2">
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <h3 className="text-base font-semibold text-text-primary tracking-tight">
-                Causal Reasoning
-              </h3>
-              <p className="text-[11px] text-text-dim/70 max-w-md leading-relaxed">
-                Build a reasoning graph before scenes — slower per cycle but
-                produces structurally tighter arcs grounded in a planned
-                causal spine.
-              </p>
-            </div>
-            <ThinkingSettings
-              variant="hero"
-              mode={reasoningMode}
-              onModeChange={setReasoningMode}
-              force={forcePreference}
-              onForceChange={setForcePreference}
-              size={reasoningSize}
-              onSizeChange={setReasoningSize}
-              networkBias={networkBias}
-              onNetworkBiasChange={setNetworkBias}
-            />
-            <div className="flex items-center justify-center gap-2 pt-1">
-              <button
-                onClick={() => setExtendedSetupOpen(false)}
-                className="h-9 px-4 rounded-lg text-text-dim hover:text-text-primary text-[12px] transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setExtendedSetupOpen(false);
-                  void handleGenerateReasoningGraph();
-                }}
-                disabled={!newArc && !currentArc}
-                className="h-9 px-5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold text-[12px] transition disabled:opacity-30"
-              >
-                Begin reasoning →
-              </button>
-            </div>
-          </div>
         ) : showPreview ? (
           /* ── Pacing Preview (editable) ─────────────────────────── */
           <div className="flex flex-col gap-4">
@@ -1078,18 +886,10 @@ export function GeneratePanel({
                 <div className="flex gap-2">
                   <button
                     onClick={handleGenerateArc}
-                    disabled={loading || generatingGraph || (!newArc && !currentArc)}
+                    disabled={loading || (!newArc && !currentArc)}
                     className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold transition disabled:opacity-30"
                   >
                     Generate Arc
-                  </button>
-                  <button
-                    onClick={() => setExtendedSetupOpen(true)}
-                    disabled={loading || generatingGraph || (!newArc && !currentArc)}
-                    className="py-2.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition disabled:opacity-30 text-[12px]"
-                    title="Configure causal reasoning, then generate"
-                  >
-                    {generatingGraph ? "Planning..." : "Extended"}
                   </button>
                   {narrative.storySettings?.usePacingChain && (
                     <button
@@ -1187,10 +987,10 @@ export function GeneratePanel({
                   </summary>
                   <div className="mt-2 space-y-3">
                     <ThinkingSettings
-                      mode={reasoningMode}
-                      onModeChange={setReasoningMode}
-                      force={forcePreference}
-                      onForceChange={setForcePreference}
+                      mode={thinkingStyle}
+                      onModeChange={setThinkingStyle}
+                      force={thinkingResource}
+                      onForceChange={setThinkingResource}
                       size={reasoningSize}
                       onSizeChange={setReasoningSize}
                       networkBias={networkBias}
@@ -1311,22 +1111,6 @@ export function GeneratePanel({
           </div>
         )}
       </ModalBody>
-
-      {/* Reasoning Graph Modal (for scene generation) */}
-      {showReasoningModal && reasoningGraph && (
-        <ReasoningGraphModal
-          graph={reasoningGraph}
-          isLoading={generatingGraph}
-          onRegenerate={handleGenerateReasoningGraph}
-          onConfirm={handleConfirmReasoningGraph}
-          onClose={() => {
-            setShowReasoningModal(false);
-            setReasoningGraph(null);
-            setReasoningGraphDirection("");
-          }}
-        />
-      )}
-
     </Modal>
   );
 }

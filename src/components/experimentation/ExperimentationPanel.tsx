@@ -276,8 +276,8 @@ function ConfigModal({
                           {Math.round(p * 100)}%
                         </span>
                       </div>
-                      {s.tagline && (
-                        <div className="text-[10px] text-text-dim leading-snug mt-0.5">{s.tagline}</div>
+                      {s.description && (
+                        <div className="text-[10px] text-text-dim leading-snug mt-0.5">{s.description}</div>
                       )}
                       <VariablesStrip variables={s.variables} />
                     </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useStore } from '@/lib/store';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
+import { Modal, ModalHeader, ModalBody, ModalFooter, StreamingStatus } from '@/components/Modal';
 import { detectPatterns } from '@/lib/ai';
 import { IconRefresh } from '@/components/icons';
 
@@ -240,17 +240,7 @@ export function PatternsModal({ onClose }: Props) {
       <ModalBody className="p-5 space-y-5">
         {/* Detection section */}
         {detecting ? (
-          <div className="border border-blue-500/20 bg-blue-500/5 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-              <span className="text-[12px] text-blue-400 font-medium">Analyzing narrative...</span>
-            </div>
-            {streamText && (
-              <div className="text-[10px] text-text-dim font-mono leading-relaxed max-h-24 overflow-y-auto whitespace-pre-wrap">
-                {streamText.slice(-500)}
-              </div>
-            )}
-          </div>
+          <StreamingStatus label="Analyzing narrative…" streamText={streamText} maxHeight="max-h-24" />
         ) : (
           <button
             onClick={handleDetect}

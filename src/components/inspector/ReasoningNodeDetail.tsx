@@ -2,14 +2,71 @@
 
 import { useStore } from "@/lib/store";
 import type { ReasoningNodeSnapshot, ReasoningEdgeSnapshot } from "@/types/narrative";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+
+/** Expandable inference-shape field — collapsed by default with a 1-line
+ *  preview so the node detail stays scannable when `considered` / `breaks`
+ *  / `opens` carry a paragraph each. Shared between this panel and
+ *  ModeNodeDetail; same affordance as VariablesView's ExpandableField. */
+function ExpandableField({
+  label, icon, iconColor, content, defaultOpen = false,
+}: {
+  label: string;
+  icon?: string;
+  iconColor?: string;
+  content: string;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const preview = useMemo(() => {
+    if (defaultOpen) return '';
+    const firstSentenceEnd = content.search(/[.!?](\s|$)/);
+    return firstSentenceEnd > 0 && firstSentenceEnd < 100
+      ? content.slice(0, firstSentenceEnd + 1)
+      : content.slice(0, 80) + (content.length > 80 ? '…' : '');
+  }, [content, defaultOpen]);
+  // Minimal quote-style — see VariablesView for the same component shape.
+  return (
+    <div className={`${iconColor ?? 'text-text-dim/40'} ${open ? '' : 'opacity-60 hover:opacity-100'} transition-opacity`}>
+      <div className="flex flex-col border-l-2 border-current pl-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-1.5 py-0.5 text-left w-full group"
+        >
+          {icon && (
+            <span className="text-[12px] leading-none font-bold w-2.5 text-center">
+              {icon}
+            </span>
+          )}
+          <span className="text-[10px] uppercase tracking-wider text-text-secondary font-medium">
+            {label}
+          </span>
+          {!open && preview && (
+            <span className="flex-1 min-w-0 text-[11px] text-text-dim/70 leading-snug truncate">
+              {preview}
+            </span>
+          )}
+          <span className="ml-auto shrink-0 text-text-dim/40 group-hover:text-text-secondary transition text-[12px] leading-none font-mono">
+            {open ? '−' : '+'}
+          </span>
+        </button>
+        {open && (
+          <p className="pt-0.5 pb-1 text-xs text-text-secondary leading-relaxed">
+            {content}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type ReasoningNodeType = ReasoningNodeSnapshot["type"];
 type ReasoningEdgeType = ReasoningEdgeSnapshot["type"];
 
-import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS_PLAN } from "@/lib/reasoning-node-colors";
 
-const NODE_COLORS: Record<ReasoningNodeType, { fill: string; stroke: string; text: string }> = REASONING_NODE_COLORS;
+const NODE_COLORS: Record<ReasoningNodeType, { fill: string; stroke: string; text: string }> = REASONING_NODE_COLORS_PLAN;
 
 const EDGE_COLORS: Record<ReasoningEdgeType, string> = {
   enables: "#22c55e",
@@ -42,6 +99,11 @@ const TYPE_DESCRIPTIONS: Record<ReasoningNodeType, string> = {
   pattern: "Positive reinforcement — encouraging variety and fresh approaches",
   warning: "Negative reinforcement — preventing stagnation and repetition",
   chaos: "Outside force — spawns a new character, location, artifact, or thread into the arc",
+  // Plan-spine types — only appear in coordination-plan-derived
+  // investigations; tells the operator this node anchors a structural beat.
+  peak: "Arc-anchor peak — where forces converge and a thread culminates",
+  valley: "Arc-anchor valley — turning point where tension is seeded and the arc pivots",
+  moment: "Plan-level beat — thread escalation, setpiece, reveal, or setup between anchors",
 };
 
 type Props = {
@@ -57,11 +119,31 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
   const { node, sourceName, graph, connectedEdges } = useMemo(() => {
     if (!narrative) return { node: null, sourceName: null, graph: null, connectedEdges: [] };
 
-    // Try arc first, then world build
+    // Resolution order:
+    //   1. Active arc investigation (current paradigm)
+    //   2. Legacy arc.reasoningGraph
+    //   3. Legacy worldBuild.reasoningGraph
     let graph = null;
     let sourceName: string | null = null;
 
     if (arcId) {
+      const arcInvestigations = Object.values(narrative.investigations ?? {})
+        .filter((inv) => inv.arcId === arcId)
+        .sort((a, b) => a.createdAt - b.createdAt);
+      if (arcInvestigations.length > 0) {
+        const selectedId = state.viewState.selectedInvestigationId;
+        const active =
+          arcInvestigations.find((inv) => inv.id === selectedId) ?? arcInvestigations[0];
+        // Only use this investigation's graph if it actually contains the
+        // node we're looking for — otherwise fall through to legacy sources.
+        if (active.graph.nodes.some((n) => n.id === nodeId)) {
+          graph = active.graph;
+          sourceName = narrative.arcs[arcId]?.name ?? "Investigation";
+        }
+      }
+    }
+
+    if (!graph && arcId) {
       const arc = narrative.arcs[arcId];
       if (arc?.reasoningGraph) {
         graph = arc.reasoningGraph;
@@ -82,7 +164,7 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
     const node = graph.nodes.find((n) => n.id === nodeId);
     const connectedEdges = graph.edges.filter((e) => e.from === nodeId || e.to === nodeId);
     return { node, sourceName, graph, connectedEdges };
-  }, [narrative, arcId, worldBuildId, nodeId]);
+  }, [narrative, arcId, worldBuildId, nodeId, state.viewState.selectedInvestigationId]);
 
   if (!node || !graph) {
     return (
@@ -187,13 +269,20 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
       </p>
 
       {/* Detail */}
-      {node.detail && (
-        <div className="space-y-1">
-          <h3 className="text-[10px] uppercase tracking-wider text-text-dim">Detail</h3>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            {node.detail}
-          </p>
-        </div>
+      {node.detail && <ExpandableField label="Detail" content={node.detail} defaultOpen />}
+
+      {/* Universal inference-shape fields — option space, falsification handle,
+          forward extension. Same fields across CRG / PRG / scenarios so the
+          reader uses the same mental model wherever they encounter inference.
+          Collapsed by default so the panel stays scannable; click to expand. */}
+      {node.considered && (
+        <ExpandableField label="Considered" icon="×" iconColor="text-amber-400" content={node.considered} />
+      )}
+      {node.breaks && (
+        <ExpandableField label="Breaks" icon="!" iconColor="text-rose-400" content={node.breaks} />
+      )}
+      {node.opens && (
+        <ExpandableField label="Opens" icon="⇒" iconColor="text-emerald-400" content={node.opens} />
       )}
 
       {/* References */}

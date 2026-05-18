@@ -38,13 +38,13 @@ export default function ScenarioCard({ scenario, probability, rank, active, onCl
         <span
           className="text-base font-mono tabular-nums shrink-0"
           style={{ color: scenario.color }}
-          title={scenario.priorRationale ?? undefined}
+          title={scenario.reasoning ?? undefined}
         >
           {Math.round(probability * 100)}%
         </span>
       </div>
-      {scenario.tagline && (
-        <div className="text-[10px] text-text-dim leading-snug">{scenario.tagline}</div>
+      {scenario.description && (
+        <div className="text-[10px] text-text-dim leading-snug">{scenario.description}</div>
       )}
       {typeof scenario.priorLogit === 'number' && (
         <div className="text-[9px] text-text-dim/60 font-mono tabular-nums mt-0.5">

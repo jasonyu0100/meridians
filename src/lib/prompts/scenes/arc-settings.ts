@@ -26,11 +26,11 @@ import type { ArcSettings } from "@/lib/ai/reasoning-graph/types";
 export function buildArcSettingsBlock(settings: ArcSettings | undefined): string {
   if (!settings) return "";
   const lines: string[] = [];
-  if (settings.forcePreference) {
-    lines.push(`    ${FORCE_PREFERENCE_LINE[settings.forcePreference]}`);
+  if (settings.thinkingResource) {
+    lines.push(`    ${FORCE_PREFERENCE_LINE[settings.thinkingResource]}`);
   }
-  if (settings.reasoningMode) {
-    lines.push(`    ${REASONING_MODE_LINE[settings.reasoningMode]}`);
+  if (settings.thinkingStyle) {
+    lines.push(`    ${REASONING_MODE_LINE[settings.thinkingStyle]}`);
   }
   if (settings.networkBias && settings.networkBias !== "neutral") {
     lines.push(`    ${NETWORK_BIAS_LINE[settings.networkBias]}`);
@@ -42,7 +42,7 @@ ${lines.join("\n")}
   </arc-settings>`;
 }
 
-const FORCE_PREFERENCE_LINE: Record<NonNullable<ArcSettings["forcePreference"]>, string> = {
+const FORCE_PREFERENCE_LINE: Record<NonNullable<ArcSettings["thinkingResource"]>, string> = {
   fate: `<force-preference name="fate">Scenes prioritise THREAD MOVEMENT — every scene advances, escalates, or closes a thread the CRG references. Climaxes are thread transitions; setup scenes seed new markets. Thread deltas should be the densest force channel.</force-preference>`,
   world: `<force-preference name="world">Scenes prioritise ENTITY TRANSFORMATION — characters, locations, artifacts deepening or shifting. Inner change, accruing relationships, places gaining history. World deltas (especially POV-character) should be the densest force channel.</force-preference>`,
   system: `<force-preference name="system">Scenes prioritise RULE SURFACING — the world's mechanics asserting themselves, principles tested, constraints biting. System deltas should be the densest force channel; surface existing SYS nodes by edge wherever the scene touches a rule.</force-preference>`,
@@ -50,7 +50,8 @@ const FORCE_PREFERENCE_LINE: Record<NonNullable<ArcSettings["forcePreference"]>,
   freeform: `<force-preference name="freeform">No force bias — pick the densest channel the scene actually earns. Avoid letting one channel dominate every scene by default; vary across the arc.</force-preference>`,
 };
 
-const REASONING_MODE_LINE: Record<NonNullable<ArcSettings["reasoningMode"]>, string> = {
+const REASONING_MODE_LINE: Record<NonNullable<ArcSettings["thinkingStyle"]>, string> = {
+  freeform: `<reasoning-mode name="freeform">The CRG was built without an imposed thinking shape — the chain follows whatever inference pattern the model's own chain of thought produced. Scenes should respect the CRG's shape as-is rather than assuming a single dominant direction.</reasoning-mode>`,
   abduction: `<reasoning-mode name="abduction">The CRG was built BACKWARD from a committed terminal. Scenes should converge on the terminal — the arc's last scene is the load-bearing one; earlier scenes are the prerequisites the terminal demands. Don't drift into divergent exploration mid-arc.</reasoning-mode>`,
   divergent: `<reasoning-mode name="divergent">The CRG branches forward into multiple possibilities. Scenes should preserve branching — leave room for downstream selection rather than collapsing every thread early. Resist the pull to commit to one resolution before the arc earns it.</reasoning-mode>`,
   deduction: `<reasoning-mode name="deduction">The CRG follows a necessary-consequence chain forward from premises. Scenes should land in chained order — each scene's deltas should be the strict consequence of the prior scene's. Avoid surprising deltas the CRG didn't earn.</reasoning-mode>`,

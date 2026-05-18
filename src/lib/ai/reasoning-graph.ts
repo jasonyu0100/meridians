@@ -29,7 +29,14 @@ import { parseJson } from "./json";
 import { buildCumulativeSystemGraph, getMarketProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/narrative-utils";
 import { classifyThreadCategory, computeRecentLogitEnergy, THREAD_CATEGORY_GUIDANCE, formatThreadGuidance } from "@/lib/thread-category";
 import { applyDerivedForceModes } from "@/lib/auto-engine";
-import { logError } from "@/lib/system-logger";
+import { logError, logWarning } from "@/lib/system-logger";
+
+/** Inference-tier node types — the ones the universal inference-shape
+ *  applies to. Priors (character/location/artifact/system/fate) are
+ *  substrate, not selections; spine nodes (peak/valley/moment) are
+ *  commitments, not inferences. Anything else is inference-tier and the
+ *  prompt requires `considered` on it. */
+const INFERENCE_TIER_TYPES = new Set(["reasoning", "pattern", "warning", "chaos"]);
 import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/network-graph";
 import type { CoordinationPlanContext } from "./scenes";
 import { buildActiveModeSection } from "./mode-graph";
@@ -42,7 +49,7 @@ import type {
   ReasoningEdgeType,
   ReasoningNodeType,
   ReasoningGraph,
-  ReasoningMode,
+  ThinkingStyle,
   ArcReasoningOptions,
   ArcSettings,
   ExpansionReasoningGraph,
@@ -50,7 +57,7 @@ import type {
   ReasoningGraphBase,
 } from "./reasoning-graph/types";
 import {
-  type ForcePreference,
+  type ThinkingResource,
   defaultReasoningBudget,
   reasoningScale,
   VALID_NODE_TYPES,
@@ -80,19 +87,19 @@ export type {
   ReasoningEdgeType,
   ReasoningNodeType,
   ReasoningGraph,
-  ReasoningMode,
+  ThinkingStyle,
   ArcReasoningOptions,
   ArcSettings,
   ExpansionReasoningGraph,
   ReasoningNodeBase,
   ReasoningGraphBase,
-  ForcePreference,
+  ThinkingResource,
 };
 export { reasoningScale, buildSequentialPath, extractPatternWarningDirectives };
 
 /**
- * Resolve the engine settings the CRG was built under. Pulls forcePreference
- * and reasoningMode from the per-call options; falls back to the narrative's
+ * Resolve the engine settings the CRG was built under. Pulls thinkingResource
+ * and thinkingStyle from the per-call options; falls back to the narrative's
  * default network bias if the call didn't override. Returns undefined when
  * no settings would be persisted (keeps the snapshot clean for default runs).
  */
@@ -100,15 +107,15 @@ function extractArcSettings(
   options: ArcReasoningOptions | undefined,
   narrative: NarrativeState,
 ): ArcSettings | undefined {
-  const forcePreference = options?.forcePreference;
-  const reasoningMode = options?.reasoningMode;
+  const thinkingResource = options?.thinkingResource;
+  const thinkingStyle = options?.thinkingStyle;
   const networkBias = options?.networkBias ?? narrative.storySettings?.defaultNetworkBias;
-  if (!forcePreference && !reasoningMode && (!networkBias || networkBias === "neutral")) {
+  if (!thinkingResource && !thinkingStyle && (!networkBias || networkBias === "neutral")) {
     return undefined;
   }
   const settings: ArcSettings = {};
-  if (forcePreference) settings.forcePreference = forcePreference;
-  if (reasoningMode) settings.reasoningMode = reasoningMode;
+  if (thinkingResource) settings.thinkingResource = thinkingResource;
+  if (thinkingStyle) settings.thinkingStyle = thinkingStyle;
   if (networkBias && networkBias !== "neutral") settings.networkBias = networkBias;
   return settings;
 }
@@ -287,8 +294,8 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
     direction,
     priorGraphSection,
     modeSection: buildActiveModeSection(narrative, "reasoning-arc"),
-    forcePreferenceBlockText: forcePreferenceBlock("arc", options?.forcePreference),
-    reasoningModeBlockText: reasoningModeBlock(options?.reasoningMode),
+    forcePreferenceBlockText: forcePreferenceBlock("arc", options?.thinkingResource),
+    reasoningModeBlockText: reasoningModeBlock(options?.thinkingStyle),
     networkBiasBlockText: networkBiasBlock(options?.networkBias ?? narrative.storySettings?.defaultNetworkBias),
     nodeCountMin: Math.round((8 + sceneCount * 4.5) * scale),
     nodeCountMax: Math.round((14 + sceneCount * 5.5) * scale),
@@ -342,8 +349,11 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
       index: typeof n.index === "number" ? n.index : i,
       order: i,
       type: (typeof n.type === "string" && VALID_NODE_TYPES.has(n.type)) ? n.type as ReasoningNodeType : "reasoning",
-      label: typeof n.label === "string" ? n.label.slice(0, 200) : "Unlabeled node",
-      detail: typeof n.detail === "string" ? n.detail.slice(0, 500) : undefined,
+      label: typeof n.label === "string" ? n.label : "Unlabeled node",
+      detail: typeof n.detail === "string" ? n.detail : undefined,
+      considered: typeof n.considered === "string" ? n.considered : undefined,
+      breaks: typeof n.breaks === "string" ? n.breaks : undefined,
+      opens: typeof n.opens === "string" ? n.opens : undefined,
       entityId: typeof n.entityId === "string" ? n.entityId : undefined,
       threadId: typeof n.threadId === "string" ? n.threadId : undefined,
       systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
@@ -351,6 +361,23 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
     const nodes: ReasoningNode[] = rawNodes.map((n) =>
       validateNodeReferences(n, narrative, { source: "plan-generation", arcName }),
     );
+    // Universal inference-shape audit: log every inference-tier node that
+    // silently lacks `considered`. The prompt requires it (with an explicit
+    // escape valve for genuinely-no-alternative cases); silent omissions
+    // are a discipline gap we want to measure.
+    for (const n of nodes) {
+      if (INFERENCE_TIER_TYPES.has(n.type) && !n.considered) {
+        logWarning(
+          `Inference-tier node "${n.label}" (${n.type}) emitted without \`considered\` — discipline gap`,
+          undefined,
+          {
+            source: "plan-generation",
+            operation: "reasoning-graph-parse",
+            details: { arcName, nodeId: n.id, type: n.type },
+          },
+        );
+      }
+    }
 
     // Ensure all edges have required fields, valid types, and reference existing nodes
     const nodeIds = new Set(nodes.map((n) => n.id));
@@ -360,7 +387,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
         from: typeof e.from === "string" ? e.from : "",
         to: typeof e.to === "string" ? e.to : "",
         type: (typeof e.type === "string" && VALID_EDGE_TYPES.has(e.type)) ? e.type as ReasoningEdgeType : "causes",
-        label: typeof e.label === "string" ? e.label.slice(0, 100) : undefined,
+        label: typeof e.label === "string" ? e.label : undefined,
       }))
       .filter((e: ReasoningEdge) => e.from && e.to && nodeIds.has(e.from) && nodeIds.has(e.to));
 
@@ -446,7 +473,7 @@ export type PlanGuidance = {
    * (no bias — LLM picks composition). "chaos" elevates chaos from
    * sparing deus-ex-machina to a primary creative engine.
    */
-  forcePreference?: ForcePreference;
+  thinkingResource?: ThinkingResource;
   /**
    * Reasoning effort for this single generation. Overrides the narrative's
    * default storySettings.reasoningLevel when provided. "small" | "medium"
@@ -458,9 +485,9 @@ export type PlanGuidance = {
    * hypothesis working backward from a committed outcome. Alternatives:
    * "divergent" (forward, expansive), "deduction" (premise → necessary
    * consequence), "induction" (observation → inferred principle). See
-   * ReasoningMode for details.
+   * ThinkingStyle for details.
    */
-  reasoningMode?: ReasoningMode;
+  thinkingStyle?: ThinkingStyle;
 };
 
 /**
@@ -662,8 +689,8 @@ export async function generateCoordinationPlan(
     arcTarget,
     activeThreadCount,
     nodeGuidance,
-    forcePreferenceBlockText: forcePreferenceBlock("plan", guidance.forcePreference),
-    reasoningModeBlockText: reasoningModeBlock(guidance.reasoningMode),
+    forcePreferenceBlockText: forcePreferenceBlock("plan", guidance.thinkingResource),
+    reasoningModeBlockText: reasoningModeBlock(guidance.thinkingStyle),
     modeSection: buildActiveModeSection(narrative, "reasoning-plan"),
   });
 
@@ -717,8 +744,11 @@ export async function generateCoordinationPlan(
         index: n.index, // Will be reindexed below
         order,
         type: VALID_COORDINATION_NODE_TYPES.has(n.type) ? n.type : "reasoning",
-        label: typeof n.label === "string" ? n.label.slice(0, 100) : "",
-        detail: typeof n.detail === "string" ? n.detail.slice(0, 300) : undefined,
+        label: typeof n.label === "string" ? n.label : "",
+        detail: typeof n.detail === "string" ? n.detail : undefined,
+        considered: typeof n.considered === "string" ? n.considered : undefined,
+        breaks: typeof n.breaks === "string" ? n.breaks : undefined,
+        opens: typeof n.opens === "string" ? n.opens : undefined,
         entityId: typeof n.entityId === "string" ? n.entityId : undefined,
         threadId: typeof n.threadId === "string" ? n.threadId : undefined,
         systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
@@ -754,6 +784,21 @@ export async function generateCoordinationPlan(
     // Rebuild nodes array in new order (reindexed chronologically by arc)
     const reindexedNodes: CoordinationNode[] = [...nodesWithArcSlot, ...globalNodes];
 
+    // Universal inference-shape audit — same rule as the arc-CRG parser.
+    for (const n of reindexedNodes) {
+      if (INFERENCE_TIER_TYPES.has(n.type) && !n.considered) {
+        logWarning(
+          `Plan inference-tier node "${n.label}" (${n.type}) emitted without \`considered\` — discipline gap`,
+          undefined,
+          {
+            source: "plan-generation",
+            operation: "coordination-plan-parse",
+            details: { nodeId: n.id, type: n.type, arcSlot: n.arcSlot },
+          },
+        );
+      }
+    }
+
     // Validate edges
     const nodeIds = new Set(reindexedNodes.map((n) => n.id));
     const edges: CoordinationEdge[] = (data.edges ?? [])
@@ -772,7 +817,7 @@ export async function generateCoordinationPlan(
         from: e.from,
         to: e.to,
         type: e.type as ReasoningEdgeType,
-        label: typeof e.label === "string" ? e.label.slice(0, 100) : undefined,
+        label: typeof e.label === "string" ? e.label : undefined,
       }))
       .filter((e: CoordinationEdge) => nodeIds.has(e.from) && nodeIds.has(e.to));
 

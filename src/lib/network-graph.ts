@@ -105,17 +105,26 @@ export type NetworkGraph = {
  * resolved timeline are visited. When omitted, every scene and world build
  * in the narrative is visited (in the order they appear in their record
  * objects — branch-aware progressive mode is the supported path).
+ *
+ * `options.scopeKeys` narrows the SCOPE of attribution accumulation to a
+ * subset of the resolved timeline (e.g. only the current scene, or only the
+ * current arc's scenes) while keeping the full timeline as the source for
+ * "which entities exist". Without it, prior-arc entities referenced by a
+ * scoped scene would silently drop from the graph because they weren't
+ * "introduced" inside the scope window.
  */
 export function aggregateNetworkGraph(
   narrative: NarrativeState,
   resolvedKeys?: string[],
   currentIndex?: number,
+  options?: { scopeKeys?: ReadonlySet<string> },
 ): NetworkGraph {
   const attributions = new Map<string, number>();
   const firstSeen = new Map<string, number>();
   const lastSeen = new Map<string, number>();
   const edgeWeights = new Map<string, number>();
   const edgeRelations = new Map<string, Set<AttributionEdgeRelation>>();
+  const scopeKeys = options?.scopeKeys;
 
   let stepIndex = 0;
   let stepCount = 0;
@@ -216,6 +225,10 @@ export function aggregateNetworkGraph(
   }
 
   for (const item of timelineOrderedItems) {
+    // When scopeKeys is set, only items in the scope contribute attribution.
+    // Items outside the scope still ran above (to introduce their entities)
+    // but are skipped here so attribution counts reflect the scope window.
+    if (scopeKeys && !scopeKeys.has(item.id)) continue;
     if (item.kind === "scene") {
       const scene = narrative.scenes[item.id];
       if (scene) visitStep(scene.attributions, scene.attributionEdges);

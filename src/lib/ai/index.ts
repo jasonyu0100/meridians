@@ -29,4 +29,4 @@ export { reviewBranch, reviewProseQuality, reviewPlanQuality } from './review';
 
 // Reasoning graph
 export { generateReasoningGraph, buildSequentialPath, extractPatternWarningDirectives, generateCoordinationPlan, buildPlanPathForArc } from './reasoning-graph';
-export type { ReasoningGraph, ReasoningNode, ReasoningEdge, ReasoningNodeType, ReasoningEdgeType, ExpansionReasoningGraph, PlanGuidance, ThreadTarget, ForcePreference, ArcReasoningOptions, ReasoningMode } from './reasoning-graph';
+export type { ReasoningGraph, ReasoningNode, ReasoningEdge, ReasoningNodeType, ReasoningEdgeType, ExpansionReasoningGraph, PlanGuidance, ThreadTarget, ThinkingResource, ArcReasoningOptions, ThinkingStyle } from './reasoning-graph';

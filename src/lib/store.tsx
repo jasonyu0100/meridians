@@ -51,7 +51,6 @@ import type {
   Arc,
   Artifact,
   AutoConfig,
-  AutoRunLog,
   BeatPlan,
   BeatProseMap,
   Branch,
@@ -82,6 +81,7 @@ import type {
   RelationshipDelta,
   Scene,
   SceneGameAnalysis,
+  ArcInvestigation,
   SearchQuery,
   StorySettings,
   Survey,
@@ -652,6 +652,7 @@ const defaultViewState: NarrativeViewState = {
   inspectorHistory: [],
   selectedKnowledgeEntity: null,
   selectedThreadLog: null,
+  selectedInvestigationId: null,
   currentSearchQuery: null,
   currentResultIndex: 0,
   searchFocusMode: false,
@@ -680,8 +681,6 @@ const initialState: AppState = {
     narrativeConstraints: "",
     characterRotationEnabled: true,
     minScenesBetweenCharacterFocus: 3,
-    mode: "extended",
-    operations: ["reasoning-graph", "scenes"],
   },
   viewState: defaultViewState,
   resolvedEntryKeys: [],
@@ -709,16 +708,19 @@ export type Action =
   | {
       // Per-arc Present variables — each arc owns its own full set with
       // intensities baked into each Variable. Pass [] to clear.
-      // Optional tagline + reasoning annotate the coordination's gestalt
-      // and load-bearing logic; logit records "how likely was this when
-      // it was chosen" in MARKET_EVIDENCE_MIN/MAX range. All three are
+      // Optional description + reasoning annotate the coordination's
+      // gestalt and load-bearing logic; logit records "how likely was this
+      // when it was chosen" in MARKET_EVIDENCE_MIN/MAX range. All three are
       // transferred onto new arcs by the experimentation commit path so
       // the path's rarity is a permanent record.
       type: "SET_ARC_PRESENT_VARIABLES";
       arcId: string;
       variables: Variable[];
-      tagline?: string;
+      description?: string;
       reasoning?: string;
+      considered?: string;
+      breaks?: string;
+      opens?: string;
       logit?: number;
     }
   | {
@@ -851,11 +853,16 @@ export type Action =
   // Auto mode
   | { type: "SET_AUTO_CONFIG"; config: AutoConfig }
   | { type: "START_AUTO_RUN" }
-  | { type: "PAUSE_AUTO_RUN" }
-  | { type: "RESUME_AUTO_RUN" }
   | { type: "STOP_AUTO_RUN" }
   | { type: "SET_AUTO_STATUS"; message: string }
-  | { type: "LOG_AUTO_CYCLE"; entry: AutoRunLog }
+  | { type: "RESET_AUTO_STREAM" }
+  | { type: "APPEND_AUTO_STREAM"; chunk: string }
+  | {
+      type: "TICK_AUTO_RUN";
+      scenesGenerated: number;
+      worldExpanded: boolean;
+      hasError: boolean;
+    }
   | { type: "SET_COVER_IMAGE"; narrativeId: string; imageUrl: string }
   | {
       type: "UPDATE_NARRATIVE_META";
@@ -929,6 +936,11 @@ export type Action =
   | { type: "DELETE_INTERVIEW"; interviewId: string }
   | { type: "UPDATE_INTERVIEW"; interviewId: string; updates: Partial<Interview> }
   | { type: "SET_INTERVIEW_ANSWER"; interviewId: string; answer: InterviewAnswer }
+  // Investigations — arc-anchored CRGs
+  | { type: "CREATE_INVESTIGATION"; investigation: ArcInvestigation }
+  | { type: "UPDATE_INVESTIGATION"; investigationId: string; updates: Partial<ArcInvestigation> }
+  | { type: "DELETE_INVESTIGATION"; investigationId: string }
+  | { type: "SET_SELECTED_INVESTIGATION"; investigationId: string | null }
   // Coordination plan
   | { type: "SET_COORDINATION_PLAN"; branchId: string; plan: BranchPlan | undefined }
   | { type: "CLEAR_COORDINATION_PLAN"; branchId: string }
@@ -1150,8 +1162,8 @@ function reducer(state: AppState, action: Action): AppState {
       return updateNarrative(state, (n) => {
         const arc = n.arcs[action.arcId];
         if (!arc) return n;
-        // Tagline / reasoning / logit are optional. Omitting them in the
-        // action clears any prior values (e.g. when the user wipes the
+        // Description / reasoning / logit are optional. Omitting them in
+        // the action clears any prior values (e.g. when the user wipes the
         // arc); a partial regenerate that only supplies variables also
         // clears them, since stale annotations would misdescribe the new
         // set.
@@ -1162,8 +1174,11 @@ function reducer(state: AppState, action: Action): AppState {
             [action.arcId]: {
               ...arc,
               presentVariables: action.variables.length > 0 ? action.variables : undefined,
-              presentTagline: action.tagline,
+              presentDescription: action.description,
               presentReasoning: action.reasoning,
+              presentConsidered: action.considered,
+              presentBreaks: action.breaks,
+              presentOpens: action.opens,
               presentLogit: action.logit,
             },
           },
@@ -2210,7 +2225,6 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.viewState,
           autoRunState: {
             isRunning: true,
-            isPaused: false,
             currentCycle: 0,
             consecutiveFailures: 0,
             statusMessage: "Starting...",
@@ -2220,27 +2234,23 @@ function reducer(state: AppState, action: Action): AppState {
             startingArcCount: state.activeNarrative
               ? Object.keys(state.activeNarrative.arcs).length
               : 0,
-            log: [],
+            streamText: "",
           },
         },
       };
 
-    case "PAUSE_AUTO_RUN":
+    case "RESET_AUTO_STREAM":
       return state.viewState.autoRunState
         ? {
             ...state,
             viewState: {
               ...state.viewState,
-              autoRunState: {
-                ...state.viewState.autoRunState,
-                isPaused: true,
-                isRunning: false,
-              },
+              autoRunState: { ...state.viewState.autoRunState, streamText: "" },
             },
           }
         : state;
 
-    case "RESUME_AUTO_RUN":
+    case "APPEND_AUTO_STREAM":
       return state.viewState.autoRunState
         ? {
             ...state,
@@ -2248,8 +2258,7 @@ function reducer(state: AppState, action: Action): AppState {
               ...state.viewState,
               autoRunState: {
                 ...state.viewState.autoRunState,
-                isPaused: false,
-                isRunning: true,
+                streamText: state.viewState.autoRunState.streamText + action.chunk,
               },
             },
           }
@@ -2272,7 +2281,7 @@ function reducer(state: AppState, action: Action): AppState {
           }
         : state;
 
-    case "LOG_AUTO_CYCLE":
+    case "TICK_AUTO_RUN":
       return state.viewState.autoRunState
         ? {
             ...state,
@@ -2281,16 +2290,15 @@ function reducer(state: AppState, action: Action): AppState {
               autoRunState: {
                 ...state.viewState.autoRunState,
                 currentCycle: state.viewState.autoRunState.currentCycle + 1,
-                consecutiveFailures: action.entry.error
+                consecutiveFailures: action.hasError
                   ? state.viewState.autoRunState.consecutiveFailures + 1
                   : 0,
                 totalScenesGenerated:
                   state.viewState.autoRunState.totalScenesGenerated +
-                  action.entry.scenesGenerated,
+                  action.scenesGenerated,
                 totalWorldExpansions:
                   state.viewState.autoRunState.totalWorldExpansions +
-                  (action.entry.worldExpanded ? 1 : 0),
-                log: [...state.viewState.autoRunState.log, action.entry],
+                  (action.worldExpanded ? 1 : 0),
               },
             },
           }
@@ -3138,6 +3146,39 @@ function reducer(state: AppState, action: Action): AppState {
           },
         };
       });
+
+    // ── Investigations ────────────────────────────────────────────────────
+    case "CREATE_INVESTIGATION":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        investigations: { ...(n.investigations ?? {}), [action.investigation.id]: action.investigation },
+      }));
+
+    case "UPDATE_INVESTIGATION":
+      return updateNarrative(state, (n) => {
+        const prev = n.investigations?.[action.investigationId];
+        if (!prev) return n;
+        return {
+          ...n,
+          investigations: {
+            ...(n.investigations ?? {}),
+            [action.investigationId]: { ...prev, ...action.updates, updatedAt: Date.now() },
+          },
+        };
+      });
+
+    case "DELETE_INVESTIGATION":
+      return updateNarrative(state, (n) => {
+        if (!n.investigations?.[action.investigationId]) return n;
+        const { [action.investigationId]: _removed, ...rest } = n.investigations;
+        return { ...n, investigations: rest };
+      });
+
+    case "SET_SELECTED_INVESTIGATION":
+      return {
+        ...state,
+        viewState: { ...state.viewState, selectedInvestigationId: action.investigationId },
+      };
 
     // ── Coordination Plan ─────────────────────────────────────────────────
     case "SET_COORDINATION_PLAN":

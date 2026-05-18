@@ -29,10 +29,10 @@ function ordinalSuffix(n: number): string {
   return "th";
 }
 
-import { REASONING_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS_PLAN, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
 
 const NODE_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
-  ...REASONING_NODE_COLORS,
+  ...REASONING_NODE_COLORS_PLAN,
   unknown: REASONING_NODE_COLOR_UNKNOWN,
 };
 

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
 import type { ExperimentationRunState } from '@/types/experimentation';
-import type { AutoRunLog } from '@/types/narrative';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
 
@@ -22,15 +21,14 @@ type StopOnlyProps = {
   onStop: () => void;
 };
 
-type AutoModeProps = PausableProps & {
+type AutoModeProps = StopOnlyProps & {
   mode: 'auto';
   isRunning: boolean;
-  isPaused: boolean;
   currentCycle: number;
   totalScenes: number;
   statusMessage: string;
-  log: AutoRunLog[];
   onOpenSettings: () => void;
+  /** Open the live stream / progress panel */
   onOpenLog: () => void;
   /** Whether a coordination plan is active */
   hasCoordinationPlan?: boolean;
@@ -95,17 +93,6 @@ const MODE_CONFIG: Record<ModeType, { label: string; color: string; bgColor: str
   'bulk-game': { label: 'Games', color: 'text-amber-400', bgColor: 'bg-amber-400' },
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  HHH: 'Convergence',
-  HHL: 'Climax',
-  HLH: 'Twist',
-  HLL: 'Closure',
-  LHH: 'Discovery',
-  LHL: 'Growth',
-  LLH: 'Wandering',
-  LLL: 'Rest',
-};
-
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function ModeControlBar(props: Props) {
@@ -115,15 +102,16 @@ export function ModeControlBar(props: Props) {
   const isRunning = props.mode === 'experimentation'
     ? props.runState.status === 'running'
     : props.isRunning;
-  // Experimentation has no paused state — its runs are mid-flight LLM calls.
-  const isPaused = props.mode === 'experimentation' ? false : props.isPaused;
+  // Auto mode and experimentation are stop-only — no pause state.
+  const isPaused = props.mode === 'experimentation' || props.mode === 'auto'
+    ? false
+    : props.isPaused;
   const isComplete = props.mode === 'experimentation' && props.runState.status === 'complete';
 
-  // Auto mode specific
-  const lastEntry = props.mode === 'auto' ? props.log[props.log.length - 1] : null;
-  const lastError = lastEntry?.error;
-  const stoppedByError = props.mode === 'auto' && !isRunning && !isPaused && lastError;
-  const hasError = props.mode === 'auto' && !!lastError;
+  // Auto mode error surfacing is handled inline via status messages now that
+  // the per-cycle log is gone.
+  const stoppedByError = false;
+  const hasError = false;
 
   // Experimentation timer
   const [elapsed, setElapsed] = useState(0);
@@ -214,14 +202,6 @@ export function ModeControlBar(props: Props) {
                 <span className="text-[9px] text-text-dim/50">scenes</span>
               </>
             )}
-            {lastEntry && (
-              <>
-                <div className="w-px h-3 bg-white/10" />
-                <span className="text-[9px] text-text-dim truncate max-w-24">
-                  {ACTION_LABELS[lastEntry.action] ?? lastEntry.action}
-                </span>
-              </>
-            )}
           </>
         )}
 
@@ -289,7 +269,7 @@ export function ModeControlBar(props: Props) {
 
         {/* Controls */}
         <div className="flex items-center gap-0.5">
-          {props.mode !== 'experimentation' && isRunning && (
+          {props.mode !== 'experimentation' && props.mode !== 'auto' && isRunning && (
             <button
               onClick={props.onPause}
               className="w-5 h-5 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
@@ -298,7 +278,7 @@ export function ModeControlBar(props: Props) {
               <IconPause size={8} />
             </button>
           )}
-          {props.mode !== 'experimentation' && isPaused && (
+          {props.mode !== 'experimentation' && props.mode !== 'auto' && isPaused && (
             <button
               onClick={props.onResume}
               className={`w-5 h-5 flex items-center justify-center ${config.color} hover:bg-white/8 rounded-full transition-colors`}

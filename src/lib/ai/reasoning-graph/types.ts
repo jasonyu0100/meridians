@@ -5,7 +5,7 @@
  * The public API re-exports these from `src/lib/ai/reasoning-graph.ts`.
  */
 
-import type { ForcePreference } from "./shared";
+import type { ThinkingResource } from "./shared";
 
 // ── Node + edge types ───────────────────────────────────────────────────────
 
@@ -44,7 +44,35 @@ export interface ReasoningNode {
   order: number;
   type: ReasoningNodeType;
   label: string;           // Short label (3-8 words)
-  detail?: string;         // Expanded explanation
+  detail?: string;         // The inference itself — the causal logic this node carries.
+  /**
+   * Sibling hypotheses considered and rejected — the option space this
+   * inference selected from. Each entry names an alternative plus why it
+   * was discarded. Required by abduction and induction modes; lifts the
+   * graph above default chain-of-thought by exposing the rejection set
+   * the reader can re-evaluate.
+   *
+   * Only meaningful on inference-tier nodes (reasoning, pattern, warning,
+   * chaos). Priors (character/location/artifact/system/fate) typically
+   * leave this undefined — they ARE the substrate, not selections over it.
+   */
+  considered?: string;
+  /**
+   * What conditions would invalidate this inference — the load-bearing
+   * assumption, the evidence that would falsify it, the way the chain
+   * could fail. The deduction mode's necessity test materialises here.
+   * Read as a stress-test handle for the user: if `breaks` is empty
+   * because nothing could falsify, the node is either tautological or
+   * untested.
+   */
+  breaks?: string;
+  /**
+   * What becomes possible downstream IF this inference holds — the
+   * second-order consequences this opens up. The divergent mode's
+   * outward-branching materialises here. Lets the user extend the
+   * reasoning forward without the graph itself having to extend.
+   */
+  opens?: string;
   /** Existing character / location / artifact ID. Validated at parse time
    *  — if the LLM emits an unresolvable id, it's cleared. */
   entityId?: string;
@@ -93,6 +121,9 @@ export type ReasoningNodeBase = {
   type: string;
   label: string;
   detail?: string;
+  considered?: string;
+  breaks?: string;
+  opens?: string;
   entityId?: string;
   threadId?: string;
   systemNodeId?: string;
@@ -119,7 +150,8 @@ export type ReasoningGraphBase = {
  * - **induction**: backward + generalising — shared pattern ← many
  *   observations. Complementary opposite: deduction.
  */
-export type ReasoningMode =
+export type ThinkingStyle =
+  | "freeform"   // No imposed style — let the model run its own chain of thought
   | "divergent"
   | "deduction"
   | "abduction"
@@ -127,11 +159,11 @@ export type ReasoningMode =
 
 export type ArcReasoningOptions = {
   /** Which force category to bias this arc toward. */
-  forcePreference?: ForcePreference;
+  thinkingResource?: ThinkingResource;
   /** Reasoning effort for this generation. */
   reasoningLevel?: "small" | "medium" | "large";
   /** How the reasoner thinks. */
-  reasoningMode?: ReasoningMode;
+  thinkingStyle?: ThinkingStyle;
   /** Network thinking bias. */
   networkBias?: "inside" | "outside" | "neutral";
 };
@@ -143,8 +175,8 @@ export type ArcReasoningOptions = {
  * tilt the CRG was built under. The "sync" between CRG and scene gen.
  */
 export type ArcSettings = {
-  forcePreference?: ForcePreference;
-  reasoningMode?: ReasoningMode;
+  thinkingResource?: ThinkingResource;
+  thinkingStyle?: ThinkingStyle;
   networkBias?: "inside" | "outside" | "neutral";
 };
 

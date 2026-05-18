@@ -1,15 +1,25 @@
 /**
- * Per-arc reasoning graph prompt — builds the causal graph (8-20 typed nodes)
- * that scenes execute. Takes pre-built dynamic blocks (network state line,
- * pattern/anti-pattern sections, force-preference / reasoning-mode /
- * network-bias blocks, prior-graph divergence section, coordination plan
- * context) so the prompts module stays free of upstream dependencies.
+ * Investigation reasoning-graph prompt — produces a flexible causal graph
+ * that serves as a THINKING AID for free-form reasoning anchored to a
+ * position in the narrative. The user comes with something they want to
+ * think through (a question, a hypothesis, an actor's stance, a tension,
+ * a what-if) and the graph lays out the causal structure that grounds
+ * that reasoning. The same artifact CAN additionally be used as a
+ * continuation seed — copied back into generation as direction — but
+ * that's a downstream option, not the default purpose.
+ *
+ * Coordination plans live in a separate prompt: those are solely focused
+ * on long-form continuation. Investigations are intentionally multipurpose.
+ *
+ * Takes pre-built dynamic blocks (network state, pattern / anti-pattern
+ * sections, style + resource preference blocks, prior-graph divergence
+ * section) so the prompts module stays free of upstream dependencies.
  */
 
 import { modePriorityEntry } from "../mode/application";
 
 export const ARC_REASONING_GRAPH_SYSTEM =
-  'You are a structural analyst building the causal reasoning graph for one arc. Choose nodes (fate, reasoning, character, location, artifact, system, pattern, warning, chaos) and typed edges (requires, enables, constrains, causes, reveals, develops, resolves) that capture how the arc actually works — fate, world, and system interacting, not one dominating. Honour the thinking mode (abduction/divergent/deduction/induction; deduction is the default for simulation register) and the divergence pressure from any prior graph. For simulation register the system layer is load-bearing — rule, agent (institutional / faction / market driver, encoded as character), pressure, and pattern nodes carry more of the graph than in fiction or non-fiction. Distribute agency across multiple actors, not a single focal one. Return ONLY valid JSON matching the schema in the user prompt.';
+  "You are a thinking partner producing a causal reasoning graph that serves as a THINKING AID for the user. They have arrived at a position in the narrative and want to reason about it more deeply — the graph lays out the causal structure that supports that thinking. The user's DIRECTION is the primary steering input: if it asks a question, the graph's terminal is the answer; if it names an angle, the chain explores that angle. When no direction is supplied, default to continuing the narrative / arc — what is causally about to unfold from this position, and why. The artifact can additionally be reused as a continuation seed downstream, but the framing is reasoning support first. Build a typed graph (fate, reasoning, character, location, artifact, system, pattern, warning, chaos nodes; requires/enables/constrains/causes/reveals/develops/resolves/supersedes edges). Capture real causal complexity — fate, world and system interacting. Honour the thinking style (abduction / divergent / deduction / induction). Return ONLY valid JSON matching the schema in the user prompt.";
 
 export const COORDINATION_PLAN_SYSTEM =
   'You are a multi-arc planner using backward induction. Build a coordination plan organised around peaks (where forces converge, threads culminate) and valleys (where the arc pivots) — one anchor per arc. Use chronological indexing, distribute agency across actors, mix arc sizes and force compositions, route around any patterns/warnings. For simulation register, peaks and valleys often land as rule-driven thresholds (a modelled state crossing a gate, a pressure discharging, a constraint binding) rather than dramatic moments — both are valid spine anchors. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -99,34 +109,25 @@ ${systemKnowledge || "None yet"}
 ${patternsSection ? `  <patterns hint="Positive commandments to reinforce.">\n${patternsSection}\n  </patterns>` : ''}
 ${antiPatternsSection ? `  <anti-patterns hint="Pitfalls to avoid.">\n${antiPatternsSection}\n  </anti-patterns>` : ''}
 
-  <arc-brief arc-name="${arcName}" scene-count="${sceneCount}">
-${coordinationPlanContext ? `    <coordination-plan arc-index="${coordinationPlanContext.arcIndex}" arc-count="${coordinationPlanContext.arcCount}"${coordinationPlanContext.forceMode ? ` force-mode="${coordinationPlanContext.forceMode}"` : ''} hint="PRIMARY BRIEF — multi-arc plan derived from backward induction. The reasoning graph must execute the plan for this arc.">
-      <directive>
-${coordinationPlanContext.directive}
-      </directive>
-      <execution-rules>
-        <rule>Plan says WHAT must happen; you determine HOW — ground abstract beats in SPECIFIC entities, locations, and mechanisms.</rule>
-        <rule>Maintain the plan's thread targets — if a thread should escalate, deliver it.</rule>
-        <rule>Respect force mode — world-dominant: entity transformation; fate-dominant: thread resolution.</rule>
-      </execution-rules>${direction.trim() ? `
-      <additional-direction hint="Layer on top of the plan.">${direction}</additional-direction>` : ''}
-    </coordination-plan>` : `    <direction>${direction}</direction>`}
-  </arc-brief>
+  <investigation-brief anchored-to="${arcName}">
+    ${direction.trim()
+      ? `<direction hint="PRIMARY STEERING INPUT — what the user wants to think about. The graph's terminal answers it; the chain shows the reasoning that arrives at it.">${direction}</direction>`
+      : `<direction hint="No direction supplied — default to CONTINUATION. Reason about what is causally about to unfold from this position in the narrative / arc, and why.">(continue the narrative — what comes next given the forces in play, and why)</direction>`}
+  </investigation-brief>
 ${modeSection ? `\n  ${modeSection.replace(/\n/g, '\n  ')}\n` : ''}
 ${priorGraphSection ? `\n  ${priorGraphSection.replace(/\n/g, '\n  ')}\n` : ''}
 ${forcePreferenceBlockText ? `  ${forcePreferenceBlockText.replace(/\n/g, '\n  ')}\n` : ''}
 ${reasoningModeBlockText ? `  ${reasoningModeBlockText.replace(/\n/g, '\n  ')}\n` : ''}
-${networkBiasBlockText ? `  ${networkBiasBlockText.replace(/\n/g, '\n  ')}\n` : ''}
 </inputs>
 
-<task>Build a REASONING GRAPH (CRG) for "${arcName}" to guide ${sceneCount} scene(s).</task>
+<task>Build a causal reasoning graph that serves as a THINKING AID for the user, anchored to "${arcName}" as the current position in the narrative. Let the direction steer the shape: if it asks a question, the chain arrives at the answer; if it names an angle, the graph explores that angle's causal structure; if it's empty, default to CONTINUATION — what is causally about to unfold from this position, and why. The user will follow the chain step by step, refer to it, and may optionally copy its reasoning back into generation.</task>
 
 <integration-hierarchy hint="When inputs conflict, this is the priority order. Higher-rank inputs override lower-rank ones; lower-rank inputs are still always relevant.">
-  <priority rank="1">DIRECTION / ARC BRIEF — the user's explicit ask, or the coordination-plan directive when one exists. The graph delivers what the brief commits to.</priority>
-  <priority rank="2">PRIOR ARC GRAPH — divergence pressure; the new graph must NOT replicate the prior spine.</priority>
+  <priority rank="1">DIRECTION — the user's explicit ask. The graph's shape, terminal, and chain orientation are determined by what they're trying to think through. When direction is empty, the implicit ask is "continue from here" — reason about what unfolds next.</priority>
+  <priority rank="2">PRIOR ARC GRAPH — divergence pressure; this investigation must NOT replicate the prior spine.</priority>
   ${modePriorityEntry(3, "reasoning-arc")}
   <priority rank="4">NARRATIVE CONTEXT — entities, threads, system rules; the substrate the chain stands on.</priority>
-  <priority rank="5">FORCE PREFERENCE / REASONING MODE / NETWORK BIAS — engine tilt applied within the constraints above.</priority>
+  <priority rank="5">THINKING STYLE / RESOURCE PREFERENCE — engine tilt applied within the constraints above.</priority>
 </integration-hierarchy>
 
 <reasoning-doctrine hint="Foundational principles guiding how the graph is constructed.">
@@ -136,7 +137,16 @@ ${networkBiasBlockText ? `  ${networkBiasBlockText.replace(/\n/g, '\n  ')}\n` : 
   <principle name="novelty-is-motion">Novelty is forward motion. Resolved threads mostly stay resolved. Prefer NEW chains of reasoning over extending existing ones into minor variation. Sameness is stall; variety is how the audience feels the narrative moving.</principle>
   <principle name="three-forces-aggregate">Fate, world, and system converge here. Fate markets exert pressure; world entities bring agency; system rules constrain. Coherence comes from interaction, not dominance. Fate-only = thread outline; world-only = entity sketch; system-only = rulebook. Aggregation is the craft.</principle>
   <principle name="resolution-is-consequence">Resolution is the audience's payoff, but it's a CONSEQUENCE of reasoning, not a prerequisite. Land a LEANS thread when volume + margin + scene count suffice; otherwise the market carries forward. Forcing closure the arc can't earn is worse than leaving the thread pulsing. The feedback loop converges when each arc is honest about what it can deliver.</principle>
+  <principle name="inference-exposes-its-machinery" critical="true">Reasoning, pattern, warning, and chaos nodes are INFERENCE-TIER — they exist to do thinking work the priors can't do alone. A reasoning node that only restates its predecessors is a description, not an inference. Genuine inference EXPOSES its machinery: what it selected from (rejected siblings), what would invalidate it (failure conditions), what it opens up (second-order possibilities). The four-field shape below is how the reader walks the chain and re-evaluates it at each step — without these handles, the graph collapses to chain-of-thought.</principle>
 </reasoning-doctrine>
+
+<inference-node-shape hint="Required on inference-tier nodes (reasoning, pattern, warning, chaos). Priors do NOT use this shape.">
+  <field name="detail" required="true">1–3 sentences. The causal logic — given predecessors, why this step follows. NOT graph-position metadata.</field>
+  <field name="considered" required="true" critical="true">1–3 sentences naming sibling hypotheses considered and discarded, with why. Genuinely competitive, not strawmen. If no alternative genuinely applies (substrate fact / inherited constraint / terminal commitment), say so explicitly here — never omit silently.</field>
+  <field name="breaks" required="strongly-encouraged">1–2 sentences. The load-bearing assumption whose negation voids the inference. If you can't name it, the inference doesn't predict.</field>
+  <field name="opens" required="strongly-encouraged">1–2 sentences. Second-order possibilities this opens beyond the graph's drawn edges.</field>
+  <discipline>Every inference-tier node MUST carry \`considered\` (silent omission is logged). \`detail\` is required; \`breaks\` and \`opens\` strongly encouraged.</discipline>
+</inference-node-shape>
 
 <node-types hint="Every node grounded in SPECIFIC context from the inputs above.">
   <type name="fate">A thread the reasoning actively couples to — landing an outcome, pushing toward resolution, or seeding a new market. NOT mandatory; appears when reasoning genuinely engages a thread. Use threadId. Label = what the thread does in this arc. LEANS often earns a closure-landing fate; CONTESTED may earn a deliberately-refused-to-resolve fate; FADING usually earns no fate at all.</type>
@@ -144,7 +154,7 @@ ${networkBiasBlockText ? `  ${networkBiasBlockText.replace(/\n/g, '\n  ')}\n` : 
   <type name="location">A setting. Use entityId. Label = what it enables/constrains.</type>
   <type name="artifact">An object. Use entityId. Label = its role in reasoning.</type>
   <type name="system">A world rule/principle/constraint. Use systemNodeId for existing SYS-XX. Label = the rule as it applies here. New rules: omit systemNodeId — but reuse beats invention.</type>
-  <type name="reasoning">A step in the causal chain — a distinct state-change (demand → plan, plan → action, action → consequence, consequence → new pressure). Same subject = one node with more edges. Minor restatements are pulses on the existing step — escalate or merge. Label = the inference (3-8 words). Detail = REQUIRED: the causal reasoning itself, 1-3 sentences. State the in-arc logic that connects this node's predecessors to its successors — given the prereqs (the entities, rules, prior reasoning), why does THIS inference follow, and what does it make possible next? Do NOT use the detail to attribute graph position ("backward from X's LEANS", "abductive step from terminal") — that's metadata, not reasoning. The chain is coherent when each node's detail reads as a real argumentative move that the next node visibly builds on.</type>
+  <type name="reasoning">A step in the causal chain — a distinct state-change (demand → plan, plan → action, action → consequence, consequence → new pressure). Same subject = one node with more edges. Minor restatements are pulses on the existing step — escalate or merge. Label = the inference (3-8 words). Carries the FULL INFERENCE-NODE SHAPE: <code>detail</code> + <code>considered</code> + <code>breaks</code> + <code>opens</code> (see <inference-node-shape> below). The four fields together expose the reasoning machinery, not just the conclusion — a node that supplies only <code>detail</code> is a description; the others are what make it a thinking aid.</type>
   <type name="pattern">NOVEL-PATTERN GENERATOR. Proposes a structural shape this work HAS NOT used before — fresh configuration, rhythm, or relational geometry. Specific, not generic. Examples: "First arc resolved through a non-POV actor's choice", "Two anchors separated across the arc". Scan prior arcs first.</type>
   <type name="warning">PATTERN-REPETITION DETECTOR. Flags shapes the narrative has already used — resolution rhythms, conflict geometries, dynamics, cadences — that this arc is drifting toward. Examples: "Third arc ending in external relief", "A and B have used tension-then-reconciliation three times", "Fourth consecutive fate-dominant arc". Name the repetition concretely.</type>
   <type name="chaos">OUTSIDE FORCE — operates outside fate/world/system. Two modes: unanticipated event (problems the existing entities couldn't anticipate, resolutions they couldn't construct — sudden interruption, new arrival, latent property surfacing); creative engine (seeds new threads later arcs develop). Sparingly under freeform; extensively under chaos-preference. Label = what arrives and its role. DO NOT set entityId or threadId — spawned via world expansion.</type>
@@ -163,28 +173,24 @@ ${networkBiasBlockText ? `  ${networkBiasBlockText.replace(/\n/g, '\n  ')}\n` : 
 </edge-types>
 
 <requirements>
-  <requirement index="1" name="start-where-pressure-strongest">In backward modes (abduction/induction), start from the arc's natural terminal — where fate LEANS strong, world change needs to land, or system revelation pays off — and reason backward to the entity facts that enable it. Terminal can be fate, reasoning, or character-transformation node; whichever force the arc most honestly serves.</requirement>
-  <requirement index="2" name="causal-complexity">The arc is a causal diagram — capture REAL complexity. Threads pull on multiple things, entities influence multiple moments, rules constrain several choices. When you add a node, show all the places it matters.</requirement>
-  <requirement index="3" name="aggregate-three-forces">Coherence comes from fate, world, and system interacting, not one dominating. Fate-only = thread sketch; world-only = entity study; system-only = rulebook. Let the three argue with each other.</requirement>
-  <requirement index="4" name="unexpected-directions">Reasoning doesn't always serve the market's expectation. LEANS can be subverted if scene count and evidence warrant a twist; CONTESTED can be deliberately left more uncertain. The next scene's evidence re-prices accordingly.</requirement>
+  <requirement index="1" name="direction-shapes-the-graph" critical="true">The direction (or its absence) determines the graph's shape. With a directional question, the terminal IS the answer and the chain shows how the world's forces compose to produce it. With a thematic angle, the graph surfaces the causal structure underlying that theme. Empty direction = CONTINUATION mode: terminal is what is causally about to unfold from this position, the chain shows why the forces in play produce it. Name what you're investigating in the summary so the user can follow.</requirement>
+  <requirement index="2" name="start-where-pressure-strongest">In backward modes (abduction/induction), start from the terminal — the answer to the direction, or (in continuation mode) the most consequential next development the position is loaded with — and reason backward to the entity facts and rules that enable it. Terminal can be a fate node, a reasoning step, a character-transformation, or a system revelation; whichever shape best honours the direction.</requirement>
+  <requirement index="3" name="causal-complexity">Capture REAL complexity. Threads pull on multiple things, entities influence multiple moments, rules constrain several choices. When you add a node, show all the places it matters. A graph that reads as a single vertical chain is under-representing the structure.</requirement>
+  <requirement index="4" name="aggregate-three-forces">Coherence comes from fate, world, and system interacting, not one dominating. Fate-only = thread sketch; world-only = entity study; system-only = rulebook. Let the three argue with each other.</requirement>
   <requirement index="5" name="sequential-indexing">\`index\` = causal topological order: 0 is root, predecessors have lower indices, terminal at highest. Walking ascending should feel coherent, not subgraph jumps. \`order\` (auto-captured from array position) may differ from \`index\` in backward modes. Emit \`plannedNodeCount\` before the nodes array.</requirement>
   <requirement index="6" name="id-references">Character/location/artifact nodes MUST use entityId from AVAILABLE ENTITIES. Fate nodes MUST use threadId from Active Threads. System nodes MUST use systemNodeId from System Knowledge (copy [SYS-XX] verbatim) — only omit when introducing a genuinely new rule. Hallucinated IDs are stripped at parse time. Reuse beats invention.</requirement>
   <requirement index="7" name="single-entity-node-per-entity">Same character/system mattering in multiple places = ONE node with multiple edges. Don't duplicate.</requirement>
-  <requirement index="8" name="node-count">Target ${nodeCountMin}-${nodeCountMax} nodes across all types. Bands leave room for secondary characters' reasoning chains.</requirement>
-  <requirement index="9" name="creative-agent-counts">1-2 pattern nodes (each introducing a shape the narrative has NOT used; scan prior arcs first). 1-2 warning nodes (each naming a specific repetition risk — "we have ended the last two arcs this way"; vague warnings are worthless). 1-2 chaos nodes default, more under chaos preference (outside-force; do NOT set entityId/threadId — spawned via world expansion).</requirement>
-  <requirement index="10" name="non-deterministic">Each reasoning path contains at least one SURPRISE — something that doesn't follow obviously from context.</requirement>
-  <requirement index="11" name="warning-pattern-response" critical="true">Warnings and patterns must structurally change the graph, not sit as ornaments. Wire them via edges — warnings routed around (chaos, subverted reasoning, different fate direction); patterns appearing in actual node shapes. Orphaned = dead weight; cut or connect.</requirement>
-  <requirement index="12" name="agency-distribution" critical="true">Character nodes reference ≥2 distinct entityIds (≥3 if the arc touches 3+ named entities). Every named entity has at least one OUTGOING edge — entities acted upon without agency get absorbed into reasoning nodes, not rendered as scenery. Counterparts and supporting actors need independent goals.</requirement>
-  <requirement index="13" name="thread-closure-earned">A thread closes when the market warrants — strong LEANS, sufficient volume, scene count enough for decisive evidence. Those conditions = land it. Without them, leave it pulsing — forcing closure the arc can't earn is worse. Reasoning may land an unexpected closure (twist) or deliberately refuse one (uncertainty maintained). A graph that closes nothing this arc is legitimate (CONTESTED-heavy pivot arcs); don't invent closures the market doesn't justify.</requirement>
-  <requirement index="14" name="no-subject-or-pattern-repetition">Same actor + action + target = one node with more edges. Same SHAPE applied to different objects ("X exploits chaos to acquire Y" iterated for three Y's) = one pattern rehearsed. Each reasoning node brings a different mode of inference — deduction, abduction, analogy, inversion, constraint propagation. Catch yourself rephrasing a template = change shape or merge.</requirement>
-  <requirement index="15" name="reasoning-node-details" critical="true">Every reasoning node's \`detail\` carries its OWN causal logic — 1-3 sentences explaining WHY this inference follows given its predecessors and WHAT it makes possible for its successors. Read the chain by walking ascending \`index\`: each detail should pick up where the previous left off and hand off to the next. A graph whose reasoning details all read as graph-position attributions ("backward from the terminal", "step in the chain") is a graph that hasn't done the reasoning — it has only labelled the diagram.</requirement>
-  <requirement index="16" name="terminal-commits">Last-indexed node advances state — closes a thread, lands a transformation, reveals a system truth, or hard-pivots to the next arc. Never a resting state.</requirement>
-  <requirement index="17" name="novelty-over-recycling">Resolved threads mostly stay resolved — recycling is the exception. Prefer new threads of fate and new chains of reasoning over extending what already exists.</requirement>
+  <requirement index="8" name="node-count">Let the situation size the graph. A focused direction may want 6-10 nodes; a sprawling free-form investigation may want 15-25. Target ${nodeCountMin}-${nodeCountMax} as a soft range — go higher when the position genuinely supports more complexity, go lower when the chain reads cleaner short.</requirement>
+  <requirement index="9" name="creative-agent-counts">Pattern / warning / chaos nodes are optional — include them only when they meaningfully shape the chain. Pattern node = a fresh structural shape worth naming; warning = a specific repetition risk; chaos = an outside-force seed. Skip rather than pad.</requirement>
+  <requirement index="10" name="non-deterministic">Each reasoning path contains at least one SURPRISE — something that doesn't follow obviously from the context. The point of the graph is to enrich the user's thinking, not confirm what they already know.</requirement>
+  <requirement index="11" name="reasoning-node-details" critical="true">Every reasoning node's \`detail\` carries its OWN causal logic — 1-3 sentences explaining WHY this inference follows given its predecessors and WHAT it makes possible for its successors. Walking the chain by ascending \`index\` should read as a continuous argument the user can follow step by step. A graph whose details all read as graph-position attributions ("backward from the terminal", "step in the chain") has labelled the diagram instead of doing the reasoning.</requirement>
+  <requirement index="12" name="inference-shape-on-inference-tier" critical="true">Every INFERENCE-TIER node (reasoning, pattern, warning, chaos) carries the full <inference-node-shape> above: \`detail\` + \`considered\` + \`breaks\` + \`opens\`. Inference-tier nodes that emit only \`detail\` are description, not reasoning — the other three fields are what lifts the graph above default chain-of-thought into a thinking aid the user can re-evaluate at each step. Priors (character, location, artifact, system, fate) do NOT carry this shape — they're substrate, not selections over it. Skipping a field on an inference node only when nothing genuinely fits (e.g. \`considered\` on a node with no real alternatives, \`opens\` on a terminal node that closes rather than opens); silent omission across the graph means the discipline is being skipped, not honoured.</requirement>
+  <requirement index="13" name="no-subject-or-pattern-repetition">Same actor + action + target = one node with more edges. Same SHAPE rephrased ("X exploits chaos to acquire Y" iterated for three Y's) = one pattern rehearsed. Each reasoning node brings a different mode of inference — deduction, abduction, analogy, inversion, constraint propagation.</requirement>
 </requirements>
 
-<shape-of-good-arc-graph>
-  Causal diagram, not a chain of justifications. Key entities connect to several reasoning nodes, rules constrain multiple choices, the climax is convergence of several setups — not the end of a single line. If the graph reads as a vertical list, complexity is under-represented. Fate is one voice in the argument, not the conductor.
-</shape-of-good-arc-graph>
+<shape-of-good-investigation-graph>
+  A thinking aid. The user reads the chain and learns something they didn't see on entry — a tension, a constraint, a path, a hidden coupling. The terminal is the payoff (the answer to direction, or the resolution of the free-form investigation). Key entities connect to several reasoning nodes; rules constrain multiple choices; the chain converges from several roots rather than running as a single vertical line. The summary names what is being investigated in one sentence so the user can decide whether to follow it through.
+</shape-of-good-investigation-graph>
 
 <output-format>
 Return a JSON object.
@@ -208,8 +214,8 @@ Return a JSON object.
     // Backward mode: terminal first (order 0-2 at index 4-6).
     // order: 0 · index: 4 — fate node the reasoning LANDS (not mandated).
     {"id": "fate-position-secured", "index": 4, "type": "fate", "label": "Coalition secures the contested position through shared cause", "detail": "T-1 leaned 'secured' (p=0.78); reasoning delivers it. Closure plausible given volume and scene count.", "threadId": "T-1"},
-    // order: 1 · index: 5 — cost that falls out of the path taken.
-    {"id": "reason-observer-exposure", "index": 5, "type": "reasoning", "label": "Negotiation exposes the principal actor to a hostile observer", "detail": "Securing the coalition's terms requires the principal to demonstrate the faction's structural weakness in front of the counterpart's council. The act of demonstrating is the act of disclosing — there is no version of this negotiation where the observer doesn't see what the principal knows. Once seen, the knowledge cannot be denied or pretended away in later sections."},
+    // order: 1 · index: 5 — cost that falls out of the path taken. Inference-tier node carries the full shape: detail + considered + breaks + opens.
+    {"id": "reason-observer-exposure", "index": 5, "type": "reasoning", "label": "Negotiation exposes the principal actor to a hostile observer", "detail": "Securing the coalition's terms requires the principal to demonstrate the faction's structural weakness in front of the counterpart's council. The act of demonstrating is the act of disclosing — there is no version of this negotiation where the observer doesn't see what the principal knows. Once seen, the knowledge cannot be denied or pretended away in later sections.", "considered": "Could have routed via private envoy (rejected: counterpart's protocol explicitly forbids private negotiation on standing-affecting matters, per SYS-12). Could have routed via the principal's senior — rejected because the senior's prior commitment to a rival faction makes them a hostile carrier of the same disclosure.", "breaks": "Breaks if the principal can mount a partial disclosure that satisfies the counterpart's evidence threshold without naming the weakness — only viable if the latent artifact's properties surface first, which the timeline can't guarantee.", "opens": "Opens a new thread (will the observer speak) priced at uniform prior; opens an obligation arc (counterpart now owes a reciprocal disclosure under their own protocol); opens a leverage market between observer and principal that subsequent arcs can re-price."},
     // order: 2 · index: 6 — new thread emerges from the cost.
     {"id": "fate-observer-leverage", "index": 6, "type": "fate", "label": "Observer now holds leverage over the principal", "detail": "Observer exposure seeds a new uncertainty: will the observer speak. New market opens at uniform prior; later arcs re-price.", "threadId": "T-NEW"},
     // order: 3 · index: 3 — the causal step.

@@ -1,12 +1,12 @@
 "use client";
 
-import type { ForcePreference, ReasoningMode } from "@/lib/ai";
+import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
 import { ThinkingAnimation } from "./ThinkingAnimation";
 
 // ── Force preference metadata ────────────────────────────────────────────────
 
-export const FORCE_PREFERENCE_META: Record<
-  ForcePreference,
+export const THINKING_RESOURCE_META: Record<
+  ThinkingResource,
   { label: string; color: string; description: string }
 > = {
   freeform: {
@@ -36,7 +36,7 @@ export const FORCE_PREFERENCE_META: Record<
   },
 };
 
-const PREFERENCE_ORDER: ForcePreference[] = [
+const PREFERENCE_ORDER: ThinkingResource[] = [
   "freeform",
   "fate",
   "world",
@@ -47,17 +47,17 @@ const PREFERENCE_ORDER: ForcePreference[] = [
 // ── Force preference picker ──────────────────────────────────────────────────
 
 type Props = {
-  value: ForcePreference;
-  onChange: (pref: ForcePreference) => void;
+  value: ThinkingResource;
+  onChange: (pref: ThinkingResource) => void;
   label?: string;
 };
 
-export function ForcePreferencePicker({
+export function ThinkingPicker({
   value,
   onChange,
   label = "Force",
 }: Props) {
-  const current = FORCE_PREFERENCE_META[value];
+  const current = THINKING_RESOURCE_META[value];
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between">
@@ -70,7 +70,7 @@ export function ForcePreferencePicker({
       </div>
       <div className="flex gap-0.5 rounded-md bg-white/4 p-0.5">
         {PREFERENCE_ORDER.map((pref) => {
-          const meta = FORCE_PREFERENCE_META[pref];
+          const meta = THINKING_RESOURCE_META[pref];
           const selected = pref === value;
           return (
             <button
@@ -164,17 +164,23 @@ export function ReasoningSizePicker({
 
 // ── Reasoning-mode picker ────────────────────────────────────────────────────
 
-const REASONING_MODE_ORDER: ReasoningMode[] = [
+const REASONING_MODE_ORDER: ThinkingStyle[] = [
+  "freeform",
   "divergent",
   "deduction",
   "abduction",
   "induction",
 ];
 
-const REASONING_MODE_META: Record<
-  ReasoningMode,
+const THINKING_STYLE_META: Record<
+  ThinkingStyle,
   { label: string; color: string; description: string }
 > = {
+  freeform: {
+    label: "Freeform",
+    color: "#94a3b8",
+    description: "Let the model think its own way — no imposed structure.",
+  },
   divergent: {
     label: "Divergent",
     color: "#fbbf24",
@@ -197,16 +203,16 @@ const REASONING_MODE_META: Record<
   },
 };
 
-export function ReasoningModePicker({
+export function ThinkingStylePicker({
   value,
   onChange,
   label = "Mode",
 }: {
-  value: ReasoningMode;
-  onChange: (mode: ReasoningMode) => void;
+  value: ThinkingStyle;
+  onChange: (mode: ThinkingStyle) => void;
   label?: string;
 }) {
-  const current = REASONING_MODE_META[value];
+  const current = THINKING_STYLE_META[value];
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between">
@@ -219,7 +225,7 @@ export function ReasoningModePicker({
       </div>
       <div className="flex gap-0.5 rounded-md bg-white/4 p-0.5">
         {REASONING_MODE_ORDER.map((mode) => {
-          const meta = REASONING_MODE_META[mode];
+          const meta = THINKING_STYLE_META[mode];
           const selected = mode === value;
           return (
             <button
@@ -371,19 +377,20 @@ function DropdownRow<T extends string>({
   );
 }
 
-const MODE_OPTS = [
-  { key: 'divergent' as ReasoningMode, label: 'Divergent', description: REASONING_MODE_META.divergent.description },
-  { key: 'deduction' as ReasoningMode, label: 'Deduction', description: REASONING_MODE_META.deduction.description },
-  { key: 'abduction' as ReasoningMode, label: 'Abduction', description: REASONING_MODE_META.abduction.description },
-  { key: 'induction' as ReasoningMode, label: 'Induction', description: REASONING_MODE_META.induction.description },
+const STYLE_OPTS = [
+  { key: 'freeform' as ThinkingStyle, label: 'Freeform', description: THINKING_STYLE_META.freeform.description },
+  { key: 'divergent' as ThinkingStyle, label: 'Divergent', description: THINKING_STYLE_META.divergent.description },
+  { key: 'deduction' as ThinkingStyle, label: 'Deduction', description: THINKING_STYLE_META.deduction.description },
+  { key: 'abduction' as ThinkingStyle, label: 'Abduction', description: THINKING_STYLE_META.abduction.description },
+  { key: 'induction' as ThinkingStyle, label: 'Induction', description: THINKING_STYLE_META.induction.description },
 ] as const;
 
-const FORCE_OPTS = [
-  { key: 'freeform' as ForcePreference, label: 'Freeform', description: FORCE_PREFERENCE_META.freeform.description },
-  { key: 'fate' as ForcePreference, label: 'Fate', description: FORCE_PREFERENCE_META.fate.description },
-  { key: 'world' as ForcePreference, label: 'World', description: FORCE_PREFERENCE_META.world.description },
-  { key: 'system' as ForcePreference, label: 'System', description: FORCE_PREFERENCE_META.system.description },
-  { key: 'chaos' as ForcePreference, label: 'Chaos', description: FORCE_PREFERENCE_META.chaos.description },
+const RESOURCE_OPTS = [
+  { key: 'freeform' as ThinkingResource, label: 'Freeform', description: THINKING_RESOURCE_META.freeform.description },
+  { key: 'fate' as ThinkingResource, label: 'Fate', description: THINKING_RESOURCE_META.fate.description },
+  { key: 'world' as ThinkingResource, label: 'World', description: THINKING_RESOURCE_META.world.description },
+  { key: 'system' as ThinkingResource, label: 'System', description: THINKING_RESOURCE_META.system.description },
+  { key: 'chaos' as ThinkingResource, label: 'Chaos', description: THINKING_RESOURCE_META.chaos.description },
 ] as const;
 
 const SIZE_OPTS = [
@@ -416,50 +423,65 @@ export function ThinkingSettings({
   networkBias, onNetworkBiasChange,
   variant = 'compact',
 }: {
-  mode: ReasoningMode;
-  onModeChange: (m: ReasoningMode) => void;
-  force: ForcePreference;
-  onForceChange: (f: ForcePreference) => void;
-  size: ReasoningSize;
-  onSizeChange: (s: ReasoningSize) => void;
-  networkBias: NetworkBias;
-  onNetworkBiasChange: (b: NetworkBias) => void;
+  mode: ThinkingStyle;
+  onModeChange: (m: ThinkingStyle) => void;
+  force: ThinkingResource;
+  onForceChange: (f: ThinkingResource) => void;
+  /** Density preset (small/medium/large). Omit to hide the Density row —
+   *  callers that want the model to size its own reasoning dynamically
+   *  (e.g. investigations) skip this knob. */
+  size?: ReasoningSize;
+  onSizeChange?: (s: ReasoningSize) => void;
+  /** Network bias (inside/outside/neutral). Omit to hide the Network row. */
+  networkBias?: NetworkBias;
+  onNetworkBiasChange?: (b: NetworkBias) => void;
   variant?: 'compact' | 'hero';
 }) {
-  const modeMeta = REASONING_MODE_META[mode];
-  const forceMeta = FORCE_PREFERENCE_META[force];
-  const biasMeta = NETWORK_BIAS_META[networkBias];
+  const modeMeta = THINKING_STYLE_META[mode];
+  const forceMeta = THINKING_RESOURCE_META[force];
+  const biasMeta = networkBias ? NETWORK_BIAS_META[networkBias] : null;
+  // ThinkingAnimation needs *some* values to drive its visual rhythm;
+  // fall back to defaults when the caller has opted out of those knobs.
+  const animationSize: ReasoningSize = size ?? 'medium';
+  const animationBias: NetworkBias = networkBias ?? 'neutral';
 
   // Shared dropdown rows — value-coloured per row, palette inherited from meta.
+  // Labels renamed: "Style" (was Mode) — how thinking unfolds; "Resource"
+  // (was Force) — what cohort the reasoning leans on. The internal type
+  // names stay (ThinkingStyle / ThinkingResource) for backward compat.
   const rows = (
     <>
       <DropdownRow
-        label="Mode"
+        label="Style"
         value={mode}
-        options={MODE_OPTS}
+        options={STYLE_OPTS}
         onChange={onModeChange}
         valueColor={modeMeta.color}
       />
       <DropdownRow
-        label="Force"
+        label="Resource"
         value={force}
-        options={FORCE_OPTS}
+        options={RESOURCE_OPTS}
         onChange={onForceChange}
         valueColor={forceMeta.color}
       />
-      <DropdownRow
-        label="Density"
-        value={size}
-        options={SIZE_OPTS}
-        onChange={onSizeChange}
-      />
-      <DropdownRow
-        label="Network"
-        value={networkBias}
-        options={BIAS_OPTS}
-        onChange={onNetworkBiasChange}
-        valueColor={biasMeta.color}
-      />
+      {size !== undefined && onSizeChange && (
+        <DropdownRow
+          label="Density"
+          value={size}
+          options={SIZE_OPTS}
+          onChange={onSizeChange}
+        />
+      )}
+      {networkBias !== undefined && onNetworkBiasChange && biasMeta && (
+        <DropdownRow
+          label="Network"
+          value={networkBias}
+          options={BIAS_OPTS}
+          onChange={onNetworkBiasChange}
+          valueColor={biasMeta.color}
+        />
+      )}
     </>
   );
 
@@ -468,11 +490,11 @@ export function ThinkingSettings({
       <div className="flex flex-col gap-5">
         <div className="flex justify-center">
           <ThinkingAnimation
-            key={`${mode}-${force}-${size}-${networkBias}`}
+            key={`${mode}-${force}-${animationSize}-${animationBias}`}
             mode={mode}
             force={force}
-            size={size}
-            networkBias={networkBias}
+            size={animationSize}
+            networkBias={animationBias}
             width={420}
             height={260}
           />
@@ -497,24 +519,25 @@ export function ThinkingSettings({
           {modeMeta.description}
         </div>
       </div>
-      <div className="flex gap-3 items-start">
-        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-          {rows}
-        </div>
-        <div className="shrink-0">
-          {/* key-based remount so every settings permutation plays a
-              fresh animation from frame 0 — guarantees visibility of the
-              change even mid-cycle. */}
-          <ThinkingAnimation
-            key={`${mode}-${force}-${size}-${networkBias}`}
-            mode={mode}
-            force={force}
-            size={size}
-            networkBias={networkBias}
-            width={300}
-            height={210}
-          />
-        </div>
+      {/* Animation on top, selectors underneath — keeps the visual
+          reading-order primary and lets the controls span the full width
+          without competing with the graph for horizontal space. */}
+      <div className="flex justify-center">
+        {/* key-based remount so every settings permutation plays a fresh
+            animation from frame 0 — guarantees visibility of the change
+            even mid-cycle. */}
+        <ThinkingAnimation
+          key={`${mode}-${force}-${animationSize}-${animationBias}`}
+          mode={mode}
+          force={force}
+          size={animationSize}
+          networkBias={animationBias}
+          width={360}
+          height={220}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+        {rows}
       </div>
     </div>
   );

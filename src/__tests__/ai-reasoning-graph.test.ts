@@ -143,6 +143,99 @@ describe('buildSequentialPath', () => {
     expect(path).toMatch(/F1←requires/);
     expect(path).toMatch(/R1←requires/);
   });
+
+  // ── Universal inference-shape rendering ────────────────────────────────
+  // The three handles (`considered`, `breaks`, `opens`) ride alongside
+  // `detail` on inference-tier nodes. They render with stable glyphs (×, !,
+  // ⇒) so the LLM-readable sequential path uses the same vocabulary
+  // wherever it appears (CRG, coordination plan, PRG).
+
+  it('renders the inference-shape fields with their canonical glyphs', () => {
+    const graph = createReasoningGraph({
+      nodes: [
+        {
+          id: 'R1', index: 0, order: 0, type: 'reasoning',
+          label: 'Investigator confronts the contradiction',
+          detail: 'The contradiction forces the choice.',
+          considered: 'Could have postponed (rejected: deadline).',
+          breaks: 'Breaks if the deadline shifts.',
+          opens: 'Opens a thread on the consequence.',
+        },
+      ],
+      edges: [],
+    });
+    const path = buildSequentialPath(graph);
+
+    expect(path).toContain('· The contradiction forces the choice.');
+    expect(path).toContain('× considered: Could have postponed');
+    expect(path).toContain('! breaks: Breaks if the deadline shifts.');
+    expect(path).toContain('⇒ opens: Opens a thread on the consequence.');
+  });
+
+  it('renders inference-shape fields in stable order: detail → considered → breaks → opens', () => {
+    const graph = createReasoningGraph({
+      nodes: [
+        {
+          id: 'R1', index: 0, order: 0, type: 'reasoning',
+          label: 'Step',
+          detail: 'D-CONTENT',
+          considered: 'X-CONTENT',
+          breaks: 'B-CONTENT',
+          opens: 'O-CONTENT',
+        },
+      ],
+      edges: [],
+    });
+    const path = buildSequentialPath(graph);
+    const detailIdx = path.indexOf('D-CONTENT');
+    const consideredIdx = path.indexOf('X-CONTENT');
+    const breaksIdx = path.indexOf('B-CONTENT');
+    const opensIdx = path.indexOf('O-CONTENT');
+    expect(detailIdx).toBeGreaterThan(-1);
+    expect(consideredIdx).toBeGreaterThan(detailIdx);
+    expect(breaksIdx).toBeGreaterThan(consideredIdx);
+    expect(opensIdx).toBeGreaterThan(breaksIdx);
+  });
+
+  it('omits inference-shape lines for nodes that did not supply them', () => {
+    // Priors (character / location / system / fate) typically do NOT carry
+    // the inference-shape — they're substrate, not selections. The renderer
+    // must not emit empty glyph lines for nodes whose fields are undefined.
+    const graph = createReasoningGraph({
+      nodes: [
+        { id: 'C1', index: 0, order: 0, type: 'character', label: 'Anchor entity', entityId: 'C-1' },
+      ],
+      edges: [],
+    });
+    const path = buildSequentialPath(graph);
+
+    expect(path).not.toContain('× considered');
+    expect(path).not.toContain('! breaks');
+    expect(path).not.toContain('⇒ opens');
+  });
+
+  it('renders only the inference-shape fields that are present', () => {
+    // A reasoning node may legitimately carry detail + opens but not
+    // breaks (e.g. a divergent branch where the falsification handle
+    // doesn't apply). The renderer should emit only the populated lines.
+    const graph = createReasoningGraph({
+      nodes: [
+        {
+          id: 'R1', index: 0, order: 0, type: 'reasoning',
+          label: 'Branch outward',
+          detail: 'A possibility.',
+          opens: 'Opens a wider field.',
+        },
+      ],
+      edges: [],
+    });
+    const path = buildSequentialPath(graph);
+
+    expect(path).toContain('· A possibility.');
+    expect(path).toContain('⇒ opens: Opens a wider field.');
+    expect(path).not.toContain('× considered');
+    expect(path).not.toContain('! breaks');
+  });
 });
 
 // ── Reasoning Graph Structure Tests ──────────────────────────────────────────

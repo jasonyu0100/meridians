@@ -478,9 +478,38 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
  *  / thread / system render tags. Emits tier + attributions + topology —
  *  the shape all downstream consumers have converged on. Returns "" for
  *  absent nodes. */
+/** Compress the node's network role into a single natural-language phrase.
+ *  The shape mirrors how the LLM should read the asset:
+ *    - "unused"                          — never referenced; weak default option
+ *    - "fresh ×N"                        — recently introduced; spend deliberately
+ *    - "hub ×N" / "load-bearing hub ×N"  — central within its force; strong anchor
+ *    - "bridge ×N" / "load-bearing bridge ×N" — connects forces; coherence lever
+ *    - "active ×N" / "load-bearing ×N"   — referenced but not structural yet
+ *    - "incidental ×N"                   — cold/peripheral; safe to leave alone
+ *
+ *  One short attribute beats three numeric ones for prompt density and gives
+ *  the model an action-shaped read rather than raw metrics.
+ */
+function describeNodeUsage(node: NetworkNode): string {
+  if (node.attributions === 0) return "unused";
+  if (node.tier === "fresh") return `fresh ×${node.attributions}`;
+  const heavy = node.tier === "hot";
+  const cold = node.tier === "cold";
+  if (node.topology === "bridge") {
+    return `${heavy ? "load-bearing bridge" : cold ? "stale bridge" : "bridge"} ×${node.attributions}`;
+  }
+  if (node.topology === "hub") {
+    return `${heavy ? "load-bearing hub" : cold ? "stale hub" : "hub"} ×${node.attributions}`;
+  }
+  if (node.topology === "leaf") {
+    return `${heavy ? "load-bearing" : cold ? "incidental" : "active"} ×${node.attributions}`;
+  }
+  return `incidental ×${node.attributions}`;
+}
+
 function networkAttrs(node: NetworkNode | undefined): string {
   if (!node) return "";
-  return ` tier="${node.tier}" attributions="${node.attributions}" topology="${node.topology}"`;
+  return ` usage="${describeNodeUsage(node)}"`;
 }
 
 export function narrativeContext(
@@ -1550,7 +1579,7 @@ ${arcSections}
 // Compact XML shorthand of the head arc's Future scenarios — the
 // alternate-futures cohort the user has been shaping in the Variables
 // view. Designed for chat: every scenario's logit, softmax probability,
-// rarity tag, tagline, reasoning, and variable coordination ride along in
+// rarity tag, description, reasoning, and variable coordination ride along in
 // a structure dense enough to discuss but light enough not to crowd the
 // prompt. Pair with the narrative title + head arc state so the chat can
 // reason about *why* these scenarios are plausible.
@@ -1625,12 +1654,11 @@ export function futureContext(
 
   const scenarioBlocks = indexed.map(({ s, p, l }, rank) => {
     const rarity = futureRarityLabel(l);
-    const tagline = s.tagline ? `\n  <tagline>${xmlEscape(s.tagline)}</tagline>` : '';
-    const reasoning = s.priorRationale
-      ? `\n  <reasoning>${xmlEscape(s.priorRationale)}</reasoning>`
-      : '';
     const description = s.description
       ? `\n  <description>${xmlEscape(s.description)}</description>`
+      : '';
+    const reasoning = s.reasoning
+      ? `\n  <reasoning>${xmlEscape(s.reasoning)}</reasoning>`
       : '';
     // Variables ordered by intensity desc — the load-bearing ones lead.
     const orderedVars = [...s.variables]
@@ -1649,7 +1677,7 @@ export function futureContext(
       ? `\n  <variables count="${orderedVars.length}">\n${varLines.join('\n')}\n  </variables>`
       : '';
 
-    return `<scenario rank="${rank + 1}" name="${xmlEscape(s.name)}" prob="${(p * 100).toFixed(1)}%" logit="${l.toFixed(2)}" rarity="${rarity}">${tagline}${description}${reasoning}${varsBlock}
+    return `<scenario rank="${rank + 1}" name="${xmlEscape(s.name)}" prob="${(p * 100).toFixed(1)}%" logit="${l.toFixed(2)}" rarity="${rarity}">${description}${reasoning}${varsBlock}
 </scenario>`;
   });
 
@@ -1666,14 +1694,14 @@ export function futureContext(
         const label = FUTURE_INTENSITY_LABELS[intensity] ?? '?';
         return `    <variable name="${xmlEscape(v.name)}" intensity="${intensity}" intensity-label="${label}" />`;
       });
-    const tagline = headArc.presentTagline ? `\n  <tagline>${xmlEscape(headArc.presentTagline)}</tagline>` : '';
+    const description = headArc.presentDescription ? `\n  <description>${xmlEscape(headArc.presentDescription)}</description>` : '';
     const reasoning = headArc.presentReasoning
       ? `\n  <reasoning>${xmlEscape(headArc.presentReasoning)}</reasoning>`
       : '';
     const logitAttr = typeof headArc.presentLogit === 'number'
       ? ` logit="${headArc.presentLogit.toFixed(2)}" rarity="${futureRarityLabel(headArc.presentLogit)}"`
       : '';
-    return `\n<present${logitAttr}>${tagline}${reasoning}
+    return `\n<present${logitAttr}>${description}${reasoning}
   <variables count="${presentVars.length}">
 ${presentVars.join('\n')}
   </variables>

@@ -9,12 +9,62 @@ import {
   buildPlanDirective,
   getArcSceneCount,
   getArcNode,
+  getVisibleNodesForArc,
   isPlanComplete,
 } from '@/lib/auto-engine';
-import { generateScenes, generateReasoningGraph, type CoordinationPlanContext } from '@/lib/ai';
+import { generateScenes, type CoordinationPlanContext } from '@/lib/ai';
 import { FatalApiError } from '@/lib/ai/errors';
-import type { AutoRunLog } from '@/types/narrative';
 import { logError, logInfo } from '@/lib/system-logger';
+import type {
+  ArcInvestigation,
+  CoordinationPlan,
+  ReasoningGraphSnapshot,
+  ReasoningNodeSnapshot,
+} from '@/types/narrative';
+
+/**
+ * Package the coordination plan's visible-for-arc subgraph into a
+ * reasoning-graph snapshot so it can be persisted as an arc-anchored
+ * investigation. No additional LLM call — the plan's per-arc reasoning is
+ * the artifact, just re-shaped to match the reasoning-graph contract.
+ *
+ * Plan-spine types (peak / valley / moment) carry through directly — the
+ * reasoning-graph type union accepts them, and the visualisation + inspector
+ * detail both render them via the shared plan palette. The structural
+ * anchors stay distinct from generic fate / reasoning nodes.
+ */
+function buildCoordPlanInvestigationGraph(
+  plan: CoordinationPlan,
+  arcIndex: number,
+  arcLabel: string,
+  sceneCount: number,
+): ReasoningGraphSnapshot {
+  const visible = getVisibleNodesForArc(plan, arcIndex);
+  const visibleIds = new Set(visible.map((n) => n.id));
+
+  const nodes: ReasoningNodeSnapshot[] = visible.map((n) => ({
+    id: n.id,
+    index: n.index,
+    order: n.order,
+    type: n.type,
+    label: n.label,
+    detail: n.detail,
+    entityId: n.entityId,
+    threadId: n.threadId,
+    systemNodeId: n.systemNodeId,
+  }));
+
+  const edges = plan.edges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to));
+
+  const arcNode = getArcNode(plan, arcIndex);
+  return {
+    nodes,
+    edges,
+    arcName: arcLabel,
+    sceneCount,
+    summary: arcNode?.detail ?? plan.summary,
+  };
+}
 
 export function useAutoPlay() {
   const { state, dispatch } = useStore();
@@ -51,18 +101,6 @@ export function useAutoPlay() {
 
       // Check if plan is complete
       if (isPlanComplete(coordPlan)) {
-        dispatch({
-          type: 'LOG_AUTO_CYCLE',
-          entry: {
-            cycle: autoRunState.currentCycle + 1,
-            timestamp: Date.now(),
-            action: 'resolution',
-            reason: `Coordination plan completed — ${plan.arcCount} arcs done`,
-            scenesGenerated: 0,
-            worldExpanded: false,
-            endConditionMet: { type: 'planning_complete' },
-          },
-        });
         dispatch({ type: 'STOP_AUTO_RUN' });
         return;
       }
@@ -104,86 +142,58 @@ export function useAutoPlay() {
           directive,
         };
 
-        const useCrg = autoConfig.operations.includes('reasoning-graph');
-        let reasoningGraph: Awaited<ReturnType<typeof generateReasoningGraph>> | undefined;
-
-        if (useCrg) {
-          logInfo(`Arc ${executingArc}/${plan.arcCount}: building reasoning graph (${sceneCount} scenes)`, {
-            source: 'auto-play',
-            operation: 'reasoning-graph',
-            details: { arcIndex: executingArc, sceneCount, arcLabel },
-          });
-
-          reasoningGraph = await generateReasoningGraph(
-            activeNarrative,
-            resolvedEntryKeys,
-            headIndex,
-            sceneCount,
-            directive,
-            arcLabel,
-            undefined,
-            coordinationPlanContext,
-          );
-
-          if (cancelledRef.current) return;
-
-          logInfo(`Arc ${executingArc}/${plan.arcCount}: reasoning graph ready (${reasoningGraph.nodes.length} nodes, ${reasoningGraph.edges.length} edges) — generating scenes`, {
-            source: 'auto-play',
-            operation: 'reasoning-graph',
-            details: {
-              arcIndex: executingArc,
-              nodeCount: reasoningGraph.nodes.length,
-              edgeCount: reasoningGraph.edges.length,
-            },
-          });
-        } else {
-          logInfo(`Arc ${executingArc}/${plan.arcCount}: skipping reasoning graph (quick mode) — generating scenes`, {
-            source: 'auto-play',
-            operation: 'reasoning-graph',
-            details: { arcIndex: executingArc, sceneCount, arcLabel, mode: 'quick' },
-          });
-        }
-
         dispatch({ type: 'SET_AUTO_STATUS', message: `Arc ${executingArc}/${plan.arcCount}: writing ${sceneCount} scenes…` });
+        dispatch({ type: 'RESET_AUTO_STREAM' });
 
-        const { scenes, arc: baseArc } = await generateScenes(
+        // The coordination plan's per-arc reasoning (directive + forceMode)
+        // flows directly into scene generation via coordinationPlanContext —
+        // no separate CRG step. Investigations are a user-driven surface and
+        // are not produced by the auto pipeline.
+        const { scenes, arc } = await generateScenes(
           activeNarrative, resolvedEntryKeys, headIndex, sceneCount, '', // Empty direction — context flows via coordinationPlanContext
-          { worldBuildFocus, coordinationPlanContext, reasoningGraph },
+          {
+            worldBuildFocus,
+            coordinationPlanContext,
+            onReasoning: (token) => dispatch({ type: 'APPEND_AUTO_STREAM', chunk: token }),
+          },
         );
 
         if (cancelledRef.current) return;
 
-        const arc = reasoningGraph
-          ? {
-              ...baseArc,
-              reasoningGraph: {
-                nodes: reasoningGraph.nodes,
-                edges: reasoningGraph.edges,
-                arcName: reasoningGraph.arcName,
-                sceneCount: reasoningGraph.sceneCount,
-                summary: reasoningGraph.summary,
-                arcSettings: reasoningGraph.arcSettings,
-              },
-            }
-          : baseArc;
-
         dispatch({ type: 'BULK_ADD_SCENES', scenes, arc, branchId: activeBranchId });
-
-        // Log the cycle
         dispatch({
-          type: 'LOG_AUTO_CYCLE',
-          entry: {
-            cycle: autoRunState.currentCycle + 1,
-            timestamp: Date.now(),
-            action: 'setup',
-            reason: `Plan arc ${executingArc}: ${arc.name}`,
-            scenesGenerated: scenes.length,
-            worldExpanded: false,
-            endConditionMet: null,
-            arcName: arc.name,
-            direction: directive.substring(0, 200),
-          },
+          type: 'TICK_AUTO_RUN',
+          scenesGenerated: scenes.length,
+          worldExpanded: false,
+          hasError: false,
         });
+
+        // Persist the plan's per-arc reasoning as an arc-anchored investigation
+        // so the operator can browse / copy it from the sidebar. Anchored to
+        // the PRECEDING arc — the position the reasoning was "looking from".
+        // Mirrors the manual investigation flow. For the very first plan arc
+        // there is no preceding arc, so the artifact is skipped (the reasoning
+        // still guided scene generation in-flight).
+        const precedingArcId = (() => {
+          for (let i = resolvedEntryKeys.length - 1; i >= 0; i--) {
+            const scene = activeNarrative.scenes[resolvedEntryKeys[i]];
+            if (scene?.arcId && scene.arcId !== arc.id) return scene.arcId;
+          }
+          return null;
+        })();
+
+        if (precedingArcId) {
+          const investigation: ArcInvestigation = {
+            id: `investigation-${Date.now()}-${precedingArcId}`,
+            arcId: precedingArcId,
+            graph: buildCoordPlanInvestigationGraph(plan, executingArc, arcLabel, sceneCount),
+            direction: directive,
+            source: 'coordination-plan',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          dispatch({ type: 'CREATE_INVESTIGATION', investigation });
+        }
 
         // Advance to next arc
         dispatch({ type: 'ADVANCE_COORDINATION_PLAN', branchId: activeBranchId });
@@ -198,7 +208,6 @@ export function useAutoPlay() {
           dispatch({ type: 'SET_AUTO_STATUS', message: `Next: ${nextLabel}` });
         }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
         logError(`Coordination plan arc ${executingArc} failed`, err, {
           source: 'auto-play',
           operation: 'plan-execution',
@@ -206,17 +215,10 @@ export function useAutoPlay() {
         });
 
         dispatch({
-          type: 'LOG_AUTO_CYCLE',
-          entry: {
-            cycle: autoRunState.currentCycle + 1,
-            timestamp: Date.now(),
-            action: 'setup',
-            reason: `Arc ${executingArc} generation failed`,
-            scenesGenerated: 0,
-            worldExpanded: false,
-            endConditionMet: null,
-            error: errorMsg,
-          },
+          type: 'TICK_AUTO_RUN',
+          scenesGenerated: 0,
+          worldExpanded: false,
+          hasError: true,
         });
 
         // Credit/auth failures won't recover on retry — let the tick loop halt.
@@ -232,18 +234,6 @@ export function useAutoPlay() {
     // Check end conditions
     const endMet = checkEndConditions(activeNarrative, resolvedEntryKeys, autoConfig, autoRunState.startingSceneCount, autoRunState.startingArcCount, activeBranchId);
     if (endMet) {
-      dispatch({
-        type: 'LOG_AUTO_CYCLE',
-        entry: {
-          cycle: autoRunState.currentCycle + 1,
-          timestamp: Date.now(),
-          action: 'resolution',
-          reason: `End condition met: ${endMet.type}`,
-          scenesGenerated: 0,
-          worldExpanded: false,
-          endConditionMet: endMet,
-        },
-      });
       dispatch({ type: 'STOP_AUTO_RUN' });
       return;
     }
@@ -260,7 +250,6 @@ export function useAutoPlay() {
     );
 
     let scenesGenerated = 0;
-    let arcName = '';
     let cycleError = '';
 
     try {
@@ -275,69 +264,21 @@ export function useAutoPlay() {
       }
 
       const sceneCount = pickArcLength(autoConfig, pressure);
-      const useCrg = autoConfig.operations.includes('reasoning-graph');
-      let reasoningGraph: Awaited<ReturnType<typeof generateReasoningGraph>> | undefined;
-
-      if (useCrg) {
-        dispatch({ type: 'SET_AUTO_STATUS', message: `Reasoning ${sceneCount}-scene arc…` });
-        logInfo(`Building reasoning graph (${sceneCount} scenes, ${phase} phase)`, {
-          source: 'auto-play',
-          operation: 'reasoning-graph',
-          details: { sceneCount, storyPhase: phase },
-        });
-
-        reasoningGraph = await generateReasoningGraph(
-          activeNarrative,
-          resolvedEntryKeys,
-          headIndex,
-          sceneCount,
-          directive,
-          'Continuation',
-        );
-
-        if (cancelledRef.current) return;
-
-        logInfo(`Reasoning graph ready (${reasoningGraph.nodes.length} nodes, ${reasoningGraph.edges.length} edges) — generating scenes`, {
-          source: 'auto-play',
-          operation: 'reasoning-graph',
-          details: {
-            nodeCount: reasoningGraph.nodes.length,
-            edgeCount: reasoningGraph.edges.length,
-          },
-        });
-      } else {
-        logInfo(`Skipping reasoning graph (quick mode, ${sceneCount} scenes, ${phase} phase) — generating scenes`, {
-          source: 'auto-play',
-          operation: 'reasoning-graph',
-          details: { sceneCount, storyPhase: phase, mode: 'quick' },
-        });
-      }
 
       dispatch({ type: 'SET_AUTO_STATUS', message: `Writing ${sceneCount} scenes…` });
-      const { scenes, arc: baseArc } = await generateScenes(
-        activeNarrative, resolvedEntryKeys, headIndex, sceneCount, directive, { worldBuildFocus, reasoningGraph },
+      dispatch({ type: 'RESET_AUTO_STREAM' });
+      const { scenes, arc } = await generateScenes(
+        activeNarrative, resolvedEntryKeys, headIndex, sceneCount, directive, {
+          worldBuildFocus,
+          onReasoning: (token) => dispatch({ type: 'APPEND_AUTO_STREAM', chunk: token }),
+        },
       );
 
       if (cancelledRef.current) return;
 
-      const arc = reasoningGraph
-        ? {
-            ...baseArc,
-            reasoningGraph: {
-              nodes: reasoningGraph.nodes,
-              edges: reasoningGraph.edges,
-              arcName: reasoningGraph.arcName,
-              sceneCount: reasoningGraph.sceneCount,
-              summary: reasoningGraph.summary,
-              arcSettings: reasoningGraph.arcSettings,
-            },
-          }
-        : baseArc;
-
       dispatch({ type: 'BULK_ADD_SCENES', scenes, arc, branchId: activeBranchId });
 
       scenesGenerated = scenes.length;
-      arcName = arc.name;
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -353,26 +294,12 @@ export function useAutoPlay() {
 
     if (cancelledRef.current) return;
 
-    // Build reason from pressure analysis
-    const pressureReasons: string[] = [];
-    if (pressure.threads.primed.length > 0) pressureReasons.push(`${pressure.threads.primed.length} primed threads`);
-    if (pressure.threads.stale.length > 0) pressureReasons.push(`${pressure.threads.stale.length} stale threads`);
-    if (pressure.entities.shallow.length > 0) pressureReasons.push(`${pressure.entities.shallow.length} shallow characters`);
-    if (pressure.knowledge.isStagnant) pressureReasons.push('stagnant world-building');
-    const reason = pressureReasons.length > 0 ? pressureReasons.join(', ') : `${phase} phase — balanced forces`;
-
-    const logEntry: AutoRunLog = {
-      cycle: autoRunState.currentCycle + 1,
-      timestamp: Date.now(),
-      action: phase,
-      reason,
+    dispatch({
+      type: 'TICK_AUTO_RUN',
       scenesGenerated,
       worldExpanded: false,
-      endConditionMet: null,
-      arcName: arcName || undefined,
-      error: cycleError || undefined,
-    };
-    dispatch({ type: 'LOG_AUTO_CYCLE', entry: logEntry });
+      hasError: !!cycleError,
+    });
 
     // Update status with result
     const failures = (autoRunState.consecutiveFailures ?? 0) + (cycleError ? 1 : 0);
@@ -428,16 +355,6 @@ export function useAutoPlay() {
             cycle: (stateRef.current.viewState.autoRunState?.currentCycle ?? 0) + 1,
           },
         });
-        dispatch({ type: 'LOG_AUTO_CYCLE', entry: {
-          cycle: (stateRef.current.viewState.autoRunState?.currentCycle ?? 0) + 1,
-          timestamp: Date.now(),
-          action: 'setup',
-          reason: 'Auto mode stopped — 3 consecutive errors. Check API Logs for details.',
-          scenesGenerated: 0,
-          worldExpanded: false,
-          endConditionMet: null,
-          error: err instanceof Error ? err.message : String(err),
-        }});
         dispatch({ type: 'STOP_AUTO_RUN' });
         return;
       }
@@ -453,19 +370,6 @@ export function useAutoPlay() {
     cancelledRef.current = false;
     runningRef.current = true;
     dispatch({ type: 'START_AUTO_RUN' });
-    timeoutRef.current = setTimeout(() => tick(), 500);
-  }, [dispatch, tick]);
-
-  const pause = useCallback(() => {
-    runningRef.current = false;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    dispatch({ type: 'PAUSE_AUTO_RUN' });
-  }, [dispatch]);
-
-  const resume = useCallback(() => {
-    cancelledRef.current = false;
-    runningRef.current = true;
-    dispatch({ type: 'RESUME_AUTO_RUN' });
     timeoutRef.current = setTimeout(() => tick(), 500);
   }, [dispatch, tick]);
 
@@ -495,12 +399,8 @@ export function useAutoPlay() {
 
   return {
     start,
-    pause,
-    resume,
     stop,
     isRunning: state.viewState.autoRunState?.isRunning ?? false,
-    isPaused: state.viewState.autoRunState?.isPaused ?? false,
     currentCycle: state.viewState.autoRunState?.currentCycle ?? 0,
-    log: state.viewState.autoRunState?.log ?? [],
   };
 }

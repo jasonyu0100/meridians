@@ -118,7 +118,7 @@ const SCOPE_USAGE_BLOCK: Record<ModeScope, string> = {
     <rule>Treat agents, pressures, and attractors as PRIMARY candidates for variables. They're the components of the machinery that genuinely move. Active rules become constraints (variables that bind or loosen); patterns become trends (variables that accumulate); landmarks anchor stance variables around their gravity.</rule>
     <rule>Plausibility scoring (priorLogit) flows from the substrate. A scenario coordination that compounds an active pressure, approaches an active attractor, or honours active conventions reads as high-prior. A coordination that violates an active rule or contradicts a landmark reads as low-prior unless an in-arc rupture justifies it.</rule>
     <rule>Don't paraphrase phase nodes verbatim as variables. Distil them — a "pressure: Bai Clan expansion" node may surface as the variable "Bai Clan territorial assertion"; an "agent: Elder Ruo Lan" node may anchor multiple stance variables around her interests. The phase graph is the substrate, the variables are the surface.</rule>
-    <rule>If a scenario implies superseding a phase rule, surface that explicitly in the priorRationale — silent rule-breaks read as model confusion, named rule-breaks read as decisive evidence.</rule>
+    <rule>If a scenario implies superseding a phase rule, surface that explicitly in the reasoning — silent rule-breaks read as model confusion, named rule-breaks read as decisive evidence.</rule>
   </usage>`,
 };
 
