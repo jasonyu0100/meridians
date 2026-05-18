@@ -12,23 +12,53 @@ type NLink = d3.SimulationLinkDatum<NNode> & { weight: number; relations?: Attri
 
 type Scope = 'scene' | 'arc' | 'narrative';
 
-// Force palette — matches CubeCornerBadge / ForcesOverviewSlide.
+// Three-force palette. Threads = Fate, character/location/artifact = World,
+// system = System. Used both as node fill in force mode and as the
+// per-endpoint colour for edge stroke blending.
+type ForceGroup = 'fate' | 'world' | 'system';
+const FORCE_GROUP: Record<NetworkNode['kind'], ForceGroup> = {
+  thread: 'fate',
+  character: 'world',
+  location: 'world',
+  artifact: 'world',
+  system: 'system',
+};
+const FORCE_COLOR: Record<ForceGroup, string> = {
+  fate: '#EF4444',
+  world: '#22C55E',
+  system: '#3B82F6',
+};
 const FORCE_FILL: Record<NetworkNode['kind'], string> = {
-  thread: '#EF4444',     // Fate
-  character: '#22C55E',  // World
-  location: '#22C55E',   // World
-  artifact: '#22C55E',   // World
-  system: '#3B82F6',     // System
+  thread: FORCE_COLOR.fate,
+  character: FORCE_COLOR.world,
+  location: FORCE_COLOR.world,
+  artifact: FORCE_COLOR.world,
+  system: FORCE_COLOR.system,
 };
 
-const HEAT_FILL: Record<HeatTier, string> = {
-  hot: '#EF4444',
-  warm: '#F59E0B',
-  fresh: '#22D3EE',
-  cold: '#52525B',
-};
+// Fresh accent — distinct cyan for very-recently-introduced nodes so the
+// "just seeded" signal stays legible against the warm heat ramp.
+const FRESH_FILL = '#22D3EE';
 
-type ColorMode = 'force' | 'heat';
+// Continuous heat interpolator — cold slate sweeps through ember and
+// amber into a vivid orange-red at the top. Wider chromatic range so heat
+// reads dynamically across the network without losing the gradient feel.
+// Force identity is conveyed by the halo / label colour instead, removing
+// the need for a heat-vs-force toggle.
+const HEAT_RAMP = d3.interpolateRgbBasis([
+  '#3F3F46', // cold slate
+  '#7C5A28', // ember undertow
+  '#C77B1A', // burnt amber
+  '#F59E0B', // vivid amber
+  '#F97316', // hot orange
+  '#EF4444', // searing red
+]);
+
+// Mid-blend two hex colours in RGB space. Used to colour cross-force edges
+// so a fate↔world link reads as a gradient between the two forces.
+function blendHex(a: string, b: string, t = 0.5): string {
+  return d3.interpolateRgb(a, b)(t);
+}
 
 export default function NetworkView() {
   const { state, dispatch } = useStore();
@@ -37,9 +67,7 @@ export default function NetworkView() {
   const simRef = useRef<d3.Simulation<NNode, NLink> | null>(null);
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const nodesRef = useRef<NNode[]>([]);
-  const colorModeRef = useRef<ColorMode>('heat');
 
-  const [colorMode, setColorMode] = useState<ColorMode>('heat');
   const [showLabels, setShowLabels] = useState(true);
   const [scope, setScope] = useState<Scope>('narrative');
   const [tooltip, setTooltip] = useState<{ x: number; y: number; node: NetworkNode } | null>(null);
@@ -86,20 +114,28 @@ export default function NetworkView() {
   // could carry contradictory relations across scenes. Hide them entirely there.
   const showEdgeLabels = scope === 'scene';
 
-  const tierCounts = useMemo(() => {
-    const counts: Record<HeatTier, number> = { hot: 0, warm: 0, cold: 0, fresh: 0 };
-    for (const n of network.nodes) counts[n.tier] += 1;
-    return counts;
-  }, [network.nodes]);
-
   const kindCounts = useMemo(() => {
     const counts: Record<NetworkNode['kind'], number> = { character: 0, location: 0, artifact: 0, thread: 0, system: 0 };
     for (const n of network.nodes) counts[n.kind] += 1;
     return counts;
   }, [network.nodes]);
 
-  const colorOf = (n: NetworkNode): string =>
-    colorModeRef.current === 'heat' ? HEAT_FILL[n.tier] : FORCE_FILL[n.kind];
+  // Two visual channels, no toggle:
+  //   - HEAT (continuous, drives node fill) = attribution intensity
+  //   - FORCE (categorical, drives halo + label) = which of the three forces
+  // maxAttribution is recomputed every data refresh; this ref keeps the
+  // helper callable from any callback without a re-render.
+  const heatCacheRef = useRef({ maxAttribution: 1 });
+  const heatFillOf = (n: NetworkNode): string => {
+    if (n.tier === 'fresh') return FRESH_FILL;
+    const t = heatCacheRef.current.maxAttribution > 0
+      ? Math.min(1, n.attributions / heatCacheRef.current.maxAttribution)
+      : 0;
+    // Floor non-zero attribution at 0.15 along the ramp so a single
+    // attribution still registers as warm rather than slate.
+    return HEAT_RAMP(n.attributions > 0 ? 0.15 + t * 0.85 : 0);
+  };
+  const forceColorOf = (n: NetworkNode): string => FORCE_FILL[n.kind];
 
   // Initial setup
   useEffect(() => {
@@ -137,18 +173,6 @@ export default function NetworkView() {
     return () => { sim.stop(); simRef.current = null; gRef.current = null; };
   }, []);
 
-  // Recolor without resimulating when colorMode changes
-  useEffect(() => {
-    colorModeRef.current = colorMode;
-    const g = gRef.current;
-    if (!g) return;
-    g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
-      .attr('fill', (d) => colorOf(d));
-    g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
-      .attr('fill', (d) => colorOf(d));
-
-  }, [colorMode]);
-
   // Toggle labels visibility
   useEffect(() => {
     const g = gRef.current;
@@ -171,6 +195,7 @@ export default function NetworkView() {
     }
     const maxDegree = Math.max(...network.nodes.map((n) => degreeMap.get(n.id) ?? 0), 1);
     const maxAttribution = Math.max(...network.nodes.map((n) => n.attributions), 1);
+    heatCacheRef.current.maxAttribution = maxAttribution;
 
     // Node radius — combine attribution AND degree so unreferenced nodes still
     // show as legible dots and load-bearing ones grow large like in system graph.
@@ -214,15 +239,28 @@ export default function NetworkView() {
     }
 
     // Links — opacity AND width scale with edge weight via shared helper so
-    // every canvas graph view speaks the same visual language.
-    const opacityFor = (weight: number) => edgeOpacityFor(weight / maxWeight);
+    // every canvas graph view speaks the same visual language. Stroke colour
+    // is the mid-blend of the endpoints' force colours, which makes
+    // cross-force edges (fate↔world, world↔system, fate↔system) read as
+    // bridges between the three force fields rather than as anonymous white
+    // lines. Same-force edges show as a tinted version of their force.
+    // Edges run a notch quieter than the shared helper's default so the
+    // mesh recedes behind the nodes instead of competing with them.
+    const opacityFor = (weight: number) => edgeOpacityFor(weight / maxWeight) * 0.7;
     const widthFor = (weight: number) => edgeWidthFor(weight / maxWeight);
+    const linkColour = (d: NLink) => {
+      const a = (d.source as NNode).kind;
+      const b = (d.target as NNode).kind;
+      const colA = FORCE_FILL[a];
+      const colB = FORCE_FILL[b];
+      return colA === colB ? colA : blendHex(colA, colB, 0.5);
+    };
     const linkSel = g.select<SVGGElement>('g.n-links')
       .selectAll<SVGLineElement, NLink>('line')
       .data(simLinks, (d) => `${(d.source as NNode).id}-${(d.target as NNode).id}`);
     linkSel.exit().remove();
     linkSel.enter().append('line').merge(linkSel)
-      .attr('stroke', '#ffffff')
+      .attr('stroke', (d) => linkColour(d))
       .attr('stroke-opacity', (d) => opacityFor(d.weight))
       .attr('stroke-width', (d) => widthFor(d.weight));
 
@@ -249,6 +287,19 @@ export default function NetworkView() {
       .selectAll<SVGCircleElement, NNode>('circle')
       .data(simNodes, (d) => d.id);
     nodeSel.exit().remove();
+    // Recency-modulated opacity: in narrative scope a long-untouched entity
+    // should read as faded so the eye can find what's *currently active*.
+    // In scoped views (scene / arc) recency over the scope window is too
+    // narrow to be meaningful, so we keep the simpler attribution gate there.
+    const totalSteps = Math.max(network.graphCount, 1);
+    const opacityForNode = (d: NNode) => {
+      if (d.attributions === 0) return 0.32;
+      if (scope !== 'narrative') return 0.9;
+      const lastSeen = d.lastSeenIndex >= 0 ? d.lastSeenIndex : 0;
+      const recency = lastSeen / Math.max(totalSteps - 1, 1); // 0..1
+      // Floor at 0.45 so stale-but-real nodes still register; ceiling at 0.95.
+      return 0.45 + recency * 0.5;
+    };
     // Glow filter dropped from the per-node attr — SVG Gaussian blur runs
     // every frame and was the dominant render cost on larger networks.
     // Nodes read fine from fill + stroke alone; reserve the filter for
@@ -257,8 +308,8 @@ export default function NetworkView() {
       .style('cursor', 'pointer')
       .merge(nodeSel)
       .attr('r', (d) => radiusOf(d))
-      .attr('fill', (d) => colorOf(d))
-      .attr('opacity', (d) => d.attributions === 0 ? 0.4 : 0.9)
+      .attr('fill', (d) => heatFillOf(d))
+      .attr('opacity', (d) => opacityForNode(d))
       .attr('stroke', 'transparent')
       .attr('stroke-width', 2);
 
@@ -299,7 +350,7 @@ export default function NetworkView() {
       .on('mouseleave', () => {
         setTooltip(null);
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
-          .attr('opacity', (o) => o.attributions === 0 ? 0.4 : 0.9);
+          .attr('opacity', (o) => opacityForNode(o));
         g.select('g.n-links').selectAll<SVGLineElement, NLink>('line')
           .attr('stroke-opacity', (l) => opacityFor(l.weight));
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
@@ -320,9 +371,13 @@ export default function NetworkView() {
       .data(simNodes, (d) => d.id);
     labelSel.exit().remove();
     const labelEnter = labelSel.enter().append('text').attr('text-anchor', 'middle');
+    // Labels carry force colour so the eye can read each entity's
+    // category at a glance (fate / world / system). Opacity already
+    // dampens peripheral nodes via labelOpacity, so colour serves as a
+    // category signal rather than a noise multiplier.
     labelEnter.merge(labelSel)
       .text((d) => truncate(d.label, 36))
-      .attr('fill', (d) => colorOf(d))
+      .attr('fill', (d) => forceColorOf(d))
       .attr('font-size', (d) => `${Math.max(9, 9 + (d.degree / maxDegree) * 4)}px`)
       .attr('font-weight', (d) => d.degree >= maxDegree * 0.5 ? '600' : '400')
       .attr('opacity', (d) => labelOpacity(d))
@@ -379,18 +434,6 @@ export default function NetworkView() {
         <div className="w-px h-3 bg-border mx-1" />
 
         <button
-          onClick={() => setColorMode('heat')}
-          className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${colorMode === 'heat' ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
-        >
-          Heat
-        </button>
-        <button
-          onClick={() => setColorMode('force')}
-          className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${colorMode === 'force' ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
-        >
-          Force
-        </button>
-        <button
           onClick={() => setShowLabels((v) => !v)}
           className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${showLabels ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
         >
@@ -399,20 +442,19 @@ export default function NetworkView() {
 
         <div className="w-px h-3 bg-border mx-1" />
 
-        {colorMode === 'force' ? (
-          <>
-            <Swatch color={FORCE_FILL.thread} label={`Fate ${kindCounts.thread}`} />
-            <Swatch color={FORCE_FILL.character} label={`World ${kindCounts.character + kindCounts.location + kindCounts.artifact}`} />
-            <Swatch color={FORCE_FILL.system} label={`System ${kindCounts.system}`} />
-          </>
-        ) : (
-          <>
-            <Swatch color={HEAT_FILL.hot} label={`Hot ${tierCounts.hot}`} />
-            <Swatch color={HEAT_FILL.warm} label={`Warm ${tierCounts.warm}`} />
-            <Swatch color={HEAT_FILL.fresh} label={`Fresh ${tierCounts.fresh}`} />
-            <Swatch color={HEAT_FILL.cold} label={`Cold ${tierCounts.cold}`} />
-          </>
-        )}
+        {/* Force halo legend — halo colour identifies which of the three
+            forces a node belongs to. */}
+        <ForceSwatch color={FORCE_FILL.thread} label={`Fate ${kindCounts.thread}`} />
+        <ForceSwatch
+          color={FORCE_FILL.character}
+          label={`World ${kindCounts.character + kindCounts.location + kindCounts.artifact}`}
+        />
+        <ForceSwatch color={FORCE_FILL.system} label={`System ${kindCounts.system}`} />
+
+        <div className="w-px h-3 bg-border mx-1" />
+
+        {/* Heat ramp legend — node fill encodes attribution intensity. */}
+        <HeatLegend />
 
         <div className="w-px h-3 bg-border mx-1" />
 
@@ -442,8 +484,8 @@ export default function NetworkView() {
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
                   style={{
-                    background: colorOf(tooltip.node),
-                    boxShadow: `0 0 6px ${colorOf(tooltip.node)}80`,
+                    background: heatFillOf(tooltip.node),
+                    boxShadow: `0 0 0 1.5px ${forceColorOf(tooltip.node)}99, 0 0 6px ${forceColorOf(tooltip.node)}55`,
                   }}
                 />
                 <div>
@@ -471,11 +513,30 @@ function labelOpacity(d: NNode): number {
   return d.degree >= 2 ? 0.9 : 0.65;
 }
 
-function Swatch({ color, label }: { color: string; label: string }) {
+/** Force swatch — label colour echoes the force-tinted node text in the
+ *  graph so the legend reads as a direct echo of the rendering. */
+function ForceSwatch({ color, label }: { color: string; label: string }) {
   return (
-    <span className="flex items-center gap-1 px-1">
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
-      <span className="text-[8px] text-text-dim/60">{label}</span>
+    <span className="px-1.5 text-[9px] font-medium" style={{ color }}>
+      {label}
+    </span>
+  );
+}
+
+/** Continuous heat ramp legend — a small gradient bar with the
+ *  cold→hot anchors labelled so the operator can decode node fills. */
+function HeatLegend() {
+  return (
+    <span className="flex items-center gap-1.5 px-1">
+      <span className="text-[8px] text-text-dim/50">cold</span>
+      <span
+        className="block h-1.5 w-12 rounded-full"
+        style={{
+          background:
+            'linear-gradient(to right, #3F3F46 0%, #7C5A28 20%, #C77B1A 40%, #F59E0B 60%, #F97316 80%, #EF4444 100%)',
+        }}
+      />
+      <span className="text-[8px] text-text-dim/50">hot</span>
     </span>
   );
 }

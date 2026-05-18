@@ -478,9 +478,38 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
  *  / thread / system render tags. Emits tier + attributions + topology —
  *  the shape all downstream consumers have converged on. Returns "" for
  *  absent nodes. */
+/** Compress the node's network role into a single natural-language phrase.
+ *  The shape mirrors how the LLM should read the asset:
+ *    - "unused"                          — never referenced; weak default option
+ *    - "fresh ×N"                        — recently introduced; spend deliberately
+ *    - "hub ×N" / "load-bearing hub ×N"  — central within its force; strong anchor
+ *    - "bridge ×N" / "load-bearing bridge ×N" — connects forces; coherence lever
+ *    - "active ×N" / "load-bearing ×N"   — referenced but not structural yet
+ *    - "incidental ×N"                   — cold/peripheral; safe to leave alone
+ *
+ *  One short attribute beats three numeric ones for prompt density and gives
+ *  the model an action-shaped read rather than raw metrics.
+ */
+function describeNodeUsage(node: NetworkNode): string {
+  if (node.attributions === 0) return "unused";
+  if (node.tier === "fresh") return `fresh ×${node.attributions}`;
+  const heavy = node.tier === "hot";
+  const cold = node.tier === "cold";
+  if (node.topology === "bridge") {
+    return `${heavy ? "load-bearing bridge" : cold ? "stale bridge" : "bridge"} ×${node.attributions}`;
+  }
+  if (node.topology === "hub") {
+    return `${heavy ? "load-bearing hub" : cold ? "stale hub" : "hub"} ×${node.attributions}`;
+  }
+  if (node.topology === "leaf") {
+    return `${heavy ? "load-bearing" : cold ? "incidental" : "active"} ×${node.attributions}`;
+  }
+  return `incidental ×${node.attributions}`;
+}
+
 function networkAttrs(node: NetworkNode | undefined): string {
   if (!node) return "";
-  return ` tier="${node.tier}" attributions="${node.attributions}" topology="${node.topology}"`;
+  return ` usage="${describeNodeUsage(node)}"`;
 }
 
 export function narrativeContext(
