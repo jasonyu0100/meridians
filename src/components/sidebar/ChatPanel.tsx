@@ -10,6 +10,8 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import {
   futureContext,
   hasFutureScenarios,
+  hasMode,
+  modeContext,
   narrativeContext,
   outlineContext,
   sceneContext,
@@ -276,7 +278,7 @@ export default function ChatPanel() {
   const [streamText, setStreamText] = useState("");
   const [reasoningText, setReasoningText] = useState("");
   const [contextMode, setContextMode] = useState<
-    "narrative" | "outline" | "scene" | "future"
+    "narrative" | "outline" | "scene" | "future" | "mode"
   >("narrative");
   // personaId: null (Assistant), PERSONA_FATE, PERSONA_SYSTEM, or a real
   // character ID. The two sentinels coalesce all threads / all system-graph
@@ -569,6 +571,30 @@ Be concise and specific. Reference scenarios by name; quote logits / probabiliti
 ${outline}
 
 ${future}`;
+    }
+
+    if (contextMode === "mode") {
+      // Mode pairs the outline recap (so the chat understands HOW the
+      // world got here) with the active Phase Reasoning Graph (so it
+      // understands the META MACHINERY the world runs on). The PRG is the
+      // primary subject — outline is supporting context.
+      const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      const mode = modeContext(n);
+      return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the MODE — the work's Phase Reasoning Graph (PRG), i.e. the META MACHINERY of the world it runs on. Two context blocks are attached: a STORY OUTLINE (historical recap so you understand how the world got here) and the MODE graph (patterns, conventions, attractors, agents, rules, pressures, landmarks — each with a temporal stance and the universal inference-shape: detail, × considered = rival readings, ! breaks = carve-outs, ⇒ opens = downstream cascade). A sequential-path block at the end of the mode renders the same graph as bidirectional edge text.
+
+When discussing the Mode:
+  • node TYPE encodes temporal stance — pattern (currently-active), convention (currently-followed), attractor (future-pointing), agent (currently-driving), rule (currently-binding), pressure (accumulating-toward-discharge), landmark (past-but-anchoring); read the type, don't flatten it
+  • the inference-shape fields are the legible work surfaces — \`considered\` shows rival readings the analyst rejected; \`breaks\` shows the machinery's carve-outs / failure conditions; \`opens\` shows the downstream cascade later layers inherit
+  • the Mode is the SUBSTRATE downstream reasoning (CRG, coordination plans, scenes) operates on top of — when the user asks "how does this work" or "what should the next arc honour", anchor to specific Mode nodes by id and type
+  • the outline tells you what happened; the Mode tells you what the world's machinery IS — situational events belong in the outline read, structural claims belong in the Mode read
+Be ready to reason about which machinery is firing, which carve-outs apply, where pressures discharge, and how downstream layers should inherit from each node.
+${sceneAnchor}
+
+Be concise and specific. Reference nodes by id + type; quote the inference-shape field that's load-bearing for the claim.
+
+${outline}
+
+${mode}`;
     }
 
     const ctx = narrativeContext(n, state.resolvedEntryKeys, contextSceneIndex);
@@ -1111,8 +1137,9 @@ ${ctx}`;
             // and arcs that haven't had Future generated.
             const futureAvailable = !!state.activeNarrative
               && hasFutureScenarios(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
+            const modeAvailable = !!state.activeNarrative && hasMode(state.activeNarrative);
             const modes: Array<{
-              value: "narrative" | "outline" | "scene" | "future";
+              value: "narrative" | "outline" | "scene" | "future" | "mode";
               label: string;
               hint: string;
             }> = [
@@ -1127,10 +1154,20 @@ ${ctx}`;
                 hint: "Cohort of planning scenarios with logits + probabilities for this arc.",
               });
             }
-            // If the user had Future selected and it's no longer
-            // available (e.g. they navigated to a world commit), drop
-            // back to narrative on next render.
+            if (modeAvailable) {
+              modes.push({
+                value: "mode",
+                label: "Mode",
+                hint: "Active Phase Reasoning Graph — the META machinery of the world.",
+              });
+            }
+            // If the user had Future / Mode selected and it's no longer
+            // available (e.g. world commit, or the active PRG was
+            // cleared), drop back to narrative on next render.
             if (contextMode === "future" && !futureAvailable) {
+              setContextMode("narrative");
+            }
+            if (contextMode === "mode" && !modeAvailable) {
               setContextMode("narrative");
             }
             const currentLabel = modes.find((m) => m.value === contextMode)?.label

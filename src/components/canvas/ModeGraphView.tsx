@@ -81,7 +81,7 @@ function ModeEmptyState() {
  */
 function ModeLoading({ reasoning }: { reasoning: string }) {
   return (
-    <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+    <div className="h-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-3 h-3 border-2 border-emerald-400/30 border-t-emerald-400/80 rounded-full animate-spin" />

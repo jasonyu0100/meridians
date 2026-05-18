@@ -228,7 +228,7 @@ export default function MarketBriefingView() {
     briefingScene !== null && !branchChanged ? Math.max(0, headIndex - briefingScene) : null;
 
   return (
-    <div className="h-full w-full overflow-y-auto">
+    <div className="h-full w-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col gap-6">
         <Header
           headline={briefing?.headline ?? ''}
@@ -250,7 +250,7 @@ export default function MarketBriefingView() {
         )}
 
         {(loading || (reasoning && !briefing)) && (
-          <div>
+          <div className="max-w-2xl mx-auto px-8 pt-6 pb-32 w-full">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-3 h-3 border-2 border-sky-400/30 border-t-sky-400/80 rounded-full animate-spin" />
               <span className="text-[10px] text-text-dim">

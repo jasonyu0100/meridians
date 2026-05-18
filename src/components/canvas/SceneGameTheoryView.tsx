@@ -135,10 +135,10 @@ export function SceneGameTheoryView({
   }, [scene.id]);
 
   return (
-    <div className="h-full w-full overflow-y-auto">
+    <div className="h-full w-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="w-full px-10 py-10">
         {isStreaming && !analysis && (
-          <div>
+          <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-3 h-3 border-2 border-sky-400/30 border-t-sky-400/80 rounded-full animate-spin" />
               <span className="text-[10px] text-text-dim">
@@ -146,7 +146,7 @@ export function SceneGameTheoryView({
               </span>
             </div>
             {reasoning && (
-              <p className="text-[12px] text-text-dim/80 leading-relaxed whitespace-pre-wrap">
+              <p className="text-[11px] text-text-dim/60 leading-relaxed whitespace-pre-wrap">
                 {reasoning}
               </p>
             )}
@@ -154,7 +154,7 @@ export function SceneGameTheoryView({
         )}
 
         {isStreaming && analysis && (
-          <div className="mb-6">
+          <div className="max-w-2xl mx-auto px-8 pt-6 mb-6">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-3 h-3 border-2 border-sky-400/30 border-t-sky-400/80 rounded-full animate-spin" />
               <span className="text-[10px] text-text-dim">
@@ -162,7 +162,7 @@ export function SceneGameTheoryView({
               </span>
             </div>
             {reasoning && (
-              <p className="text-[12px] text-text-dim/80 leading-relaxed whitespace-pre-wrap">
+              <p className="text-[11px] text-text-dim/60 leading-relaxed whitespace-pre-wrap">
                 {reasoning}
               </p>
             )}

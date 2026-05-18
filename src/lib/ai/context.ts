@@ -6,6 +6,8 @@ import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@
 import { getIntroducedIds } from '@/lib/scene-filter';
 import { describeTimeGap, formatTimeDelta } from '@/lib/time-deltas';
 import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/network-graph';
+import { getActiveMode } from '@/lib/mode-graph';
+import { buildSequentialPath } from '@/lib/prompts/reasoning/sequential-path';
 
 // ── Prose Profile Builder ─────────────────────────────────────────────────────
 
@@ -1734,5 +1736,69 @@ export function hasFutureScenarios(
   return (arc.planningScenarios ?? []).some(
     (s) => Array.isArray(s.variables) && s.variables.length > 0,
   );
+}
+
+// ── Mode (Phase Reasoning Graph) chat context ───────────────────────────
+//
+// Mirrors `futureContext` shape — an XML data block dense enough for the
+// chat to reason about but light enough not to crowd the prompt. The Mode
+// graph is the META MACHINERY of the work (patterns, conventions,
+// attractors, agents, rules, pressures, landmarks) so the chat surface
+// here is "what's the working model of reality" — orthogonal to Future's
+// "what are the alternate next-arc unfoldings".
+
+/** Build the XML context for the Mode chat surface. Renders the currently
+ *  active Mode (Phase Reasoning Graph) — its summary, optional guidance,
+ *  every node's universal inference-shape, and the same sequential-path
+ *  rendering the downstream pipeline reads — wrapped in a `<mode>` root.
+ *  Returns an empty string when there is no active Mode. */
+export function modeContext(n: NarrativeState): string {
+  const graph = getActiveMode(n);
+  if (!graph || !graph.nodes || graph.nodes.length === 0) return '';
+  const guidance = graph.guidance
+    ? `\n  <guidance>${xmlEscape(graph.guidance)}</guidance>`
+    : '';
+  // Each node's full inference-shape rendered as XML so the chat can
+  // reason about machinery facets the prompt-side sequential-path block
+  // also emits (× considered, ! breaks, ⇒ opens) but in a structured form
+  // the chat can quote and audit.
+  const nodeBlocks = [...graph.nodes]
+    .sort((a, b) => a.index - b.index)
+    .map((node) => {
+      const detail = node.detail ? `\n    <detail>${xmlEscape(node.detail)}</detail>` : '';
+      const considered = node.considered
+        ? `\n    <considered>${xmlEscape(node.considered)}</considered>`
+        : '';
+      const breaks = node.breaks
+        ? `\n    <breaks>${xmlEscape(node.breaks)}</breaks>`
+        : '';
+      const opens = node.opens
+        ? `\n    <opens>${xmlEscape(node.opens)}</opens>`
+        : '';
+      const entityAttr = node.entityId ? ` entityId="${xmlEscape(node.entityId)}"` : '';
+      const threadAttr = node.threadId ? ` threadId="${xmlEscape(node.threadId)}"` : '';
+      const systemAttr = node.systemNodeId ? ` systemNodeId="${xmlEscape(node.systemNodeId)}"` : '';
+      return `  <node index="${node.index}" type="${node.type}" id="${xmlEscape(node.id)}" label="${xmlEscape(node.label)}"${entityAttr}${threadAttr}${systemAttr}>${detail}${considered}${breaks}${opens}
+  </node>`;
+    })
+    .join('\n');
+  // Same sequential-path rendering used downstream — gives the chat the
+  // edge-bidirectional view at a glance.
+  const sequentialPath = buildSequentialPath({ nodes: graph.nodes, edges: graph.edges });
+  return `<mode name="${xmlEscape(graph.name ?? 'mode')}" nodes="${graph.nodes.length}" edges="${graph.edges.length}" hint="The META MACHINERY of this work — the structural underpinnings (economy, conventions, attractors, agents, rules, pressures, landmarks) downstream reasoning operates on top of. Node types encode temporal stance: pattern=currently-active, convention=currently-followed, attractor=future-pointing, agent=currently-driving, rule=currently-binding, pressure=accumulating-toward-discharge, landmark=past-but-anchoring. Each node carries the universal inference-shape (detail, × considered = rival readings, ! breaks = carve-outs, ⇒ opens = downstream cascade).">
+  <summary>${xmlEscape(graph.summary)}</summary>${guidance}
+${nodeBlocks}
+  <sequential-path>
+${sequentialPath}
+  </sequential-path>
+</mode>`;
+}
+
+/** Lightweight gate — true when a Mode is active and has at least one
+ *  node. ChatPanel uses this to conditionally show the Mode option in the
+ *  context-mode dropdown. */
+export function hasMode(n: NarrativeState): boolean {
+  const graph = getActiveMode(n);
+  return !!graph && Array.isArray(graph.nodes) && graph.nodes.length > 0;
 }
 
