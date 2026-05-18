@@ -4,7 +4,7 @@ import { ARCHETYPE_COLORS, ArchetypeIcon } from "@/components/ArchetypeIcon";
 import { StarField } from "@/components/effects/StarField";
 import { ThinkingAnimation } from "@/components/generation/ThinkingAnimation";
 import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
-import type { ReasoningMode } from "@/lib/ai/reasoning-graph/types";
+import type { ThinkingStyle } from "@/lib/ai/reasoning-graph/types";
 import * as d3 from "d3";
 import dagre from "dagre";
 import katex from "katex";
@@ -506,7 +506,7 @@ function VariableScenarioDiagram() {
 /* ── Thinking-mode explorer ──────────────────────────────────────────────── */
 
 const THINKING_MODES: {
-  key: ReasoningMode;
+  key: ThinkingStyle;
   label: string;
   color: string;
 }[] = [
@@ -517,7 +517,7 @@ const THINKING_MODES: {
 ];
 
 function ThinkingModeExplorer() {
-  const [mode, setMode] = useState<ReasoningMode>("abduction");
+  const [mode, setMode] = useState<ThinkingStyle>("abduction");
 
   return (
     <figure className="mt-6 mb-6">

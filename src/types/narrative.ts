@@ -1167,8 +1167,8 @@ export type ReasoningGraphSnapshot = {
    *  later stages) can inherit the same tilt the CRG was reasoned under,
    *  keeping CRG → scene execution synchronised. */
   arcSettings?: {
-    forcePreference?: "fate" | "world" | "system" | "chaos" | "freeform";
-    reasoningMode?: "divergent" | "deduction" | "abduction" | "induction";
+    thinkingResource?: "fate" | "world" | "system" | "chaos" | "freeform";
+    thinkingStyle?: "freeform" | "divergent" | "deduction" | "abduction" | "induction";
     networkBias?: "inside" | "outside" | "neutral";
   };
 };
@@ -1188,7 +1188,14 @@ export type ReasoningNodeSnapshot = {
     | "reasoning"
     | "pattern"
     | "warning"
-    | "chaos";  // Creative agent — introduces new entities (characters/locations/artifacts/threads)
+    | "chaos"   // Creative agent — introduces new entities (characters/locations/artifacts/threads)
+    // Plan-spine types — only produced by coordination-plan-derived
+    // investigations. Manual investigations never emit these. Kept in the
+    // shared union so the sidebar + canvas can render both kinds of
+    // investigation through one code path.
+    | "peak"
+    | "valley"
+    | "moment";
   label: string;
   detail?: string;
   /** Reference to a character / location / artifact in the narrative. Set
@@ -1697,8 +1704,8 @@ export type ArcInvestigation = {
   title?: string;
   /** Engine settings the graph was built under. */
   settings?: {
-    forcePreference?: "fate" | "world" | "system" | "chaos" | "freeform";
-    reasoningMode?: "divergent" | "deduction" | "abduction" | "induction";
+    thinkingResource?: "fate" | "world" | "system" | "chaos" | "freeform";
+    thinkingStyle?: "freeform" | "divergent" | "deduction" | "abduction" | "induction";
     networkBias?: "inside" | "outside" | "neutral";
   };
   createdAt: number;
@@ -2024,15 +2031,15 @@ export type StorySettings = {
   planExtractionSource: PlanExtractionSource;
   /**
    * Default thinking mode pre-populated into the reasoning-graph pickers.
-   * User can override per-generation. Mirrors ReasoningMode in lib/ai.
+   * User can override per-generation. Mirrors ThinkingStyle in lib/ai.
    */
-  defaultReasoningMode: "divergent" | "deduction" | "abduction" | "induction";
+  defaultThinkingStyle: "freeform" | "divergent" | "deduction" | "abduction" | "induction";
   /**
    * Default force preference pre-populated into the reasoning-graph
-   * pickers. User can override per-generation. Mirrors ForcePreference
+   * pickers. User can override per-generation. Mirrors ThinkingResource
    * in lib/ai.
    */
-  defaultForcePreference:
+  defaultThinkingResource:
     | "freeform"
     | "fate"
     | "world"
@@ -2085,8 +2092,8 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   audioModel: "tts-1",
   proseFormat: "prose",
   planExtractionSource: "structure",
-  defaultReasoningMode: "abduction",
-  defaultForcePreference: "freeform",
+  defaultThinkingStyle: "abduction",
+  defaultThinkingResource: "freeform",
   defaultReasoningSize: "medium",
   defaultNetworkBias: "neutral",
   autoClearDirection: true,

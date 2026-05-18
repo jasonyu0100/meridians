@@ -38,12 +38,12 @@ import {
   resolveEntry,
 } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ForcePreference, ReasoningMode } from "@/lib/ai";
+import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
 import {
   ThinkingSettings,
   type ReasoningSize,
   type NetworkBias,
-} from "./ForcePreferencePicker";
+} from "./ThinkingPicker";
 import { GuidanceFields } from "./GuidanceFields";
 import { MarkovGraph } from "./MarkovGraph";
 import { CubeBadge, PacingStrip } from "./PacingStrip";
@@ -181,14 +181,14 @@ export function GeneratePanel({
   // Arc reasoning options — initialized from story-level defaults so the
   // user doesn't have to re-pick their preferred thinking style each time.
   const thinkingDefaults = state.activeNarrative?.storySettings;
-  const [forcePreference, setForcePreference] = useState<ForcePreference>(
-    thinkingDefaults?.defaultForcePreference ?? "freeform",
+  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>(
+    thinkingDefaults?.defaultThinkingResource ?? "freeform",
   );
   const [reasoningSize, setReasoningSize] = useState<ReasoningSize>(
     thinkingDefaults?.defaultReasoningSize ?? "medium",
   );
-  const [reasoningMode, setReasoningMode] = useState<ReasoningMode>(
-    thinkingDefaults?.defaultReasoningMode ?? "abduction",
+  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>(
+    thinkingDefaults?.defaultThinkingStyle ?? "abduction",
   );
   const [networkBias, setNetworkBias] = useState<NetworkBias>(
     thinkingDefaults?.defaultNetworkBias ?? "neutral",
@@ -987,10 +987,10 @@ export function GeneratePanel({
                   </summary>
                   <div className="mt-2 space-y-3">
                     <ThinkingSettings
-                      mode={reasoningMode}
-                      onModeChange={setReasoningMode}
-                      force={forcePreference}
-                      onForceChange={setForcePreference}
+                      mode={thinkingStyle}
+                      onModeChange={setThinkingStyle}
+                      force={thinkingResource}
+                      onForceChange={setThinkingResource}
                       size={reasoningSize}
                       onSizeChange={setReasoningSize}
                       networkBias={networkBias}

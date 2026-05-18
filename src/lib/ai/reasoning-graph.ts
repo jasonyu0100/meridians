@@ -42,7 +42,7 @@ import type {
   ReasoningEdgeType,
   ReasoningNodeType,
   ReasoningGraph,
-  ReasoningMode,
+  ThinkingStyle,
   ArcReasoningOptions,
   ArcSettings,
   ExpansionReasoningGraph,
@@ -50,7 +50,7 @@ import type {
   ReasoningGraphBase,
 } from "./reasoning-graph/types";
 import {
-  type ForcePreference,
+  type ThinkingResource,
   defaultReasoningBudget,
   reasoningScale,
   VALID_NODE_TYPES,
@@ -80,19 +80,19 @@ export type {
   ReasoningEdgeType,
   ReasoningNodeType,
   ReasoningGraph,
-  ReasoningMode,
+  ThinkingStyle,
   ArcReasoningOptions,
   ArcSettings,
   ExpansionReasoningGraph,
   ReasoningNodeBase,
   ReasoningGraphBase,
-  ForcePreference,
+  ThinkingResource,
 };
 export { reasoningScale, buildSequentialPath, extractPatternWarningDirectives };
 
 /**
- * Resolve the engine settings the CRG was built under. Pulls forcePreference
- * and reasoningMode from the per-call options; falls back to the narrative's
+ * Resolve the engine settings the CRG was built under. Pulls thinkingResource
+ * and thinkingStyle from the per-call options; falls back to the narrative's
  * default network bias if the call didn't override. Returns undefined when
  * no settings would be persisted (keeps the snapshot clean for default runs).
  */
@@ -100,15 +100,15 @@ function extractArcSettings(
   options: ArcReasoningOptions | undefined,
   narrative: NarrativeState,
 ): ArcSettings | undefined {
-  const forcePreference = options?.forcePreference;
-  const reasoningMode = options?.reasoningMode;
+  const thinkingResource = options?.thinkingResource;
+  const thinkingStyle = options?.thinkingStyle;
   const networkBias = options?.networkBias ?? narrative.storySettings?.defaultNetworkBias;
-  if (!forcePreference && !reasoningMode && (!networkBias || networkBias === "neutral")) {
+  if (!thinkingResource && !thinkingStyle && (!networkBias || networkBias === "neutral")) {
     return undefined;
   }
   const settings: ArcSettings = {};
-  if (forcePreference) settings.forcePreference = forcePreference;
-  if (reasoningMode) settings.reasoningMode = reasoningMode;
+  if (thinkingResource) settings.thinkingResource = thinkingResource;
+  if (thinkingStyle) settings.thinkingStyle = thinkingStyle;
   if (networkBias && networkBias !== "neutral") settings.networkBias = networkBias;
   return settings;
 }
@@ -287,8 +287,8 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
     direction,
     priorGraphSection,
     modeSection: buildActiveModeSection(narrative, "reasoning-arc"),
-    forcePreferenceBlockText: forcePreferenceBlock("arc", options?.forcePreference),
-    reasoningModeBlockText: reasoningModeBlock(options?.reasoningMode),
+    forcePreferenceBlockText: forcePreferenceBlock("arc", options?.thinkingResource),
+    reasoningModeBlockText: reasoningModeBlock(options?.thinkingStyle),
     networkBiasBlockText: networkBiasBlock(options?.networkBias ?? narrative.storySettings?.defaultNetworkBias),
     nodeCountMin: Math.round((8 + sceneCount * 4.5) * scale),
     nodeCountMax: Math.round((14 + sceneCount * 5.5) * scale),
@@ -446,7 +446,7 @@ export type PlanGuidance = {
    * (no bias — LLM picks composition). "chaos" elevates chaos from
    * sparing deus-ex-machina to a primary creative engine.
    */
-  forcePreference?: ForcePreference;
+  thinkingResource?: ThinkingResource;
   /**
    * Reasoning effort for this single generation. Overrides the narrative's
    * default storySettings.reasoningLevel when provided. "small" | "medium"
@@ -458,9 +458,9 @@ export type PlanGuidance = {
    * hypothesis working backward from a committed outcome. Alternatives:
    * "divergent" (forward, expansive), "deduction" (premise → necessary
    * consequence), "induction" (observation → inferred principle). See
-   * ReasoningMode for details.
+   * ThinkingStyle for details.
    */
-  reasoningMode?: ReasoningMode;
+  thinkingStyle?: ThinkingStyle;
 };
 
 /**
@@ -662,8 +662,8 @@ export async function generateCoordinationPlan(
     arcTarget,
     activeThreadCount,
     nodeGuidance,
-    forcePreferenceBlockText: forcePreferenceBlock("plan", guidance.forcePreference),
-    reasoningModeBlockText: reasoningModeBlock(guidance.reasoningMode),
+    forcePreferenceBlockText: forcePreferenceBlock("plan", guidance.thinkingResource),
+    reasoningModeBlockText: reasoningModeBlock(guidance.thinkingStyle),
     modeSection: buildActiveModeSection(narrative, "reasoning-plan"),
   });
 

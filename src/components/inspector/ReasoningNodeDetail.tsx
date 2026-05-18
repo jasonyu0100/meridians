@@ -7,9 +7,9 @@ import { useMemo } from "react";
 type ReasoningNodeType = ReasoningNodeSnapshot["type"];
 type ReasoningEdgeType = ReasoningEdgeSnapshot["type"];
 
-import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS_PLAN } from "@/lib/reasoning-node-colors";
 
-const NODE_COLORS: Record<ReasoningNodeType, { fill: string; stroke: string; text: string }> = REASONING_NODE_COLORS;
+const NODE_COLORS: Record<ReasoningNodeType, { fill: string; stroke: string; text: string }> = REASONING_NODE_COLORS_PLAN;
 
 const EDGE_COLORS: Record<ReasoningEdgeType, string> = {
   enables: "#22c55e",
@@ -42,6 +42,11 @@ const TYPE_DESCRIPTIONS: Record<ReasoningNodeType, string> = {
   pattern: "Positive reinforcement — encouraging variety and fresh approaches",
   warning: "Negative reinforcement — preventing stagnation and repetition",
   chaos: "Outside force — spawns a new character, location, artifact, or thread into the arc",
+  // Plan-spine types — only appear in coordination-plan-derived
+  // investigations; tells the operator this node anchors a structural beat.
+  peak: "Arc-anchor peak — where forces converge and a thread culminates",
+  valley: "Arc-anchor valley — turning point where tension is seeded and the arc pivots",
+  moment: "Plan-level beat — thread escalation, setpiece, reveal, or setup between anchors",
 };
 
 type Props = {

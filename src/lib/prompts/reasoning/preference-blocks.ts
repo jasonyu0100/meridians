@@ -4,7 +4,7 @@
  * setting inputs; none do any LLM calls.
  */
 
-import type { ForcePreference } from "@/lib/ai/reasoning-graph/shared";
+import type { ThinkingResource } from "@/lib/ai/reasoning-graph/shared";
 import { PROMPT_PORTFOLIO_PRINCIPLES } from "../core/market-calibration";
 
 // ── Plan Node Scaling ─────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ const MODEL_BLOCK = `
  */
 export function forcePreferenceBlock(
   scope: "arc" | "plan",
-  pref: ForcePreference | undefined,
+  pref: ThinkingResource | undefined,
 ): string {
   const scopeLower = scope === "plan" ? "plan" : "arc";
 

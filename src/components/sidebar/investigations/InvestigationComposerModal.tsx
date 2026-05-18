@@ -6,12 +6,8 @@ import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
 import type { ArcInvestigation } from "@/types/narrative";
 import { useMemo, useState } from "react";
-import type { ForcePreference, ReasoningMode } from "@/lib/ai";
-import {
-  ThinkingSettings,
-  type NetworkBias,
-  type ReasoningSize,
-} from "@/components/generation/ForcePreferencePicker";
+import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
+import { ThinkingSettings } from "@/components/generation/ThinkingPicker";
 
 type Props = {
   /** Pre-selected arc. Defaults to the arc of the currently-viewed scene. */
@@ -63,12 +59,8 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
 
   const [arcId, setArcId] = useState(defaultArcId);
   const [direction, setDirection] = useState("");
-  const [reasoningMode, setReasoningMode] = useState<ReasoningMode>("abduction");
-  const [forcePreference, setForcePreference] = useState<ForcePreference>("freeform");
-  const [reasoningSize, setReasoningSize] = useState<ReasoningSize>("medium");
-  const [networkBias, setNetworkBias] = useState<NetworkBias>(
-    narrative?.storySettings?.defaultNetworkBias ?? "neutral",
-  );
+  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>("abduction");
+  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>("freeform");
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [error, setError] = useState("");
@@ -94,7 +86,9 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
         selectedArc.name,
         (token) => setStreamText((prev) => prev + token),
         undefined,
-        { forcePreference, reasoningLevel: reasoningSize, reasoningMode, networkBias },
+        // No reasoningLevel + no networkBias — investigations let the
+        // model size and target its own reasoning to the request.
+        { thinkingResource, thinkingStyle },
       );
       const now = Date.now();
       const investigation: ArcInvestigation = {
@@ -103,7 +97,7 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
         graph,
         direction: direction.trim(),
         source: "manual",
-        settings: { forcePreference, reasoningMode, networkBias },
+        settings: { thinkingResource, thinkingStyle },
         createdAt: now,
         updatedAt: now,
       };
@@ -198,14 +192,10 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
                 Thinking
               </label>
               <ThinkingSettings
-                mode={reasoningMode}
-                onModeChange={setReasoningMode}
-                force={forcePreference}
-                onForceChange={setForcePreference}
-                size={reasoningSize}
-                onSizeChange={setReasoningSize}
-                networkBias={networkBias}
-                onNetworkBiasChange={setNetworkBias}
+                mode={thinkingStyle}
+                onModeChange={setThinkingStyle}
+                force={thinkingResource}
+                onForceChange={setThinkingResource}
               />
             </div>
 

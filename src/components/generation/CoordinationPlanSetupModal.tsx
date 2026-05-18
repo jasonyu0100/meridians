@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
-import { generateCoordinationPlan, type ForcePreference, type PlanGuidance, type ReasoningMode, type ThreadTarget } from "@/lib/ai";
+import { generateCoordinationPlan, type ThinkingResource, type PlanGuidance, type ThinkingStyle, type ThreadTarget } from "@/lib/ai";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
 import type { CoordinationPlan, Thread } from "@/types/narrative";
@@ -13,7 +13,7 @@ import {
   ThinkingSettings,
   type ReasoningSize,
   type NetworkBias,
-} from "./ForcePreferencePicker";
+} from "./ThinkingPicker";
 
 // ── Streaming Output ─────────────────────────────────────────────────────────
 
@@ -156,17 +156,11 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
   // Initialized from story-level defaults so user doesn't have to re-pick
   // their preferred thinking style each time.
   const thinkingDefaults = state.activeNarrative?.storySettings;
-  const [forcePreference, setForcePreference] = useState<ForcePreference>(
-    thinkingDefaults?.defaultForcePreference ?? "freeform",
+  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>(
+    thinkingDefaults?.defaultThinkingResource ?? "freeform",
   );
-  const [reasoningLevel, setReasoningLevel] = useState<ReasoningSize>(
-    thinkingDefaults?.defaultReasoningSize ?? "medium",
-  );
-  const [reasoningMode, setReasoningMode] = useState<ReasoningMode>(
-    thinkingDefaults?.defaultReasoningMode ?? "abduction",
-  );
-  const [networkBias, setNetworkBias] = useState<NetworkBias>(
-    thinkingDefaults?.defaultNetworkBias ?? "neutral",
+  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>(
+    thinkingDefaults?.defaultThinkingStyle ?? "abduction",
   );
 
   // Generation state
@@ -212,11 +206,10 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
       arcTarget,
       direction: direction.trim() || undefined,
       constraints: constraints.trim() || undefined,
-      forcePreference,
-      reasoningLevel,
-      reasoningMode,
+      thinkingResource,
+      thinkingStyle,
     };
-  }, [threadConfigs, arcTarget, direction, constraints, forcePreference, reasoningLevel, reasoningMode]);
+  }, [threadConfigs, arcTarget, direction, constraints, thinkingResource, thinkingStyle]);
 
   async function handleGeneratePlan(additionalPrompt?: string) {
     if (!narrative) return;
@@ -384,14 +377,10 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
               {activeTab === "advanced" && (
                 <div className="space-y-4">
                   <ThinkingSettings
-                    mode={reasoningMode}
-                    onModeChange={setReasoningMode}
-                    force={forcePreference}
-                    onForceChange={setForcePreference}
-                    size={reasoningLevel}
-                    onSizeChange={setReasoningLevel}
-                    networkBias={networkBias}
-                    onNetworkBiasChange={setNetworkBias}
+                    mode={thinkingStyle}
+                    onModeChange={setThinkingStyle}
+                    force={thinkingResource}
+                    onForceChange={setThinkingResource}
                   />
                 </div>
               )}

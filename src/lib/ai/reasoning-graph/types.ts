@@ -5,7 +5,7 @@
  * The public API re-exports these from `src/lib/ai/reasoning-graph.ts`.
  */
 
-import type { ForcePreference } from "./shared";
+import type { ThinkingResource } from "./shared";
 
 // ── Node + edge types ───────────────────────────────────────────────────────
 
@@ -119,7 +119,8 @@ export type ReasoningGraphBase = {
  * - **induction**: backward + generalising — shared pattern ← many
  *   observations. Complementary opposite: deduction.
  */
-export type ReasoningMode =
+export type ThinkingStyle =
+  | "freeform"   // No imposed style — let the model run its own chain of thought
   | "divergent"
   | "deduction"
   | "abduction"
@@ -127,11 +128,11 @@ export type ReasoningMode =
 
 export type ArcReasoningOptions = {
   /** Which force category to bias this arc toward. */
-  forcePreference?: ForcePreference;
+  thinkingResource?: ThinkingResource;
   /** Reasoning effort for this generation. */
   reasoningLevel?: "small" | "medium" | "large";
   /** How the reasoner thinks. */
-  reasoningMode?: ReasoningMode;
+  thinkingStyle?: ThinkingStyle;
   /** Network thinking bias. */
   networkBias?: "inside" | "outside" | "neutral";
 };
@@ -143,8 +144,8 @@ export type ArcReasoningOptions = {
  * tilt the CRG was built under. The "sync" between CRG and scene gen.
  */
 export type ArcSettings = {
-  forcePreference?: ForcePreference;
-  reasoningMode?: ReasoningMode;
+  thinkingResource?: ThinkingResource;
+  thinkingStyle?: ThinkingStyle;
   networkBias?: "inside" | "outside" | "neutral";
 };
 

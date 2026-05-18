@@ -15,7 +15,7 @@
  *   - DEDUCTION  → drifts into DIVERGENT  ("necessary" turns one-of-several)
  */
 
-import type { ReasoningMode } from "@/lib/ai/reasoning-graph/types";
+import type { ThinkingStyle } from "@/lib/ai/reasoning-graph/types";
 
 /** Shared 2×2 grid — referenced by every mode block. */
 const FULL_2X2 = `<full-2x2>
@@ -216,8 +216,17 @@ const DEDUCTION_MODE_BLOCK = `<reasoning-mode name="deduction" position="forward
   <summary>The graph is a DERIVATION — top-to-bottom, each step locks into the next, arriving at a conclusion the premise made inevitable.</summary>
 </reasoning-mode>`;
 
-/** Dispatch the reasoning-mode block. Defaults to abduction. */
-export function reasoningModeBlock(mode: ReasoningMode | undefined): string {
+/** A short block that explicitly opts the LLM out of an imposed thinking
+ *  shape. The graph is still typed and causal, but the chain's inference
+ *  pattern is left to the model's own chain-of-thought. */
+const FREEFORM_MODE_BLOCK = `<reasoning-mode name="freeform" position="unconstrained" archetype="model's own chain of thought">
+  <intent>No imposed thinking pattern. Use whichever inference shape fits the direction best — backward selection, forward derivation, branching, generalisation, analogy, constraint propagation, or any mix. Pick the shape that makes the resulting graph most useful to the user as a thinking aid.</intent>
+  <discipline>Even without an imposed mode, the graph itself stays causal and typed. Reasoning nodes still carry their own causal logic in detail; the three forces (fate, world, system) still interact; the terminal still earns its position. Freeform means the inference shape is yours to choose, not that the discipline is off.</discipline>
+</reasoning-mode>`;
+
+/** Dispatch the reasoning-mode block. Defaults to freeform (let the model
+ *  choose its own chain-of-thought shape) when nothing is supplied. */
+export function reasoningModeBlock(mode: ThinkingStyle | undefined): string {
   switch (mode) {
     case "induction":
       return INDUCTION_MODE_BLOCK;
@@ -226,7 +235,9 @@ export function reasoningModeBlock(mode: ReasoningMode | undefined): string {
     case "divergent":
       return DIVERGENT_MODE_BLOCK;
     case "abduction":
-    default:
       return ABDUCTION_MODE_BLOCK;
+    case "freeform":
+    default:
+      return FREEFORM_MODE_BLOCK;
   }
 }

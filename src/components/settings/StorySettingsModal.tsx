@@ -13,7 +13,7 @@ import { MATRIX_PRESETS, STORYTELLER_PRESET, computeMatrixFromNarrative, type Tr
 import { DEFAULT_BEAT_SAMPLER, BEAT_PROFILE_PRESETS, computeSamplerFromResolvedScenes } from '@/lib/beat-profiles';
 import { MECHANISM_PROFILE_PRESETS, computeMechanismDist, DEFAULT_MECHANISM_DIST } from '@/lib/mechanism-profiles';
 import { IconChevronDown } from '@/components/icons';
-import { ThinkingSettings } from '@/components/generation/ForcePreferencePicker';
+import { ThinkingSettings } from '@/components/generation/ThinkingPicker';
 
 type Tab = 'direction' | 'style' | 'pov' | 'audio' | 'thinking' | 'other';
 
@@ -809,10 +809,10 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   Reasoning-Graph Defaults
                 </label>
                 <ThinkingSettings
-                  mode={settings.defaultReasoningMode ?? "abduction"}
-                  onModeChange={(m) => update({ defaultReasoningMode: m })}
-                  force={settings.defaultForcePreference ?? "freeform"}
-                  onForceChange={(f) => update({ defaultForcePreference: f })}
+                  mode={settings.defaultThinkingStyle ?? "abduction"}
+                  onModeChange={(m) => update({ defaultThinkingStyle: m })}
+                  force={settings.defaultThinkingResource ?? "freeform"}
+                  onForceChange={(f) => update({ defaultThinkingResource: f })}
                   size={settings.defaultReasoningSize ?? "medium"}
                   onSizeChange={(s) => update({ defaultReasoningSize: s })}
                   networkBias={settings.defaultNetworkBias ?? "neutral"}

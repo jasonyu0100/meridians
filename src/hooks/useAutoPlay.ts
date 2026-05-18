@@ -17,36 +17,21 @@ import { FatalApiError } from '@/lib/ai/errors';
 import { logError, logInfo } from '@/lib/system-logger';
 import type {
   ArcInvestigation,
-  CoordinationNode,
   CoordinationPlan,
   ReasoningGraphSnapshot,
   ReasoningNodeSnapshot,
 } from '@/types/narrative';
-
-// Coordination plan node types include peak/valley/moment which the
-// reasoning graph visualisation doesn't render directly. Map them onto
-// the nearest reasoning-graph types so the investigation visualisation
-// stays consistent with manually-created CRGs.
-const COORD_TO_REASONING_TYPE: Record<CoordinationNode['type'], ReasoningNodeSnapshot['type']> = {
-  fate: 'fate',
-  character: 'character',
-  location: 'location',
-  artifact: 'artifact',
-  system: 'system',
-  reasoning: 'reasoning',
-  pattern: 'pattern',
-  warning: 'warning',
-  chaos: 'chaos',
-  peak: 'fate',     // arc-anchor — surfaces as a fate node (thread culmination)
-  valley: 'fate',   // arc-anchor — surfaces as a fate node (turning point)
-  moment: 'reasoning',
-};
 
 /**
  * Package the coordination plan's visible-for-arc subgraph into a
  * reasoning-graph snapshot so it can be persisted as an arc-anchored
  * investigation. No additional LLM call — the plan's per-arc reasoning is
  * the artifact, just re-shaped to match the reasoning-graph contract.
+ *
+ * Plan-spine types (peak / valley / moment) carry through directly — the
+ * reasoning-graph type union accepts them, and the visualisation + inspector
+ * detail both render them via the shared plan palette. The structural
+ * anchors stay distinct from generic fate / reasoning nodes.
  */
 function buildCoordPlanInvestigationGraph(
   plan: CoordinationPlan,
@@ -61,7 +46,7 @@ function buildCoordPlanInvestigationGraph(
     id: n.id,
     index: n.index,
     order: n.order,
-    type: COORD_TO_REASONING_TYPE[n.type] ?? 'reasoning',
+    type: n.type,
     label: n.label,
     detail: n.detail,
     entityId: n.entityId,
