@@ -325,8 +325,6 @@ describe('Package Export/Import', () => {
       const original = createTestNarrative();
       // Add embedding
       const emb = await assetManager.storeEmbedding(Array.from({ length: 1536 }, () => 0.7), 'text-embedding-3-small');
-      // Add image
-      const img = await assetManager.storeImage(new Blob(['test-image']), 'image/png');
       // Add audio
       const audio = await assetManager.storeAudio(new Blob(['test-audio']), 'audio/mpeg');
       original.scenes.scene1 = {
@@ -342,7 +340,6 @@ describe('Package Export/Import', () => {
         relationshipDeltas: [],
         summary: 'Full test',
         summaryEmbedding: emb,
-        imageUrl: img,
         audioUrl: audio,
       } as Scene;
       // Export
@@ -354,7 +351,6 @@ describe('Package Export/Import', () => {
       });
       // Clear IndexedDB
       await assetManager.deleteEmbedding(emb);
-      await assetManager.deleteImage(img);
       await assetManager.deleteAudio(audio);
       // Import
       const file = new File([zipBlob], 'full-test.inktide');
@@ -366,11 +362,9 @@ describe('Package Export/Import', () => {
       // Verify narrative structure
       expect(imported.id).toBe(original.id);
       expect(imported.scenes.scene1.summaryEmbedding).toBe(emb);
-      expect(imported.scenes.scene1.imageUrl).toBe(img);
       expect(imported.scenes.scene1.audioUrl).toBe(audio);
       // Verify assets restored
       expect(await assetManager.getEmbedding(emb)).not.toBeNull();
-      expect(await assetManager.getImage(img)).not.toBeNull();
       expect(await assetManager.getAudio(audio)).not.toBeNull();
     });
   });

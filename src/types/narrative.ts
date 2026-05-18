@@ -907,7 +907,6 @@ export type Scene = {
    *  calendar anchor. */
   timeDelta?: TimeDelta | null;
   summary: string;
-  imageUrl?: ImageRef;
   audioUrl?: AudioRef;
   /** Embedding of scene summary for semantic search (reference or inline) */
   summaryEmbedding?: EmbeddingRef;

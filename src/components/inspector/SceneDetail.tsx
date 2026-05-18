@@ -1,6 +1,5 @@
 "use client";
 
-import { useImageUrl } from "@/hooks/useAssetUrl";
 import { computeForceSnapshots, detectCubeCorner, getEffectivePovId, resolveEntityName } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
 import { formatTimeDelta } from "@/lib/time-deltas";
@@ -23,11 +22,7 @@ export default function SceneDetail({ sceneId }: Props) {
     return forceMap[sceneId] ?? { fate: 0, world: 0, system: 0 };
   }, [narrative, state.resolvedEntryKeys, sceneId]);
 
-  // Resolve entry early to determine imageUrl for hook
   const entry = narrative ? resolveEntry(narrative, sceneId) : null;
-  const imageUrl = useImageUrl(
-    entry && isScene(entry) ? entry.imageUrl : undefined,
-  );
 
   // Entities introduced by this scene — taken directly from the authoritative
   // new* arrays. IDs are filtered against narrative.* so stale introductions
@@ -427,15 +422,6 @@ export default function SceneDetail({ sceneId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Scene still */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={scene.summary}
-          className="w-full aspect-[2/3] object-cover rounded-lg border border-border"
-        />
-      )}
-
       {/* Scene ID + Arc */}
       <div className="flex items-baseline gap-2">
         <h2 className="font-mono text-xs text-text-dim">{scene.id}</h2>

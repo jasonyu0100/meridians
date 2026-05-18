@@ -78,11 +78,6 @@ function collectAssetReferences(narrative: NarrativeState): {
       refs.audio.add(scene.audioUrl);
     }
 
-    // Images
-    if (scene.imageUrl?.startsWith('img_')) {
-      refs.images.add(scene.imageUrl);
-    }
-
     // Plan embeddings - collect from all plan versions
     if (scene.planVersions) {
       for (const version of scene.planVersions) {

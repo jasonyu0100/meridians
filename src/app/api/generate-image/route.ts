@@ -9,15 +9,13 @@ const REPLICATE_URL = 'https://api.replicate.com/v1/models/bytedance/seedream-4.
 type ImageRequest =
   | { type: 'character'; name: string; role: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string }
   | { type: 'location'; name: string; parentName?: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string }
-  | { type: 'artifact'; name: string; significance: string; ownerName?: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string }
-  | { type: 'scene'; summary: string; locationName: string; characterDescriptions: { name: string; visualDescription: string }[]; worldSummary: string; imageStyle?: string };
+  | { type: 'artifact'; name: string; significance: string; ownerName?: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string };
 
 /** Composition guidance per image type */
 const COMPOSITION: Record<ImageRequest['type'], string> = {
   character: 'Single character portrait, head and shoulders, one subject only',
   location: 'Wide establishing shot, architectural or landscape composition',
   artifact: 'Single object study, isolated subject centred in frame, clear silhouette, museum-lit presentation',
-  scene: 'Coloured manga page layout with multiple panels divided by black gutters, sequential storytelling, each panel captures a different beat of the scene, dramatic angles, speed lines, vibrant colours, cel shading',
 };
 
 /** Aspect ratio per image type */
@@ -25,23 +23,20 @@ const ASPECT_RATIO: Record<ImageRequest['type'], string> = {
   character: '3:4',
   location: '16:9',
   artifact: '1:1',
-  scene: '2:3',
 };
 
 /** Use LLM to craft a rich visual description for image generation */
 async function describeVisually(openrouterKey: string, request: ImageRequest): Promise<string> {
-  // If an imagePrompt already exists for character/location, use it directly
-  if (request.type !== 'scene' && request.imagePrompt) {
+  // If an imagePrompt already exists, use it directly
+  if (request.imagePrompt) {
     return request.imagePrompt;
   }
 
   const styleDirective = request.imageStyle
-    ? `\nIMPORTANT: The primary visual style is: ${request.imageStyle}. The coloured manga format (panels, cel shading, sequential storytelling) augments this style.`
+    ? `\nIMPORTANT: The primary visual style is: ${request.imageStyle}.`
     : '';
 
-  const systemPrompt = request.type === 'scene'
-    ? `You are a manga storyboard artist. Given a scene description, produce an image generation prompt for a full COLOURED manga PAGE with multiple panels. If a custom style is specified, that style takes precedence and the manga format (panels, cel shading, sequential storytelling) augments it. Describe the panel layout, what each panel shows (camera angle, characters, action), colour palette, and manga techniques (speed lines, dramatic lighting, reaction close-ups, establishing wide shots). Output ONLY the prompt, nothing else.${styleDirective}`
-    : `You are a visual description specialist. Given narrative context, produce a single concise image generation prompt (2-3 sentences max). Focus on visual details: appearance, clothing, atmosphere, lighting, color palette. Never include text, words, or watermarks in the description. Output ONLY the prompt, nothing else.${styleDirective}
+  const systemPrompt = `You are a visual description specialist. Given narrative context, produce a single concise image generation prompt (2-3 sentences max). Focus on visual details: appearance, clothing, atmosphere, lighting, color palette. Never include text, words, or watermarks in the description. Output ONLY the prompt, nothing else.${styleDirective}
 
 COMPOSITION: ${COMPOSITION[request.type]}`;
 
@@ -51,16 +46,9 @@ COMPOSITION: ${COMPOSITION[request.type]}`;
   } else if (request.type === 'location') {
     const parent = request.parentName ? ` (inside ${request.parentName})` : '';
     userPrompt = `Create an establishing shot prompt for the location "${request.name}"${parent} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
-  } else if (request.type === 'artifact') {
+  } else {
     const owner = request.ownerName ? ` (owned by ${request.ownerName})` : '';
     userPrompt = `Create an object study prompt for the artifact "${request.name}" (${request.significance})${owner} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
-  } else {
-    const charDescs = request.characterDescriptions
-      .map((c) => `${c.name}: ${c.visualDescription}`)
-      .join('. ');
-    userPrompt = `Create a coloured manga page prompt for this scene: "${request.summary}". Location: ${request.locationName}. Characters: ${charDescs || 'none specified'}. World: ${request.worldSummary}.
-
-Describe a manga PAGE with 3-5 panels arranged vertically. For each panel describe: the camera angle (close-up, wide shot, over-shoulder, bird's eye), what's shown, the colour palette, and the emotion. The panels should flow as sequential storytelling — each panel captures a different beat of the scene. Include manga techniques: speed lines for action, dramatic lighting, reaction shots, establishing shots. Use vibrant colours with cel shading.`;
   }
 
   const res = await fetch(OPENROUTER_URL, {

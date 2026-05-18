@@ -9,24 +9,16 @@ import { logApiCall, updateApiLog } from '@/lib/api-logger';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { assetManager } from '@/lib/asset-manager';
 import MediaPreview from '@/components/sidebar/MediaPreview';
-import { IconSpinner, IconImage, IconSettings, IconRefresh } from '@/components/icons';
+import { IconSpinner, IconImage, IconSettings } from '@/components/icons';
 import type { MediaItem } from '@/components/sidebar/MediaPreview';
 import type { Scene, Character, Location, Artifact, ImageRef } from '@/types/narrative';
 
-type AssetTab = 'characters' | 'locations' | 'artifacts' | 'scenes';
-
-type SceneReadiness = {
-  scene: Scene;
-  missingCharacters: Character[];
-  missingLocation: Location | null;
-  ready: boolean;
-};
+type AssetTab = 'characters' | 'locations' | 'artifacts';
 
 type BatchItem =
   | { kind: 'character'; char: Character }
   | { kind: 'location'; loc: Location }
-  | { kind: 'artifact'; artifact: Artifact }
-  | { kind: 'scene'; readiness: SceneReadiness };
+  | { kind: 'artifact'; artifact: Artifact };
 
 type BatchPreset = {
   key: string;
@@ -45,7 +37,7 @@ type BatchState = {
 const BATCH_CONCURRENCY = 10;
 
 async function generateImage(
-  type: 'character' | 'location' | 'artifact' | 'scene',
+  type: 'character' | 'location' | 'artifact',
   payload: Record<string, unknown>,
   narrativeId: string,
 ): Promise<{ imageUrl: string }> {
@@ -111,12 +103,6 @@ function ThumbnailImage({ imageRef, alt, className }: { imageRef: ImageRef; alt:
   return <img src={resolvedUrl} alt={alt} className={className} />;
 }
 
-function SceneImage({ imageRef, alt, className }: { imageRef: ImageRef; alt: string; className: string }) {
-  const resolvedUrl = useImageUrl(imageRef);
-  if (!resolvedUrl) return null;
-  return <img src={resolvedUrl} alt={alt} className={className} />;
-}
-
 export default function MediaDrive() {
   const { state, dispatch } = useStore();
   const access = useFeatureAccess();
@@ -148,6 +134,8 @@ export default function MediaDrive() {
     return Object.values(narrative.artifacts ?? {});
   }, [narrative]);
 
+  // Scenes (resolved up to head) — used to derive POV / "in scenes" filters
+  // for the batch presets below. Not rendered directly.
   const scenes = useMemo(() => {
     if (!narrative) return [];
     const keys = state.resolvedEntryKeys.slice(0, state.viewState.currentSceneIndex + 1);
@@ -155,24 +143,6 @@ export default function MediaDrive() {
       .map((k) => resolveEntry(narrative, k))
       .filter((e): e is Scene => e?.kind === 'scene');
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
-
-  // Compute scene readiness — which references are missing
-  const sceneReadiness = useMemo((): SceneReadiness[] => {
-    if (!narrative) return [];
-    return scenes.map((scene) => {
-      const missingCharacters = scene.participantIds
-        .map((id) => narrative.characters[id])
-        .filter((c): c is Character => !!c && !c.imageUrl);
-      const loc = narrative.locations[scene.locationId];
-      const missingLocation = loc && !loc.imageUrl ? loc : null;
-      return {
-        scene,
-        missingCharacters,
-        missingLocation,
-        ready: missingCharacters.length === 0 && !missingLocation,
-      };
-    });
-  }, [narrative, scenes]);
 
   // Batch presets — filter options per tab. Each preset shows a count, so
   // the user sees the scope before starting. Presets with zero items are
@@ -201,26 +171,18 @@ export default function MediaDrive() {
       ];
     }
 
-    if (tab === 'artifacts') {
-      const missing = artifacts.filter((a) => !a.imageUrl);
-      const usedIds = new Set<string>();
-      for (const s of scenes) {
-        for (const u of s.artifactUsages ?? []) usedIds.add(u.artifactId);
-      }
-      return [
-        { key: 'used', label: 'In scenes', items: missing.filter((a) => usedIds.has(a.id)).map((a) => ({ kind: 'artifact', artifact: a })) },
-        { key: 'key', label: 'Key only', items: missing.filter((a) => a.significance === 'key').map((a) => ({ kind: 'artifact', artifact: a })) },
-        { key: 'all', label: 'All', items: missing.map((a) => ({ kind: 'artifact', artifact: a })) },
-      ];
+    // artifacts
+    const missing = artifacts.filter((a) => !a.imageUrl);
+    const usedIds = new Set<string>();
+    for (const s of scenes) {
+      for (const u of s.artifactUsages ?? []) usedIds.add(u.artifactId);
     }
-
-    // scenes
-    const missing = sceneReadiness.filter((r) => !r.scene.imageUrl);
     return [
-      { key: 'ready', label: 'Refs ready', items: missing.filter((r) => r.ready).map((r) => ({ kind: 'scene', readiness: r })) },
-      { key: 'all', label: 'All (cascades refs)', items: missing.map((r) => ({ kind: 'scene', readiness: r })) },
+      { key: 'used', label: 'In scenes', items: missing.filter((a) => usedIds.has(a.id)).map((a) => ({ kind: 'artifact', artifact: a })) },
+      { key: 'key', label: 'Key only', items: missing.filter((a) => a.significance === 'key').map((a) => ({ kind: 'artifact', artifact: a })) },
+      { key: 'all', label: 'All', items: missing.map((a) => ({ kind: 'artifact', artifact: a })) },
     ];
-  }, [tab, narrative, characters, locations, artifacts, scenes, sceneReadiness]);
+  }, [tab, narrative, characters, locations, artifacts, scenes]);
 
   // Build preview items for current tab (only items with images)
   const previewItems = useMemo((): MediaItem[] => {
@@ -242,23 +204,15 @@ export default function MediaDrive() {
         aspectClass: 'aspect-video',
       }));
     }
-    if (tab === 'artifacts') {
-      return artifacts.filter((a) => a.imageUrl).map((a) => ({
-        id: a.id,
-        imageUrl: a.imageUrl!,
-        label: a.name,
-        sublabel: a.significance,
-        aspectClass: 'aspect-square',
-      }));
-    }
-    return scenes.filter((s) => s.imageUrl).map((s) => ({
-      id: s.id,
-      imageUrl: s.imageUrl!,
-      label: s.summary.slice(0, 80) + (s.summary.length > 80 ? '...' : ''),
-      sublabel: s.id,
-      aspectClass: 'aspect-2/3',
+    // artifacts
+    return artifacts.filter((a) => a.imageUrl).map((a) => ({
+      id: a.id,
+      imageUrl: a.imageUrl!,
+      label: a.name,
+      sublabel: a.significance,
+      aspectClass: 'aspect-square',
     }));
-  }, [tab, characters, locations, artifacts, scenes, narrative]);
+  }, [tab, characters, locations, artifacts, narrative]);
 
   const openPreview = useCallback((id: string) => {
     const idx = previewItems.findIndex((item) => item.id === id);
@@ -325,55 +279,6 @@ export default function MediaDrive() {
     dispatch({ type: 'SET_ARTIFACT_IMAGE', artifactId: artifact.id, imageUrl });
   }, [narrative, dispatch]);
 
-  const runSceneGen = useCallback(async (readiness: SceneReadiness): Promise<void> => {
-    if (!narrative) return;
-    // Cascade: generate all missing refs in parallel with staggered starts
-    const stagger = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-    const refTasks: Promise<void>[] = [];
-    let delay = 0;
-
-    for (const char of readiness.missingCharacters) {
-      const d = delay;
-      refTasks.push(
-        stagger(d).then(() => runCharacterGen(char)).catch((err) => {
-          console.error(`Failed to generate portrait for ${char.name}:`, err);
-        }),
-      );
-      delay += 500;
-    }
-
-    if (readiness.missingLocation) {
-      const d = delay;
-      const loc = readiness.missingLocation;
-      refTasks.push(
-        stagger(d).then(() => runLocationGen(loc)).catch((err) => {
-          console.error(`Failed to generate location ${loc.name}:`, err);
-        }),
-      );
-    }
-
-    // Wait for all refs to settle (partial failures don't block the scene)
-    await Promise.allSettled(refTasks);
-
-    // Generate the scene still
-    const locationName = narrative.locations[readiness.scene.locationId]?.name ?? 'unknown';
-    const charDescs = readiness.scene.participantIds
-      .map((id) => narrative.characters[id])
-      .filter(Boolean)
-      .map((c) => ({
-        name: c.name,
-        visualDescription: c.imagePrompt || Object.values(c.world.nodes).slice(0, 3).map((n) => n.content).join('. ') || c.role,
-      }));
-    const { imageUrl } = await generateImage('scene', {
-      summary: readiness.scene.summary,
-      locationName,
-      characterDescriptions: charDescs,
-      worldSummary: narrative.worldSummary,
-      imageStyle: narrative.imageStyle,
-    }, narrative.id);
-    dispatch({ type: 'SET_SCENE_IMAGE', sceneId: readiness.scene.id, imageUrl });
-  }, [narrative, dispatch, runCharacterGen, runLocationGen]);
-
   // ── Single-call wrappers (click-driven). Guard against overlapping work.
 
   const generateCharacterImage = useCallback(async (char: Character) => {
@@ -400,14 +305,6 @@ export default function MediaDrive() {
     finally { setGenerating(null); }
   }, [narrative, generating, batchBusy, requireKeys, runArtifactGen]);
 
-  const generateSceneImage = useCallback(async (readiness: SceneReadiness) => {
-    if (!narrative || generating || batchBusy || requireKeys()) return;
-    setGenerating(readiness.scene.id);
-    try { await runSceneGen(readiness); }
-    catch (err) { console.error('Failed to generate scene image:', err); }
-    finally { setGenerating(null); }
-  }, [narrative, generating, batchBusy, requireKeys, runSceneGen]);
-
   // ── Batch runner — bounded concurrency, cancellable mid-flight.
 
   const runBatch = useCallback(async (label: string, items: BatchItem[]) => {
@@ -427,8 +324,7 @@ export default function MediaDrive() {
         try {
           if (item.kind === 'character') await runCharacterGen(item.char);
           else if (item.kind === 'location') await runLocationGen(item.loc);
-          else if (item.kind === 'artifact') await runArtifactGen(item.artifact);
-          else await runSceneGen(item.readiness);
+          else await runArtifactGen(item.artifact);
         } catch (err) {
           console.error('Batch item failed:', err);
         }
@@ -442,7 +338,7 @@ export default function MediaDrive() {
     );
     await Promise.allSettled(workers);
     setBatchState(null);
-  }, [narrative, batchBusy, generating, requireKeys, runCharacterGen, runLocationGen, runArtifactGen, runSceneGen]);
+  }, [narrative, batchBusy, generating, requireKeys, runCharacterGen, runLocationGen, runArtifactGen]);
 
   const cancelBatch = useCallback(() => {
     batchCancelRef.current = true;
@@ -499,10 +395,9 @@ export default function MediaDrive() {
       {/* Asset type tabs */}
       <div className="shrink-0 flex border-b border-border">
         {([
-          ['characters', 'Cast'],
-          ['locations', 'Places'],
-          ['artifacts', 'Items'],
-          ['scenes', 'Stills'],
+          ['characters', 'Characters'],
+          ['locations', 'Locations'],
+          ['artifacts', 'Artifacts'],
         ] as [AssetTab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -631,79 +526,6 @@ export default function MediaDrive() {
               <p className="text-[10px] text-text-dim">{artifact.significance}</p>
             </button>
             <GenerateButton onClick={() => generateArtifactImage(artifact)} disabled={generating !== null || batchBusy} generating={generating === artifact.id} />
-          </div>
-        ))}
-
-        {/* ── Scenes ── */}
-        {tab === 'scenes' && sceneReadiness.map(({ scene, missingCharacters, missingLocation, ready }) => (
-          <div key={scene.id} className="rounded border border-border overflow-hidden mb-2">
-            {scene.imageUrl ? (
-              <div className="relative group">
-                <button
-                  onClick={() => openPreview(scene.id)}
-                  className="w-full"
-                >
-                  <SceneImage imageRef={scene.imageUrl} alt={scene.summary} className="w-full aspect-2/3 object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent px-2 py-1.5">
-                    <p className="text-[10px] text-white/70 leading-tight truncate">
-                      <span className="text-white/40 font-mono mr-1">{scene.id}</span>
-                      {scene.summary}
-                    </p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => generateSceneImage({ scene, missingCharacters, missingLocation, ready })}
-                  disabled={generating !== null || batchBusy}
-                  className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded bg-black/60 text-white/50 hover:text-white opacity-0 group-hover:opacity-100 disabled:opacity-30 transition-opacity"
-                  title="Regenerate"
-                >
-                  {generating === scene.id ? <Spinner /> : (
-                    <IconRefresh size={8} />
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="px-2 py-1.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="font-mono text-[10px] bg-white/6 text-text-secondary px-1.5 py-0.5 rounded shrink-0">
-                    {scene.id}
-                  </span>
-                  <span className="text-[10px] text-text-primary truncate flex-1">
-                    {scene.summary.slice(0, 50)}{scene.summary.length > 50 ? '...' : ''}
-                  </span>
-                </div>
-
-                {/* Readiness indicator */}
-                {!ready && (
-                  <div className="mb-1.5">
-                    {missingCharacters.length > 0 && (
-                      <p className="text-[9px] text-amber-400/70 leading-tight">
-                        Missing: {missingCharacters.map((c) => c.name).join(', ')}
-                      </p>
-                    )}
-                    {missingLocation && (
-                      <p className="text-[9px] text-amber-400/70 leading-tight">
-                        Missing: {missingLocation.name} (location)
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => generateSceneImage({ scene, missingCharacters, missingLocation, ready })}
-                    disabled={generating !== null || batchBusy}
-                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {generating === scene.id ? (
-                      <><Spinner /> <span>{!ready ? 'Generating references...' : 'Generating...'}</span></>
-                    ) : (
-                      ready ? 'Generate still' : `Generate (+ ${missingCharacters.length + (missingLocation ? 1 : 0)} refs)`
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         ))}
       </div>
