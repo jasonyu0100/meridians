@@ -84,7 +84,28 @@ export default function WorldGraph() {
     return Object.values(narrative.arcs).find((a) => a.sceneIds.includes(currentSceneKey))?.id ?? null;
   }, [narrative, currentSceneKey]);
 
-  // Get current arc and its reasoning graph
+  // Investigations attached to the current scene's arc, ordered oldest → newest
+  // so the cycle UI reads chronologically.
+  const arcInvestigations = useMemo(() => {
+    if (!narrative || !activeArcId) return [];
+    return Object.values(narrative.investigations ?? {})
+      .filter((inv) => inv.arcId === activeArcId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+  }, [narrative, activeArcId]);
+
+  // Currently-selected investigation: honor viewState.selectedInvestigationId
+  // when it belongs to the visible arc, otherwise fall back to the first.
+  const activeInvestigation = useMemo(() => {
+    if (arcInvestigations.length === 0) return null;
+    const selectedId = state.viewState.selectedInvestigationId;
+    return (
+      arcInvestigations.find((inv) => inv.id === selectedId) ??
+      arcInvestigations[0]
+    );
+  }, [arcInvestigations, state.viewState.selectedInvestigationId]);
+
+  // Legacy arc/world-build CRG snapshots — kept for coordination-plan visuals
+  // even though the per-arc CRG generation path is being retired.
   const currentArcWithReasoning = useMemo(() => {
     if (!narrative || !activeArcId) return null;
     const arc = narrative.arcs[activeArcId];
@@ -92,7 +113,6 @@ export default function WorldGraph() {
     return { arc, reasoningGraph: arc.reasoningGraph };
   }, [narrative, activeArcId]);
 
-  // Get current world build and its reasoning graph (for world commits with reasoning)
   const currentWorldBuildWithReasoning = useMemo(() => {
     if (!narrative) return null;
     const key = resolvedEntryKeys[state.viewState.currentSceneIndex];
@@ -1161,8 +1181,15 @@ export default function WorldGraph() {
       ) : graphViewMode === 'mode' ? (
         <ModeCanvas />
       ) : graphViewMode === 'reasoning' ? (
-        // World build reasoning takes priority when viewing a world commit
-        currentWorldBuildWithReasoning ? (
+        // Scene investigation takes priority. Falls back to legacy arc / world-
+        // build CRGs (still produced via the coordination plan path) when the
+        // current scene has no investigation of its own.
+        activeInvestigation ? (
+          <ReasoningGraphView
+            graph={activeInvestigation.graph}
+            arcId={activeInvestigation.arcId}
+          />
+        ) : currentWorldBuildWithReasoning ? (
           <ReasoningGraphView
             graph={currentWorldBuildWithReasoning.reasoningGraph}
             worldBuildId={currentWorldBuildWithReasoning.worldBuild.id}
@@ -1174,7 +1201,7 @@ export default function WorldGraph() {
           />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No reasoning graph available for this arc or world commit.</p>
+            <p className="text-text-dim text-sm italic">No investigation on this scene. Create one from the Investigations sidebar.</p>
           </div>
         )
       ) : graphViewMode === 'spark' || graphViewMode === 'codex' ? (

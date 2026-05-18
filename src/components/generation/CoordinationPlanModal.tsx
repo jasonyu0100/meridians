@@ -525,14 +525,18 @@ export function CoordinationPlanModal({
     .sort((a, b) => (a.arcIndex ?? 0) - (b.arcIndex ?? 0));
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-60 flex flex-col">
+    <div className="fixed inset-0 bg-bg-base z-60 flex flex-col">
       <div className="flex-1 min-h-0 flex flex-col p-6">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-text-dim hover:text-text-primary text-lg leading-none z-10"
+          aria-label="Close"
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-md text-text-dim hover:text-text-primary hover:bg-white/8 transition-colors z-10"
         >
-          &times;
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
 
         {/* Header */}
@@ -545,11 +549,11 @@ export function CoordinationPlanModal({
           </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg bg-white/5 p-0.5">
+          <div className="flex items-center gap-2 mr-10">
+            <div className="flex rounded-md bg-white/4 p-0.5 border border-white/6">
               <button
                 onClick={() => setViewMode("full")}
-                className={`px-3 py-1.5 text-xs rounded-md transition ${
+                className={`px-3 py-1 text-[11px] font-medium rounded-[5px] transition-colors ${
                   viewMode === "full"
                     ? "bg-white/10 text-text-primary"
                     : "text-text-dim hover:text-text-secondary"
@@ -559,7 +563,7 @@ export function CoordinationPlanModal({
               </button>
               <button
                 onClick={() => setViewMode("arc")}
-                className={`px-3 py-1.5 text-xs rounded-md transition ${
+                className={`px-3 py-1 text-[11px] font-medium rounded-[5px] transition-colors ${
                   viewMode === "arc"
                     ? "bg-white/10 text-text-primary"
                     : "text-text-dim hover:text-text-secondary"
@@ -572,7 +576,7 @@ export function CoordinationPlanModal({
               <select
                 value={selectedArc}
                 onChange={(e) => setSelectedArc(Number(e.target.value))}
-                className="text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-border text-text-primary focus:outline-none"
+                className="text-[11px] px-2 py-1 rounded-md bg-white/4 border border-white/6 text-text-primary focus:outline-none focus:border-white/20"
               >
                 {Array.from({ length: plan.arcCount }, (_, i) => (
                   <option key={i + 1} value={i + 1}>
@@ -584,35 +588,57 @@ export function CoordinationPlanModal({
           </div>
         </div>
 
-        {/* Summary */}
-        <p className="text-xs text-text-secondary mb-3 max-w-3xl">{plan.summary}</p>
+        {/* Summary — swaps between global plan summary and the selected
+            arc's detail. Clicking an already-active arc card toggles back.
+            shrink-0 keeps the full text visible regardless of how much the
+            graph below tries to claim. */}
+        {(() => {
+          const selectedArcNode =
+            viewMode === "arc" ? arcNodes.find((a) => a.arcIndex === selectedArc) : null;
+          const text = selectedArcNode?.detail ?? plan.summary;
+          return <p className="text-xs text-text-secondary mb-3 max-w-3xl shrink-0">{text}</p>;
+        })()}
 
-        {/* Arc overview strip */}
+        {/* Arc overview strip — clicking an active arc deselects it, snapping
+            the description back to the global plan summary. */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-          {arcNodes.map((arc) => (
-            <button
-              key={arc.id}
-              onClick={() => {
-                setViewMode("arc");
-                setSelectedArc(arc.arcIndex ?? 1);
-              }}
-              className={`shrink-0 px-3 py-2 rounded-lg border transition text-left ${
-                viewMode === "arc" && selectedArc === arc.arcIndex
-                  ? "border-sky-500/50 bg-sky-500/10"
-                  : "border-border bg-white/3 hover:bg-white/6"
-              }`}
-            >
-              <div className="text-[10px] text-text-dim uppercase tracking-wider mb-0.5">
-                Arc {arc.arcIndex}
-              </div>
-              <div className="text-xs text-text-primary font-medium truncate max-w-32">
-                {arc.label}
-              </div>
-              {arc.forceMode && (
-                <div className="text-[10px] text-text-dim mt-0.5">{arc.forceMode}</div>
-              )}
-            </button>
-          ))}
+          {arcNodes.map((arc) => {
+            const isActive = viewMode === "arc" && selectedArc === arc.arcIndex;
+            return (
+              <button
+                key={arc.id}
+                onClick={() => {
+                  if (isActive) {
+                    setViewMode("full");
+                  } else {
+                    setViewMode("arc");
+                    setSelectedArc(arc.arcIndex ?? 1);
+                  }
+                }}
+                className={`group relative shrink-0 px-3.5 py-2.5 rounded-lg border transition-all text-left ${
+                  isActive
+                    ? "border-sky-400/60 bg-sky-500/10 shadow-[0_0_0_1px_rgba(56,189,248,0.15)]"
+                    : "border-white/6 bg-white/3 hover:border-white/12 hover:bg-white/5"
+                }`}
+              >
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`text-[9px] uppercase tracking-[0.18em] font-mono ${
+                    isActive ? "text-sky-300/80" : "text-text-dim/70"
+                  }`}>
+                    Arc {arc.arcIndex}
+                  </span>
+                  {arc.forceMode && (
+                    <span className="text-[9px] text-text-dim/60">· {arc.forceMode}</span>
+                  )}
+                </div>
+                <div className={`text-xs font-medium ${
+                  isActive ? "text-text-primary" : "text-text-secondary group-hover:text-text-primary"
+                }`}>
+                  {arc.label}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Progress bar */}

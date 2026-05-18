@@ -503,6 +503,29 @@ export function CanvasTopBar() {
     return id ? narrative?.modes?.[id] : undefined;
   }, [narrative?.currentModeId, narrative?.modes]);
 
+  // Investigations attached to the current scene's arc — used for the
+  // Investigation tab's visibility + cycle UI.
+  const currentArcInvestigations = useMemo(() => {
+    if (!narrative) return [];
+    const key = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
+    if (!key) return [];
+    const scene = narrative.scenes[key];
+    const arcId = scene?.arcId;
+    if (!arcId) return [];
+    return Object.values(narrative.investigations ?? {})
+      .filter((inv) => inv.arcId === arcId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+  }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
+
+  const activeInvestigation = useMemo(() => {
+    if (currentArcInvestigations.length === 0) return null;
+    const selectedId = state.viewState.selectedInvestigationId;
+    return (
+      currentArcInvestigations.find((inv) => inv.id === selectedId) ??
+      currentArcInvestigations[0]
+    );
+  }, [currentArcInvestigations, state.viewState.selectedInvestigationId]);
+
   useEffect(() => {
     if (editField) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
     else setEditValue('');
@@ -788,7 +811,77 @@ export function CanvasTopBar() {
         </div>
       )}
 
-      {canvasMode === 'reasoning' && (currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph) && (
+      {canvasMode === 'reasoning' && activeInvestigation && (
+        <div className="flex items-center gap-2 ml-3 min-w-0">
+          {currentArcInvestigations.length > 1 && (
+            <div className="flex items-center gap-1 shrink-0">
+              {currentArcInvestigations.map((inv, idx) => {
+                const isActive = inv.id === activeInvestigation.id;
+                return (
+                  <button
+                    key={inv.id}
+                    onClick={() => dispatch({ type: 'SET_SELECTED_INVESTIGATION', investigationId: inv.id })}
+                    title={inv.direction || `Investigation ${idx + 1}`}
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors ${
+                      isActive
+                        ? 'bg-white/15 text-text-primary'
+                        : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+              <div className="w-px h-3 bg-border mx-1" />
+            </div>
+          )}
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(buildSequentialPath(activeInvestigation.graph));
+              setReasoningCopied(true);
+              setTimeout(() => setReasoningCopied(false), 2000);
+            }}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            title="Copy sequential reasoning path"
+          >
+            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            <span>{reasoningCopied ? "Copied!" : "Copy"}</span>
+          </button>
+          <button
+            onClick={() => downloadGraphAsJson(activeInvestigation.graph, `investigation-${activeInvestigation.id}`)}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            title="Export graph as JSON"
+          >
+            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Export</span>
+          </button>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-generate-panel', {
+                detail: {
+                  continuationMode: true,
+                  storyDirection: buildSequentialPath(activeInvestigation.graph),
+                },
+              }));
+            }}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            title="Open Generate with this reasoning prefilled as direction"
+          >
+            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+            </svg>
+            <span>Use as direction</span>
+          </button>
+        </div>
+      )}
+      {canvasMode === 'reasoning' && !activeInvestigation && (currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph) && (
         <GraphInfoStrip
           graph={(currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph)!}
           copied={reasoningCopied}
@@ -922,7 +1015,7 @@ export function CanvasTopBar() {
         {inSceneMode && currentScene && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'reasoning' as ScenePrimaryMode, Icon: IconReasoning, label: 'Causal', hidden: !currentArcData.hasReasoningGraph && !currentWorldBuildData.hasReasoningGraph },
+              { mode: 'reasoning' as ScenePrimaryMode, Icon: IconReasoning, label: 'Investigation', hidden: currentArcInvestigations.length === 0 && !currentArcData.hasReasoningGraph && !currentWorldBuildData.hasReasoningGraph },
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },

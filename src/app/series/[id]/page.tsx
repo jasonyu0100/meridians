@@ -20,7 +20,7 @@ import { CreationWizard } from '@/components/wizard/CreationWizard';
 import { GeneratePanel } from '@/components/generation/GeneratePanel';
 import { BranchModal } from '@/components/generation/BranchModal';
 import { AutoSettingsPanel } from '@/components/auto/AutoSettingsPanel';
-import { AutoLogModal } from '@/components/auto/AutoLogModal';
+import { AutoStreamModal } from '@/components/auto/AutoStreamModal';
 import { useAutoPlay } from '@/hooks/useAutoPlay';
 import { useBulkGenerate } from '@/hooks/useBulkGenerate';
 import { useBulkAudioGenerate } from '@/hooks/useBulkAudioGenerate';
@@ -184,7 +184,7 @@ export default function SeriesPage() {
     );
   }
 
-  const showAutoBar = state.viewState.autoRunState && (state.viewState.autoRunState.isRunning || state.viewState.autoRunState.isPaused || state.viewState.autoRunState.log.length > 0);
+  const showAutoBar = !!state.viewState.autoRunState?.isRunning;
   const showExperimentationBar = experimentation.runState.status !== 'idle';
   const showBulkBar = bulk.runState !== null;
   const showBulkAudioBar = bulkAudio.runState !== null;
@@ -287,13 +287,9 @@ export default function SeriesPage() {
               <ModeControlBar
                 mode="auto"
                 isRunning={autoPlay.isRunning}
-                isPaused={autoPlay.isPaused}
                 currentCycle={autoPlay.currentCycle}
                 totalScenes={state.viewState.autoRunState?.totalScenesGenerated ?? 0}
                 statusMessage={state.viewState.autoRunState?.statusMessage ?? ''}
-                log={autoPlay.log}
-                onPause={autoPlay.pause}
-                onResume={autoPlay.resume}
                 onStop={autoPlay.stop}
                 onOpenSettings={() => setAutoSettingsOpen(true)}
                 onOpenLog={() => setAutoLogOpen(true)}
@@ -370,8 +366,11 @@ export default function SeriesPage() {
         />
       )}
       {autoLogOpen && (
-        <AutoLogModal
-          log={autoPlay.log}
+        <AutoStreamModal
+          streamText={state.viewState.autoRunState?.streamText ?? ''}
+          statusMessage={state.viewState.autoRunState?.statusMessage ?? ''}
+          currentCycle={autoPlay.currentCycle}
+          isRunning={autoPlay.isRunning}
           onClose={() => setAutoLogOpen(false)}
         />
       )}

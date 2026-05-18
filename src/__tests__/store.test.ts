@@ -77,8 +77,6 @@ describe('store reducer', () => {
         narrativeConstraints: '',
         characterRotationEnabled: true,
         minScenesBetweenCharacterFocus: 3,
-        mode: 'extended',
-        operations: ['reasoning-graph', 'scenes'],
       },
       analysisJobs: [],
       viewState: {
@@ -88,6 +86,7 @@ describe('store reducer', () => {
         inspectorHistory: [],
         selectedKnowledgeEntity: null,
         selectedThreadLog: null,
+        selectedInvestigationId: null,
         currentSearchQuery: null,
         currentResultIndex: 0,
         searchFocusMode: false,

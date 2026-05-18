@@ -1059,7 +1059,9 @@ export type Variable = {
 export type PlanningScenario = {
   id: string;
   name: string;
-  tagline?: string;
+  /** Short one-sentence gestalt of the coordination — what this scenario IS
+   *  as a recognisable shape. Same register as a chapter epigraph for fiction,
+   *  a section heading for a paper, a scenario name for simulation. */
   description?: string;
   /** Hex colour for the scenario's polyline / card accents. */
   color: string;
@@ -1076,9 +1078,11 @@ export type PlanningScenario = {
    *  *not* used as a probability proxy — a high-intensity tail event gets a
    *  low priorLogit, not a deflated likelihood. */
   priorLogit?: number;
-  /** Short rationale the LLM emitted alongside priorLogit — anchors the
-   *  estimate so the user can audit "why is this 18%?". */
-  priorRationale?: string;
+  /** Multi-sentence load-bearing logic for this coordination — which variables
+   *  cascade into which, why these intensities, what makes the scenario
+   *  plausible relative to its siblings. Anchors the priorLogit so the user
+   *  can audit "why is this 18%?". */
+  reasoning?: string;
 };
 
 export type Arc = {
@@ -1100,16 +1104,17 @@ export type Arc = {
    *  each own their own independent variable sets too. Undefined / empty =
    *  arc has no variables defined yet, UI shows the fresh-page seed state. */
   presentVariables?: Variable[];
-  /** Short tagline that captures the gestalt of the Present variable
-   *  coordination — one sentence describing what this configuration *is*.
-   *  Generated alongside the variables. When a Future scenario is committed
-   *  via experimentation, the scenario's own tagline is transferred onto the
-   *  new arc's `presentTagline` so the lineage is preserved. */
-  presentTagline?: string;
-  /** Short narrative reasoning for the Present variable coordination —
-   *  explains WHY these variables are firing at these intensities given the
-   *  arc's state. Transferred from the parent scenario's `priorRationale`
-   *  on experimentation commit. */
+  /** Short one-sentence gestalt of the Present coordination — what this
+   *  configuration *is* as a recognisable shape. Generated alongside the
+   *  variables. When a Future scenario is committed via experimentation, the
+   *  scenario's own description is transferred onto the new arc's
+   *  `presentDescription` so the lineage is preserved. */
+  presentDescription?: string;
+  /** Multi-sentence load-bearing logic for the Present variable coordination —
+   *  WHY these variables are firing at these intensities given the arc's
+   *  state: which mechanism feeds which, where the cascade runs, which symptom
+   *  is the surface. Transferred from the parent scenario's `reasoning` on
+   *  experimentation commit. */
   presentReasoning?: string;
   /** Log-prior plausibility score for this Present coordination, in the
    *  same MARKET_EVIDENCE_MIN/MAX range as scenario priorLogits ([-4, +4]).
@@ -1520,6 +1525,12 @@ export type NarrativeState = {
   surveys?: Record<string, Survey>;
   /** Research interviews — many questions for one subject; see Interview types below. */
   interviews?: Record<string, Interview>;
+  /** Arc-anchored causal investigations. Each entry hosts a reasoning graph
+   *  attached to an arc. An arc may have many investigations; the canvas
+   *  cycles between them. Investigations come from two sources: (a) the user
+   *  explicitly creates one via the sidebar composer, or (b) the auto-mode
+   *  coordination plan saves the CRG it built for that arc. */
+  investigations?: Record<string, ArcInvestigation>;
   /**
    * Modes — historical collection of working models of reality. Keyed
    * by mode id. Immutable once stored; new phase graphs are added
@@ -1655,6 +1666,41 @@ export type Interview = {
   status: SurveyStatus;
   progress?: { completed: number; total: number };
   error?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+/** Arc-anchored causal investigation — a reasoning graph attached to an arc,
+ *  optionally steered by a user-provided direction. Multiple investigations
+ *  per arc are supported; the canvas cycles between them. The graph can be
+ *  copied back into the GeneratePanel as guidance for subsequent generation.
+ *
+ *  Two creation paths feed this:
+ *    - User opens the sidebar composer and runs one against an arc.
+ *    - Auto-mode coordination plan generates a CRG for an arc and saves the
+ *      result here.
+ */
+export type ArcInvestigation = {
+  id: string;
+  /** Host arc id. An arc may have many investigations. */
+  arcId: string;
+  /** The reasoning graph this investigation produced. Reuses the same
+   *  snapshot shape as the legacy per-arc CRG so visualisation is shared. */
+  graph: ReasoningGraphSnapshot;
+  /** Direction prompt that steered the investigation — either the user's
+   *  composer input, or the coordination plan directive that drove
+   *  auto-generation. */
+  direction: string;
+  /** Where the investigation came from. */
+  source: "manual" | "coordination-plan";
+  /** Optional user-set label. Defaults to a derived title in UI. */
+  title?: string;
+  /** Engine settings the graph was built under. */
+  settings?: {
+    forcePreference?: "fate" | "world" | "system" | "chaos" | "freeform";
+    reasoningMode?: "divergent" | "deduction" | "abduction" | "induction";
+    networkBias?: "inside" | "outside" | "neutral";
+  };
   createdAt: number;
   updatedAt: number;
 };
@@ -2064,34 +2110,6 @@ export type AutoAction =
   | "climax"
   | "resolution";
 
-/**
- * Per-cycle operations the auto-engine can run, in pipeline order. The
- * operator's active set is `AutoConfig.operations`; the order in this
- * declaration is the canonical execution order (operations later in the
- * list depend on earlier ones), so the engine sorts by this enum order
- * regardless of how the operator listed them.
- *
- *   - reasoning-graph: build a per-arc CRG before structures (extended only)
- *   - scenes: emit scene structures, deltas, and summaries (always required)
- *
- * Future operations may include 'plans', 'prose', and 'expand-world'; the
- * shape is forward-compatible.
- */
-export const AUTO_OPERATIONS = ['reasoning-graph', 'scenes'] as const;
-export type AutoOperation = (typeof AUTO_OPERATIONS)[number];
-
-/** High-level mode presets that pick an `operations` list. `quick` skips
- *  the CRG for fast structural iteration; `extended` runs the CRG first
- *  so scenes are grounded in a planned causal graph. */
-export type AutoMode = 'quick' | 'extended';
-
-/** Operations enabled by each preset. The operator can override the
- *  active list per-narrative via `AutoConfig.operations`. */
-export const AUTO_MODE_PRESETS: Record<AutoMode, AutoOperation[]> = {
-  quick: ['scenes'],
-  extended: ['reasoning-graph', 'scenes'],
-};
-
 export type AutoConfig = {
   endConditions: AutoEndCondition[];
   minArcLength: number;
@@ -2105,40 +2123,10 @@ export type AutoConfig = {
   narrativeConstraints: string;
   characterRotationEnabled: boolean;
   minScenesBetweenCharacterFocus: number;
-  /** Mode preset — picks the default operations list when `operations` is
-   *  unset. Defaults to 'extended' (current behaviour: CRG → scenes). */
-  mode: AutoMode;
-  /** Active per-cycle operations. Source of truth — `mode` only picks a
-   *  preset for it. Operator overrides land here directly. The engine
-   *  sorts by AUTO_OPERATIONS canonical order before running. */
-  operations: AutoOperation[];
-};
-
-export type AutoRunLog = {
-  cycle: number;
-  timestamp: number;
-  action: AutoAction;
-  reason: string;
-  scenesGenerated: number;
-  worldExpanded: boolean;
-  endConditionMet: AutoEndCondition | null;
-  /** Human-readable details for debugging */
-  arcName?: string;
-  /** Phase name if planning queue is active */
-  phaseName?: string;
-  phaseProgress?: string;
-  /** Direction and constraints used for this cycle */
-  direction?: string;
-  constraints?: string;
-  /** Course correction output (if refreshDirection ran) */
-  courseCorrection?: { direction: string; constraints: string };
-  /** Error message if something failed */
-  error?: string;
 };
 
 export type AutoRunState = {
   isRunning: boolean;
-  isPaused: boolean;
   currentCycle: number;
   consecutiveFailures: number;
   /** Live status message shown in the control bar */
@@ -2147,7 +2135,10 @@ export type AutoRunState = {
   totalWorldExpansions: number;
   startingSceneCount: number;
   startingArcCount: number;
-  log: AutoRunLog[];
+  /** Live reasoning trace for the in-flight generation. Reset at the start
+   *  of each cycle, appended to as tokens stream from the LLM. Surfaced by
+   *  the auto-mode stream panel so the operator can check in on progress. */
+  streamText: string;
 };
 
 // ── API Logs ─────────────────────────────────────────────────────────────────
@@ -2426,6 +2417,10 @@ export type NarrativeViewState = {
   inspectorHistory: InspectorContext[];
   selectedKnowledgeEntity: string | null;
   selectedThreadLog: string | null;
+  /** Currently-selected investigation when the Investigation tab is active.
+   *  The canvas falls back to the first investigation on the current scene
+   *  if this id doesn't belong to the visible scene. */
+  selectedInvestigationId: string | null;
   currentSearchQuery: SearchQuery | null;
   currentResultIndex: number;
   searchFocusMode: boolean;

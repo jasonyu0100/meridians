@@ -718,7 +718,7 @@ export async function generateCoordinationPlan(
         order,
         type: VALID_COORDINATION_NODE_TYPES.has(n.type) ? n.type : "reasoning",
         label: typeof n.label === "string" ? n.label.slice(0, 100) : "",
-        detail: typeof n.detail === "string" ? n.detail.slice(0, 300) : undefined,
+        detail: typeof n.detail === "string" ? n.detail : undefined,
         entityId: typeof n.entityId === "string" ? n.entityId : undefined,
         threadId: typeof n.threadId === "string" ? n.threadId : undefined,
         systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,

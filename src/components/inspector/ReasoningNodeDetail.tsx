@@ -57,11 +57,31 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
   const { node, sourceName, graph, connectedEdges } = useMemo(() => {
     if (!narrative) return { node: null, sourceName: null, graph: null, connectedEdges: [] };
 
-    // Try arc first, then world build
+    // Resolution order:
+    //   1. Active arc investigation (current paradigm)
+    //   2. Legacy arc.reasoningGraph
+    //   3. Legacy worldBuild.reasoningGraph
     let graph = null;
     let sourceName: string | null = null;
 
     if (arcId) {
+      const arcInvestigations = Object.values(narrative.investigations ?? {})
+        .filter((inv) => inv.arcId === arcId)
+        .sort((a, b) => a.createdAt - b.createdAt);
+      if (arcInvestigations.length > 0) {
+        const selectedId = state.viewState.selectedInvestigationId;
+        const active =
+          arcInvestigations.find((inv) => inv.id === selectedId) ?? arcInvestigations[0];
+        // Only use this investigation's graph if it actually contains the
+        // node we're looking for — otherwise fall through to legacy sources.
+        if (active.graph.nodes.some((n) => n.id === nodeId)) {
+          graph = active.graph;
+          sourceName = narrative.arcs[arcId]?.name ?? "Investigation";
+        }
+      }
+    }
+
+    if (!graph && arcId) {
       const arc = narrative.arcs[arcId];
       if (arc?.reasoningGraph) {
         graph = arc.reasoningGraph;
@@ -82,7 +102,7 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
     const node = graph.nodes.find((n) => n.id === nodeId);
     const connectedEdges = graph.edges.filter((e) => e.from === nodeId || e.to === nodeId);
     return { node, sourceName, graph, connectedEdges };
-  }, [narrative, arcId, worldBuildId, nodeId]);
+  }, [narrative, arcId, worldBuildId, nodeId, state.viewState.selectedInvestigationId]);
 
   if (!node || !graph) {
     return (

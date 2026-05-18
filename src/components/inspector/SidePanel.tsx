@@ -4,6 +4,7 @@ import ChatPanel from "@/components/sidebar/ChatPanel";
 import NotesPanel from "@/components/sidebar/NotesPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
+import InvestigationPanel from "@/components/sidebar/InvestigationPanel";
 import BranchEval from "@/components/timeline/BranchEval";
 import PlanEval from "@/components/timeline/PlanEval";
 import ProseEval from "@/components/timeline/ProseEval";
@@ -25,7 +26,7 @@ import ThreadLogNodeDetail from "./ThreadLogNodeDetail";
 import ReasoningNodeDetail from "./ReasoningNodeDetail";
 import ModeNodeDetail from "./ModeNodeDetail";
 
-type Tab = "inspector" | "chat" | "notes" | "surveys" | "interviews" | "eval";
+type Tab = "inspector" | "chat" | "notes" | "surveys" | "interviews" | "investigations" | "eval";
 
 const TAB_LABELS: Record<Tab, string> = {
   inspector: "Inspector",
@@ -33,6 +34,7 @@ const TAB_LABELS: Record<Tab, string> = {
   notes: "Notes",
   surveys: "Surveys",
   interviews: "Interviews",
+  investigations: "Investigations",
   eval: "Review",
 };
 
@@ -150,7 +152,7 @@ export default function SidePanel() {
     <aside className="h-full flex flex-row border-l border-border glass-panel">
       {/* Vertical tab rail */}
       <div className="shrink-0 flex flex-col items-center py-2 w-7 border-r border-border">
-        {(["inspector", "chat", "notes", "surveys", "interviews", "eval"] as Tab[]).map((t) => (
+        {(["inspector", "chat", "notes", "surveys", "interviews", "investigations", "eval"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -218,6 +220,11 @@ export default function SidePanel() {
         {tab === "interviews" && (
           <div className="flex-1 min-h-0 flex flex-col">
             <InterviewPanel />
+          </div>
+        )}
+        {tab === "investigations" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <InvestigationPanel />
           </div>
         )}
         {tab === "eval" && (

@@ -15,6 +15,7 @@ import {
   IconTrash,
 } from "@/components/icons";
 import type { InspectorContext } from "@/types/narrative";
+import { InvestigationComposerModal } from "@/components/sidebar/investigations/InvestigationComposerModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useStore } from "@/lib/store";
 import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/narrative-utils";
@@ -59,10 +60,39 @@ export default function FloatingPalette({
   // and persisting across modes lets the user keep their selection while
   // jumping between bulk passes.
   const [bulkRange, setBulkRange] = useState<SceneRange>(null);
+  // Investigation composer mount — opened from the reasoning palette's
+  // Generate/Regenerate affordances. Pre-seeds the host arc.
+  const [investigationComposerArcId, setInvestigationComposerArcId] = useState<
+    string | null
+  >(null);
 
-  const isAutoActive = !!(
-    state.viewState.autoRunState?.isRunning || state.viewState.autoRunState?.isPaused
-  );
+  // Resolve the current scene's arc + its investigation list once for the
+  // reasoning palette controls (Generate / Regenerate / Clear / indicator).
+  const currentArcInvestigationCtx = useMemo(() => {
+    if (!narrative) return null;
+    const sceneKey = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
+    const scene = sceneKey ? narrative.scenes[sceneKey] : null;
+    const arcId = scene?.arcId;
+    if (!arcId) return null;
+    const arc = narrative.arcs[arcId];
+    if (!arc) return null;
+    const list = Object.values(narrative.investigations ?? {})
+      .filter((inv) => inv.arcId === arcId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    const selectedId = state.viewState.selectedInvestigationId;
+    const active = list.length > 0
+      ? (list.find((inv) => inv.id === selectedId) ?? list[0])
+      : null;
+    const activeIndex = active ? list.findIndex((inv) => inv.id === active.id) : -1;
+    return { arcId, arcName: arc.name, list, active, activeIndex };
+  }, [
+    narrative,
+    state.resolvedEntryKeys,
+    state.viewState.currentSceneIndex,
+    state.viewState.selectedInvestigationId,
+  ]);
+
+  const isAutoActive = !!state.viewState.autoRunState?.isRunning;
   const isAnyModeActive =
     isAutoActive || isBulkActive || isBulkAudioActive || isExperimentationActive;
 
@@ -132,6 +162,38 @@ export default function FloatingPalette({
 
     if (isReasoningMode) {
       const sceneKey = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
+      const scene = sceneKey ? narrative.scenes[sceneKey] : null;
+      const arcId = scene?.arcId ?? null;
+
+      // Active investigation takes priority — same precedence as the canvas
+      // renderer in WorldGraph. Fall back to legacy world-build / arc CRGs
+      // when a historical narrative has them.
+      if (arcId) {
+        const arcInvestigations = Object.values(narrative.investigations ?? {})
+          .filter((inv) => inv.arcId === arcId)
+          .sort((a, b) => a.createdAt - b.createdAt);
+        if (arcInvestigations.length > 0) {
+          const selectedId = state.viewState.selectedInvestigationId;
+          const active =
+            arcInvestigations.find((inv) => inv.id === selectedId) ?? arcInvestigations[0];
+          if (active.graph.nodes.length) {
+            const sorted = [...active.graph.nodes].sort((a, b) => a.index - b.index);
+            const ctx = state.viewState.inspectorContext;
+            const ctxSelectedId =
+              ctx?.type === "reasoning" && ctx.arcId === arcId ? ctx.nodeId : null;
+            const selectedIdx = ctxSelectedId
+              ? sorted.findIndex((n) => n.id === ctxSelectedId)
+              : -1;
+            const buildContext = (nodeId: string): InspectorContext => ({
+              type: "reasoning",
+              arcId,
+              nodeId,
+            });
+            return { sortedNodes: sorted, selectedIdx, buildContext };
+          }
+        }
+      }
+
       const worldBuild = sceneKey ? narrative.worldBuilds?.[sceneKey] : null;
       if (worldBuild?.reasoningGraph?.nodes.length) {
         const sorted = [...worldBuild.reasoningGraph.nodes].sort((a, b) => a.index - b.index);
@@ -146,9 +208,7 @@ export default function FloatingPalette({
         });
         return { sortedNodes: sorted, selectedIdx, buildContext };
       }
-      const arc = sceneKey
-        ? Object.values(narrative.arcs).find((a) => a.sceneIds.includes(sceneKey))
-        : null;
+      const arc = arcId ? narrative.arcs[arcId] : null;
       if (arc?.reasoningGraph?.nodes.length) {
         const sorted = [...arc.reasoningGraph.nodes].sort((a, b) => a.index - b.index);
         const ctx = state.viewState.inspectorContext;
@@ -172,6 +232,7 @@ export default function FloatingPalette({
     isReasoningMode,
     state.viewState.inspectorContext,
     state.viewState.currentSceneIndex,
+    state.viewState.selectedInvestigationId,
     state.resolvedEntryKeys,
   ]);
 
@@ -575,66 +636,134 @@ export default function FloatingPalette({
     );
   }
 
-  // ── Reasoning (causal) graph palette — node navigation only. Causal
-  //    graphs are generated upstream via the GeneratePanel, so this
-  //    palette focuses on traversing the active graph's nodes.
+  // ── Reasoning (investigation) graph palette — mirrors the mode graph
+  //    palette: node nav, Generate (opens composer), Regenerate (seeds
+  //    composer with current arc), Clear (deletes active investigation),
+  //    and an active-investigation indicator showing N/M for the arc.
   if (isReasoningMode) {
+    const arcCtx = currentArcInvestigationCtx;
+    const activeInv = arcCtx?.active ?? null;
+    const totalInv = arcCtx?.list.length ?? 0;
+    const canCompose = !!arcCtx?.arcId;
     return (
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
-        <div className={`glass-pill px-3 py-1.5 flex items-center gap-2 ${wrapperClasses}`}>
-          {graphNodeNav ? (
-            <>
-              <button
-                type="button"
-                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30"
-                onClick={navPrevGraphNode}
-                disabled={graphNodeNav.selectedIdx <= 0}
-                aria-label="Previous node"
-                title="Previous node"
-              >
-                <IconChevronLeft size={14} />
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors"
-                onClick={navFirstGraphNode}
-                aria-label="Reset to first node"
-                title="Reset to first node"
-              >
-                <IconReset size={12} />
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30"
-                onClick={navNextGraphNode}
-                disabled={graphNodeNav.selectedIdx >= graphNodeNav.sortedNodes.length - 1}
-                aria-label="Next node"
-                title="Next node"
-              >
-                <IconChevronRight size={14} />
-              </button>
-            </>
-          ) : (
-            <span className="text-[10px] font-mono text-text-dim/40 px-2">
-              No reasoning graph at this scene
-            </span>
-          )}
+      <>
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
+          <div className={`glass-pill px-3 py-1.5 flex items-center gap-2 ${wrapperClasses}`}>
+            {graphNodeNav ? (
+              <>
+                <button
+                  type="button"
+                  className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30"
+                  onClick={navPrevGraphNode}
+                  disabled={graphNodeNav.selectedIdx <= 0}
+                  aria-label="Previous node"
+                  title="Previous node"
+                >
+                  <IconChevronLeft size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors"
+                  onClick={navFirstGraphNode}
+                  aria-label="Reset to first node"
+                  title="Reset to first node"
+                >
+                  <IconReset size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30"
+                  onClick={navNextGraphNode}
+                  disabled={graphNodeNav.selectedIdx >= graphNodeNav.sortedNodes.length - 1}
+                  aria-label="Next node"
+                  title="Next node"
+                >
+                  <IconChevronRight size={14} />
+                </button>
+              </>
+            ) : (
+              <span className="text-[10px] font-mono text-text-dim/40 px-2">
+                {arcCtx ? "No investigation on this arc" : "No reasoning graph at this scene"}
+              </span>
+            )}
 
-          <div className="w-px h-4 bg-white/12 mx-1" />
+            <div className="w-px h-4 bg-white/12 mx-1" />
 
-          {/* Story Settings — keeps parity with other graph palettes */}
-          <button
-            type="button"
-            className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("open-story-settings"))
-            }
-            title="Story settings"
-          >
-            <IconSettings size={14} />
-          </button>
+            {/* Generate — opens the composer pre-targeted to the current arc */}
+            <button
+              type="button"
+              disabled={!canCompose}
+              className={`text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${
+                canCompose
+                  ? "text-world bg-world/10 hover:bg-world/20"
+                  : "text-text-dim/40 bg-white/3 cursor-not-allowed"
+              }`}
+              onClick={() => arcCtx && setInvestigationComposerArcId(arcCtx.arcId)}
+              title="Generate a new investigation on this arc"
+            >
+              Generate
+            </button>
+
+            {/* Clear (only when active) — deletes the active investigation */}
+            {activeInv && (
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
+                onClick={() => {
+                  dispatch({ type: "DELETE_INVESTIGATION", investigationId: activeInv.id });
+                  dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: null });
+                }}
+                aria-label="Delete active investigation"
+                title="Delete active investigation"
+              >
+                <IconClose size={14} />
+              </button>
+            )}
+
+            <div className="w-px h-4 bg-white/12 mx-1" />
+
+            {/* Active-investigation indicator — dot + arc label + count
+                across investigations on this arc. Mirrors the mode graph
+                "active" pill. */}
+            <div
+              className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md"
+              title={
+                activeInv
+                  ? `Investigation ${arcCtx!.activeIndex + 1} of ${totalInv} on ${arcCtx!.arcName}`
+                  : arcCtx
+                    ? `No investigation on ${arcCtx.arcName}`
+                    : "No arc"
+              }
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${activeInv ? "bg-emerald-400" : "bg-white/15"}`}
+              />
+              <span className="text-text-dim truncate max-w-32">
+                {arcCtx ? arcCtx.arcName : "—"}
+              </span>
+              {totalInv > 0 && (
+                <span className="text-[9px] text-text-dim/40 tabular-nums">
+                  {arcCtx!.activeIndex + 1}/{totalInv}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+        {investigationComposerArcId && (
+          <InvestigationComposerModal
+            initialArcId={investigationComposerArcId}
+            onClose={() => setInvestigationComposerArcId(null)}
+            onCreate={(investigation) => {
+              dispatch({ type: "CREATE_INVESTIGATION", investigation });
+              dispatch({
+                type: "SET_SELECTED_INVESTIGATION",
+                investigationId: investigation.id,
+              });
+              setInvestigationComposerArcId(null);
+            }}
+          />
+        )}
+      </>
     );
   }
 
