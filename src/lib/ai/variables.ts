@@ -246,14 +246,16 @@ For each variable emit { id, name, description, category, intensity }:
   • category: stance / capability / pressure / knowledge / constraint / allegiance / external / contradiction / trend / threshold / resource / reputation / institutional / cultural / physical / temporal / mechanism — or invent
   • intensity (1–4): 1 weak, 2 mild, 3 strong, 4 extreme. Omit 0.
 
-Also emit:
-  • tagline: one short sentence (≤ 14 words) that captures the gestalt of this Present coordination — what the configuration *is* as a recognisable shape. Same register as a chapter epigraph.
-  • reasoning: one or two sentences explaining why these variables are firing at these intensities given the arc's state — the load-bearing logic, not a re-paraphrase of the variable descriptions.
+Also emit (this annotation block is the SAME SHAPE used by Future scenarios — description + reasoning + priorLogit — so Present and Future read in the same vocabulary):
+  • description: one short sentence (≤ 14 words) capturing the gestalt of this Present coordination — what the configuration IS as a recognisable shape. Same register as a chapter epigraph for fiction, a section heading for a paper, a scenario name for simulation.
+  • reasoning: three to five sentences laying out the load-bearing logic. WHY are these variables firing at these intensities given the arc's state? Which mechanism feeds which, where does the cascade run, which symptom is the surface, what does each intensity earn? Substantive — not a paraphrase of the variable descriptions, not a list. Name actors, mechanisms, threads, prior commitments by name where it sharpens the explanation.
   • priorLogit ∈ [-4, +4]: log-prior plausibility of this coordination relative to alternative coordinations the world could have surfaced at this point. Same evidence scale as scenario priors: +4 = decisive evidence in favour of this coordination, 0 = baseline plausibility, -4 = a rare tail outcome that nonetheless occurred. Use the full range — this number is a permanent record of "how likely was this configuration at the time", a glimpse into the rarity of the path the world has taken.
+
+Variable count is flexible. Emit as many or as few as the situation supports — stop when adding another wouldn't change predictions, don't pad to hit a number, don't trim to look clean. A quiet arc may carry two; a dense one may carry a dozen.
 
 Output strict JSON:
 {
-  "tagline": "...",
+  "description": "...",
   "reasoning": "...",
   "priorLogit": 0,
   "variables": [ { "id": "var-...", "name": "...", "description": "...", "category": "...", "intensity": 3 } ]
@@ -299,7 +301,11 @@ function sanitizeVariable(raw: unknown): Variable | null {
 
 export interface ExtractPresentResult {
   variables: Variable[];
-  tagline?: string;
+  /** Short one-sentence gestalt of the Present coordination. Same shape used
+   *  by Future scenarios (description + reasoning + priorLogit). */
+  description?: string;
+  /** Multi-sentence load-bearing logic for the Present coordination — WHY
+   *  these variables are firing at these intensities. */
   reasoning?: string;
   /** Self-estimated log-prior in MARKET_EVIDENCE_MIN/MAX range — a glimpse
    *  into how plausible this coordination was at the time. */
@@ -357,7 +363,7 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
 
   const parsed = parseJson(raw, 'extractArcPresent') as {
     variables?: unknown[];
-    tagline?: unknown;
+    description?: unknown;
     reasoning?: unknown;
     priorLogit?: unknown;
   };
@@ -369,14 +375,14 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
     seenIds.add(v.id);
     variables.push(v);
   }
-  const tagline = typeof parsed.tagline === 'string' ? parsed.tagline.trim() : '';
+  const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
   const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
   const priorLogit = typeof parsed.priorLogit === 'number' && Number.isFinite(parsed.priorLogit)
     ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
     : undefined;
   return {
     variables,
-    tagline: tagline || undefined,
+    description: description || undefined,
     reasoning: reasoning || undefined,
     priorLogit,
   };
@@ -412,11 +418,18 @@ PIPELINE.
   2. PIVOT CHECK on the arc's ending state.
   3. Read mechanisms in the roster's artifacts and key-actor world-graphs.
   4. Design the SHARED POOL — load-bearing forces only, substrate-level, orthogonal, dynamic. Forces should be in the register's vocabulary: dramatic in fiction, rule-driven in simulation, argumentative / methodological / evidentiary in papers.
-  5. Name 2–4 ORTHOGONAL AXES OF VARIATION that span the possibility space (e.g. stance, timing, locus, magnitude in narrative; threshold, regime, intervention, time-horizon in simulation; scope, method, evidence type, counterposition in argument — pick what the situation actually has, don't copy generic axes).
-  6. Draft scenarios as positions in axis space. Each is SELF-COHERENT, MEANINGFULLY DISTINCT (different axis position), and earns its place. Do not draft scenarios first and check coverage after; design the axes first.
-  7. Score priorLogits relative to the cohort, full range.
+  5. Draft scenarios over the pool. Each is SELF-COHERENT, MEANINGFULLY DISTINCT, and earns its place. Let the situation govern the shape of the cohort — how many scenarios, how clustered or spread, what dimensions they vary along. Use whatever frame the substrate suggests (axes, branches, regimes, families, ad hoc) rather than forcing one structure.
+  6. Score priorLogits relative to the cohort, full range.
 
-Each scenario carries: name (short phrase), tagline (one sentence — in the work's own voice; for a paper this reads like a section heading, for fiction like a chapter epigraph, for simulation like a scenario name), activations (variableId + intensity 1–4, omit 0), priorLogit ∈ [-4, +4], priorRationale (one sentence).
+COHORT SIZE — FLEXIBLE.
+The number of scenarios is governed by the SITUATION, not by a target. A tight, locked-in possibility space supports two or three meaningful continuations; a fan-out moment may support a dozen. Don't pad to look thorough, don't trim to look clean. Stop when adding another scenario would re-cover ground already covered. The same applies to the SHARED POOL — emit as many variables as the load-bearing forces actually require, no more.
+
+Each scenario carries the SAME ANNOTATION SHAPE used by Present (description + reasoning + priorLogit) plus the cohort-specific fields (name + activations):
+  • name: short phrase that names this scenario distinctly within the cohort.
+  • description: one short sentence (≤ 14 words) capturing the gestalt of this coordination — what this scenario IS as a recognisable shape. Same register the work itself uses (chapter epigraph for fiction, section heading for a paper, scenario name for simulation).
+  • reasoning: three to five sentences laying out the load-bearing logic. WHY does this coordination earn its place? Which variables cascade into which, why these intensities, which mechanism fires first, what makes the scenario plausible RELATIVE to its siblings, why this priorLogit and not one notch higher or lower? Substantive — name actors, mechanisms, threads, prior commitments where it sharpens the case; don't restate the activations.
+  • activations: variableId + intensity 1–4 over the shared pool. Omit 0.
+  • priorLogit ∈ [-4, +4]: relative log-prior plausibility within the cohort.
 
 Output strict JSON:
 {
@@ -426,10 +439,10 @@ Output strict JSON:
   "scenarios": [
     {
       "name": "...",
-      "tagline": "...",
-      "activations": [ { "variableId": "var-...", "intensity": 3 } ],
+      "description": "...",
+      "reasoning": "...",
       "priorLogit": 1.2,
-      "priorRationale": "..."
+      "activations": [ { "variableId": "var-...", "intensity": 3 } ]
     }
   ]
 }`;
@@ -443,7 +456,6 @@ export interface ScenarioGenerationInput {
   /** Pre-rendered active Mode section (`buildActiveModeSection`). */
   modeSection?: string;
   direction?: string;
-  count?: number;
   /** Stream reasoning tokens to the caller — when set, uses the streaming
    *  endpoint so the variables view can render the minimal-trace overlay. */
   onReasoning?: (token: string) => void;
@@ -454,12 +466,9 @@ export interface ScenarioGenerationInput {
 export async function generatePlanningScenarios(
   input: ScenarioGenerationInput,
 ): Promise<PlanningScenario[]> {
-  // The cohort is a representative sample — not exhaustive. The smaller
-  // the cohort, the more legible the probability distribution stays for a
-  // human reader. Default 5; cap modest. Callers can override but the
-  // prompt explicitly tells the model "stop when another scenario would
-  // re-cover ground" so even larger targets self-limit.
-  const target = Math.max(3, Math.min(8, input.count ?? 5));
+  // Cohort size is flexible — the prompt tells the LLM to let the situation
+  // decide. No clamp here; a tight possibility space yields a few scenarios,
+  // a genuine fan-out moment yields more.
 
   const dirVec = input.arc.directionVector ? `\n  direction: ${input.arc.directionVector}` : '';
   const summary = (input.arc.summary ?? '(no summary)').replace(/\s+/g, ' ').trim();
@@ -485,7 +494,7 @@ title: ${input.narrativeTitle}
   state: ${summary}
 </current-arc>
 ${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ''}${directionBlock}
-Produce a cohort of around ${target} scenarios for this arc. Apply the disciplines and pipeline above to the current-arc state and supporting context (outline, mode substrate, roster, threads). Let the situation's actual shape govern the cohort — don't pad, don't force diversity. Fresh look from the historical record, not a projection from the arc's Present variables. Output strict JSON only.`;
+Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline above to the current-arc state and supporting context (outline, mode substrate, roster, threads). Let the situation's actual shape govern the cohort SIZE and the number of pool variables — a locked-in possibility space supports a few continuations, a fan-out moment supports many. Don't pad, don't force diversity, don't trim. Fresh look from the historical record, not a projection from the arc's Present variables. Output strict JSON only.`;
 
   const raw = input.onReasoning
     ? await callGenerateStream(
@@ -514,14 +523,10 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
     pool?: Array<{ id?: unknown; name?: unknown; description?: unknown; category?: unknown }>;
     scenarios?: Array<{
       name?: unknown;
-      tagline?: unknown;
       description?: unknown;
+      reasoning?: unknown;
       activations?: unknown[];
-      // Backcompat: an older shape that emitted full `variables` per scenario.
-      // We still accept it — each scenario's variables become its own pool.
-      variables?: unknown[];
       priorLogit?: unknown;
-      priorRationale?: unknown;
     }>;
   };
 
@@ -550,10 +555,9 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
     const seen = new Set<string>();
     const variables: Variable[] = [];
 
-    // Preferred new shape: activations over the shared pool. We materialise
-    // each activation into a full Variable by joining with poolById, so the
-    // existing scenario.variables[] consumers (UI, parallel coords, branch
-    // generation) keep working without a schema migration.
+    // Activations over the shared pool. Materialise each into a full Variable
+    // by joining with poolById, so the scenario.variables[] consumers (UI,
+    // parallel coords, branch generation) read the live coordination directly.
     if (Array.isArray(s.activations)) {
       for (const a of s.activations) {
         if (!a || typeof a !== 'object') continue;
@@ -568,30 +572,18 @@ Produce a cohort of around ${target} scenarios for this arc. Apply the disciplin
       }
     }
 
-    // Fallback to the old shape if the LLM emitted per-scenario `variables`.
-    if (variables.length === 0 && Array.isArray(s.variables)) {
-      for (const r of s.variables) {
-        const v = sanitizeVariable(r);
-        if (!v || seen.has(v.id)) continue;
-        seen.add(v.id);
-        variables.push(v);
-      }
-    }
-
     if (variables.length === 0) continue;
     const priorLogit = typeof s.priorLogit === 'number'
       ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, s.priorLogit))
       : 0;
-    const priorRationale = typeof s.priorRationale === 'string' ? s.priorRationale.trim() : undefined;
     out.push({
       id: `pl-${out.length + 1}-${Math.random().toString(36).slice(2, 8)}`,
       name,
-      tagline: typeof s.tagline === 'string' ? s.tagline.trim() : undefined,
       description: typeof s.description === 'string' ? s.description.trim() : undefined,
+      reasoning: typeof s.reasoning === 'string' ? s.reasoning.trim() : undefined,
       color: SCENARIO_COLORS[out.length % SCENARIO_COLORS.length],
       variables,
       priorLogit,
-      priorRationale,
     });
   }
   return out;
@@ -633,9 +625,9 @@ Ground in:
 
 priorLogit is INDEPENDENT of intensity. Score the coordination's plausibility, not its amplitude.
 
-Include priorRationale — one sentence, naming the relative anchor where it helps ("more plausible than X because…").
+Include reasoning — three to five sentences laying out the load-bearing logic: which variables cascade into which, why these intensities, why this priorLogit and not one notch higher or lower, and where the cohort anchors land it ("more plausible than X because…"). Substantive — not a paraphrase of the activations.
 
-Output strict JSON: { "priorLogit": <number>, "priorRationale": "<one sentence>" }`;
+Output strict JSON: { "priorLogit": <number>, "reasoning": "<three to five sentences>" }`;
 
 export interface RescoreScenarioInput {
   narrativeTitle: string;
@@ -653,7 +645,7 @@ export interface RescoreScenarioInput {
 
 export interface RescoreScenarioResult {
   priorLogit: number;
-  priorRationale: string;
+  reasoning: string;
 }
 
 export async function rescoreScenario(input: RescoreScenarioInput): Promise<RescoreScenarioResult> {
@@ -670,7 +662,7 @@ export async function rescoreScenario(input: RescoreScenarioInput): Promise<Resc
         ? s.variables.map((v) => `${v.name}@${VARIABLE_INTENSITY_LEVELS[v.intensity]?.label ?? '?'}`).join(', ')
         : '(none)';
       const prior = typeof s.priorLogit === 'number' ? s.priorLogit.toFixed(1) : '0';
-      return `  • ${s.name} [priorLogit ${prior}]${s.tagline ? ` — ${s.tagline}` : ''}\n    variables: ${variables}`;
+      return `  • ${s.name} [priorLogit ${prior}]${s.description ? ` — ${s.description}` : ''}\n    variables: ${variables}`;
     })
     .join('\n');
 
@@ -688,7 +680,7 @@ title: ${input.narrativeTitle}
   state: ${summary}
 </current-arc>
 
-<scenario-under-review name="${input.scenario.name}"${input.scenario.tagline ? ` tagline="${input.scenario.tagline}"` : ''}>
+<scenario-under-review name="${input.scenario.name}"${input.scenario.description ? ` description="${input.scenario.description}"` : ''}>
 ${dispoBlock}
 </scenario-under-review>
 
@@ -709,12 +701,12 @@ Re-score this scenario's priorLogit given its edited coordination, the cohort co
     ANALYSIS_TEMPERATURE,
   );
 
-  const parsed = parseJson(raw, 'rescoreScenario') as { priorLogit?: unknown; priorRationale?: unknown };
+  const parsed = parseJson(raw, 'rescoreScenario') as { priorLogit?: unknown; reasoning?: unknown };
   const priorLogit = typeof parsed.priorLogit === 'number'
     ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
     : 0;
-  const priorRationale = typeof parsed.priorRationale === 'string' ? parsed.priorRationale.trim() : '';
-  return { priorLogit, priorRationale };
+  const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
+  return { priorLogit, reasoning };
 }
 
 // ── Probability model ──────────────────────────────────────────────────────

@@ -180,7 +180,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     isDraft: boolean;
     id: string;
     name: string;
-    tagline?: string;
+    description?: string;
     color: string;
     variables: Variable[];
   };
@@ -199,7 +199,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       {
         id: pending.id,
         name: pending.name,
-        tagline: pending.tagline,
+        description: pending.description,
         color: pending.color,
         variables: pending.variables,
         // Draft scenarios have no priorLogit until first commit; they sit
@@ -228,11 +228,11 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       return {
         id: pending.id,
         name: pending.name,
-        tagline: pending.tagline,
+        description: pending.description,
         color: pending.color,
         variables: pending.variables,
         priorLogit: pending.isDraft ? 0 : scenarios.find((s) => s.id === pending.id)?.priorLogit,
-        priorRationale: pending.isDraft ? undefined : scenarios.find((s) => s.id === pending.id)?.priorRationale,
+        reasoning: pending.isDraft ? undefined : scenarios.find((s) => s.id === pending.id)?.reasoning,
       };
     }
     return displayedScenarios.find((s) => s.id === activeScenarioId) ?? displayedScenarios[0] ?? null;
@@ -258,7 +258,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       isDraft: false,
       id: activeScenario.id,
       name: activeScenario.name,
-      tagline: activeScenario.tagline,
+      description: activeScenario.description,
       color: activeScenario.color,
       variables: activeScenario.variables.map((v) => ({ ...v })),
     };
@@ -339,7 +339,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   };
 
   /** Commit pending edits — re-scores the scenario via the LLM, then
-   *  persists the new variables + priorLogit + priorRationale atomically. */
+   *  persists the new variables + priorLogit + reasoning atomically. */
   const commitPending = useCallback(async () => {
     if (!pending) return;
     setBusy(true);
@@ -355,7 +355,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       const draftForRescore: PlanningScenario = {
         id: pending.id,
         name: pending.name,
-        tagline: pending.tagline,
+        description: pending.description,
         color: pending.color,
         variables: committedVars,
       };
@@ -378,7 +378,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       const finalised: PlanningScenario = {
         ...draftForRescore,
         priorLogit: result.priorLogit,
-        priorRationale: result.priorRationale || undefined,
+        reasoning: result.reasoning || undefined,
       };
       const updated = pending.isDraft
         ? [...scenarios, finalised]
@@ -401,7 +401,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     setError(null);
     setStreamingReasoning('');
     try {
-      const { variables, tagline, reasoning, priorLogit } = await extractArcPresent({
+      const { variables, description, reasoning, priorLogit } = await extractArcPresent({
         narrativeTitle: narrative.title,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
@@ -415,7 +415,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         type: 'SET_ARC_PRESENT_VARIABLES',
         arcId: focusedArc.id,
         variables,
-        tagline,
+        description,
         reasoning,
         logit: priorLogit,
       });
@@ -445,7 +445,6 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         outline,
         modeSection,
         direction: direction.trim() || undefined,
-        count: 7,
         onReasoning: (token) => setStreamingReasoning((prev) => prev + token),
         reasoningBudget: resolveReasoningBudget(narrative),
       });
@@ -540,7 +539,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
           mode === 'present' ? (
             <PresentBento
               variables={presentVariables}
-              tagline={focusedArc.presentTagline}
+              description={focusedArc.presentDescription}
               reasoning={focusedArc.presentReasoning}
               logit={focusedArc.presentLogit}
               onChange={setPresentIntensity}
@@ -663,8 +662,7 @@ function DirectionModal({
             disabled={busy}
             className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold transition disabled:opacity-30 inline-flex items-center justify-center gap-1.5"
           >
-            {busy && <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />}
-            {busy ? 'Working…' : title}
+            {busy ? 'Generating' : title}
           </button>
           <button
             onClick={onClose}
@@ -775,14 +773,12 @@ function VariablesTopBar({
           className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-text-dim/70 hover:text-text-primary disabled:opacity-30 transition-colors"
           title={regenerateLabel ?? 'Regenerate'}
         >
-          {busy
-            ? <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-white/70" />
-            : (
-              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-              </svg>
-            )}
-          <span>{busy ? 'Working…' : (regenerateLabel ?? 'Regenerate')}</span>
+          {!busy && (
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+          )}
+          <span>{busy ? 'Generating' : (regenerateLabel ?? 'Regenerate')}</span>
           {directionSet && <span className="w-1 h-1 rounded-full bg-white/60" title="direction set" />}
         </button>
       )}
@@ -968,11 +964,11 @@ function LogitBadge({ logit, accent }: { logit: number; accent: string }) {
 
 interface PresentBentoProps {
   variables: Variable[];
-  /** Tagline annotating the Present coordination — captures the gestalt
-   *  in one sentence. Generated alongside the variables and rendered as
-   *  a labelled paragraph in the chart-column footer. */
-  tagline?: string;
-  /** One-paragraph rationale explaining WHY these variables are firing
+  /** Short one-sentence gestalt annotating the Present coordination —
+   *  what the configuration IS. Generated alongside the variables and
+   *  rendered as a labelled paragraph in the chart-column footer. */
+  description?: string;
+  /** Multi-sentence load-bearing logic — WHY these variables are firing
    *  at these intensities given the arc's state. */
   reasoning?: string;
   /** Log-prior plausibility for this Present coordination, in
@@ -986,7 +982,7 @@ interface PresentBentoProps {
 }
 
 function PresentBento({
-  variables, tagline, reasoning, logit, onChange, error,
+  variables, description, reasoning, logit, onChange, error,
 }: PresentBentoProps) {
   const traces = useMemo(() =>
     variables.length > 0 ? [{ id: 'present', color: PRESENT_TRACE_COLOR, variables }] : [],
@@ -1028,20 +1024,20 @@ function PresentBento({
               </div>
             )}
           </div>
-          {(tagline || reasoning || typeof logit === 'number') && (
+          {(description || reasoning || typeof logit === 'number') && (
             <>
               <HDivider />
               <div className="shrink-0 px-4 py-3 flex flex-col gap-2.5 max-h-48 overflow-auto">
                 {typeof logit === 'number' && (
                   <LogitBadge logit={logit} accent={PRESENT_TRACE_COLOR} />
                 )}
-                {tagline && (
+                {description && (
                   <div className="flex flex-col gap-1">
                     <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
-                      Tagline
+                      Description
                     </span>
                     <p className="text-[11px] text-text-secondary italic leading-snug">
-                      {tagline}
+                      {description}
                     </p>
                   </div>
                 )}
@@ -1162,7 +1158,7 @@ function FutureBento(props: FutureBentoProps) {
         {/* Main: cohort visualisation. Three views over the same data —
             radar focuses the active scenario, parallel overlays the cohort,
             grid splits each scenario into a mini-radar. The active
-            scenario's tagline + reasoning live at the bottom of this
+            scenario's description + reasoning live at the bottom of this
             column so the right sidebar has full vertical room for the
             variables editor. */}
         <div className="flex-1 flex flex-col min-w-0">
@@ -1195,7 +1191,7 @@ function FutureBento(props: FutureBentoProps) {
             </div>
           </div>
           {activeScenario
-            && (activeScenario.tagline || activeScenario.priorRationale || typeof activeScenario.priorLogit === 'number')
+            && (activeScenario.description || activeScenario.reasoning || typeof activeScenario.priorLogit === 'number')
             && !hasPendingEdits && (
             <>
               <HDivider />
@@ -1203,23 +1199,23 @@ function FutureBento(props: FutureBentoProps) {
                 {typeof activeScenario.priorLogit === 'number' && (
                   <LogitBadge logit={activeScenario.priorLogit} accent={activeScenario.color} />
                 )}
-                {activeScenario.tagline && (
+                {activeScenario.description && (
                   <div className="flex flex-col gap-1">
                     <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
-                      Tagline
+                      Description
                     </span>
                     <p className="text-[11px] text-text-secondary italic leading-snug">
-                      {activeScenario.tagline}
+                      {activeScenario.description}
                     </p>
                   </div>
                 )}
-                {activeScenario.priorRationale && (
+                {activeScenario.reasoning && (
                   <div className="flex flex-col gap-1">
                     <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
                       Reasoning
                     </span>
                     <p className="text-[11px] text-text-secondary leading-snug">
-                      {activeScenario.priorRationale}
+                      {activeScenario.reasoning}
                     </p>
                   </div>
                 )}
@@ -1368,7 +1364,7 @@ function ScenarioSidebar({
               className={`relative text-left px-3 py-1.5 border-b border-white/4 transition-colors ${
                 isActive ? 'bg-white/6' : 'hover:bg-white/3'
               }`}
-              title={s.priorRationale ?? (isDraft ? 'Unsaved draft — Save & Re-score to commit' : undefined)}
+              title={s.reasoning ?? (isDraft ? 'Unsaved draft — Save & Re-score to commit' : undefined)}
             >
               <span
                 className="absolute left-0 top-0 bottom-0 w-1"
@@ -1403,8 +1399,8 @@ function ScenarioSidebar({
                   </div>
                 );
               })()}
-              {s.tagline && (
-                <div className="text-[9px] text-text-dim/70 leading-snug pl-1.5 line-clamp-2 mt-0.5">{s.tagline}</div>
+              {s.description && (
+                <div className="text-[9px] text-text-dim/70 leading-snug pl-1.5 line-clamp-2 mt-0.5">{s.description}</div>
               )}
             </button>
           );

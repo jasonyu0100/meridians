@@ -121,20 +121,34 @@ ${args.narrativeContext}
   <step>Pick the question that would teach the author the MOST about their world — favour asymmetry-rich probes that split the cast.</step>
 </instructions>
 
-<output-format hint="JSON only, no preamble, EXACTLY ONE proposal.">
+<output-format hint="Return ONE proposal as a single JSON object. No preamble, no trailing commentary. Every field below is REQUIRED — emit valid JSON only.">
 {
   "question": "<question, addressed to the respondent in second person>",
-  "questionType": "binary" | "likert" | "estimate" | "choice" | "open",
-  "config": { "scale": 3|5|7 } | { "unit": "<short word>" } | { "options": ["A","B","C"] } | null,
+  "questionType": "<one of: binary | likert | estimate | choice | open>",
+  "config": <config object — see config-rules below; use null when not needed>,
   "intent": "<one short sentence: what the author would learn>",
   "suggestedFilter": {
-    "kinds": ["character"] | ["location"] | ["artifact"] | any combination,
-    "characterRoles": ["anchor", "recurring", "transient"],
-    "locationProminence": ["domain", "place", "margin"],
-    "artifactSignificance": ["key", "notable", "minor"]
+    "kinds": ["<one or more of: character, location, artifact>"],
+    "characterRoles": ["<zero or more of: anchor, recurring, transient — omit the key entirely to mean ALL>"],
+    "locationProminence": ["<zero or more of: domain, place, margin — omit the key entirely to mean ALL>"],
+    "artifactSignificance": ["<zero or more of: key, notable, minor — omit the key entirely to mean ALL>"]
   }
 }
-</output-format>`;
+</output-format>
+
+<config-rules hint="Shape of the config field by questionType.">
+  <rule type="binary">Use null.</rule>
+  <rule type="likert">Use {"scale": 3} or {"scale": 5} or {"scale": 7}. Default 5.</rule>
+  <rule type="estimate">Use {"unit": "<short word like km, years, gold>"}.</rule>
+  <rule type="choice">Use {"options": ["A","B","C", ...]} with 2-6 mutually-exclusive strings.</rule>
+  <rule type="open">Use null.</rule>
+</config-rules>
+
+<filter-rules hint="suggestedFilter encodes scope as kinds + per-kind tier lists.">
+  <rule>"kinds" is ALWAYS an array of one or more strings — never an object, never a bare string.</rule>
+  <rule>Tier keys (characterRoles, locationProminence, artifactSignificance) are arrays of strings. To mean "all tiers", OMIT the key — do NOT write an empty array, an object, or a null.</rule>
+  <rule>Only include tier keys whose kind appears in "kinds". (No characterRoles if kinds is ["location"].)</rule>
+</filter-rules>`;
 }
 
 /** Build the user prompt that asks the persona for an in-character JSON answer. */
