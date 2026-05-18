@@ -109,10 +109,27 @@ const VERSION_TYPE_COLORS = {
   edit: "text-amber-400",
 };
 
+// Softer variant for label text so the type colour still reads but doesn't
+// fight with the white V-number. Written as full Tailwind classes so the
+// JIT can statically detect them (string-concat would silently drop).
+const VERSION_TYPE_LABEL_COLORS = {
+  generate: "text-emerald-400/80",
+  rewrite: "text-sky-400/80",
+  edit: "text-amber-400/80",
+};
+
 const VERSION_TYPE_BG_COLORS = {
   generate: "bg-emerald-400",
   rewrite: "bg-sky-400",
   edit: "bg-amber-400",
+};
+
+// Left-border accent for the active version — mirrors the type's hue so the
+// active state communicates both "selected" AND "which type" simultaneously.
+const VERSION_TYPE_BORDER_COLORS = {
+  generate: "border-emerald-400/70",
+  rewrite: "border-sky-400/70",
+  edit: "border-amber-400/70",
 };
 
 const VERSION_TYPE_LABELS = {
@@ -155,15 +172,20 @@ function VersionNode({
   const sourcePlanVersion =
     type === "prose" ? (node.data as ProseVersion).sourcePlanVersion : undefined;
 
+  // Active state earns a coloured left border in the version type's hue so
+  // "what version am I on?" and "what kind of version is it?" read at a
+  // glance from the same affordance.
+  const activeAccentBorder = VERSION_TYPE_BORDER_COLORS[node.versionType];
+
   return (
     <div className="select-none">
       <div
-        className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-md cursor-pointer transition-all ${
+        className={`group relative flex items-center gap-2 pr-2.5 py-1.5 rounded-md cursor-pointer transition-all border-l-2 ${
           isActive
-            ? "bg-white/8 text-text-primary shadow-sm"
+            ? `bg-white/8 text-text-primary shadow-sm ${activeAccentBorder}`
             : isPinned
-              ? "bg-amber-400/5 text-text-secondary"
-              : "hover:bg-white/4 text-text-secondary"
+              ? "bg-amber-400/5 text-text-secondary border-transparent"
+              : "hover:bg-white/4 text-text-secondary border-transparent"
         }`}
         style={{ paddingLeft: `${depth * 12 + 10}px` }}
         onClick={() => onSelect(node.version)}
@@ -175,7 +197,7 @@ function VersionNode({
               e.stopPropagation();
               setExpanded(!expanded);
             }}
-            className="w-3 h-3 flex items-center justify-center text-text-dim/50 hover:text-text-secondary transition-colors"
+            className="w-3 h-3 flex items-center justify-center text-text-dim/60 hover:text-text-secondary transition-colors"
           >
             <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 8 8">
               <path d={expanded ? "M1 2.5 L4 5.5 L7 2.5" : "M2.5 1 L5.5 4 L2.5 7"} strokeWidth="1.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -185,39 +207,35 @@ function VersionNode({
           <span className="w-3" />
         )}
 
-        {/* Version number with color indicator */}
+        {/* Version number with colour indicator */}
         <div className="flex items-center gap-1.5">
-          <span className={`w-1 h-1 rounded-full ${VERSION_TYPE_BG_COLORS[node.versionType]}`} />
-          <span className="text-[10px] font-mono font-medium text-text-primary">
+          <span className={`w-1.5 h-1.5 rounded-full ${VERSION_TYPE_BG_COLORS[node.versionType]}`} />
+          <span className="text-[11px] font-mono font-medium text-text-primary">
             V{node.version}
           </span>
         </div>
 
-        {/* Type label - more subtle */}
-        <span className="text-[8px] text-text-dim/40 uppercase tracking-wide">
+        {/* Type label — coloured + readable (was text-[8px] dim/40). */}
+        <span className={`text-[9px] uppercase tracking-wider font-medium ${VERSION_TYPE_LABEL_COLORS[node.versionType]}`}>
           {VERSION_TYPE_LABELS[node.versionType]}
         </span>
 
         {/* Source plan reference */}
         {sourcePlanVersion && (
-          <span className="text-[8px] text-text-dim/30 font-mono" title={`Generated from Plan V${sourcePlanVersion}`}>
+          <span className="text-[9px] text-text-dim/70 font-mono" title={`Generated from Plan V${sourcePlanVersion}`}>
             P{sourcePlanVersion}
           </span>
         )}
 
         <div className="flex-1" />
 
-        {/* Timestamp - cleaner format */}
-        <span className="text-[8px] text-text-dim/30 font-mono tabular-nums">
+        {/* Timestamp */}
+        <span className="text-[9px] text-text-dim/70 font-mono tabular-nums">
           {dateStr}
         </span>
 
-        {/* Pin indicator - minimal */}
-        {isPinned && (
-          <div className="w-1 h-1 rounded-full bg-amber-400" title="Pinned" />
-        )}
-
-        {/* Pin button - only on hover */}
+        {/* Pin button — visible when pinned (filled), hover-only otherwise.
+            Doubles as the pin-state indicator; no separate dot needed. */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -225,8 +243,8 @@ function VersionNode({
           }}
           className={`w-4 h-4 flex items-center justify-center rounded transition-all ${
             isPinned
-              ? "text-amber-400/60"
-              : "text-text-dim/20 opacity-0 group-hover:opacity-100 hover:text-amber-400/80"
+              ? "text-amber-400/70"
+              : "text-text-dim/30 opacity-0 group-hover:opacity-100 hover:text-amber-400/80"
           }`}
           title={isPinned ? "Unpin version" : "Pin version"}
         >
@@ -291,14 +309,14 @@ export function VersionHistoryTree({
     <div className="py-2">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 mb-2">
-        <span className="text-[9px] uppercase tracking-wider text-text-dim/50 font-medium">
+        <span className="text-[10px] uppercase tracking-wider text-text-secondary font-semibold">
           {type === "prose" ? "Prose" : "Plan"} Versions
         </span>
-        <span className="text-[8px] text-text-dim/30 font-mono">({versions.length})</span>
+        <span className="text-[10px] text-text-dim/70 font-mono">({versions.length})</span>
         {pinnedVersion && (
           <div className="flex items-center gap-1 ml-auto">
-            <div className="w-1 h-1 rounded-full bg-amber-400" />
-            <span className="text-[8px] text-amber-400/60 font-mono">V{pinnedVersion}</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="text-[10px] text-amber-400/80 font-mono">V{pinnedVersion}</span>
           </div>
         )}
       </div>
@@ -320,19 +338,19 @@ export function VersionHistoryTree({
         ))}
       </div>
 
-      {/* Legend - minimal */}
-      <div className="flex items-center gap-3 mt-3 px-3 pt-2.5 border-t border-white/5">
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-3 px-3 pt-2.5 border-t border-white/8">
         <div className="flex items-center gap-1.5">
           <span className={`w-1.5 h-1.5 rounded-full ${VERSION_TYPE_BG_COLORS.generate}`} />
-          <span className="text-[8px] text-text-dim/50">Gen</span>
+          <span className={`text-[10px] font-medium ${VERSION_TYPE_LABEL_COLORS.generate}`}>Gen</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`w-1.5 h-1.5 rounded-full ${VERSION_TYPE_BG_COLORS.rewrite}`} />
-          <span className="text-[8px] text-text-dim/50">Rewrite</span>
+          <span className={`text-[10px] font-medium ${VERSION_TYPE_LABEL_COLORS.rewrite}`}>Rewrite</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`w-1.5 h-1.5 rounded-full ${VERSION_TYPE_BG_COLORS.edit}`} />
-          <span className="text-[8px] text-text-dim/50">Edit</span>
+          <span className={`text-[10px] font-medium ${VERSION_TYPE_LABEL_COLORS.edit}`}>Edit</span>
         </div>
       </div>
     </div>

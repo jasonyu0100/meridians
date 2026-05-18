@@ -1046,6 +1046,7 @@ export default function FloatingPalette({
                       range={bulkRange}
                       onChange={setBulkRange}
                       placement="top"
+                      focus="plan"
                       trigger={{
                         icon: <IconAutoLoop size={14} />,
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
@@ -1123,6 +1124,7 @@ export default function FloatingPalette({
                       range={bulkRange}
                       onChange={setBulkRange}
                       placement="top"
+                      focus="prose"
                       trigger={{
                         icon: <IconAutoLoop size={14} />,
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
@@ -1171,6 +1173,7 @@ export default function FloatingPalette({
                       range={bulkRange}
                       onChange={setBulkRange}
                       placement="top"
+                      focus="game"
                       trigger={{
                         icon: <IconAutoLoop size={14} />,
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
@@ -1221,6 +1224,7 @@ export default function FloatingPalette({
                       range={bulkRange}
                       onChange={setBulkRange}
                       placement="top"
+                      focus="audio"
                       trigger={{
                         icon: <IconAutoLoop size={14} />,
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",

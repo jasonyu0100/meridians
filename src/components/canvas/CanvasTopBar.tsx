@@ -73,6 +73,58 @@ const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 
 // Module-level state shared with SceneProseView
 let beatPlanLinkedModeGlobal = false;
 
+// ── Top-bar token system ─────────────────────────────────────────────────
+//
+// The bar uses two text sizes only:
+//   - text-[9px] uppercase tracking-wider for SECTION labels (Arc, Scene)
+//   - text-[10px] for everything interactive + meta-info
+//
+// Two opacities for dim text:
+//   - text-text-dim/40 — empty/placeholder ("No plan", "Not written")
+//   - text-text-dim/70 — secondary info (stats, total counts)
+//
+// One divider style and one button style (text-only and icon+text variants)
+// — see TopBarDivider, TopBarButton below.
+
+/** Vertical hairline divider — separates toolbar groups. Single style. */
+function TopBarDivider() {
+  return <div className="w-px h-3.5 bg-white/8" aria-hidden />;
+}
+
+/** Uppercase section label (Arc, Scene, etc.). */
+function TopBarLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[9px] uppercase tracking-wider text-text-dim/70">
+      {children}
+    </span>
+  );
+}
+
+/** Stats / meta-info readout (word counts, "Ready", "No plan", etc.). */
+function TopBarStats({
+  variant = 'info',
+  mono = false,
+  children,
+}: {
+  /** `info` — readable secondary info. `empty` — placeholder/missing state. */
+  variant?: 'info' | 'empty';
+  /** Use mono + tabular-nums for numeric stats. */
+  mono?: boolean;
+  children: React.ReactNode;
+}) {
+  const color = variant === 'empty' ? 'text-text-dim/40' : 'text-text-dim/70';
+  const monoClass = mono ? 'font-mono tabular-nums' : '';
+  return <span className={`text-[10px] ${color} ${monoClass}`}>{children}</span>;
+}
+
+/** Shared className for icon+text buttons (Refresh, Clear, Copy, Export). */
+const TOPBAR_ICON_BUTTON =
+  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-text-dim/70 hover:text-text-primary hover:bg-white/5 transition-colors';
+
+/** Shared className for text-only buttons (Copy Plan, Copy Prose, etc.). */
+const TOPBAR_TEXT_BUTTON =
+  'text-[10px] px-2 py-0.5 rounded text-text-dim/70 hover:text-text-primary hover:bg-white/5 transition-colors';
+
 function BeatPlanToggle() {
   const [isOn, setIsOn] = useState(() => beatPlanLinkedModeGlobal);
 
@@ -206,23 +258,23 @@ function VersionSelector({
 
   return (
     <div className="relative" ref={dropdownRef}>
+      {/* Minimal trigger — a coloured dot for type, the V-number, and a
+          discreet caret. No border or hover-box; the dropdown does the
+          heavy lifting. A pinned version earns a subtle amber dot fused
+          with the type-colour dot via a ring so the pinned state reads
+          without adding a second indicator. */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono transition-all hover:bg-white/10 ${
-          pinnedVersion ? 'ring-1 ring-inset ring-amber-400/40' : ''
-        }`}
+        className="flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] font-mono text-text-secondary hover:text-text-primary transition-colors"
       >
-        <div className="flex items-center gap-1">
-          <span className={`w-1 h-1 rounded-full ${VERSION_TYPE_BG_COLORS[versionType]}`} />
-          <span className="text-text-primary font-medium">
-            V{displayVersion}
-          </span>
-        </div>
-        {pinnedVersion && (
-          <div className="w-1 h-1 rounded-full bg-amber-400" />
-        )}
+        <span
+          className={`w-1.5 h-1.5 rounded-full ${VERSION_TYPE_BG_COLORS[versionType]} ${
+            pinnedVersion ? 'ring-1 ring-amber-400/80 ring-offset-1 ring-offset-bg-base' : ''
+          }`}
+        />
+        <span className="font-medium">V{displayVersion}</span>
         <svg
-          className={`w-2.5 h-2.5 text-text-dim/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-2 h-2 text-text-dim/50 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           viewBox="0 0 8 8"
           fill="none"
           stroke="currentColor"
@@ -234,8 +286,12 @@ function VersionSelector({
         </svg>
       </button>
 
+      {/* Opaque dropdown panel — the underlying prose was bleeding through
+          the prior translucent background and clobbering the row text.
+          Solid bg-bg-base + a sharper border + heavier dropshadow give the
+          panel a clear figure/ground separation from the page beneath. */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1.5 z-[100] bg-bg-secondary/95 backdrop-blur-sm border border-border rounded-lg shadow-xl min-w-[240px] max-h-[320px] overflow-hidden">
+        <div className="absolute top-full left-0 mt-1.5 z-[100] bg-bg-base border border-white/14 rounded-lg shadow-2xl shadow-black/70 min-w-[240px] max-h-[320px] overflow-hidden">
           <VersionHistoryTree
             versions={versions}
             currentVersion={currentVersion}
@@ -566,7 +622,7 @@ export function CanvasTopBar() {
       {narrative && sceneNav.total > 0 ? (
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <span className="text-[9px] uppercase tracking-wider text-text-dim/60">Arc</span>
+            <TopBarLabel>Arc</TopBarLabel>
             {editField === 'arc' ? (
               <input ref={inputRef} type="number" min={1} max={arcNav.total} value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
@@ -581,10 +637,10 @@ export function CanvasTopBar() {
             )}
           </div>
 
-          <div className="w-px h-3 bg-border" />
+          <TopBarDivider />
 
           <div className="flex items-center gap-1">
-            <span className="text-[9px] uppercase tracking-wider text-text-dim/60">Scene</span>
+            <TopBarLabel>Scene</TopBarLabel>
             {editField === 'scene' ? (
               <input ref={inputRef} type="number" min={1} max={sceneNav.total} value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
@@ -600,8 +656,23 @@ export function CanvasTopBar() {
           </div>
         </div>
       ) : (
-        <span className="text-[10px] text-text-dim/40">No scenes</span>
+        <TopBarStats variant="empty">No scenes</TopBarStats>
       )}
+
+      {/* Divider after the Arc/Scene navigator — only rendered when a
+          contextual section actually follows on the left half of the bar.
+          Modes with no inline content (present / future / mode, or graph
+          mode without a copy-eligible view) skip the divider so the
+          navigator doesn't end with a dangling separator. */}
+      {narrative && sceneNav.total > 0 && (
+        (canvasMode === 'graph' && (isExportableGraphMode(graphViewMode) || state.viewState.selectedKnowledgeEntity)) ||
+        canvasMode === 'plan' ||
+        canvasMode === 'audio' ||
+        canvasMode === 'prose' ||
+        canvasMode === 'market' ||
+        canvasMode === 'search' ||
+        (canvasMode === 'reasoning' && (activeInvestigation || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
+      ) && <TopBarDivider />}
 
       {/* Export current graph view. Sits on the left rail after arc/scene
           nav so it's available regardless of which domain tab is active. */}
@@ -613,7 +684,6 @@ export function CanvasTopBar() {
         const label = graphViewLabel(graphViewMode, selectedName);
         return (
           <>
-            <div className="w-px h-3 bg-border" />
             <CopyButton
               label={`Copy ${label.full}`}
               title={`Copy ${label.full} as Markdown`}
@@ -626,7 +696,7 @@ export function CanvasTopBar() {
                   selectedEntityId: selectedId,
                 })
               }
-              className="text-[10px] px-2 py-1 rounded text-text-dim hover:text-text-primary hover:bg-white/5 transition-colors"
+              className={TOPBAR_TEXT_BUTTON}
             />
           </>
         );
@@ -635,7 +705,6 @@ export function CanvasTopBar() {
       {/* Contextual controls per mode */}
       {canvasMode === 'plan' && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-sky-400/60">Plan</span>
           {currentScene && (currentScene.planVersions?.length ?? 0) > 0 && (
             <VersionSelector
               versions={currentScene.planVersions ?? []}
@@ -647,16 +716,16 @@ export function CanvasTopBar() {
             />
           )}
           {planStats && (
-            <span className="text-[9px] text-text-dim/50 font-mono tabular-nums">
+            <TopBarStats mono>
               {planStats.beats} beats{planStats.propositions > 0 && <> &middot; {planStats.propositions} props</>}
-            </span>
+            </TopBarStats>
           )}
-          {!planStats && <span className="text-[9px] text-text-dim/30">No plan</span>}
+          {!planStats && <TopBarStats variant="empty">No plan</TopBarStats>}
 
           {/* Copy current plan as Markdown */}
           {narrative && currentScene && branchId && planStats && (
             <>
-              <div className="w-px h-3 bg-border ml-1" />
+              <TopBarDivider />
               <CopyButton
                 label="Copy Plan"
                 title="Copy plan as Markdown"
@@ -670,7 +739,7 @@ export function CanvasTopBar() {
                     planVersion: currentPlanVersion,
                   })
                 }
-                className="text-[10px] px-2 py-0.5 rounded text-text-dim hover:text-text-primary hover:bg-white/5 transition-colors"
+                className={TOPBAR_TEXT_BUTTON}
               />
             </>
           )}
@@ -678,10 +747,10 @@ export function CanvasTopBar() {
           {/* Regenerate Embeddings button (plan mode only) */}
           {narrative && (
             <>
-              <div className="w-px h-3 bg-border ml-1" />
+              <TopBarDivider />
               <button
                 onClick={() => setShowEmbeddingsModal(true)}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+                className={TOPBAR_ICON_BUTTON}
                 title="Regenerate Embeddings"
               >
                 <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -696,18 +765,16 @@ export function CanvasTopBar() {
 
       {canvasMode === 'audio' && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-violet-400/60">Audio</span>
           {currentScene?.audioUrl
-            ? <span className="text-[9px] text-text-dim/50">Ready</span>
+            ? <TopBarStats>Ready</TopBarStats>
             : proseStats
-              ? <span className="text-[9px] text-text-dim/30">Not generated</span>
-              : <span className="text-[9px] text-text-dim/30">No prose</span>}
+              ? <TopBarStats variant="empty">Not generated</TopBarStats>
+              : <TopBarStats variant="empty">No prose</TopBarStats>}
         </div>
       )}
 
       {canvasMode === 'prose' && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-emerald-400/60">Prose</span>
           {currentScene && (currentScene.proseVersions?.length ?? 0) > 0 && (
             <VersionSelector
               versions={currentScene.proseVersions ?? []}
@@ -720,17 +787,17 @@ export function CanvasTopBar() {
             />
           )}
           {proseStats && (
-            <span className="text-[9px] text-text-dim/50 font-mono tabular-nums">
+            <TopBarStats mono>
               {proseStats.words.toLocaleString()} words &middot; {proseStats.paragraphs} paragraphs
-            </span>
+            </TopBarStats>
           )}
-          {!proseStats && planStats && <span className="text-[9px] text-text-dim/30">Not written</span>}
-          {!proseStats && !planStats && <span className="text-[9px] text-text-dim/30">No plan</span>}
+          {!proseStats && planStats && <TopBarStats variant="empty">Not written</TopBarStats>}
+          {!proseStats && !planStats && <TopBarStats variant="empty">No plan</TopBarStats>}
 
           {/* Copy current prose as Markdown */}
           {narrative && currentScene && branchId && proseStats && (
             <>
-              <div className="w-px h-3 bg-border ml-1" />
+              <TopBarDivider />
               <CopyButton
                 label="Copy Prose"
                 title="Copy prose as Markdown"
@@ -744,7 +811,7 @@ export function CanvasTopBar() {
                     proseVersion: currentProseVersion,
                   })
                 }
-                className="text-[10px] px-2 py-0.5 rounded text-text-dim hover:text-text-primary hover:bg-white/5 transition-colors"
+                className={TOPBAR_TEXT_BUTTON}
               />
             </>
           )}
@@ -752,7 +819,7 @@ export function CanvasTopBar() {
           {/* Beat plan toggle (only when beat mapping exists) */}
           {showBeatPlanToggle && (
             <>
-              <div className="w-px h-3 bg-border ml-1" />
+              <TopBarDivider />
               <BeatPlanToggle />
             </>
           )}
@@ -761,7 +828,6 @@ export function CanvasTopBar() {
 
       {canvasMode === 'market' && narrative && (
         <>
-          <div className="w-px h-3 bg-border" />
           <CopyButton
             label="Copy Market Snapshot"
             title="Copy prediction-market snapshot as Markdown"
@@ -772,7 +838,7 @@ export function CanvasTopBar() {
                 currentSceneIndex: state.viewState.currentSceneIndex,
               })
             }
-            className="text-[10px] px-2 py-1 rounded text-text-dim hover:text-text-primary hover:bg-white/5 transition-colors"
+            className={TOPBAR_TEXT_BUTTON}
           />
         </>
       )}
@@ -780,10 +846,9 @@ export function CanvasTopBar() {
       {canvasMode === 'search' && (
         <div className="flex items-center gap-2">
           {/* Clear Search button */}
-          <div className="w-px h-3 bg-border" />
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('search:clear'))}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            className={TOPBAR_ICON_BUTTON}
             title="Clear Search"
           >
             <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -795,10 +860,10 @@ export function CanvasTopBar() {
           {/* Regenerate Embeddings button */}
           {narrative && (
             <>
-              <div className="w-px h-3 bg-border" />
+              <TopBarDivider />
               <button
                 onClick={() => setShowEmbeddingsModal(true)}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+                className={TOPBAR_ICON_BUTTON}
                 title="Regenerate Embeddings"
               >
                 <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -822,7 +887,7 @@ export function CanvasTopBar() {
               setReasoningCopied(true);
               setTimeout(() => setReasoningCopied(false), 2000);
             }}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            className={TOPBAR_ICON_BUTTON}
             title="Copy sequential reasoning path"
           >
             <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -833,7 +898,7 @@ export function CanvasTopBar() {
           </button>
           <button
             onClick={() => downloadGraphAsJson(activeInvestigation.graph, `investigation-${activeInvestigation.id}`)}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            className={TOPBAR_ICON_BUTTON}
             title="Export graph as JSON"
           >
             <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -852,7 +917,7 @@ export function CanvasTopBar() {
                 },
               }));
             }}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
+            className={TOPBAR_ICON_BUTTON}
             title="Open Generate with this reasoning prefilled as direction"
           >
             <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1098,12 +1163,6 @@ function GraphInfoStrip({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[9px] text-text-dim/50 font-mono tabular-nums">
-        {graph.nodes.length} nodes &middot; {graph.edges.length} edges
-      </span>
-      <span className="text-[9px] text-text-dim/40 truncate max-w-50" title={graph.summary}>
-        {graph.summary}
-      </span>
       <div className="w-px h-3 bg-border" />
       <button
         onClick={onCopy}

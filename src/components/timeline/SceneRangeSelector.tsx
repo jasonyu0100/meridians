@@ -40,6 +40,8 @@ export function filterKeysBySceneRange(
  *     the popover and forwards the chosen range. Used by bulk auto modes
  *     where the user must explicitly confirm a range before kicking off a run.
  */
+export type StreamFocus = 'plan' | 'prose' | 'audio' | 'game';
+
 export default function SceneRangeSelector({
   range,
   onChange,
@@ -47,6 +49,7 @@ export default function SceneRangeSelector({
   onStart,
   startLabel,
   placement = 'bottom',
+  focus,
 }: {
   range: SceneRange;
   onChange: (range: SceneRange) => void;
@@ -54,6 +57,11 @@ export default function SceneRangeSelector({
   onStart?: (range: SceneRange) => void;
   startLabel?: string;
   placement?: 'top' | 'bottom';
+  /** Which generation surface the picker is being used FOR — drives the
+   *  slider track dot colour + which stream's availability the dots
+   *  reflect. Undefined falls back to the plan + prose two-row default
+   *  (used by eval modals that work across both streams). */
+  focus?: StreamFocus;
 }) {
   const { state } = useStore();
   const narrative = state.activeNarrative;
@@ -81,10 +89,15 @@ export default function SceneRangeSelector({
 
   const totalScenes = sceneEntries.length;
 
-  // Per-stream availability (using resolved versions for current branch)
+  // Per-stream availability (using resolved versions for current branch).
+  // Tracks each downstream artifact the user might be inspecting: plans /
+  // prose are version-resolved per branch; audio + game-analysis live
+  // directly on the scene (no per-branch resolution).
   const streamAvail = useMemo(() => {
     const hasPlan: boolean[] = [];
     const hasProse: boolean[] = [];
+    const hasAudio: boolean[] = [];
+    const hasGame: boolean[] = [];
     for (const { scene } of sceneEntries) {
       if (branchId) {
         const plan = resolvePlanForBranch(scene, branchId, branches);
@@ -95,8 +108,10 @@ export default function SceneRangeSelector({
         hasPlan.push(false);
         hasProse.push(false);
       }
+      hasAudio.push(!!scene.audioUrl);
+      hasGame.push(!!(scene.gameAnalysis?.games?.length));
     }
-    return { hasPlan, hasProse };
+    return { hasPlan, hasProse, hasAudio, hasGame };
   }, [sceneEntries, branchId, branches]);
 
   const effectiveStart = range?.start ?? 0;
@@ -106,11 +121,15 @@ export default function SceneRangeSelector({
     const count = effectiveEnd - effectiveStart + 1;
     let plans = 0;
     let prose = 0;
+    let audio = 0;
+    let games = 0;
     for (let i = effectiveStart; i <= effectiveEnd && i < totalScenes; i++) {
       if (streamAvail.hasPlan[i]) plans++;
       if (streamAvail.hasProse[i]) prose++;
+      if (streamAvail.hasAudio[i]) audio++;
+      if (streamAvail.hasGame[i]) games++;
     }
-    return { count, plans, prose };
+    return { count, plans, prose, audio, games };
   }, [effectiveStart, effectiveEnd, totalScenes, streamAvail]);
 
   // Position the popout relative to the trigger via portal. Anchoring from
@@ -197,6 +216,7 @@ export default function SceneRangeSelector({
             start={effectiveStart}
             end={effectiveEnd}
             streamAvail={streamAvail}
+            focus={focus}
             onChange={(s, e) => {
               if (s === 0 && e === totalScenes - 1) {
                 onChange(null);
@@ -247,8 +267,11 @@ export default function SceneRangeSelector({
             <span>{sceneEntries[effectiveEnd]?.scene.id}</span>
           </div>
 
-          {/* Stream availability summary */}
-          <div className="flex items-center gap-3 text-[9px] pt-1 border-t border-white/5">
+          {/* Stream availability summary — one entry per generation surface
+              so the user can see at a glance which artifacts exist for the
+              chosen range. Existing counts read in the surface's accent
+              colour; zero counts fade to text-dim. */}
+          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[9px] pt-1 border-t border-white/5">
             <span className="text-text-dim">
               {rangeStats.count} scene{rangeStats.count !== 1 ? 's' : ''}
             </span>
@@ -257,6 +280,12 @@ export default function SceneRangeSelector({
             </span>
             <span className={rangeStats.prose > 0 ? 'text-violet-400/70' : 'text-text-dim/40'}>
               {rangeStats.prose} prose
+            </span>
+            <span className={rangeStats.audio > 0 ? 'text-sky-400/70' : 'text-text-dim/40'}>
+              {rangeStats.audio} audio
+            </span>
+            <span className={rangeStats.games > 0 ? 'text-rose-400/70' : 'text-text-dim/40'}>
+              {rangeStats.games} game{rangeStats.games !== 1 ? 's' : ''}
             </span>
           </div>
 
@@ -282,19 +311,36 @@ export default function SceneRangeSelector({
 
 // ── Dual-handle range slider ────────────────────────────────────────────────
 
+// Per-stream colour pairs for slider dots: bright when the scene index is
+// inside the selected range, faded otherwise. Listed as full Tailwind
+// classes so the JIT detects them.
+const STREAM_DOT_COLORS: Record<StreamFocus, { inRange: string; outRange: string }> = {
+  plan: { inRange: 'bg-amber-400/70', outRange: 'bg-amber-400/20' },
+  prose: { inRange: 'bg-violet-400/70', outRange: 'bg-violet-400/20' },
+  audio: { inRange: 'bg-sky-400/70', outRange: 'bg-sky-400/20' },
+  game: { inRange: 'bg-rose-400/70', outRange: 'bg-rose-400/20' },
+};
+
 function RangeSlider({
   min,
   max,
   start,
   end,
   streamAvail,
+  focus,
   onChange,
 }: {
   min: number;
   max: number;
   start: number;
   end: number;
-  streamAvail: { hasPlan: boolean[]; hasProse: boolean[] };
+  streamAvail: {
+    hasPlan: boolean[];
+    hasProse: boolean[];
+    hasAudio: boolean[];
+    hasGame: boolean[];
+  };
+  focus?: StreamFocus;
   onChange: (start: number, end: number) => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -337,13 +383,41 @@ function RangeSlider({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      {/* Track background with stream availability dots */}
+      {/* Track background with stream availability dots. When `focus` is
+          set the track shows a SINGLE dot row reflecting that stream's
+          availability in its accent colour — matches what the picker is
+          actually being used to set up. Unfocused (eval modal) falls back
+          to the two-row plan+prose default. */}
       <div ref={trackRef} className="absolute inset-x-3 top-3 h-2 rounded-full bg-white/5">
         {/* Stream availability indicators */}
         {total > 0 && Array.from({ length: Math.min(total + 1, 80) }, (_, i) => {
           const sceneIdx = Math.round(min + (i / Math.min(total, 79)) * total);
           const x = ((sceneIdx - min) / total) * 100;
           const inRange = sceneIdx >= start && sceneIdx <= end;
+          if (focus) {
+            const streamArr =
+              focus === 'plan' ? streamAvail.hasPlan :
+              focus === 'prose' ? streamAvail.hasProse :
+              focus === 'audio' ? streamAvail.hasAudio :
+              streamAvail.hasGame;
+            const present = streamArr[sceneIdx];
+            const colors = STREAM_DOT_COLORS[focus];
+            return (
+              <div
+                key={i}
+                className="absolute inset-y-0 flex items-center"
+                style={{ left: `${x}%`, transform: 'translateX(-50%)' }}
+              >
+                <div
+                  className={`w-1 h-1 rounded-full ${
+                    present
+                      ? inRange ? colors.inRange : colors.outRange
+                      : 'bg-transparent'
+                  }`}
+                />
+              </div>
+            );
+          }
           const plan = streamAvail.hasPlan[sceneIdx];
           const prose = streamAvail.hasProse[sceneIdx];
           return (
