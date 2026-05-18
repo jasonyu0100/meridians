@@ -61,18 +61,24 @@ export default function NetworkView() {
     if (scope === 'scene') {
       const key = keys[idx];
       if (!key) return aggregateNetworkGraph(narrative, [], -1);
-      return aggregateNetworkGraph(narrative, [key], 0);
+      // Pass the full cumulative timeline so prior-introduced entities are
+      // visible; restrict attribution accumulation to just this scene.
+      return aggregateNetworkGraph(narrative, keys, idx, { scopeKeys: new Set([key]) });
     }
-    // arc scope — find current scene's arcId, filter keys to scenes in that arc.
+    // arc scope — restrict attribution to the current arc's scenes, but keep
+    // the cumulative timeline as the entity-existence source so cross-arc
+    // references render with their attribution origin nodes.
     const currentKey = keys[idx];
     const currentScene = currentKey ? narrative.scenes[currentKey] : undefined;
     const arcId = currentScene?.arcId;
     if (!arcId) return aggregateNetworkGraph(narrative, [], -1);
-    const arcKeys = keys.slice(0, idx + 1).filter((k) => {
-      const s = narrative.scenes[k];
-      return s && s.arcId === arcId;
-    });
-    return aggregateNetworkGraph(narrative, arcKeys, arcKeys.length - 1);
+    const arcScopeKeys = new Set(
+      keys.slice(0, idx + 1).filter((k) => {
+        const s = narrative.scenes[k];
+        return s && s.arcId === arcId;
+      }),
+    );
+    return aggregateNetworkGraph(narrative, keys, idx, { scopeKeys: arcScopeKeys });
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex, scope]);
 
   // Edge labels are only meaningful in scene scope — at higher scopes, multiple
