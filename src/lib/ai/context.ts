@@ -1802,3 +1802,100 @@ export function hasMode(n: NarrativeState): boolean {
   return !!graph && Array.isArray(graph.nodes) && graph.nodes.length > 0;
 }
 
+// ── Investigation (active CRG) chat context ─────────────────────────────
+//
+// Mirrors modeContext / futureContext shape but anchored on the active
+// investigation for the currently-viewed arc. The CRG is the work's
+// in-arc reasoning surface (what's happening and why right now), so this
+// pairs naturally with the outline recap — outline says how the world
+// got here, the investigation graph says how the analyst is currently
+// reasoning about it.
+
+/** Resolve the active investigation for the arc at the current cursor.
+ *  When `selectedInvestigationId` matches an investigation on that arc
+ *  it wins; otherwise we fall back to the first investigation by
+ *  createdAt, matching CanvasTopBar's resolution. Returns null when the
+ *  cursor is on a world commit or the arc has no investigations. */
+function activeInvestigationAtIndex(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+  selectedInvestigationId: string | null | undefined,
+) {
+  const arc = arcAtIndex(n, resolvedKeys, currentIndex);
+  if (!arc) return null;
+  const list = Object.values(n.investigations ?? {})
+    .filter((inv) => inv.arcId === arc.id)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  if (list.length === 0) return null;
+  if (selectedInvestigationId) {
+    const sel = list.find((inv) => inv.id === selectedInvestigationId);
+    if (sel) return sel;
+  }
+  return list[0];
+}
+
+/** Build the XML context for the Investigation chat surface. Renders the
+ *  active investigation's CRG — direction, every node's universal
+ *  inference-shape, and the sequential-path the downstream pipeline reads
+ *  — wrapped in an `<investigation>` root. Returns an empty string when
+ *  no investigation is available for the current arc. */
+export function investigationContext(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+  selectedInvestigationId: string | null | undefined,
+): string {
+  const inv = activeInvestigationAtIndex(n, resolvedKeys, currentIndex, selectedInvestigationId);
+  if (!inv) return '';
+  const graph = inv.graph;
+  if (!graph || !graph.nodes || graph.nodes.length === 0) return '';
+  const title = inv.title ? ` title="${xmlEscape(inv.title)}"` : '';
+  const direction = inv.direction
+    ? `\n  <direction>${xmlEscape(inv.direction)}</direction>`
+    : '';
+  // Per-node inference-shape — same XML rendering modeContext uses so
+  // the chat reads CRG and PRG nodes with the same vocabulary.
+  const nodeBlocks = [...graph.nodes]
+    .sort((a, b) => a.index - b.index)
+    .map((node) => {
+      const detail = node.detail ? `\n    <detail>${xmlEscape(node.detail)}</detail>` : '';
+      const considered = node.considered
+        ? `\n    <considered>${xmlEscape(node.considered)}</considered>`
+        : '';
+      const breaks = node.breaks
+        ? `\n    <breaks>${xmlEscape(node.breaks)}</breaks>`
+        : '';
+      const opens = node.opens
+        ? `\n    <opens>${xmlEscape(node.opens)}</opens>`
+        : '';
+      const entityAttr = node.entityId ? ` entityId="${xmlEscape(node.entityId)}"` : '';
+      const threadAttr = node.threadId ? ` threadId="${xmlEscape(node.threadId)}"` : '';
+      const systemAttr = node.systemNodeId ? ` systemNodeId="${xmlEscape(node.systemNodeId)}"` : '';
+      return `  <node index="${node.index}" type="${node.type}" id="${xmlEscape(node.id)}" label="${xmlEscape(node.label)}"${entityAttr}${threadAttr}${systemAttr}>${detail}${considered}${breaks}${opens}
+  </node>`;
+    })
+    .join('\n');
+  const sequentialPath = buildSequentialPath({ nodes: graph.nodes, edges: graph.edges });
+  return `<investigation id="${xmlEscape(inv.id)}" arc="${xmlEscape(graph.arcName)}" source="${inv.source}"${title} nodes="${graph.nodes.length}" edges="${graph.edges.length}" hint="The active per-arc Causal Reasoning Graph (CRG) — the analyst's in-arc inference about what's happening and why. Nodes span substrate refs (character/location/artifact/system/fate), inference steps (reasoning), meta agents (pattern/warning), and outside-force injections (chaos). Each inference-tier node carries the universal inference-shape: detail, × considered = rejected siblings, ! breaks = falsification condition, ⇒ opens = downstream cascade.">
+  <summary>${xmlEscape(graph.summary)}</summary>${direction}
+${nodeBlocks}
+  <sequential-path>
+${sequentialPath}
+  </sequential-path>
+</investigation>`;
+}
+
+/** Lightweight gate — true when the current arc has at least one
+ *  investigation. ChatPanel uses this to conditionally show the
+ *  Investigation option. */
+export function hasInvestigation(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+): boolean {
+  const arc = arcAtIndex(n, resolvedKeys, currentIndex);
+  if (!arc) return false;
+  return Object.values(n.investigations ?? {}).some((inv) => inv.arcId === arc.id);
+}
+

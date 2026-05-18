@@ -10,7 +10,9 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import {
   futureContext,
   hasFutureScenarios,
+  hasInvestigation,
   hasMode,
+  investigationContext,
   modeContext,
   narrativeContext,
   outlineContext,
@@ -46,6 +48,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *  character IDs (which are "C-1", "C-2", ...). */
 const PERSONA_FATE = "__fate__";
 const PERSONA_SYSTEM = "__system__";
+
+// ── Shared output discipline ─────────────────────────────────────────────
+//
+// Every context-mode prompt ends with this rule. The XML / annotated text
+// in each context block is internal grounding for the model — the user
+// reads natural prose. Brief attribution is fine ("the character X said
+// Y", "in arc 3 the alliance shifted"); surfacing internal ids, type
+// tags, or schema field names ("C-12", "T-08", "node 7", "considered",
+// "attractor") is not. The model should weave the annotated content into
+// coherent natural language, leaning on labels / descriptions / summaries
+// when they exist.
+
+const CHAT_OUTPUT_DISCIPLINE = `OUTPUT DISCIPLINE — write natural prose. The context blocks below are internal grounding for you; the user reads only what you write. Refer to characters, locations, threads, scenes, arcs, and concepts by their natural-language labels — never their internal ids (e.g. "C-12", "T-08", "SYS-04", "S-117", "node 16", or kebab-case slugs like \`attractor-foo-bar\`). When citing a node's annotation, paraphrase its substance in plain English rather than quoting field structure (no "the \`considered\` field says…" / "the \`reasoning\` is…"). Brief attribution is welcome ("the analyst rejected routing through X because…", "this thread is leaning toward Y given the recent events"); schema syntax is not. Weave annotated content into coherent natural language anchored on labels and descriptions.`;
 
 /** Build an in-character system prompt for FATE — the coalescence of every
  *  thread in the narrative. Not a character; the force that pulls arcs
@@ -278,7 +293,7 @@ export default function ChatPanel() {
   const [streamText, setStreamText] = useState("");
   const [reasoningText, setReasoningText] = useState("");
   const [contextMode, setContextMode] = useState<
-    "narrative" | "outline" | "scene" | "future" | "mode"
+    "narrative" | "outline" | "scene" | "future" | "mode" | "investigation"
   >("narrative");
   // personaId: null (Assistant), PERSONA_FATE, PERSONA_SYSTEM, or a real
   // character ID. The two sentinels coalesce all threads / all system-graph
@@ -537,6 +552,8 @@ ${sceneAnchor}
 
 Be concise and specific.
 
+${CHAT_OUTPUT_DISCIPLINE}
+
 ${ctx}`;
     }
 
@@ -546,6 +563,8 @@ ${ctx}`;
 ${sceneAnchor}
 
 Be concise and specific.
+
+${CHAT_OUTPUT_DISCIPLINE}
 
 ${ctx}`;
     }
@@ -566,11 +585,40 @@ When discussing scenarios:
 Be ready to reason about which scenarios are favoured and why, which dials would have to fire for a tail-event scenario to play out, and how the cohort coordinates against the Present.
 ${sceneAnchor}
 
-Be concise and specific. Reference scenarios by name; quote logits / probabilities when they're load-bearing.
+${CHAT_OUTPUT_DISCIPLINE} Refer to scenarios by their human-readable names. Quote logits / probabilities inline only when they carry the argument, not as parentheticals after every noun.
 
 ${outline}
 
 ${future}`;
+    }
+
+    if (contextMode === "investigation") {
+      // Investigation pairs the outline recap with the active CRG for
+      // the currently-viewed arc — the analyst's in-arc reasoning about
+      // what's happening and why. The CRG is the primary subject;
+      // outline is supporting context.
+      const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      const investigation = investigationContext(
+        n,
+        state.resolvedEntryKeys,
+        contextSceneIndex,
+        state.viewState.selectedInvestigationId,
+      );
+      return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the ACTIVE INVESTIGATION — the Causal Reasoning Graph (CRG) on the currently-viewed arc. Two context blocks are attached: a STORY OUTLINE (historical recap so you understand how the world got here) and the INVESTIGATION graph (the analyst's in-arc inference about what's happening and why). The investigation carries a direction (the brief that steered it), per-node inference-shape (detail, × considered = rejected sibling hypotheses, ! breaks = falsifying conditions, ⇒ opens = downstream cascades), and a sequential-path block that renders the graph's bidirectional edge structure.
+
+When discussing the investigation:
+  • node types span four tiers — substrate (entities, threads, system rules), inference steps, meta agents (patterns to introduce, anti-patterns to avoid), and outside-force injections; read the tier the node belongs to but don't surface the tag
+  • the analyst's work lives in four fields per inference node: the inference itself, the rival hypotheses rejected, the conditions that would invalidate it, and the second-order possibilities it grants — these are what distinguish reasoning from description
+  • the direction tells you what the user asked the investigation to think about — anchor answers to that frame
+  • the outline tells you what happened in the world; the investigation tells you what the analyst concluded ABOUT it — situational claims belong in the outline read, inference claims belong in the investigation read
+Be ready to walk the chain forward (priors → reasoning → terminal), re-evaluate at any step via the rejected-sibling reasoning, stress-test via failure conditions, and extend forward via second-order possibilities.
+${sceneAnchor}
+
+${CHAT_OUTPUT_DISCIPLINE} Paraphrase each node by its label and substance. When citing the analyst's rival readings, failure conditions, or downstream cascades, render them as prose ("the analyst considered routing this through X instead", "this would break if Y reverses", "this opens the path to Z") rather than naming the underlying field.
+
+${outline}
+
+${investigation}`;
     }
 
     if (contextMode === "mode") {
@@ -583,14 +631,14 @@ ${future}`;
       return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the MODE — the work's Phase Reasoning Graph (PRG), i.e. the META MACHINERY of the world it runs on. Two context blocks are attached: a STORY OUTLINE (historical recap so you understand how the world got here) and the MODE graph (patterns, conventions, attractors, agents, rules, pressures, landmarks — each with a temporal stance and the universal inference-shape: detail, × considered = rival readings, ! breaks = carve-outs, ⇒ opens = downstream cascade). A sequential-path block at the end of the mode renders the same graph as bidirectional edge text.
 
 When discussing the Mode:
-  • node TYPE encodes temporal stance — pattern (currently-active), convention (currently-followed), attractor (future-pointing), agent (currently-driving), rule (currently-binding), pressure (accumulating-toward-discharge), landmark (past-but-anchoring); read the type, don't flatten it
-  • the inference-shape fields are the legible work surfaces — \`considered\` shows rival readings the analyst rejected; \`breaks\` shows the machinery's carve-outs / failure conditions; \`opens\` shows the downstream cascade later layers inherit
-  • the Mode is the SUBSTRATE downstream reasoning (CRG, coordination plans, scenes) operates on top of — when the user asks "how does this work" or "what should the next arc honour", anchor to specific Mode nodes by id and type
+  • node type encodes a temporal stance — a pattern is currently active, a convention is currently followed, an attractor is future-pointing, an agent is currently driving, a rule is currently binding, a pressure is accumulating toward discharge, a landmark is past-but-anchoring. Read the stance, but in your output use natural prose ("the world is being pulled toward…", "this convention shapes how…") — never the type tag itself
+  • each node's substance lives in four facets: what the machinery is, the rival readings the analyst rejected, the carve-outs / conditions where it doesn't bind, and the downstream cascade later layers inherit. These are what make it legible
+  • the Mode is the substrate downstream reasoning (per-arc graphs, coordination plans, scenes) operates on top of — anchor structural claims to specific pieces of machinery by their substance
   • the outline tells you what happened; the Mode tells you what the world's machinery IS — situational events belong in the outline read, structural claims belong in the Mode read
-Be ready to reason about which machinery is firing, which carve-outs apply, where pressures discharge, and how downstream layers should inherit from each node.
+Be ready to reason about which machinery is firing, which carve-outs apply, where pressures discharge, and how downstream layers should inherit.
 ${sceneAnchor}
 
-Be concise and specific. Reference nodes by id + type; quote the inference-shape field that's load-bearing for the claim.
+${CHAT_OUTPUT_DISCIPLINE} Translate temporal stance into prose ("the world is being pulled toward…", "this convention shapes how…") rather than naming type tags ("attractor", "pattern", "pressure"). When citing rival readings, carve-outs, or downstream cascades, write them as prose ("the analyst considered reading this as X instead", "this doesn't bind in cases of Y", "this produces Z downstream").
 
 ${outline}
 
@@ -602,7 +650,9 @@ ${mode}`;
     return `You are a helpful assistant. The user is working on the story "${n.title}" and has deep narrative context attached below (world, characters, threads, scene history up to the current point), but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the story context when the question is about the story; otherwise respond normally without forcing the conversation back to the narrative.
 ${sceneAnchor}
 
-When discussing the narrative, be concise and specific, referencing characters and events by name. When suggesting directions, consider the existing threads and their maturity.
+When discussing the narrative, be concise and specific. When suggesting directions, consider the existing threads and their maturity.
+
+${CHAT_OUTPUT_DISCIPLINE}
 
 ${ctx}`;
   }, [
@@ -1138,8 +1188,10 @@ ${ctx}`;
             const futureAvailable = !!state.activeNarrative
               && hasFutureScenarios(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modeAvailable = !!state.activeNarrative && hasMode(state.activeNarrative);
+            const investigationAvailable = !!state.activeNarrative
+              && hasInvestigation(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modes: Array<{
-              value: "narrative" | "outline" | "scene" | "future" | "mode";
+              value: "narrative" | "outline" | "scene" | "future" | "mode" | "investigation";
               label: string;
               hint: string;
             }> = [
@@ -1161,13 +1213,24 @@ ${ctx}`;
                 hint: "Active Phase Reasoning Graph — the META machinery of the world.",
               });
             }
-            // If the user had Future / Mode selected and it's no longer
-            // available (e.g. world commit, or the active PRG was
-            // cleared), drop back to narrative on next render.
+            if (investigationAvailable) {
+              modes.push({
+                value: "investigation",
+                label: "Investigation",
+                hint: "Active per-arc Causal Reasoning Graph — in-arc inference.",
+              });
+            }
+            // If the user had Future / Mode / Investigation selected and
+            // it's no longer available (world commit, active PRG cleared,
+            // navigated to an arc without investigations), drop back to
+            // narrative on next render.
             if (contextMode === "future" && !futureAvailable) {
               setContextMode("narrative");
             }
             if (contextMode === "mode" && !modeAvailable) {
+              setContextMode("narrative");
+            }
+            if (contextMode === "investigation" && !investigationAvailable) {
               setContextMode("narrative");
             }
             const currentLabel = modes.find((m) => m.value === contextMode)?.label
