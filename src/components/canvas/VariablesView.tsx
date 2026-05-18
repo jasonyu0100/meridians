@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { narrativeContext } from '@/lib/ai/context';
 import { resolveReasoningBudget } from '@/lib/ai/api';
@@ -379,6 +379,9 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         ...draftForRescore,
         priorLogit: result.priorLogit,
         reasoning: result.reasoning || undefined,
+        considered: result.considered,
+        breaks: result.breaks,
+        opens: result.opens,
       };
       const updated = pending.isDraft
         ? [...scenarios, finalised]
@@ -401,7 +404,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     setError(null);
     setStreamingReasoning('');
     try {
-      const { variables, description, reasoning, priorLogit } = await extractArcPresent({
+      const { variables, description, reasoning, considered, breaks, opens, priorLogit } = await extractArcPresent({
         narrativeTitle: narrative.title,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
@@ -417,6 +420,9 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         variables,
         description,
         reasoning,
+        considered,
+        breaks,
+        opens,
         logit: priorLogit,
       });
       if (direction.trim()) {
@@ -532,15 +538,19 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       />
 
       <BodyContainer>
-        {/* Empty state stays visible underneath the streaming overlay so
-            the user keeps their context while reasoning streams in. */}
-        {isEmpty && <EmptyState mode={mode} />}
+        {/* Empty state is suppressed while generating — its centered message
+            collides with the streaming overlay's top-flowing reasoning, and
+            there's no underlying context worth preserving when empty. */}
+        {isEmpty && !busy && <EmptyState mode={mode} />}
         {!isEmpty && !busy && (
           mode === 'present' ? (
             <PresentBento
               variables={presentVariables}
               description={focusedArc.presentDescription}
               reasoning={focusedArc.presentReasoning}
+              considered={focusedArc.presentConsidered}
+              breaks={focusedArc.presentBreaks}
+              opens={focusedArc.presentOpens}
               logit={focusedArc.presentLogit}
               onChange={setPresentIntensity}
               error={error}
@@ -919,6 +929,130 @@ function HDivider() {
   return <div className="h-px shrink-0 bg-white/8" aria-hidden />;
 }
 
+// ── Resizable height ─────────────────────────────────────────────────────
+//
+// Both Present and Future bottom panels carry a lot of text now (Reasoning
+// + Considered + Breaks + Opens). Default to a compact ~150px and let the
+// user drag the top edge upward to grow the panel — same affordance as
+// NarrativePanel. Resize handle is rendered at the panel's top edge.
+
+const PANEL_DEFAULT_HEIGHT = 150;
+const PANEL_MIN_HEIGHT = 80;
+const PANEL_MAX_HEIGHT = 800;
+
+function useResizableHeight(initial: number) {
+  const [height, setHeight] = useState(initial);
+  const startY = useRef(0);
+  const startH = useRef(0);
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    startY.current = e.clientY;
+    startH.current = height;
+    const onMove = (ev: MouseEvent) => {
+      const delta = startY.current - ev.clientY;
+      const next = Math.max(PANEL_MIN_HEIGHT, Math.min(PANEL_MAX_HEIGHT, startH.current + delta));
+      setHeight(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [height]);
+  return { height, onResizeMouseDown };
+}
+
+function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      className="relative h-1.5 cursor-row-resize hover:bg-violet-300/15 active:bg-violet-300/25 transition-colors group"
+      onMouseDown={onMouseDown}
+      title="Drag to resize"
+    >
+      {/* Centre dot row gives the user a visible affordance on hover. */}
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <span className="w-1 h-1 rounded-full bg-text-dim/60" />
+        <span className="w-1 h-1 rounded-full bg-text-dim/60" />
+        <span className="w-1 h-1 rounded-full bg-text-dim/60" />
+      </div>
+    </div>
+  );
+}
+
+// ── Expandable inference-shape field ─────────────────────────────────────
+//
+// Reasoning / Considered / Breaks / Opens hold a lot of text now. Default
+// the secondary handles closed with a 1-line preview so the panel stays
+// scannable; user expands the ones they want to read fully. Shared between
+// PresentBento and the Future scenario detail panel so the affordance is
+// the same wherever inference-shape lives.
+
+function ExpandableField({
+  label, icon, iconColor, content, defaultOpen = false, italic = false,
+}: {
+  label: string;
+  /** Glyph rendered before the label (e.g. ×, !, ⇒). Optional. */
+  icon?: string;
+  iconColor?: string;
+  content: string;
+  defaultOpen?: boolean;
+  italic?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  // Preview: first sentence (or first ~80 chars). Skipped when defaultOpen
+  // since the full content is visible from the start.
+  const preview = useMemo(() => {
+    if (defaultOpen) return '';
+    const firstSentenceEnd = content.search(/[.!?](\s|$)/);
+    const trimmed = firstSentenceEnd > 0 && firstSentenceEnd < 100
+      ? content.slice(0, firstSentenceEnd + 1)
+      : content.slice(0, 80) + (content.length > 80 ? '…' : '');
+    return trimmed;
+  }, [content, defaultOpen]);
+  // Minimal quote-style: thin left border, coloured via `border-current` so
+  // it inherits the icon's text colour with one decision. Reads as a
+  // marginalia rule rather than a card — light weight, space-efficient.
+  // Wrapper sets the colour; the border line + content stay neutral.
+  return (
+    <div className={`${iconColor ?? 'text-text-dim/40'} ${open ? '' : 'opacity-60 hover:opacity-100'} transition-opacity`}>
+      <div className="flex flex-col border-l-2 border-current pl-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-1.5 py-0.5 text-left w-full group"
+        >
+          {icon && (
+            <span className="text-[11px] leading-none font-bold w-2.5 text-center">
+              {icon}
+            </span>
+          )}
+          <span className="text-[9px] uppercase tracking-[0.18em] text-text-secondary font-mono font-medium">
+            {label}
+          </span>
+          {!open && preview && (
+            <span className={`flex-1 min-w-0 text-[11px] text-text-dim/70 leading-snug truncate ${italic ? 'italic' : ''}`}>
+              {preview}
+            </span>
+          )}
+          <span className="ml-auto shrink-0 text-text-dim/40 group-hover:text-text-secondary transition text-[11px] leading-none font-mono">
+            {open ? '−' : '+'}
+          </span>
+        </button>
+        {open && (
+          <p className={`pt-0.5 pb-1 text-[11px] text-text-secondary leading-relaxed ${italic ? 'italic' : ''}`}>
+            {content}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Logit badge ───────────────────────────────────────────────────────────
 //
 // Surfaces a coordination's log-prior plausibility (in MARKET_EVIDENCE
@@ -971,6 +1105,12 @@ interface PresentBentoProps {
   /** Multi-sentence load-bearing logic — WHY these variables are firing
    *  at these intensities given the arc's state. */
   reasoning?: string;
+  /** Universal inference-shape fields — same handles used by CRG / PRG /
+   *  Future scenarios. Option space, falsification handle, forward
+   *  extension. */
+  considered?: string;
+  breaks?: string;
+  opens?: string;
   /** Log-prior plausibility for this Present coordination, in
    *  MARKET_EVIDENCE_MIN/MAX range ([-4, +4]). When transferred from a
    *  Future scenario via experimentation commit, this records "how
@@ -982,7 +1122,7 @@ interface PresentBentoProps {
 }
 
 function PresentBento({
-  variables, description, reasoning, logit, onChange, error,
+  variables, description, reasoning, considered, breaks, opens, logit, onChange, error,
 }: PresentBentoProps) {
   const traces = useMemo(() =>
     variables.length > 0 ? [{ id: 'present', color: PRESENT_TRACE_COLOR, variables }] : [],
@@ -990,6 +1130,8 @@ function PresentBento({
   // Present can render the shape as radar (signature) or parallel
   // (compact axis-by-axis). Grid is hidden — degenerate with one trace.
   const [viewMode, setViewMode] = useState<VariableViewMode>('radar');
+  // Resizable footer height — compact default; user drags top edge upward.
+  const { height: panelHeight, onResizeMouseDown } = useResizableHeight(PANEL_DEFAULT_HEIGHT);
 
   return (
     <div className="h-full flex flex-col">
@@ -1015,7 +1157,7 @@ function PresentBento({
             {traces.length === 0 ? (
               <div className="text-[11px] text-text-dim italic py-3">No variables yet. Regenerate to populate.</div>
             ) : (
-              <div className="w-full">
+              <div className="w-4/5 mx-auto">
                 {viewMode === 'radar' ? (
                   <VariableRadarChart traces={traces} />
                 ) : (
@@ -1024,10 +1166,14 @@ function PresentBento({
               </div>
             )}
           </div>
-          {(description || reasoning || typeof logit === 'number') && (
+          {(description || reasoning || considered || breaks || opens || typeof logit === 'number') && (
             <>
               <HDivider />
-              <div className="shrink-0 px-4 py-3 flex flex-col gap-2.5 max-h-48 overflow-auto">
+              <ResizeHandle onMouseDown={onResizeMouseDown} />
+              <div
+                className="shrink-0 px-4 py-3 flex flex-col gap-2.5 overflow-auto"
+                style={{ height: panelHeight }}
+              >
                 {typeof logit === 'number' && (
                   <LogitBadge logit={logit} accent={PRESENT_TRACE_COLOR} />
                 )}
@@ -1042,14 +1188,18 @@ function PresentBento({
                   </div>
                 )}
                 {reasoning && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
-                      Reasoning
-                    </span>
-                    <p className="text-[11px] text-text-secondary leading-snug">
-                      {reasoning}
-                    </p>
-                  </div>
+                  <ExpandableField label="Reasoning" content={reasoning} defaultOpen />
+                )}
+                {/* Universal inference-shape — same handles as CRG / PRG / Future scenarios.
+                    Collapsed by default to keep the panel scannable. */}
+                {considered && (
+                  <ExpandableField label="Considered" icon="×" iconColor="text-amber-400" content={considered} />
+                )}
+                {breaks && (
+                  <ExpandableField label="Breaks" icon="!" iconColor="text-rose-400" content={breaks} />
+                )}
+                {opens && (
+                  <ExpandableField label="Opens" icon="⇒" iconColor="text-emerald-400" content={opens} />
                 )}
               </div>
             </>
@@ -1132,6 +1282,8 @@ function FutureBento(props: FutureBentoProps) {
     () => (activeScenarioId ? traces.filter((t) => t.id === activeScenarioId) : traces.slice(0, 1)),
     [traces, activeScenarioId],
   );
+  // Resizable scenario-detail footer — compact default; user drags top edge upward.
+  const { height: panelHeight, onResizeMouseDown } = useResizableHeight(PANEL_DEFAULT_HEIGHT);
 
   return (
     <div className="h-full flex flex-col">
@@ -1169,7 +1321,7 @@ function FutureBento(props: FutureBentoProps) {
             </div>
           </SectionHeader>
           <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center px-3 py-2">
-            <div className="w-full">
+            <div className={viewMode === 'grid' ? 'w-full' : 'w-4/5 mx-auto'}>
               {viewMode === 'radar' ? (
                 <VariableRadarChart traces={radarTraces} />
               ) : viewMode === 'parallel' ? (
@@ -1191,11 +1343,22 @@ function FutureBento(props: FutureBentoProps) {
             </div>
           </div>
           {activeScenario
-            && (activeScenario.description || activeScenario.reasoning || typeof activeScenario.priorLogit === 'number')
+            && (
+              activeScenario.description
+                || activeScenario.reasoning
+                || activeScenario.considered
+                || activeScenario.breaks
+                || activeScenario.opens
+                || typeof activeScenario.priorLogit === 'number'
+            )
             && !hasPendingEdits && (
             <>
               <HDivider />
-              <div className="shrink-0 px-4 py-3 flex flex-col gap-2.5 max-h-48 overflow-auto">
+              <ResizeHandle onMouseDown={onResizeMouseDown} />
+              <div
+                className="shrink-0 px-4 py-3 flex flex-col gap-2.5 overflow-auto"
+                style={{ height: panelHeight }}
+              >
                 {typeof activeScenario.priorLogit === 'number' && (
                   <LogitBadge logit={activeScenario.priorLogit} accent={activeScenario.color} />
                 )}
@@ -1210,14 +1373,18 @@ function FutureBento(props: FutureBentoProps) {
                   </div>
                 )}
                 {activeScenario.reasoning && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
-                      Reasoning
-                    </span>
-                    <p className="text-[11px] text-text-secondary leading-snug">
-                      {activeScenario.reasoning}
-                    </p>
-                  </div>
+                  <ExpandableField label="Reasoning" content={activeScenario.reasoning} defaultOpen />
+                )}
+                {/* Universal inference-shape — same handles as CRG / PRG nodes.
+                    Collapsed by default so the panel stays scannable. */}
+                {activeScenario.considered && (
+                  <ExpandableField label="Considered" icon="×" iconColor="text-amber-400" content={activeScenario.considered} />
+                )}
+                {activeScenario.breaks && (
+                  <ExpandableField label="Breaks" icon="!" iconColor="text-rose-400" content={activeScenario.breaks} />
+                )}
+                {activeScenario.opens && (
+                  <ExpandableField label="Opens" icon="⇒" iconColor="text-emerald-400" content={activeScenario.opens} />
                 )}
               </div>
             </>

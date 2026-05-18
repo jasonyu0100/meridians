@@ -17,7 +17,7 @@ import { callGenerate, callGenerateStream } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext } from "./context";
 import { parseJson } from "./json";
-import { logError } from "@/lib/system-logger";
+import { logError, logWarning } from "@/lib/system-logger";
 import {
   PHASE_GRAPH_SYSTEM,
   buildModePrompt,
@@ -146,14 +146,34 @@ export async function generateMode(
       type: (typeof n.type === "string" && VALID_PHASE_NODE_TYPES.has(n.type as ModeNodeType))
         ? (n.type as ModeNodeType)
         : "pattern",
-      label: typeof n.label === "string" ? n.label.slice(0, 200) : "Unlabeled phase node",
-      detail: typeof n.detail === "string" ? n.detail.slice(0, 600) : undefined,
+      label: typeof n.label === "string" ? n.label : "Unlabeled phase node",
+      detail: typeof n.detail === "string" ? n.detail : undefined,
+      considered: typeof n.considered === "string" ? n.considered : undefined,
+      breaks: typeof n.breaks === "string" ? n.breaks : undefined,
+      opens: typeof n.opens === "string" ? n.opens : undefined,
       entityId: typeof n.entityId === "string" ? n.entityId : undefined,
       threadId: typeof n.threadId === "string" ? n.threadId : undefined,
       systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
     }));
 
     const nodes = rawNodes.map((n) => validateModeNodeReferences(n, narrative));
+
+    // Universal inference-shape audit — every PRG node is inference-tier
+    // (describes machinery). Log silent omissions of `considered` so we can
+    // measure the discipline gap.
+    for (const n of nodes) {
+      if (!n.considered) {
+        logWarning(
+          `PRG node "${n.label}" (${n.type}) emitted without \`considered\` — discipline gap`,
+          undefined,
+          {
+            source: "mode",
+            operation: "mode-parse",
+            details: { nodeId: n.id, type: n.type },
+          },
+        );
+      }
+    }
 
     const nodeIds = new Set(nodes.map((n) => n.id));
     const edges: ModeEdgeSnapshot[] = (data.edges ?? [])
@@ -164,7 +184,7 @@ export async function generateMode(
         type: (typeof e.type === "string" && VALID_EDGE_TYPES.has(e.type))
           ? (e.type as ReasoningEdgeType)
           : "causes",
-        label: typeof e.label === "string" ? e.label.slice(0, 100) : undefined,
+        label: typeof e.label === "string" ? e.label : undefined,
       }))
       .filter((e) => e.from && e.to && nodeIds.has(e.from) && nodeIds.has(e.to));
 

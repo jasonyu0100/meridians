@@ -1083,6 +1083,23 @@ export type PlanningScenario = {
    *  plausible relative to its siblings. Anchors the priorLogit so the user
    *  can audit "why is this 18%?". */
   reasoning?: string;
+  /** Alternatives considered and rejected — the option space this scenario
+   *  selected from. The adjacent coordinations that were drafted and
+   *  discarded, the rival readings of the substrate, the sibling
+   *  scenarios this one specifically contrasts against. Universal
+   *  inference shape — see ReasoningNodeSnapshot for the cross-graph
+   *  definition. */
+  considered?: string;
+  /** What conditions would invalidate / falsify this scenario — the
+   *  observation that would mean it didn't happen, the threshold whose
+   *  non-crossing voids it, the load-bearing assumption whose breakage
+   *  rules it out. Forces genuine prediction-market work; if `breaks` is
+   *  empty the scenario can't be wrong, which means it isn't forecasting. */
+  breaks?: string;
+  /** What becomes possible / cascades downstream if this scenario holds —
+   *  the threads it opens for the next arc, the markets it perturbs, the
+   *  affordances it grants future continuations. */
+  opens?: string;
 };
 
 export type Arc = {
@@ -1124,6 +1141,15 @@ export type Arc = {
    *  as a permanent record of the path's rarity. When Present is
    *  regenerated directly, the LLM emits a self-estimated logit. */
   presentLogit?: number;
+  /** Universal inference-shape fields for Present — same semantics as the
+   *  fields on PlanningScenario and node snapshots: option space,
+   *  falsification handle, forward extension. Generated alongside the
+   *  variables; transferred from the parent scenario on experimentation
+   *  commit so lineage of the comparative + falsification reasoning is
+   *  preserved across the branch fork. */
+  presentConsidered?: string;
+  presentBreaks?: string;
+  presentOpens?: string;
   /** Optional user-supplied direction string captured at the last regenerate
    *  for transparency — shows what guidance shaped the cohort. */
   scenarioDirection?: string;
@@ -1198,6 +1224,32 @@ export type ReasoningNodeSnapshot = {
     | "moment";
   label: string;
   detail?: string;
+  /**
+   * Universal inference shape — the three fields below appear on every
+   * node-like artifact across the reasoning subsystem (this snapshot,
+   * ModeNodeSnapshot, PlanningScenario). Same field names, same abstract
+   * semantics; per-context specifics live in the prompt that produced
+   * the node, not in the type. Together they expose the *machinery* of
+   * the inference rather than just the conclusion — the three handles a
+   * reader uses to re-evaluate, stress-test, and extend the reasoning.
+   *   - considered : the option space (alternatives rejected)
+   *   - breaks     : the falsification handle (what invalidates it)
+   *   - opens      : the forward extension (what cascades downstream)
+   */
+  /** Alternatives considered and rejected — the option space this
+   *  inference selected from. Required by abduction/induction modes on
+   *  reasoning-tier nodes; without it abduction collapses to post-hoc
+   *  rationalisation. Inference-tier nodes only (reasoning, pattern,
+   *  warning, chaos). */
+  considered?: string;
+  /** What conditions would invalidate this inference — the load-bearing
+   *  assumption, the falsifying evidence, the way the chain could fail.
+   *  Deduction mode's necessity test materialises here. */
+  breaks?: string;
+  /** What becomes possible / cascades downstream IF this holds — the
+   *  second-order consequences. Divergent mode's outward branching
+   *  materialises here. */
+  opens?: string;
   /** Reference to a character / location / artifact in the narrative. Set
    *  when this node anchors to an existing world entity; cleared when the
    *  reference doesn't resolve (LLM hallucination) or when the node
@@ -1277,6 +1329,20 @@ export type ModeNodeSnapshot = {
   type: ModeNodeType;
   label: string;
   detail?: string;
+  /** Alternatives considered and rejected — the option space this node
+   *  selected from. For PRG, the alternative readings of this machinery,
+   *  the carve-outs and exceptions, the rules that look similar but
+   *  aren't load-bearing here. Universal inference shape — see
+   *  ReasoningNodeSnapshot for the cross-graph definition. */
+  considered?: string;
+  /** What conditions would invalidate / falsify this node. For PRG, the
+   *  edges where the machinery fails, the thresholds whose crossing
+   *  releases the pressure, the conditions that supersede the rule. */
+  breaks?: string;
+  /** What becomes possible / cascades downstream if this holds. For PRG,
+   *  the operational downstream behaviour the machinery produces — what
+   *  later CRG / scene generation can inherit and ground its work in. */
+  opens?: string;
   /** Optional anchor — entity / thread / system-node id this phase claim is grounded in (when applicable). */
   entityId?: string;
   threadId?: string;
@@ -1387,6 +1453,13 @@ export type CoordinationNode = {
   type: CoordinationNodeType;
   label: string;
   detail?: string;
+  /** Sibling hypotheses considered and rejected (inference-tier nodes
+   *  only — reasoning/pattern/warning/chaos). See ReasoningNodeSnapshot. */
+  considered?: string;
+  /** What conditions would invalidate this inference. Inference-tier only. */
+  breaks?: string;
+  /** What becomes possible downstream if this inference holds. Inference-tier only. */
+  opens?: string;
   /** Reference to entity (character/location/artifact) */
   entityId?: string;
   /** Reference to thread (for fate and spine nodes tracking thread progression) */

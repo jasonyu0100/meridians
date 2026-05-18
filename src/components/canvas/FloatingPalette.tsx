@@ -65,6 +65,9 @@ export default function FloatingPalette({
   const [investigationComposerArcId, setInvestigationComposerArcId] = useState<
     string | null
   >(null);
+  // Dropdown that lists all investigations on the current arc — opens above
+  // the bottom pill when the active-investigation indicator is clicked.
+  const [investigationListOpen, setInvestigationListOpen] = useState(false);
 
   // Resolve the current scene's arc + its investigation list once for the
   // reasoning palette controls (Generate / Regenerate / Clear / indicator).
@@ -648,6 +651,68 @@ export default function FloatingPalette({
     return (
       <>
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
+          {/* Investigation switcher overlay — opens above the pill when the
+              user clicks the active-investigation indicator. Mirrors the
+              mode graph's history overlay so the bottom pill stays the
+              single source of switching. */}
+          {investigationListOpen && arcCtx && arcCtx.list.length > 0 && (
+            <div className="w-80 max-h-[40vh] flex flex-col rounded-xl glass overflow-hidden">
+              <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-text-secondary">
+                  Investigations · {arcCtx.arcName}
+                </span>
+                <button
+                  onClick={() => setInvestigationListOpen(false)}
+                  className="text-[10px] text-text-dim/40 hover:text-text-dim transition"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="overflow-y-auto divide-y divide-white/5">
+                {arcCtx.list.map((inv, idx) => {
+                  const isActive = inv.id === activeInv?.id;
+                  return (
+                    <button
+                      key={inv.id}
+                      onClick={() => {
+                        dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: inv.id });
+                        setInvestigationListOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 flex items-start gap-2 text-left transition-colors ${
+                        isActive ? "bg-white/6" : "hover:bg-white/4"
+                      }`}
+                    >
+                      <span
+                        className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${
+                          isActive ? "bg-emerald-400" : "bg-white/15"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[10px] font-mono text-text-dim/60 shrink-0">
+                            #{idx + 1}
+                          </span>
+                          <span className="text-[11px] text-text-primary truncate flex-1">
+                            {inv.direction || inv.graph.summary || "(continuation)"}
+                          </span>
+                          {inv.source === "coordination-plan" && (
+                            <span className="text-[9px] uppercase tracking-wider text-emerald-300/70 shrink-0">
+                              plan
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-[9px] text-text-dim/50 font-mono tabular-nums">
+                          <span>{inv.graph.nodes.length}n</span>
+                          <span>{inv.graph.edges.length}e</span>
+                          <span>{new Date(inv.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className={`glass-pill px-3 py-1.5 flex items-center gap-2 ${wrapperClasses}`}>
             {graphNodeNav ? (
               <>
@@ -722,14 +787,19 @@ export default function FloatingPalette({
 
             <div className="w-px h-4 bg-white/12 mx-1" />
 
-            {/* Active-investigation indicator — dot + arc label + count
-                across investigations on this arc. Mirrors the mode graph
-                "active" pill. */}
-            <div
-              className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md"
+            {/* Active-investigation switcher — clicking opens an overlay
+                that lists every investigation on this arc; selecting one
+                makes it active. Mirrors the mode graph's history pill. */}
+            <button
+              type="button"
+              disabled={!arcCtx || arcCtx.list.length === 0}
+              onClick={() => setInvestigationListOpen((v) => !v)}
+              className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md transition-colors ${
+                investigationListOpen ? "bg-white/10" : "hover:bg-white/6"
+              } ${(!arcCtx || arcCtx.list.length === 0) ? "cursor-default" : ""}`}
               title={
                 activeInv
-                  ? `Investigation ${arcCtx!.activeIndex + 1} of ${totalInv} on ${arcCtx!.arcName}`
+                  ? `Investigation ${arcCtx!.activeIndex + 1} of ${totalInv} on ${arcCtx!.arcName} — click to switch`
                   : arcCtx
                     ? `No investigation on ${arcCtx.arcName}`
                     : "No arc"
@@ -739,14 +809,14 @@ export default function FloatingPalette({
                 className={`w-1.5 h-1.5 rounded-full ${activeInv ? "bg-emerald-400" : "bg-white/15"}`}
               />
               <span className="text-text-dim truncate max-w-32">
-                {arcCtx ? arcCtx.arcName : "—"}
+                {activeInv ? (activeInv.direction || activeInv.graph.summary || "(continuation)") : (arcCtx ? arcCtx.arcName : "—")}
               </span>
               {totalInv > 0 && (
                 <span className="text-[9px] text-text-dim/40 tabular-nums">
                   {arcCtx!.activeIndex + 1}/{totalInv}
                 </span>
               )}
-            </div>
+            </button>
           </div>
         </div>
         {investigationComposerArcId && (

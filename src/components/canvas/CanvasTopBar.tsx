@@ -813,28 +813,9 @@ export function CanvasTopBar() {
 
       {canvasMode === 'reasoning' && activeInvestigation && (
         <div className="flex items-center gap-2 ml-3 min-w-0">
-          {currentArcInvestigations.length > 1 && (
-            <div className="flex items-center gap-1 shrink-0">
-              {currentArcInvestigations.map((inv, idx) => {
-                const isActive = inv.id === activeInvestigation.id;
-                return (
-                  <button
-                    key={inv.id}
-                    onClick={() => dispatch({ type: 'SET_SELECTED_INVESTIGATION', investigationId: inv.id })}
-                    title={inv.direction || `Investigation ${idx + 1}`}
-                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors ${
-                      isActive
-                        ? 'bg-white/15 text-text-primary'
-                        : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
-                    }`}
-                  >
-                    {idx + 1}
-                  </button>
-                );
-              })}
-              <div className="w-px h-3 bg-border mx-1" />
-            </div>
-          )}
+          {/* Switching between investigations now lives in the bottom palette
+              (active-investigation dropdown), matching the mode graph pattern.
+              The top strip just shows the active graph's actions. */}
           <button
             onClick={() => {
               navigator.clipboard.writeText(buildSequentialPath(activeInvestigation.graph));

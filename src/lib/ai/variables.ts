@@ -246,10 +246,13 @@ For each variable emit { id, name, description, category, intensity }:
   • category: stance / capability / pressure / knowledge / constraint / allegiance / external / contradiction / trend / threshold / resource / reputation / institutional / cultural / physical / temporal / mechanism — or invent
   • intensity (1–4): 1 weak, 2 mild, 3 strong, 4 extreme. Omit 0.
 
-Also emit (this annotation block is the SAME SHAPE used by Future scenarios — description + reasoning + priorLogit — so Present and Future read in the same vocabulary):
-  • description: one short sentence (≤ 14 words) capturing the gestalt of this Present coordination — what the configuration IS as a recognisable shape. Same register as a chapter epigraph for fiction, a section heading for a paper, a scenario name for simulation.
-  • reasoning: three to five sentences laying out the load-bearing logic. WHY are these variables firing at these intensities given the arc's state? Which mechanism feeds which, where does the cascade run, which symptom is the surface, what does each intensity earn? Substantive — not a paraphrase of the variable descriptions, not a list. Name actors, mechanisms, threads, prior commitments by name where it sharpens the explanation.
-  • priorLogit ∈ [-4, +4]: log-prior plausibility of this coordination relative to alternative coordinations the world could have surfaced at this point. Same evidence scale as scenario priors: +4 = decisive evidence in favour of this coordination, 0 = baseline plausibility, -4 = a rare tail outcome that nonetheless occurred. Use the full range — this number is a permanent record of "how likely was this configuration at the time", a glimpse into the rarity of the path the world has taken.
+Also emit the universal INFERENCE-SHAPE (same fields used by Future scenarios and across CRG/PRG node-like artifacts):
+  • description: one sentence (≤ 14 words). Gestalt of this coordination — what the configuration IS as a recognisable shape, in the work's native register.
+  • reasoning: 3–5 sentences. Load-bearing logic — why these variables fire at these intensities given the arc's state. Which mechanism feeds which, where the cascade runs, which symptom is the surface. Substantive, not paraphrase. Name actors / mechanisms / threads where it sharpens.
+  • considered (REQUIRED): 1–3 sentences. Adjacent coordinations the same evidence could support, rival readings drafted and discarded, alternative load-bearing variables that didn't earn the slot. Comparative reasoning, not summary. If no genuine rival applies, say so explicitly — never omit.
+  • breaks: 1–2 sentences. What observation would mean THIS coordination isn't the right read — what the user should look for to invalidate it.
+  • opens: 1–2 sentences. What this Present coordination structurally pulls toward next — bridge into the Future cohort's space.
+  • priorLogit ∈ [-4, +4]: log-prior plausibility relative to alternative coordinations the world could have surfaced (same scale as scenario priors). Full range — permanent record of the path's rarity.
 
 Variable count is flexible. Emit as many or as few as the situation supports — stop when adding another wouldn't change predictions, don't pad to hit a number, don't trim to look clean. A quiet arc may carry two; a dense one may carry a dozen.
 
@@ -257,6 +260,9 @@ Output strict JSON:
 {
   "description": "...",
   "reasoning": "...",
+  "considered": "...",
+  "breaks": "...",
+  "opens": "...",
   "priorLogit": 0,
   "variables": [ { "id": "var-...", "name": "...", "description": "...", "category": "...", "intensity": 3 } ]
 }`;
@@ -302,11 +308,18 @@ function sanitizeVariable(raw: unknown): Variable | null {
 export interface ExtractPresentResult {
   variables: Variable[];
   /** Short one-sentence gestalt of the Present coordination. Same shape used
-   *  by Future scenarios (description + reasoning + priorLogit). */
+   *  by Future scenarios (description + reasoning + universal inference
+   *  fields + priorLogit). */
   description?: string;
   /** Multi-sentence load-bearing logic for the Present coordination — WHY
    *  these variables are firing at these intensities. */
   reasoning?: string;
+  /** Universal inference-shape fields (option space, falsification handle,
+   *  forward extension) — same semantics as on PlanningScenario / node
+   *  snapshots. */
+  considered?: string;
+  breaks?: string;
+  opens?: string;
   /** Self-estimated log-prior in MARKET_EVIDENCE_MIN/MAX range — a glimpse
    *  into how plausible this coordination was at the time. */
   priorLogit?: number;
@@ -365,6 +378,9 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
     variables?: unknown[];
     description?: unknown;
     reasoning?: unknown;
+    considered?: unknown;
+    breaks?: unknown;
+    opens?: unknown;
     priorLogit?: unknown;
   };
   const seenIds = new Set<string>();
@@ -377,6 +393,15 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
   }
   const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
   const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
+  const considered = typeof parsed.considered === 'string' && parsed.considered.trim()
+    ? parsed.considered.trim()
+    : undefined;
+  const breaks = typeof parsed.breaks === 'string' && parsed.breaks.trim()
+    ? parsed.breaks.trim()
+    : undefined;
+  const opens = typeof parsed.opens === 'string' && parsed.opens.trim()
+    ? parsed.opens.trim()
+    : undefined;
   const priorLogit = typeof parsed.priorLogit === 'number' && Number.isFinite(parsed.priorLogit)
     ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
     : undefined;
@@ -384,6 +409,9 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
     variables,
     description: description || undefined,
     reasoning: reasoning || undefined,
+    considered,
+    breaks,
+    opens,
     priorLogit,
   };
 }
@@ -424,10 +452,13 @@ PIPELINE.
 COHORT SIZE — FLEXIBLE.
 The number of scenarios is governed by the SITUATION, not by a target. A tight, locked-in possibility space supports two or three meaningful continuations; a fan-out moment may support a dozen. Don't pad to look thorough, don't trim to look clean. Stop when adding another scenario would re-cover ground already covered. The same applies to the SHARED POOL — emit as many variables as the load-bearing forces actually require, no more.
 
-Each scenario carries the SAME ANNOTATION SHAPE used by Present (description + reasoning + priorLogit) plus the cohort-specific fields (name + activations):
-  • name: short phrase that names this scenario distinctly within the cohort.
-  • description: one short sentence (≤ 14 words) capturing the gestalt of this coordination — what this scenario IS as a recognisable shape. Same register the work itself uses (chapter epigraph for fiction, section heading for a paper, scenario name for simulation).
-  • reasoning: three to five sentences laying out the load-bearing logic. WHY does this coordination earn its place? Which variables cascade into which, why these intensities, which mechanism fires first, what makes the scenario plausible RELATIVE to its siblings, why this priorLogit and not one notch higher or lower? Substantive — name actors, mechanisms, threads, prior commitments where it sharpens the case; don't restate the activations.
+Each scenario carries the universal INFERENCE-SHAPE (same fields as Present and CRG/PRG node-like artifacts) plus cohort-specific fields:
+  • name: short phrase naming this scenario distinctly within the cohort.
+  • description: one sentence (≤ 14 words). Gestalt of this coordination, in the work's native register.
+  • reasoning: 3–5 sentences. Why this coordination earns its place — which variables cascade into which, why these intensities, which mechanism fires first, why this priorLogit and not one notch higher/lower. Substantive; don't restate the activations.
+  • considered (REQUIRED): 1–3 sentences. Adjacent coordinations considered and rejected, sibling scenarios this one contrasts against (cite by name), rival readings drafted and discarded. If no genuine rival applies, say so explicitly — never omit.
+  • breaks: 1–2 sentences. What observation would mean this scenario didn't happen — falsifying evidence, threshold whose non-crossing voids it. If you can't name one, it isn't forecasting.
+  • opens: 1–2 sentences. If this holds, what cascades into the arc-after-next — threads opened, markets perturbed, affordances granted.
   • activations: variableId + intensity 1–4 over the shared pool. Omit 0.
   • priorLogit ∈ [-4, +4]: relative log-prior plausibility within the cohort.
 
@@ -441,6 +472,9 @@ Output strict JSON:
       "name": "...",
       "description": "...",
       "reasoning": "...",
+      "considered": "...",
+      "breaks": "...",
+      "opens": "...",
       "priorLogit": 1.2,
       "activations": [ { "variableId": "var-...", "intensity": 3 } ]
     }
@@ -525,6 +559,9 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
       name?: unknown;
       description?: unknown;
       reasoning?: unknown;
+      considered?: unknown;
+      breaks?: unknown;
+      opens?: unknown;
       activations?: unknown[];
       priorLogit?: unknown;
     }>;
@@ -581,6 +618,9 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
       name,
       description: typeof s.description === 'string' ? s.description.trim() : undefined,
       reasoning: typeof s.reasoning === 'string' ? s.reasoning.trim() : undefined,
+      considered: typeof s.considered === 'string' ? s.considered.trim() : undefined,
+      breaks: typeof s.breaks === 'string' ? s.breaks.trim() : undefined,
+      opens: typeof s.opens === 'string' ? s.opens.trim() : undefined,
       color: SCENARIO_COLORS[out.length % SCENARIO_COLORS.length],
       variables,
       priorLogit,
@@ -625,9 +665,13 @@ Ground in:
 
 priorLogit is INDEPENDENT of intensity. Score the coordination's plausibility, not its amplitude.
 
-Include reasoning — three to five sentences laying out the load-bearing logic: which variables cascade into which, why these intensities, why this priorLogit and not one notch higher or lower, and where the cohort anchors land it ("more plausible than X because…"). Substantive — not a paraphrase of the activations.
+Include the universal INFERENCE-SHAPE fields, each substantive (not a paraphrase of the activations):
+  • reasoning — three to five sentences laying out the load-bearing logic: which variables cascade into which, why these intensities, why this priorLogit and not one notch higher or lower, and where the cohort anchors land it ("more plausible than X because…").
+  • considered (REQUIRED — load-bearing) — one to three sentences. The OPTION SPACE this scenario selected from. Which adjacent coordinations were considered and rejected, which sibling scenarios this one specifically contrasts against, which rival readings of the substrate were drafted and discarded. Comparative reasoning — not a summary. This is the field that distinguishes a scenario CHOSEN from a scenario SELECTED over alternatives. Escape valve: if no genuine alternative coordination applies, state that explicitly in \`considered\` rather than omitting it.
+  • breaks — one to two sentences. The FALSIFICATION HANDLE. What observation would mean this scenario didn't happen — the falsifying evidence, the threshold whose non-crossing voids the scenario, the load-bearing assumption whose breakage rules it out. If you can't name one, the scenario isn't forecasting — say so.
+  • opens — one to two sentences. The FORWARD EXTENSION. If this scenario holds, what cascades downstream — the threads it opens for the next arc, the markets it perturbs, the affordances it grants future continuations.
 
-Output strict JSON: { "priorLogit": <number>, "reasoning": "<three to five sentences>" }`;
+Output strict JSON: { "priorLogit": <number>, "reasoning": "...", "considered": "...", "breaks": "...", "opens": "..." }`;
 
 export interface RescoreScenarioInput {
   narrativeTitle: string;
@@ -646,6 +690,9 @@ export interface RescoreScenarioInput {
 export interface RescoreScenarioResult {
   priorLogit: number;
   reasoning: string;
+  considered?: string;
+  breaks?: string;
+  opens?: string;
 }
 
 export async function rescoreScenario(input: RescoreScenarioInput): Promise<RescoreScenarioResult> {
@@ -701,12 +748,27 @@ Re-score this scenario's priorLogit given its edited coordination, the cohort co
     ANALYSIS_TEMPERATURE,
   );
 
-  const parsed = parseJson(raw, 'rescoreScenario') as { priorLogit?: unknown; reasoning?: unknown };
+  const parsed = parseJson(raw, 'rescoreScenario') as {
+    priorLogit?: unknown;
+    reasoning?: unknown;
+    considered?: unknown;
+    breaks?: unknown;
+    opens?: unknown;
+  };
   const priorLogit = typeof parsed.priorLogit === 'number'
     ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
     : 0;
   const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '';
-  return { priorLogit, reasoning };
+  const considered = typeof parsed.considered === 'string' && parsed.considered.trim()
+    ? parsed.considered.trim()
+    : undefined;
+  const breaks = typeof parsed.breaks === 'string' && parsed.breaks.trim()
+    ? parsed.breaks.trim()
+    : undefined;
+  const opens = typeof parsed.opens === 'string' && parsed.opens.trim()
+    ? parsed.opens.trim()
+    : undefined;
+  return { priorLogit, reasoning, considered, breaks, opens };
 }
 
 // ── Probability model ──────────────────────────────────────────────────────

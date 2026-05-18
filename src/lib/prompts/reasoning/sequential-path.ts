@@ -105,6 +105,22 @@ export function buildSequentialPath(graph: ReasoningGraphBase): string {
     if (node.detail) {
       lines.push(`    · ${node.detail}`);
     }
+    // Universal inference-shape fields. Same three handles surface across
+    // CRG, PRG, and coordination-plan reasoning nodes; rendered with the
+    // same glyphs everywhere so downstream readers (LLM or human) can
+    // walk any graph type with the same mental model.
+    //   × considered  — option space (alternatives rejected)
+    //   ! breaks      — falsification handle (what invalidates it)
+    //   ⇒ opens       — forward extension (what cascades downstream)
+    if (node.considered) {
+      lines.push(`    × considered: ${node.considered}`);
+    }
+    if (node.breaks) {
+      lines.push(`    ! breaks: ${node.breaks}`);
+    }
+    if (node.opens) {
+      lines.push(`    ⇒ opens: ${node.opens}`);
+    }
   }
 
   return lines.join("\n");

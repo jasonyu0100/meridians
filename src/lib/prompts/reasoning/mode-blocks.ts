@@ -64,6 +64,8 @@ const DIVERGENT_MODE_BLOCK = `<reasoning-mode name="divergent" position="forward
     <rule>Scoring branches before all are written = drift to abduction. Committing to a single through-line = drift to deduction. Back off and branch.</rule>
   </mindset>
 
+  <inference-shape>Universal \`considered\` required (rejected sibling branches). For divergent, \`opens\` is ALSO critical — it names the consequences this branch makes possible that alternatives do not. \`breaks\` light.</inference-shape>
+
   <summary>The graph is an EXPANSION, not a solution — many possible futures hanging off the current state, the arc free to select later.</summary>
 </reasoning-mode>`;
 
@@ -124,6 +126,8 @@ const ABDUCTION_MODE_BLOCK = `<reasoning-mode name="abduction" position="backwar
     <rule>If a chain needs many new elements, it's failing minimality — revise, don't pad.</rule>
   </mindset>
 
+  <inference-shape>Universal \`considered\` required. For abduction, the abductive procedure above PRESCRIBES its content: the 2–3 hypotheses scored, with which scoring axis (coherence/sufficiency/minimality/retroactive-inevitability) discarded each. This is the mode where \`considered\` does the most work.</inference-shape>
+
   <summary>The graph is an INVESTIGATIVE RECONSTRUCTION — fate nodes with backward chains to specific prior configurations, each chain chosen over competitors.</summary>
 </reasoning-mode>`;
 
@@ -171,6 +175,8 @@ const INDUCTION_MODE_BLOCK = `<reasoning-mode name="induction" position="backwar
     Observations are evidence, plural — a single observation is abduction. Goal is a PATTERN that generalises; a principle explaining one observation isn't inductive. Multiple plausible patterns: keep both as competitors rather than collapsing.
   </mindset>
 
+  <inference-shape>Universal \`considered\` required. For induction, it carries rival generalisations the same observations could support. \`breaks\` is ALSO critical — the break-case probe: name the observation that would falsify the principle (if you can't, it's tautology or too loose).</inference-shape>
+
   <summary>The graph is a GENERALISATION — many observed states at the leaves converging on principle nodes that explain them all.</summary>
 </reasoning-mode>`;
 
@@ -213,6 +219,8 @@ const DEDUCTION_MODE_BLOCK = `<reasoning-mode name="deduction" position="forward
     Premise is load-bearing and has passed the four axes — name it clearly at the root. Each node answers: "given the previous, what MUST be true next?" If the answer is one-of-several, you're in divergent mode. Logical necessity over narrative interest — flat-but-necessary stays. Any node with >1 outgoing causal arrow into a consequence = drift to divergent; collapse to the single necessary consequence or admit the mode switch.
   </mindset>
 
+  <inference-shape>Universal \`considered\` required — for deduction it doubles as drift-detection: a long \`considered\` means you've slipped into divergent. Honest short form: "only path that satisfies X". \`breaks\` is ALSO critical — the counterfactual-sensitivity axis. Necessity only means something if you can name what would make it not-necessary.</inference-shape>
+
   <summary>The graph is a DERIVATION — top-to-bottom, each step locks into the next, arriving at a conclusion the premise made inevitable.</summary>
 </reasoning-mode>`;
 
@@ -222,6 +230,8 @@ const DEDUCTION_MODE_BLOCK = `<reasoning-mode name="deduction" position="forward
 const FREEFORM_MODE_BLOCK = `<reasoning-mode name="freeform" position="unconstrained" archetype="model's own chain of thought">
   <intent>No imposed thinking pattern. Use whichever inference shape fits the direction best — backward selection, forward derivation, branching, generalisation, analogy, constraint propagation, or any mix. Pick the shape that makes the resulting graph most useful to the user as a thinking aid.</intent>
   <discipline>Even without an imposed mode, the graph itself stays causal and typed. Reasoning nodes still carry their own causal logic in detail; the three forces (fate, world, system) still interact; the terminal still earns its position. Freeform means the inference shape is yours to choose, not that the discipline is off.</discipline>
+
+  <inference-shape>Universal \`considered\` required on every inference-tier node. No mode-specific extra emphasis — pick the inference shape that fits the direction; let each node's content drive which of \`breaks\`/\`opens\` does the most work.</inference-shape>
 </reasoning-mode>`;
 
 /** Dispatch the reasoning-mode block. Defaults to freeform (let the model

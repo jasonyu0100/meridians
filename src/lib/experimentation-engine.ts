@@ -101,6 +101,15 @@ export function stampScenarioVariables(
   const reasoning = isScenario && scenarioOrVariables.reasoning?.trim()
     ? scenarioOrVariables.reasoning.trim()
     : undefined;
+  const considered = isScenario && scenarioOrVariables.considered?.trim()
+    ? scenarioOrVariables.considered.trim()
+    : undefined;
+  const breaks = isScenario && scenarioOrVariables.breaks?.trim()
+    ? scenarioOrVariables.breaks.trim()
+    : undefined;
+  const opens = isScenario && scenarioOrVariables.opens?.trim()
+    ? scenarioOrVariables.opens.trim()
+    : undefined;
   const logit = isScenario && typeof scenarioOrVariables.priorLogit === 'number'
     ? scenarioOrVariables.priorLogit
     : undefined;
@@ -109,6 +118,9 @@ export function stampScenarioVariables(
     presentVariables: scenarioVariables.filter((v) => v.intensity > 0),
     presentDescription: description,
     presentReasoning: reasoning,
+    presentConsidered: considered,
+    presentBreaks: breaks,
+    presentOpens: opens,
     presentLogit: logit,
   };
 }
@@ -149,6 +161,9 @@ export function buildVirtualState(
       presentVariables: stampedArc.presentVariables,
       presentDescription: stampedArc.presentDescription,
       presentReasoning: stampedArc.presentReasoning,
+      presentConsidered: stampedArc.presentConsidered,
+      presentBreaks: stampedArc.presentBreaks,
+      presentOpens: stampedArc.presentOpens,
       presentLogit: stampedArc.presentLogit,
     };
   }

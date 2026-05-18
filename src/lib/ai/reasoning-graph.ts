@@ -29,7 +29,14 @@ import { parseJson } from "./json";
 import { buildCumulativeSystemGraph, getMarketProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/narrative-utils";
 import { classifyThreadCategory, computeRecentLogitEnergy, THREAD_CATEGORY_GUIDANCE, formatThreadGuidance } from "@/lib/thread-category";
 import { applyDerivedForceModes } from "@/lib/auto-engine";
-import { logError } from "@/lib/system-logger";
+import { logError, logWarning } from "@/lib/system-logger";
+
+/** Inference-tier node types — the ones the universal inference-shape
+ *  applies to. Priors (character/location/artifact/system/fate) are
+ *  substrate, not selections; spine nodes (peak/valley/moment) are
+ *  commitments, not inferences. Anything else is inference-tier and the
+ *  prompt requires `considered` on it. */
+const INFERENCE_TIER_TYPES = new Set(["reasoning", "pattern", "warning", "chaos"]);
 import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/network-graph";
 import type { CoordinationPlanContext } from "./scenes";
 import { buildActiveModeSection } from "./mode-graph";
@@ -342,8 +349,11 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
       index: typeof n.index === "number" ? n.index : i,
       order: i,
       type: (typeof n.type === "string" && VALID_NODE_TYPES.has(n.type)) ? n.type as ReasoningNodeType : "reasoning",
-      label: typeof n.label === "string" ? n.label.slice(0, 200) : "Unlabeled node",
-      detail: typeof n.detail === "string" ? n.detail.slice(0, 500) : undefined,
+      label: typeof n.label === "string" ? n.label : "Unlabeled node",
+      detail: typeof n.detail === "string" ? n.detail : undefined,
+      considered: typeof n.considered === "string" ? n.considered : undefined,
+      breaks: typeof n.breaks === "string" ? n.breaks : undefined,
+      opens: typeof n.opens === "string" ? n.opens : undefined,
       entityId: typeof n.entityId === "string" ? n.entityId : undefined,
       threadId: typeof n.threadId === "string" ? n.threadId : undefined,
       systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
@@ -351,6 +361,23 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
     const nodes: ReasoningNode[] = rawNodes.map((n) =>
       validateNodeReferences(n, narrative, { source: "plan-generation", arcName }),
     );
+    // Universal inference-shape audit: log every inference-tier node that
+    // silently lacks `considered`. The prompt requires it (with an explicit
+    // escape valve for genuinely-no-alternative cases); silent omissions
+    // are a discipline gap we want to measure.
+    for (const n of nodes) {
+      if (INFERENCE_TIER_TYPES.has(n.type) && !n.considered) {
+        logWarning(
+          `Inference-tier node "${n.label}" (${n.type}) emitted without \`considered\` — discipline gap`,
+          undefined,
+          {
+            source: "plan-generation",
+            operation: "reasoning-graph-parse",
+            details: { arcName, nodeId: n.id, type: n.type },
+          },
+        );
+      }
+    }
 
     // Ensure all edges have required fields, valid types, and reference existing nodes
     const nodeIds = new Set(nodes.map((n) => n.id));
@@ -360,7 +387,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
         from: typeof e.from === "string" ? e.from : "",
         to: typeof e.to === "string" ? e.to : "",
         type: (typeof e.type === "string" && VALID_EDGE_TYPES.has(e.type)) ? e.type as ReasoningEdgeType : "causes",
-        label: typeof e.label === "string" ? e.label.slice(0, 100) : undefined,
+        label: typeof e.label === "string" ? e.label : undefined,
       }))
       .filter((e: ReasoningEdge) => e.from && e.to && nodeIds.has(e.from) && nodeIds.has(e.to));
 
@@ -717,8 +744,11 @@ export async function generateCoordinationPlan(
         index: n.index, // Will be reindexed below
         order,
         type: VALID_COORDINATION_NODE_TYPES.has(n.type) ? n.type : "reasoning",
-        label: typeof n.label === "string" ? n.label.slice(0, 100) : "",
+        label: typeof n.label === "string" ? n.label : "",
         detail: typeof n.detail === "string" ? n.detail : undefined,
+        considered: typeof n.considered === "string" ? n.considered : undefined,
+        breaks: typeof n.breaks === "string" ? n.breaks : undefined,
+        opens: typeof n.opens === "string" ? n.opens : undefined,
         entityId: typeof n.entityId === "string" ? n.entityId : undefined,
         threadId: typeof n.threadId === "string" ? n.threadId : undefined,
         systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
@@ -754,6 +784,21 @@ export async function generateCoordinationPlan(
     // Rebuild nodes array in new order (reindexed chronologically by arc)
     const reindexedNodes: CoordinationNode[] = [...nodesWithArcSlot, ...globalNodes];
 
+    // Universal inference-shape audit — same rule as the arc-CRG parser.
+    for (const n of reindexedNodes) {
+      if (INFERENCE_TIER_TYPES.has(n.type) && !n.considered) {
+        logWarning(
+          `Plan inference-tier node "${n.label}" (${n.type}) emitted without \`considered\` — discipline gap`,
+          undefined,
+          {
+            source: "plan-generation",
+            operation: "coordination-plan-parse",
+            details: { nodeId: n.id, type: n.type, arcSlot: n.arcSlot },
+          },
+        );
+      }
+    }
+
     // Validate edges
     const nodeIds = new Set(reindexedNodes.map((n) => n.id));
     const edges: CoordinationEdge[] = (data.edges ?? [])
@@ -772,7 +817,7 @@ export async function generateCoordinationPlan(
         from: e.from,
         to: e.to,
         type: e.type as ReasoningEdgeType,
-        label: typeof e.label === "string" ? e.label.slice(0, 100) : undefined,
+        label: typeof e.label === "string" ? e.label : undefined,
       }))
       .filter((e: CoordinationEdge) => nodeIds.has(e.from) && nodeIds.has(e.to));
 

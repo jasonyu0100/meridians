@@ -718,6 +718,9 @@ export type Action =
       variables: Variable[];
       description?: string;
       reasoning?: string;
+      considered?: string;
+      breaks?: string;
+      opens?: string;
       logit?: number;
     }
   | {
@@ -1173,6 +1176,9 @@ function reducer(state: AppState, action: Action): AppState {
               presentVariables: action.variables.length > 0 ? action.variables : undefined,
               presentDescription: action.description,
               presentReasoning: action.reasoning,
+              presentConsidered: action.considered,
+              presentBreaks: action.breaks,
+              presentOpens: action.opens,
               presentLogit: action.logit,
             },
           },
