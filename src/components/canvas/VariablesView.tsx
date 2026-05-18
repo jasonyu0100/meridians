@@ -886,7 +886,7 @@ function ReasoningOverlay({
   reasoning: string;
 }) {
   return (
-    <div className="absolute inset-0 z-20 overflow-y-auto">
+    <div className="absolute inset-0 z-20 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
         <div className="flex items-center gap-2 mb-4">
           <div
