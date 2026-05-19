@@ -1692,17 +1692,28 @@ function JobsList({ jobs, selectedId, onSelect }: { jobs: AnalysisJob[]; selecte
 export default function AnalysisPage() {
   return (
     <Suspense fallback={<div className="h-screen bg-bg-base" />}>
-      <AnalysisPageInner />
+      <AnalysisPageInner kind="create" />
     </Suspense>
   );
 }
 
-function AnalysisPageInner() {
+/** Shared shell used by both `/analysis` (kind='create') and `/extensions`
+ *  (kind='extend'). The `kind` prop scopes which jobs are visible in the
+ *  sidebar; the rest of the UI (JobsList / JobDetail / NewJobSetup) is
+ *  identical. The /extensions route also hides the "new job" path —
+ *  extension jobs are created from the FilesPanel composer, not here. */
+export function AnalysisPageInner({ kind }: { kind: 'create' | 'extend' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state } = useStore();
+  const headerLabel = kind === 'extend' ? 'Extensions' : 'Analysis';
+  const showNewSetupRoute = kind === 'create';
+  const filteredJobs = useMemo(
+    () => state.analysisJobs.filter((j) => (kind === 'extend' ? j.kind === 'extend' : j.kind !== 'extend')),
+    [state.analysisJobs, kind],
+  );
 
-  const isNew = searchParams.get('new') === '1';
+  const isNew = showNewSetupRoute && searchParams.get('new') === '1';
   const initialJobId = searchParams.get('job');
 
   const [sourceText, setSourceText] = useState<string | null>(null);
@@ -1724,7 +1735,11 @@ function AnalysisPageInner() {
     );
   }, [isNew, initialJobId]);
 
-  const selectedJob = selectedJobId ? state.analysisJobs.find((j) => j.id === selectedJobId) ?? null : null;
+  // Restrict job lookup to the kind-scoped slice. A direct ?job=id link
+  // for the wrong kind silently lands on the empty state, which matches
+  // the rest of the world-scoped surface (you don't see other worlds'
+  // jobs by URL hopping).
+  const selectedJob = selectedJobId ? filteredJobs.find((j) => j.id === selectedJobId) ?? null : null;
 
   return (
     <div className="h-screen bg-bg-base flex relative overflow-hidden">
@@ -1748,10 +1763,10 @@ function AnalysisPageInner() {
             <IconChevronLeft size={12} />
             Home
           </button>
-          <h1 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-mono">Analysis</h1>
+          <h1 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-mono">{headerLabel}</h1>
         </div>
         <JobsList
-          jobs={state.analysisJobs}
+          jobs={filteredJobs}
           selectedId={selectedJobId}
           onSelect={(id) => {
             setSelectedJobId(id);
@@ -1780,15 +1795,17 @@ function AnalysisPageInner() {
             key={selectedJob.id}
             job={selectedJob}
           />
-        ) : state.analysisJobs.length === 0 ? (
+        ) : filteredJobs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center relative z-10">
             <div className="text-center">
-              <p className="text-white/20 text-sm">No analysis jobs yet</p>
+              <p className="text-white/20 text-sm">
+                {kind === 'extend' ? 'No extension files yet' : 'No analysis jobs yet'}
+              </p>
               <button
                 onClick={() => router.push('/')}
                 className="mt-3 text-[11px] text-white/40 hover:text-white/70 underline underline-offset-2 transition"
               >
-                Paste text on home page to start
+                {kind === 'extend' ? 'Open a world and add a file from the Files panel' : 'Paste text on home page to start'}
               </button>
             </div>
           </div>

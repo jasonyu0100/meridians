@@ -65,8 +65,8 @@ async function attachCreationFile(
       contentRef,
       charCount: job.sourceText.length,
       wordCount: job.sourceText.trim().split(/\s+/).filter(Boolean).length,
-      analysisJobId: job.id,
       createdAt: Date.now(),
+      status: 'committed',
     };
     return { ...narrative, files: { ...(narrative.files ?? {}), [file.id]: file } };
   } catch (err) {
@@ -614,21 +614,66 @@ class AnalysisRunner {
         },
       });
 
-      // Stamp the source corpus as the narrative's creation file. The raw
-      // text goes into the assets DB so the narrative JSON stays small; the
-      // metadata sits on narrative.files and powers the Files sidebar.
-      const stampedNarrative = await attachCreationFile(narrative, job);
+      if (job.kind === 'extend' && job.targetNarrativeId && job.fileId) {
+        // World-scoped extension run. Don't add a new narrative — park
+        // the assembled slice on the linked SourceFile (status → ready).
+        // The job itself stays in state.analysisJobs so it remains
+        // viewable in the /extensions route; the /analysis route filters
+        // these out so they don't clutter the main creation queue.
+        try {
+          const extractedRef = await assetManager.storeText(
+            JSON.stringify(narrative),
+            undefined,
+            job.targetNarrativeId,
+          );
+          d({
+            type: 'UPDATE_SOURCE_FILE',
+            narrativeId: job.targetNarrativeId,
+            fileId: job.fileId,
+            updates: { status: 'ready', extractedRef, error: undefined },
+          });
+          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'completed' } });
+          logInfo('Extension conversion completed', { source: 'analysis', operation: 'extension-complete', details: {
+            jobId: job.id, narrativeId: job.targetNarrativeId, fileId: job.fileId,
+            scenes: Object.keys(narrative.scenes).length,
+          } });
+        } catch (err) {
+          logError('Extension result storage failed', err, { source: 'analysis', operation: 'extension-store', details: { jobId: job.id, fileId: job.fileId } });
+          d({
+            type: 'UPDATE_SOURCE_FILE',
+            narrativeId: job.targetNarrativeId,
+            fileId: job.fileId,
+            updates: { status: 'failed', error: err instanceof Error ? err.message : String(err) },
+          });
+          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'failed', error: err instanceof Error ? err.message : String(err) } });
+        }
+      } else {
+        // Stamp the source corpus as the narrative's creation file. The
+        // raw text goes into the assets DB so the narrative JSON stays
+        // small; the metadata sits on narrative.files and powers the
+        // Files sidebar.
+        const stampedNarrative = await attachCreationFile(narrative, job);
 
-      d({ type: 'ADD_NARRATIVE', narrative: stampedNarrative });
-      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'completed', narrativeId: stampedNarrative.id } });
+        d({ type: 'ADD_NARRATIVE', narrative: stampedNarrative });
+        d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'completed', narrativeId: stampedNarrative.id } });
 
-      logInfo('Analysis completed', { source: 'analysis', operation: 'job-complete', details: {
-        jobId: job.id, narrativeId: stampedNarrative.id, title: job.title,
-        scenes: Object.keys(stampedNarrative.scenes).length, characters: Object.keys(stampedNarrative.characters).length,
-      } });
+        logInfo('Analysis completed', { source: 'analysis', operation: 'job-complete', details: {
+          jobId: job.id, narrativeId: stampedNarrative.id, title: job.title,
+          scenes: Object.keys(stampedNarrative.scenes).length, characters: Object.keys(stampedNarrative.characters).length,
+        } });
+      }
     } catch (err) {
       logError('Assembly failed', err, { source: 'analysis', operation: 'assembly', details: { jobId: job.id } });
-      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'failed', error: err instanceof Error ? err.message : String(err) } });
+      const message = err instanceof Error ? err.message : String(err);
+      if (job.kind === 'extend' && job.targetNarrativeId && job.fileId) {
+        d({
+          type: 'UPDATE_SOURCE_FILE',
+          narrativeId: job.targetNarrativeId,
+          fileId: job.fileId,
+          updates: { status: 'failed', error: message },
+        });
+      }
+      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'failed', error: message } });
     }
   }
 

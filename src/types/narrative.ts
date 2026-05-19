@@ -1638,10 +1638,15 @@ export type NarrativeState = {
   updatedAt: number;
 };
 
-/** A source-text file attached to a narrative. Created either by the
- *  initial text-analysis run (mode: 'create') or by a later extension
- *  job that appends a new arc to the same narrative (mode: 'extend').
- *  The raw text body lives in IndexedDB; this record is the metadata. */
+/** A source-text file attached to a narrative. Two flavours:
+ *  - `mode: 'create'` — the corpus that birthed the world; born committed.
+ *  - `mode: 'extend'` — uploaded later to extend the world. Walks the
+ *    full lifecycle: staged → converting → ready → committed.
+ *
+ *  The raw text body lives in IndexedDB (contentRef); the extracted
+ *  narrative slice (post-conversion, pre-commit) lives in IndexedDB too
+ *  (extractedRef, JSON-serialised). The SourceFile record itself is
+ *  pure metadata. */
 export type SourceFile = {
   id: string;
   name: string;
@@ -1650,9 +1655,32 @@ export type SourceFile = {
   contentRef: string;
   charCount: number;
   wordCount: number;
-  /** AnalysisJob.id that produced this file, when known. */
-  analysisJobId?: string;
   createdAt: number;
+
+  /** Lifecycle status. `committed` for creation files at stamp time;
+   *  walks the full path for extension files. */
+  status: 'staged' | 'converting' | 'ready' | 'committed' | 'failed';
+
+  /** Set while status === 'converting' — points at the world-scoped
+   *  AnalysisJob driving the pipeline. Cleared once the job completes
+   *  (the job itself is removed from state.analysisJobs at that point). */
+  analysisJobId?: string;
+
+  /** Set once status === 'ready' — IndexedDB asset id ("text_xxx")
+   *  holding the JSON-serialised extracted NarrativeState slice. */
+  extractedRef?: string;
+
+  /** Set once status === 'committed' for extension files. Records which
+   *  branch absorbed this file and what it added. */
+  commit?: {
+    branchId: string;
+    arcId: string;
+    sceneIds: string[];
+    committedAt: number;
+  };
+
+  /** Error message when status === 'failed'. */
+  error?: string;
 };
 
 // ── Surveys ───────────────────────────────────────────────────────────────────
@@ -2453,6 +2481,19 @@ export type AnalysisJob = {
   id: string;
   title: string;
   sourceText: string;
+  /** Run flavour:
+   *  - 'create' (default) — assembles a brand-new narrative, lands in
+   *    the global jobs list and the /analysis page.
+   *  - 'extend' — world-scoped extension run. Filtered out of the
+   *    /analysis page; on completion the result is stored on the
+   *    linked SourceFile and the job is removed from in-memory state. */
+  kind?: 'create' | 'extend';
+  /** Set when `kind === 'extend'` — the narrative this run extends. */
+  targetNarrativeId?: string;
+  /** Set when `kind === 'extend'` — the SourceFile that owns this run.
+   *  Used by the runner to flip the file's status (converting → ready
+   *  → failed) and attach the extracted slice. */
+  fileId?: string;
   /** Text split into numbered sections */
   chunks: { index: number; text: string; sectionCount: number }[];
   /** Per-chunk extraction results (phases 1-4 output, indexed parallel to chunks). */

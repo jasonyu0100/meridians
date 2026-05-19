@@ -83,6 +83,7 @@ import type {
   SceneGameAnalysis,
   ArcInvestigation,
   SearchQuery,
+  SourceFile,
   StorySettings,
   Survey,
   SurveyResponse,
@@ -641,6 +642,21 @@ function updateNarrative(
   };
 }
 
+/** Apply an updater only if the given narrativeId matches the currently
+ *  active narrative. World-scoped flows (file conversion / extension
+ *  jobs) carry the target narrativeId so updates land on the right
+ *  world if the operator stayed put; if they navigated away the update
+ *  is dropped silently. Keep extension runs short or stay on the world
+ *  to avoid losing progress mid-flight. */
+function updateActiveNarrativeIfMatch(
+  state: AppState,
+  narrativeId: string,
+  updater: (n: NarrativeState) => NarrativeState,
+): AppState {
+  if (state.activeNarrative?.id !== narrativeId) return state;
+  return updateNarrative(state, updater);
+}
+
 export const SEED_NARRATIVE_IDS = SEED_IDS;
 export const PLAYGROUND_NARRATIVE_IDS = PLAYGROUND_IDS;
 export const ANALYSIS_NARRATIVE_IDS = ANALYSIS_IDS;
@@ -896,6 +912,10 @@ export type Action =
   | { type: "UPDATE_ANALYSIS_JOB"; id: string; updates: Partial<AnalysisJob> }
   | { type: "DELETE_ANALYSIS_JOB"; id: string }
   | { type: "HYDRATE_ANALYSIS_JOBS"; jobs: AnalysisJob[] }
+  // Source files — world-scoped corpus records (creation + extension)
+  | { type: "ADD_SOURCE_FILE"; narrativeId: string; file: SourceFile }
+  | { type: "UPDATE_SOURCE_FILE"; narrativeId: string; fileId: string; updates: Partial<SourceFile> }
+  | { type: "DELETE_SOURCE_FILE"; narrativeId: string; fileId: string }
   // Chat threads
   | { type: "CREATE_CHAT_THREAD"; thread: ChatThread }
   | { type: "DELETE_CHAT_THREAD"; threadId: string }
@@ -2862,6 +2882,36 @@ function reducer(state: AppState, action: Action): AppState {
       );
       return { ...state, analysisJobs: [...action.jobs, ...inMemoryOnly] };
     }
+
+    // ── Source files ─────────────────────────────────────────────────────
+    // World-scoped corpus records. ADD stages a new file; UPDATE walks
+    // the file through its lifecycle (status / extractedRef / commit /
+    // error). DELETE removes both the SourceFile and its asset bodies —
+    // callers are expected to assetManager.deleteText first.
+
+    case "ADD_SOURCE_FILE":
+      return updateActiveNarrativeIfMatch(state, action.narrativeId, (n) => ({
+        ...n,
+        files: { ...(n.files ?? {}), [action.file.id]: action.file },
+      }));
+
+    case "UPDATE_SOURCE_FILE":
+      return updateActiveNarrativeIfMatch(state, action.narrativeId, (n) => {
+        const existing = n.files?.[action.fileId];
+        if (!existing) return n;
+        return {
+          ...n,
+          files: { ...n.files, [action.fileId]: { ...existing, ...action.updates } },
+        };
+      });
+
+    case "DELETE_SOURCE_FILE":
+      return updateActiveNarrativeIfMatch(state, action.narrativeId, (n) => {
+        if (!n.files?.[action.fileId]) return n;
+        const next = { ...n.files };
+        delete next[action.fileId];
+        return { ...n, files: next };
+      });
 
     // ── Chat threads ──────────────────────────────────────────────────────
     case "CREATE_CHAT_THREAD": {
