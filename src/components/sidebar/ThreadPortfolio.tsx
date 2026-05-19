@@ -1,6 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+/**
+ * ThreadPortfolio — sidebar pane mirroring SurveyPanel / InvestigationPanel
+ * shape: top bar with a count, then a stream of cards. Threads are grouped
+ * by lifecycle bucket (focus / open / dormant / resolved / abandoned);
+ * groups stay always-expanded and are separated by dividers, so the whole
+ * portfolio reads as a single scrollable list with section breaks.
+ */
+
+import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import {
   computePortfolioSnapshot,
@@ -57,9 +65,12 @@ function VolumeBar({ volume, scale }: { volume: number; scale: number }) {
   );
 }
 
-// ── Row ────────────────────────────────────────────────────────────────────
+// ── Card ───────────────────────────────────────────────────────────────────
 
-function PortfolioRowView({
+/** Single thread expressed as a group-box card — same surface treatment
+ *  (rounded-lg + border-white/5 + bg-white/3 hover lift) used by Survey,
+ *  Investigation, and File panels. */
+function ThreadCard({
   row,
   inFocus,
   maxVolume,
@@ -81,37 +92,32 @@ function PortfolioRowView({
   return (
     <button
       onClick={onClick}
-      className={`group text-left px-1 py-1.5 flex flex-col gap-1 hover:bg-white/3 transition-colors rounded-sm${dimmed ? ' opacity-60' : ''}`}
+      className={`w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 flex flex-col gap-1.5${dimmed ? ' opacity-65' : ''}`}
     >
-      {/* Header: id + focus marker on one line, description on its own line below */}
-      <div className="flex items-center gap-1.5">
-        <span className="font-mono text-[10px] text-text-dim shrink-0">
+      {/* Meta row — id on the left, lifecycle category on the right, mirrors
+          the SurveyCard's questionType / status header. */}
+      <div className="flex items-baseline gap-2">
+        <span className="text-[9px] uppercase tracking-wider text-text-dim/70 font-mono">
           {thread.id}
         </span>
         {inFocus && (
-          <span
-            className="text-[9px] font-medium ml-auto shrink-0"
-            style={{ color: catColor }}
-            title="In focus window"
-          >
-            focus
+          <span className="text-[9px] uppercase tracking-wider font-mono text-amber-400/80">
+            · focus
           </span>
         )}
-      </div>
-      <p className="text-xs text-text-primary leading-snug wrap-break-word">
-        {thread.description}
-      </p>
-
-      {/* Category + leading outcome + margin */}
-      <div className="flex items-center gap-2 text-[10px] min-w-0">
         <span
-          className="shrink-0 font-medium"
+          className="text-[9px] uppercase tracking-wider font-mono ml-auto"
           style={{ color: catColor }}
           title={THREAD_CATEGORY_DESCRIPTION[category]}
         >
           {THREAD_CATEGORY_LABEL[category]}
         </span>
-        <span className="text-text-dim/40 shrink-0">·</span>
+      </div>
+
+      <p className="text-[12px] text-text-primary leading-snug">{thread.description}</p>
+
+      {/* Leading outcome + margin */}
+      <div className="flex items-baseline gap-2 text-[10px]">
         {closeLabel ? (
           <span className="font-mono truncate" style={{ color: catColor }}>
             {closeLabel}
@@ -127,11 +133,10 @@ function PortfolioRowView({
         </span>
       </div>
 
-      {/* Probability stack */}
       <ProbabilityBar outcomes={thread.outcomes} probs={probs} topIdx={topIdx} dimmed={dimmed} />
 
-      {/* Volume bar + entropy / quality indicator */}
-      <div className="flex items-center gap-2">
+      {/* Volume + entropy / quality */}
+      <div className="flex items-center gap-2 mt-0.5">
         <div className="flex-1">
           <VolumeBar volume={volume} scale={maxVolume || 1} />
         </div>
@@ -145,7 +150,7 @@ function PortfolioRowView({
   );
 }
 
-// ── Top stats — plain numbers, no tile background, dividers between groups ─
+// ── Stats block ────────────────────────────────────────────────────────────
 
 function PortfolioStats({
   snapshot,
@@ -158,63 +163,50 @@ function PortfolioStats({
   const uncertaintyPct = Math.round(snapshot.averageEntropy * 100);
 
   return (
-    <div className="flex flex-col gap-2 px-1 py-2">
-      {/* Primary stats — open / focus / uncertainty. Open is the clearest
-          denominator; closed/abandoned rendered in the distribution below. */}
-      <div className="flex items-baseline gap-2 text-[10px] text-text-dim">
+    <div className="rounded-lg border border-white/5 bg-white/3 p-3 flex flex-col gap-2">
+      <div className="flex items-baseline gap-3 text-[10px] text-text-dim">
         <div className="flex items-baseline gap-1">
-          <span className="text-sm text-text-primary font-mono tabular-nums">
-            {openCount}
-          </span>
+          <span className="text-sm text-text-primary font-mono tabular-nums">{openCount}</span>
           <span>open</span>
         </div>
-        <span className="text-text-dim/30">|</span>
         <div className="flex items-baseline gap-1">
-          <span className="text-sm text-text-primary font-mono tabular-nums">
-            {focusCount}
-          </span>
+          <span className="text-sm text-text-primary font-mono tabular-nums">{focusCount}</span>
           <span>in focus</span>
         </div>
-        <span className="text-text-dim/30">|</span>
         <div
-          className="flex items-baseline gap-1"
+          className="flex items-baseline gap-1 ml-auto"
           title="Average uncertainty across open markets. 100% = maximum entropy, 0% = fully resolved."
         >
-          <span className="text-sm text-text-primary font-mono tabular-nums">
-            {uncertaintyPct}%
-          </span>
+          <span className="text-sm text-text-primary font-mono tabular-nums">{uncertaintyPct}%</span>
           <span>uncertain</span>
         </div>
       </div>
 
-      {/* Secondary row — totals + closed/abandoned counts */}
       {(snapshot.closedThreads > 0 || snapshot.abandonedThreads > 0) && (
-        <div className="flex items-center gap-2 text-[10px] text-text-dim">
-          <span>{snapshot.totalThreads} total</span>
+        <div className="flex items-baseline gap-3 text-[10px] text-text-dim">
+          <span>
+            <span className="font-mono tabular-nums text-text-secondary">
+              {snapshot.totalThreads}
+            </span>{' '}
+            total
+          </span>
           {snapshot.closedThreads > 0 && (
-            <>
-              <span className="text-text-dim/30">|</span>
-              <span>
-                <span className="text-emerald-300/80 font-mono tabular-nums">
-                  {snapshot.closedThreads}
-                </span>{' '}
-                resolved
-              </span>
-            </>
+            <span>
+              <span className="font-mono tabular-nums text-emerald-300/80">
+                {snapshot.closedThreads}
+              </span>{' '}
+              resolved
+            </span>
           )}
           {snapshot.abandonedThreads > 0 && (
-            <>
-              <span className="text-text-dim/30">|</span>
-              <span>
-                <span className="font-mono tabular-nums">{snapshot.abandonedThreads}</span>{' '}
-                abandoned
-              </span>
-            </>
+            <span>
+              <span className="font-mono tabular-nums">{snapshot.abandonedThreads}</span>{' '}
+              abandoned
+            </span>
           )}
         </div>
       )}
 
-      {/* Attention bar — portfolio weight across open threads */}
       {openCount > 0 && (
         <div
           className="flex items-center gap-2 text-[10px] text-text-dim"
@@ -233,29 +225,22 @@ function PortfolioStats({
         </div>
       )}
 
-      {/* Resolution quality — only when something has closed */}
       {snapshot.averageResolutionQuality !== null && (
-        <div className="flex items-center gap-2 text-[10px] text-text-dim pt-1 border-t border-white/5">
-          <span>Resolution quality</span>
+        <div className="flex items-center gap-2 text-[10px] text-text-dim">
+          <span>Resolution</span>
           <span className="font-mono tabular-nums text-text-secondary">
             {Math.round(snapshot.averageResolutionQuality * 100)}%
           </span>
-          <span className="text-text-dim/30">·</span>
-          <span>
+          <span className="ml-auto">
             <span className="text-emerald-300/80 tabular-nums">
               {snapshot.resolutionQualityBands.earned}
             </span>{' '}
-            earned
-          </span>
-          <span>
+            earned ·{' '}
             <span className="text-amber-300/80 tabular-nums">
               {snapshot.resolutionQualityBands.adequate}
             </span>{' '}
-            adequate
-          </span>
-          <span>
-            <span className="tabular-nums">{snapshot.resolutionQualityBands.thin}</span>{' '}
-            thin
+            adequate ·{' '}
+            <span className="tabular-nums">{snapshot.resolutionQualityBands.thin}</span> thin
           </span>
         </div>
       )}
@@ -263,38 +248,19 @@ function PortfolioStats({
   );
 }
 
-// ── Collapsible section ────────────────────────────────────────────────────
+// ── Section header ────────────────────────────────────────────────────────
 
-function CollapsibleSection({
-  title,
-  count,
-  defaultOpen,
-  children,
-}: {
-  title: string;
-  count: number;
-  defaultOpen: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+/** Lightweight title row that opens each lifecycle group. Plain text, no
+ *  click target — the previous CollapsibleSection toggles are gone. */
+function SectionHeader({ title, count }: { title: string; count: number }) {
   return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 w-full px-1 py-1 hover:bg-white/3 rounded transition-colors"
-      >
-        <span
-          className="text-[10px] text-text-dim transition-transform"
-          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
-        >
-          ▶
-        </span>
-        <span className="text-[10px] font-semibold text-text-dim uppercase tracking-widest">
-          {title}
-        </span>
-        <span className="text-[10px] text-text-dim ml-auto tabular-nums">{count}</span>
-      </button>
-      {open && <div className="flex flex-col">{children}</div>}
+    <div className="flex items-baseline gap-2 px-1">
+      <span className="text-[10px] font-semibold text-text-dim uppercase tracking-widest">
+        {title}
+      </span>
+      <span className="text-[10px] text-text-dim/70 font-mono tabular-nums ml-auto">
+        {count}
+      </span>
     </div>
   );
 }
@@ -345,22 +311,34 @@ export default function ThreadPortfolio() {
 
   if (!narrative) {
     return (
-      <div className="flex-1 flex items-center justify-center px-3">
-        <p className="text-xs text-text-dim text-center">Select a narrative to view threads</p>
+      <div className="p-4 text-[11px] text-text-dim">
+        Open a narrative to view its threads.
       </div>
     );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center px-3">
-        <p className="text-xs text-text-dim text-center">No threads yet</p>
+      <div className="flex flex-col h-full min-h-0">
+        <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-text-dim/70">0 threads</span>
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center justify-center p-8 text-center gap-2">
+          <svg className="w-8 h-8 text-text-dim/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <p className="text-[11px] text-text-dim/80">No threads in this narrative yet.</p>
+          <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
+            Threads appear as soon as scenes register thread deltas — the engine
+            records them, this panel shows the live portfolio.
+          </p>
+        </div>
       </div>
     );
   }
 
   // Partition by bucket. Focus window threads float to the top regardless of
-  // their category (they already carry the category colour via the inset edge).
+  // their category — they keep their category colour via the lifecycle chip.
   const focus: PortfolioRow[] = [];
   const live: PortfolioRow[] = [];
   const dormant: PortfolioRow[] = [];
@@ -377,9 +355,9 @@ export default function ThreadPortfolio() {
 
   const maxVolume = Math.max(1, ...rows.map((r) => r.volume));
 
-  const render = (list: PortfolioRow[]) =>
+  const renderCards = (list: PortfolioRow[]) =>
     list.map((row) => (
-      <PortfolioRowView
+      <ThreadCard
         key={row.thread.id}
         row={row}
         inFocus={focusIds.has(row.thread.id)}
@@ -395,39 +373,36 @@ export default function ThreadPortfolio() {
       />
     ));
 
+  // Sections rendered in fixed lifecycle order. Each non-empty section
+  // contributes a header + its cards; sections are separated by a hairline
+  // divider so the boundary is visible without nesting collapsibles.
+  const sections: Array<{ title: string; rows: PortfolioRow[] }> = [
+    { title: 'Focus', rows: focus },
+    { title: 'Open', rows: live },
+    { title: 'Dormant', rows: dormant },
+    { title: 'Resolved', rows: closed },
+    { title: 'Abandoned', rows: abandoned },
+  ].filter((s) => s.rows.length > 0);
+
   return (
-    <div className="flex-1 overflow-y-auto px-2 pb-2">
-      {snapshot && <PortfolioStats snapshot={snapshot} focusCount={focusIds.size} />}
+    <div className="flex flex-col h-full min-h-0">
+      <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-text-dim/70">
+          {rows.length} {rows.length === 1 ? 'thread' : 'threads'}
+        </span>
+      </div>
 
-      {focus.length > 0 && (
-        <CollapsibleSection title="Focus" count={focus.length} defaultOpen>
-          {render(focus)}
-        </CollapsibleSection>
-      )}
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-3">
+        {snapshot && <PortfolioStats snapshot={snapshot} focusCount={focusIds.size} />}
 
-      {live.length > 0 && (
-        <CollapsibleSection title="Out of focus" count={live.length} defaultOpen>
-          {render(live)}
-        </CollapsibleSection>
-      )}
-
-      {dormant.length > 0 && (
-        <CollapsibleSection title="Dormant" count={dormant.length} defaultOpen={false}>
-          {render(dormant)}
-        </CollapsibleSection>
-      )}
-
-      {closed.length > 0 && (
-        <CollapsibleSection title="Resolved" count={closed.length} defaultOpen={false}>
-          {render(closed)}
-        </CollapsibleSection>
-      )}
-
-      {abandoned.length > 0 && (
-        <CollapsibleSection title="Abandoned" count={abandoned.length} defaultOpen={false}>
-          {render(abandoned)}
-        </CollapsibleSection>
-      )}
+        {sections.map((section, idx) => (
+          <div key={section.title} className="space-y-2">
+            {idx > 0 && <div className="border-t border-white/8 -mx-3 mb-3" />}
+            <SectionHeader title={section.title} count={section.rows.length} />
+            <div className="space-y-2">{renderCards(section.rows)}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
