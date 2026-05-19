@@ -576,6 +576,13 @@ class AnalysisRunner {
 
     try {
       const completed = results.filter((r): r is AnalysisChunkResult => r !== null);
+      // Extension runs skip world-defining phases — genre, prose profile,
+      // image style, patterns, and narrative-level summaries belong to
+      // the seed world, not to the slice that extends it. Passing empty
+      // objects for `meta` and `worldBuildSummaries` short-circuits the
+      // LLM calls (the presence check in assembleNarrative is truthy on
+      // {}, the lookups fall through to fallbacks).
+      const isExtension = job.kind === 'extend';
       const narrative = await assembleNarrative(job.title, completed, threadDependencies, {
         onToken: (_token, acc) => {
           this.emitStream(job.id, `Assembling...\n${acc}`);
@@ -604,12 +611,14 @@ class AnalysisRunner {
         },
         arcGroups,
         extractionMode: job.extractionMode ?? 'full',
-        worldBuildSummaries: job.worldBuildSummaries,
-        meta: job.meta,
+        worldBuildSummaries: isExtension ? {} : job.worldBuildSummaries,
+        meta: isExtension ? {} : job.meta,
         onWorldBuildSummariesResolved: (summaries) => {
+          if (isExtension) return;
           d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { worldBuildSummaries: summaries } });
         },
         onMetaResolved: (meta) => {
+          if (isExtension) return;
           d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { meta } });
         },
       });
