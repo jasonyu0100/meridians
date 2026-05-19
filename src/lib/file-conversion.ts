@@ -14,7 +14,7 @@
  */
 
 import { assetManager } from '@/lib/asset-manager';
-import { splitCorpusIntoScenes } from '@/lib/text-analysis';
+import { splitCorpusIntoScenes, reconcileEntities, reconcileSemantic } from '@/lib/text-analysis';
 import { analysisRunner } from '@/lib/analysis-runner';
 import type { AnalysisJob, NarrativeState, SourceFile } from '@/types/narrative';
 import type { Action } from '@/lib/store';
@@ -150,23 +150,152 @@ export async function convertFile(
   return jobId;
 }
 
-// ── Apply ────────────────────────────────────────────────────────────────────
+// ── Cross-reconciliation ─────────────────────────────────────────────────────
 //
-// Applies a `ready` SourceFile's extracted slice to the target narrative.
-// Walks the slice (a NarrativeState produced by the extension pipeline) and
-// remaps every id into the target's namespace, deduplicating named entities
-// (characters / locations / artifacts / threads) against existing records.
-// The result is dispatched as a single APPLY_EXTENSION action that mutates
-// the target atomically and appends the new entries to the chosen branch's
-// `entryIds`.
+// Secondary reconciliation pass that runs at Apply time. The slice was
+// already internally reconciled during convert (Phase 3a/3b/3c inside
+// assembleNarrative) — its own "Harry" and "Harry Potter" already
+// collapsed. But the slice has no idea that "Harry Potter" matches the
+// existing narrative's `C-HP-1` character. This step asks the LLM the
+// cross-question, with the existing narrative anchored as canonical.
 
-/** Lowercased + trimmed name key used for dedup. */
-function normalizeName(s: string | undefined): string {
-  return (s ?? '').trim().toLowerCase();
+/** Per-category slice-to-existing name maps. Keyed by the slice's
+ *  canonical name; value is the existing entity's canonical name. A
+ *  slice entity that doesn't appear in the map is genuinely new. */
+export type ExtensionMergePlan = {
+  /** Slice character canonical name → existing character canonical name. */
+  characters: Map<string, string>;
+  /** Slice location canonical name → existing location canonical name. */
+  locations: Map<string, string>;
+  /** Slice artifact canonical name → existing artifact canonical name. */
+  artifacts: Map<string, string>;
+  /** Slice thread description → existing thread description. */
+  threads: Map<string, string>;
+  /** Slice system concept → existing system concept. */
+  systemConcepts: Map<string, string>;
+};
+
+const EMPTY_MERGE_PLAN: ExtensionMergePlan = {
+  characters: new Map(),
+  locations: new Map(),
+  artifacts: new Map(),
+  threads: new Map(),
+  systemConcepts: new Map(),
+};
+
+/** Build a {slice-name → existing-name} map from the LLM's merge output.
+ *  The LLM returns `{variant → canonical}` over a combined list (existing
+ *  + slice). The narrative is the source of truth: we only ever fold
+ *  slice entities INTO existing ones, never the reverse. So filter:
+ *    - variant=slice, canonical=existing  → keep (the merge we want)
+ *    - variant=existing, canonical=slice  → INVERT (existing stays canonical)
+ *    - variant=existing, canonical=existing → drop (existing-vs-existing
+ *      merges are out of scope; the narrative's records are already
+ *      reconciled by their original analysis run)
+ *    - variant=slice, canonical=slice → drop (the slice was already
+ *      internally reconciled at convert time)
+ *
+ *  Returns a clean Map<sliceName, existingName>. */
+function buildSliceToExistingMap(
+  llmMergeMap: Record<string, string>,
+  existingNames: Set<string>,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [variant, canonical] of Object.entries(llmMergeMap)) {
+    const variantIsExisting = existingNames.has(variant);
+    const canonicalIsExisting = existingNames.has(canonical);
+    if (variantIsExisting === canonicalIsExisting) continue; // both-existing or both-slice
+    if (variantIsExisting) {
+      // LLM picked the slice name as canonical — invert so existing stays
+      // the anchor. The slice's `canonical` name becomes the merge target,
+      // mapped onto the existing `variant` name.
+      out.set(canonical, variant);
+    } else {
+      // Standard direction: slice variant folds into existing canonical.
+      out.set(variant, canonical);
+    }
+  }
+  return out;
 }
 
-/** Mint a fresh `<prefix>-<n>` id not in `taken`. Matches the canonical
- *  unpadded form used by the analysis pipeline. */
+/** Run cross-reconciliation between an extracted slice and the target
+ *  narrative. Returns a merge plan whose maps the Apply step consults
+ *  when claiming ids: slice entities present in the plan dedup onto the
+ *  existing entity's id; entities absent from the plan are net-new. */
+export async function reconcileExtensionAgainstNarrative(
+  narrative: NarrativeState,
+  slice: NarrativeState,
+  onToken?: (token: string, accumulated: string) => void,
+): Promise<ExtensionMergePlan> {
+  // ── Collect names from both sides ──────────────────────────────────────
+  const existingCharNames = new Set(Object.values(narrative.characters).map((c) => c.name));
+  const existingLocNames = new Set(Object.values(narrative.locations).map((l) => l.name));
+  const existingArtNames = new Set(Object.values(narrative.artifacts ?? {}).map((a) => a.name));
+  const existingThreadDescs = new Set(Object.values(narrative.threads).map((t) => t.description));
+  const existingSysConcepts = new Set(
+    Object.values(narrative.systemGraph?.nodes ?? {}).map((n) => n.concept),
+  );
+
+  const sliceCharNames = Object.values(slice.characters).map((c) => c.name);
+  const sliceLocNames = Object.values(slice.locations).map((l) => l.name);
+  const sliceArtNames = Object.values(slice.artifacts ?? {}).map((a) => a.name);
+  const sliceThreadDescs = Object.values(slice.threads).map((t) => t.description);
+  const sliceSysConcepts = Object.values(slice.systemGraph?.nodes ?? {}).map((n) => n.concept);
+
+  // If the slice has nothing in a category, skip that category — the
+  // underlying prompt handles empty inputs but there's no point paying
+  // an LLM round-trip for nothing.
+  const hasEntityWork =
+    sliceCharNames.length > 0 || sliceLocNames.length > 0 || sliceArtNames.length > 0;
+  const hasSemanticWork = sliceThreadDescs.length > 0 || sliceSysConcepts.length > 0;
+  if (!hasEntityWork && !hasSemanticWork) return EMPTY_MERGE_PLAN;
+
+  // Combined name sets — existing first, slice second. The reconcile
+  // prompts treat all inputs symmetrically (they don't know existing
+  // from slice); the source-of-truth filter happens in
+  // buildSliceToExistingMap after the LLM returns.
+  const combinedChars = new Set<string>([...existingCharNames, ...sliceCharNames]);
+  const combinedLocs = new Set<string>([...existingLocNames, ...sliceLocNames]);
+  const combinedArts = new Set<string>([...existingArtNames, ...sliceArtNames]);
+  const combinedThreads = new Set<string>([...existingThreadDescs, ...sliceThreadDescs]);
+  const combinedSys = new Set<string>([...existingSysConcepts, ...sliceSysConcepts]);
+
+  let phaseLog = '';
+  const phaseStream = (tag: string) =>
+    onToken
+      ? (token: string, accumulated: string) => onToken(token, `${phaseLog}[${tag}]\n${accumulated}`)
+      : undefined;
+
+  // Run the two reconciliation phases in sequence — same shape as
+  // text-analysis's reconcileResults, just with different inputs.
+  const entityMerges = hasEntityWork
+    ? await reconcileEntities(combinedChars, combinedLocs, combinedArts, phaseStream('entities'))
+    : { characterMerges: {}, locationMerges: {}, artifactMerges: {} };
+  phaseLog = '[entities] done\n\n';
+
+  const semanticMerges = hasSemanticWork
+    ? await reconcileSemantic(combinedThreads, combinedSys, phaseStream('semantic'))
+    : { threadMerges: {}, systemMerges: {} };
+
+  return {
+    characters: buildSliceToExistingMap(entityMerges.characterMerges, existingCharNames),
+    locations: buildSliceToExistingMap(entityMerges.locationMerges, existingLocNames),
+    artifacts: buildSliceToExistingMap(entityMerges.artifactMerges, existingArtNames),
+    threads: buildSliceToExistingMap(semanticMerges.threadMerges, existingThreadDescs),
+    systemConcepts: buildSliceToExistingMap(semanticMerges.systemMerges, existingSysConcepts),
+  };
+}
+
+// ── Apply ────────────────────────────────────────────────────────────────────
+// Two phases: `prepareExtensionApply` reconciles the slice against the
+// target (LLM call, returns a merge plan + summary). `commitPreparedApply`
+// rewrites every id in the slice through the plan + minters and dispatches
+// APPLY_EXTENSION. Apply is per-branch: a file can land on multiple
+// branches; the per-branch ledger sits on SourceFile.commits.
+
+/** Mint a fresh `<prefix>-<n>` id not in `taken`, walking up from n=1
+ *  until a free slot is found. Used as a last-resort minter when no
+ *  prefix-+-counter context exists (e.g. K-node ids in slices). */
 function mintFreshId(prefix: string, taken: Set<string>): string {
   let n = 1;
   while (true) {
@@ -182,6 +311,60 @@ function mintFreshId(prefix: string, taken: Set<string>): string {
 /** Mint a fresh world-graph node id ("K-<n>") not in `taken`. */
 function mintFreshK(taken: Set<string>): string {
   return mintFreshId('K', taken);
+}
+
+/** Per-category counter that mints the next id in the narrative's own
+ *  prefix style. Analysis-generated ids look like `<KIND>-<WORK_PREFIX>-<n>`
+ *  (e.g. `C-USP-7`); extension applies should continue that counter so a
+ *  new character lands as `C-USP-8`, not a context-free `C-1`. The minter
+ *  scans existing ids for the highest counter under the dominant prefix
+ *  and walks forward from there. */
+class PrefixedIdMinter {
+  /** The string between the kind tag and the counter — e.g. "USP" for
+   *  `C-USP-7`. Empty when the narrative has no existing entities of
+   *  this kind; in that case ids are minted bare ("C-1", "C-2", …). */
+  private readonly workPrefix: string;
+  private nextN: number;
+  constructor(kindTag: string, existingIds: Iterable<string>) {
+    let highest = 0;
+    let chosenPrefix = '';
+    const exact = new RegExp(`^${kindTag}-(\\d+)$`);
+    const prefixed = new RegExp(`^${kindTag}-([A-Z]+)-(\\d+)$`);
+    for (const id of existingIds) {
+      let m = id.match(prefixed);
+      if (m) {
+        // The dominant work prefix is whichever appears most often in
+        // existing ids; in practice all of a narrative's ids share one.
+        if (!chosenPrefix) chosenPrefix = m[1];
+        if (m[1] === chosenPrefix) {
+          const n = parseInt(m[2], 10);
+          if (n > highest) highest = n;
+        }
+        continue;
+      }
+      m = id.match(exact);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > highest) highest = n;
+      }
+    }
+    this.workPrefix = chosenPrefix;
+    this.nextN = highest + 1;
+  }
+
+  /** Mint the next id, skipping any that already appear in `taken`. */
+  mint(kindTag: string, taken: Set<string>): string {
+    while (true) {
+      const n = this.nextN++;
+      const candidate = this.workPrefix
+        ? `${kindTag}-${this.workPrefix}-${n}`
+        : `${kindTag}-${n}`;
+      if (!taken.has(candidate)) {
+        taken.add(candidate);
+        return candidate;
+      }
+    }
+  }
 }
 
 type RemapMaps = {
@@ -292,25 +475,40 @@ export type ApplyResult = {
   introducedArcId: string | null;
 };
 
-/** Apply a `ready` file's extracted slice to the given branch on the
- *  target narrative. Returns the commit record (arc + scene ids) so the
- *  caller can stamp the SourceFile.
- *
- *  Dedup strategy: characters / locations / artifacts dedup by lowercased
- *  name; threads dedup by lowercased description. When a slice entity
- *  matches an existing one by name, its id is rewritten to the existing
- *  id and the entity record itself is dropped (the existing record is
- *  authoritative). Genuinely new entities mint a fresh id under the
- *  target's namespace if their proposed id collides.
- *
- *  Branch append: every entry id in the slice's root branch lands at the
- *  tail of the chosen branch's entryIds, in slice order. */
-export async function applyExtensionToBranch(
+/** Per-category breakdown of what an Apply will land. Computed during
+ *  the prepare phase from the merge plan + slice contents; consumed by
+ *  the Apply modal to show the user what's about to happen before
+ *  they confirm the commit. */
+export type MergeSummary = {
+  characters: { merged: { sliceName: string; existingName: string }[]; new: string[] };
+  locations: { merged: { sliceName: string; existingName: string }[]; new: string[] };
+  artifacts: { merged: { sliceName: string; existingName: string }[]; new: string[] };
+  threads: { merged: { sliceDescription: string; existingDescription: string }[]; new: string[] };
+  systemConcepts: { merged: { sliceConcept: string; existingConcept: string }[]; new: string[] };
+  /** Net-new structural counts — these always land fresh, never merged. */
+  scenes: number;
+  arcs: number;
+  worldBuilds: number;
+};
+
+/** Prepared state from the first half of Apply (load + reconcile).
+ *  Held by the UI between the streaming reconcile view and the user's
+ *  explicit "Append" click, then passed back to `commitPreparedApply`. */
+export type PreparedApply = {
+  slice: NarrativeState;
+  mergePlan: ExtensionMergePlan;
+  summary: MergeSummary;
+};
+
+/** Phase 1: load the SourceFile's extracted slice from IndexedDB and
+ *  cross-reconcile it against the target narrative. Returns everything
+ *  the commit phase needs, plus a summary the UI can render. `onToken`
+ *  streams the LLM tokens for the live reconciliation panel. */
+export async function prepareExtensionApply(
   narrative: NarrativeState,
   file: SourceFile,
-  branchId: string,
-  dispatch: Dispatch,
-): Promise<ApplyResult> {
+  onToken?: (token: string, accumulated: string) => void,
+): Promise<PreparedApply> {
   if (!file.extractedRef) {
     throw new Error('No extracted slice on this file — convert it first.');
   }
@@ -319,16 +517,339 @@ export async function applyExtensionToBranch(
     throw new Error('Extracted slice is missing from local storage.');
   }
   const slice = JSON.parse(sliceJson) as NarrativeState;
+  const mergePlan = await reconcileExtensionAgainstNarrative(narrative, slice, onToken);
+  return { slice, mergePlan, summary: summariseMerge(slice, mergePlan) };
+}
 
-  // ── Build dedup indexes against the target's existing entities ────────
-  const charByName = new Map<string, string>();
-  for (const c of Object.values(narrative.characters)) charByName.set(normalizeName(c.name), c.id);
-  const locByName = new Map<string, string>();
-  for (const l of Object.values(narrative.locations)) locByName.set(normalizeName(l.name), l.id);
-  const artByName = new Map<string, string>();
-  for (const a of Object.values(narrative.artifacts ?? {})) artByName.set(normalizeName(a.name), a.id);
-  const threadByDesc = new Map<string, string>();
-  for (const t of Object.values(narrative.threads)) threadByDesc.set(normalizeName(t.description), t.id);
+/** Build the merge summary the UI renders. Names are the slice's
+ *  canonical names; for merges we surface both sides so the user can
+ *  audit "Hermione → Hermione Granger" at a glance. */
+function summariseMerge(slice: NarrativeState, plan: ExtensionMergePlan): MergeSummary {
+  const charMerged: { sliceName: string; existingName: string }[] = [];
+  const charNew: string[] = [];
+  for (const c of Object.values(slice.characters)) {
+    const existing = plan.characters.get(c.name);
+    if (existing) charMerged.push({ sliceName: c.name, existingName: existing });
+    else charNew.push(c.name);
+  }
+  const locMerged: { sliceName: string; existingName: string }[] = [];
+  const locNew: string[] = [];
+  for (const l of Object.values(slice.locations)) {
+    const existing = plan.locations.get(l.name);
+    if (existing) locMerged.push({ sliceName: l.name, existingName: existing });
+    else locNew.push(l.name);
+  }
+  const artMerged: { sliceName: string; existingName: string }[] = [];
+  const artNew: string[] = [];
+  for (const a of Object.values(slice.artifacts ?? {})) {
+    const existing = plan.artifacts.get(a.name);
+    if (existing) artMerged.push({ sliceName: a.name, existingName: existing });
+    else artNew.push(a.name);
+  }
+  const threadMerged: { sliceDescription: string; existingDescription: string }[] = [];
+  const threadNew: string[] = [];
+  for (const t of Object.values(slice.threads)) {
+    const existing = plan.threads.get(t.description);
+    if (existing) threadMerged.push({ sliceDescription: t.description, existingDescription: existing });
+    else threadNew.push(t.description);
+  }
+  const sysMerged: { sliceConcept: string; existingConcept: string }[] = [];
+  const sysNew: string[] = [];
+  for (const n of Object.values(slice.systemGraph?.nodes ?? {})) {
+    const existing = plan.systemConcepts.get(n.concept);
+    if (existing) sysMerged.push({ sliceConcept: n.concept, existingConcept: existing });
+    else sysNew.push(n.concept);
+  }
+  return {
+    characters: { merged: charMerged, new: charNew },
+    locations: { merged: locMerged, new: locNew },
+    artifacts: { merged: artMerged, new: artNew },
+    threads: { merged: threadMerged, new: threadNew },
+    systemConcepts: { merged: sysMerged, new: sysNew },
+    scenes: Object.keys(slice.scenes).length,
+    arcs: Object.keys(slice.arcs).length,
+    worldBuilds: Object.keys(slice.worldBuilds ?? {}).length,
+  };
+}
+
+// ── Per-type remap functions ─────────────────────────────────────────────────
+//
+// One function per entity / structural type. Each is the SINGLE place
+// to update when a new id-bearing field is added to that type — adding
+// a field to Scene without updating remapScene will let stale slice
+// ids leak through into the target narrative.
+
+import type {
+  Arc,
+  Character,
+  Location,
+  Artifact,
+  Scene,
+  Thread,
+  WorldBuild,
+  WorldExpansion,
+} from '@/types/narrative';
+
+type Ctx = { maps: RemapMaps; taken: TakenSets };
+
+function remapCharacter(c: Character, targetId: string, ctx: Ctx): Character {
+  return {
+    ...c,
+    id: targetId,
+    threadIds: (c.threadIds ?? []).map((id) => remap(id, ctx.maps.thread)),
+    world: remapWorldGraph(c.world as WorldGraphLike | undefined, ctx.maps, ctx.taken) as Character['world'],
+  };
+}
+
+function remapLocation(l: Location, targetId: string, ctx: Ctx): Location {
+  return {
+    ...l,
+    id: targetId,
+    parentId: l.parentId ? remap(l.parentId, ctx.maps.loc) : l.parentId ?? null,
+    tiedCharacterIds: (l.tiedCharacterIds ?? []).map((id) => remap(id, ctx.maps.char)),
+    threadIds: (l.threadIds ?? []).map((id) => remap(id, ctx.maps.thread)),
+    world: remapWorldGraph(l.world as WorldGraphLike | undefined, ctx.maps, ctx.taken) as Location['world'],
+  };
+}
+
+function remapArtifact(a: Artifact, targetId: string, ctx: Ctx): Artifact {
+  return {
+    ...a,
+    id: targetId,
+    parentId: a.parentId ? remapAny(a.parentId, ctx.maps.char, ctx.maps.loc) : a.parentId,
+    threadIds: (a.threadIds ?? []).map((id) => remap(id, ctx.maps.thread)),
+    world: remapWorldGraph(a.world as WorldGraphLike | undefined, ctx.maps, ctx.taken) as Artifact['world'],
+  };
+}
+
+function remapThread(t: Thread, targetId: string, ctx: Ctx): Thread {
+  return {
+    ...t,
+    id: targetId,
+    participants: t.participants.map((p) => ({
+      ...p,
+      id: remapAny(p.id, ctx.maps.char, ctx.maps.loc, ctx.maps.art),
+    })),
+    // Thread-id refs in `dependents` cross over the slice→target boundary.
+    dependents: (t.dependents ?? []).map((id) => remap(id, ctx.maps.thread)),
+    // beliefs is keyed by agent id (mostly character ids, plus sentinel
+    // narrator keys like "__narrator__" we shouldn't touch).
+    beliefs: Object.fromEntries(
+      Object.entries(t.beliefs ?? {}).map(([agentId, belief]) => [
+        ctx.maps.char.get(agentId) ?? agentId,
+        {
+          ...belief,
+          lastTouchedScene: belief.lastTouchedScene
+            ? remap(belief.lastTouchedScene, ctx.maps.scene)
+            : belief.lastTouchedScene,
+        },
+      ]),
+    ),
+    // threadLog node ids are private to the log graph (no slice→target
+    // hop). The sceneId backref does cross — remap it.
+    threadLog: {
+      ...t.threadLog,
+      nodes: Object.fromEntries(
+        Object.entries(t.threadLog?.nodes ?? {}).map(([nodeId, node]) => [
+          nodeId,
+          { ...node, sceneId: node.sceneId ? remap(node.sceneId, ctx.maps.scene) : node.sceneId },
+        ]),
+      ),
+    },
+  };
+}
+
+/** Rewrite an expansion payload — shared between Scene's structural
+ *  fields and WorldBuild.expansionManifest. The two carry the same
+ *  union of entity intros + deltas, so we share one walker. The
+ *  `dropMerged` flag controls whether deduped-into-existing entities
+ *  are filtered out of the new* arrays (Scene yes; WorldBuild we keep
+ *  the full record since the WB is a self-contained snapshot). */
+function remapExpansionFields<T extends Partial<WorldExpansion>>(
+  e: T,
+  ctx: Ctx,
+  netNewIds: { char: Set<string>; loc: Set<string>; art: Set<string>; thread: Set<string> },
+  dropMerged = true,
+): T {
+  const keepChar = (c: Character) => !dropMerged || netNewIds.char.has(c.id);
+  const keepLoc = (l: Location) => !dropMerged || netNewIds.loc.has(l.id);
+  const keepArt = (a: Artifact) => !dropMerged || netNewIds.art.has(a.id);
+  const keepThread = (t: Thread) => !dropMerged || netNewIds.thread.has(t.id);
+
+  return {
+    ...e,
+    newCharacters: (e.newCharacters ?? [])
+      .filter(keepChar)
+      .map((c) => remapCharacter(c, remap(c.id, ctx.maps.char), ctx)),
+    newLocations: (e.newLocations ?? [])
+      .filter(keepLoc)
+      .map((l) => remapLocation(l, remap(l.id, ctx.maps.loc), ctx)),
+    newArtifacts: (e.newArtifacts ?? [])
+      .filter(keepArt)
+      .map((a) => remapArtifact(a, remap(a.id, ctx.maps.art), ctx)),
+    newThreads: (e.newThreads ?? [])
+      .filter(keepThread)
+      .map((t) => remapThread(t, remap(t.id, ctx.maps.thread), ctx)),
+    threadDeltas: (e.threadDeltas ?? []).map((tm) => ({
+      ...tm,
+      threadId: remap(tm.threadId, ctx.maps.thread),
+    })),
+    worldDeltas: (e.worldDeltas ?? []).map((d) => ({
+      ...d,
+      entityId: remapAny(d.entityId, ctx.maps.char, ctx.maps.loc, ctx.maps.art),
+      addedNodes: (d.addedNodes ?? []).map((n) => {
+        if (!ctx.maps.k.has(n.id)) {
+          const fresh = ctx.taken.k.has(n.id) ? mintFreshK(ctx.taken.k) : (ctx.taken.k.add(n.id), n.id);
+          ctx.maps.k.set(n.id, fresh);
+        }
+        return { ...n, id: ctx.maps.k.get(n.id) ?? n.id };
+      }),
+    })),
+    relationshipDeltas: (e.relationshipDeltas ?? []).map((rm) => ({
+      ...rm,
+      from: remap(rm.from, ctx.maps.char),
+      to: remap(rm.to, ctx.maps.char),
+    })),
+    ownershipDeltas: (e.ownershipDeltas ?? []).map((om) => ({
+      ...om,
+      artifactId: remap(om.artifactId, ctx.maps.art),
+      fromId: remapAny(om.fromId, ctx.maps.char, ctx.maps.loc),
+      toId: remapAny(om.toId, ctx.maps.char, ctx.maps.loc),
+    })),
+    tieDeltas: (e.tieDeltas ?? []).map((td) => ({
+      ...td,
+      locationId: remap(td.locationId, ctx.maps.loc),
+      characterId: remap(td.characterId, ctx.maps.char),
+    })),
+    systemDeltas: e.systemDeltas
+      ? {
+          ...e.systemDeltas,
+          addedNodes: (e.systemDeltas.addedNodes ?? []).map((n) => ({
+            ...n,
+            id: ctx.maps.sys.get(n.id) ?? n.id,
+          })),
+          addedEdges: (e.systemDeltas.addedEdges ?? []).map((ed) => ({
+            ...ed,
+            from: ctx.maps.sys.get(ed.from) ?? ed.from,
+            to: ctx.maps.sys.get(ed.to) ?? ed.to,
+          })),
+        }
+      : e.systemDeltas,
+    attributions: (e.attributions ?? []).map((id) =>
+      remapAny(id, ctx.maps.char, ctx.maps.loc, ctx.maps.art, ctx.maps.thread, ctx.maps.sys),
+    ),
+    attributionEdges: (e.attributionEdges ?? []).map((ed) => ({
+      from: remapAny(ed.from, ctx.maps.char, ctx.maps.loc, ctx.maps.art, ctx.maps.thread, ctx.maps.sys),
+      to: remapAny(ed.to, ctx.maps.char, ctx.maps.loc, ctx.maps.art, ctx.maps.thread, ctx.maps.sys),
+      relation: ed.relation,
+    })),
+  };
+}
+
+function remapScene(
+  s: Scene,
+  ctx: Ctx,
+  netNewIds: { char: Set<string>; loc: Set<string>; art: Set<string>; thread: Set<string> },
+): Scene {
+  const expansionPayload = remapExpansionFields(s, ctx, netNewIds, true);
+  return {
+    ...s,
+    ...expansionPayload,
+    id: remap(s.id, ctx.maps.scene),
+    arcId: remap(s.arcId, ctx.maps.arc),
+    povId: s.povId ? remap(s.povId, ctx.maps.char) : s.povId,
+    locationId: remap(s.locationId, ctx.maps.loc),
+    participantIds: s.participantIds.map((id) => remap(id, ctx.maps.char)),
+    artifactUsages: (s.artifactUsages ?? []).map((au) => ({
+      ...au,
+      artifactId: remap(au.artifactId, ctx.maps.art),
+      characterId: au.characterId ? remap(au.characterId, ctx.maps.char) : au.characterId,
+    })),
+    characterMovements: s.characterMovements
+      ? Object.fromEntries(
+          Object.entries(s.characterMovements).map(([cid, mv]) => [
+            remap(cid, ctx.maps.char),
+            { ...mv, locationId: remap(mv.locationId, ctx.maps.loc) },
+          ]),
+        )
+      : s.characterMovements,
+    // gameAnalysis players reference char/loc/art ids (action names are
+    // strings, not ids — no remap needed for outcomes/realized cells).
+    gameAnalysis: s.gameAnalysis
+      ? {
+          ...s.gameAnalysis,
+          games: s.gameAnalysis.games.map((g) => ({
+            ...g,
+            playerAId: remapAny(g.playerAId, ctx.maps.char, ctx.maps.loc, ctx.maps.art),
+            playerBId: remapAny(g.playerBId, ctx.maps.char, ctx.maps.loc, ctx.maps.art),
+          })),
+        }
+      : s.gameAnalysis,
+  };
+}
+
+function remapArc(a: Arc, ctx: Ctx): Arc {
+  return {
+    ...a,
+    id: remap(a.id, ctx.maps.arc),
+    sceneIds: a.sceneIds.map((id) => remap(id, ctx.maps.scene)),
+    locationIds: a.locationIds.map((id) => remap(id, ctx.maps.loc)),
+    activeCharacterIds: a.activeCharacterIds.map((id) => remap(id, ctx.maps.char)),
+    initialCharacterLocations: Object.fromEntries(
+      Object.entries(a.initialCharacterLocations ?? {}).map(([cid, lid]) => [
+        remap(cid, ctx.maps.char),
+        remap(lid, ctx.maps.loc),
+      ]),
+    ),
+    develops: (a.develops ?? []).map((id) =>
+      remapAny(id, ctx.maps.char, ctx.maps.loc, ctx.maps.art, ctx.maps.thread),
+    ),
+    // Variables (presentVariables + planningScenarios) are arc-scoped:
+    // their ids are unique within the arc only. No cross-arc remap is
+    // needed — passing them through verbatim keeps the slice's internal
+    // consistency intact.
+  };
+}
+
+function remapWorldBuild(
+  wb: WorldBuild,
+  ctx: Ctx,
+  netNewIds: { char: Set<string>; loc: Set<string>; art: Set<string>; thread: Set<string> },
+): WorldBuild {
+  return {
+    ...wb,
+    id: remap(wb.id, ctx.maps.worldBuild),
+    expansionManifest: remapExpansionFields(wb.expansionManifest, ctx, netNewIds, false) as WorldExpansion,
+  };
+}
+
+/** Phase 2: take a prepared (loaded + reconciled) slice and merge it
+ *  into the target narrative on `branchId`. Pure ID remapping +
+ *  dispatch — no LLM work, no IDB reads. The streaming UI calls this
+ *  after the user clicks "Append" on the merge preview.
+ *
+ *  Returns the commit record (arc id + scene ids) which is also stamped
+ *  onto the SourceFile so the operator can audit what landed. */
+export function commitPreparedApply(
+  narrative: NarrativeState,
+  file: SourceFile,
+  branchId: string,
+  prepared: PreparedApply,
+  dispatch: Dispatch,
+): ApplyResult {
+  const { slice, mergePlan } = prepared;
+
+  // Lookup the existing canonical → id mapping per category. Once the
+  // merge plan tells us "slice name X folds into existing canonical Y",
+  // we still need Y → id.
+  const charIdByName = new Map<string, string>();
+  for (const c of Object.values(narrative.characters)) charIdByName.set(c.name, c.id);
+  const locIdByName = new Map<string, string>();
+  for (const l of Object.values(narrative.locations)) locIdByName.set(l.name, l.id);
+  const artIdByName = new Map<string, string>();
+  for (const a of Object.values(narrative.artifacts ?? {})) artIdByName.set(a.name, a.id);
+  const threadIdByDesc = new Map<string, string>();
+  for (const t of Object.values(narrative.threads)) threadIdByDesc.set(t.description, t.id);
 
   // ── Init id maps + taken sets ────────────────────────────────────────
   const taken = buildTaken(narrative);
@@ -344,28 +865,51 @@ export async function applyExtensionToBranch(
     sys: new Map(),
   };
 
-  // Helper: claim an id either by matching name to existing or minting fresh.
-  // Returns whether the entity is "fresh" (caller should add to target).
+  // Per-category minters that continue the narrative's own counter
+  // sequence — a brand-new character lands as `C-USP-8` after the
+  // world's `C-USP-7`, not as a fresh `C-1`. The slice's own ids (which
+  // came from its own work prefix) are abandoned at apply time; they
+  // never enter the target's namespace.
+  const minters = {
+    char: new PrefixedIdMinter(PREFIX.char, taken.char),
+    loc: new PrefixedIdMinter(PREFIX.loc, taken.loc),
+    art: new PrefixedIdMinter(PREFIX.art, taken.art),
+    thread: new PrefixedIdMinter(PREFIX.thread, taken.thread),
+    scene: new PrefixedIdMinter(PREFIX.scene, taken.scene),
+    worldBuild: new PrefixedIdMinter(PREFIX.worldBuild, taken.worldBuild),
+    arc: new PrefixedIdMinter(PREFIX.arc, taken.arc),
+    sys: new PrefixedIdMinter(PREFIX.sys, taken.sys),
+  } as const;
+
+  /** Claim an id: consult the merge plan first; if it says this slice
+   *  entity folds into an existing one, dedup to that id. Otherwise mint
+   *  the next id under the narrative's prefix sequence.
+   *  Returns `fresh: true` when the entity record should be added to the
+   *  target — name-deduped slice entities defer to the existing record. */
   function claim(
     sliceId: string,
-    name: string | undefined,
-    nameIndex: Map<string, string>,
+    sliceKey: string | undefined,
+    mergeToExisting: Map<string, string>,
+    existingIdByKey: Map<string, string>,
     kind: 'char' | 'loc' | 'art' | 'thread',
   ): { id: string; fresh: boolean } {
-    const key = normalizeName(name);
-    const existing = key ? nameIndex.get(key) : undefined;
-    if (existing) {
-      maps[kind].set(sliceId, existing);
-      return { id: existing, fresh: false };
+    const key = (sliceKey ?? '').trim();
+    if (key) {
+      const existingKey = mergeToExisting.get(key);
+      if (existingKey) {
+        const existingId = existingIdByKey.get(existingKey);
+        if (existingId) {
+          maps[kind].set(sliceId, existingId);
+          return { id: existingId, fresh: false };
+        }
+      }
     }
-    // Genuinely new — keep the slice id if it doesn't collide, else mint.
-    const set = taken[kind];
-    const id = set.has(sliceId) ? mintFreshId(PREFIX[kind], set) : (set.add(sliceId), sliceId);
+    const id = minters[kind].mint(PREFIX[kind], taken[kind]);
     maps[kind].set(sliceId, id);
     return { id, fresh: true };
   }
 
-  // ── Phase 1: claim ids for slice entities (dedup-aware) ──────────────
+  // ── Phase 1: claim ids for slice entities (merge-plan-aware) ─────────
   type Pending<T> = { entity: T; targetId: string };
   const newCharacters: Pending<import('@/types/narrative').Character>[] = [];
   const newLocations: Pending<import('@/types/narrative').Location>[] = [];
@@ -373,228 +917,77 @@ export async function applyExtensionToBranch(
   const newThreads: Pending<import('@/types/narrative').Thread>[] = [];
 
   for (const c of Object.values(slice.characters)) {
-    const { id, fresh } = claim(c.id, c.name, charByName, 'char');
+    const { id, fresh } = claim(c.id, c.name, mergePlan.characters, charIdByName, 'char');
     if (fresh) newCharacters.push({ entity: c, targetId: id });
   }
   for (const l of Object.values(slice.locations)) {
-    const { id, fresh } = claim(l.id, l.name, locByName, 'loc');
+    const { id, fresh } = claim(l.id, l.name, mergePlan.locations, locIdByName, 'loc');
     if (fresh) newLocations.push({ entity: l, targetId: id });
   }
   for (const a of Object.values(slice.artifacts ?? {})) {
-    const { id, fresh } = claim(a.id, a.name, artByName, 'art');
+    const { id, fresh } = claim(a.id, a.name, mergePlan.artifacts, artIdByName, 'art');
     if (fresh) newArtifacts.push({ entity: a, targetId: id });
   }
   for (const t of Object.values(slice.threads)) {
-    const { id, fresh } = claim(t.id, t.description, threadByDesc, 'thread');
+    const { id, fresh } = claim(t.id, t.description, mergePlan.threads, threadIdByDesc, 'thread');
     if (fresh) newThreads.push({ entity: t, targetId: id });
   }
 
   // Scenes, worldBuilds, arcs — always treated as new (slice-scoped),
-  // collision-renamed only.
+  // minted onto the narrative's prefix counter.
   for (const id of Object.keys(slice.scenes)) {
-    const next = taken.scene.has(id) ? mintFreshId(PREFIX.scene, taken.scene) : (taken.scene.add(id), id);
-    maps.scene.set(id, next);
+    maps.scene.set(id, minters.scene.mint(PREFIX.scene, taken.scene));
   }
   for (const id of Object.keys(slice.worldBuilds ?? {})) {
-    const next = taken.worldBuild.has(id) ? mintFreshId(PREFIX.worldBuild, taken.worldBuild) : (taken.worldBuild.add(id), id);
-    maps.worldBuild.set(id, next);
+    maps.worldBuild.set(id, minters.worldBuild.mint(PREFIX.worldBuild, taken.worldBuild));
   }
   for (const id of Object.keys(slice.arcs)) {
-    const next = taken.arc.has(id) ? mintFreshId(PREFIX.arc, taken.arc) : (taken.arc.add(id), id);
-    maps.arc.set(id, next);
+    maps.arc.set(id, minters.arc.mint(PREFIX.arc, taken.arc));
   }
-  // System graph nodes — collision-rename.
-  for (const id of Object.keys(slice.systemGraph?.nodes ?? {})) {
-    const next = taken.sys.has(id) ? mintFreshId(PREFIX.sys, taken.sys) : (taken.sys.add(id), id);
-    maps.sys.set(id, next);
+  // System graph nodes — consult the merge plan first. If the slice's
+  // concept folds into an existing system node, route the slice id to
+  // the existing node's id; otherwise mint under the narrative's prefix.
+  const sysIdByConcept = new Map<string, string>();
+  for (const [id, node] of Object.entries(narrative.systemGraph?.nodes ?? {})) {
+    sysIdByConcept.set(node.concept, id);
+  }
+  for (const [sliceId, sliceNode] of Object.entries(slice.systemGraph?.nodes ?? {})) {
+    const existingConcept = mergePlan.systemConcepts.get(sliceNode.concept);
+    const existingId = existingConcept ? sysIdByConcept.get(existingConcept) : undefined;
+    if (existingId) {
+      maps.sys.set(sliceId, existingId);
+      continue;
+    }
+    maps.sys.set(sliceId, minters.sys.mint(PREFIX.sys, taken.sys));
   }
 
-  // ── Phase 2: rewrite scenes, worldBuilds, arcs, and new entities ─────
+  // ── Phase 2: rewrite slice records through the per-type remap helpers.
 
-  const rewrittenCharacters = newCharacters.map(({ entity: c, targetId }) => ({
-    ...c,
-    id: targetId,
-    threadIds: (c.threadIds ?? []).map((tid) => remap(tid, maps.thread)),
-    world: remapWorldGraph(c.world as WorldGraphLike | undefined, maps, taken),
-  }));
-  const rewrittenLocations = newLocations.map(({ entity: l, targetId }) => ({
-    ...l,
-    id: targetId,
-    parentId: l.parentId ? remap(l.parentId, maps.loc) : l.parentId ?? null,
-    tiedCharacterIds: (l.tiedCharacterIds ?? []).map((cid) => remap(cid, maps.char)),
-    threadIds: (l.threadIds ?? []).map((tid) => remap(tid, maps.thread)),
-    world: remapWorldGraph(l.world as WorldGraphLike | undefined, maps, taken),
-  }));
-  const rewrittenArtifacts = newArtifacts.map(({ entity: a, targetId }) => ({
-    ...a,
-    id: targetId,
-    parentId: a.parentId ? remapAny(a.parentId, maps.char, maps.loc) : a.parentId,
-    threadIds: (a.threadIds ?? []).map((tid) => remap(tid, maps.thread)),
-    world: remapWorldGraph(a.world as WorldGraphLike | undefined, maps, taken),
-  }));
-  const rewrittenThreads = newThreads.map(({ entity: t, targetId }) => ({
-    ...t,
-    id: targetId,
-    participants: t.participants.map((p) => ({
-      ...p,
-      id: remapAny(p.id, maps.char, maps.loc, maps.art),
-    })),
-  }));
+  const ctx: Ctx = { maps, taken };
+  const netNewIds = {
+    char: new Set(newCharacters.map((p) => p.entity.id)),
+    loc: new Set(newLocations.map((p) => p.entity.id)),
+    art: new Set(newArtifacts.map((p) => p.entity.id)),
+    thread: new Set(newThreads.map((p) => p.entity.id)),
+  };
 
-  // Scenes — full rewrite of every cross-ref.
-  const sliceScenes = Object.values(slice.scenes);
-  const rewrittenScenes = sliceScenes.map((s) => {
-    const newId = remap(s.id, maps.scene);
-    // New-entity sub-arrays embedded in scenes — drop entries that dedup'd
-    // into an existing entity (their world graph is already on the target).
-    const sceneNewChars = (s.newCharacters ?? []).filter((c) => {
-      const key = normalizeName(c.name);
-      return !(key && charByName.has(key));
-    }).map((c) => ({
-      ...c,
-      id: remap(c.id, maps.char),
-      threadIds: (c.threadIds ?? []).map((tid) => remap(tid, maps.thread)),
-      world: remapWorldGraph(c.world as WorldGraphLike | undefined, maps, taken),
-    }));
-    const sceneNewLocs = (s.newLocations ?? []).filter((l) => {
-      const key = normalizeName(l.name);
-      return !(key && locByName.has(key));
-    }).map((l) => ({
-      ...l,
-      id: remap(l.id, maps.loc),
-      parentId: l.parentId ? remap(l.parentId, maps.loc) : l.parentId ?? null,
-      tiedCharacterIds: (l.tiedCharacterIds ?? []).map((cid) => remap(cid, maps.char)),
-      threadIds: (l.threadIds ?? []).map((tid) => remap(tid, maps.thread)),
-      world: remapWorldGraph(l.world as WorldGraphLike | undefined, maps, taken),
-    }));
-    const sceneNewArts = (s.newArtifacts ?? []).filter((a) => {
-      const key = normalizeName(a.name);
-      return !(key && artByName.has(key));
-    }).map((a) => ({
-      ...a,
-      id: remap(a.id, maps.art),
-      parentId: a.parentId ? remapAny(a.parentId, maps.char, maps.loc) : a.parentId,
-      threadIds: (a.threadIds ?? []).map((tid) => remap(tid, maps.thread)),
-      world: remapWorldGraph(a.world as WorldGraphLike | undefined, maps, taken),
-    }));
-    const sceneNewThreads = (s.newThreads ?? []).filter((t) => {
-      const key = normalizeName(t.description);
-      return !(key && threadByDesc.has(key));
-    }).map((t) => ({
-      ...t,
-      id: remap(t.id, maps.thread),
-      participants: t.participants.map((p) => ({
-        ...p,
-        id: remapAny(p.id, maps.char, maps.loc, maps.art),
-      })),
-    }));
-
-    return {
-      ...s,
-      id: newId,
-      arcId: remap(s.arcId, maps.arc),
-      povId: s.povId ? remap(s.povId, maps.char) : s.povId,
-      locationId: remap(s.locationId, maps.loc),
-      participantIds: s.participantIds.map((id) => remap(id, maps.char)),
-      newCharacters: sceneNewChars,
-      newLocations: sceneNewLocs,
-      newArtifacts: sceneNewArts,
-      newThreads: sceneNewThreads,
-      threadDeltas: s.threadDeltas.map((tm) => ({
-        ...tm,
-        threadId: remap(tm.threadId, maps.thread),
-      })),
-      worldDeltas: s.worldDeltas.map((d) => ({
-        ...d,
-        entityId: remapAny(d.entityId, maps.char, maps.loc, maps.art),
-        addedNodes: (d.addedNodes ?? []).map((n) => {
-          if (!maps.k.has(n.id)) {
-            const fresh = taken.k.has(n.id) ? mintFreshK(taken.k) : (taken.k.add(n.id), n.id);
-            maps.k.set(n.id, fresh);
-          }
-          return { ...n, id: maps.k.get(n.id) ?? n.id };
-        }),
-      })),
-      relationshipDeltas: s.relationshipDeltas.map((rm) => ({
-        ...rm,
-        from: remap(rm.from, maps.char),
-        to: remap(rm.to, maps.char),
-      })),
-      artifactUsages: (s.artifactUsages ?? []).map((au) => ({
-        ...au,
-        artifactId: remap(au.artifactId, maps.art),
-        characterId: au.characterId ? remap(au.characterId, maps.char) : au.characterId,
-      })),
-      ownershipDeltas: (s.ownershipDeltas ?? []).map((om) => ({
-        ...om,
-        artifactId: remap(om.artifactId, maps.art),
-        fromId: remapAny(om.fromId, maps.char, maps.loc),
-        toId: remapAny(om.toId, maps.char, maps.loc),
-      })),
-      tieDeltas: (s.tieDeltas ?? []).map((td) => ({
-        ...td,
-        locationId: remap(td.locationId, maps.loc),
-        characterId: remap(td.characterId, maps.char),
-      })),
-      characterMovements: s.characterMovements
-        ? Object.fromEntries(
-            Object.entries(s.characterMovements).map(([cid, mv]) => [
-              remap(cid, maps.char),
-              { ...mv, locationId: remap(mv.locationId, maps.loc) },
-            ]),
-          )
-        : s.characterMovements,
-      attributions: (s.attributions ?? []).map((id) =>
-        remapAny(id, maps.char, maps.loc, maps.art, maps.thread, maps.sys),
-      ),
-      attributionEdges: (s.attributionEdges ?? []).map((e) => ({
-        from: remapAny(e.from, maps.char, maps.loc, maps.art, maps.thread, maps.sys),
-        to: remapAny(e.to, maps.char, maps.loc, maps.art, maps.thread, maps.sys),
-        relation: e.relation,
-      })),
-      systemDeltas: s.systemDeltas
-        ? {
-            ...s.systemDeltas,
-            addedNodes: (s.systemDeltas.addedNodes ?? []).map((n) => ({
-              ...n,
-              id: maps.sys.get(n.id) ?? n.id,
-            })),
-            addedEdges: (s.systemDeltas.addedEdges ?? []).map((e) => ({
-              ...e,
-              from: maps.sys.get(e.from) ?? e.from,
-              to: maps.sys.get(e.to) ?? e.to,
-            })),
-          }
-        : s.systemDeltas,
-    };
-  });
-
-  // Arcs — id + sceneIds + locationIds + activeCharacterIds + develops.
-  const sliceArcs = Object.values(slice.arcs);
-  const rewrittenArcs = sliceArcs.map((a) => ({
-    ...a,
-    id: remap(a.id, maps.arc),
-    sceneIds: a.sceneIds.map((sid) => remap(sid, maps.scene)),
-    locationIds: a.locationIds.map((lid) => remap(lid, maps.loc)),
-    activeCharacterIds: a.activeCharacterIds.map((cid) => remap(cid, maps.char)),
-    initialCharacterLocations: Object.fromEntries(
-      Object.entries(a.initialCharacterLocations ?? {}).map(([cid, lid]) => [
-        remap(cid, maps.char),
-        remap(lid, maps.loc),
-      ]),
-    ),
-    develops: (a.develops ?? []).map((id) =>
-      remapAny(id, maps.char, maps.loc, maps.art, maps.thread),
-    ),
-  }));
-
-  // WorldBuilds — id-level only for v1. The expansionManifest is
-  // snapshot data; cross-ids inside it stay stable post-remap.
-  const sliceWorldBuilds = Object.values(slice.worldBuilds ?? {});
-  const rewrittenWorldBuilds = sliceWorldBuilds.map((wb) => ({
-    ...wb,
-    id: remap(wb.id, maps.worldBuild),
-  }));
+  const rewrittenCharacters = newCharacters.map(({ entity, targetId }) =>
+    remapCharacter(entity, targetId, ctx),
+  );
+  const rewrittenLocations = newLocations.map(({ entity, targetId }) =>
+    remapLocation(entity, targetId, ctx),
+  );
+  const rewrittenArtifacts = newArtifacts.map(({ entity, targetId }) =>
+    remapArtifact(entity, targetId, ctx),
+  );
+  const rewrittenThreads = newThreads.map(({ entity, targetId }) =>
+    remapThread(entity, targetId, ctx),
+  );
+  const rewrittenScenes = Object.values(slice.scenes).map((s) => remapScene(s, ctx, netNewIds));
+  const rewrittenArcs = Object.values(slice.arcs).map((a) => remapArc(a, ctx));
+  const rewrittenWorldBuilds = Object.values(slice.worldBuilds ?? {}).map((wb) =>
+    remapWorldBuild(wb, ctx, netNewIds),
+  );
 
   // Slice's root-branch entry order — gives us the append sequence.
   const sliceRootBranch = Object.values(slice.branches).find((b) => b.parentBranchId === null);
@@ -621,21 +1014,42 @@ export async function applyExtensionToBranch(
   const arcId = rewrittenArcs[0]?.id ?? null;
   const sceneIds = rewrittenScenes.map((s) => s.id);
 
-  // Stamp the file as committed.
+  // Record the commit per-branch. Status stays 'ready' so the same
+  // slice can be applied to other branches independently. A file is
+  // only "done" when the operator deletes it.
   dispatch({
     type: 'UPDATE_SOURCE_FILE',
     narrativeId: narrative.id,
     fileId: file.id,
     updates: {
-      status: 'committed',
-      commit: {
-        branchId,
-        arcId: arcId ?? '',
-        sceneIds,
-        committedAt: Date.now(),
+      commits: {
+        ...(file.commits ?? {}),
+        [branchId]: {
+          arcId: arcId ?? '',
+          sceneIds,
+          committedAt: Date.now(),
+        },
       },
     },
   });
 
   return { introducedSceneIds: sceneIds, introducedArcId: arcId };
+}
+
+/** Convenience wrapper that runs prepare + commit back-to-back. The
+ *  streaming UI bypasses this and calls `prepareExtensionApply` /
+ *  `commitPreparedApply` directly so it can stream tokens between the
+ *  two phases. Callers that don't need the preview (tests, scripts)
+ *  can keep using this one-shot entry point. */
+export async function applyExtensionToBranch(
+  narrative: NarrativeState,
+  file: SourceFile,
+  branchId: string,
+  dispatch: Dispatch,
+  onProgress?: (phase: 'reconciling' | 'merging') => void,
+): Promise<ApplyResult> {
+  onProgress?.('reconciling');
+  const prepared = await prepareExtensionApply(narrative, file);
+  onProgress?.('merging');
+  return commitPreparedApply(narrative, file, branchId, prepared, dispatch);
 }

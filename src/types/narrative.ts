@@ -1670,14 +1670,18 @@ export type SourceFile = {
    *  holding the JSON-serialised extracted NarrativeState slice. */
   extractedRef?: string;
 
-  /** Set once status === 'committed' for extension files. Records which
-   *  branch absorbed this file and what it added. */
-  commit?: {
-    branchId: string;
+  /** Per-branch commit ledger for extension files. A file can be
+   *  applied to multiple branches independently — each branch tracks
+   *  its own arc + scene set + timestamp. Keyed by branchId. Empty /
+   *  missing on a branch means the file hasn't been applied there yet
+   *  (Apply remains enabled for that branch). Creation files leave
+   *  this undefined; they're implicit on every branch by virtue of
+   *  having birthed the world. */
+  commits?: Record<string, {
     arcId: string;
     sceneIds: string[];
     committedAt: number;
-  };
+  }>;
 
   /** Error message when status === 'failed'. */
   error?: string;

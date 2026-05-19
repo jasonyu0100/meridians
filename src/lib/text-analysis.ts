@@ -536,13 +536,13 @@ function extractJSON(raw: string): string {
 
 type CharacterNameMap = Record<string, string>; // variant → canonical
 
-type EntityMerges = {
+export type EntityMerges = {
   characterMerges: CharacterNameMap;
   locationMerges: Record<string, string>;
   artifactMerges: Record<string, string>;
 };
 
-type SemanticMerges = {
+export type SemanticMerges = {
   threadMerges: Record<string, string>;
   systemMerges: Record<string, string>;
 };
@@ -568,7 +568,7 @@ function parseMergeJSON<T extends object>(raw: string): T {
  * or object appears under multiple surface forms. Resolve aggressively to the
  * fullest canonical name.
  */
-async function reconcileEntities(
+export async function reconcileEntities(
   allCharNames: Set<string>,
   allLocNames: Set<string>,
   allArtifactNames: Set<string>,
@@ -639,7 +639,7 @@ function parseIndex(raw: unknown, listLength: number): number | null {
  * to PRESERVE. Only collapse when meaning, scope, and stakes are effectively
  * identical and one phrasing is just a restatement of the other.
  */
-async function reconcileSemantic(
+export async function reconcileSemantic(
   allThreadDescs: Set<string>,
   allSysConcepts: Set<string>,
   onToken?: (token: string, accumulated: string) => void,

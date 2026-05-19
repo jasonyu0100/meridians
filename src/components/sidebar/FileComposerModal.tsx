@@ -21,12 +21,9 @@
 import { useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import { useStore } from '@/lib/store';
-import { ANALYSIS_MAX_CORPUS_WORDS, WORDS_PER_SCENE } from '@/lib/constants';
-
-// file-conversion + text-analysis are lazy-loaded inside the submit
-// handler so the series page bundle doesn't drag the entire analysis
-// pipeline through HMR on every navigation. The composer only needs
-// them on click — until then a cheap word-count preview suffices.
+import { stageFile, convertFile } from '@/lib/file-conversion';
+import { splitCorpusIntoScenes } from '@/lib/text-analysis';
+import { ANALYSIS_MAX_CORPUS_WORDS } from '@/lib/constants';
 
 type Props = {
   onClose: () => void;
@@ -51,10 +48,7 @@ export function FileComposerModal({ onClose }: Props) {
   const trimmedContent = content.trim();
   const wordCount = trimmedContent ? trimmedContent.split(/\s+/).length : 0;
   const tooLarge = wordCount > ANALYSIS_MAX_CORPUS_WORDS;
-  // Approximate scene count from word count — matches splitCorpusIntoScenes'
-  // ~WORDS_PER_SCENE target without dragging the heavy splitter into the
-  // series page bundle.
-  const sceneCount = wordCount > 0 ? Math.max(1, Math.round(wordCount / WORDS_PER_SCENE)) : 0;
+  const sceneCount = trimmedContent && !tooLarge ? splitCorpusIntoScenes(content).length : 0;
   const canSubmit = !!narrative && !!trimmedContent && !!name.trim() && !tooLarge && !busy;
 
   const handleSave = async (then: 'save' | 'convert') => {
@@ -62,7 +56,6 @@ export function FileComposerModal({ onClose }: Props) {
     setBusy(then);
     setError(null);
     try {
-      const { stageFile, convertFile } = await import('@/lib/file-conversion');
       const file = await stageFile(narrative, name, content, dispatch);
       if (then === 'convert') {
         await convertFile(narrative, file, dispatch, {
@@ -106,7 +99,7 @@ export function FileComposerModal({ onClose }: Props) {
               </label>
               <span className={`text-[10px] font-mono tabular-nums ${tooLarge ? 'text-red-400/80' : 'text-text-dim/60'}`}>
                 {wordCount.toLocaleString()} words
-                {sceneCount > 0 && ` · ~${sceneCount} scene${sceneCount === 1 ? '' : 's'}`}
+                {sceneCount > 0 && ` · ${sceneCount} scene${sceneCount === 1 ? '' : 's'}`}
                 {tooLarge && ` · max ${ANALYSIS_MAX_CORPUS_WORDS.toLocaleString()}`}
               </span>
             </div>
