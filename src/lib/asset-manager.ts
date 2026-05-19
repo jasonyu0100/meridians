@@ -1,144 +1,41 @@
 /**
- * Asset Manager - Decoupled storage for large binary assets
+ * Asset Manager — decoupled storage for large binary assets.
  *
- * ARCHITECTURE:
- * - Narrative JSON stores ONLY references (IDs like "emb_abc123", "audio_xyz789")
- * - Binary data (embeddings, audio, images) stored in IndexedDB
- * - Export packages combine narrative + assets in ZIP
- *
- * BENEFITS:
- * - Narrative JSON: ~1MB (git-friendly, readable)
- * - Binary storage: 50% smaller than JSON
- * - Selective loading: Only load assets when needed
+ * Narrative JSON only stores references (`emb_…`, `audio_…`, `img_…`,
+ * `text_…`); the binary/large payloads live in IndexedDB. As of the
+ * inktide-main consolidation the asset stores live alongside
+ * narratives/meta/apiLogs in the single shared database — see
+ * `src/lib/db.ts` for the canonical schema. This module is a typed
+ * façade over those stores.
  */
 
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import type { IDBPDatabase } from 'idb';
 import { nanoid } from 'nanoid';
+import { openMainDB, type MainDB } from '@/lib/db';
 import { logError } from '@/lib/system-logger';
-
-// ── IndexedDB Schema ──────────────────────────────────────────────────────────
-
-interface AssetDB extends DBSchema {
-  /**
-   * Embeddings Store
-   * - 1536-dim vectors stored as Float32Array (6KB each)
-   * - ID format: "emb_abc123" (10 chars)
-   * - Indexed by narrativeId for efficient per-narrative queries
-   */
-  embeddings: {
-    key: string;
-    value: {
-      id: string;
-      vector: Float32Array;  // Binary storage — Float32 is sufficient for embedding similarity
-      model: string;         // "text-embedding-3-small"
-      narrativeId: string;   // Which narrative owns this asset
-      createdAt: number;
-    };
-    indexes: { 'by-narrative': string };
-  };
-
-  /**
-   * Audio Store
-   * - Audio blobs (MP3, WAV, etc.)
-   * - ID format: "audio_xyz789" (10 chars)
-   * - Indexed by narrativeId for efficient per-narrative queries
-   */
-  audio: {
-    key: string;
-    value: {
-      id: string;
-      blob: Blob;
-      format: string;  // "audio/mp3", "audio/wav"
-      duration?: number;  // seconds
-      narrativeId: string;   // Which narrative owns this asset
-      createdAt: number;
-    };
-    indexes: { 'by-narrative': string };
-  };
-
-  /**
-   * Images Store
-   * - Image blobs (PNG, JPG, etc.)
-   * - ID format: "img_def456" (10 chars)
-   * - Indexed by narrativeId for efficient per-narrative queries
-   */
-  images: {
-    key: string;
-    value: {
-      id: string;
-      blob: Blob;
-      format: string;  // "image/png", "image/jpeg"
-      width?: number;
-      height?: number;
-      narrativeId: string;   // Which narrative owns this asset
-      createdAt: number;
-    };
-    indexes: { 'by-narrative': string };
-  };
-
-  /**
-   * Texts Store
-   * - Source-text bodies for SourceFile records (analysis corpora,
-   *   extension uploads). Stored as plain strings — narrative JSON
-   *   only holds the ref.
-   * - ID format: "text_abc123" (11 chars)
-   * - Indexed by narrativeId for efficient per-narrative queries
-   */
-  texts: {
-    key: string;
-    value: {
-      id: string;
-      content: string;
-      narrativeId: string;
-      createdAt: number;
-    };
-    indexes: { 'by-narrative': string };
-  };
-}
 
 // ── Asset Manager ─────────────────────────────────────────────────────────────
 
 class AssetManager {
-  private db: IDBPDatabase<AssetDB> | null = null;
-  private dbName = 'inktide-assets';
-  private dbVersion = 2;
-
   // Blob URL cache (for audio/images)
   private blobUrlCache = new Map<string, string>();
 
   // ── Initialization ──────────────────────────────────────────────────────────
 
+  /** Open (or reuse) the shared inktide-main connection. Idempotent
+   *  via `openMainDB`'s memoised promise — repeated calls return the
+   *  same handle. Kept on the class surface because legacy callers
+   *  (TopBar, audio-store, MediaDrive, file-conversion) explicitly
+   *  `await assetManager.init()` before their first asset op. */
   async init(): Promise<void> {
-    if (this.db) return; // Already initialized
-
-    this.db = await openDB<AssetDB>(this.dbName, this.dbVersion, {
-      upgrade(db) {
-        // Create stores with narrativeId indexes
-        if (!db.objectStoreNames.contains('embeddings')) {
-          const embStore = db.createObjectStore('embeddings', { keyPath: 'id' });
-          embStore.createIndex('by-narrative', 'narrativeId');
-        }
-        if (!db.objectStoreNames.contains('audio')) {
-          const audioStore = db.createObjectStore('audio', { keyPath: 'id' });
-          audioStore.createIndex('by-narrative', 'narrativeId');
-        }
-        if (!db.objectStoreNames.contains('images')) {
-          const imgStore = db.createObjectStore('images', { keyPath: 'id' });
-          imgStore.createIndex('by-narrative', 'narrativeId');
-        }
-        if (!db.objectStoreNames.contains('texts')) {
-          const textStore = db.createObjectStore('texts', { keyPath: 'id' });
-          textStore.createIndex('by-narrative', 'narrativeId');
-        }
-      },
-    });
+    await openMainDB();
   }
 
-  private ensureInitialized(): IDBPDatabase<AssetDB> {
-    if (!this.db) {
-      throw new Error('AssetManager not initialized. Call init() first.');
-    }
-    return this.db;
+  /** Get the shared DB handle. All public methods delegate here, so
+   *  callers that forgot to call `init()` still work — the first
+   *  operation opens the connection lazily. */
+  private async db(): Promise<IDBPDatabase<MainDB>> {
+    return openMainDB();
   }
 
   // ── Embeddings ──────────────────────────────────────────────────────────────
@@ -156,7 +53,7 @@ class AssetManager {
     id?: string,
     narrativeId: string = 'global',
   ): Promise<string> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
 
     const embeddingId = id || this.generateId('emb');
     const entry = {
@@ -177,7 +74,7 @@ class AssetManager {
    * @returns Embedding array or null if not found
    */
   async getEmbedding(id: string): Promise<number[] | null> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const entry = await db.get('embeddings', id);
 
     if (!entry) return null;
@@ -192,7 +89,7 @@ class AssetManager {
    * @returns Map of ID → embedding array
    */
   async getEmbeddingsBatch(ids: string[]): Promise<Map<string, number[]>> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const results = new Map<string, number[]>();
 
     await Promise.all(
@@ -211,7 +108,7 @@ class AssetManager {
    * Delete an embedding by ID
    */
   async deleteEmbedding(id: string): Promise<void> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     await db.delete('embeddings', id);
   }
 
@@ -226,7 +123,7 @@ class AssetManager {
    * @returns ID reference like "audio_xyz789"
    */
   async storeAudio(blob: Blob, format?: string, id?: string, narrativeId: string = 'global'): Promise<string> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
 
     const audioId = id || this.generateId('audio');
     const entry = {
@@ -245,7 +142,7 @@ class AssetManager {
    * Retrieve audio blob by ID
    */
   async getAudio(id: string): Promise<Blob | null> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const entry = await db.get('audio', id);
     return entry?.blob || null;
   }
@@ -275,7 +172,7 @@ class AssetManager {
    * Delete audio by ID
    */
   async deleteAudio(id: string): Promise<void> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     await db.delete('audio', id);
 
     // Revoke blob URL if cached
@@ -296,7 +193,7 @@ class AssetManager {
    * @returns ID reference like "img_def456"
    */
   async storeImage(blob: Blob, format?: string, id?: string, narrativeId: string = 'global'): Promise<string> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
 
     const imageId = id || this.generateId('img');
     const entry = {
@@ -315,7 +212,7 @@ class AssetManager {
    * Retrieve image blob by ID
    */
   async getImage(id: string): Promise<Blob | null> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const entry = await db.get('images', id);
     return entry?.blob || null;
   }
@@ -342,7 +239,7 @@ class AssetManager {
    * Delete image by ID
    */
   async deleteImage(id: string): Promise<void> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     await db.delete('images', id);
 
     // Revoke blob URL if cached
@@ -360,7 +257,7 @@ class AssetManager {
    * we read these into the file modal on open, not lazily.
    */
   async storeText(content: string, id?: string, narrativeId: string = 'global'): Promise<string> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const textId = id || this.generateId('text');
     const entry = {
       id: textId,
@@ -374,14 +271,14 @@ class AssetManager {
 
   /** Retrieve source text by ID. Returns null if missing. */
   async getText(id: string): Promise<string | null> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const entry = await db.get('texts', id);
     return entry?.content ?? null;
   }
 
   /** Delete source text by ID. */
   async deleteText(id: string): Promise<void> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     await db.delete('texts', id);
   }
 
@@ -396,7 +293,7 @@ class AssetManager {
     images: string[];
     texts: string[];
   }> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
 
     const [embeddings, audio, images, texts] = await Promise.all([
       db.getAllKeys('embeddings'),
@@ -418,7 +315,7 @@ class AssetManager {
     images: Set<string>;
     texts: Set<string>;
   }): Promise<{ deletedCount: number }> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     const allIds = await this.getAllAssetIds();
 
     let deletedCount = 0;
@@ -473,7 +370,7 @@ class AssetManager {
    * Clear all assets (DANGER: destructive)
    */
   async clearAllAssets(): Promise<void> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
     await Promise.all([
       db.clear('embeddings'),
       db.clear('audio'),
@@ -489,7 +386,7 @@ class AssetManager {
    * @returns Count of deleted assets
    */
   async deleteNarrativeAssets(narrativeId: string): Promise<{ embeddingCount: number; audioCount: number; imageCount: number; textCount: number }> {
-    const db = this.ensureInitialized();
+    const db = await this.db();
 
     let embeddingCount = 0;
     let audioCount = 0;

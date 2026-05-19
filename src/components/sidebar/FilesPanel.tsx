@@ -331,7 +331,9 @@ export default function FilesPanel() {
                   )}
                   {f.analysisJobId && (
                     <button
-                      onClick={() => router.push(`/extensions?job=${f.analysisJobId}`)}
+                      onClick={() =>
+                        router.push(`/extensions/${narrative.id}?job=${f.analysisJobId}`)
+                      }
                       className="text-[9px] uppercase tracking-wider font-mono text-text-dim/60 hover:text-text-secondary transition ml-auto"
                       title="Open the conversion job in the extension runner"
                     >

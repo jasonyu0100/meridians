@@ -540,4 +540,181 @@ describe('commitPreparedApply', () => {
     const ids = apply.characters.map((c) => c.id).sort();
     expect(ids).toEqual(['C-USP-3', 'C-USP-4']);
   });
+
+  it('remaps thread dependents + beliefs + threadLog sceneId references', () => {
+    const narrative = makeNarrative();
+    const slice = makeSlice();
+    // Augment the slice's net-new thread with cross-references that must
+    // be remapped: a dependent thread id (the slice's own pre-existing
+    // T-EXT-X), a beliefs entry keyed by a character id, and a threadLog
+    // node with a sceneId backref to the slice scene.
+    const sliceWithThreadRefs = {
+      ...slice,
+      threads: {
+        ...slice.threads,
+        'T-EXT-1': {
+          ...slice.threads['T-EXT-1'],
+          dependents: ['T-EXT-other'],
+          beliefs: {
+            'C-EXT-1': { logits: [0, 0], volume: 1, volatility: 0, lastTouchedScene: 'S-EXT-1' },
+            __narrator__: { logits: [0, 0], volume: 1, volatility: 0 },
+          },
+          threadLog: {
+            nodes: {
+              'L-1': { id: 'L-1', type: 'setup' as const, content: 'opened', sceneId: 'S-EXT-1' },
+            },
+            edges: [],
+          },
+        },
+      },
+    };
+    const prepared: PreparedApply = {
+      slice: sliceWithThreadRefs,
+      mergePlan: {
+        // Donald Trump merges so C-EXT-1 → C-USP-1 in the beliefs key.
+        characters: new Map([['Donald Trump', 'Donald Trump']]),
+        locations: new Map(),
+        artifacts: new Map(),
+        threads: new Map(),
+        systemConcepts: new Map(),
+      },
+      summary: {
+        characters: { merged: [], new: [] },
+        locations: { merged: [], new: [] },
+        artifacts: { merged: [], new: [] },
+        threads: { merged: [], new: [] },
+        systemConcepts: { merged: [], new: [] },
+        scenes: 1,
+        arcs: 1,
+        worldBuilds: 0,
+      },
+    };
+    const dispatched: Action[] = [];
+    commitPreparedApply(narrative, makeFile(), 'B-1', prepared, (a) => dispatched.push(a));
+    const apply = dispatched.find((a) => a.type === 'APPLY_EXTENSION');
+    if (apply?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+
+    const thread = apply.threads[0];
+    // beliefs key C-EXT-1 → C-USP-1 (merged); sentinel __narrator__ stays.
+    expect(Object.keys(thread.beliefs)).toEqual(expect.arrayContaining(['C-USP-1', '__narrator__']));
+    // lastTouchedScene sceneId on beliefs → the new scene id.
+    expect(thread.beliefs['C-USP-1'].lastTouchedScene).toBe('S-USP-2');
+    // threadLog node.sceneId → new scene id.
+    expect(thread.threadLog.nodes['L-1'].sceneId).toBe('S-USP-2');
+    // Dependents id that wasn't in the maps stays verbatim (no slice
+    // record carries it; falling through to the original is intentional).
+    expect(thread.dependents).toEqual(['T-EXT-other']);
+  });
+
+  it('remaps gameAnalysis playerAId / playerBId on scenes', () => {
+    const narrative = makeNarrative();
+    const slice = makeSlice();
+    const sliceWithGames = {
+      ...slice,
+      scenes: {
+        ...slice.scenes,
+        'S-EXT-1': {
+          ...slice.scenes['S-EXT-1'],
+          gameAnalysis: {
+            games: [
+              {
+                beatIndex: 0,
+                beatExcerpt: '',
+                gameType: 'coordination' as const,
+                actionAxis: 'commitment' as const,
+                playerAId: 'C-EXT-1', // merges → C-USP-1
+                playerAName: 'Donald Trump',
+                playerAActions: [],
+                playerBId: 'C-EXT-2', // net new → C-USP-3
+                playerBName: 'Elon Musk',
+                playerBActions: [],
+                outcomes: [],
+                realizedAAction: '',
+                realizedBAction: '',
+                rationale: '',
+              },
+            ],
+            generatedAt: 1,
+          },
+        },
+      },
+    };
+    const prepared: PreparedApply = {
+      slice: sliceWithGames,
+      mergePlan: {
+        characters: new Map([['Donald Trump', 'Donald Trump']]),
+        locations: new Map([['Beijing', 'Beijing']]),
+        artifacts: new Map(),
+        threads: new Map(),
+        systemConcepts: new Map(),
+      },
+      summary: {
+        characters: { merged: [], new: [] },
+        locations: { merged: [], new: [] },
+        artifacts: { merged: [], new: [] },
+        threads: { merged: [], new: [] },
+        systemConcepts: { merged: [], new: [] },
+        scenes: 1,
+        arcs: 1,
+        worldBuilds: 0,
+      },
+    };
+    const dispatched: Action[] = [];
+    commitPreparedApply(narrative, makeFile(), 'B-1', prepared, (a) => dispatched.push(a));
+    const apply = dispatched.find((a) => a.type === 'APPLY_EXTENSION');
+    if (apply?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+
+    const game = apply.scenes[0].gameAnalysis?.games[0];
+    expect(game?.playerAId).toBe('C-USP-1');
+    expect(game?.playerBId).toBe('C-USP-3');
+  });
+
+  it('drops scene.newCharacters entries that deduped into existing entities', () => {
+    const narrative = makeNarrative();
+    const slice = makeSlice();
+    // Inject the slice's first character into the scene's newCharacters
+    // array — a typical extraction output. With the merge plan saying
+    // it folds into existing, the scene.newCharacters entry should drop
+    // (existing record is authoritative).
+    const sliceWithNewChar = {
+      ...slice,
+      scenes: {
+        ...slice.scenes,
+        'S-EXT-1': {
+          ...slice.scenes['S-EXT-1'],
+          newCharacters: [slice.characters['C-EXT-1'], slice.characters['C-EXT-2']],
+        },
+      },
+    };
+    const prepared: PreparedApply = {
+      slice: sliceWithNewChar,
+      mergePlan: {
+        characters: new Map([['Donald Trump', 'Donald Trump']]),
+        locations: new Map([['Beijing', 'Beijing']]),
+        artifacts: new Map(),
+        threads: new Map(),
+        systemConcepts: new Map(),
+      },
+      summary: {
+        characters: { merged: [], new: [] },
+        locations: { merged: [], new: [] },
+        artifacts: { merged: [], new: [] },
+        threads: { merged: [], new: [] },
+        systemConcepts: { merged: [], new: [] },
+        scenes: 1,
+        arcs: 1,
+        worldBuilds: 0,
+      },
+    };
+    const dispatched: Action[] = [];
+    commitPreparedApply(narrative, makeFile(), 'B-1', prepared, (a) => dispatched.push(a));
+    const apply = dispatched.find((a) => a.type === 'APPLY_EXTENSION');
+    if (apply?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+
+    const sceneNewChars = apply.scenes[0].newCharacters ?? [];
+    // Donald Trump dropped (deduped into existing); Elon Musk stays as the
+    // net-new entry, with its id remapped to the narrative's counter slot.
+    expect(sceneNewChars.map((c) => c.name)).toEqual(['Elon Musk']);
+    expect(sceneNewChars[0].id).toBe('C-USP-3');
+  });
 });

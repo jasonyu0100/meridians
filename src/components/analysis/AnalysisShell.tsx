@@ -1760,20 +1760,43 @@ function JobsList({
   );
 }
 
-/** Shared shell used by both `/analysis` (kind='create') and `/extensions`
- *  (kind='extend'). The `kind` prop scopes which jobs are visible in the
- *  sidebar; the rest of the UI (JobsList / JobDetail / NewJobSetup) is
- *  identical. The /extensions route also hides the "new job" path —
- *  extension jobs are created from the FilesPanel composer, not here. */
-export function AnalysisPageInner({ kind }: { kind: 'create' | 'extend' }) {
+/** Shared shell used by `/analysis` (kind='create'), the global
+ *  `/extensions` page (kind='extend', no narrativeFilter), and the
+ *  per-world `/extensions/[id]` page (kind='extend', narrativeFilter
+ *  set to the route param). The shared shell keeps job-management UX
+ *  identical across all three surfaces; only the visibility filter
+ *  and the header label change. */
+export function AnalysisPageInner({
+  kind,
+  narrativeFilter,
+}: {
+  kind: 'create' | 'extend';
+  /** When set, only extension jobs whose `targetNarrativeId` matches
+   *  this narrative are visible. Used by the `/extensions/[id]` route
+   *  to scope the view to a single world. */
+  narrativeFilter?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state } = useStore();
-  const headerLabel = kind === 'extend' ? 'Extensions' : 'Analysis';
+  const filteredNarrative = narrativeFilter
+    ? state.narratives.find((n) => n.id === narrativeFilter)
+    : null;
+  const headerLabel = filteredNarrative
+    ? filteredNarrative.title
+    : kind === 'extend'
+      ? 'Extensions'
+      : 'Analysis';
   const showNewSetupRoute = kind === 'create';
   const filteredJobs = useMemo(
-    () => state.analysisJobs.filter((j) => (kind === 'extend' ? j.kind === 'extend' : j.kind !== 'extend')),
-    [state.analysisJobs, kind],
+    () =>
+      state.analysisJobs.filter((j) => {
+        if (kind === 'extend' && j.kind !== 'extend') return false;
+        if (kind !== 'extend' && j.kind === 'extend') return false;
+        if (narrativeFilter && j.targetNarrativeId !== narrativeFilter) return false;
+        return true;
+      }),
+    [state.analysisJobs, kind, narrativeFilter],
   );
 
   const isNew = showNewSetupRoute && searchParams.get('new') === '1';

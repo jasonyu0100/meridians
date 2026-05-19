@@ -109,6 +109,15 @@ export function ApplyExtensionModal({ file, onClose }: Props) {
     }
   };
 
+  // Auto-close after a successful commit so the operator doesn't have
+  // to click Close. Long enough that the success summary registers, short
+  // enough that the modal doesn't linger.
+  useEffect(() => {
+    if (stage.phase !== 'done') return;
+    const t = setTimeout(onClose, 1400);
+    return () => clearTimeout(t);
+  }, [stage.phase, onClose]);
+
   return (
     <Modal onClose={onClose} size="2xl" maxHeight="85vh">
       <ModalHeader onClose={onClose}>
