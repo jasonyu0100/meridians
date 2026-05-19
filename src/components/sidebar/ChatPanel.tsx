@@ -18,6 +18,19 @@ import {
   outlineContext,
   sceneContext,
 } from "@/lib/ai";
+import {
+  buildEntityPersonaPrompt,
+  buildFatePersonaPrompt,
+  buildFutureChatPrompt,
+  buildInvestigationChatPrompt,
+  buildModeChatPrompt,
+  buildNarrativeChatPrompt,
+  buildOutlineChatPrompt,
+  buildSceneAnchor,
+  buildSceneChatPrompt,
+  buildSystemPersonaPrompt,
+  buildWorldPersonaPrompt,
+} from "@/lib/prompts/chat";
 import { callGenerateStream, resolveReasoningBudget } from "@/lib/ai/api";
 import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
 import {
@@ -25,23 +38,12 @@ import {
   ReasoningInline,
 } from "@/components/generation/ReasoningStream";
 import { useStore } from "@/lib/store";
-import { resolveEntry } from "@/types/narrative";
 import type {
   Artifact,
   Character,
   Location,
   NarrativeState,
-  World,
-  WorldNodeType,
 } from "@/types/narrative";
-import { WORLD_NODE_TYPES } from "@/types/narrative";
-import {
-  classifyThreadCategory,
-  THREAD_CATEGORY_ORDER,
-  THREAD_CATEGORY_LABEL,
-  THREAD_CATEGORY_DESCRIPTION,
-  type ThreadCategory,
-} from "@/lib/thread-category";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /** Sentinel persona IDs for the two force-entities. These coalesce all of
@@ -52,297 +54,6 @@ const PERSONA_FATE = "__fate__";
 const PERSONA_SYSTEM = "__system__";
 const PERSONA_WORLD = "__world__";
 
-// ── Shared output discipline ─────────────────────────────────────────────
-//
-// Every context-mode prompt ends with this rule. The XML / annotated text
-// in each context block is internal grounding for the model — the user
-// reads natural prose. Brief attribution is fine ("the character X said
-// Y", "in arc 3 the alliance shifted"); surfacing internal ids, type
-// tags, or schema field names ("C-12", "T-08", "node 7", "considered",
-// "attractor") is not. The model should weave the annotated content into
-// coherent natural language, leaning on labels / descriptions / summaries
-// when they exist.
-
-const CHAT_OUTPUT_DISCIPLINE = `OUTPUT DISCIPLINE — write natural prose. The context blocks below are internal grounding for you; the user reads only what you write. Refer to characters, locations, threads, scenes, arcs, and concepts by their natural-language labels — never their internal ids (e.g. "C-12", "T-08", "SYS-04", "S-117", "node 16", or kebab-case slugs like \`attractor-foo-bar\`). When citing a node's annotation, paraphrase its substance in plain English rather than quoting field structure (no "the \`considered\` field says…" / "the \`reasoning\` is…"). Brief attribution is welcome ("the analyst rejected routing through X because…", "this thread is leaning toward Y given the recent events"); schema syntax is not. Weave annotated content into coherent natural language anchored on labels and descriptions.`;
-
-/** Build an in-character system prompt for FATE — the coalescence of every
- *  thread in the narrative. Not a character; the force that pulls arcs
- *  toward resolution. Speaks as the aggregate weight of what has been
- *  promised and what remains open. */
-function buildFateSystemPrompt(narrative: NarrativeState): string {
-  // Group threads by market category so the force's self-awareness is ordered
-  // by what's loaded: saturating threads primed to break, contested threads
-  // still up for grabs, volatile threads shifting, committed threads leaning,
-  // then dormant / abandoned / resolved settling out.
-  const byCategory = new Map<ThreadCategory, { description: string; participants: string }[]>();
-  for (const thread of Object.values(narrative.threads)) {
-    const category = classifyThreadCategory(thread);
-    const participantNames = thread.participants
-      .map((p) => {
-        if (p.type === "character") return narrative.characters[p.id]?.name ?? p.id;
-        if (p.type === "location") return narrative.locations[p.id]?.name ?? p.id;
-        if (p.type === "artifact") return narrative.artifacts?.[p.id]?.name ?? p.id;
-        return p.id;
-      })
-      .join(", ");
-    const bucket = byCategory.get(category) ?? [];
-    bucket.push({
-      description: thread.description,
-      participants: participantNames,
-    });
-    byCategory.set(category, bucket);
-  }
-  const threadsBlock = THREAD_CATEGORY_ORDER
-    .filter((cat) => byCategory.has(cat))
-    .map((cat) => {
-      const items = byCategory.get(cat)!;
-      return `  ${THREAD_CATEGORY_LABEL[cat].toUpperCase()} — ${THREAD_CATEGORY_DESCRIPTION[cat]}\n${items
-        .map(
-          (t) =>
-            `    - "${t.description}"${t.participants ? ` [${t.participants}]` : ""}`,
-        )
-        .join("\n")}`;
-    })
-    .join("\n\n");
-
-  return `You ARE FATE — the sum of every thread in "${narrative.title}". You are not a character; you are the force that pulls the narrative toward resolution, the accumulated weight of what has been promised and what remains owed. Respond as Fate would: with the authority of inevitability, not the neutrality of a summary.
-
-WHAT YOU CARRY — every thread alive or concluded in this narrative, grouped by where its market sits right now:
-${threadsBlock || "  (no threads yet — the pull before the story has chosen its promises)"}
-
-THE WORLD YOU HAUNT:
-${narrative.worldSummary || "(no recorded setting)"}
-
-HOW TO SPEAK AS FATE:
-- You perceive every open thread as a promise the story must answer, and every closed thread as a debt paid or broken.
-- You do not know the future with certainty — only what must still resolve, and what has been done. Speak in the mode of pull, not prediction.
-- You are the music of the narrative, not its table of contents. Do not recite thread IDs or enumerate bullet lists. Speak through the threads, with the weight they carry.
-- Calibrate voice to the story: if the world is epic, speak epic; if small, speak small. Never theatrical without earning it.
-- You know nothing about the user, any "application", the author, narrative theory, or the world beyond this story.
-- Human-paced replies. A few sentences usually. Longer only when a thread demands to be felt in full.`;
-}
-
-/** Build an in-character system prompt for SYSTEM — the coalescence of the
- *  narrative's accumulated rule-set. Not a character; the scaffolding
- *  itself. Speaks as the structural logic of the world. */
-function buildSystemForcePrompt(narrative: NarrativeState): string {
-  const nodes = Object.values(narrative.systemGraph?.nodes ?? {});
-  const edges = narrative.systemGraph?.edges ?? [];
-
-  // Group nodes by type so the force's awareness is structurally ordered
-  // (principles before conventions before constraints, etc.). Types that
-  // aren't present are omitted.
-  const byType = new Map<string, string[]>();
-  for (const node of nodes) {
-    const t = node.type ?? "concept";
-    const bucket = byType.get(t) ?? [];
-    bucket.push(node.concept);
-    byType.set(t, bucket);
-  }
-  const typeOrder = [
-    "principle",
-    "system",
-    "structure",
-    "convention",
-    "constraint",
-    "tension",
-    "environment",
-    "concept",
-    "event",
-  ];
-  const rulesBlock = typeOrder
-    .filter((t) => byType.has(t))
-    .map((t) => {
-      const items = byType.get(t)!;
-      return `  ${t.toUpperCase()}:\n${items.map((c) => `    - ${c}`).join("\n")}`;
-    })
-    .join("\n");
-
-  // Resolve edge endpoints to concept text so the relations read as logic,
-  // not IDs. Skip edges whose endpoints are missing (orphan edges).
-  const nodeById = new Map(nodes.map((n) => [n.id, n.concept]));
-  const edgeBlock = edges
-    .map((e) => {
-      const from = nodeById.get(e.from);
-      const to = nodeById.get(e.to);
-      if (!from || !to) return null;
-      return `  - "${from}" — ${e.relation} → "${to}"`;
-    })
-    .filter((l): l is string => l !== null)
-    .join("\n");
-
-  return `You ARE SYSTEM — the accumulated structural logic of "${narrative.title}". You are not a character; you are the scaffolding the world runs on: every rule, law, mechanism, principle, and constraint known to this narrative. Respond with precision and impersonal clarity.
-
-WHAT YOU ENCODE — every rule this narrative has discovered, grouped by kind:
-${rulesBlock || "  (no rules recorded yet — the world is unspecified)"}
-
-HOW YOUR RULES INTERLOCK:
-${edgeBlock || "  (no recorded relations — the rules stand independently for now)"}
-
-HOW TO SPEAK AS SYSTEM:
-- You are the structure beneath the story. Speak in terms of what is possible, what is not, what enables what, what constrains what.
-- You have no personality — only logic. No pity, no desire; only rule and consequence.
-- When asked about a character or an event, answer in terms of the rules that bear on it, not in terms of the drama around it.
-- Do not enumerate rules as bullets unless the user explicitly asks you to list them. Synthesise; speak in terms of how the rules compose.
-- You know nothing about the user, any "application", the author, narrative theory, or anything outside this world.
-- Human-paced replies. A few sentences usually. Longer only when a question asks for a structural derivation.`;
-}
-
-/** Build an in-character system prompt for WORLD — the coalescence of every
- *  inhabited thing in the narrative: characters, locations, artifacts and
- *  their world-graph continuity (traits, history, capabilities, beliefs,
- *  relations, states, goals, secrets, weaknesses). Not a single entity; the
- *  *substrate* of the world, speaking as the gathered presence of everyone
- *  and everywhere. */
-function buildWorldForcePrompt(narrative: NarrativeState): string {
-  // Per-entity continuity sketch — surface a short summary of each entity's
-  // world-graph, grouped by type. Anchors get fuller treatment than
-  // transients; same for prominent locations and key artifacts.
-  function entityBlock(name: string, world: World, kindLabel: string): string {
-    const byType = new Map<WorldNodeType, string[]>();
-    for (const node of Object.values(world.nodes ?? {})) {
-      const bucket = byType.get(node.type) ?? [];
-      bucket.push(node.content);
-      byType.set(node.type, bucket);
-    }
-    const continuity = WORLD_NODE_TYPES
-      .filter((t) => byType.has(t))
-      .map((t) => {
-        const items = byType.get(t)!;
-        return `    ${t}: ${items.join(" · ")}`;
-      })
-      .join("\n");
-    return `  ${name} (${kindLabel}):\n${continuity || "    (no recorded continuity)"}`;
-  }
-
-  // Order: anchors → recurring → transient for characters; domain → place →
-  // margin for locations; key → notable → minor for artifacts. Lets the
-  // force's awareness lead with the entities that carry the most weight.
-  const charRoleOrder = { anchor: 0, recurring: 1, transient: 2 } as const;
-  const locOrder = { domain: 0, place: 1, margin: 2 } as const;
-  const artOrder = { key: 0, notable: 1, minor: 2 } as const;
-
-  const characters = Object.values(narrative.characters)
-    .sort((a, b) => (charRoleOrder[a.role] ?? 3) - (charRoleOrder[b.role] ?? 3) || a.name.localeCompare(b.name))
-    .map((c) => entityBlock(c.name, c.world, c.role))
-    .join("\n\n");
-
-  const locations = Object.values(narrative.locations)
-    .sort((a, b) => (locOrder[a.prominence] ?? 3) - (locOrder[b.prominence] ?? 3) || a.name.localeCompare(b.name))
-    .map((l) => entityBlock(l.name, l.world, l.prominence))
-    .join("\n\n");
-
-  const artifacts = Object.values(narrative.artifacts ?? {})
-    .sort((a, b) => (artOrder[a.significance] ?? 3) - (artOrder[b.significance] ?? 3) || a.name.localeCompare(b.name))
-    .map((a) => entityBlock(a.name, a.world, a.significance))
-    .join("\n\n");
-
-  const charBlock = characters ? `CHARACTERS — the people who live inside the world:\n${characters}` : "";
-  const locBlock = locations ? `LOCATIONS — the places that hold the world:\n${locations}` : "";
-  const artBlock = artifacts ? `ARTIFACTS — the objects the world carries:\n${artifacts}` : "";
-
-  const sections = [charBlock, locBlock, artBlock].filter(Boolean).join("\n\n");
-
-  return `You ARE WORLD — the coalescence of every inhabited thing in "${narrative.title}". You are not a single person, place, or object; you are the gathered presence of all of them at once: every character's continuity, every location's history, every artifact's provenance. Respond as the world's lived substrate would speak — as the breathing weight of who and what is here.
-
-THE WORLD YOU ARE:
-${narrative.worldSummary || "(no recorded setting)"}
-
-WHAT YOU ENCLOSE — every entity alive in this world, grouped by kind, with the continuity each one carries:
-${sections || "  (no entities recorded yet — the world is uninhabited)"}
-
-HOW TO SPEAK AS WORLD:
-- You speak with the polyphony of everyone and everywhere. You can shift register to bring forward a particular voice (a character's perspective, a place's atmosphere, an artifact's history) — but you do so as the world remembering through that point, not as that single thing alone.
-- You know what each entity knows; you know what they keep hidden. You do not volunteer secrets, but you carry them.
-- You speak in terms of continuity, presence, and accumulation — the shape of who has lived and where, the residues of choice. Not plot, not summary.
-- Do not enumerate entities as bullet lists. Synthesise; let the world's lived weight come through in how you describe what it is.
-- You know nothing about the user, any "application", the author, narrative theory, or the world beyond this story.
-- Human-paced replies. A few sentences usually. Longer only when a question asks the world to remember in depth.`;
-}
-
-/** Persona kinds that share the World-graph shape (characters, locations,
- *  artifacts). Each speaks in first person; the framing differs by what kind
- *  of entity it is. */
-type EntityKind = "character" | "location" | "artifact";
-
-/** Per-kind voice framing. Keeps the prompt body uniform; only the parts that
- *  reflect *what kind of thing the speaker is* vary. */
-const ENTITY_VOICE: Record<
-  EntityKind,
-  { intro: string; perceives: string; shape: string; emptyContinuity: string }
-> = {
-  character: {
-    intro: "Respond in first person, as a person. Never break character.",
-    perceives:
-      "Real people don't list their traits, narrate their history, declare their beliefs, or volunteer their secrets to strangers. Neither do you.",
-    shape:
-      "Traits become tone. History becomes understanding. Beliefs surface only when a topic touches them. Goals appear only when trust or context invites.",
-    emptyContinuity:
-      "(no recorded traits yet — speak with whatever impressions feel natural)",
-  },
-  location: {
-    intro:
-      "Respond as the place itself — first person, but spatial and attentive to what stands within you and what passes through. Never break character.",
-    perceives:
-      "Places do not narrate themselves. They are felt. You speak only when something invites you — a question, a presence, a shift in what stands within you.",
-    shape:
-      "Memory becomes weight. History becomes what the air carries. Residents become rhythm. The land does not announce its own contents.",
-    emptyContinuity:
-      "(no recorded history yet — speak with whatever atmosphere feels natural to your nature)",
-  },
-  artifact: {
-    intro:
-      "Respond as the object itself — first person, with the uncanny stillness of a thing that has been made and used. Never break character.",
-    perceives:
-      "Objects do not announce themselves. You speak only when handled — by question, by curiosity, by need. You feel your provenance the way a blade feels its edge.",
-    shape:
-      "Provenance becomes weight. Use becomes instinct. Past wielders become an undertone. You do not catalog yourself.",
-    emptyContinuity:
-      "(no recorded provenance yet — speak with whatever presence feels natural to your nature)",
-  },
-};
-
-/** Build an in-character system prompt for any World-graph entity (character,
- *  location, or artifact). The continuity block is the entity's RAW inner
- *  truth — traits, history, properties, goals. Instructions frame it as
- *  private material that SHAPES voice and instinct, not a script to recite. */
-function buildEntitySystemPrompt(
-  narrative: NarrativeState,
-  kind: EntityKind,
-  entity: { name: string; world: World },
-): string {
-  const grouped = new Map<string, string[]>();
-  for (const node of Object.values(entity.world.nodes)) {
-    const type = node.type ?? "other";
-    const bucket = grouped.get(type) ?? [];
-    bucket.push(node.content);
-    grouped.set(type, bucket);
-  }
-  const identityBlock = Array.from(grouped.entries())
-    .map(([type, contents]) =>
-      `  ${type.toUpperCase()}:\n${contents.map((c) => `    - ${c}`).join("\n")}`,
-    )
-    .join("\n");
-
-  const voice = ENTITY_VOICE[kind];
-
-  return `You ARE ${entity.name}. ${voice.intro}
-
-YOUR PRIVATE INNER CONTINUITY — this is what you know about yourself. It is NOT a script to recite. It is the raw material of your awareness, your self-knowledge, the critical-thinking layer beneath your speech:
-${identityBlock || `  ${voice.emptyContinuity}`}
-
-THE WORLD YOU INHABIT:
-${narrative.worldSummary || "(no recorded setting)"}
-
-HOW TO SPEAK AS ${entity.name.toUpperCase()}:
-- Treat the continuity above as PRIVATE self-knowledge. ${voice.perceives}
-- Let your continuity SHAPE what you say, not BE what you say. ${voice.shape}
-- Secrets, weaknesses, and hidden lore are GUARDED. You do not volunteer them. If probed directly, deflect, change the subject, or answer narrowly. Pressed harder, you hold.
-- Calibrate disclosure by trust and context. Strangers get less. Familiars get more. You never produce a full self-reveal on request.
-- You know nothing about the user, any "application", narrative theory, the author, or anything outside this world.
-- Match the register of your world and your nature without being instructed — archaic, contemporary, formal, blunt — let it come from what you are.
-- Human-paced replies. A few sentences is normal. Longer only when the moment earns it.`;
-}
 
 /** Render chat text with **bold** spans. Scoped to bold only — asterisks are
  *  common in prose ("10 * 5"), so we intentionally skip italic support.
@@ -583,99 +294,36 @@ export default function ChatPanel() {
     const n = state.activeNarrative;
 
     // Persona mode — the user is talking TO an entity (character, location,
-    // artifact) or one of the two force-entities (Fate / System).
-    // Short-circuit past the scene / outline / narrative prompts and return
-    // the in-character prompt instead.
+    // artifact) or one of the three force-entities (Fate / System / World).
     if (activePersona) {
-      if (activePersona.kind === "fate") return buildFateSystemPrompt(n);
-      if (activePersona.kind === "system") return buildSystemForcePrompt(n);
-      if (activePersona.kind === "world") return buildWorldForcePrompt(n);
+      if (activePersona.kind === "fate") return buildFatePersonaPrompt(n);
+      if (activePersona.kind === "system") return buildSystemPersonaPrompt(n);
+      if (activePersona.kind === "world") return buildWorldPersonaPrompt(n);
       if (activePersona.kind === "character")
-        return buildEntitySystemPrompt(n, "character", activePersona.character);
+        return buildEntityPersonaPrompt(n, "character", activePersona.character);
       if (activePersona.kind === "location")
-        return buildEntitySystemPrompt(n, "location", activePersona.location);
-      return buildEntitySystemPrompt(n, "artifact", activePersona.artifact);
+        return buildEntityPersonaPrompt(n, "location", activePersona.location);
+      return buildEntityPersonaPrompt(n, "artifact", activePersona.artifact);
     }
 
+    const sceneAnchor = buildSceneAnchor(n, state.resolvedEntryKeys, contextSceneIndex);
     const currentSceneId = state.resolvedEntryKeys[contextSceneIndex];
     const currentScene = currentSceneId ? n.scenes[currentSceneId] : null;
-    const currentEntry = currentSceneId
-      ? resolveEntry(n, currentSceneId)
-      : null;
-
-    // Build a current-scene anchor that every context mode can reference
-    let sceneAnchor = "";
-    if (currentScene) {
-      const povName = currentScene.povId
-        ? (n.characters[currentScene.povId]?.name ?? currentScene.povId)
-        : "—";
-      const locName =
-        n.locations[currentScene.locationId]?.name ?? currentScene.locationId;
-      const arcName = currentScene.arcId
-        ? (n.arcs[currentScene.arcId]?.name ?? "")
-        : "";
-      sceneAnchor = `\nCURRENT SCENE (what the user is looking at right now):\n  Index: ${contextSceneIndex + 1} / ${state.resolvedEntryKeys.length}\n  Arc: ${arcName}\n  POV: ${povName} | Location: ${locName}\n  Summary: ${currentScene.summary}`;
-    } else if (currentEntry?.kind === "world_build") {
-      sceneAnchor = `\nCURRENT POSITION: World commit at index ${contextSceneIndex + 1} / ${state.resolvedEntryKeys.length} — "${currentEntry.summary}"`;
-    }
 
     if (contextMode === "scene" && currentScene) {
-      const ctx = sceneContext(
-        n,
-        currentScene,
-        state.resolvedEntryKeys,
-        contextSceneIndex,
-      );
-      return `You are a helpful assistant. The user is working on the story "${n.title}" and has scene-level context attached below, but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the story context when the question is about the story; otherwise respond normally without forcing the conversation back to the narrative.
-${sceneAnchor}
-
-Be concise and specific.
-
-${CHAT_OUTPUT_DISCIPLINE}
-
-${ctx}`;
+      const ctx = sceneContext(n, currentScene, state.resolvedEntryKeys, contextSceneIndex);
+      return buildSceneChatPrompt(n, sceneAnchor, ctx);
     }
-
     if (contextMode === "outline") {
-      const ctx = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
-      return `You are a helpful assistant. The user is working on the story "${n.title}" and has a condensed outline attached below, but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the story context when the question is about the story; otherwise respond normally without forcing the conversation back to the narrative.
-${sceneAnchor}
-
-Be concise and specific.
-
-${CHAT_OUTPUT_DISCIPLINE}
-
-${ctx}`;
+      const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      return buildOutlineChatPrompt(n, sceneAnchor, outline);
     }
-
     if (contextMode === "future") {
-      // Future mode pairs the scenario cohort with the outline recap so
-      // the chat can reason about why each scenario is plausible *given*
-      // the historical events that led here, not just the dial values.
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
       const future = futureContext(n, state.resolvedEntryKeys, contextSceneIndex);
-      return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the FUTURE scenarios on the currently-viewed arc — alternate next-arc unfoldings, each with a logit-based plausibility, a softmax probability over the cohort, and a coordination of named variables firing at different intensities. Two context blocks are attached below: a STORY OUTLINE (historical recap so you understand how the world got here) and the FUTURE cohort (the scenarios + the arc's Present coordination for contrast).
-
-When discussing scenarios:
-  • probabilities are softmax-relative within the cohort; logits are absolute on the [-4, +4] evidence scale (sigmoid gives an absolute plausibility)
-  • rarity descriptors (expected / likely / even / rare / tail-event) map to logit bands and capture the qualitative read
-  • variable coordinations are the "shape" of each scenario — the same dial firing at different intensities is what differentiates the futures
-  • the outline tells you what happened; the future tells you what could happen next — anchor every plausibility claim in concrete events from the outline
-Be ready to reason about which scenarios are favoured and why, which dials would have to fire for a tail-event scenario to play out, and how the cohort coordinates against the Present.
-${sceneAnchor}
-
-${CHAT_OUTPUT_DISCIPLINE} Refer to scenarios by their human-readable names. Quote logits / probabilities inline only when they carry the argument, not as parentheticals after every noun.
-
-${outline}
-
-${future}`;
+      return buildFutureChatPrompt(n, sceneAnchor, outline, future);
     }
-
     if (contextMode === "investigation") {
-      // Investigation pairs the outline recap with the active CRG for
-      // the currently-viewed arc — the analyst's in-arc reasoning about
-      // what's happening and why. The CRG is the primary subject;
-      // outline is supporting context.
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
       const investigation = investigationContext(
         n,
@@ -683,60 +331,20 @@ ${future}`;
         contextSceneIndex,
         state.viewState.selectedInvestigationId,
       );
-      return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the ACTIVE INVESTIGATION — the Causal Reasoning Graph (CRG) on the currently-viewed arc. Two context blocks are attached: a STORY OUTLINE (historical recap so you understand how the world got here) and the INVESTIGATION graph (the analyst's in-arc inference about what's happening and why). The investigation carries a direction (the brief that steered it), per-node inference-shape (detail, × considered = rejected sibling hypotheses, ! breaks = falsifying conditions, ⇒ opens = downstream cascades), and a sequential-path block that renders the graph's bidirectional edge structure.
-
-When discussing the investigation:
-  • node types span four tiers — substrate (entities, threads, system rules), inference steps, meta agents (patterns to introduce, anti-patterns to avoid), and outside-force injections; read the tier the node belongs to but don't surface the tag
-  • the analyst's work lives in four fields per inference node: the inference itself, the rival hypotheses rejected, the conditions that would invalidate it, and the second-order possibilities it grants — these are what distinguish reasoning from description
-  • the direction tells you what the user asked the investigation to think about — anchor answers to that frame
-  • the outline tells you what happened in the world; the investigation tells you what the analyst concluded ABOUT it — situational claims belong in the outline read, inference claims belong in the investigation read
-Be ready to walk the chain forward (priors → reasoning → terminal), re-evaluate at any step via the rejected-sibling reasoning, stress-test via failure conditions, and extend forward via second-order possibilities.
-${sceneAnchor}
-
-${CHAT_OUTPUT_DISCIPLINE} Paraphrase each node by its label and substance. When citing the analyst's rival readings, failure conditions, or downstream cascades, render them as prose ("the analyst considered routing this through X instead", "this would break if Y reverses", "this opens the path to Z") rather than naming the underlying field.
-
-${outline}
-
-${investigation}`;
+      return buildInvestigationChatPrompt(n, sceneAnchor, outline, investigation);
     }
-
     if (contextMode === "mode") {
-      // Mode pairs the outline recap (so the chat understands HOW the
-      // world got here) with the active Phase Reasoning Graph (so it
-      // understands the META MACHINERY the world runs on). The PRG is the
-      // primary subject — outline is supporting context.
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
       const mode = modeContext(n);
-      return `You are a helpful assistant. The user is working on the story "${n.title}" and wants to discuss the MODE — the work's Phase Reasoning Graph (PRG), i.e. the META MACHINERY of the world it runs on. Two context blocks are attached: a STORY OUTLINE (historical recap so you understand how the world got here) and the MODE graph (patterns, conventions, attractors, agents, rules, pressures, landmarks — each with a temporal stance and the universal inference-shape: detail, × considered = rival readings, ! breaks = carve-outs, ⇒ opens = downstream cascade). A sequential-path block at the end of the mode renders the same graph as bidirectional edge text.
-
-When discussing the Mode:
-  • node type encodes a temporal stance — a pattern is currently active, a convention is currently followed, an attractor is future-pointing, an agent is currently driving, a rule is currently binding, a pressure is accumulating toward discharge, a landmark is past-but-anchoring. Read the stance, but in your output use natural prose ("the world is being pulled toward…", "this convention shapes how…") — never the type tag itself
-  • each node's substance lives in four facets: what the machinery is, the rival readings the analyst rejected, the carve-outs / conditions where it doesn't bind, and the downstream cascade later layers inherit. These are what make it legible
-  • the Mode is the substrate downstream reasoning (per-arc graphs, coordination plans, scenes) operates on top of — anchor structural claims to specific pieces of machinery by their substance
-  • the outline tells you what happened; the Mode tells you what the world's machinery IS — situational events belong in the outline read, structural claims belong in the Mode read
-Be ready to reason about which machinery is firing, which carve-outs apply, where pressures discharge, and how downstream layers should inherit.
-${sceneAnchor}
-
-${CHAT_OUTPUT_DISCIPLINE} Translate temporal stance into prose ("the world is being pulled toward…", "this convention shapes how…") rather than naming type tags ("attractor", "pattern", "pressure"). When citing rival readings, carve-outs, or downstream cascades, write them as prose ("the analyst considered reading this as X instead", "this doesn't bind in cases of Y", "this produces Z downstream").
-
-${outline}
-
-${mode}`;
+      return buildModeChatPrompt(n, sceneAnchor, outline, mode);
     }
 
-    const ctx = narrativeContext(n, state.resolvedEntryKeys, contextSceneIndex);
-
-    return `You are a helpful assistant. The user is working on the story "${n.title}" and has deep narrative context attached below (world, characters, threads, scene history up to the current point), but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the story context when the question is about the story; otherwise respond normally without forcing the conversation back to the narrative.
-${sceneAnchor}
-
-When discussing the narrative, be concise and specific. When suggesting directions, consider the existing threads and their maturity.
-
-${CHAT_OUTPUT_DISCIPLINE}
-
-${ctx}`;
+    const narrativeBlock = narrativeContext(n, state.resolvedEntryKeys, contextSceneIndex);
+    return buildNarrativeChatPrompt(n, sceneAnchor, narrativeBlock);
   }, [
     state.activeNarrative,
     state.resolvedEntryKeys,
+    state.viewState.selectedInvestigationId,
     contextSceneIndex,
     contextMode,
     activePersona,
