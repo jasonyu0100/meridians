@@ -59,6 +59,25 @@ function statusColor(status: SourceFile['status']): string {
   return 'text-text-dim/75';
 }
 
+/** Map a file's status to the primary action that should appear on
+ *  the card. Returns null when no primary action is meaningful
+ *  (converting, committed creation file). The action row also renders
+ *  Remove + Job as secondary affordances independent of this. */
+function primaryAction(
+  file: SourceFile,
+  branchId: string | null,
+): { kind: 'convert' | 'apply'; label: string } | null {
+  if (file.status === 'staged') return { kind: 'convert', label: 'Convert' };
+  if (file.status === 'failed') return { kind: 'convert', label: 'Retry' };
+  if (file.status === 'ready') {
+    return {
+      kind: 'apply',
+      label: branchId ? 'Extend branch' : 'Extend (no branch)',
+    };
+  }
+  return null;
+}
+
 const PHASE_LABEL: Partial<Record<AnalysisPhase, string>> = {
   structure: 'Extracting structure',
   plans: 'Extracting plans',
@@ -222,46 +241,36 @@ export default function FilesPanel() {
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-3" style={{ scrollbarWidth: 'thin' }}>
           {files.map((f) => {
-            const style = STATUS_STYLE[f.status];
             const job = f.analysisJobId ? jobById.get(f.analysisJobId) : undefined;
-            const phaseLabel = f.status === 'converting' && job?.phase ? PHASE_LABEL[job.phase] ?? job.phase : null;
-            const commitsByBranch = f.commits ?? {};
-            const branchCount = Object.keys(commitsByBranch).length;
-            const onActiveBranch = branchId ? commitsByBranch[branchId] : undefined;
-            const totalScenes = Object.values(commitsByBranch).reduce(
-              (sum, c) => sum + c.sceneIds.length,
-              0,
-            );
+            const phaseLabel =
+              f.status === 'converting' && job?.phase ? PHASE_LABEL[job.phase] ?? job.phase : null;
+            const primary = primaryAction(f, branchId);
             return (
               <div
                 key={f.id}
-                className="group w-full rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3"
+                className="group rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3.5"
               >
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-[9px] uppercase tracking-wider text-text-dim/70 font-mono">
-                    {f.mode}
-                  </span>
-                  {onActiveBranch && (
-                    <span className="text-[9px] uppercase tracking-wider text-emerald-400/85 font-mono">
-                      · on branch
-                    </span>
-                  )}
-                  <span className={`text-[9px] uppercase tracking-wider font-mono ml-auto ${statusColor(f.status)}`}>
-                    {style.label}
-                  </span>
+                {/* Meta row: kind on the left, status on the right. */}
+                <div className="flex items-baseline justify-between mb-2 text-[9px] uppercase tracking-wider font-mono">
+                  <span className="text-text-dim/65">{f.mode}</span>
+                  <span className={statusColor(f.status)}>{STATUS_STYLE[f.status].label}</span>
                 </div>
+
+                {/* Title — the click target for source-view. Single line of
+                    visual weight; everything else hangs off it. */}
                 <button
                   onClick={() => setOpenId(f.id)}
-                  className="text-[12px] text-text-primary leading-snug text-left w-full hover:underline underline-offset-2 truncate"
+                  className="block text-[13px] text-text-primary font-medium leading-snug text-left hover:underline underline-offset-2 truncate w-full"
                   title="View source text"
                 >
                   {f.name}
                 </button>
-                <div className="mt-1.5 flex items-baseline gap-2 text-[10px] text-text-dim/70 font-mono tabular-nums">
-                  <span>{formatCount(f.wordCount)} words</span>
-                  <span className="text-text-dim/30">·</span>
-                  <span>{formatCount(f.charCount)} chars</span>
-                  <span className="text-text-dim/30 ml-auto">·</span>
+
+                {/* Stats — one line, no dividers, right-aligned date. */}
+                <div className="mt-1 flex items-baseline justify-between text-[10px] text-text-dim/60 font-mono tabular-nums">
+                  <span>
+                    {formatCount(f.wordCount)} words&nbsp;&nbsp;·&nbsp;&nbsp;{formatCount(f.charCount)} chars
+                  </span>
                   <span>{formatDate(f.createdAt)}</span>
                 </div>
 
@@ -270,73 +279,53 @@ export default function FilesPanel() {
                 )}
 
                 {f.status === 'failed' && f.error && (
-                  <p className="mt-1.5 text-[10px] text-red-400/75 leading-tight line-clamp-2">{f.error}</p>
-                )}
-
-                {/* Commit ledger — per-branch summary when the slice has
-                    landed somewhere. */}
-                {branchCount > 0 && (
-                  <p className="mt-1.5 text-[9px] uppercase tracking-wider text-text-dim/55 font-mono">
-                    applied to {branchCount} branch{branchCount === 1 ? '' : 'es'} · {totalScenes} scene{totalScenes === 1 ? '' : 's'}
+                  <p className="mt-2 text-[10px] text-red-400/75 leading-tight line-clamp-2">
+                    {f.error}
                   </p>
                 )}
 
-                {/* Action row. Apply is gated by the active branch having
-                    no commit for this file yet — re-apply is possible on
-                    different branches, but not on the same branch twice. */}
-                <div className="mt-2 flex items-center gap-2">
-                  {f.status === 'staged' && (
-                    <button
-                      onClick={() => handleConvert(f)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/15 text-text-primary transition"
-                    >
-                      Convert
-                    </button>
-                  )}
-                  {f.status === 'failed' && (
-                    <button
-                      onClick={() => handleConvert(f)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/15 text-text-primary transition"
-                    >
-                      Retry
-                    </button>
-                  )}
-                  {f.status === 'ready' && !onActiveBranch && (
-                    <button
-                      onClick={() => setApplyFileId(f.id)}
-                      disabled={!branchId}
-                      title={branchId ? 'Open the merge modal' : 'Select a branch first'}
-                      className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/15 text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Apply to current branch
-                    </button>
-                  )}
-                  {f.status === 'ready' && onActiveBranch && (
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400/85 cursor-default">
-                      Applied here
-                    </span>
-                  )}
-                  {f.mode === 'extend' && (
-                    <button
-                      onClick={() => void handleRemove(f)}
-                      className="text-[10px] px-2 py-0.5 rounded text-text-dim/60 hover:text-red-400/85 transition"
-                      title="Remove this file (branches that absorbed it keep their content)"
-                    >
-                      Remove
-                    </button>
-                  )}
-                  {f.analysisJobId && (
-                    <button
-                      onClick={() =>
-                        router.push(`/extensions/${narrative.id}?job=${f.analysisJobId}`)
-                      }
-                      className="text-[9px] uppercase tracking-wider font-mono text-text-dim/60 hover:text-text-secondary transition ml-auto"
-                      title="Open the conversion job in the extension runner"
-                    >
-                      job ↗
-                    </button>
-                  )}
-                </div>
+                {/* Action row. Primary action sits left; secondary
+                    (Remove / Job) hugs right. Single visual rhythm. */}
+                {(primary || f.mode === 'extend' || f.analysisJobId) && (
+                  <div className="mt-3 flex items-center gap-3">
+                    {primary?.kind === 'convert' && (
+                      <button
+                        onClick={() => handleConvert(f)}
+                        className="text-[11px] text-text-primary font-medium hover:underline underline-offset-2"
+                      >
+                        {primary.label}
+                      </button>
+                    )}
+                    {primary?.kind === 'apply' && (
+                      <button
+                        onClick={() => setApplyFileId(f.id)}
+                        disabled={!branchId}
+                        title={branchId ? 'Open the merge modal' : 'Select a branch first'}
+                        className="text-[11px] text-text-primary font-medium hover:underline underline-offset-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
+                      >
+                        {primary.label}
+                      </button>
+                    )}
+                    {f.mode === 'extend' && (
+                      <button
+                        onClick={() => void handleRemove(f)}
+                        className="text-[11px] text-text-dim/55 hover:text-red-400/85 transition"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    {f.analysisJobId && (
+                      <button
+                        onClick={() =>
+                          router.push(`/extensions/${narrative.id}?job=${f.analysisJobId}`)
+                        }
+                        className="ml-auto text-[10px] uppercase tracking-wider font-mono text-text-dim/55 hover:text-text-secondary transition"
+                      >
+                        job ↗
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

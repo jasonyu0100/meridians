@@ -419,28 +419,21 @@ describe('commitPreparedApply', () => {
     const dispatched: Action[] = [];
     commitPreparedApply(narrative, file, 'B-1', prepared, (a) => dispatched.push(a));
 
-    const update = dispatched.find(
+    // commitPreparedApply only emits APPLY_EXTENSION — no file-status
+    // bookkeeping is dispatched. Files stay narrative-wide artifacts;
+    // re-applying the same file is a separate Apply that produces new
+    // ids, not a status change on the file record.
+    const fileUpdate = dispatched.find(
       (a) => a.type === 'UPDATE_SOURCE_FILE' && a.fileId === file.id,
     );
-    expect(update).toBeDefined();
-    if (update?.type !== 'UPDATE_SOURCE_FILE') throw new Error('expected UPDATE_SOURCE_FILE');
-    // Status stays 'ready' — extension files can be applied to multiple
-    // branches; the per-branch ledger lives in `commits`.
-    expect(update.updates.status).toBeUndefined();
-    expect(update.updates.commits?.['B-1']).toBeDefined();
-    expect(update.updates.commits?.['B-1'].sceneIds.length).toBeGreaterThan(0);
+    expect(fileUpdate).toBeUndefined();
   });
 
-  it('preserves commits on other branches when re-applying', () => {
+  it('re-apply mints a fresh set of ids each time', () => {
     const narrative = makeNarrative();
-    // Pre-seed a commit on a sibling branch so we can verify the merge
-    // doesn't clobber it.
-    const file = {
-      ...makeFile(),
-      commits: { 'B-other': { arcId: 'ARC-USP-99', sceneIds: ['S-USP-99'], committedAt: 1 } },
-    };
+    const slice = makeSlice();
     const prepared: PreparedApply = {
-      slice: makeSlice(),
+      slice,
       mergePlan: {
         characters: new Map(),
         locations: new Map(),
@@ -459,18 +452,34 @@ describe('commitPreparedApply', () => {
         worldBuilds: 0,
       },
     };
-    const dispatched: Action[] = [];
-    commitPreparedApply(narrative, file, 'B-1', prepared, (a) => dispatched.push(a));
-    const update = dispatched.find(
-      (a) => a.type === 'UPDATE_SOURCE_FILE' && a.fileId === file.id,
-    );
-    if (update?.type !== 'UPDATE_SOURCE_FILE') throw new Error('expected UPDATE_SOURCE_FILE');
-    // Both branches should be in the commits map.
-    expect(Object.keys(update.updates.commits ?? {})).toEqual(
-      expect.arrayContaining(['B-other', 'B-1']),
-    );
-    // Sibling branch's commit untouched.
-    expect(update.updates.commits?.['B-other'].arcId).toBe('ARC-USP-99');
+
+    // First apply lands the slice's scene as S-USP-2 (continuing the
+    // existing C-USP-1 narrative counter).
+    const dispatched1: Action[] = [];
+    commitPreparedApply(narrative, makeFile(), 'B-1', prepared, (a) => dispatched1.push(a));
+    const apply1 = dispatched1.find((a) => a.type === 'APPLY_EXTENSION');
+    if (apply1?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+    expect(apply1.scenes[0].id).toBe('S-USP-2');
+
+    // Simulate the post-merge narrative (the reducer would have
+    // appended the new scene). A second apply against this state
+    // should produce different ids — re-apply is repeatable.
+    const merged: NarrativeState = {
+      ...narrative,
+      scenes: { ...narrative.scenes, [apply1.scenes[0].id]: apply1.scenes[0] },
+      characters: {
+        ...narrative.characters,
+        ...Object.fromEntries(apply1.characters.map((c) => [c.id, c])),
+      },
+    };
+
+    const dispatched2: Action[] = [];
+    commitPreparedApply(merged, makeFile(), 'B-1', prepared, (a) => dispatched2.push(a));
+    const apply2 = dispatched2.find((a) => a.type === 'APPLY_EXTENSION');
+    if (apply2?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+    // The second apply continues the counter past whatever the first
+    // claimed — no collision with the previously-minted id.
+    expect(apply2.scenes[0].id).not.toBe(apply1.scenes[0].id);
   });
 
   it('throws when the file has no extracted slice', async () => {

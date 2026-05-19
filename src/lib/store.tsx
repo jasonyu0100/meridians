@@ -2931,8 +2931,8 @@ function reducer(state: AppState, action: Action): AppState {
         return { ...n, files: next };
       });
 
-    case "APPLY_EXTENSION":
-      return updateActiveNarrativeIfMatch(state, action.narrativeId, (n) => {
+    case "APPLY_EXTENSION": {
+      const merged = updateActiveNarrativeIfMatch(state, action.narrativeId, (n) => {
         // Merge entity dicts. The slice's ids are pre-remapped so a
         // plain spread does the right thing — name-deduped entities were
         // dropped upstream, so no entry here will clobber an existing one.
@@ -2974,6 +2974,20 @@ function reducer(state: AppState, action: Action): AppState {
           branches,
         };
       });
+
+      // Refresh the derived resolvedEntryKeys cache when the appended-to
+      // branch is the active one — otherwise the canvas keeps reading the
+      // pre-append entry sequence until the operator switches branches
+      // and back, which forces a recompute via SET_ACTIVE_BRANCH.
+      if (
+        merged.activeNarrative?.id === action.narrativeId &&
+        merged.viewState.activeBranchId === action.branchId
+      ) {
+        const resolved = getResolvedKeys(merged.activeNarrative, merged.viewState.activeBranchId);
+        return { ...merged, resolvedEntryKeys: resolved };
+      }
+      return merged;
+    }
 
     // ── Chat threads ──────────────────────────────────────────────────────
     case "CREATE_CHAT_THREAD": {

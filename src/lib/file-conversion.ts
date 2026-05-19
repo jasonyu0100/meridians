@@ -290,8 +290,9 @@ export async function reconcileExtensionAgainstNarrative(
 // Two phases: `prepareExtensionApply` reconciles the slice against the
 // target (LLM call, returns a merge plan + summary). `commitPreparedApply`
 // rewrites every id in the slice through the plan + minters and dispatches
-// APPLY_EXTENSION. Apply is per-branch: a file can land on multiple
-// branches; the per-branch ledger sits on SourceFile.commits.
+// APPLY_EXTENSION. Apply is repeatable: each invocation appends a fresh
+// slice with newly-minted ids — files are narrative-wide artifacts, not a
+// per-branch ledger.
 
 /** Mint a fresh `<prefix>-<n>` id not in `taken`, walking up from n=1
  *  until a free slot is found. Used as a last-resort minter when no
@@ -1058,25 +1059,9 @@ function dispatchMerge(
   const arcId = rewritten.arcs[0]?.id ?? null;
   const sceneIds = rewritten.scenes.map((s) => s.id);
 
-  // Per-branch commit ledger. Status stays 'ready' so the same slice
-  // can be applied to other branches; a file is only "done" when the
-  // operator deletes it.
-  dispatch({
-    type: 'UPDATE_SOURCE_FILE',
-    narrativeId: narrative.id,
-    fileId: file.id,
-    updates: {
-      commits: {
-        ...(file.commits ?? {}),
-        [branchId]: {
-          arcId: arcId ?? '',
-          sceneIds,
-          committedAt: Date.now(),
-        },
-      },
-    },
-  });
-
+  // No per-branch ledger — files stay narrative-wide artifacts. Apply
+  // is repeatable; each invocation appends a fresh slice with its own
+  // newly-minted ids.
   return { introducedSceneIds: sceneIds, introducedArcId: arcId };
 }
 
