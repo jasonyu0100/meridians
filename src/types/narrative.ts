@@ -1629,8 +1629,30 @@ export type NarrativeState = {
    *  stale briefing flags itself when the head moves on or the active
    *  branch changes. */
   lastBriefing?: StoredBriefing;
+  /** Source files that contributed to this narrative — the corpus that
+   *  created it (`mode: 'create'`) plus any later extension files
+   *  (`mode: 'extend'`). The raw source text lives in IndexedDB as a
+   *  text asset (`contentRef`); this dict just holds metadata. */
+  files?: Record<string, SourceFile>;
   createdAt: number;
   updatedAt: number;
+};
+
+/** A source-text file attached to a narrative. Created either by the
+ *  initial text-analysis run (mode: 'create') or by a later extension
+ *  job that appends a new arc to the same narrative (mode: 'extend').
+ *  The raw text body lives in IndexedDB; this record is the metadata. */
+export type SourceFile = {
+  id: string;
+  name: string;
+  mode: 'create' | 'extend';
+  /** IndexedDB asset id ("text_xxx") pointing at the raw source body. */
+  contentRef: string;
+  charCount: number;
+  wordCount: number;
+  /** AnalysisJob.id that produced this file, when known. */
+  analysisJobId?: string;
+  createdAt: number;
 };
 
 // ── Surveys ───────────────────────────────────────────────────────────────────

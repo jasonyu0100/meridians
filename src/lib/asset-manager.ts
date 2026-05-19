@@ -75,6 +75,25 @@ interface AssetDB extends DBSchema {
     };
     indexes: { 'by-narrative': string };
   };
+
+  /**
+   * Texts Store
+   * - Source-text bodies for SourceFile records (analysis corpora,
+   *   extension uploads). Stored as plain strings — narrative JSON
+   *   only holds the ref.
+   * - ID format: "text_abc123" (11 chars)
+   * - Indexed by narrativeId for efficient per-narrative queries
+   */
+  texts: {
+    key: string;
+    value: {
+      id: string;
+      content: string;
+      narrativeId: string;
+      createdAt: number;
+    };
+    indexes: { 'by-narrative': string };
+  };
 }
 
 // ── Asset Manager ─────────────────────────────────────────────────────────────
@@ -82,7 +101,7 @@ interface AssetDB extends DBSchema {
 class AssetManager {
   private db: IDBPDatabase<AssetDB> | null = null;
   private dbName = 'inktide-assets';
-  private dbVersion = 1;
+  private dbVersion = 2;
 
   // Blob URL cache (for audio/images)
   private blobUrlCache = new Map<string, string>();
@@ -106,6 +125,10 @@ class AssetManager {
         if (!db.objectStoreNames.contains('images')) {
           const imgStore = db.createObjectStore('images', { keyPath: 'id' });
           imgStore.createIndex('by-narrative', 'narrativeId');
+        }
+        if (!db.objectStoreNames.contains('texts')) {
+          const textStore = db.createObjectStore('texts', { keyPath: 'id' });
+          textStore.createIndex('by-narrative', 'narrativeId');
         }
       },
     });
@@ -329,6 +352,39 @@ class AssetManager {
     }
   }
 
+  // ── Texts ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Store a source-text body (analysis corpus, extension upload) and
+   * return its ID reference. Plain strings — no blob URL caching since
+   * we read these into the file modal on open, not lazily.
+   */
+  async storeText(content: string, id?: string, narrativeId: string = 'global'): Promise<string> {
+    const db = this.ensureInitialized();
+    const textId = id || this.generateId('text');
+    const entry = {
+      id: textId,
+      content,
+      narrativeId,
+      createdAt: Date.now(),
+    };
+    await db.put('texts', entry);
+    return textId;
+  }
+
+  /** Retrieve source text by ID. Returns null if missing. */
+  async getText(id: string): Promise<string | null> {
+    const db = this.ensureInitialized();
+    const entry = await db.get('texts', id);
+    return entry?.content ?? null;
+  }
+
+  /** Delete source text by ID. */
+  async deleteText(id: string): Promise<void> {
+    const db = this.ensureInitialized();
+    await db.delete('texts', id);
+  }
+
   // ── Cleanup & Utilities ─────────────────────────────────────────────────────
 
   /**
@@ -338,16 +394,18 @@ class AssetManager {
     embeddings: string[];
     audio: string[];
     images: string[];
+    texts: string[];
   }> {
     const db = this.ensureInitialized();
 
-    const [embeddings, audio, images] = await Promise.all([
+    const [embeddings, audio, images, texts] = await Promise.all([
       db.getAllKeys('embeddings'),
       db.getAllKeys('audio'),
       db.getAllKeys('images'),
+      db.getAllKeys('texts'),
     ]);
 
-    return { embeddings, audio, images };
+    return { embeddings, audio, images, texts };
   }
 
   /**
@@ -358,6 +416,7 @@ class AssetManager {
     embeddings: Set<string>;
     audio: Set<string>;
     images: Set<string>;
+    texts: Set<string>;
   }): Promise<{ deletedCount: number }> {
     const db = this.ensureInitialized();
     const allIds = await this.getAllAssetIds();
@@ -388,6 +447,14 @@ class AssetManager {
       }
     }
 
+    // Delete unreferenced texts
+    for (const textId of allIds.texts) {
+      if (!referencedIds.texts.has(textId)) {
+        await db.delete('texts', textId);
+        deletedCount++;
+      }
+    }
+
     return { deletedCount };
   }
 
@@ -411,6 +478,7 @@ class AssetManager {
       db.clear('embeddings'),
       db.clear('audio'),
       db.clear('images'),
+      db.clear('texts'),
     ]);
     this.revokeBlobUrls();
   }
@@ -420,12 +488,13 @@ class AssetManager {
    * @param narrativeId - The narrative ID to delete assets for
    * @returns Count of deleted assets
    */
-  async deleteNarrativeAssets(narrativeId: string): Promise<{ embeddingCount: number; audioCount: number; imageCount: number }> {
+  async deleteNarrativeAssets(narrativeId: string): Promise<{ embeddingCount: number; audioCount: number; imageCount: number; textCount: number }> {
     const db = this.ensureInitialized();
 
     let embeddingCount = 0;
     let audioCount = 0;
     let imageCount = 0;
+    let textCount = 0;
 
     // Delete embeddings for this narrative
     const embeddingIds = await db.getAllKeysFromIndex('embeddings', 'by-narrative', narrativeId);
@@ -448,7 +517,14 @@ class AssetManager {
       imageCount++;
     }
 
-    return { embeddingCount, audioCount, imageCount };
+    // Delete texts for this narrative
+    const textIds = await db.getAllKeysFromIndex('texts', 'by-narrative', narrativeId);
+    for (const id of textIds) {
+      await db.delete('texts', id as string);
+      textCount++;
+    }
+
+    return { embeddingCount, audioCount, imageCount, textCount };
   }
 
   // ── Private Helpers ─────────────────────────────────────────────────────────

@@ -159,6 +159,7 @@ describe('AssetManager', () => {
         embeddings: new Set(),
         audio: new Set(),
         images: new Set(),
+        texts: new Set(),
       });
       // Store some assets
       const emb1 = await assetManager.storeEmbedding(Array.from({ length: 1536 }, () => 0.1), 'text-embedding-3-small');
@@ -170,6 +171,7 @@ describe('AssetManager', () => {
         embeddings: new Set([emb1]),
         audio: new Set<string>(),
         images: new Set([img1]),
+        texts: new Set<string>(),
       };
       const result = await assetManager.pruneUnreferencedAssets(referencedIds);
       // Should delete emb2 and audio1, keep emb1 and img1

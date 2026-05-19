@@ -14,11 +14,12 @@
 import { reconcileResults, analyzeThreading, assembleNarrative, extractSceneStructure, groupScenesIntoArcs, reextractFateWithLifecycle } from '@/lib/text-analysis';
 import { reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { FatalApiError } from '@/lib/ai/errors';
-import type { AnalysisJob, AnalysisChunkResult } from '@/types/narrative';
+import type { AnalysisJob, AnalysisChunkResult, SourceFile } from '@/types/narrative';
 import type { Action } from '@/lib/store';
 import { ANALYSIS_CONCURRENCY, ANALYSIS_STAGGER_DELAY_MS } from '@/lib/constants';
 import { logError, logWarning, logInfo, setSystemLoggerAnalysisId } from '@/lib/system-logger';
 import { setLoggerAnalysisId } from '@/lib/api-logger';
+import { assetManager } from '@/lib/asset-manager';
 
 type Dispatch = (action: Action) => void;
 
@@ -38,6 +39,45 @@ type RunningJob = {
 
 const MAX_CONCURRENCY = ANALYSIS_CONCURRENCY;
 const STAGGER_DELAY_MS = ANALYSIS_STAGGER_DELAY_MS;
+
+/** Three-letter prefix mirroring the convention in `assembleNarrative` —
+ *  uppercase letters from the title, falling back to "TXT". Used to keep
+ *  file ids consistent with the rest of the narrative's id space. */
+function titlePrefix(title: string): string {
+  return title.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'TXT';
+}
+
+/** Persist the corpus that produced this narrative as a SourceFile and
+ *  return a narrative with `files[fileId]` set. The raw body lives in
+ *  IndexedDB (`text_xxx`) so narrative.json stays small. Failure here is
+ *  non-fatal — analysis still succeeded; we just won't have the source on
+ *  hand. */
+async function attachCreationFile(
+  narrative: import('@/types/narrative').NarrativeState,
+  job: AnalysisJob,
+): Promise<import('@/types/narrative').NarrativeState> {
+  try {
+    const contentRef = await assetManager.storeText(job.sourceText, undefined, narrative.id);
+    const file: SourceFile = {
+      id: `F-${titlePrefix(narrative.title || job.title)}-1`,
+      name: job.title || 'Source',
+      mode: 'create',
+      contentRef,
+      charCount: job.sourceText.length,
+      wordCount: job.sourceText.trim().split(/\s+/).filter(Boolean).length,
+      analysisJobId: job.id,
+      createdAt: Date.now(),
+    };
+    return { ...narrative, files: { ...(narrative.files ?? {}), [file.id]: file } };
+  } catch (err) {
+    logWarning('Failed to stamp creation file on narrative', err, {
+      source: 'analysis',
+      operation: 'attach-creation-file',
+      details: { narrativeId: narrative.id, jobId: job.id },
+    });
+    return narrative;
+  }
+}
 
 class AnalysisRunner {
   private running = new Map<string, RunningJob>();
@@ -574,12 +614,17 @@ class AnalysisRunner {
         },
       });
 
-      d({ type: 'ADD_NARRATIVE', narrative });
-      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'completed', narrativeId: narrative.id } });
+      // Stamp the source corpus as the narrative's creation file. The raw
+      // text goes into the assets DB so the narrative JSON stays small; the
+      // metadata sits on narrative.files and powers the Files sidebar.
+      const stampedNarrative = await attachCreationFile(narrative, job);
+
+      d({ type: 'ADD_NARRATIVE', narrative: stampedNarrative });
+      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'completed', narrativeId: stampedNarrative.id } });
 
       logInfo('Analysis completed', { source: 'analysis', operation: 'job-complete', details: {
-        jobId: job.id, narrativeId: narrative.id, title: job.title,
-        scenes: Object.keys(narrative.scenes).length, characters: Object.keys(narrative.characters).length,
+        jobId: job.id, narrativeId: stampedNarrative.id, title: job.title,
+        scenes: Object.keys(stampedNarrative.scenes).length, characters: Object.keys(stampedNarrative.characters).length,
       } });
     } catch (err) {
       logError('Assembly failed', err, { source: 'analysis', operation: 'assembly', details: { jobId: job.id } });

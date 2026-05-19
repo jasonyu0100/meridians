@@ -273,7 +273,28 @@ export async function importFromPackage(
         }
       }
 
-      onProgress?.(`Imported ${files.length} images`, 100);
+      onProgress?.(`Imported ${files.length} images`, 95);
+    }
+  }
+
+  // 6. Import source-file texts (always — small and load-bearing for
+  //    the Files panel).
+  const textsFolder = zip.folder('texts');
+  if (textsFolder) {
+    const files = Object.values(textsFolder.files).filter(f => !f.dir);
+    for (const file of files) {
+      const fileName = file.name.split('/').pop()!;
+      const [textId] = fileName.split('.');
+      try {
+        const content = await file.async('string');
+        await assetManager.storeText(content, textId, narrative.id);
+      } catch (error) {
+        logWarning(`Failed to import source text ${textId}`, error, {
+          source: 'asset',
+          operation: 'package-import-text',
+          details: { textId },
+        });
+      }
     }
   }
 
@@ -329,6 +350,7 @@ export async function getPackageInfo(file: File): Promise<{
         embeddings: 0,
         audio: 0,
         images: 0,
+        texts: 0,
       },
     };
 
@@ -465,6 +487,7 @@ export async function getDirectoryInfo(files: FileList): Promise<{
   let embeddingCount = 0;
   let audioCount = 0;
   let imageCount = 0;
+  let textCount = 0;
 
   // Count assets by prefix
   let embeddingsSize = 0;
@@ -481,6 +504,8 @@ export async function getDirectoryInfo(files: FileList): Promise<{
     } else if (relPath.startsWith('images/')) {
       imageCount++;
       imagesSize += file.size;
+    } else if (relPath.startsWith('texts/')) {
+      textCount++;
     }
   }
 
@@ -516,6 +541,7 @@ export async function getDirectoryInfo(files: FileList): Promise<{
       embeddings: embeddingCount,
       audio: audioCount,
       images: imageCount,
+      texts: textCount,
     },
   };
 

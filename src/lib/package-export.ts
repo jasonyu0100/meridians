@@ -40,6 +40,7 @@ export type PackageManifest = {
     embeddings: number;
     audio: number;
     images: number;
+    texts: number;
   };
 };
 
@@ -52,11 +53,13 @@ function collectAssetReferences(narrative: NarrativeState): {
   embeddings: Set<string>;
   audio: Set<string>;
   images: Set<string>;
+  texts: Set<string>;
 } {
   const refs = {
     embeddings: new Set<string>(),
     audio: new Set<string>(),
     images: new Set<string>(),
+    texts: new Set<string>(),
   };
 
   // Helper to collect embedding reference
@@ -121,6 +124,13 @@ function collectAssetReferences(narrative: NarrativeState): {
     refs.images.add(narrative.coverImageUrl);
   }
 
+  // Source files (raw text bodies)
+  for (const file of Object.values(narrative.files ?? {})) {
+    if (file.contentRef?.startsWith('text_')) {
+      refs.texts.add(file.contentRef);
+    }
+  }
+
   return refs;
 }
 
@@ -150,6 +160,7 @@ export type AssetValidationResult = {
     embeddings: string[];
     audio: string[];
     images: string[];
+    texts: string[];
   };
   stats: {
     totalEmbeddings: number;
@@ -158,6 +169,8 @@ export type AssetValidationResult = {
     missingAudio: number;
     totalImages: number;
     missingImages: number;
+    totalTexts: number;
+    missingTexts: number;
   };
 };
 
@@ -176,6 +189,7 @@ export async function validateAssets(narrative: NarrativeState): Promise<AssetVa
       embeddings: [],
       audio: [],
       images: [],
+      texts: [],
     },
     stats: {
       totalEmbeddings: refs.embeddings.size,
@@ -184,6 +198,8 @@ export async function validateAssets(narrative: NarrativeState): Promise<AssetVa
       missingAudio: 0,
       totalImages: refs.images.size,
       missingImages: 0,
+      totalTexts: refs.texts.size,
+      missingTexts: 0,
     },
   };
 
@@ -217,6 +233,16 @@ export async function validateAssets(narrative: NarrativeState): Promise<AssetVa
     }
   }
 
+  // Check texts
+  for (const textId of refs.texts) {
+    const content = await assetManager.getText(textId);
+    if (content == null) {
+      result.valid = false;
+      result.missingAssets.texts.push(textId);
+      result.stats.missingTexts++;
+    }
+  }
+
   // Generate warnings
   if (result.stats.missingEmbeddings > 0) {
     result.warnings.push(
@@ -237,6 +263,13 @@ export async function validateAssets(narrative: NarrativeState): Promise<AssetVa
     result.warnings.push(
       `${result.stats.missingImages} of ${result.stats.totalImages} images are missing. ` +
       `Characters/locations will display without images for: ${result.missingAssets.images.slice(0, 3).join(', ')}${result.missingAssets.images.length > 3 ? '...' : ''}`
+    );
+  }
+
+  if (result.stats.missingTexts > 0) {
+    result.warnings.push(
+      `${result.stats.missingTexts} of ${result.stats.totalTexts} source files are missing. ` +
+      `File metadata will load but source text won't be viewable for: ${result.missingAssets.texts.slice(0, 3).join(', ')}${result.missingAssets.texts.length > 3 ? '...' : ''}`
     );
   }
 
@@ -292,6 +325,7 @@ export async function exportAsPackage(
       embeddings: assetRefs.embeddings.size,
       audio: assetRefs.audio.size,
       images: assetRefs.images.size,
+      texts: assetRefs.texts.size,
     },
   };
   zip.file('manifest.json', JSON.stringify(manifest, null, 2));
@@ -364,6 +398,19 @@ export async function exportAsPackage(
       if (i % 10 === 0) {
         const percent = 85 + (i / imgIds.length) * 10;
         onProgress?.(`Exporting images: ${i}/${imgIds.length}`, percent);
+      }
+    }
+  }
+
+  // 6b. Add source-file texts (always included — small relative to other
+  // assets and load-bearing for the Files panel after re-import).
+  if (assetRefs.texts.size > 0) {
+    onProgress?.('Exporting source files...', 92);
+    const textsFolder = zip.folder('texts')!;
+    for (const textId of assetRefs.texts) {
+      const content = await assetManager.getText(textId);
+      if (content != null) {
+        textsFolder.file(`${textId}.txt`, content);
       }
     }
   }
