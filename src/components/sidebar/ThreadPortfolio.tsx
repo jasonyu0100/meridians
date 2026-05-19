@@ -2,16 +2,20 @@
 
 /**
  * ThreadPortfolio — sidebar pane mirroring SurveyPanel / InvestigationPanel
- * shape: top bar with a count, then a stream of cards. Threads are grouped
- * by lifecycle bucket (focus / open / dormant / resolved / abandoned);
- * groups stay always-expanded and are separated by dividers, so the whole
- * portfolio reads as a single scrollable list with section breaks.
+ * shape: top bar with a count, then a stream of thread cards.
+ *
+ * Top-level grouping matches MarketView's "In focus" / "Out of focus"
+ * split: focused threads — the ones the engine identifies as carrying
+ * the most narrative attention — surface above the rest. Each group is
+ * collapsible so you can hide the half you don't care about. Within a
+ * group, rows are sorted by lifecycle (open → dormant → resolved →
+ * abandoned) so closed entries don't crowd live ones; the per-card
+ * lifecycle chip still tells you each thread's individual state.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
 import {
-  computePortfolioSnapshot,
   buildPortfolioRows,
   currentFocusIds,
   replayThreadsAtIndex,
@@ -72,12 +76,10 @@ function VolumeBar({ volume, scale }: { volume: number; scale: number }) {
  *  Investigation, and File panels. */
 function ThreadCard({
   row,
-  inFocus,
   maxVolume,
   onClick,
 }: {
   row: PortfolioRow;
-  inFocus: boolean;
   maxVolume: number;
   onClick: () => void;
 }) {
@@ -95,16 +97,12 @@ function ThreadCard({
       className={`w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 flex flex-col gap-1.5${dimmed ? ' opacity-65' : ''}`}
     >
       {/* Meta row — id on the left, lifecycle category on the right, mirrors
-          the SurveyCard's questionType / status header. */}
+          the SurveyCard's questionType / status header. Focus state is now
+          conveyed by the parent group, so the in-row badge is gone. */}
       <div className="flex items-baseline gap-2">
         <span className="text-[9px] uppercase tracking-wider text-text-dim/70 font-mono">
           {thread.id}
         </span>
-        {inFocus && (
-          <span className="text-[9px] uppercase tracking-wider font-mono text-amber-400/80">
-            · focus
-          </span>
-        )}
         <span
           className="text-[9px] uppercase tracking-wider font-mono ml-auto"
           style={{ color: catColor }}
@@ -150,131 +148,64 @@ function ThreadCard({
   );
 }
 
-// ── Stats block ────────────────────────────────────────────────────────────
+// ── Collapsible group ─────────────────────────────────────────────────────
 
-function PortfolioStats({
-  snapshot,
-  focusCount,
+/** Header + collapsible body. The header is a hairline rule + label + count
+ *  + chevron, modelled on MarketView's `renderSection` plus the toggle
+ *  affordance the previous CollapsibleSection used. */
+function CollapsibleGroup({
+  title,
+  count,
+  accentColor,
+  defaultOpen,
+  children,
 }: {
-  snapshot: ReturnType<typeof computePortfolioSnapshot>;
-  focusCount: number;
+  title: string;
+  count: number;
+  accentColor?: string;
+  defaultOpen: boolean;
+  children: React.ReactNode;
 }) {
-  const openCount = snapshot.activeThreads;
-  const uncertaintyPct = Math.round(snapshot.averageEntropy * 100);
-
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-lg border border-white/5 bg-white/3 p-3 flex flex-col gap-2">
-      <div className="flex items-baseline gap-3 text-[10px] text-text-dim">
-        <div className="flex items-baseline gap-1">
-          <span className="text-sm text-text-primary font-mono tabular-nums">{openCount}</span>
-          <span>open</span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-sm text-text-primary font-mono tabular-nums">{focusCount}</span>
-          <span>in focus</span>
-        </div>
-        <div
-          className="flex items-baseline gap-1 ml-auto"
-          title="Average uncertainty across open markets. 100% = maximum entropy, 0% = fully resolved."
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-1 py-1.5 hover:opacity-80 transition-opacity"
+      >
+        <span
+          className="text-[9px] transition-transform text-text-dim/70"
+          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
         >
-          <span className="text-sm text-text-primary font-mono tabular-nums">{uncertaintyPct}%</span>
-          <span>uncertain</span>
-        </div>
-      </div>
-
-      {(snapshot.closedThreads > 0 || snapshot.abandonedThreads > 0) && (
-        <div className="flex items-baseline gap-3 text-[10px] text-text-dim">
-          <span>
-            <span className="font-mono tabular-nums text-text-secondary">
-              {snapshot.totalThreads}
-            </span>{' '}
-            total
-          </span>
-          {snapshot.closedThreads > 0 && (
-            <span>
-              <span className="font-mono tabular-nums text-emerald-300/80">
-                {snapshot.closedThreads}
-              </span>{' '}
-              resolved
-            </span>
-          )}
-          {snapshot.abandonedThreads > 0 && (
-            <span>
-              <span className="font-mono tabular-nums">{snapshot.abandonedThreads}</span>{' '}
-              abandoned
-            </span>
-          )}
-        </div>
-      )}
-
-      {openCount > 0 && (
-        <div
-          className="flex items-center gap-2 text-[10px] text-text-dim"
-          title="Total volume across open threads — narrative attention carried by the portfolio."
+          ▶
+        </span>
+        <span
+          className="text-[10px] uppercase tracking-widest font-semibold"
+          style={{ color: accentColor ?? 'var(--color-text-dim)' }}
         >
-          <span>Attention</span>
-          <div className="flex-1 h-0.5 rounded-full bg-white/5 overflow-hidden">
-            <div
-              className="h-full bg-white/25"
-              style={{
-                width: `${Math.min(100, (snapshot.marketCap / (openCount * 5)) * 100)}%`,
-              }}
-            />
-          </div>
-          <span className="font-mono tabular-nums">{snapshot.marketCap.toFixed(0)}</span>
-        </div>
-      )}
-
-      {snapshot.averageResolutionQuality !== null && (
-        <div className="flex items-center gap-2 text-[10px] text-text-dim">
-          <span>Resolution</span>
-          <span className="font-mono tabular-nums text-text-secondary">
-            {Math.round(snapshot.averageResolutionQuality * 100)}%
-          </span>
-          <span className="ml-auto">
-            <span className="text-emerald-300/80 tabular-nums">
-              {snapshot.resolutionQualityBands.earned}
-            </span>{' '}
-            earned ·{' '}
-            <span className="text-amber-300/80 tabular-nums">
-              {snapshot.resolutionQualityBands.adequate}
-            </span>{' '}
-            adequate ·{' '}
-            <span className="tabular-nums">{snapshot.resolutionQualityBands.thin}</span> thin
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Section header ────────────────────────────────────────────────────────
-
-/** Lightweight title row that opens each lifecycle group. Plain text, no
- *  click target — the previous CollapsibleSection toggles are gone. */
-function SectionHeader({ title, count }: { title: string; count: number }) {
-  return (
-    <div className="flex items-baseline gap-2 px-1">
-      <span className="text-[10px] font-semibold text-text-dim uppercase tracking-widest">
-        {title}
-      </span>
-      <span className="text-[10px] text-text-dim/70 font-mono tabular-nums ml-auto">
-        {count}
-      </span>
+          {title}
+        </span>
+        <span className="flex-1 h-px bg-white/5" />
+        <span className="text-[10px] text-text-dim/70 font-mono tabular-nums">{count}</span>
+      </button>
+      {open && <div className="space-y-2 mt-2">{children}</div>}
     </div>
   );
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────
 
-// Category → section bucket. Groups the seven categories into readable
-// sections in the sidebar.
-function bucketOf(cat: ThreadCategory): 'focus' | 'live' | 'dormant' | 'resolved' | 'abandoned' {
-  if (cat === 'resolved') return 'resolved';
-  if (cat === 'abandoned') return 'abandoned';
-  if (cat === 'dormant') return 'dormant';
-  return 'live'; // saturating | contested | volatile | committed
-}
+// Lifecycle priority for within-group sorting. Lower = listed first.
+const LIFECYCLE_RANK: Record<ThreadCategory, number> = {
+  saturating: 0,
+  committed: 0,
+  volatile: 0,
+  contested: 0,
+  developing: 0,
+  dormant: 1,
+  resolved: 2,
+  abandoned: 3,
+};
 
 export default function ThreadPortfolio() {
   const { state, dispatch } = useStore();
@@ -298,11 +229,6 @@ export default function ThreadPortfolio() {
     if (!scrubbedNarrative) return [];
     return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex);
   }, [scrubbedNarrative, resolvedKeys, currentIndex]);
-
-  const snapshot = useMemo(() => {
-    if (!scrubbedNarrative) return null;
-    return computePortfolioSnapshot(scrubbedNarrative);
-  }, [scrubbedNarrative]);
 
   const focusIds = useMemo(() => {
     if (!scrubbedNarrative) return new Set<string>();
@@ -337,21 +263,23 @@ export default function ThreadPortfolio() {
     );
   }
 
-  // Partition by bucket. Focus window threads float to the top regardless of
-  // their category — they keep their category colour via the lifecycle chip.
-  const focus: PortfolioRow[] = [];
-  const live: PortfolioRow[] = [];
-  const dormant: PortfolioRow[] = [];
-  const abandoned: PortfolioRow[] = [];
-  const closed: PortfolioRow[] = [];
+  // Partition by focus / not-focus. Within each group, sort by lifecycle so
+  // open markets surface before dormant / resolved / abandoned ones — and
+  // by remaining margin tightness within the same lifecycle bucket (tighter
+  // markets carry more uncertainty and read as more interesting).
+  const focusRows: PortfolioRow[] = [];
+  const otherRows: PortfolioRow[] = [];
   for (const r of rows) {
-    const bucket = bucketOf(r.category);
-    if (bucket === 'resolved') closed.push(r);
-    else if (bucket === 'abandoned') abandoned.push(r);
-    else if (focusIds.has(r.thread.id)) focus.push(r);
-    else if (bucket === 'dormant') dormant.push(r);
-    else live.push(r);
+    if (focusIds.has(r.thread.id)) focusRows.push(r);
+    else otherRows.push(r);
   }
+  const compareRows = (a: PortfolioRow, b: PortfolioRow) => {
+    const rankDiff = LIFECYCLE_RANK[a.category] - LIFECYCLE_RANK[b.category];
+    if (rankDiff !== 0) return rankDiff;
+    return a.margin - b.margin;
+  };
+  focusRows.sort(compareRows);
+  otherRows.sort(compareRows);
 
   const maxVolume = Math.max(1, ...rows.map((r) => r.volume));
 
@@ -360,7 +288,6 @@ export default function ThreadPortfolio() {
       <ThreadCard
         key={row.thread.id}
         row={row}
-        inFocus={focusIds.has(row.thread.id)}
         maxVolume={maxVolume}
         onClick={() => {
           dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'threads' });
@@ -373,35 +300,33 @@ export default function ThreadPortfolio() {
       />
     ));
 
-  // Sections rendered in fixed lifecycle order. Each non-empty section
-  // contributes a header + its cards; sections are separated by a hairline
-  // divider so the boundary is visible without nesting collapsibles.
-  const sections: Array<{ title: string; rows: PortfolioRow[] }> = [
-    { title: 'Focus', rows: focus },
-    { title: 'Open', rows: live },
-    { title: 'Dormant', rows: dormant },
-    { title: 'Resolved', rows: closed },
-    { title: 'Abandoned', rows: abandoned },
-  ].filter((s) => s.rows.length > 0);
-
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-text-dim/70">
           {rows.length} {rows.length === 1 ? 'thread' : 'threads'}
         </span>
+        <span className="text-[10px] uppercase tracking-wider text-text-dim/45 font-mono ml-auto">
+          {focusRows.length} in focus
+        </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-3">
-        {snapshot && <PortfolioStats snapshot={snapshot} focusCount={focusIds.size} />}
-
-        {sections.map((section, idx) => (
-          <div key={section.title} className="space-y-2">
-            {idx > 0 && <div className="border-t border-white/8 -mx-3 mb-3" />}
-            <SectionHeader title={section.title} count={section.rows.length} />
-            <div className="space-y-2">{renderCards(section.rows)}</div>
-          </div>
-        ))}
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-4">
+        {focusRows.length > 0 && (
+          <CollapsibleGroup
+            title="In focus"
+            count={focusRows.length}
+            accentColor="#FBBF24"
+            defaultOpen
+          >
+            {renderCards(focusRows)}
+          </CollapsibleGroup>
+        )}
+        {otherRows.length > 0 && (
+          <CollapsibleGroup title="Out of focus" count={otherRows.length} defaultOpen>
+            {renderCards(otherRows)}
+          </CollapsibleGroup>
+        )}
       </div>
     </div>
   );
