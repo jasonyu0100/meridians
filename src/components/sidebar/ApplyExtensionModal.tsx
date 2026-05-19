@@ -39,7 +39,6 @@ type Stage =
   | { phase: 'reconciling' }
   | { phase: 'ready'; prepared: PreparedApply }
   | { phase: 'committing' }
-  | { phase: 'done'; summary: MergeSummary }
   | { phase: 'error'; message: string };
 
 export function ApplyExtensionModal({ file, onClose }: Props) {
@@ -100,7 +99,7 @@ export function ApplyExtensionModal({ file, onClose }: Props) {
     setStage({ phase: 'committing' });
     try {
       commitPreparedApply(narrative, file, branchId, stage.prepared, dispatch);
-      setStage({ phase: 'done', summary: stage.prepared.summary });
+      onClose();
     } catch (err) {
       setStage({
         phase: 'error',
@@ -108,15 +107,6 @@ export function ApplyExtensionModal({ file, onClose }: Props) {
       });
     }
   };
-
-  // Auto-close after a successful commit so the operator doesn't have
-  // to click Close. Long enough that the success summary registers, short
-  // enough that the modal doesn't linger.
-  useEffect(() => {
-    if (stage.phase !== 'done') return;
-    const t = setTimeout(onClose, 1400);
-    return () => clearTimeout(t);
-  }, [stage.phase, onClose]);
 
   return (
     <Modal onClose={onClose} size="2xl" maxHeight="85vh">
@@ -169,20 +159,6 @@ export function ApplyExtensionModal({ file, onClose }: Props) {
         </ModalBody>
       )}
 
-      {stage.phase === 'done' && (
-        <ModalBody>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span className="text-[11px] text-text-secondary">
-                Appended to branch.
-              </span>
-            </div>
-            <CommittedSummary summary={stage.summary} />
-          </div>
-        </ModalBody>
-      )}
-
       {stage.phase === 'error' && (
         <ModalBody>
           <p className="text-[11px] text-red-400/80">{stage.message}</p>
@@ -208,7 +184,7 @@ export function ApplyExtensionModal({ file, onClose }: Props) {
             </button>
           </>
         )}
-        {(stage.phase === 'done' || stage.phase === 'error') && (
+        {stage.phase === 'error' && (
           <button
             onClick={onClose}
             className="text-[11px] px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-text-primary transition"
@@ -237,8 +213,6 @@ function stageLabel(stage: Stage): string {
       return 'preview';
     case 'committing':
       return 'committing';
-    case 'done':
-      return 'committed';
     case 'error':
       return 'failed';
   }
@@ -296,28 +270,6 @@ function MergePreview({ summary }: { summary: MergeSummary }) {
           <Stat label="World commits" value={summary.worldBuilds} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function CommittedSummary({ summary }: { summary: MergeSummary }) {
-  const totalMerged =
-    summary.characters.merged.length +
-    summary.locations.merged.length +
-    summary.artifacts.merged.length +
-    summary.threads.merged.length +
-    summary.systemConcepts.merged.length;
-  const totalNew =
-    summary.characters.new.length +
-    summary.locations.new.length +
-    summary.artifacts.new.length +
-    summary.threads.new.length +
-    summary.systemConcepts.new.length;
-  return (
-    <div className="grid grid-cols-3 gap-3 text-[10px] text-text-dim/75">
-      <Stat label="Merged" value={totalMerged} />
-      <Stat label="New" value={totalNew} />
-      <Stat label="Scenes" value={summary.scenes} />
     </div>
   );
 }

@@ -179,13 +179,9 @@ export default function FilesPanel() {
 
   /** Hard-delete a file: drop the metadata + the text asset. Any
    *  branches that already absorbed this file's slice keep their merged
-   *  entities — Apply is irreversible at the branch level. The file
-   *  simply disappears from the panel. */
+   *  entities — Apply is irreversible at the branch level. */
   const handleRemove = async (file: SourceFile) => {
     if (!narrative) return;
-    if (!confirm(`Remove "${file.name}"? Branches that already absorbed it keep their content.`)) {
-      return;
-    }
     try {
       await assetManager.deleteText(file.contentRef);
       if (file.extractedRef) await assetManager.deleteText(file.extractedRef);

@@ -823,35 +823,55 @@ function remapWorldBuild(
   };
 }
 
-/** Phase 2: take a prepared (loaded + reconciled) slice and merge it
- *  into the target narrative on `branchId`. Pure ID remapping +
- *  dispatch — no LLM work, no IDB reads. The streaming UI calls this
- *  after the user clicks "Append" on the merge preview.
- *
- *  Returns the commit record (arc id + scene ids) which is also stamped
- *  onto the SourceFile so the operator can audit what landed. */
-export function commitPreparedApply(
-  narrative: NarrativeState,
-  file: SourceFile,
-  branchId: string,
-  prepared: PreparedApply,
-  dispatch: Dispatch,
-): ApplyResult {
-  const { slice, mergePlan } = prepared;
+// ── commit phases ────────────────────────────────────────────────────────────
+//
+// commitPreparedApply orchestrates four named phases. Each is small,
+// single-purpose, and independently testable. The phases pass an
+// explicit ClaimContext / ClaimResult / RewrittenSlice forward — no
+// shared mutable state between phases beyond what they explicitly
+// hand off.
 
-  // Lookup the existing canonical → id mapping per category. Once the
-  // merge plan tells us "slice name X folds into existing canonical Y",
-  // we still need Y → id.
-  const charIdByName = new Map<string, string>();
-  for (const c of Object.values(narrative.characters)) charIdByName.set(c.name, c.id);
-  const locIdByName = new Map<string, string>();
-  for (const l of Object.values(narrative.locations)) locIdByName.set(l.name, l.id);
-  const artIdByName = new Map<string, string>();
-  for (const a of Object.values(narrative.artifacts ?? {})) artIdByName.set(a.name, a.id);
-  const threadIdByDesc = new Map<string, string>();
-  for (const t of Object.values(narrative.threads)) threadIdByDesc.set(t.description, t.id);
+type Pending<T> = { entity: T; targetId: string };
 
-  // ── Init id maps + taken sets ────────────────────────────────────────
+type ClaimContext = {
+  maps: RemapMaps;
+  taken: TakenSets;
+  minters: Record<'char' | 'loc' | 'art' | 'thread' | 'scene' | 'worldBuild' | 'arc' | 'sys', PrefixedIdMinter>;
+  /** Existing canonical name / description → id lookups for each
+   *  category. Built once from the narrative; consumed by the claim
+   *  phase to resolve merge-plan entries to concrete ids. */
+  existing: {
+    charIdByName: Map<string, string>;
+    locIdByName: Map<string, string>;
+    artIdByName: Map<string, string>;
+    threadIdByDesc: Map<string, string>;
+    sysIdByConcept: Map<string, string>;
+  };
+};
+
+type ClaimResult = {
+  newCharacters: Pending<Character>[];
+  newLocations: Pending<Location>[];
+  newArtifacts: Pending<Artifact>[];
+  newThreads: Pending<Thread>[];
+  netNewIds: { char: Set<string>; loc: Set<string>; art: Set<string>; thread: Set<string> };
+};
+
+type RewrittenSlice = {
+  characters: Character[];
+  locations: Location[];
+  artifacts: Artifact[];
+  threads: Thread[];
+  scenes: Scene[];
+  arcs: Arc[];
+  worldBuilds: WorldBuild[];
+  appendEntryIds: string[];
+};
+
+/** Phase 2a: build the shared claim context — taken-id sets, empty
+ *  remap maps, prefix-aware minters, and existing-name indexes. Pure
+ *  function of the target narrative. */
+function buildClaimContext(narrative: NarrativeState): ClaimContext {
   const taken = buildTaken(narrative);
   const maps: RemapMaps = {
     char: new Map(),
@@ -864,12 +884,6 @@ export function commitPreparedApply(
     k: new Map(),
     sys: new Map(),
   };
-
-  // Per-category minters that continue the narrative's own counter
-  // sequence — a brand-new character lands as `C-USP-8` after the
-  // world's `C-USP-7`, not as a fresh `C-1`. The slice's own ids (which
-  // came from its own work prefix) are abandoned at apply time; they
-  // never enter the target's namespace.
   const minters = {
     char: new PrefixedIdMinter(PREFIX.char, taken.char),
     loc: new PrefixedIdMinter(PREFIX.loc, taken.loc),
@@ -879,15 +893,41 @@ export function commitPreparedApply(
     worldBuild: new PrefixedIdMinter(PREFIX.worldBuild, taken.worldBuild),
     arc: new PrefixedIdMinter(PREFIX.arc, taken.arc),
     sys: new PrefixedIdMinter(PREFIX.sys, taken.sys),
-  } as const;
+  };
+  const existing = {
+    charIdByName: new Map<string, string>(),
+    locIdByName: new Map<string, string>(),
+    artIdByName: new Map<string, string>(),
+    threadIdByDesc: new Map<string, string>(),
+    sysIdByConcept: new Map<string, string>(),
+  };
+  for (const c of Object.values(narrative.characters)) existing.charIdByName.set(c.name, c.id);
+  for (const l of Object.values(narrative.locations)) existing.locIdByName.set(l.name, l.id);
+  for (const a of Object.values(narrative.artifacts ?? {})) existing.artIdByName.set(a.name, a.id);
+  for (const t of Object.values(narrative.threads)) existing.threadIdByDesc.set(t.description, t.id);
+  for (const [id, node] of Object.entries(narrative.systemGraph?.nodes ?? {})) {
+    existing.sysIdByConcept.set(node.concept, id);
+  }
+  return { maps, taken, minters, existing };
+}
 
-  /** Claim an id: consult the merge plan first; if it says this slice
-   *  entity folds into an existing one, dedup to that id. Otherwise mint
-   *  the next id under the narrative's prefix sequence.
-   *  Returns `fresh: true` when the entity record should be added to the
-   *  target — name-deduped slice entities defer to the existing record. */
-  function claim(
-    sliceId: string,
+/** Phase 2b: walk every slice id (entities, scenes, arcs, worldBuilds,
+ *  system nodes) and populate the maps. For named entities (chars,
+ *  locs, arts, threads) and system concepts the merge plan decides
+ *  dedup-to-existing vs mint-fresh; for scenes/arcs/worldBuilds every
+ *  slice id mints onto the narrative's counter. Returns the pending
+ *  entity records (those that need to be added to the target) and the
+ *  net-new id sets used by the scene rewrite to drop redundant
+ *  newCharacters entries. */
+function claimSliceIds(
+  slice: NarrativeState,
+  mergePlan: ExtensionMergePlan,
+  ctx: ClaimContext,
+): ClaimResult {
+  /** Consult the merge plan first; if it resolves the slice key to an
+   *  existing id, dedup. Otherwise mint under the narrative's prefix. */
+  function claim<T extends { id: string }>(
+    entity: T,
     sliceKey: string | undefined,
     mergeToExisting: Map<string, string>,
     existingIdByKey: Map<string, string>,
@@ -895,128 +935,132 @@ export function commitPreparedApply(
   ): { id: string; fresh: boolean } {
     const key = (sliceKey ?? '').trim();
     if (key) {
-      const existingKey = mergeToExisting.get(key);
-      if (existingKey) {
-        const existingId = existingIdByKey.get(existingKey);
-        if (existingId) {
-          maps[kind].set(sliceId, existingId);
-          return { id: existingId, fresh: false };
-        }
+      const existingName = mergeToExisting.get(key);
+      const existingId = existingName ? existingIdByKey.get(existingName) : undefined;
+      if (existingId) {
+        ctx.maps[kind].set(entity.id, existingId);
+        return { id: existingId, fresh: false };
       }
     }
-    const id = minters[kind].mint(PREFIX[kind], taken[kind]);
-    maps[kind].set(sliceId, id);
+    const id = ctx.minters[kind].mint(PREFIX[kind], ctx.taken[kind]);
+    ctx.maps[kind].set(entity.id, id);
     return { id, fresh: true };
   }
 
-  // ── Phase 1: claim ids for slice entities (merge-plan-aware) ─────────
-  type Pending<T> = { entity: T; targetId: string };
-  const newCharacters: Pending<import('@/types/narrative').Character>[] = [];
-  const newLocations: Pending<import('@/types/narrative').Location>[] = [];
-  const newArtifacts: Pending<import('@/types/narrative').Artifact>[] = [];
-  const newThreads: Pending<import('@/types/narrative').Thread>[] = [];
+  const newCharacters: Pending<Character>[] = [];
+  const newLocations: Pending<Location>[] = [];
+  const newArtifacts: Pending<Artifact>[] = [];
+  const newThreads: Pending<Thread>[] = [];
 
   for (const c of Object.values(slice.characters)) {
-    const { id, fresh } = claim(c.id, c.name, mergePlan.characters, charIdByName, 'char');
+    const { id, fresh } = claim(c, c.name, mergePlan.characters, ctx.existing.charIdByName, 'char');
     if (fresh) newCharacters.push({ entity: c, targetId: id });
   }
   for (const l of Object.values(slice.locations)) {
-    const { id, fresh } = claim(l.id, l.name, mergePlan.locations, locIdByName, 'loc');
+    const { id, fresh } = claim(l, l.name, mergePlan.locations, ctx.existing.locIdByName, 'loc');
     if (fresh) newLocations.push({ entity: l, targetId: id });
   }
   for (const a of Object.values(slice.artifacts ?? {})) {
-    const { id, fresh } = claim(a.id, a.name, mergePlan.artifacts, artIdByName, 'art');
+    const { id, fresh } = claim(a, a.name, mergePlan.artifacts, ctx.existing.artIdByName, 'art');
     if (fresh) newArtifacts.push({ entity: a, targetId: id });
   }
   for (const t of Object.values(slice.threads)) {
-    const { id, fresh } = claim(t.id, t.description, mergePlan.threads, threadIdByDesc, 'thread');
+    const { id, fresh } = claim(t, t.description, mergePlan.threads, ctx.existing.threadIdByDesc, 'thread');
     if (fresh) newThreads.push({ entity: t, targetId: id });
   }
 
-  // Scenes, worldBuilds, arcs — always treated as new (slice-scoped),
-  // minted onto the narrative's prefix counter.
+  // Scenes / worldBuilds / arcs — always net-new. Mint onto the
+  // narrative's prefix counter directly.
   for (const id of Object.keys(slice.scenes)) {
-    maps.scene.set(id, minters.scene.mint(PREFIX.scene, taken.scene));
+    ctx.maps.scene.set(id, ctx.minters.scene.mint(PREFIX.scene, ctx.taken.scene));
   }
   for (const id of Object.keys(slice.worldBuilds ?? {})) {
-    maps.worldBuild.set(id, minters.worldBuild.mint(PREFIX.worldBuild, taken.worldBuild));
+    ctx.maps.worldBuild.set(id, ctx.minters.worldBuild.mint(PREFIX.worldBuild, ctx.taken.worldBuild));
   }
   for (const id of Object.keys(slice.arcs)) {
-    maps.arc.set(id, minters.arc.mint(PREFIX.arc, taken.arc));
+    ctx.maps.arc.set(id, ctx.minters.arc.mint(PREFIX.arc, ctx.taken.arc));
   }
-  // System graph nodes — consult the merge plan first. If the slice's
-  // concept folds into an existing system node, route the slice id to
-  // the existing node's id; otherwise mint under the narrative's prefix.
-  const sysIdByConcept = new Map<string, string>();
-  for (const [id, node] of Object.entries(narrative.systemGraph?.nodes ?? {})) {
-    sysIdByConcept.set(node.concept, id);
-  }
-  for (const [sliceId, sliceNode] of Object.entries(slice.systemGraph?.nodes ?? {})) {
-    const existingConcept = mergePlan.systemConcepts.get(sliceNode.concept);
-    const existingId = existingConcept ? sysIdByConcept.get(existingConcept) : undefined;
-    if (existingId) {
-      maps.sys.set(sliceId, existingId);
-      continue;
-    }
-    maps.sys.set(sliceId, minters.sys.mint(PREFIX.sys, taken.sys));
+  // System nodes — concept-keyed merge plan + counter fallback.
+  for (const [sliceId, node] of Object.entries(slice.systemGraph?.nodes ?? {})) {
+    const existingConcept = mergePlan.systemConcepts.get(node.concept);
+    const existingId = existingConcept ? ctx.existing.sysIdByConcept.get(existingConcept) : undefined;
+    ctx.maps.sys.set(
+      sliceId,
+      existingId ?? ctx.minters.sys.mint(PREFIX.sys, ctx.taken.sys),
+    );
   }
 
-  // ── Phase 2: rewrite slice records through the per-type remap helpers.
-
-  const ctx: Ctx = { maps, taken };
-  const netNewIds = {
-    char: new Set(newCharacters.map((p) => p.entity.id)),
-    loc: new Set(newLocations.map((p) => p.entity.id)),
-    art: new Set(newArtifacts.map((p) => p.entity.id)),
-    thread: new Set(newThreads.map((p) => p.entity.id)),
+  return {
+    newCharacters,
+    newLocations,
+    newArtifacts,
+    newThreads,
+    netNewIds: {
+      char: new Set(newCharacters.map((p) => p.entity.id)),
+      loc: new Set(newLocations.map((p) => p.entity.id)),
+      art: new Set(newArtifacts.map((p) => p.entity.id)),
+      thread: new Set(newThreads.map((p) => p.entity.id)),
+    },
   };
+}
 
-  const rewrittenCharacters = newCharacters.map(({ entity, targetId }) =>
-    remapCharacter(entity, targetId, ctx),
+/** Phase 2c: rewrite the slice through the per-type remap functions.
+ *  No id minting happens here — every id has already been claimed in
+ *  the previous phase. */
+function buildRewrittenSlice(
+  slice: NarrativeState,
+  ctx: ClaimContext,
+  claim: ClaimResult,
+): RewrittenSlice {
+  const remapCtx: Ctx = { maps: ctx.maps, taken: ctx.taken };
+  const characters = claim.newCharacters.map((p) => remapCharacter(p.entity, p.targetId, remapCtx));
+  const locations = claim.newLocations.map((p) => remapLocation(p.entity, p.targetId, remapCtx));
+  const artifacts = claim.newArtifacts.map((p) => remapArtifact(p.entity, p.targetId, remapCtx));
+  const threads = claim.newThreads.map((p) => remapThread(p.entity, p.targetId, remapCtx));
+  const scenes = Object.values(slice.scenes).map((s) => remapScene(s, remapCtx, claim.netNewIds));
+  const arcs = Object.values(slice.arcs).map((a) => remapArc(a, remapCtx));
+  const worldBuilds = Object.values(slice.worldBuilds ?? {}).map((wb) =>
+    remapWorldBuild(wb, remapCtx, claim.netNewIds),
   );
-  const rewrittenLocations = newLocations.map(({ entity, targetId }) =>
-    remapLocation(entity, targetId, ctx),
-  );
-  const rewrittenArtifacts = newArtifacts.map(({ entity, targetId }) =>
-    remapArtifact(entity, targetId, ctx),
-  );
-  const rewrittenThreads = newThreads.map(({ entity, targetId }) =>
-    remapThread(entity, targetId, ctx),
-  );
-  const rewrittenScenes = Object.values(slice.scenes).map((s) => remapScene(s, ctx, netNewIds));
-  const rewrittenArcs = Object.values(slice.arcs).map((a) => remapArc(a, ctx));
-  const rewrittenWorldBuilds = Object.values(slice.worldBuilds ?? {}).map((wb) =>
-    remapWorldBuild(wb, ctx, netNewIds),
-  );
-
-  // Slice's root-branch entry order — gives us the append sequence.
+  // Slice's root branch dictates the order in which scenes + world
+  // commits land in the target branch's entryIds.
   const sliceRootBranch = Object.values(slice.branches).find((b) => b.parentBranchId === null);
   const appendEntryIds = (sliceRootBranch?.entryIds ?? []).map((eid) =>
-    remapAny(eid, maps.scene, maps.worldBuild),
+    remapAny(eid, ctx.maps.scene, ctx.maps.worldBuild),
   );
+  return { characters, locations, artifacts, threads, scenes, arcs, worldBuilds, appendEntryIds };
+}
 
-  // ── Dispatch the atomic merge ────────────────────────────────────────
+/** Phase 2d: emit the atomic merge into the reducer + stamp the
+ *  per-branch commit ledger on the SourceFile. */
+function dispatchMerge(
+  narrative: NarrativeState,
+  file: SourceFile,
+  branchId: string,
+  rewritten: RewrittenSlice,
+  dispatch: Dispatch,
+): ApplyResult {
   dispatch({
     type: 'APPLY_EXTENSION',
     narrativeId: narrative.id,
     branchId,
     fileId: file.id,
-    characters: rewrittenCharacters as import('@/types/narrative').Character[],
-    locations: rewrittenLocations as import('@/types/narrative').Location[],
-    artifacts: rewrittenArtifacts as import('@/types/narrative').Artifact[],
-    threads: rewrittenThreads as import('@/types/narrative').Thread[],
-    scenes: rewrittenScenes as import('@/types/narrative').Scene[],
-    worldBuilds: rewrittenWorldBuilds as import('@/types/narrative').WorldBuild[],
-    arcs: rewrittenArcs as import('@/types/narrative').Arc[],
-    appendEntryIds,
+    characters: rewritten.characters,
+    locations: rewritten.locations,
+    artifacts: rewritten.artifacts,
+    threads: rewritten.threads,
+    scenes: rewritten.scenes,
+    worldBuilds: rewritten.worldBuilds,
+    arcs: rewritten.arcs,
+    appendEntryIds: rewritten.appendEntryIds,
   });
 
-  const arcId = rewrittenArcs[0]?.id ?? null;
-  const sceneIds = rewrittenScenes.map((s) => s.id);
+  const arcId = rewritten.arcs[0]?.id ?? null;
+  const sceneIds = rewritten.scenes.map((s) => s.id);
 
-  // Record the commit per-branch. Status stays 'ready' so the same
-  // slice can be applied to other branches independently. A file is
-  // only "done" when the operator deletes it.
+  // Per-branch commit ledger. Status stays 'ready' so the same slice
+  // can be applied to other branches; a file is only "done" when the
+  // operator deletes it.
   dispatch({
     type: 'UPDATE_SOURCE_FILE',
     narrativeId: narrative.id,
@@ -1034,6 +1078,23 @@ export function commitPreparedApply(
   });
 
   return { introducedSceneIds: sceneIds, introducedArcId: arcId };
+}
+
+/** Phase 2: take a prepared (loaded + reconciled) slice and merge it
+ *  into the target narrative on `branchId`. Pure ID remapping +
+ *  dispatch — no LLM work, no IDB reads. The streaming UI calls this
+ *  after the operator clicks "Append" on the merge preview. */
+export function commitPreparedApply(
+  narrative: NarrativeState,
+  file: SourceFile,
+  branchId: string,
+  prepared: PreparedApply,
+  dispatch: Dispatch,
+): ApplyResult {
+  const ctx = buildClaimContext(narrative);
+  const claim = claimSliceIds(prepared.slice, prepared.mergePlan, ctx);
+  const rewritten = buildRewrittenSlice(prepared.slice, ctx, claim);
+  return dispatchMerge(narrative, file, branchId, rewritten, dispatch);
 }
 
 /** Convenience wrapper that runs prepare + commit back-to-back. The

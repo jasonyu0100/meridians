@@ -8,12 +8,13 @@ import { splitCorpusIntoScenes, type AssembleStage } from '@/lib/text-analysis';
 import { analysisRunner } from '@/lib/analysis-runner';
 import type { AnalysisJob, AnalysisChunkResult, ApiLogEntry } from '@/types/narrative';
 import { BEAT_FN_LIST } from '@/types/narrative';
-import { ANALYSIS_MAX_CORPUS_WORDS, DEFAULT_MODEL } from '@/lib/constants';
+import { ANALYSIS_MAX_CORPUS_WORDS } from '@/lib/constants';
 import { IconSpinner, IconChevronLeft, IconDollar } from '@/components/icons';
 import { IconCheck } from '@/components/icons/EvalIcons';
 import { calculateTotalCost } from '@/lib/api-logger';
 import { loadAnalysisApiLogs, saveAnalysisApiLogs } from '@/lib/persistence';
 import { ApiLogsViewer } from '@/components/apilogs/ApiLogsViewer';
+import { detectTitleFromText } from '@/lib/title-detect';
 
 /* ── Assemble stage labels ─────────────────────────────────────────────── */
 //
@@ -1431,37 +1432,6 @@ function JobDetail({ job }: { job: AnalysisJob }) {
   );
 }
 
-/* ── Title detection via LLM ─────────────────────────────────────────────── */
-async function detectTitleLLM(chunkText: string): Promise<string> {
-  const { apiHeaders } = await import('@/lib/api-headers');
-  const { logApiCall, updateApiLog } = await import('@/lib/api-logger');
-
-  const prompt = `Here is the first chunk of a text. What is the title of this work? Reply with ONLY the title, nothing else. No quotes, no explanation.\n\n${chunkText}`;
-  const systemPrompt = 'You identify book/screenplay/text titles from their content. Reply with only the title in proper title case.';
-  const logId = logApiCall('detectTitleLLM', prompt.length + systemPrompt.length, prompt, DEFAULT_MODEL, systemPrompt);
-  const start = performance.now();
-
-  try {
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: apiHeaders(),
-      body: JSON.stringify({ prompt, systemPrompt, maxTokens: 50 }),
-    });
-    if (!res.ok) {
-      updateApiLog(logId, { status: 'error', error: `HTTP ${res.status}`, durationMs: Math.round(performance.now() - start) });
-      return '';
-    }
-    const data = await res.json();
-    const title = (data.content ?? '').trim().replace(/^["']|["']$/g, '');
-    updateApiLog(logId, { status: 'success', durationMs: Math.round(performance.now() - start), responseLength: title.length, responsePreview: title });
-    return title.length > 0 && title.length < 100 ? title : '';
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    updateApiLog(logId, { status: 'error', error: message, durationMs: Math.round(performance.now() - start) });
-    return '';
-  }
-}
-
 /* ── New job setup ────────────────────────────────────────────────────────── */
 function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated: (jobId: string) => void }) {
   const { dispatch } = useStore();
@@ -1484,7 +1454,7 @@ function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated:
   useEffect(() => {
     let cancelled = false;
     const firstChunkText = chunks.length > 0 ? chunks[0].text : sourceText.slice(0, 4000);
-    detectTitleLLM(firstChunkText).then((detected) => {
+    detectTitleFromText(firstChunkText).then((detected) => {
       if (!cancelled && detected) setTitle(detected);
     }).finally(() => {
       if (!cancelled) setDetecting(false);
