@@ -108,7 +108,7 @@ export default function ExamplePage() {
         resolvedKeys={resolvedKeys}
         onClose={() => {
           dispatch({ type: "SET_ACTIVE_NARRATIVE", id: narrative.id });
-          router.push(`/series/${narrative.id}`);
+          router.push(`/narrative/${narrative.id}`);
         }}
       />
     </PropositionClassificationProvider>

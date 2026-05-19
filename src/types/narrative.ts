@@ -2703,7 +2703,7 @@ export type AppState = {
   /**
    * True once the initial IndexedDB + manifest load has fully settled.
    * Consumers use this to distinguish "narrative not yet loaded" from
-   * "narrative genuinely doesn't exist" — e.g. the /series/[id] route
+   * "narrative genuinely doesn't exist" — e.g. the /narrative/[id] route
    * only redirects on unknown IDs after hydration is done.
    */
   hydrationComplete: boolean;

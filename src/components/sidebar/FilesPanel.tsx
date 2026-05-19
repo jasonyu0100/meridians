@@ -284,34 +284,35 @@ export default function FilesPanel() {
                   </p>
                 )}
 
-                {/* Action row. Primary action sits left; secondary
-                    (Remove / Job) hugs right. Single visual rhythm. */}
+                {/* Action row — circular icon buttons. Primary action
+                    (convert / apply) sits left; secondary affordances
+                    (remove, open job) hug the right edge. Labels live
+                    in the `title` tooltip so the row stays uncluttered. */}
                 {(primary || f.mode === 'extend' || f.analysisJobId) && (
-                  <div className="mt-3 flex items-center gap-3">
+                  <div className="mt-3 flex items-center gap-2">
                     {primary?.kind === 'convert' && (
                       <button
                         onClick={() => handleConvert(f)}
-                        className="text-[11px] text-text-primary font-medium hover:underline underline-offset-2"
+                        title={primary.label}
+                        aria-label={primary.label}
+                        className="w-8 h-8 rounded-full border border-white/15 bg-white/8 hover:bg-white/15 hover:border-white/30 text-text-primary transition flex items-center justify-center"
                       >
-                        {primary.label}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <polygon points="6 4 20 12 6 20 6 4" />
+                        </svg>
                       </button>
                     )}
                     {primary?.kind === 'apply' && (
                       <button
                         onClick={() => setApplyFileId(f.id)}
                         disabled={!branchId}
-                        title={branchId ? 'Open the merge modal' : 'Select a branch first'}
-                        className="text-[11px] text-text-primary font-medium hover:underline underline-offset-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
+                        title={branchId ? 'Extend the current branch with this file' : 'Select a branch first'}
+                        aria-label={primary.label}
+                        className="w-8 h-8 rounded-full border border-emerald-400/35 bg-emerald-400/12 hover:bg-emerald-400/20 hover:border-emerald-400/55 text-emerald-300 transition flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-400/12 disabled:hover:border-emerald-400/35"
                       >
-                        {primary.label}
-                      </button>
-                    )}
-                    {f.mode === 'extend' && (
-                      <button
-                        onClick={() => void handleRemove(f)}
-                        className="text-[11px] text-text-dim/55 hover:text-red-400/85 transition"
-                      >
-                        Remove
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 5v14M6 13l6 6 6-6" />
+                        </svg>
                       </button>
                     )}
                     {f.analysisJobId && (
@@ -319,9 +320,33 @@ export default function FilesPanel() {
                         onClick={() =>
                           router.push(`/extensions/${narrative.id}?job=${f.analysisJobId}`)
                         }
-                        className="ml-auto text-[10px] uppercase tracking-wider font-mono text-text-dim/55 hover:text-text-secondary transition"
+                        title="Open analysis job"
+                        aria-label="Open analysis job"
+                        className="ml-auto w-8 h-8 rounded-full border border-white/10 bg-transparent hover:bg-white/10 hover:border-white/25 text-text-dim/65 hover:text-text-primary transition flex items-center justify-center"
                       >
-                        job ↗
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      </button>
+                    )}
+                    {f.mode === 'extend' && (
+                      <button
+                        onClick={() => void handleRemove(f)}
+                        title="Remove file"
+                        aria-label="Remove file"
+                        className={`w-8 h-8 rounded-full border border-white/10 bg-transparent hover:bg-red-500/15 hover:border-red-400/45 text-text-dim/55 hover:text-red-400 transition flex items-center justify-center ${
+                          f.analysisJobId ? '' : 'ml-auto'
+                        }`}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
                       </button>
                     )}
                   </div>

@@ -129,7 +129,7 @@ export function ImportPackageModal({ onClose }: Props) {
       dispatch({ type: 'ADD_NARRATIVE_ENTRY', entry: narrativeToEntry(narrative) });
       dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: newId });
 
-      router.push(`/series/${newId}`);
+      router.push(`/narrative/${newId}`);
 
       onClose();
     } catch (err) {

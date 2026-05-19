@@ -170,7 +170,7 @@ export function CreationWizard() {
       dispatch({ type: "ADD_NARRATIVE", narrative });
       wizardDispatch({ type: "CLOSE" });
       wizardDispatch({ type: "SET_STEP", step: "form" });
-      router.push(`/series/${narrative.id}`);
+      router.push(`/narrative/${narrative.id}`);
     } catch (err) {
       setError(String(err));
       setLoading(false);

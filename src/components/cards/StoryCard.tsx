@@ -61,7 +61,7 @@ export function StoryCard({
 
   return (
     <div
-      onClick={() => router.push(`/series/${entry.id}${openSlides ? '?slides=1' : ''}`)}
+      onClick={() => router.push(`/narrative/${entry.id}${openSlides ? '?slides=1' : ''}`)}
       className={`group relative shrink-0 cursor-pointer animate-fade-up ${isLg ? 'w-56' : 'w-52'}`}
       style={{ animationDelay: `${animationDelayBase + index * 0.08}s` }}
     >

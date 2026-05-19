@@ -3927,7 +3927,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         initMechanismProfilePresets(worksForPresets);
       }
 
-      // The URL owns activeNarrativeId — the /series/[id] route syncs it
+      // The URL owns activeNarrativeId — the /narrative/[id] route syncs it
       // from params, and loadActiveNarrativeId is persisted for callers that
       // explicitly want the last-visited ID. Dispatching here would race
       // with URL-sync and sometimes overwrite the narrative the user just

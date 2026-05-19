@@ -71,7 +71,7 @@ function ExtensionTargetLink({ narrativeId }: { narrativeId: string }) {
       type="button"
       onClick={() => {
         dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: narrativeId });
-        router.push(`/series/${narrativeId}`);
+        router.push(`/narrative/${narrativeId}`);
       }}
       title="Open the source world"
       className="text-[10px] text-emerald-300/70 hover:text-emerald-200 transition shrink-0"
@@ -480,7 +480,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
             <button
               onClick={() => {
                 dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: liveJob.targetNarrativeId! });
-                router.push(`/series/${liveJob.targetNarrativeId}`);
+                router.push(`/narrative/${liveJob.targetNarrativeId}`);
               }}
               className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[10px] font-semibold px-4 py-1 rounded transition"
             >
@@ -509,7 +509,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                 onClick={async () => {
                   if (narrativeExists && liveJob.narrativeId) {
                     dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: liveJob.narrativeId });
-                    router.push(`/series/${liveJob.narrativeId}?slides=1`);
+                    router.push(`/narrative/${liveJob.narrativeId}?slides=1`);
                     return;
                   }
                   // Either first-time assembly OR regeneration after the
@@ -547,7 +547,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                     );
                     dispatch({ type: 'ADD_NARRATIVE', narrative });
                     dispatch({ type: 'UPDATE_ANALYSIS_JOB', id: liveJob.id, updates: { narrativeId: narrative.id } });
-                    router.push(`/series/${narrative.id}?slides=1`);
+                    router.push(`/narrative/${narrative.id}?slides=1`);
                   } catch (err) {
                     console.error('[analysis] assembly failed:', err);
                   } finally {
@@ -1822,15 +1822,20 @@ export function AnalysisPageInner({
 
       {/* Sidebar */}
       <div className="w-56 border-r border-white/6 flex flex-col shrink-0 bg-black/20 backdrop-blur-sm relative z-10">
-        <div className="px-4 py-4 border-b border-white/6 flex items-center justify-between">
+        <div className="px-4 pt-4 pb-3 border-b border-white/6">
           <button
-            onClick={() => router.push('/')}
-            className="text-[10px] uppercase tracking-[0.15em] text-white/30 font-mono hover:text-white/60 transition flex items-center gap-1.5"
+            onClick={() => router.push(narrativeFilter ? `/narrative/${narrativeFilter}` : '/')}
+            className="text-[10px] uppercase tracking-[0.15em] text-white/30 font-mono hover:text-white/60 transition flex items-center gap-1.5 mb-2"
           >
             <IconChevronLeft size={12} />
-            Home
+            {narrativeFilter ? 'Back to series' : 'Home'}
           </button>
-          <h1 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-mono">{headerLabel}</h1>
+          <h1
+            className="text-[10px] uppercase tracking-[0.15em] text-white/50 font-mono leading-snug"
+            title={headerLabel}
+          >
+            {headerLabel}
+          </h1>
         </div>
         <JobsList
           jobs={filteredJobs}

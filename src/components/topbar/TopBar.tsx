@@ -381,7 +381,7 @@ export default function TopBar() {
   useEffect(() => {
     if (searchParams.get("slides") === "1" && narrative) {
       setSlidesOpen(true);
-      router.replace(`/series/${narrative.id}`, { scroll: false });
+      router.replace(`/narrative/${narrative.id}`, { scroll: false });
     }
   }, [searchParams, narrative, router]);
 
@@ -1116,7 +1116,7 @@ export default function TopBar() {
                                   <button
                                     onClick={() => {
                                       setSelectorOpen(false);
-                                      router.push(`/series/${entry.id}`);
+                                      router.push(`/narrative/${entry.id}`);
                                     }}
                                     className="flex-1 text-left px-3 py-2 min-w-0"
                                   >
