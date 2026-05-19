@@ -57,6 +57,29 @@ function useElapsed(startTime: number, running: boolean) {
 type WordNode = { label: string; type: 'character' | 'location' | 'thread' | 'knowledge' | 'artifact'; count: number; firstSeen: number; knowledgeType?: string; significance?: string };
 
 /* ── Job detail panel ─────────────────────────────────────────────────────── */
+/** Header chip for extension jobs — renders "extends: <title> ↗" and
+ *  navigates to the target world's series page when clicked. Lets the
+ *  operator hop back to the Files panel that owns this run. */
+function ExtensionTargetLink({ narrativeId }: { narrativeId: string }) {
+  const { state, dispatch } = useStore();
+  const router = useRouter();
+  const target = state.narratives.find((n) => n.id === narrativeId);
+  if (!target) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: narrativeId });
+        router.push(`/series/${narrativeId}`);
+      }}
+      title="Open the source world"
+      className="text-[10px] text-emerald-300/70 hover:text-emerald-200 transition shrink-0"
+    >
+      extends: {target.title} ↗
+    </button>
+  );
+}
+
 function JobDetail({ job }: { job: AnalysisJob }) {
   const router = useRouter();
   const { state, dispatch } = useStore();
@@ -367,7 +390,12 @@ function JobDetail({ job }: { job: AnalysisJob }) {
       {/* ── Top bar: title + controls ── */}
       <div className="shrink-0 px-6 py-2.5 flex items-center gap-4 border-b border-white/4 bg-black/20">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {liveJob.kind === 'extend' && (
+              <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-px rounded bg-emerald-400/15 text-emerald-300 shrink-0">
+                extension
+              </span>
+            )}
             <h2 className="text-sm font-semibold text-white/90 truncate">{liveJob.title}</h2>
             <span className="text-[9px] text-white/20 font-mono shrink-0">
               {isMetaSynthesising ? 'extracting meta...'
@@ -382,6 +410,9 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                 : liveJob.status === 'paused' ? 'paused'
                 : 'pending'}
             </span>
+            {liveJob.kind === 'extend' && liveJob.targetNarrativeId && (
+              <ExtensionTargetLink narrativeId={liveJob.targetNarrativeId} />
+            )}
           </div>
         </div>
         {/* Stats inline */}
@@ -441,7 +472,21 @@ function JobDetail({ job }: { job: AnalysisJob }) {
               {liveJob.status === 'failed' ? 'Retry' : liveJob.status === 'pending' ? 'Start' : 'Resume'}
             </button>
           )}
-          {liveJob.status === 'completed' && (() => {
+          {/* Extension jobs land their result on the linked SourceFile, not
+              as a new narrative — Open Source World hops to the world where
+              the operator can review the file and Apply it. */}
+          {liveJob.status === 'completed' && liveJob.kind === 'extend' && liveJob.targetNarrativeId && (
+            <button
+              onClick={() => {
+                dispatch({ type: 'SET_ACTIVE_NARRATIVE', id: liveJob.targetNarrativeId! });
+                router.push(`/series/${liveJob.targetNarrativeId}`);
+              }}
+              className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[10px] font-semibold px-4 py-1 rounded transition"
+            >
+              Open Source World
+            </button>
+          )}
+          {liveJob.status === 'completed' && liveJob.kind !== 'extend' && (() => {
             // A completed job retains its `narrativeId` even if the operator
             // later deletes that narrative. Detect the orphan case so the
             // button offers "Regenerate" instead of trying to open something
@@ -1621,20 +1666,40 @@ function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated:
 }
 
 /* ── Jobs list (sidebar) ──────────────────────────────────────────────────── */
-function JobsList({ jobs, selectedId, onSelect }: { jobs: AnalysisJob[]; selectedId: string | null; onSelect: (id: string) => void }) {
-  const { dispatch } = useStore();
+function JobsList({
+  jobs,
+  selectedId,
+  onSelect,
+  kind,
+}: {
+  jobs: AnalysisJob[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  kind: 'create' | 'extend';
+}) {
+  const { state, dispatch } = useStore();
   const router = useRouter();
+
+  // Pre-index narrative titles so extension jobs can surface which world
+  // they target. state.narratives holds summary entries (id + title).
+  const narrativeTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of state.narratives) map.set(n.id, n.title);
+    return map;
+  }, [state.narratives]);
 
   if (jobs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-white/20 text-[11px] mb-2">No analysis jobs</p>
+          <p className="text-white/20 text-[11px] mb-2">
+            {kind === 'extend' ? 'No extension files yet' : 'No analysis jobs'}
+          </p>
           <button
             onClick={() => router.push('/')}
             className="text-[10px] text-white/30 hover:text-white/60 underline underline-offset-2 transition"
           >
-            Paste text to start
+            {kind === 'extend' ? 'Open a world and add a file' : 'Paste text to start'}
           </button>
         </div>
       </div>
@@ -1648,6 +1713,7 @@ function JobsList({ jobs, selectedId, onSelect }: { jobs: AnalysisJob[]; selecte
         const totalScenes = job.chunks.length;
         const progress = totalScenes > 0 ? Math.round((completedScenes / totalScenes) * 100) : 0;
         const isSelected = job.id === selectedId;
+        const targetTitle = job.targetNarrativeId ? narrativeTitleById.get(job.targetNarrativeId) : undefined;
 
         return (
           <div
@@ -1667,7 +1733,13 @@ function JobsList({ jobs, selectedId, onSelect }: { jobs: AnalysisJob[]; selecte
 
             <div className="flex-1 min-w-0">
               <div className="text-xs text-white/70 font-medium truncate">{job.title}</div>
-              <div className="text-[10px] text-white/25 font-mono mt-0.5">
+              <div className="text-[10px] text-white/25 font-mono mt-0.5 truncate">
+                {kind === 'extend' && targetTitle && (
+                  <>
+                    <span className="text-emerald-400/40">extends</span> <span className="text-white/40">{targetTitle}</span>
+                    <span className="text-white/15"> &middot; </span>
+                  </>
+                )}
                 {completedScenes}/{totalScenes} &middot; {progress}%
               </div>
             </div>
@@ -1710,6 +1782,17 @@ export function AnalysisPageInner({ kind }: { kind: 'create' | 'extend' }) {
   const [sourceText, setSourceText] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(initialJobId);
   const [showNewSetup, setShowNewSetup] = useState(isNew && !initialJobId);
+
+  // Auto-select the first available job when none is selected — without
+  // this the main content stays blank on /extensions until the operator
+  // clicks something, and the topbar (which lives inside JobDetail) never
+  // appears. Skipped when the New Setup pane is being shown.
+  useEffect(() => {
+    if (showNewSetup) return;
+    if (selectedJobId && filteredJobs.some((j) => j.id === selectedJobId)) return;
+    const first = filteredJobs[0];
+    if (first) setSelectedJobId(first.id);
+  }, [filteredJobs, selectedJobId, showNewSetup]);
 
   // Load source text from IndexedDB for new analysis jobs
   useEffect(() => {
@@ -1763,6 +1846,7 @@ export function AnalysisPageInner({ kind }: { kind: 'create' | 'extend' }) {
             setSelectedJobId(id);
             setShowNewSetup(false);
           }}
+          kind={kind}
         />
       </div>
 

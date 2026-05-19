@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 
 export function LandingTopbar() {
   const pathname = usePathname();
-  if (pathname.startsWith('/series/') || pathname.startsWith('/analysis')) return null;
+  if (pathname.startsWith('/series/') || pathname.startsWith('/analysis') || pathname.startsWith('/extension')) return null;
 
   return (
     <nav className="relative z-30 flex items-center justify-center pt-8 pb-6">

@@ -916,6 +916,24 @@ export type Action =
   | { type: "ADD_SOURCE_FILE"; narrativeId: string; file: SourceFile }
   | { type: "UPDATE_SOURCE_FILE"; narrativeId: string; fileId: string; updates: Partial<SourceFile> }
   | { type: "DELETE_SOURCE_FILE"; narrativeId: string; fileId: string }
+  | {
+      // Atomic merge of an extracted slice into the narrative. The slice's
+      // entities are pre-remapped against the target's namespace — the
+      // reducer just merges them and tails the new entries onto the chosen
+      // branch's entryIds.
+      type: "APPLY_EXTENSION";
+      narrativeId: string;
+      branchId: string;
+      fileId: string;
+      characters: Character[];
+      locations: Location[];
+      artifacts: Artifact[];
+      threads: Thread[];
+      scenes: Scene[];
+      worldBuilds: WorldBuild[];
+      arcs: Arc[];
+      appendEntryIds: string[];
+    }
   // Chat threads
   | { type: "CREATE_CHAT_THREAD"; thread: ChatThread }
   | { type: "DELETE_CHAT_THREAD"; threadId: string }
@@ -2911,6 +2929,50 @@ function reducer(state: AppState, action: Action): AppState {
         const next = { ...n.files };
         delete next[action.fileId];
         return { ...n, files: next };
+      });
+
+    case "APPLY_EXTENSION":
+      return updateActiveNarrativeIfMatch(state, action.narrativeId, (n) => {
+        // Merge entity dicts. The slice's ids are pre-remapped so a
+        // plain spread does the right thing — name-deduped entities were
+        // dropped upstream, so no entry here will clobber an existing one.
+        const characters = { ...n.characters };
+        for (const c of action.characters) characters[c.id] = c;
+        const locations = { ...n.locations };
+        for (const l of action.locations) locations[l.id] = l;
+        const artifacts = { ...(n.artifacts ?? {}) };
+        for (const a of action.artifacts) artifacts[a.id] = a;
+        const threads = { ...n.threads };
+        for (const t of action.threads) threads[t.id] = t;
+        const scenes = { ...n.scenes };
+        for (const s of action.scenes) scenes[s.id] = s;
+        const worldBuilds = { ...(n.worldBuilds ?? {}) };
+        for (const wb of action.worldBuilds) worldBuilds[wb.id] = wb;
+        const arcs = { ...n.arcs };
+        for (const a of action.arcs) arcs[a.id] = a;
+
+        // Append the slice's entry ids at the tail of the chosen branch.
+        const branch = n.branches[action.branchId];
+        if (!branch) return n;
+        const branches = {
+          ...n.branches,
+          [action.branchId]: {
+            ...branch,
+            entryIds: [...branch.entryIds, ...action.appendEntryIds],
+          },
+        };
+
+        return {
+          ...n,
+          characters,
+          locations,
+          artifacts,
+          threads,
+          scenes,
+          worldBuilds,
+          arcs,
+          branches,
+        };
       });
 
     // ── Chat threads ──────────────────────────────────────────────────────
