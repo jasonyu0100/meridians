@@ -32,7 +32,9 @@ import type {
   Location,
   NarrativeState,
   World,
+  WorldNodeType,
 } from "@/types/narrative";
+import { WORLD_NODE_TYPES } from "@/types/narrative";
 import {
   classifyThreadCategory,
   THREAD_CATEGORY_ORDER,
@@ -48,6 +50,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *  character IDs (which are "C-1", "C-2", ...). */
 const PERSONA_FATE = "__fate__";
 const PERSONA_SYSTEM = "__system__";
+const PERSONA_WORLD = "__world__";
 
 // ── Shared output discipline ─────────────────────────────────────────────
 //
@@ -183,6 +186,78 @@ HOW TO SPEAK AS SYSTEM:
 - Do not enumerate rules as bullets unless the user explicitly asks you to list them. Synthesise; speak in terms of how the rules compose.
 - You know nothing about the user, any "application", the author, narrative theory, or anything outside this world.
 - Human-paced replies. A few sentences usually. Longer only when a question asks for a structural derivation.`;
+}
+
+/** Build an in-character system prompt for WORLD — the coalescence of every
+ *  inhabited thing in the narrative: characters, locations, artifacts and
+ *  their world-graph continuity (traits, history, capabilities, beliefs,
+ *  relations, states, goals, secrets, weaknesses). Not a single entity; the
+ *  *substrate* of the world, speaking as the gathered presence of everyone
+ *  and everywhere. */
+function buildWorldForcePrompt(narrative: NarrativeState): string {
+  // Per-entity continuity sketch — surface a short summary of each entity's
+  // world-graph, grouped by type. Anchors get fuller treatment than
+  // transients; same for prominent locations and key artifacts.
+  function entityBlock(name: string, world: World, kindLabel: string): string {
+    const byType = new Map<WorldNodeType, string[]>();
+    for (const node of Object.values(world.nodes ?? {})) {
+      const bucket = byType.get(node.type) ?? [];
+      bucket.push(node.content);
+      byType.set(node.type, bucket);
+    }
+    const continuity = WORLD_NODE_TYPES
+      .filter((t) => byType.has(t))
+      .map((t) => {
+        const items = byType.get(t)!;
+        return `    ${t}: ${items.join(" · ")}`;
+      })
+      .join("\n");
+    return `  ${name} (${kindLabel}):\n${continuity || "    (no recorded continuity)"}`;
+  }
+
+  // Order: anchors → recurring → transient for characters; domain → place →
+  // margin for locations; key → notable → minor for artifacts. Lets the
+  // force's awareness lead with the entities that carry the most weight.
+  const charRoleOrder = { anchor: 0, recurring: 1, transient: 2 } as const;
+  const locOrder = { domain: 0, place: 1, margin: 2 } as const;
+  const artOrder = { key: 0, notable: 1, minor: 2 } as const;
+
+  const characters = Object.values(narrative.characters)
+    .sort((a, b) => (charRoleOrder[a.role] ?? 3) - (charRoleOrder[b.role] ?? 3) || a.name.localeCompare(b.name))
+    .map((c) => entityBlock(c.name, c.world, c.role))
+    .join("\n\n");
+
+  const locations = Object.values(narrative.locations)
+    .sort((a, b) => (locOrder[a.prominence] ?? 3) - (locOrder[b.prominence] ?? 3) || a.name.localeCompare(b.name))
+    .map((l) => entityBlock(l.name, l.world, l.prominence))
+    .join("\n\n");
+
+  const artifacts = Object.values(narrative.artifacts ?? {})
+    .sort((a, b) => (artOrder[a.significance] ?? 3) - (artOrder[b.significance] ?? 3) || a.name.localeCompare(b.name))
+    .map((a) => entityBlock(a.name, a.world, a.significance))
+    .join("\n\n");
+
+  const charBlock = characters ? `CHARACTERS — the people who live inside the world:\n${characters}` : "";
+  const locBlock = locations ? `LOCATIONS — the places that hold the world:\n${locations}` : "";
+  const artBlock = artifacts ? `ARTIFACTS — the objects the world carries:\n${artifacts}` : "";
+
+  const sections = [charBlock, locBlock, artBlock].filter(Boolean).join("\n\n");
+
+  return `You ARE WORLD — the coalescence of every inhabited thing in "${narrative.title}". You are not a single person, place, or object; you are the gathered presence of all of them at once: every character's continuity, every location's history, every artifact's provenance. Respond as the world's lived substrate would speak — as the breathing weight of who and what is here.
+
+THE WORLD YOU ARE:
+${narrative.worldSummary || "(no recorded setting)"}
+
+WHAT YOU ENCLOSE — every entity alive in this world, grouped by kind, with the continuity each one carries:
+${sections || "  (no entities recorded yet — the world is uninhabited)"}
+
+HOW TO SPEAK AS WORLD:
+- You speak with the polyphony of everyone and everywhere. You can shift register to bring forward a particular voice (a character's perspective, a place's atmosphere, an artifact's history) — but you do so as the world remembering through that point, not as that single thing alone.
+- You know what each entity knows; you know what they keep hidden. You do not volunteer secrets, but you carry them.
+- You speak in terms of continuity, presence, and accumulation — the shape of who has lived and where, the residues of choice. Not plot, not summary.
+- Do not enumerate entities as bullet lists. Synthesise; let the world's lived weight come through in how you describe what it is.
+- You know nothing about the user, any "application", the author, narrative theory, or the world beyond this story.
+- Human-paced replies. A few sentences usually. Longer only when a question asks the world to remember in depth.`;
 }
 
 /** Persona kinds that share the World-graph shape (characters, locations,
@@ -362,7 +437,7 @@ export default function ChatPanel() {
   // narrative, so we skip them here.
   useEffect(() => {
     if (!personaId) return;
-    if (personaId === PERSONA_FATE || personaId === PERSONA_SYSTEM) return;
+    if (personaId === PERSONA_FATE || personaId === PERSONA_SYSTEM || personaId === PERSONA_WORLD) return;
     const exists =
       !!state.activeNarrative?.characters[personaId] ||
       !!state.activeNarrative?.locations[personaId] ||
@@ -407,6 +482,7 @@ export default function ChatPanel() {
   type ActivePersona =
     | { kind: "fate"; name: "Fate" }
     | { kind: "system"; name: "System" }
+    | { kind: "world"; name: "World" }
     | { kind: "character"; name: string; character: Character }
     | { kind: "location"; name: string; location: Location }
     | { kind: "artifact"; name: string; artifact: Artifact };
@@ -414,6 +490,7 @@ export default function ChatPanel() {
     if (!personaId || !state.activeNarrative) return null;
     if (personaId === PERSONA_FATE) return { kind: "fate", name: "Fate" };
     if (personaId === PERSONA_SYSTEM) return { kind: "system", name: "System" };
+    if (personaId === PERSONA_WORLD) return { kind: "world", name: "World" };
     const char = state.activeNarrative.characters[personaId];
     if (char) return { kind: "character", name: char.name, character: char };
     const loc = state.activeNarrative.locations[personaId];
@@ -464,6 +541,7 @@ export default function ChatPanel() {
         items: [
           { id: PERSONA_FATE, name: "Fate", subtitle: "All threads, coalesced" },
           { id: PERSONA_SYSTEM, name: "System", subtitle: "All rules, coalesced" },
+          { id: PERSONA_WORLD, name: "World", subtitle: "All entities, coalesced" },
         ],
       },
     ];
@@ -511,6 +589,7 @@ export default function ChatPanel() {
     if (activePersona) {
       if (activePersona.kind === "fate") return buildFateSystemPrompt(n);
       if (activePersona.kind === "system") return buildSystemForcePrompt(n);
+      if (activePersona.kind === "world") return buildWorldForcePrompt(n);
       if (activePersona.kind === "character")
         return buildEntitySystemPrompt(n, "character", activePersona.character);
       if (activePersona.kind === "location")
