@@ -5,6 +5,8 @@ import NotesPanel from "@/components/sidebar/NotesPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
 import InvestigationPanel from "@/components/sidebar/InvestigationPanel";
+import FilesPanel from "@/components/sidebar/FilesPanel";
+import ThreadPortfolio from "@/components/sidebar/ThreadPortfolio";
 import KnowledgePanel from "./KnowledgePanel";
 import BranchEval from "@/components/timeline/BranchEval";
 import PlanEval from "@/components/timeline/PlanEval";
@@ -27,11 +29,23 @@ import ThreadLogNodeDetail from "./ThreadLogNodeDetail";
 import ReasoningNodeDetail from "./ReasoningNodeDetail";
 import ModeNodeDetail from "./ModeNodeDetail";
 
-type Tab = "inspector" | "chat" | "notes" | "knowledge" | "surveys" | "interviews" | "investigations" | "eval";
+type Tab =
+  | "inspector"
+  | "chat"
+  | "threads"
+  | "files"
+  | "notes"
+  | "knowledge"
+  | "surveys"
+  | "interviews"
+  | "investigations"
+  | "eval";
 
 const TAB_LABELS: Record<Tab, string> = {
   inspector: "Inspector",
   chat: "Chat",
+  threads: "Threads",
+  files: "Files",
   notes: "Notes",
   knowledge: "Knowledge",
   surveys: "Surveys",
@@ -39,6 +53,19 @@ const TAB_LABELS: Record<Tab, string> = {
   investigations: "Investigations",
   eval: "Review",
 };
+
+const TAB_ORDER: Tab[] = [
+  "inspector",
+  "chat",
+  "threads",
+  "files",
+  "notes",
+  "knowledge",
+  "surveys",
+  "interviews",
+  "investigations",
+  "eval",
+];
 
 function getDefaultContext(state: ReturnType<typeof useStore>["state"]) {
   const narrative = state.activeNarrative;
@@ -154,7 +181,7 @@ export default function SidePanel() {
     <aside className="h-full flex flex-row border-l border-border glass-panel">
       {/* Vertical tab rail */}
       <div className="shrink-0 flex flex-col items-center py-2 w-7 border-r border-border">
-        {(["inspector", "chat", "notes", "knowledge", "surveys", "interviews", "investigations", "eval"] as Tab[]).map((t) => (
+        {TAB_ORDER.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -207,6 +234,16 @@ export default function SidePanel() {
         {tab === "chat" && (
           <div className="flex-1 min-h-0">
             <ChatPanel />
+          </div>
+        )}
+        {tab === "threads" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <ThreadPortfolio />
+          </div>
+        )}
+        {tab === "files" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <FilesPanel />
           </div>
         )}
         {tab === "notes" && (
