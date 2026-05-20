@@ -50,25 +50,30 @@ button,
   background: rgba(196, 181, 253, 0.26);
 }
 
-/* Glass utility — violet-tinted dark, lavender border + halo */
+/* Glass utility — violet-tinted dark, lavender border + halo. Near-opaque
+ * so floating overlays stay legible over busy prose / canvas content;
+ * subtle blur is kept as a depth cue but doesn't carry legibility. */
 .glass {
-  background: rgba(22, 19, 30, 0.94);
+  background: rgba(22, 19, 30, 0.98);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(196, 181, 253, 0.11);
+  border: 1px solid rgba(196, 181, 253, 0.16);
   box-shadow:
-    0 8px 32px rgba(8, 6, 20, 0.55),
-    0 0 0 1px rgba(196, 181, 253, 0.04);
+    0 12px 36px rgba(8, 6, 20, 0.7),
+    0 0 0 1px rgba(196, 181, 253, 0.05);
 }
 
+/* Floating pill chrome (FloatingPalette, DriverPalette, control bars,
+ * scene info bars). Same near-opaque treatment as .glass so prose /
+ * canvas content can't bleed through and reduce contrast. */
 .glass-pill {
-  background: rgba(22, 19, 30, 0.72);
+  background: rgba(22, 19, 30, 0.97);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(196, 181, 253, 0.11);
+  border: 1px solid rgba(196, 181, 253, 0.18);
   box-shadow:
-    0 8px 32px rgba(8, 6, 20, 0.5),
-    0 0 0 1px rgba(196, 181, 253, 0.04);
+    0 12px 36px rgba(8, 6, 20, 0.65),
+    0 0 0 1px rgba(196, 181, 253, 0.06);
   border-radius: 999px;
 }
 

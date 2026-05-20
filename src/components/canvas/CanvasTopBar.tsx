@@ -1137,10 +1137,10 @@ export function CanvasTopBar() {
             toggles render to the left for each cluster. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
+            { mode: 'driver' as const, Icon: IconList, label: 'Driver', condition: 'always' as const, activeWhen: inDriverMode },
             { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', condition: 'always' as const, activeWhen: canvasMode === 'graph' },
             { mode: 'control' as const, Icon: IconMarket, label: 'Control', condition: 'always' as const, activeWhen: inControlMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', condition: 'sceneOnly' as const, activeWhen: inSceneMode },
-            { mode: 'driver' as const, Icon: IconList, label: 'Driver', condition: 'always' as const, activeWhen: inDriverMode },
           ]
             .filter(({ condition }) => {
               if (condition === 'sceneOnly' && !currentScene) return false;

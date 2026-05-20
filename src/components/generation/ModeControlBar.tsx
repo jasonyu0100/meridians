@@ -151,11 +151,12 @@ export function ModeControlBar(props: Props) {
 
   return (
     <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
-      {/* Main pill */}
+      {/* Main pill — same near-opaque chrome as the canvas floating
+          palettes so background-process status stays legible over
+          busy canvas content. */}
       <div className={`
         flex items-center gap-2 px-2 py-1 rounded-full
-        bg-bg-base/80 backdrop-blur-md border border-white/8
-        shadow-lg shadow-black/20
+        glass-pill
         ${stoppedByError ? 'ring-1 ring-red-400/40' : ''}
       `}>
         {/* Mode indicator dot */}

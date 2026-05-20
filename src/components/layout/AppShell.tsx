@@ -62,8 +62,8 @@ function useResize(
 }
 
 export default function AppShell({ children, sidebar, sidepanel }: AppShellProps) {
-  const left = useResize(240, 160, 400, 'left', true);
-  const right = useResize(400, 180, 560, 'right', false);
+  const left = useResize(300, 150, 600, 'left', true);
+  const right = useResize(500, 150, 1200, 'right', false);
 
   return (
     <div className="h-screen bg-bg-base flex flex-col overflow-hidden relative">
