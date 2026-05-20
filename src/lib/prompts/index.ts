@@ -128,6 +128,10 @@ export {
   buildThreadingPrompt,
   META_EXTRACTION_SYSTEM,
   buildMetaExtractionPrompt,
+  DRIVER_SYNTHESIS_SYSTEM,
+  buildDriverSynthesisPrompt,
+  THREAD_INTEGRATION_SYSTEM,
+  buildThreadIntegrationPrompt,
 } from './analysis';
 
 // ── Reasoning-Graph Prompts ─────────────────────────────────────────────────

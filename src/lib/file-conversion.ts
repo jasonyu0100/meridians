@@ -14,7 +14,12 @@
  */
 
 import { assetManager } from '@/lib/asset-manager';
-import { splitCorpusIntoScenes, reconcileEntities, reconcileSemantic } from '@/lib/text-analysis';
+import {
+  splitCorpusIntoScenes,
+  reconcileEntities,
+  reconcileSemantic,
+  integrateSliceThreadsIntoExisting,
+} from '@/lib/text-analysis';
 import { analysisRunner } from '@/lib/analysis-runner';
 import type { AnalysisJob, NarrativeState, SourceFile } from '@/types/narrative';
 import type { Action } from '@/lib/store';
@@ -49,6 +54,7 @@ export async function stageFile(
   name: string,
   content: string,
   dispatch: Dispatch,
+  options: { source?: 'analysis' | 'daily-log' } = {},
 ): Promise<SourceFile> {
   const prefix = titlePrefix(narrative.title || name);
   const num = nextFileNumber(narrative, prefix);
@@ -62,6 +68,7 @@ export async function stageFile(
     wordCount: content.trim().split(/\s+/).filter(Boolean).length,
     createdAt: Date.now(),
     status: 'staged',
+    ...(options.source ? { source: options.source } : {}),
   };
   dispatch({ type: 'ADD_SOURCE_FILE', narrativeId: narrative.id, file });
   return file;
@@ -221,12 +228,23 @@ function buildSliceToExistingMap(
 /** Run cross-reconciliation between an extracted slice and the target
  *  narrative. Returns a merge plan whose maps the Apply step consults
  *  when claiming ids: slice entities present in the plan dedup onto the
- *  existing entity's id; entities absent from the plan are net-new. */
+ *  existing entity's id; entities absent from the plan are net-new.
+ *
+ *  When `source === 'daily-log'` the reconcile adds a corrective
+ *  thread-alignment phase (continuation-first stance) after standard
+ *  reconcile. Daily ingest is statistically dominated by continuations
+ *  of existing markets; reconcileSemantic's preserve-by-default would
+ *  otherwise produce a parallel thread for every paraphrased
+ *  continuation. The alignment pass picks up exactly that
+ *  population — slice threads that survived reconcile as net-new —
+ *  and folds them into existing threads when continuity is plausible. */
 export async function reconcileExtensionAgainstNarrative(
   narrative: NarrativeState,
   slice: NarrativeState,
   onToken?: (token: string, accumulated: string) => void,
+  options: { source?: 'analysis' | 'daily-log' } = {},
 ): Promise<ExtensionMergePlan> {
+  const source = options.source ?? 'analysis';
   // ── Collect names from both sides ──────────────────────────────────────
   const existingCharNames = new Set(Object.values(narrative.characters).map((c) => c.name));
   const existingLocNames = new Set(Object.values(narrative.locations).map((l) => l.name));
@@ -266,22 +284,85 @@ export async function reconcileExtensionAgainstNarrative(
       ? (token: string, accumulated: string) => onToken(token, `${phaseLog}[${tag}]\n${accumulated}`)
       : undefined;
 
-  // Run the two reconciliation phases in sequence — same shape as
-  // text-analysis's reconcileResults, just with different inputs.
+  // Run the integration phases in sequence. Each phase emits a labelled
+  // boundary in the streaming log so the operator can see exactly which
+  // step is in flight; the labels match the five-phase model documented
+  // in the module header.
   const entityMerges = hasEntityWork
-    ? await reconcileEntities(combinedChars, combinedLocs, combinedArts, phaseStream('entities'))
+    ? await reconcileEntities(combinedChars, combinedLocs, combinedArts, phaseStream('I. Entity alignment'))
     : { characterMerges: {}, locationMerges: {}, artifactMerges: {} };
-  phaseLog = '[entities] done\n\n';
+  phaseLog = '[I. Entity alignment] done\n\n';
 
   const semanticMerges = hasSemanticWork
-    ? await reconcileSemantic(combinedThreads, combinedSys, phaseStream('semantic'))
+    ? await reconcileSemantic(combinedThreads, combinedSys, phaseStream('II. System alignment'))
     : { threadMerges: {}, systemMerges: {} };
+  phaseLog = `${phaseLog}[II. System alignment] done\n\n`;
+
+  const threadMap = buildSliceToExistingMap(semanticMerges.threadMerges, existingThreadDescs);
+
+  // ── Phase III (daily-log only): thread integration ────────────────────
+  // Pick up slice threads that reconcileSemantic preserved as net-new
+  // (description didn't match an existing one) and ask the LLM whether
+  // any of them materially advance an existing open thread. Augments
+  // the threads map with the additional continuations before commit.
+  // Outcome and participant expansion (Phase III.b) happens later, in
+  // the claim phase, where we have access to both the slice and
+  // existing thread records.
+  if (source === 'daily-log') {
+    const existingOpenThreads = Object.values(narrative.threads).filter((t) => !t.closedAt);
+    const candidateSliceThreads = Object.values(slice.threads).filter(
+      (t) => !threadMap.has(t.description),
+    );
+
+    if (candidateSliceThreads.length > 0 && existingOpenThreads.length > 0) {
+      const participantNamesFor = (
+        participants: ReadonlyArray<{ id: string; type: 'character' | 'location' | 'artifact' }>,
+        scope: NarrativeState,
+      ): string | undefined => {
+        if (!participants || participants.length === 0) return undefined;
+        const names: string[] = [];
+        for (const p of participants) {
+          const name =
+            scope.characters[p.id]?.name ??
+            scope.locations[p.id]?.name ??
+            scope.artifacts?.[p.id]?.name;
+          if (name) names.push(name);
+          if (names.length >= 4) break;
+        }
+        return names.length > 0 ? names.join(', ') : undefined;
+      };
+      const sliceForAlignment = candidateSliceThreads.map((t) => ({
+        description: t.description,
+        participantSummary: participantNamesFor(t.participants, slice),
+        outcomes: t.outcomes,
+      }));
+      const existingForAlignment = existingOpenThreads.map((t) => ({
+        description: t.description,
+        participantSummary: participantNamesFor(t.participants, narrative),
+        outcomes: t.outcomes,
+      }));
+      const continuations: Record<string, string> = await integrateSliceThreadsIntoExisting(
+        sliceForAlignment,
+        existingForAlignment,
+        phaseStream('III. Thread integration'),
+      );
+      // Fold continuation merges into the threads map. Existing
+      // matches win — if reconcile already mapped this slice
+      // description, alignment shouldn't see it (we filtered above),
+      // but guard anyway in case the LLM hallucinates.
+      for (const [sliceDesc, existingDesc] of Object.entries(continuations)) {
+        if (!threadMap.has(sliceDesc) && existingThreadDescs.has(existingDesc)) {
+          threadMap.set(sliceDesc, existingDesc);
+        }
+      }
+    }
+  }
 
   return {
     characters: buildSliceToExistingMap(entityMerges.characterMerges, existingCharNames),
     locations: buildSliceToExistingMap(entityMerges.locationMerges, existingLocNames),
     artifacts: buildSliceToExistingMap(entityMerges.artifactMerges, existingArtNames),
-    threads: buildSliceToExistingMap(semanticMerges.threadMerges, existingThreadDescs),
+    threads: threadMap,
     systemConcepts: buildSliceToExistingMap(semanticMerges.systemMerges, existingSysConcepts),
   };
 }
@@ -518,7 +599,12 @@ export async function prepareExtensionApply(
     throw new Error('Extracted slice is missing from local storage.');
   }
   const slice = JSON.parse(sliceJson) as NarrativeState;
-  const mergePlan = await reconcileExtensionAgainstNarrative(narrative, slice, onToken);
+  // Daily-log files get the corrective thread-alignment pass after
+  // standard reconcile. Other files (manual / analysis-derived) skip
+  // it — their threads aren't biased toward continuations.
+  const mergePlan = await reconcileExtensionAgainstNarrative(narrative, slice, onToken, {
+    source: file.source,
+  });
   return { slice, mergePlan, summary: summariseMerge(slice, mergePlan) };
 }
 
@@ -587,6 +673,7 @@ import type {
   Artifact,
   Scene,
   Thread,
+  ThreadParticipant,
   WorldBuild,
   WorldExpansion,
 } from '@/types/narrative';
@@ -631,6 +718,15 @@ function remapThread(t: Thread, targetId: string, ctx: Ctx): Thread {
       ...p,
       id: remapAny(p.id, ctx.maps.char, ctx.maps.loc, ctx.maps.art),
     })),
+    // openedAt is the introduction key — either a scene or a world-build
+    // in the original slice. Without remapping, downstream code
+    // (portfolio, trajectory, thread-introduction filters) sees a
+    // stale slice-side id and treats the thread as orphaned —
+    // trajectory shows "not yet introduced" even when evidence has
+    // accumulated. Remap through both scene and worldBuild maps.
+    openedAt: t.openedAt
+      ? remapAny(t.openedAt, ctx.maps.scene, ctx.maps.worldBuild)
+      : t.openedAt,
     // Thread-id refs in `dependents` cross over the slice→target boundary.
     dependents: (t.dependents ?? []).map((id) => remap(id, ctx.maps.thread)),
     // beliefs is keyed by agent id (mostly character ids, plus sentinel
@@ -856,6 +952,18 @@ type ClaimResult = {
   newArtifacts: Pending<Artifact>[];
   newThreads: Pending<Thread>[];
   netNewIds: { char: Set<string>; loc: Set<string>; art: Set<string>; thread: Set<string> };
+  /** Phase III.b — outcome + participant expansion. For every slice
+   *  thread that merged into an existing thread (either via reconcile
+   *  description-match or via the III. thread-integration LLM pass),
+   *  record the slice's contributions so the reducer can fold them
+   *  into the existing thread on commit. Participants are ALREADY
+   *  remapped through ctx.maps; outcomes are case-insensitive-deduped
+   *  against the existing list at apply time. */
+  threadExpansions: Array<{
+    existingThreadId: string;
+    addOutcomes: string[];
+    addParticipants: ThreadParticipant[];
+  }>;
 };
 
 type RewrittenSlice = {
@@ -867,6 +975,15 @@ type RewrittenSlice = {
   arcs: Arc[];
   worldBuilds: WorldBuild[];
   appendEntryIds: string[];
+  /** Forwarded from ClaimResult.threadExpansions — passed through to
+   *  the reducer via APPLY_EXTENSION so existing threads grow their
+   *  outcome / participant lists when integrated content contributes
+   *  to them. */
+  threadExpansions: Array<{
+    existingThreadId: string;
+    addOutcomes: string[];
+    addParticipants: ThreadParticipant[];
+  }>;
 };
 
 /** Phase 2a: build the shared claim context — taken-id sets, empty
@@ -924,6 +1041,10 @@ function claimSliceIds(
   slice: NarrativeState,
   mergePlan: ExtensionMergePlan,
   ctx: ClaimContext,
+  /** Existing narrative — needed to read the target thread's current
+   *  outcomes and participants when computing Phase III.b expansion
+   *  records on a merge. */
+  narrative: NarrativeState,
 ): ClaimResult {
   /** Consult the merge plan first; if it resolves the slice key to an
    *  existing id, dedup. Otherwise mint under the narrative's prefix. */
@@ -965,9 +1086,16 @@ function claimSliceIds(
     const { id, fresh } = claim(a, a.name, mergePlan.artifacts, ctx.existing.artIdByName, 'art');
     if (fresh) newArtifacts.push({ entity: a, targetId: id });
   }
+  // Track which existing thread ids absorbed merges from the slice —
+  // we'll compute their outcome / participant expansions in a second
+  // pass below, after every slice id is mapped (so remapping a slice
+  // participant id to an existing entity id works for chars / locs /
+  // arts that were also merged into existing entities).
+  const mergedThreads: Array<{ sliceThread: Thread; existingThreadId: string }> = [];
   for (const t of Object.values(slice.threads)) {
     const { id, fresh } = claim(t, t.description, mergePlan.threads, ctx.existing.threadIdByDesc, 'thread');
     if (fresh) newThreads.push({ entity: t, targetId: id });
+    else mergedThreads.push({ sliceThread: t, existingThreadId: id });
   }
 
   // Scenes / worldBuilds / arcs — always net-new. Mint onto the
@@ -991,6 +1119,50 @@ function claimSliceIds(
     );
   }
 
+  // Phase III.b — outcome + participant expansion. For each merged
+  // slice thread, diff its outcomes/participants against the existing
+  // target and emit an expansion record. Slice participant ids are
+  // remapped through the entity maps so they reference the existing
+  // narrative's id space. Outcomes are case-insensitive deduped at
+  // apply-time in the reducer; here we just collect the candidates.
+  const threadExpansions: ClaimResult['threadExpansions'] = [];
+  for (const { sliceThread, existingThreadId } of mergedThreads) {
+    const target = narrative.threads[existingThreadId];
+    if (!target) continue;
+
+    const existingOutcomes = new Set(target.outcomes.map((o) => o.toLowerCase()));
+    const addOutcomes: string[] = [];
+    for (const o of sliceThread.outcomes ?? []) {
+      const trimmed = typeof o === 'string' ? o.trim() : '';
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (existingOutcomes.has(key)) continue;
+      existingOutcomes.add(key);
+      addOutcomes.push(trimmed);
+    }
+
+    const existingParticipantIds = new Set(target.participants.map((p) => p.id));
+    const addParticipants: ThreadParticipant[] = [];
+    for (const p of sliceThread.participants ?? []) {
+      // Remap the slice participant id through whichever entity map
+      // owns it (chars / locs / arts). If the slice participant was
+      // itself merged into an existing entity, the map already resolves
+      // to that existing id — duplicates are filtered.
+      const remappedId =
+        ctx.maps.char.get(p.id) ??
+        ctx.maps.loc.get(p.id) ??
+        ctx.maps.art.get(p.id) ??
+        p.id;
+      if (existingParticipantIds.has(remappedId)) continue;
+      existingParticipantIds.add(remappedId);
+      addParticipants.push({ id: remappedId, type: p.type });
+    }
+
+    if (addOutcomes.length > 0 || addParticipants.length > 0) {
+      threadExpansions.push({ existingThreadId, addOutcomes, addParticipants });
+    }
+  }
+
   return {
     newCharacters,
     newLocations,
@@ -1002,6 +1174,7 @@ function claimSliceIds(
       art: new Set(newArtifacts.map((p) => p.entity.id)),
       thread: new Set(newThreads.map((p) => p.entity.id)),
     },
+    threadExpansions,
   };
 }
 
@@ -1029,7 +1202,17 @@ function buildRewrittenSlice(
   const appendEntryIds = (sliceRootBranch?.entryIds ?? []).map((eid) =>
     remapAny(eid, ctx.maps.scene, ctx.maps.worldBuild),
   );
-  return { characters, locations, artifacts, threads, scenes, arcs, worldBuilds, appendEntryIds };
+  return {
+    characters,
+    locations,
+    artifacts,
+    threads,
+    scenes,
+    arcs,
+    worldBuilds,
+    appendEntryIds,
+    threadExpansions: claim.threadExpansions,
+  };
 }
 
 /** Phase 2d: emit the atomic merge into the reducer + stamp the
@@ -1054,6 +1237,7 @@ function dispatchMerge(
     worldBuilds: rewritten.worldBuilds,
     arcs: rewritten.arcs,
     appendEntryIds: rewritten.appendEntryIds,
+    threadExpansions: rewritten.threadExpansions,
   });
 
   const arcId = rewritten.arcs[0]?.id ?? null;
@@ -1077,7 +1261,7 @@ export function commitPreparedApply(
   dispatch: Dispatch,
 ): ApplyResult {
   const ctx = buildClaimContext(narrative);
-  const claim = claimSliceIds(prepared.slice, prepared.mergePlan, ctx);
+  const claim = claimSliceIds(prepared.slice, prepared.mergePlan, ctx, narrative);
   const rewritten = buildRewrittenSlice(prepared.slice, ctx, claim);
   return dispatchMerge(narrative, file, branchId, rewritten, dispatch);
 }

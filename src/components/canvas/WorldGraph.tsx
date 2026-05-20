@@ -20,7 +20,7 @@ import { ScenePlanView } from './ScenePlanView';
 import { SceneProseView } from './SceneProseView';
 import { SceneAudioView } from './SceneAudioView';
 import { SceneGameTheoryView } from './SceneGameTheoryView';
-import { SearchView } from './SearchView';
+import { DriverCanvas } from '@/components/driver/DriverCanvas';
 import { ReasoningGraphView } from './ReasoningGraphView';
 import { ModeCanvas } from './ModeGraphView';
 import NetworkView from './NetworkView';
@@ -1168,8 +1168,12 @@ export default function WorldGraph() {
             hideControls hideLegend
           />
         )
-      ) : graphViewMode === 'search' ? (
-        <SearchView />
+      ) : graphViewMode === 'search' || graphViewMode === 'driver' ? (
+        // Driver canvas owns both — the sub-tab switcher inside reads the
+        // mode and renders Entry or Search. Routing both modes through
+        // DriverCanvas means external "go to search" callers land in
+        // Driver/Search tab cleanly.
+        <DriverCanvas />
       ) : graphViewMode === 'network' ? (
         <NetworkView />
       ) : graphViewMode === 'market' ? (

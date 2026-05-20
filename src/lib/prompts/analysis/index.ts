@@ -44,3 +44,13 @@ export {
   META_EXTRACTION_SYSTEM,
   buildMetaExtractionPrompt,
 } from './meta';
+
+export {
+  DRIVER_SYNTHESIS_SYSTEM,
+  buildDriverSynthesisPrompt,
+} from './driver-synthesis';
+
+export {
+  THREAD_INTEGRATION_SYSTEM,
+  buildThreadIntegrationPrompt,
+} from './thread-integration';

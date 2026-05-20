@@ -658,6 +658,72 @@ export async function reconcileSemantic(
 }
 
 /**
+ * Thread alignment (daily-driver only) — corrective pass that runs after
+ * standard reconciliation on slices produced from the Driver compact
+ * path. Inputs are slice threads that survived reconcileSemantic as
+ * net-new; output is a {slice-description → existing-description} map
+ * augmenting the merge plan for daily-log files specifically.
+ *
+ * The default stance is continuation-first: daily ingest is dominated
+ * by continuations, not novel threads, so the LLM is biased to find a
+ * matching existing thread for each candidate and only mark NOVEL when
+ * no continuity exists. Counter-balances reconcileSemantic's
+ * preserve-default for this file class only — fresh analysis runs are
+ * untouched.
+ */
+export type ThreadIntegrationInput = {
+  description: string;
+  participantSummary?: string;
+  outcomes?: ReadonlyArray<string>;
+};
+
+export async function integrateSliceThreadsIntoExisting(
+  sliceCandidates: ReadonlyArray<ThreadIntegrationInput>,
+  existingOpenThreads: ReadonlyArray<ThreadIntegrationInput>,
+  onToken?: (token: string, accumulated: string) => void,
+): Promise<Record<string, string>> {
+  if (sliceCandidates.length === 0 || existingOpenThreads.length === 0) return {};
+
+  const { THREAD_INTEGRATION_SYSTEM, buildThreadIntegrationPrompt } = await import(
+    '@/lib/prompts'
+  );
+  const prompt = buildThreadIntegrationPrompt(sliceCandidates, existingOpenThreads);
+  const raw = await callAnalysis(
+    prompt,
+    THREAD_INTEGRATION_SYSTEM,
+    onToken,
+    'integrateSliceThreads',
+  );
+
+  let parsed: { alignments?: unknown };
+  try {
+    parsed = JSON.parse(extractJSON(raw));
+  } catch {
+    const repaired = extractJSON(raw)
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/[\x00-\x1F\x7F]/g, (ch) => (ch === '\n' || ch === '\t' ? ch : ''));
+    parsed = JSON.parse(repaired);
+  }
+
+  const out: Record<string, string> = {};
+  if (!Array.isArray(parsed.alignments)) return out;
+  for (const item of parsed.alignments) {
+    if (!item || typeof item !== 'object') continue;
+    const sliceIdRaw = (item as Record<string, unknown>).slice;
+    const continuesRaw = (item as Record<string, unknown>).continues;
+    const sliceIdx = parseIndex(sliceIdRaw, sliceCandidates.length);
+    const existingIdx = parseIndex(continuesRaw, existingOpenThreads.length);
+    if (sliceIdx === null || existingIdx === null) continue;
+    const sliceDesc = sliceCandidates[sliceIdx]?.description;
+    const existingDesc = existingOpenThreads[existingIdx]?.description;
+    if (!sliceDesc || !existingDesc || sliceDesc === existingDesc) continue;
+    out[sliceDesc] = existingDesc;
+  }
+  return out;
+}
+
+/**
  * Reconcile independently-extracted chunk results:
  * - Phase 3a (entities): aggressive merging of character/location/artifact name variants
  * - Phase 3b (semantic): nuanced merging of threads and system knowledge, default-preserve

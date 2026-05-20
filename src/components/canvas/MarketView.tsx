@@ -133,9 +133,62 @@ function FeaturedTrajectory({
   const plotH = Math.max(0, H - PAD_T - PAD_B);
 
   if (points.length === 0) {
+    // Thread isn't introduced on the current timeline yet (no
+    // resolvable openedAt). Render flat horizontal lines at the
+    // thread's initial-prior probabilities so the operator still sees
+    // the distribution shape spatially, with a "not yet introduced"
+    // annotation that makes the temporal status clear.
+    const priorProbs = getMarketProbs(thread);
     return (
-      <div className="h-72 flex items-center justify-center text-[11px] text-text-dim">
-        No trajectory yet — this market hasn&apos;t received any evidence.
+      <div ref={containerRef} className="w-full h-72">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none">
+          <rect x={PAD_L} y={PAD_T} width={plotW} height={plotH} fill="transparent" />
+          {/* Grid */}
+          {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+            <g key={f}>
+              <line
+                x1={PAD_L}
+                x2={W - PAD_R}
+                y1={PAD_T + (1 - f) * plotH}
+                y2={PAD_T + (1 - f) * plotH}
+                stroke="#fff"
+                strokeWidth={0.5}
+                opacity={0.05}
+                strokeDasharray={f === 0 || f === 1 ? undefined : '2 4'}
+              />
+              <text
+                x={PAD_L - 6}
+                y={PAD_T + (1 - f) * plotH + 3}
+                textAnchor="end"
+                className="text-[9px] tabular-nums"
+                fill="#555"
+              >
+                {Math.round(f * 100)}%
+              </text>
+            </g>
+          ))}
+          {/* Flat lines at the prior — dashed to read as "not yet
+              priced", muted opacity. Per-outcome vertical nudge so
+              tied probabilities don't collapse onto each other. */}
+          {priorProbs.map((p, k) => {
+            const numOutcomes = priorProbs.length;
+            const off = (k - (numOutcomes - 1) / 2) * 3.5;
+            const y = PAD_T + (1 - p) * plotH + off;
+            return (
+              <line
+                key={k}
+                x1={PAD_L}
+                x2={W - PAD_R}
+                y1={y}
+                y2={y}
+                stroke={outcomeColourHex(k)}
+                strokeWidth={1.5}
+                strokeDasharray="3 4"
+                opacity={0.5}
+              />
+            );
+          })}
+        </svg>
       </div>
     );
   }
@@ -231,10 +284,13 @@ function FeaturedTrajectory({
           />
         );
       })}
-      {/* X axis labels — first + last scene (scene-only ordinals, world
-          commits don't count). */}
-      <text x={PAD_L} y={H - 4} className="text-[9px]" fill="#555">
-        scene {points[0].sceneOrdinal}
+      {/* X axis labels — first label flags the introduction scene
+          explicitly so the chart's leftmost point reads as
+          "the market opens HERE", not as the timeline origin. Last
+          label is the current scene cursor. Scene-only ordinals
+          throughout — world commits don't count. */}
+      <text x={PAD_L} y={H - 4} className="text-[9px]" fill="#7c7c8a">
+        introduced · scene {points[0].sceneOrdinal}
       </text>
       <text x={W - PAD_R} y={H - 4} textAnchor="end" className="text-[9px]" fill="#555">
         scene {points[points.length - 1].sceneOrdinal}

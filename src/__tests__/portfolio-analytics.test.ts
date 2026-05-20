@@ -146,7 +146,9 @@ describe('currentFocusIds', () => {
 
 describe('buildThreadTrajectory', () => {
   it('replays belief evolution scene-by-scene', () => {
-    const threads = { T1: mkThread('T1') };
+    // openedAt='S-1' ⇒ thread introduced at the first resolved key
+    // (strict introduction — see buildThreadTrajectory).
+    const threads = { T1: mkThread('T1', { openedAt: 'S-1' }) };
     const scenes: Record<string, Scene> = {
       'S-1': mkScene('S-1', [
         { threadId: 'T1', logType: 'setup', updates: [{ outcome: 'yes', evidence: 2 }], volumeDelta: 1, rationale: 'opens' },
@@ -164,7 +166,7 @@ describe('buildThreadTrajectory', () => {
   });
 
   it('stops replay at closure (trajectory ends at resolved scene)', () => {
-    const threads = { T1: mkThread('T1') };
+    const threads = { T1: mkThread('T1', { openedAt: 'S-1' }) };
     const scenes: Record<string, Scene> = {
       'S-1': mkScene('S-1', [
         { threadId: 'T1', logType: 'payoff', updates: [{ outcome: 'yes', evidence: 4 }, { outcome: 'no', evidence: -4 }], volumeDelta: 1, rationale: 'decisive' },
@@ -173,5 +175,35 @@ describe('buildThreadTrajectory', () => {
     };
     const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-1', 'S-2']);
     expect(points).toHaveLength(1);
+  });
+
+  it('returns an empty trajectory when openedAt does not resolve on the current branch', () => {
+    // Thread's openedAt points at a key NOT in the resolved keys —
+    // the thread isn't introduced on this timeline, so we emit no
+    // points. The UI renders the prior-line fallback instead.
+    const threads = { T1: mkThread('T1', { openedAt: 'S-OFFBRANCH' }) };
+    const scenes: Record<string, Scene> = {
+      'S-1': mkScene('S-1', []),
+      'S-2': mkScene('S-2', []),
+    };
+    const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-1', 'S-2']);
+    expect(points).toHaveLength(0);
+  });
+
+  it('starts the trajectory at openedAt, not the timeline origin', () => {
+    // openedAt='S-2' ⇒ thread is introduced at scene 2. Trajectory
+    // should have a single point at scene 2; scene 1 is excluded
+    // because the thread didn't yet exist there.
+    const threads = { T1: mkThread('T1', { openedAt: 'S-2' }) };
+    const scenes: Record<string, Scene> = {
+      'S-1': mkScene('S-1', []),
+      'S-2': mkScene('S-2', [
+        { threadId: 'T1', logType: 'setup', updates: [{ outcome: 'yes', evidence: 1 }], volumeDelta: 1, rationale: 'opens' },
+      ]),
+    };
+    const points = buildThreadTrajectory(mkNarrative(threads, scenes), 'T1', ['S-1', 'S-2']);
+    expect(points).toHaveLength(1);
+    expect(points[0].sceneId).toBe('S-2');
+    expect(points[0].sceneOrdinal).toBe(2);
   });
 });

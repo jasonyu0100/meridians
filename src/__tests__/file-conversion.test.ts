@@ -37,6 +37,7 @@ vi.mock('@/lib/text-analysis', () => ({
   splitCorpusIntoScenes: vi.fn(),
   reconcileEntities: vi.fn(),
   reconcileSemantic: vi.fn(),
+  integrateSliceThreadsIntoExisting: vi.fn(),
 }));
 
 vi.mock('@/lib/analysis-runner', () => ({
@@ -563,6 +564,10 @@ describe('commitPreparedApply', () => {
         ...slice.threads,
         'T-EXT-1': {
           ...slice.threads['T-EXT-1'],
+          // Introduction key points at a slice scene — must be remapped
+          // to the corresponding narrative-side scene id, otherwise
+          // portfolio / market views treat the thread as orphaned.
+          openedAt: 'S-EXT-1',
           dependents: ['T-EXT-other'],
           beliefs: {
             'C-EXT-1': { logits: [0, 0], volume: 1, volatility: 0, lastTouchedScene: 'S-EXT-1' },
@@ -613,6 +618,11 @@ describe('commitPreparedApply', () => {
     // Dependents id that wasn't in the maps stays verbatim (no slice
     // record carries it; falling through to the original is intentional).
     expect(thread.dependents).toEqual(['T-EXT-other']);
+    // openedAt slice-scene reference → narrative-side scene id, matching
+    // how the rest of the scene-id refs (lastTouchedScene, threadLog
+    // sceneId) remap. Required so the portfolio + market views treat
+    // the thread as properly introduced post-Apply.
+    expect(thread.openedAt).toBe('S-USP-2');
   });
 
   it('remaps gameAnalysis playerAId / playerBId on scenes', () => {
@@ -725,5 +735,234 @@ describe('commitPreparedApply', () => {
     // net-new entry, with its id remapped to the narrative's counter slot.
     expect(sceneNewChars.map((c) => c.name)).toEqual(['Elon Musk']);
     expect(sceneNewChars[0].id).toBe('C-USP-3');
+  });
+
+  // ── Phase III.b — Thread expansion on merge ─────────────────────────────
+  //
+  // When a slice thread merges into an existing one (via reconcileSemantic
+  // description-match or via the daily-driver thread-integration LLM
+  // pass), the slice's outcomes and participants should fold into the
+  // existing thread. commitPreparedApply doesn't mutate the existing
+  // thread itself — it emits `threadExpansions` on the APPLY_EXTENSION
+  // action, and the reducer applies them. These tests verify the
+  // payload shape: what flows from the slice → merge plan → claim
+  // phase → action payload.
+  describe('Phase III.b — thread expansion on merge', () => {
+    function buildPreparedForExpansion(opts: {
+      existingThread: Thread;
+      sliceThread: Thread;
+      threadMerge: [string, string]; // [slice description, existing description]
+      extraEntityMerges?: {
+        characters?: Array<[string, string]>;
+      };
+    }): { narrative: NarrativeState; prepared: PreparedApply } {
+      const narrative = makeNarrative();
+      narrative.threads = { [opts.existingThread.id]: opts.existingThread };
+      // Wire the existing thread's participants into the narrative so
+      // lookups during dedup resolve correctly.
+      const slice = makeSlice();
+      slice.threads = { [opts.sliceThread.id]: opts.sliceThread };
+      slice.scenes['S-EXT-1'] = {
+        ...slice.scenes['S-EXT-1'],
+        threadDeltas: [
+          {
+            threadId: opts.sliceThread.id,
+            updates: [],
+            logType: 'pulse',
+            volumeDelta: 0,
+            rationale: '',
+          },
+        ],
+      } as Scene;
+      const mergePlan: ExtensionMergePlan = {
+        characters: new Map(opts.extraEntityMerges?.characters ?? []),
+        locations: new Map([['Beijing', 'Beijing']]),
+        artifacts: new Map(),
+        threads: new Map([opts.threadMerge]),
+        systemConcepts: new Map(),
+      };
+      const prepared: PreparedApply = {
+        slice,
+        mergePlan,
+        summary: {
+          characters: { merged: [], new: [] },
+          locations: { merged: [], new: [] },
+          artifacts: { merged: [], new: [] },
+          threads: { merged: [], new: [] },
+          systemConcepts: { merged: [], new: [] },
+          scenes: 1,
+          arcs: 1,
+          worldBuilds: 0,
+        },
+      };
+      return { narrative, prepared };
+    }
+
+    function dispatchCommit(narrative: NarrativeState, prepared: PreparedApply) {
+      const dispatched: Action[] = [];
+      commitPreparedApply(narrative, makeFile(), 'B-1', prepared, (a) => dispatched.push(a));
+      const apply = dispatched.find((a) => a.type === 'APPLY_EXTENSION');
+      if (apply?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+      return apply;
+    }
+
+    it('emits an expansion that folds the slice thread\'s new outcomes into the existing thread', () => {
+      const existing = makeThread('T-USP-1', 'Will the trade deal hold?');
+      existing.outcomes = ['yes', 'no'];
+      const sliceT = makeThread('T-EXT-1', 'Will the trade deal hold?');
+      sliceT.outcomes = ['yes', 'no', 'collapses', 'renegotiated'];
+
+      const { narrative, prepared } = buildPreparedForExpansion({
+        existingThread: existing,
+        sliceThread: sliceT,
+        threadMerge: ['Will the trade deal hold?', 'Will the trade deal hold?'],
+      });
+      const apply = dispatchCommit(narrative, prepared);
+
+      expect(apply.threadExpansions).toBeDefined();
+      expect(apply.threadExpansions).toHaveLength(1);
+      const expansion = apply.threadExpansions![0];
+      expect(expansion.existingThreadId).toBe('T-USP-1');
+      // 'yes' / 'no' already exist; only the two genuinely new outcomes
+      // should be added.
+      expect(expansion.addOutcomes).toEqual(['collapses', 'renegotiated']);
+    });
+
+    it('dedupes outcomes case-insensitively against the existing list', () => {
+      const existing = makeThread('T-USP-1', 'Will Country X sign?');
+      existing.outcomes = ['Yes', 'No'];
+      const sliceT = makeThread('T-EXT-1', 'Will Country X sign?');
+      // 'YES' should match 'Yes'; 'maybe' is genuinely new.
+      sliceT.outcomes = ['YES', 'no', 'maybe'];
+
+      const { narrative, prepared } = buildPreparedForExpansion({
+        existingThread: existing,
+        sliceThread: sliceT,
+        threadMerge: ['Will Country X sign?', 'Will Country X sign?'],
+      });
+      const apply = dispatchCommit(narrative, prepared);
+
+      expect(apply.threadExpansions?.[0].addOutcomes).toEqual(['maybe']);
+    });
+
+    it('emits no expansion when the slice thread has nothing new to contribute', () => {
+      const existing = makeThread('T-USP-1', 'Will treaty Z hold?');
+      existing.outcomes = ['yes', 'no'];
+      existing.participants = [{ id: 'C-USP-1', type: 'character' }];
+      const sliceT = makeThread('T-EXT-1', 'Will treaty Z hold?');
+      sliceT.outcomes = ['yes', 'no']; // subset of existing
+      sliceT.participants = []; // none to add
+
+      const { narrative, prepared } = buildPreparedForExpansion({
+        existingThread: existing,
+        sliceThread: sliceT,
+        threadMerge: ['Will treaty Z hold?', 'Will treaty Z hold?'],
+      });
+      const apply = dispatchCommit(narrative, prepared);
+
+      // Either zero entries OR an entry with empty add arrays — both
+      // are acceptable; the reducer no-ops either way. Our
+      // implementation skips the no-op case entirely.
+      expect(apply.threadExpansions ?? []).toHaveLength(0);
+    });
+
+    it('remaps slice participant ids through entity maps before adding', () => {
+      // Existing thread has Donald Trump (C-USP-1) as a participant.
+      const existing = makeThread('T-USP-1', 'Will the trade deal hold?');
+      existing.outcomes = ['yes', 'no'];
+      existing.participants = [{ id: 'C-USP-1', type: 'character' }];
+
+      // Slice thread references C-EXT-1 (Donald Trump again — same
+      // name, merges to C-USP-1) AND C-EXT-2 (Elon Musk — net-new,
+      // will mint a fresh narrative id).
+      const sliceT = makeThread('T-EXT-1', 'Will the trade deal hold?');
+      sliceT.outcomes = ['yes', 'no'];
+      sliceT.participants = [
+        { id: 'C-EXT-1', type: 'character' }, // → C-USP-1 (already in existing → dedup)
+        { id: 'C-EXT-2', type: 'character' }, // → C-USP-3 (minted fresh, gets added)
+      ];
+
+      const { narrative, prepared } = buildPreparedForExpansion({
+        existingThread: existing,
+        sliceThread: sliceT,
+        threadMerge: ['Will the trade deal hold?', 'Will the trade deal hold?'],
+        extraEntityMerges: { characters: [['Donald Trump', 'Donald Trump']] },
+      });
+      const apply = dispatchCommit(narrative, prepared);
+
+      const expansion = apply.threadExpansions?.[0];
+      expect(expansion).toBeDefined();
+      // C-EXT-1 was Donald Trump and remapped to C-USP-1 — but C-USP-1
+      // already participates in the existing thread, so it's deduped
+      // out. C-EXT-2 was minted as C-USP-3 by the prefix counter and
+      // appears in addParticipants.
+      expect(expansion!.addParticipants).toHaveLength(1);
+      expect(expansion!.addParticipants[0].id).toBe('C-USP-3');
+      expect(expansion!.addParticipants[0].type).toBe('character');
+    });
+
+    it('dedupes participants by their post-remap id, not the raw slice id', () => {
+      // Existing thread already has C-USP-1 (Donald Trump). Slice has
+      // C-EXT-1 (Donald Trump) that merges to C-USP-1. The expansion
+      // should NOT add C-USP-1 a second time even though the raw slice
+      // id (C-EXT-1) differs.
+      const existing = makeThread('T-USP-1', 'Same market');
+      existing.outcomes = ['yes', 'no'];
+      existing.participants = [{ id: 'C-USP-1', type: 'character' }];
+
+      const sliceT = makeThread('T-EXT-1', 'Same market');
+      sliceT.outcomes = ['yes', 'no'];
+      sliceT.participants = [{ id: 'C-EXT-1', type: 'character' }];
+
+      const { narrative, prepared } = buildPreparedForExpansion({
+        existingThread: existing,
+        sliceThread: sliceT,
+        threadMerge: ['Same market', 'Same market'],
+        extraEntityMerges: { characters: [['Donald Trump', 'Donald Trump']] },
+      });
+      const apply = dispatchCommit(narrative, prepared);
+
+      // No outcomes added, no participants added → no expansion record
+      // emitted at all.
+      expect(apply.threadExpansions ?? []).toHaveLength(0);
+    });
+
+    it('produces no expansion records for net-new threads (no merge happened)', () => {
+      // Default slice thread T-EXT-1 is a brand-new market with no
+      // matching existing thread — should mint a fresh id and never
+      // appear in threadExpansions.
+      const narrative = makeNarrative();
+      const slice = makeSlice();
+      const prepared: PreparedApply = {
+        slice,
+        mergePlan: {
+          characters: new Map(),
+          locations: new Map(),
+          artifacts: new Map(),
+          threads: new Map(), // no thread merges
+          systemConcepts: new Map(),
+        },
+        summary: {
+          characters: { merged: [], new: [] },
+          locations: { merged: [], new: [] },
+          artifacts: { merged: [], new: [] },
+          threads: { merged: [], new: [] },
+          systemConcepts: { merged: [], new: [] },
+          scenes: 1,
+          arcs: 1,
+          worldBuilds: 0,
+        },
+      };
+      const dispatched: Action[] = [];
+      commitPreparedApply(narrative, makeFile(), 'B-1', prepared, (a) => dispatched.push(a));
+      const apply = dispatched.find((a) => a.type === 'APPLY_EXTENSION');
+      if (apply?.type !== 'APPLY_EXTENSION') throw new Error('expected APPLY_EXTENSION');
+
+      // The slice's net-new thread T-EXT-1 should appear in apply.threads
+      // (remapped onto the narrative counter), and threadExpansions
+      // should be empty since no merge occurred.
+      expect(apply.threads.map((t) => t.description)).toContain('Will trade negotiations succeed?');
+      expect(apply.threadExpansions ?? []).toHaveLength(0);
+    });
   });
 });

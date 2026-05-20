@@ -7,7 +7,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconMarket, IconNotepad, IconDocument, IconWaveform, IconSearch, IconReasoning } from '@/components/icons';
+import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconMarket, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
@@ -66,7 +66,7 @@ const SCOPE_PAIRS: Record<string, { local: GraphViewMode; global: GraphViewMode 
 
 export const GRAPH_MODES = new Set<GraphViewMode>(['spatial', 'overview', 'spark', 'codex', 'pulse', 'threads', 'network']);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'reasoning' | 'market' | 'present' | 'future' | 'mode';
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'driver' | 'reasoning' | 'market' | 'present' | 'future' | 'mode';
 type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'game';
 const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'game'];
 
@@ -316,6 +316,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'audio') return 'audio';
   if (graphViewMode === 'game') return 'game';
   if (graphViewMode === 'search') return 'search';
+  if (graphViewMode === 'driver') return 'driver';
   if (graphViewMode === 'reasoning') return 'reasoning';
   if (graphViewMode === 'market') return 'market';
   if (graphViewMode === 'present') return 'present';
@@ -363,6 +364,17 @@ export function CanvasTopBar() {
   const inControlMode = (
     graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'future' || graphViewMode === 'mode'
   );
+  // "Driver" bundles Entry (the daily-ingest queue + note workspace) and
+  // Search (vector search over the narrative). Both render through
+  // DriverCanvas; the sub-tab toggle in the topbar flips between them.
+  const inDriverMode = graphViewMode === 'driver' || graphViewMode === 'search';
+  const lastDriverSubModeRef = useRef<'driver' | 'search'>('driver');
+  useEffect(() => {
+    if (graphViewMode === 'driver' || graphViewMode === 'search') {
+      lastDriverSubModeRef.current = graphViewMode;
+    }
+  }, [graphViewMode]);
+
   const lastControlSubModeRef = useRef<'market' | 'present' | 'future' | 'mode'>('market');
   useEffect(() => {
     if (
@@ -1090,6 +1102,36 @@ export function CanvasTopBar() {
           </div>
         )}
 
+        {/* Driver sub-mode toggle — Entry / Search. Mirrors the Control
+            and Scene sub-toggles. Active when canvasMode is driver or
+            search (both are sub-modes of Driver). */}
+        {(canvasMode === 'driver' || canvasMode === 'search') && (
+          <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+            {[
+              { mode: 'driver' as const, Icon: IconList, label: 'Entry' },
+              { mode: 'search' as const, Icon: IconSearch, label: 'Search' },
+            ].map(({ mode, Icon, label }, idx) => {
+              const isActive = graphViewMode === mode;
+              return (
+                <div key={mode} className="flex items-center">
+                  {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                  <button
+                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                      isActive
+                        ? 'bg-white/10 text-text-primary'
+                        : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                    }`}
+                    onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
+                  >
+                    <Icon size={12} />
+                    {label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Main canvas mode selector. Plan/Prose/Audio collapse into "Scene";
             Opinion/Variables/Phase collapse into "Control". The sub-mode
             toggles render to the left for each cluster. */}
@@ -1098,7 +1140,7 @@ export function CanvasTopBar() {
             { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', condition: 'always' as const, activeWhen: canvasMode === 'graph' },
             { mode: 'control' as const, Icon: IconMarket, label: 'Control', condition: 'always' as const, activeWhen: inControlMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', condition: 'sceneOnly' as const, activeWhen: inSceneMode },
-            { mode: 'search' as const, Icon: IconSearch, label: 'Search', condition: 'always' as const, activeWhen: canvasMode === 'search' },
+            { mode: 'driver' as const, Icon: IconList, label: 'Driver', condition: 'always' as const, activeWhen: inDriverMode },
           ]
             .filter(({ condition }) => {
               if (condition === 'sceneOnly' && !currentScene) return false;
@@ -1119,6 +1161,11 @@ export function CanvasTopBar() {
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastSceneModeRef.current });
                       } else if (mode === 'control') {
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastControlSubModeRef.current });
+                      } else if (mode === 'driver') {
+                        // Already in driver/search → no-op; otherwise jump to
+                        // whichever sub-tab the operator was last on.
+                        if (inDriverMode) return;
+                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastDriverSubModeRef.current });
                       } else {
                         switchMode(mode);
                       }

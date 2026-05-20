@@ -1,7 +1,6 @@
 "use client";
 
 import ChatPanel from "@/components/sidebar/ChatPanel";
-import NotesPanel from "@/components/sidebar/NotesPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
 import InvestigationPanel from "@/components/sidebar/InvestigationPanel";
@@ -34,7 +33,6 @@ type Tab =
   | "chat"
   | "threads"
   | "files"
-  | "notes"
   | "knowledge"
   | "surveys"
   | "interviews"
@@ -46,7 +44,6 @@ const TAB_LABELS: Record<Tab, string> = {
   chat: "Chat",
   threads: "Threads",
   files: "Files",
-  notes: "Notes",
   knowledge: "Knowledge",
   surveys: "Surveys",
   interviews: "Interviews",
@@ -59,7 +56,6 @@ const TAB_ORDER: Tab[] = [
   "chat",
   "threads",
   "files",
-  "notes",
   "knowledge",
   "surveys",
   "interviews",
@@ -244,11 +240,6 @@ export default function SidePanel() {
         {tab === "files" && (
           <div className="flex-1 min-h-0 flex flex-col">
             <FilesPanel />
-          </div>
-        )}
-        {tab === "notes" && (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <NotesPanel />
           </div>
         )}
         {tab === "knowledge" && (

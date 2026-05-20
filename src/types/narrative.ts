@@ -1585,7 +1585,7 @@ export type NarrativeState = {
    *  with the narrative so prior cross-branch analysis can be revisited. */
   branchChatThreads?: Record<string, BranchChatThread>;
   /** Notes keyed by note ID — persisted with the narrative */
-  notes?: Record<string, Note>;
+  driverEntries?: Record<string, DriverEntry>;
   /** Branch evaluations keyed by branch ID — most recent eval per branch */
   structureReviews?: Record<string, StructureReview>;
   /** Prose evaluations keyed by branch ID — most recent prose eval per branch */
@@ -1672,6 +1672,13 @@ export type SourceFile = {
 
   /** Error message when status === 'failed'. */
   error?: string;
+
+  /** Provenance discriminator. Absence (or 'analysis') = file produced
+   *  by manual paste / file upload through the standard composer flow.
+   *  'daily-log' = file produced by the Driver workspace compacting a
+   *  set of Log entries through the synthesis step; conversion adds the
+   *  continuation-first thread alignment pass for this class. */
+  source?: 'analysis' | 'daily-log';
 };
 
 // ── Surveys ───────────────────────────────────────────────────────────────────
@@ -2559,7 +2566,6 @@ export type NarrativeViewState = {
   searchFocusMode: boolean;
   activeChatThreadId: string | null;
   activeBranchChatThreadId: string | null;
-  activeNoteId: string | null;
   autoRunState: AutoRunState | null;
   isPlaying: boolean;
 };
@@ -2619,6 +2625,7 @@ export type GraphViewMode =
   | "pulse"
   | "threads"
   | "search"
+  | "driver"
   | "reasoning"
   | "network"
   | "market"
@@ -2686,13 +2693,38 @@ export type BranchChatThread = {
   updatedAt: number;
 };
 
-// ── Notes ─────────────────────────────────────────────────────────────────────
-export type Note = {
+// ── Driver entries (Daily Driver workspace) ───────────────────────────────────
+//
+// Daily-driver substrate. The Driver workspace gives the operator a queue
+// they pour incoming material into — pasted briefings, links with quoted
+// excerpts, one-line observations — without committing to structure.
+// Entries pile up in the queue; a "compact" pass selects a subset and
+// synthesises them into a markdown SourceFile, which then flows through
+// the standard extend → reconcile → Apply pipeline. Entries are stateless:
+// compaction is a read, the entry persists and can be re-included in
+// later compacts.
+export type DriverEntry = {
   id: string;
-  title: string;
-  content: string;
-  createdAt: number;
-  updatedAt: number;
+  /** Short title — the operator's structural anchor for the entry. Shown
+   *  on the queue card; used by the synthesiser as a grouping hint. May
+   *  be empty (cards then fall back to a leading-line preview). */
+  title?: string;
+  /** Body. Operator paste targets this; structure is optional but the
+   *  intent is "structured thought input", not stream-of-consciousness. */
+  text: string;
+  /** When the entry was captured (ms epoch). Used for grouping in the UI
+   *  and for ordering within a compact. */
+  capturedAt: number;
+  /** Optional soft anchors typed inline with `#actor` / `#thread` style
+   *  shortcuts. Synthesis treats them as hints, never requirements. */
+  tags?: string[];
+  /** SourceFile ids this entry has been folded into via a compact /
+   *  synthesise pass. Non-empty = entry is locked (read-only — operator
+   *  can no longer edit or delete it). Entry remains visible in the
+   *  queue and is still selectable for inclusion in future compacts;
+   *  re-use is allowed because synthesis is a read. Provenance for
+   *  later auditing — "which file did this fragment end up in." */
+  usedInFileIds?: string[];
 };
 
 export type AppState = {

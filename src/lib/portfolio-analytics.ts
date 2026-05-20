@@ -230,8 +230,16 @@ export function buildPortfolioRows(
 /** Replay every thread's narrator belief up through `targetIndex`, returning
  *  a fresh threads map with evolved state. Drives the sidebar scrubber so
  *  probabilities / volume / volatility visibly change as the user iterates
- *  through scenes. Threads with openedAt later than the target are included
- *  in their initial uniform-prior state.
+ *  through scenes.
+ *
+ *  Introduction is inferred from observable presence on the branch:
+ *  a thread enters the map either when its `openedAt` scene/world-build
+ *  is walked, or when its first `newThreads` mention or `threadDelta`
+ *  touch fires — whichever comes first. The touch fallback covers
+ *  threads with stale or off-branch `openedAt` (e.g. data produced
+ *  before file-conversion remapped `openedAt`); they still surface
+ *  when actual evidence appears in this branch's scenes. Threads
+ *  with no observable presence on this branch never enter the map.
  *
  *  Not for generation paths — those read live state. Use this for timeline
  *  visualisations and portfolio scrubbing only. */
@@ -243,16 +251,6 @@ export function replayThreadsAtIndex(
   const threads: Record<string, Thread> = {};
   const limit = Math.min(targetIndex, resolvedKeys.length - 1);
 
-  // Threads with no openedAt (or whose openedAt predates the resolved timeline)
-  // are treated as always-open for backward-compat with malformed data; seed
-  // them upfront from their stored prior. Mirrors computeDerivedEntities.
-  const resolvedKeySet = new Set(resolvedKeys);
-  for (const [id, t] of Object.entries(narrative.threads)) {
-    if (!t.openedAt || !resolvedKeySet.has(t.openedAt)) {
-      threads[id] = seedThreadCopy(t);
-    }
-  }
-
   for (let i = 0; i <= limit; i++) {
     const key = resolvedKeys[i];
     const wb = narrative.worldBuilds?.[key] as WorldBuild | undefined;
@@ -262,12 +260,17 @@ export function replayThreadsAtIndex(
       for (const t of wb.expansionManifest.newThreads ?? []) {
         if (!threads[t.id]) threads[t.id] = seedThreadCopy(t);
       }
-      // Apply the commit's market evidence the same way computeDerivedEntities
-      // does, so a world-only narrative doesn't show its threads as untouched.
+      // Apply the commit's market evidence. If the delta touches a
+      // thread we haven't seeded yet (stale openedAt / no newThreads
+      // entry), seed from the live record so the evidence drives a
+      // trajectory rather than being silently dropped.
       for (const tm of wb.expansionManifest.threadDeltas ?? []) {
-        const thread = threads[tm.threadId];
-        if (!thread) continue;
-        threads[tm.threadId] = applyThreadDelta(thread, tm, wb.id);
+        if (!threads[tm.threadId]) {
+          const live = narrative.threads[tm.threadId];
+          if (!live) continue;
+          threads[tm.threadId] = seedThreadCopy(live);
+        }
+        threads[tm.threadId] = applyThreadDelta(threads[tm.threadId], tm, wb.id);
       }
       continue;
     }
@@ -278,7 +281,13 @@ export function replayThreadsAtIndex(
     }
     const touched = new Set<string>();
     for (const tm of scene.threadDeltas ?? []) {
-      if (!threads[tm.threadId]) continue;
+      if (!threads[tm.threadId]) {
+        // Touch-as-introduction fallback. See the wb branch above for
+        // rationale — keep both branches in lockstep.
+        const live = narrative.threads[tm.threadId];
+        if (!live) continue;
+        threads[tm.threadId] = seedThreadCopy(live);
+      }
       touched.add(tm.threadId);
       threads[tm.threadId] = applyThreadDelta(threads[tm.threadId], tm, scene.id);
     }
@@ -346,8 +355,12 @@ export function computeRecentMovements(
   return movements;
 }
 
-/** Set of thread ids that have actually been introduced by `targetIndex` —
- *  openedAt resolves to a scene or world-build at-or-before the cutoff. */
+/** Set of thread ids that have actually been introduced by `targetIndex`.
+ *  A thread counts as introduced when ANY of these hold for a scene /
+ *  world-build at-or-before the cutoff: its `openedAt` resolves there,
+ *  it appears in `newThreads`, or a `threadDelta` touches it. The
+ *  touch-as-introduction fallback covers threads with stale or
+ *  off-branch `openedAt` (matches `replayThreadsAtIndex`). */
 export function introducedThreadIdsAtIndex(
   narrative: NarrativeState,
   resolvedKeys: string[],
@@ -356,10 +369,29 @@ export function introducedThreadIdsAtIndex(
   const visible = new Set<string>();
   const limit = Math.min(targetIndex, resolvedKeys.length - 1);
   const visibleKeys = new Set(resolvedKeys.slice(0, limit + 1));
+  // Pass 1 — openedAt direct hits.
   for (const [id, t] of Object.entries(narrative.threads)) {
-    if (!t.openedAt || visibleKeys.has(t.openedAt)) {
-      visible.add(id);
+    if (t.openedAt && visibleKeys.has(t.openedAt)) visible.add(id);
+  }
+  // Pass 2 — newThreads + threadDelta touches in visible scenes / world
+  // commits. Iterates keys once, not (threads × keys).
+  for (const key of visibleKeys) {
+    const scene = narrative.scenes[key] as Scene | undefined;
+    if (scene && scene.kind === 'scene') {
+      for (const nt of scene.newThreads ?? []) visible.add(nt.id);
+      for (const tm of scene.threadDeltas ?? []) visible.add(tm.threadId);
+      continue;
     }
+    const wb = narrative.worldBuilds?.[key] as WorldBuild | undefined;
+    if (wb) {
+      for (const nt of wb.expansionManifest.newThreads ?? []) visible.add(nt.id);
+      for (const tm of wb.expansionManifest.threadDeltas ?? []) visible.add(tm.threadId);
+    }
+  }
+  // Drop ids that aren't actual narrative threads (defensive — a
+  // threadDelta could in principle reference an unknown id).
+  for (const id of [...visible]) {
+    if (!narrative.threads[id]) visible.delete(id);
   }
   return visible;
 }
@@ -417,15 +449,38 @@ export function buildThreadTrajectory(
   // in-world base rate (e.g. 39/30/30 for a contested 3-outcome market)
   // instead of forcing uniform.
   let cursor: Thread = seedThreadCopy(thread0);
-  // A thread that opens mid-story has no market state to plot before openedAt.
-  // Plotting a flat line from scene 0 to the opening scene misrepresents the
-  // market as priced-before-it-existed. Skip iterations before openedAt when
-  // the thread carries a resolvable opening key; threads without a known
-  // openedAt (or whose openedAt predates the resolved timeline) start at 0.
-  const openedIdx = thread0.openedAt
+  // A thread that opens mid-story has no market state to plot before
+  // openedAt — plotting a flat line from scene 0 misrepresents the
+  // market as priced-before-it-existed. Resolve the introduction key
+  // in two passes: (1) honour `openedAt` when it points at a key on
+  // this branch; (2) otherwise fall back to the earliest key where
+  // the thread shows observable presence (newThreads or threadDelta).
+  // The fallback covers stale / off-branch openedAt — a thread with
+  // applied evidence on the branch still gets a real trajectory.
+  // Returns [] only when no presence is observable anywhere on the
+  // branch; the chart renders a dashed prior in that case.
+  let startIdx = thread0.openedAt
     ? resolvedEntryKeys.indexOf(thread0.openedAt)
     : -1;
-  const startIdx = openedIdx >= 0 ? openedIdx : 0;
+  if (startIdx < 0) {
+    for (let i = 0; i < resolvedEntryKeys.length; i++) {
+      const key = resolvedEntryKeys[i];
+      const scene = narrative.scenes[key] as Scene | undefined;
+      if (scene && scene.kind === 'scene') {
+        const inNew = (scene.newThreads ?? []).some((nt) => nt.id === threadId);
+        const inDelta = (scene.threadDeltas ?? []).some((tm) => tm.threadId === threadId);
+        if (inNew || inDelta) { startIdx = i; break; }
+        continue;
+      }
+      const wb = narrative.worldBuilds?.[key] as WorldBuild | undefined;
+      if (wb) {
+        const inNew = (wb.expansionManifest.newThreads ?? []).some((nt) => nt.id === threadId);
+        const inDelta = (wb.expansionManifest.threadDeltas ?? []).some((tm) => tm.threadId === threadId);
+        if (inNew || inDelta) { startIdx = i; break; }
+      }
+    }
+  }
+  if (startIdx < 0) return [];
   // Seed the scene ordinal from the count of scenes that precede startIdx so
   // the ordinal we emit on each trajectory point is scene-only (world commits
   // excluded). The UI uses this directly for axis labels.
@@ -525,15 +580,11 @@ export function buildPortfolioTrajectory(
   const limit = Math.min(currentSceneIndex, resolvedEntryKeys.length - 1);
   if (limit < 0) return [];
 
+  // Strict introduction semantics: threads only enter the map at their
+  // openedAt scene/world-build during the walk below. Off-branch or
+  // malformed openedAt → never visible on this timeline. Matches
+  // replayThreadsAtIndex + introducedThreadIdsAtIndex.
   const threads: Record<string, Thread> = {};
-  // Threads with no openedAt (or unresolvable openedAt) are treated as
-  // always-open, matching replayThreadsAtIndex.
-  const resolvedKeySet = new Set(resolvedEntryKeys);
-  for (const [id, t] of Object.entries(narrative.threads)) {
-    if (!t.openedAt || !resolvedKeySet.has(t.openedAt)) {
-      threads[id] = seedThreadCopy(t);
-    }
-  }
 
   const points: PortfolioTrajectoryPoint[] = [];
   let sceneOrdinal = 0;

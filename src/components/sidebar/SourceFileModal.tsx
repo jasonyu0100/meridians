@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import { assetManager } from '@/lib/asset-manager';
+import { Markdown } from '@/components/ui/Markdown';
 import type { SourceFile } from '@/types/narrative';
 
 type Props = {
@@ -16,10 +17,17 @@ type Props = {
   onClose: () => void;
 };
 
+type View = 'formatted' | 'source';
+
 export function SourceFileModal({ file, onClose }: Props) {
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // All files render markdown by default — the renderer falls through
+  // to plain paragraphs when no markdown tokens are present, so this
+  // is non-destructive for plain-text source files too. Operator can
+  // flip to Source to see raw input.
+  const [view, setView] = useState<View>('formatted');
 
   // FilesPanel keys this modal on file.id so swapping files remounts the
   // component, which is why we can hydrate from contentRef just once on
@@ -67,6 +75,12 @@ export function SourceFileModal({ file, onClose }: Props) {
         <span className="text-[10px] text-text-dim/65 font-mono tabular-nums shrink-0 ml-auto">
           {file.wordCount.toLocaleString()} words · {file.charCount.toLocaleString()} chars
         </span>
+        {/* Formatted / Source toggle — markdown rendering for compacted
+            files (and any other markdown source files). */}
+        <div className="ml-3 flex items-center gap-px rounded overflow-hidden border border-white/10 shrink-0">
+          <ViewPill label="Formatted" active={view === 'formatted'} onClick={() => setView('formatted')} />
+          <ViewPill label="Source" active={view === 'source'} onClick={() => setView('source')} />
+        </div>
       </ModalHeader>
       <ModalBody className="p-0">
         {content == null && !error && (
@@ -80,12 +94,18 @@ export function SourceFileModal({ file, onClose }: Props) {
           </div>
         )}
         {content != null && (
-          <pre
-            className="text-[12px] text-text-secondary font-mono leading-relaxed whitespace-pre-wrap px-5 py-4 select-text"
-            style={{ scrollbarWidth: 'thin' }}
-          >
-            {content}
-          </pre>
+          view === 'formatted' ? (
+            <div className="px-5 py-4 max-w-3xl mx-auto" style={{ scrollbarWidth: 'thin' }}>
+              <Markdown text={content} variant="reading" />
+            </div>
+          ) : (
+            <pre
+              className="text-[12px] text-text-secondary font-mono leading-relaxed whitespace-pre-wrap px-5 py-4 select-text"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {content}
+            </pre>
+          )
         )}
       </ModalBody>
       <ModalFooter>
@@ -98,5 +118,26 @@ export function SourceFileModal({ file, onClose }: Props) {
         </button>
       </ModalFooter>
     </Modal>
+  );
+}
+
+function ViewPill({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2 py-1 text-[10px] uppercase tracking-wider font-mono transition ${
+        active ? 'bg-white/10 text-text-primary' : 'text-text-dim/65 hover:text-text-secondary hover:bg-white/5'
+      }`}
+    >
+      {label}
+    </button>
   );
 }

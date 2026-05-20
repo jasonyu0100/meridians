@@ -69,7 +69,7 @@ import type {
   NarrativeEntry,
   NarrativeState,
   NarrativeViewState,
-  Note,
+  DriverEntry,
   OwnershipDelta,
   PlanEvaluation,
   PlanningScenario,
@@ -674,7 +674,6 @@ const defaultViewState: NarrativeViewState = {
   searchFocusMode: false,
   activeChatThreadId: null,
   activeBranchChatThreadId: null,
-  activeNoteId: null,
   autoRunState: null,
   isPlaying: false,
 };
@@ -933,6 +932,15 @@ export type Action =
       worldBuilds: WorldBuild[];
       arcs: Arc[];
       appendEntryIds: string[];
+      /** Phase III.b — expansion records for existing threads that
+       *  absorbed slice contributions. Each entry appends outcomes
+       *  and participants to the named existing thread (deduped
+       *  case-insensitively for outcomes, by id for participants). */
+      threadExpansions?: Array<{
+        existingThreadId: string;
+        addOutcomes: string[];
+        addParticipants: { id: string; type: 'character' | 'location' | 'artifact' }[];
+      }>;
     }
   // Chat threads
   | { type: "CREATE_CHAT_THREAD"; thread: ChatThread }
@@ -958,11 +966,14 @@ export type Action =
       compareBranchIds?: string[];
       scopeState?: ScopeState;
     }
-  // Notes
-  | { type: "CREATE_NOTE"; note: Note }
-  | { type: "DELETE_NOTE"; noteId: string }
-  | { type: "UPDATE_NOTE"; noteId: string; title?: string; content?: string }
-  | { type: "SET_ACTIVE_NOTE"; noteId: string | null }
+  // Driver workspace — entries in the daily-driver queue
+  | { type: "CREATE_DRIVER_ENTRY"; entry: DriverEntry }
+  | { type: "DELETE_DRIVER_ENTRY"; entryId: string }
+  | { type: "UPDATE_DRIVER_ENTRY"; entryId: string; title?: string; text?: string; tags?: string[] }
+  // Stamp a set of entries with the SourceFile they were folded into.
+  // Marks them locked — UPDATE_DRIVER_ENTRY and DELETE_DRIVER_ENTRY
+  // become no-ops on these entries thereafter.
+  | { type: "MARK_DRIVER_ENTRIES_USED"; entryIds: string[]; fileId: string }
   // Surveys
   | { type: "CREATE_SURVEY"; survey: Survey }
   | { type: "DELETE_SURVEY"; surveyId: string }
@@ -2944,6 +2955,42 @@ function reducer(state: AppState, action: Action): AppState {
         for (const a of action.artifacts) artifacts[a.id] = a;
         const threads = { ...n.threads };
         for (const t of action.threads) threads[t.id] = t;
+        // Phase III.b — expand existing threads with outcome and
+        // participant contributions from merged slice threads. The
+        // expansion records were computed in claimSliceIds; here we
+        // just append, deduped against current state (a no-op
+        // expansion is fine — the merged thread had nothing new to
+        // contribute).
+        for (const expansion of action.threadExpansions ?? []) {
+          const target = threads[expansion.existingThreadId];
+          if (!target) continue;
+          const seenOutcomes = new Set(target.outcomes.map((o) => o.toLowerCase()));
+          const nextOutcomes = [...target.outcomes];
+          for (const o of expansion.addOutcomes) {
+            const key = o.trim().toLowerCase();
+            if (!key || seenOutcomes.has(key)) continue;
+            seenOutcomes.add(key);
+            nextOutcomes.push(o.trim());
+          }
+          const seenParticipantIds = new Set(target.participants.map((p) => p.id));
+          const nextParticipants = [...target.participants];
+          for (const p of expansion.addParticipants) {
+            if (seenParticipantIds.has(p.id)) continue;
+            seenParticipantIds.add(p.id);
+            nextParticipants.push(p);
+          }
+          if (
+            nextOutcomes.length === target.outcomes.length &&
+            nextParticipants.length === target.participants.length
+          ) {
+            continue;
+          }
+          threads[expansion.existingThreadId] = {
+            ...target,
+            outcomes: nextOutcomes,
+            participants: nextParticipants,
+          };
+        }
         const scenes = { ...n.scenes };
         for (const s of action.scenes) scenes[s.id] = s;
         const worldBuilds = { ...(n.worldBuilds ?? {}) };
@@ -3124,52 +3171,59 @@ function reducer(state: AppState, action: Action): AppState {
         };
       });
 
-    case "CREATE_NOTE": {
-      const withNote = updateNarrative(state, (n) => ({
+    // ── Driver entries (daily-driver queue) ───────────────────────────────
+    case "CREATE_DRIVER_ENTRY":
+      return updateNarrative(state, (n) => ({
         ...n,
-        notes: { ...(n.notes ?? {}), [action.note.id]: action.note },
+        driverEntries: { ...(n.driverEntries ?? {}), [action.entry.id]: action.entry },
       }));
-      return { ...withNote, viewState: { ...withNote.viewState, activeNoteId: action.note.id } };
-    }
 
-    case "DELETE_NOTE": {
-      const withoutNote = updateNarrative(state, (n) => {
-        const { [action.noteId]: _, ...rest } = n.notes ?? {};
-        return { ...n, notes: rest };
-      });
-      let nextActiveNote = state.viewState.activeNoteId;
-      if (state.viewState.activeNoteId === action.noteId) {
-        const remaining = Object.values(
-          withoutNote.activeNarrative?.notes ?? {},
-        );
-        remaining.sort((a, b) => b.updatedAt - a.updatedAt);
-        nextActiveNote = remaining[0]?.id ?? null;
-      }
-      return { ...withoutNote, viewState: { ...withoutNote.viewState, activeNoteId: nextActiveNote } };
-    }
-
-    case "UPDATE_NOTE":
+    case "DELETE_DRIVER_ENTRY":
       return updateNarrative(state, (n) => {
-        const note = n.notes?.[action.noteId];
-        if (!note) return n;
+        const entry = n.driverEntries?.[action.entryId];
+        // Locked entries (already folded into a SourceFile) are immutable.
+        // Silently no-op rather than throwing — the UI surface should
+        // never offer the action, but the guard keeps state coherent if
+        // a stale callsite tries.
+        if (!entry || (entry.usedInFileIds && entry.usedInFileIds.length > 0)) return n;
+        const { [action.entryId]: _, ...rest } = n.driverEntries ?? {};
+        return { ...n, driverEntries: rest };
+      });
+
+    case "UPDATE_DRIVER_ENTRY":
+      return updateNarrative(state, (n) => {
+        const entry = n.driverEntries?.[action.entryId];
+        if (!entry) return n;
+        // Locked entries are read-only — see DELETE comment above.
+        if (entry.usedInFileIds && entry.usedInFileIds.length > 0) return n;
         return {
           ...n,
-          notes: {
-            ...(n.notes ?? {}),
-            [action.noteId]: {
-              ...note,
+          driverEntries: {
+            ...(n.driverEntries ?? {}),
+            [action.entryId]: {
+              ...entry,
               ...(action.title !== undefined ? { title: action.title } : {}),
-              ...(action.content !== undefined
-                ? { content: action.content }
-                : {}),
-              updatedAt: Date.now(),
+              ...(action.text !== undefined ? { text: action.text } : {}),
+              ...(action.tags !== undefined ? { tags: action.tags } : {}),
             },
           },
         };
       });
 
-    case "SET_ACTIVE_NOTE":
-      return { ...state, viewState: { ...state.viewState, activeNoteId: action.noteId } };
+    case "MARK_DRIVER_ENTRIES_USED":
+      return updateNarrative(state, (n) => {
+        const entries = n.driverEntries ?? {};
+        const ids = new Set(action.entryIds);
+        const next: Record<string, DriverEntry> = { ...entries };
+        for (const id of ids) {
+          const entry = entries[id];
+          if (!entry) continue;
+          const usedInFileIds = entry.usedInFileIds ?? [];
+          if (usedInFileIds.includes(action.fileId)) continue;
+          next[id] = { ...entry, usedInFileIds: [...usedInFileIds, action.fileId] };
+        }
+        return { ...n, driverEntries: next };
+      });
 
     // ── Surveys ───────────────────────────────────────────────────────────
     case "CREATE_SURVEY":
