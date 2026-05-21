@@ -322,6 +322,26 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
     onClose();
   }
 
+  // Create a fresh orphan branch — no parent, no fork point, no commits.
+  // Equivalent to `git checkout --orphan`: a clean slate the operator can
+  // build on without inheriting any prior timeline.
+  function handleCreateOrigin() {
+    const name = newBranchName.trim() || `Origin ${allBranches.length + 1}`;
+    dispatch({
+      type: 'CREATE_BRANCH',
+      branch: {
+        id: `B-${Date.now()}`,
+        name,
+        parentBranchId: null,
+        forkEntryId: null,
+        entryIds: [],
+        createdAt: Date.now(),
+      },
+    });
+    setNewBranchName('');
+    onClose();
+  }
+
   function toggleCompare(branchId: string) {
     setCompareBranchIds(prev =>
       prev.includes(branchId)
@@ -395,7 +415,59 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
 
         {/* ── Sidebar ─────────────────────────────────────────────────── */}
         <aside className="w-72 border-r border-white/6 flex flex-col shrink-0">
-          <div className="px-4 pt-4 pb-2">
+          <div className="border-b border-white/6 p-3 shrink-0 bg-white/2">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] text-text-dim uppercase tracking-widest">New Branch</p>
+              {effectiveForkEntryId === currentEntryId && currentEntryId && (
+                <span className="text-[9px] text-text-dim">at current scene</span>
+              )}
+            </div>
+            <p className="text-[10px] text-text-secondary mb-2 leading-tight">
+              Forking from <span className="text-text-primary">{narrative.branches[viewingBranchId ?? '']?.name ?? '—'}</span>
+            </p>
+            <input
+              type="text"
+              value={newBranchName}
+              onChange={(e) => setNewBranchName(e.target.value)}
+              placeholder={`Branch ${allBranches.length + 1}`}
+              className="bg-bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none placeholder:text-text-dim mb-2"
+            />
+            <label className="text-[9px] uppercase tracking-widest text-text-dim block mb-1">Fork after</label>
+            <select
+              value={effectiveForkEntryId ?? ''}
+              onChange={(e) => setForkEntryId(e.target.value || null)}
+              className="bg-bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none mb-2"
+            >
+              {viewingSequence.map((key, idx) => {
+                const label = narrative.worldBuilds[key]
+                  ? narrative.worldBuilds[key].summary
+                  : (narrative.scenes[key]?.summary ?? key);
+                return (
+                  <option key={key} value={key} className="bg-bg-panel">
+                    {idx + 1}. {label.slice(0, 60)}{label.length > 60 ? '…' : ''}
+                  </option>
+                );
+              })}
+            </select>
+            <p className="text-[9px] text-text-dim mb-2 leading-tight">
+              Tip: click any row in the graph to set the fork point.
+            </p>
+            <button
+              onClick={handleFork}
+              disabled={!effectiveForkEntryId}
+              className="w-full bg-white/10 hover:bg-white/16 text-text-primary text-xs font-semibold px-3 py-2 rounded-md transition disabled:opacity-30 disabled:pointer-events-none"
+            >
+              Create Branch
+            </button>
+            <button
+              onClick={handleCreateOrigin}
+              title="Fresh branch with no parent and no commits"
+              className="w-full mt-2 px-3 py-2 rounded-md text-xs font-semibold text-text-secondary hover:text-text-primary border border-white/10 hover:border-white/20 hover:bg-white/5 transition"
+            >
+              + New Origin
+            </button>
+          </div>
+          <div className="px-4 pt-3 pb-2">
             <p className="text-[10px] text-text-dim uppercase tracking-widest">All Branches</p>
           </div>
 
@@ -539,51 +611,6 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
             })}
           </div>
 
-          <div className="border-t border-white/6 p-3 shrink-0 bg-white/2">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] text-text-dim uppercase tracking-widest">New Branch</p>
-              {effectiveForkEntryId === currentEntryId && currentEntryId && (
-                <span className="text-[9px] text-text-dim">at current scene</span>
-              )}
-            </div>
-            <p className="text-[10px] text-text-secondary mb-2 leading-tight">
-              Forking from <span className="text-text-primary">{narrative.branches[viewingBranchId ?? '']?.name ?? '—'}</span>
-            </p>
-            <input
-              type="text"
-              value={newBranchName}
-              onChange={(e) => setNewBranchName(e.target.value)}
-              placeholder={`Branch ${allBranches.length + 1}`}
-              className="bg-bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none placeholder:text-text-dim mb-2"
-            />
-            <label className="text-[9px] uppercase tracking-widest text-text-dim block mb-1">Fork after</label>
-            <select
-              value={effectiveForkEntryId ?? ''}
-              onChange={(e) => setForkEntryId(e.target.value || null)}
-              className="bg-bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none mb-2"
-            >
-              {viewingSequence.map((key, idx) => {
-                const label = narrative.worldBuilds[key]
-                  ? narrative.worldBuilds[key].summary
-                  : (narrative.scenes[key]?.summary ?? key);
-                return (
-                  <option key={key} value={key} className="bg-bg-panel">
-                    {idx + 1}. {label.slice(0, 60)}{label.length > 60 ? '…' : ''}
-                  </option>
-                );
-              })}
-            </select>
-            <p className="text-[9px] text-text-dim mb-2 leading-tight">
-              Tip: click any row in the graph to set the fork point.
-            </p>
-            <button
-              onClick={handleFork}
-              disabled={!effectiveForkEntryId}
-              className="w-full bg-white/10 hover:bg-white/16 text-text-primary text-xs font-semibold px-3 py-2 rounded-md transition disabled:opacity-30 disabled:pointer-events-none"
-            >
-              Create Branch
-            </button>
-          </div>
         </aside>
 
         {/* ── Main ────────────────────────────────────────────────────── */}
@@ -664,7 +691,7 @@ function GraphView({
   entryLabel, isWorldEntry, onSelect, onSwitch, parentChainOf,
   currentEntryId, forkEntryId, onSetForkEntry,
 }: GraphViewProps) {
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('tracks');
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('map');
   const selected = selectedBranchId ? narrative.branches[selectedBranchId] : null;
   const selectedColor = selected ? stableBranchColor(selected.id, allBranches) : '#666';
   const selectedSeq = selected ? resolveEntrySequence(narrative.branches, selected.id) : [];
@@ -760,11 +787,11 @@ function GraphView({
       )}
 
       {/* Layout mode toggle — small chip pair, top-right of the graph area.
-          Tracks = current per-row labelled view; Map = top-down tree of all
-          branches, no summaries, useful when many forks to scan structure. */}
+          Map (default) = top-down tree of all branches, structure-first scan;
+          Tracks = secondary per-row labelled view of the active branch. */}
       <div className="px-6 pt-3 flex items-center justify-end shrink-0">
         <div className="flex items-center gap-0.5 bg-white/5 border border-white/8 rounded-md p-0.5">
-          {(['tracks', 'map'] as LayoutMode[]).map((m) => (
+          {(['map', 'tracks'] as LayoutMode[]).map((m) => (
             <button
               key={m}
               onClick={() => setLayoutMode(m)}
