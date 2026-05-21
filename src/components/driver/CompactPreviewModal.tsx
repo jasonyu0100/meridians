@@ -32,6 +32,41 @@ import { Markdown } from '@/components/ui/Markdown';
 
 type Stage = 'setup' | 'synthesising' | 'preview' | 'staging' | 'error';
 type PreviewView = 'formatted' | 'source';
+// 'ai'     — LLM synthesises the entries into one coherent markdown
+//            document (default, higher quality, costs an API call).
+// 'concat' — concatenate entries verbatim with markdown headings.
+//            No transformation, no cost, predictable output. Useful
+//            when the operator already wrote structured entries and
+//            wants to flow them through Apply without rewriting.
+type CompactMode = 'ai' | 'concat';
+
+/** Build a markdown document by concatenating entries verbatim — no
+ *  LLM. Each entry becomes a section: its title (or a date-stamped
+ *  fallback) is the H2 heading, its body is the section content.
+ *  Order matches synthesis (capturedAt ascending). */
+function concatenateEntries(
+  entries: ReadonlyArray<DriverEntry>,
+  compactTitle: string | undefined,
+): string {
+  const ordered = [...entries].sort((a, b) => a.capturedAt - b.capturedAt);
+  const sections: string[] = [];
+  if (compactTitle && compactTitle.trim()) {
+    sections.push(`# ${compactTitle.trim()}\n`);
+  }
+  for (const e of ordered) {
+    const heading = e.title?.trim()
+      ? e.title.trim()
+      : new Date(e.capturedAt).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+    sections.push(`## ${heading}\n\n${e.text.trim()}`);
+  }
+  return sections.join('\n\n');
+}
 
 export function CompactPreviewModal({
   entries,
@@ -49,6 +84,7 @@ export function CompactPreviewModal({
   const [markdown, setMarkdown] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<PreviewView>('formatted');
+  const [mode, setMode] = useState<CompactMode>('ai');
   // Operator can drop entries from the compact in setup phase. Default
   // is all selected entries; locally-removed ids are filtered out
   // before synthesis. We also expose a hard-delete that removes the
@@ -82,8 +118,16 @@ export function CompactPreviewModal({
   async function handleSynthesise() {
     if (activeEntries.length === 0) return;
     setError(null);
-    setStage('synthesising');
     setMarkdown('');
+    // Concatenate mode — no LLM call. Build the markdown locally and
+    // jump straight to the preview / edit phase. Cheap, predictable,
+    // operator's structure passes through untouched.
+    if (mode === 'concat') {
+      setMarkdown(concatenateEntries(activeEntries, title.trim() || undefined));
+      setStage('preview');
+      return;
+    }
+    setStage('synthesising');
     try {
       const result = await synthesiseDriverCompact({
         entries: activeEntries,
@@ -161,6 +205,8 @@ export function CompactPreviewModal({
             entries={entries}
             removedIds={removedIds}
             activeCount={activeEntries.length}
+            mode={mode}
+            onModeChange={setMode}
             onDropFromCompact={dropFromCompact}
             onDeleteEntry={deleteEntry}
             onCancel={onClose}
@@ -216,6 +262,8 @@ function SetupPane({
   entries,
   removedIds,
   activeCount,
+  mode,
+  onModeChange,
   onDropFromCompact,
   onDeleteEntry,
   onCancel,
@@ -226,6 +274,8 @@ function SetupPane({
   entries: ReadonlyArray<DriverEntry>;
   removedIds: Set<string>;
   activeCount: number;
+  mode: CompactMode;
+  onModeChange: (m: CompactMode) => void;
   onDropFromCompact: (id: string) => void;
   onDeleteEntry: (id: string) => void;
   onCancel: () => void;
@@ -236,10 +286,9 @@ function SetupPane({
     <>
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
         <p className="text-[12.5px] text-text-secondary leading-relaxed max-w-2xl">
-          Synthesise the selected entries into a single markdown document. The
-          output stages as a daily-log file and runs through the standard ingest
-          pipeline — with the continuation-first thread-integration pass on
-          reconcile.
+          {mode === 'ai'
+            ? 'Synthesise the selected entries into a single markdown document. The output stages as a daily-log file and runs through the standard ingest pipeline — with the continuation-first thread-integration pass on reconcile.'
+            : 'Concatenate the selected entries verbatim — no LLM rewrite. Each entry becomes its own H2 section using its title (or capture timestamp as fallback). The output stages as a daily-log file the same way.'}
         </p>
 
         <label className="block max-w-2xl">
@@ -249,10 +298,31 @@ function SetupPane({
           <input
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="e.g. Geopolitics digest — week of 2026-05-20"
+            placeholder="e.g. Geopolitics digest — week of 2026-05-21"
             className="w-full bg-white/3 border border-white/10 rounded px-3 py-2 text-[13px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-white/25 transition"
           />
         </label>
+
+        {/* Mode toggle — LLM synthesis vs verbatim concatenation. */}
+        <div className="max-w-2xl">
+          <span className="block text-[10px] uppercase tracking-wider font-mono text-text-dim/70 mb-1.5">
+            Compaction mode
+          </span>
+          <div className="flex items-center gap-px rounded-md overflow-hidden border border-white/10 w-fit">
+            <ModeOption
+              label="AI synthesis"
+              hint="LLM rewrites the entries into a coherent document"
+              active={mode === 'ai'}
+              onClick={() => onModeChange('ai')}
+            />
+            <ModeOption
+              label="Concatenate"
+              hint="Join entries verbatim under H2 headings"
+              active={mode === 'concat'}
+              onClick={() => onModeChange('concat')}
+            />
+          </div>
+        </div>
 
         <div>
           <div className="flex items-baseline gap-3 mb-2">
@@ -336,10 +406,39 @@ function SetupPane({
           disabled={activeCount === 0}
           className="ml-auto text-[12px] px-4 py-2 rounded bg-emerald-400/15 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/25 hover:border-emerald-400/60 disabled:opacity-30 disabled:cursor-not-allowed transition"
         >
-          Synthesise →
+          {mode === 'concat' ? 'Concatenate →' : 'Synthesise →'}
         </button>
       </footer>
     </>
+  );
+}
+
+// ── Mode option pill ──────────────────────────────────────────────────
+
+function ModeOption({
+  label,
+  hint,
+  active,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={hint}
+      className={`flex flex-col items-start gap-0.5 px-3 py-1.5 transition-colors ${
+        active
+          ? 'bg-white/10 text-text-primary'
+          : 'text-text-dim/70 hover:text-text-secondary hover:bg-white/5'
+      }`}
+    >
+      <span className="text-[11px] uppercase tracking-wider font-mono">{label}</span>
+      <span className="text-[9px] text-text-dim/55 leading-tight">{hint}</span>
+    </button>
   );
 }
 
