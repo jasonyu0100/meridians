@@ -12,6 +12,9 @@ vi.mock('@/lib/text-analysis', () => ({
 vi.mock('@/lib/ai/scenes', () => ({
   reverseEngineerScenePlan: vi.fn(),
 }));
+vi.mock('@/lib/ai/game-analysis', () => ({
+  generateSceneGameAnalysis: vi.fn(),
+}));
 vi.mock('@/lib/constants', () => ({
   ANALYSIS_CONCURRENCY: 3,
   ANALYSIS_STAGGER_DELAY_MS: 10,
@@ -43,6 +46,7 @@ vi.mock('@/lib/asset-manager', () => ({
 }));
 import { extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, reextractFateWithLifecycle, assembleNarrative } from '@/lib/text-analysis';
 import { reverseEngineerScenePlan } from '@/lib/ai/scenes';
+import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { analysisRunner } from '@/lib/analysis-runner';
 const mockNarrative: NarrativeState = {
   id: 'narrative-1',
@@ -104,6 +108,32 @@ beforeEach(() => {
   vi.mocked(reconcileResults).mockImplementation(async (results) => results);
   vi.mocked(analyzeThreading).mockResolvedValue({});
   vi.mocked(assembleNarrative).mockResolvedValue(mockNarrative);
+  vi.mocked(generateSceneGameAnalysis).mockResolvedValue({
+    generatedAt: Date.now(),
+    games: [
+      {
+        beatIndex: 0,
+        beatExcerpt: 'They paused before answering.',
+        gameType: 'coordination',
+        actionAxis: 'trust',
+        playerAId: 'C-1',
+        playerAName: 'Alice',
+        playerAActions: [{ name: 'cooperate' }, { name: 'defect' }],
+        playerBId: 'C-2',
+        playerBName: 'Bob',
+        playerBActions: [{ name: 'cooperate' }, { name: 'defect' }],
+        outcomes: [
+          { aActionName: 'cooperate', bActionName: 'cooperate', stakeDeltaA: 2, stakeDeltaB: 2, description: 'mutual win' },
+          { aActionName: 'cooperate', bActionName: 'defect', stakeDeltaA: -1, stakeDeltaB: 3, description: 'A betrayed' },
+          { aActionName: 'defect', bActionName: 'cooperate', stakeDeltaA: 3, stakeDeltaB: -1, description: 'B betrayed' },
+          { aActionName: 'defect', bActionName: 'defect', stakeDeltaA: 0, stakeDeltaB: 0, description: 'standoff' },
+        ],
+        realizedAAction: 'cooperate',
+        realizedBAction: 'cooperate',
+        rationale: 'They worked together.',
+      },
+    ],
+  });
 });
 afterEach(async () => {
   await new Promise(resolve => setTimeout(resolve, 10));
@@ -122,6 +152,10 @@ function createMockJob(overrides: Partial<AnalysisJob> = {}): AnalysisJob {
     results: [null, null],
     status: 'pending',
     currentChunkIndex: 0,
+    // Plans are now opt-in at the job level. The runner skips Phase 2
+    // unless this flag is set, so the pipeline tests that assert on
+    // plan extraction need to flip it on explicitly.
+    runPlanExtraction: true,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,
@@ -232,6 +266,71 @@ describe('AnalysisRunner — Phase 1: Plans', () => {
     await analysisRunner.start(job, () => {});
     const reconciledInput = vi.mocked(reconcileResults).mock.calls[0][0];
     expect(reconciledInput[0].scenes[0].prose).toBe('Specific prose content for testing.');
+  });
+  it('skips plan extraction when runPlanExtraction is not set (default opt-in)', async () => {
+    // createMockJob defaults runPlanExtraction:true; override to false
+    // to exercise the opt-in semantics — phase 2 should NOT call
+    // reverseEngineerScenePlan, and reconcile should still run on
+    // structure-only results.
+    const job = createMockJob({ runPlanExtraction: false });
+    await analysisRunner.start(job, () => {});
+    expect(reverseEngineerScenePlan).not.toHaveBeenCalled();
+    expect(reconcileResults).toHaveBeenCalledTimes(1);
+  });
+});
+// ══════════════════════════════════════════════════════════════════════════════
+// Game theory (opt-in Phase 7)
+// ══════════════════════════════════════════════════════════════════════════════
+describe('AnalysisRunner — Game theory (opt-in)', () => {
+  it('does NOT run the game-theory pass by default', async () => {
+    // Default job has runGameTheoryExtraction unset → analyser must
+    // not be called even though scenes exist on the assembled narrative.
+    const job = createMockJob();
+    await analysisRunner.start(job, () => {});
+    expect(generateSceneGameAnalysis).not.toHaveBeenCalled();
+  });
+  it('runs the analyser once per assembled scene when opted in', async () => {
+    // Make assembleNarrative return a narrative with two scenes so the
+    // game-theory pass has work to do. Each scene should receive its
+    // own analyser invocation; mutation lands on scene.gameAnalysis.
+    const sceneA = { kind: 'scene' as const, id: 'S-1', summary: 's1', povId: 'C-1', locationId: 'L-1', participantIds: [], events: [], threadDeltas: [], worldDeltas: [], relationshipDeltas: [], arcId: 'A-1' };
+    const sceneB = { ...sceneA, id: 'S-2', summary: 's2' };
+    vi.mocked(assembleNarrative).mockResolvedValueOnce({
+      ...mockNarrative,
+      scenes: { 'S-1': sceneA, 'S-2': sceneB },
+    } as NarrativeState);
+    const job = createMockJob({ runGameTheoryExtraction: true });
+    await analysisRunner.start(job, () => {});
+    expect(generateSceneGameAnalysis).toHaveBeenCalledTimes(2);
+  });
+  it('emits a game-theory phase update when opted in', async () => {
+    const sceneA = { kind: 'scene' as const, id: 'S-1', summary: 's1', povId: 'C-1', locationId: 'L-1', participantIds: [], events: [], threadDeltas: [], worldDeltas: [], relationshipDeltas: [], arcId: 'A-1' };
+    vi.mocked(assembleNarrative).mockResolvedValueOnce({
+      ...mockNarrative,
+      scenes: { 'S-1': sceneA },
+    } as NarrativeState);
+    const job = createMockJob({ runGameTheoryExtraction: true });
+    const dispatched: any[] = [];
+    await analysisRunner.start(job, (a) => dispatched.push(a));
+    const phaseUpdate = dispatched.find(
+      (a) => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.phase === 'game-theory',
+    );
+    expect(phaseUpdate).toBeDefined();
+  });
+  it('tolerates per-scene analyser failure without breaking the pipeline', async () => {
+    const sceneA = { kind: 'scene' as const, id: 'S-1', summary: 's1', povId: 'C-1', locationId: 'L-1', participantIds: [], events: [], threadDeltas: [], worldDeltas: [], relationshipDeltas: [], arcId: 'A-1' };
+    vi.mocked(assembleNarrative).mockResolvedValueOnce({
+      ...mockNarrative,
+      scenes: { 'S-1': sceneA },
+    } as NarrativeState);
+    vi.mocked(generateSceneGameAnalysis).mockRejectedValueOnce(new Error('boom'));
+    const job = createMockJob({ runGameTheoryExtraction: true });
+    const dispatched: any[] = [];
+    await analysisRunner.start(job, (a) => dispatched.push(a));
+    const completed = dispatched.find(
+      (a) => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.status === 'completed',
+    );
+    expect(completed).toBeDefined();
   });
 });
 // ══════════════════════════════════════════════════════════════════════════════

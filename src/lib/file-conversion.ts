@@ -81,10 +81,12 @@ export type ConvertFileOptions = {
    *  'world' = per-batch world commits only — knowledge injection without
    *  adding new scenes to a branch. */
   extractionMode?: 'world' | 'full';
-  /** When true, the runner skips Phase 2 (beat plans + embeddings).
-   *  Beat plans drive semantic search; skipping is faster but the slice's
-   *  new scenes won't be searchable until plans are generated later. */
-  skipPlanExtraction?: boolean;
+  /** Opt-in beat plan extraction (Phase 2). When true, plans run and
+   *  embeddings index beats + propositions for vector search / RAG.
+   *  Default false. */
+  runPlanExtraction?: boolean;
+  /** Opt-in per-scene game-theory decomposition pass. Default false. */
+  runGameTheoryExtraction?: boolean;
 };
 
 /** Kick off the conversion pipeline for a staged or failed file.
@@ -117,10 +119,12 @@ export async function convertFile(
   }));
 
   const extractionMode = options.extractionMode ?? 'full';
-  // Plans only make sense in 'full' mode (world-only drops scenes).
-  // Force skip on world-only regardless of the caller's preference so
-  // the runner doesn't waste an LLM phase on doomed scenes.
-  const skipPlanExtraction = extractionMode === 'world' || options.skipPlanExtraction === true;
+  // Both specialty passes only fire on 'full' mode (world-only drops
+  // scenes — no scenes → no plans, no games). The runner's checkbox is
+  // the operator's source of truth; world-only short-circuits both
+  // here so the runner doesn't waste an LLM phase on doomed scenes.
+  const runPlanExtraction = extractionMode === 'full' && options.runPlanExtraction === true;
+  const runGameTheoryExtraction = extractionMode === 'full' && options.runGameTheoryExtraction === true;
 
   const jobId = `AJX-${Date.now().toString(36)}`;
   const job: AnalysisJob = {
@@ -138,7 +142,8 @@ export async function convertFile(
     // Only stamp the override when non-default — keeps job shape minimal
     // and matches NewJobSetup's spread pattern on /analysis.
     ...(extractionMode === 'world' && { extractionMode: 'world' as const }),
-    ...(skipPlanExtraction && { skipPlanExtraction: true }),
+    ...(runPlanExtraction && { runPlanExtraction: true }),
+    ...(runGameTheoryExtraction && { runGameTheoryExtraction: true }),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

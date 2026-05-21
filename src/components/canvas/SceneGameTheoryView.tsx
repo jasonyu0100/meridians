@@ -64,7 +64,6 @@ export function SceneGameTheoryView({
         const result = await generateSceneGameAnalysis(
           narrative,
           scene,
-          branchId,
           undefined,
           (_token, accumulated) => setReasoning(accumulated),
         );
@@ -103,26 +102,24 @@ export function SceneGameTheoryView({
   }, [scene.id]);
 
   // ── Auto-mode (bulk) streaming — mirror the plan/prose pattern ────────
-  // When auto mode analyses this scene, surface the same reasoning stream
-  // even though generation was triggered from outside this component.
+  // Surface bulk reasoning regardless of which scene the bulk is on, so
+  // the operator can sit on any scene in the timeline and still watch the
+  // current generation pass. Local error state stays tied to *this*
+  // scene's own manual generation and is not cleared by bulk starts on
+  // other scenes.
   useEffect(() => {
-    const onStart = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { sceneId: string };
-      if (detail?.sceneId !== scene.id) return;
+    const onStart = () => {
       setBulkActive(true);
       setReasoning("");
-      setError(null);
     };
     const onReasoning = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { sceneId: string; token: string };
-      if (detail?.sceneId !== scene.id) return;
-      setReasoning((prev) => prev + (detail.token ?? ""));
+      const detail = (e as CustomEvent).detail as { token?: string };
+      setReasoning((prev) => prev + (detail?.token ?? ""));
     };
-    const onComplete = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { sceneId: string };
-      if (detail?.sceneId !== scene.id) return;
+    const onComplete = () => {
       setBulkActive(false);
-      setReasoning("");
+      // Leave the reasoning text intact between scenes so the preview
+      // doesn't flicker empty while the next bulk:game-start fires.
     };
     window.addEventListener("bulk:game-start", onStart);
     window.addEventListener("bulk:game-reasoning", onReasoning);
@@ -132,7 +129,7 @@ export function SceneGameTheoryView({
       window.removeEventListener("bulk:game-reasoning", onReasoning);
       window.removeEventListener("bulk:game-complete", onComplete);
     };
-  }, [scene.id]);
+  }, []);
 
   return (
     <div className="h-full w-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>

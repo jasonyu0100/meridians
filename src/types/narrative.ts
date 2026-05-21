@@ -2457,6 +2457,7 @@ export type AnalysisPhase =
   | "arcs"
   | "reconciliation"
   | "finalization"
+  | "game-theory"
   | "summaries"
   | "variables"
   | "meta"
@@ -2505,9 +2506,19 @@ export type AnalysisJob = {
   narrativeId?: string;
   /** Embedding progress tracking */
   embeddingProgress?: { completed: number; total: number };
-  /** Skip the beat plan extraction phase (Phase 2) — structure-only analysis.
-   *  Forced true when extractionMode === 'world' (no scenes → no plans). */
-  skipPlanExtraction?: boolean;
+  /** Opt-in beat plan extraction phase (Phase 2). When true, plans run
+   *  and embeddings index the slice's beats + propositions for vector
+   *  search / RAG. Default false — operator opts in via the Plans
+   *  checkbox. Forced false when extractionMode === 'world' (no scenes
+   *  → no plans). Positive phrasing for symmetry with
+   *  runGameTheoryExtraction. */
+  runPlanExtraction?: boolean;
+  /** Opt-in per-scene game-theory decomposition pass. When true, after
+   *  scene structure is extracted the runner kicks off the BeatGame
+   *  analyser (axis classification, 2x2 payoff matrices, realized-cell
+   *  tagging, Nash + ELO). Default false — opt-in via the Game theory
+   *  checkbox. Forced false when extractionMode === 'world'. */
+  runGameTheoryExtraction?: boolean;
   /** What the assembled NarrativeState should contain.
    *  - 'full' (default): scenes + arcs + per-batch world commits — ready to read.
    *  - 'world': one consolidated world commit only — a seed the operator

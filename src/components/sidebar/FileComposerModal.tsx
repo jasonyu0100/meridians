@@ -39,14 +39,21 @@ export function FileComposerModal({ onClose }: Props) {
   const [content, setContent] = useState('');
   const [name, setName] = useState('');
   const [extractionMode, setExtractionMode] = useState<ExtractionMode>('full');
-  const [extractPlans, setExtractPlans] = useState(true);
+  // Both opt-in features default OFF — operators turn them on only
+  // when they specifically want vector search (plans) or strategic
+  // decomposition (game theory).
+  const [extractPlans, setExtractPlans] = useState(false);
+  const [runGameTheory, setRunGameTheory] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [busy, setBusy] = useState<false | 'save' | 'convert'>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Plans only make sense in full mode (world-only drops scenes).
-  const planExtractionAllowed = extractionMode === 'full';
-  const effectiveExtractPlans = planExtractionAllowed && extractPlans;
+  // Plans + game-theory checkboxes are user-controlled regardless of
+  // extraction mode — the downstream runner force-skips them when
+  // `extractionMode === 'world'` (no scenes → no plans / games), so
+  // the checkbox stays the single source of truth from the operator's
+  // perspective.
+  const effectiveExtractPlans = extractPlans;
 
   const trimmedContent = content.trim();
   const wordCount = trimmedContent ? trimmedContent.split(/\s+/).length : 0;
@@ -86,7 +93,8 @@ export function FileComposerModal({ onClose }: Props) {
       if (then === 'convert') {
         await convertFile(narrative, file, dispatch, {
           extractionMode,
-          skipPlanExtraction: !effectiveExtractPlans,
+          runPlanExtraction: effectiveExtractPlans,
+          runGameTheoryExtraction: runGameTheory,
         });
       }
       onClose();
@@ -127,7 +135,8 @@ export function FileComposerModal({ onClose }: Props) {
           onModeChange={setExtractionMode}
           extractPlans={extractPlans}
           onPlansChange={setExtractPlans}
-          planExtractionAllowed={planExtractionAllowed}
+          runGameTheory={runGameTheory}
+          onGameTheoryChange={setRunGameTheory}
           sceneCount={sceneCount}
           wordCount={wordCount}
           error={error}
@@ -237,7 +246,8 @@ function SetupPhase({
   onModeChange,
   extractPlans,
   onPlansChange,
-  planExtractionAllowed,
+  runGameTheory,
+  onGameTheoryChange,
   sceneCount,
   wordCount,
   error,
@@ -250,7 +260,8 @@ function SetupPhase({
   onModeChange: (m: ExtractionMode) => void;
   extractPlans: boolean;
   onPlansChange: (v: boolean) => void;
-  planExtractionAllowed: boolean;
+  runGameTheory: boolean;
+  onGameTheoryChange: (v: boolean) => void;
   sceneCount: number;
   wordCount: number;
   error: string | null;
@@ -334,27 +345,20 @@ function SetupPhase({
           </div>
         </div>
 
-        {planExtractionAllowed && (
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={extractPlans}
-                onChange={(e) => onPlansChange(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-white/60 cursor-pointer"
-              />
-              <span className="text-[11px] text-text-dim group-hover:text-text-secondary transition select-none">
-                Extract beat plans
-              </span>
-            </label>
-            {!extractPlans && (
-              <p className="text-[10px] text-amber-400/60 leading-relaxed pl-5">
-                Beat plans power semantic search over this slice. Skipping is faster but the new
-                scenes won&apos;t be searchable.
-              </p>
-            )}
-          </div>
-        )}
+        <div className="space-y-3">
+          <OptInToggle
+            checked={extractPlans}
+            onChange={onPlansChange}
+            label="Beat plans"
+            hint="Enables vector search + RAG over the slice's beats and propositions."
+          />
+          <OptInToggle
+            checked={runGameTheory}
+            onChange={onGameTheoryChange}
+            label="Game theory"
+            hint="Per-scene strategic decomposition — payoff matrices, Nash, player ELO. Critical for understanding game dynamics; skip for non-strategic worlds."
+          />
+        </div>
 
         {error && <p className="text-[11px] text-red-400/80">{error}</p>}
         <p className="text-[10px] text-text-dim/55 leading-relaxed">
@@ -363,5 +367,42 @@ function SetupPhase({
         </p>
       </div>
     </ModalBody>
+  );
+}
+
+/** Single opt-in feature toggle — checkbox + label + value-prop hint.
+ *  Used for the two specialty extraction passes (plans + game theory),
+ *  both default-off. Stacked vertically so the operator reads them as
+ *  paired siblings rather than nested options. */
+function OptInToggle({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <label className="flex items-start gap-2 cursor-pointer group">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-white/60 cursor-pointer shrink-0"
+      />
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span
+          className={`text-[12px] transition select-none ${
+            checked ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'
+          }`}
+        >
+          {label}
+        </span>
+        <span className="text-[10px] text-text-dim/65 leading-snug">{hint}</span>
+      </div>
+    </label>
   );
 }

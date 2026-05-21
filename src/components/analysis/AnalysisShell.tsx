@@ -286,6 +286,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
   const isArcing = liveJob.phase === 'arcs';
   const isReconciling = liveJob.phase === 'reconciliation';
   const isFinalizing = liveJob.phase === 'finalization';
+  const isGameTheorising = liveJob.phase === 'game-theory';
   const isSummarising = liveJob.phase === 'summaries';
   const isMetaSynthesising = liveJob.phase === 'meta';
   const isAssembling = liveJob.phase === 'assembly' || isSummarising || isMetaSynthesising;
@@ -1267,11 +1268,12 @@ function JobDetail({ job }: { job: AnalysisJob }) {
         {isRunning && (
           <div className="flex items-center gap-3 mb-2.5">
             {[
-              { label: 'Structure', active: isStructuring, done: isPlanExtracting || isArcing || isReconciling || isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-emerald-400' },
-              ...(liveJob.skipPlanExtraction ? [] : [{ label: 'Plans', active: isPlanExtracting, done: isArcing || isReconciling || isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-indigo-400' }]),
-              { label: 'Arcs', active: isArcing, done: isReconciling || isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-violet-400' },
-              { label: 'Reconcile', active: isReconciling, done: isFinalizing || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-sky-400' },
-              { label: 'Finalize', active: isFinalizing, done: isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-purple-400' },
+              { label: 'Structure', active: isStructuring, done: isPlanExtracting || isArcing || isReconciling || isFinalizing || isGameTheorising || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-emerald-400' },
+              ...(liveJob.runPlanExtraction ? [{ label: 'Plans', active: isPlanExtracting, done: isArcing || isReconciling || isFinalizing || isGameTheorising || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-indigo-400' }] : []),
+              { label: 'Arcs', active: isArcing, done: isReconciling || isFinalizing || isGameTheorising || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-violet-400' },
+              { label: 'Reconcile', active: isReconciling, done: isFinalizing || isGameTheorising || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-sky-400' },
+              { label: 'Finalize', active: isFinalizing, done: isGameTheorising || isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-purple-400' },
+              ...(liveJob.runGameTheoryExtraction ? [{ label: 'Game theory', active: isGameTheorising, done: isSummarising || isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-pink-400' }] : []),
               { label: 'Summaries', active: isSummarising, done: isMetaSynthesising || liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-rose-400' },
               { label: 'Meta', active: isMetaSynthesising, done: liveJob.phase === 'assembly' || liveJob.status === 'completed', color: 'bg-fuchsia-400' },
               { label: 'Assemble', active: liveJob.phase === 'assembly' && !isSummarising && !isMetaSynthesising, done: liveJob.status === 'completed', color: 'bg-amber-400' },
@@ -1296,7 +1298,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
             <span className="text-[9px] text-white/20 font-mono uppercase tracking-wider">Structure</span>
             <span className="text-[9px] text-emerald-400/30 font-mono">{completedScenes} / {totalScenes}</span>
           </div>
-          {!liveJob.skipPlanExtraction && (
+          {liveJob.runPlanExtraction && (
             <div className="flex items-center gap-1.5">
               <div className={`w-1 h-1 rounded-full ${isPlanExtracting ? 'bg-indigo-400/70 animate-pulse' : beatStats.planCount > 0 ? 'bg-indigo-400/40' : 'bg-white/15'}`} />
               <span className="text-[9px] text-white/20 font-mono uppercase tracking-wider">Plans</span>
@@ -1439,13 +1441,18 @@ function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated:
   const [detecting, setDetecting] = useState(true);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [extractPlans, setExtractPlans] = useState(true);
+  // Both opt-in features default OFF. Plans power vector search / RAG;
+  // game-theory powers strategic decomposition. Operators turn them on
+  // only when they specifically want those capabilities.
+  const [extractPlans, setExtractPlans] = useState(false);
+  const [runGameTheory, setRunGameTheory] = useState(false);
   const [extractionMode, setExtractionMode] = useState<'world' | 'full'>('full');
-  // Plan extraction is meaningless without scenes — when the operator
-  // switches to world-only, force the plan flag off so the worker pipeline
-  // and the UI agree.
-  const planExtractionAllowed = extractionMode === 'full';
-  const effectiveExtractPlans = planExtractionAllowed && extractPlans;
+  // Plans + game-theory checkboxes are user-controlled regardless of
+  // extraction mode. The runner force-skips both on world-only mode
+  // (no scenes → no plans / games), so the checkbox is the operator-
+  // facing source of truth from the form's perspective.
+  const effectiveExtractPlans = extractPlans;
+  const effectiveGameTheory = runGameTheory;
 
   const scenes = splitCorpusIntoScenes(sourceText);
   const chunks = scenes.map(s => ({ index: s.index, text: s.prose, sectionCount: Math.ceil(s.wordCount / 100) }));
@@ -1481,7 +1488,8 @@ function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated:
         phase: 'structure',
         currentChunkIndex: 0,
         ...(extractionMode === 'world' && { extractionMode: 'world' as const }),
-        ...(!effectiveExtractPlans && { skipPlanExtraction: true }),
+        ...(effectiveExtractPlans && { runPlanExtraction: true }),
+        ...(effectiveGameTheory && { runGameTheoryExtraction: true }),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -1582,26 +1590,25 @@ function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated:
             : `${chunks.length} scenes analyzed in parallel — extracts characters, locations, threads, scenes, system knowledge, and beat plans, then reconciles and assembles.`}
         </div>
 
-        {planExtractionAllowed && (
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={extractPlans}
-                onChange={(e) => setExtractPlans(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-emerald-500 cursor-pointer"
-              />
-              <span className="text-[11px] text-white/40 group-hover:text-white/60 transition select-none">
-                Extract beat plans
-              </span>
-            </label>
-            {!extractPlans && (
-              <p className="text-[10px] text-amber-400/60 leading-relaxed pl-5.5">
-                Beat plans power AI semantic search. Skipping saves time, but search over this narrative will be unavailable.
-              </p>
-            )}
-          </div>
-        )}
+        <div className="space-y-3">
+          {/* Opt-in specialty extractions. Both default OFF — operator
+              turns them on only when they want the specific downstream
+              capability. World-only mode force-skips both downstream
+              (no scenes → no plans / games); the checkbox stays the
+              source of truth from the operator's perspective. */}
+          <SpecialtyToggle
+            checked={extractPlans}
+            onChange={setExtractPlans}
+            label="Beat plans"
+            hint="Enables vector search + RAG over the work's beats and propositions."
+          />
+          <SpecialtyToggle
+            checked={runGameTheory}
+            onChange={setRunGameTheory}
+            label="Game theory"
+            hint="Per-scene strategic decomposition — payoff matrices, Nash, player ELO. Critical for understanding game dynamics; skip for non-strategic worlds."
+          />
+        </div>
 
         {startError && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
@@ -1885,5 +1892,43 @@ export function AnalysisPageInner({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** Single opt-in specialty extraction toggle — checkbox + label +
+ *  value-prop hint. Same shape as FileComposerModal's OptInToggle so
+ *  the two setup surfaces read identically. Both defaults are OFF; the
+ *  operator turns each on only when they want the specific
+ *  downstream capability. */
+function SpecialtyToggle({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <label className="flex items-start gap-2 cursor-pointer group">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 w-3.5 h-3.5 rounded border-white/20 bg-white/5 accent-emerald-500 cursor-pointer shrink-0"
+      />
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span
+          className={`text-[12px] transition select-none ${
+            checked ? 'text-white/85' : 'text-white/55 group-hover:text-white/75'
+          }`}
+        >
+          {label}
+        </span>
+        <span className="text-[10px] text-white/35 leading-snug">{hint}</span>
+      </div>
+    </label>
   );
 }

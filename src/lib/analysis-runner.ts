@@ -13,8 +13,9 @@
 
 import { reconcileResults, analyzeThreading, assembleNarrative, extractSceneStructure, groupScenesIntoArcs, reextractFateWithLifecycle } from '@/lib/text-analysis';
 import { reverseEngineerScenePlan } from '@/lib/ai/scenes';
+import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { FatalApiError } from '@/lib/ai/errors';
-import type { AnalysisJob, AnalysisChunkResult, SourceFile } from '@/types/narrative';
+import type { AnalysisJob, AnalysisChunkResult, SourceFile, Scene } from '@/types/narrative';
 import type { Action } from '@/lib/store';
 import { ANALYSIS_CONCURRENCY, ANALYSIS_STAGGER_DELAY_MS } from '@/lib/constants';
 import { logError, logWarning, logInfo, setSystemLoggerAnalysisId } from '@/lib/system-logger';
@@ -283,16 +284,16 @@ class AnalysisRunner {
 
     // ═════════════════════════════════════════════════════════════════════════
     // Phase 2: PLANS + EMBEDDINGS — beat plans per scene (parallel)
-    // Skipped when job.skipPlanExtraction is true — structure-only analysis.
+    // Opt-in: runs only when job.runPlanExtraction is true.
     // ═════════════════════════════════════════════════════════════════════════
     d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'plans' } });
 
-    const planPending = job.skipPlanExtraction
-      ? []
-      : job.chunks.map((_, i) => i).filter(i => !results[i]?.scenes?.[0]?.plan);
+    const planPending = job.runPlanExtraction
+      ? job.chunks.map((_, i) => i).filter(i => !results[i]?.scenes?.[0]?.plan)
+      : [];
 
-    if (job.skipPlanExtraction) {
-      this.emitStream(job.id, 'Plans: skipped (structure-only analysis)');
+    if (!job.runPlanExtraction) {
+      this.emitStream(job.id, 'Plans: skipped (vector search not requested)');
     }
 
     if (planPending.length > 0) {
@@ -622,6 +623,53 @@ class AnalysisRunner {
           d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { meta } });
         },
       });
+
+      // ═════════════════════════════════════════════════════════════════════
+      // Phase 7 (opt-in): GAME THEORY — per-scene strategic decomposition.
+      //
+      // Runs the BeatGame analyser on every assembled scene in parallel
+      // (capped to GAME_CONCURRENCY). Scene structure is the canonical
+      // input — no plan / prose dependency — so this can run whether or
+      // not Plans were extracted earlier. Output is mutated onto the
+      // assembled narrative's scenes in-place; if the analyser fails on
+      // an individual scene, the scene is left with no gameAnalysis
+      // (non-fatal — log and continue).
+      // ═════════════════════════════════════════════════════════════════════
+      if (job.runGameTheoryExtraction) {
+        const scenes = Object.values(narrative.scenes ?? {}).filter(
+          (s): s is Scene => s?.kind === 'scene',
+        );
+        if (scenes.length > 0) {
+          d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { phase: 'game-theory' } });
+          this.emitStream(job.id, `Decomposing game theory: ${scenes.length} scenes...`);
+          let done = 0;
+          await runParallel(
+            scenes.map((_, i) => i),
+            async (idx) => {
+              const scene = scenes[idx];
+              try {
+                const analysis = await generateSceneGameAnalysis(narrative, scene);
+                scene.gameAnalysis = analysis;
+              } catch (err) {
+                logWarning('Game-theory analysis failed for scene (non-fatal)', err, {
+                  source: 'analysis',
+                  operation: 'game-theory',
+                  details: { sceneId: scene.id },
+                });
+              } finally {
+                done += 1;
+                this.emitStream(job.id, `Decomposing game theory: ${done}/${scenes.length}`);
+              }
+            },
+            'game-theory',
+          );
+          this.emitStream(job.id, `[OK] Game theory: ${done}/${scenes.length} scenes`);
+          if (entry.cancelled) {
+            d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused' } });
+            return;
+          }
+        }
+      }
 
       if (job.kind === 'extend' && job.targetNarrativeId && job.fileId) {
         // World-scoped extension run. Don't add a new narrative — park

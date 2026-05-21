@@ -84,21 +84,24 @@ const PHASE_LABEL: Partial<Record<AnalysisPhase, string>> = {
   arcs: 'Wiring arcs',
   reconciliation: 'Reconciling entities',
   finalization: 'Finalising',
+  'game-theory': 'Decomposing game theory',
   summaries: 'Summarising worlds',
   variables: 'Extracting variables',
   meta: 'Extracting meta',
   assembly: 'Assembling slice',
 };
 
-/** Pipeline phases in execution order. Extension jobs skip the
- *  narrative-level phases (meta, summaries) and may skip plans, so the
- *  pip rail is filtered to match what actually runs. */
+/** Pipeline phases in execution order. Extension jobs skip narrative-
+ *  level phases (meta, summaries) and the two specialty passes
+ *  (plans, game-theory) only render when explicitly opted in. The
+ *  pip rail filters to whatever's actually scheduled to run. */
 const PHASE_ORDER: AnalysisPhase[] = [
   'structure',
   'plans',
   'arcs',
   'reconciliation',
   'finalization',
+  'game-theory',
   'summaries',
   'meta',
   'assembly',
@@ -113,9 +116,11 @@ function ConvertingProgress({ job, fallbackLabel }: { job?: AnalysisJob; fallbac
   const completedChunks = job ? (job.results ?? []).filter((r) => r !== null).length : 0;
   const totalChunks = job?.chunks.length ?? 0;
   const isExtension = job?.kind === 'extend';
-  const skipsPlans = job?.skipPlanExtraction;
+  const runsPlans = !!job?.runPlanExtraction;
+  const runsGameTheory = !!job?.runGameTheoryExtraction;
   const visiblePhases = PHASE_ORDER.filter((p) => {
-    if (skipsPlans && p === 'plans') return false;
+    if (p === 'plans' && !runsPlans) return false;
+    if (p === 'game-theory' && !runsGameTheory) return false;
     if (isExtension && (p === 'meta' || p === 'summaries')) return false;
     return true;
   });

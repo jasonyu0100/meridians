@@ -11,7 +11,6 @@ import { parseJson } from "./json";
 import { buildGameTheorySystemPrompt, buildGameTheoryUserPrompt } from "@/lib/prompts/scenes/game-theory";
 import { GAME_THEORY_MODEL } from "@/lib/constants";
 import { logError, logInfo } from "@/lib/system-logger";
-import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/narrative-utils";
 import {
   ACTION_AXIS_LABELS,
   GAME_TYPE_LABELS,
@@ -84,20 +83,25 @@ function coerceOutcome(v: unknown): GameOutcome | null {
 }
 
 /**
- * Build the scene context block the analyser reads:
- * participants with names + roles, beat plan with indices, optional prose.
+ * Build the scene context block the analyser reads.
+ *
+ * Scene-structure ONLY — by design. The analyser is run during the
+ * extraction pipeline, BEFORE plans or prose exist. Reading from the
+ * structural surface (summary + threadDeltas + worldDeltas +
+ * relationshipDeltas) gives a clean, consistent input regardless of
+ * whether downstream specialty passes ever run, and keeps the
+ * game-theory decomposition anchored on what the LLM is actually
+ * confident about — the events the structure pass identified.
+ *
+ * Plan / prose are deliberately NOT consulted: a beat plan can imply
+ * strategic choices the structural deltas didn't carry, and prose
+ * tempts the analyser into beat-segmenting rather than reading the
+ * scene's underlying decision graph.
  */
 function buildSceneContext(
   narrative: NarrativeState,
   scene: Scene,
-  branchId: string | null,
 ): string {
-  const branches = narrative.branches;
-  const plan = branchId ? resolvePlanForBranch(scene, branchId, branches) : undefined;
-  const prose = branchId
-    ? resolveProseForBranch(scene, branchId, branches).prose
-    : undefined;
-
   const parts: string[] = [];
   parts.push(`SCENE ${scene.id}`);
   parts.push(`SUMMARY: ${scene.summary}`);
@@ -135,68 +139,45 @@ function buildSceneContext(
   }
   parts.push("");
 
-  // Source hierarchy — prose is the authoritative text (what actually
-  // happened). Fall back to the plan when prose isn't generated yet, and
-  // to structural deltas when neither exists. Always pick exactly one
-  // source so the analyser isn't torn between plan-indexed beats and
-  // prose-segmented beats.
-  const trimmedProse = prose?.trim() ?? "";
-  if (trimmedProse) {
-    parts.push("PROSE:");
-    parts.push(trimmedProse);
-  } else if (plan?.beats?.length) {
-    parts.push(`BEAT PLAN (${plan.beats.length} beats):`);
-    plan.beats.forEach((b, i) => {
-      parts.push(`[${i}] (${b.fn}/${b.mechanism}) ${b.what}`);
-      const props = b.propositions ?? [];
-      if (props.length > 0) {
-        parts.push(`    propositions (${props.length}):`);
-        for (const p of props) {
-          parts.push(`      - ${p.content}`);
-        }
-      }
-    });
-  } else {
-    parts.push("SCENE STRUCTURE (no prose or plan available — analyse from deltas + summary):");
-    if (scene.events?.length) {
-      parts.push(`Events: ${scene.events.join(", ")}`);
+  parts.push("SCENE STRUCTURE — analyse from these deltas + the summary above. No plan or prose is used: structure is the canonical surface.");
+  if (scene.events?.length) {
+    parts.push(`Events: ${scene.events.join(", ")}`);
+  }
+  if (scene.threadDeltas?.length) {
+    parts.push("Thread movements:");
+    for (const td of scene.threadDeltas) {
+      const desc = narrative.threads[td.threadId]?.description ?? td.threadId;
+      const moves = (td.updates ?? [])
+        .map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`)
+        .join(' ');
+      parts.push(`  - ${desc} [${td.logType}] ${moves}`);
     }
-    if (scene.threadDeltas?.length) {
-      parts.push("Thread movements:");
-      for (const td of scene.threadDeltas) {
-        const desc = narrative.threads[td.threadId]?.description ?? td.threadId;
-        const moves = (td.updates ?? [])
-          .map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`)
-          .join(' ');
-        parts.push(`  - ${desc} [${td.logType}] ${moves}`);
+  }
+  if (scene.worldDeltas?.length) {
+    parts.push("World reveals:");
+    for (const wd of scene.worldDeltas) {
+      const ent =
+        narrative.characters[wd.entityId] ??
+        narrative.locations[wd.entityId] ??
+        narrative.artifacts[wd.entityId];
+      const name = ent?.name ?? wd.entityId;
+      for (const n of wd.addedNodes ?? []) {
+        parts.push(`  - ${name}: ${n.content}`);
       }
     }
-    if (scene.worldDeltas?.length) {
-      parts.push("World reveals:");
-      for (const wd of scene.worldDeltas) {
-        const ent =
-          narrative.characters[wd.entityId] ??
-          narrative.locations[wd.entityId] ??
-          narrative.artifacts[wd.entityId];
-        const name = ent?.name ?? wd.entityId;
-        for (const n of wd.addedNodes ?? []) {
-          parts.push(`  - ${name}: ${n.content}`);
-        }
-      }
-    }
-    if (scene.relationshipDeltas?.length) {
-      parts.push("Relationship shifts:");
-      for (const rd of scene.relationshipDeltas) {
-        const fromName =
-          narrative.characters[rd.from]?.name ??
-          narrative.locations[rd.from]?.name ??
-          rd.from;
-        const toName =
-          narrative.characters[rd.to]?.name ??
-          narrative.locations[rd.to]?.name ??
-          rd.to;
-        parts.push(`  - ${fromName} → ${toName}: ${rd.type} (Δ ${rd.valenceDelta})`);
-      }
+  }
+  if (scene.relationshipDeltas?.length) {
+    parts.push("Relationship shifts:");
+    for (const rd of scene.relationshipDeltas) {
+      const fromName =
+        narrative.characters[rd.from]?.name ??
+        narrative.locations[rd.from]?.name ??
+        rd.from;
+      const toName =
+        narrative.characters[rd.to]?.name ??
+        narrative.locations[rd.to]?.name ??
+        rd.to;
+      parts.push(`  - ${fromName} → ${toName}: ${rd.type} (Δ ${rd.valenceDelta})`);
     }
   }
 
@@ -392,7 +373,6 @@ function sanitiseGame(raw: RawGame, narrative: NarrativeState): BeatGame | null 
 export async function generateSceneGameAnalysis(
   narrative: NarrativeState,
   scene: Scene,
-  branchId: string | null,
   onToken?: (token: string, accumulated: string) => void,
   onReasoning?: (token: string, accumulated: string) => void,
 ): Promise<SceneGameAnalysis> {
@@ -403,7 +383,7 @@ export async function generateSceneGameAnalysis(
   });
 
   const systemPrompt = buildGameTheorySystemPrompt();
-  const userPrompt = buildGameTheoryUserPrompt(buildSceneContext(narrative, scene, branchId));
+  const userPrompt = buildGameTheoryUserPrompt(buildSceneContext(narrative, scene));
 
   const reasoningBudget = resolveReasoningBudget(narrative);
 

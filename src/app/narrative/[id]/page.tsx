@@ -9,7 +9,6 @@ import AppShell from '@/components/layout/AppShell';
 import Sidebar from '@/components/sidebar/Sidebar';
 import SidePanel from '@/components/inspector/SidePanel';
 import WorldGraph from '@/components/canvas/WorldGraph';
-import { EngineReasoningPanel } from '@/components/canvas/EngineReasoningPanel';
 import FloatingPalette from '@/components/canvas/FloatingPalette';
 import { CanvasTopBar, GRAPH_MODES } from '@/components/canvas/CanvasTopBar';
 import { AudioPlayerProvider } from '@/hooks/useAudioPlayer';
@@ -212,11 +211,6 @@ export default function SeriesPage() {
           <CanvasTopBar />
           <div className="flex-1 relative overflow-hidden">
             <WorldGraph />
-            {/* Docked reasoning panel — surfaces whichever generation
-                pass (auto / bulk / manual plan / manual prose / game)
-                is currently streaming, regardless of which canvas view
-                is active. Auto-stick-to-bottom; idles out cleanly. */}
-            <EngineReasoningPanel />
             {/* Top bar light — washes the upper canvas for legibility. Both
                 the wash and divider start at the bottom edge of the topmost
                 bar (CanvasTopBar, plus a legend strip when in graph mode), so

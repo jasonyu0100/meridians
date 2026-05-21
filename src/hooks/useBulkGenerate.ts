@@ -111,7 +111,6 @@ export function useBulkGenerate() {
           const analysis = await generateSceneGameAnalysis(
             activeNarrative,
             scene,
-            stateRef.current.viewState.activeBranchId,
             (token) => window.dispatchEvent(new CustomEvent('bulk:game-token', { detail: { sceneId, token } })),
             (token) => window.dispatchEvent(new CustomEvent('bulk:game-reasoning', { detail: { sceneId, token } })),
           );

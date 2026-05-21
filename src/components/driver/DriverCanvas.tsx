@@ -203,6 +203,7 @@ export function DriverCanvas() {
                   selectedIds={selectedIds}
                   onSelect={setActiveId}
                   onToggleCheckbox={toggleSelect}
+                  onDelete={deleteEntry}
                   showCheckboxes
                 />
               )}
@@ -214,6 +215,7 @@ export function DriverCanvas() {
                   selectedIds={selectedIds}
                   onSelect={setActiveId}
                   onToggleCheckbox={() => {}}
+                  onDelete={null}
                   showCheckboxes={false}
                   dimmed
                 />
@@ -279,6 +281,7 @@ function NoteGroup({
   selectedIds,
   onSelect,
   onToggleCheckbox,
+  onDelete,
   showCheckboxes,
   dimmed,
 }: {
@@ -288,6 +291,9 @@ function NoteGroup({
   selectedIds: Set<string>;
   onSelect: (id: string) => void;
   onToggleCheckbox: (id: string) => void;
+  // null = group is read-only (historical compacts are locked); the
+  // delete affordance is hidden entirely for those rows.
+  onDelete: ((entry: DriverEntry) => void) | null;
   showCheckboxes: boolean;
   dimmed?: boolean;
 }) {
@@ -310,6 +316,7 @@ function NoteGroup({
               selected={selectedIds.has(entry.id)}
               onSelect={() => onSelect(entry.id)}
               onToggleCheckbox={() => onToggleCheckbox(entry.id)}
+              onDelete={onDelete ? () => onDelete(entry) : null}
               showCheckbox={showCheckboxes}
             />
           </li>
@@ -325,6 +332,7 @@ function NoteRow({
   selected,
   onSelect,
   onToggleCheckbox,
+  onDelete,
   showCheckbox,
 }: {
   entry: DriverEntry;
@@ -332,6 +340,7 @@ function NoteRow({
   selected: boolean;
   onSelect: () => void;
   onToggleCheckbox: () => void;
+  onDelete: (() => void) | null;
   showCheckbox: boolean;
 }) {
   const title = previewTitle(entry);
@@ -374,6 +383,31 @@ function NoteRow({
           <span className="text-[9px] text-text-dim/55 font-mono tabular-nums ml-auto shrink-0">
             {formatDateShort(entry.capturedAt)}
           </span>
+          {onDelete && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Delete entry"
+              title="Delete entry"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete();
+                }
+              }}
+              className="shrink-0 w-3.5 h-3.5 flex items-center justify-center rounded-sm text-text-dim/60 hover:text-rose-300 hover:bg-rose-400/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition cursor-pointer"
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <line x1="5" y1="5" x2="19" y2="19" />
+                <line x1="19" y1="5" x2="5" y2="19" />
+              </svg>
+            </span>
+          )}
         </div>
         {body && (
           <p className="mt-0.5 text-[10.5px] text-text-dim/65 leading-snug truncate">
