@@ -8,7 +8,16 @@ import { describeTimeGap, formatTimeDelta } from '@/lib/time-deltas';
 import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/network-graph';
 import { getActiveMode } from '@/lib/mode-graph';
 import { buildSequentialPath } from '@/lib/prompts/reasoning/sequential-path';
-import { computeEloHistories, gameScoreA } from '@/lib/game-theory';
+import {
+  ELO_INITIAL,
+  eloUpdate,
+  gameMarginScore,
+  gameScoreA,
+  nashEquilibria,
+  realizedIsNash,
+  realizedOutcome,
+  stakeRank,
+} from '@/lib/game-theory';
 
 // ── Prose Profile Builder ─────────────────────────────────────────────────────
 
@@ -1957,6 +1966,20 @@ export function gameTheoryContext(
   // reflects the same cut the operator is looking at.
   const orderedGames: NonNullable<Scene['gameAnalysis']>['games'] = [];
 
+  // Running ELO state — updated as each game is rendered so the
+  // <elo-after> tags carry the operator's continuous perspective on
+  // rating drift, rather than collapsing to summary at the tail. Peak
+  // / trough / W / L / D are tracked alongside for the final-rankings
+  // block; no second pass needed.
+  const eloByPlayer = new Map<string, number>();
+  const peakByPlayer = new Map<string, number>();
+  const troughByPlayer = new Map<string, number>();
+  const playerNameById = new Map<string, string>();
+  const recordByPlayer = new Map<
+    string,
+    { games: number; wins: number; losses: number; draws: number }
+  >();
+
   let sceneNum = 0;
   for (const k of keysUpToCurrent) {
     const entry = resolveEntry(n, k);
@@ -1998,20 +2021,7 @@ export function gameTheoryContext(
 
     const gameBlock = games.length > 0
       ? `\n    <game-theory count="${games.length}">\n${games
-          .map((g) => {
-            const score = gameScoreA(g);
-            const winner = score === 1
-              ? `${xmlEscape(g.playerAName)}`
-              : score === 0
-                ? `${xmlEscape(g.playerBName)}`
-                : 'tie';
-            return [
-              `      <game type="${xmlEscape(g.gameType)}" axis="${xmlEscape(g.actionAxis)}"`,
-              ` playerA="${xmlEscape(g.playerAName)}" playerB="${xmlEscape(g.playerBName)}"`,
-              ` realizedA="${xmlEscape(g.realizedAAction)}" realizedB="${xmlEscape(g.realizedBAction)}"`,
-              ` winner="${winner}">${xmlEscape(g.rationale ?? '')}</game>`,
-            ].join('');
-          })
+          .map((g) => renderGameXml(g, eloByPlayer, playerNameById, peakByPlayer, troughByPlayer, recordByPlayer))
           .join('\n')}\n    </game-theory>`
       : '';
 
@@ -2033,10 +2043,11 @@ export function gameTheoryContext(
     })
     .join('\n\n');
 
-  // Player rankings — ELO tail, walked over the same game sequence the
-  // outline rendered. Sorted by current rating descending so the
-  // dominant players surface first.
-  const histories = computeEloHistories(orderedGames);
+  // Final-state rankings — sorted by current ELO descending so dominant
+  // players surface first. Same peak / trough / W / L / D the per-game
+  // updates carry, but consolidated at the end so the LLM has a stable
+  // closing reference. The trajectory itself lives inline with each
+  // <elo-after> emitted per game.
   type PlayerRow = {
     id: string;
     name: string;
@@ -2048,41 +2059,25 @@ export function gameTheoryContext(
     losses: number;
     draws: number;
   };
-  const playerNameById = new Map<string, string>();
-  for (const g of orderedGames) {
-    if (g.playerAId) playerNameById.set(g.playerAId, g.playerAName);
-    if (g.playerBId) playerNameById.set(g.playerBId, g.playerBName);
-  }
   const rows: PlayerRow[] = [];
-  for (const [id, hist] of histories) {
-    let wins = 0;
-    let losses = 0;
-    let draws = 0;
-    for (const gIdx of hist.games) {
-      const game = orderedGames[gIdx];
-      if (!game) continue;
-      const score = gameScoreA(game);
-      const asA = game.playerAId === id;
-      if (score === 0.5) draws++;
-      else if ((asA && score === 1) || (!asA && score === 0)) wins++;
-      else losses++;
-    }
+  for (const [id, currentElo] of eloByPlayer) {
+    const record = recordByPlayer.get(id) ?? { games: 0, wins: 0, losses: 0, draws: 0 };
     rows.push({
       id,
       name: playerNameById.get(id) ?? id,
-      currentElo: hist.ratings[hist.ratings.length - 1],
-      peakElo: Math.max(...hist.ratings),
-      troughElo: Math.min(...hist.ratings),
-      games: hist.games.length,
-      wins,
-      losses,
-      draws,
+      currentElo,
+      peakElo: peakByPlayer.get(id) ?? currentElo,
+      troughElo: troughByPlayer.get(id) ?? currentElo,
+      games: record.games,
+      wins: record.wins,
+      losses: record.losses,
+      draws: record.draws,
     });
   }
   rows.sort((a, b) => b.currentElo - a.currentElo);
 
   const rankingsBlock = rows.length > 0
-    ? `\n<player-rankings count="${rows.length}" hint="ELO is updated per BeatGame using margin-of-victory; current is post-final-game. W/L/D from this player's perspective.">\n${rows
+    ? `\n<player-rankings count="${rows.length}" hint="Final ELO after the last game in the resolved branch. Trajectories are interleaved inline as <elo-after> per game so the LLM can read drift over time without re-deriving it here.">\n${rows
         .map(
           (r) =>
             `  <player name="${xmlEscape(r.name)}" current-elo="${Math.round(r.currentElo)}" peak="${Math.round(r.peakElo)}" trough="${Math.round(r.troughElo)}" games="${r.games}" wins="${r.wins}" losses="${r.losses}" draws="${r.draws}" />`,
@@ -2090,8 +2085,141 @@ export function gameTheoryContext(
         .join('\n')}\n</player-rankings>`
     : '';
 
-  return `<story-outline-with-game-theory title="${xmlEscape(n.title)}" scenes="${sceneNum}" games="${orderedGames.length}" hint="Outline scenes grouped by arc, chronological. Each scene's <game-theory> tail lists every BeatGame the analysis pass identified: action axis + game shape + realized cell + the LLM's rationale for why the author landed on that cell. present=\\"true\\" marks the cursor's position.">
+  return `<story-outline-with-game-theory title="${xmlEscape(n.title)}" scenes="${sceneNum}" games="${orderedGames.length}" hint="Outline grouped by arc, chronological. Each scene's <game-theory> tail lists every BeatGame: axis + type + full payoff matrix (<cell> per pairing, deltaA/deltaB stake changes, nash flag, realized flag), Nash equilibria summary, stake-rank of the realized cell, margin score, and a running <elo-after> tag showing both players' ELO before→after the game. A final <player-rankings> tail summarises end-state ELO. present=\\"true\\" marks the cursor's position.">
 ${arcSections}${rankingsBlock}
 </story-outline-with-game-theory>`;
+}
+
+/** Render a single BeatGame as XML with the full payoff matrix, Nash
+ *  analysis, stake-rank of the realized cell, margin score, and a
+ *  running ELO update. Mutates the per-player running maps so the
+ *  caller can produce a closing summary in O(players) without a
+ *  second pass. */
+function renderGameXml(
+  g: import('@/types/narrative').BeatGame,
+  eloByPlayer: Map<string, number>,
+  playerNameById: Map<string, string>,
+  peakByPlayer: Map<string, number>,
+  troughByPlayer: Map<string, number>,
+  recordByPlayer: Map<
+    string,
+    { games: number; wins: number; losses: number; draws: number }
+  >,
+): string {
+  // Track names so the closing rankings can resolve ids → display
+  // names without re-walking the game list.
+  if (g.playerAId) playerNameById.set(g.playerAId, g.playerAName);
+  if (g.playerBId) playerNameById.set(g.playerBId, g.playerBName);
+
+  const aBefore = eloByPlayer.get(g.playerAId) ?? ELO_INITIAL;
+  const bBefore = eloByPlayer.get(g.playerBId) ?? ELO_INITIAL;
+  const score = gameScoreA(g);
+  const margin = gameMarginScore(g);
+  const [aAfter, bAfter] = eloUpdate(aBefore, bBefore, margin);
+  eloByPlayer.set(g.playerAId, aAfter);
+  eloByPlayer.set(g.playerBId, bAfter);
+
+  // Track peak / trough / W / L / D in the same walk so the closing
+  // rankings block reads it off without a second pass.
+  const noteRating = (id: string, rating: number) => {
+    const peak = peakByPlayer.get(id);
+    if (peak === undefined || rating > peak) peakByPlayer.set(id, rating);
+    const trough = troughByPlayer.get(id);
+    if (trough === undefined || rating < trough) troughByPlayer.set(id, rating);
+  };
+  noteRating(g.playerAId, aBefore);
+  noteRating(g.playerAId, aAfter);
+  noteRating(g.playerBId, bBefore);
+  noteRating(g.playerBId, bAfter);
+  const bumpRecord = (id: string, kind: 'wins' | 'losses' | 'draws') => {
+    const r =
+      recordByPlayer.get(id) ?? { games: 0, wins: 0, losses: 0, draws: 0 };
+    r.games += 1;
+    r[kind] += 1;
+    recordByPlayer.set(id, r);
+  };
+  if (score === 0.5) {
+    bumpRecord(g.playerAId, 'draws');
+    bumpRecord(g.playerBId, 'draws');
+  } else if (score === 1) {
+    bumpRecord(g.playerAId, 'wins');
+    bumpRecord(g.playerBId, 'losses');
+  } else {
+    bumpRecord(g.playerAId, 'losses');
+    bumpRecord(g.playerBId, 'wins');
+  }
+
+  const winner =
+    score === 1
+      ? xmlEscape(g.playerAName)
+      : score === 0
+        ? xmlEscape(g.playerBName)
+        : 'tie';
+
+  // Nash equilibria — the equilibrium cells the LLM should reason
+  // against when the realized cell is dominated.
+  const ne = nashEquilibria(g);
+  const realizedNash = realizedIsNash(g);
+  const nashSet = new Set(ne.map((c) => `${c.aActionName}|${c.bActionName}`));
+
+  // Stake rank — where the realized cell sits in each player's
+  // preference order over the whole grid.
+  const rankA = stakeRank(g, 'A');
+  const rankB = stakeRank(g, 'B');
+  const realizedCell = realizedOutcome(g);
+
+  // Full payoff matrix — every (A, B) action pairing with stake
+  // deltas. Mark Nash + realized + dominant-for-side cells so the LLM
+  // can read who-walked-from-what at a glance.
+  const matrixCells = g.outcomes
+    .map((cell) => {
+      const isNash = nashSet.has(`${cell.aActionName}|${cell.bActionName}`);
+      const isRealized =
+        realizedCell?.aActionName === cell.aActionName &&
+        realizedCell?.bActionName === cell.bActionName;
+      const flags = [
+        isNash ? ' nash="true"' : '',
+        isRealized ? ' realized="true"' : '',
+      ].join('');
+      return `        <cell a="${xmlEscape(cell.aActionName)}" b="${xmlEscape(cell.bActionName)}" deltaA="${cell.stakeDeltaA}" deltaB="${cell.stakeDeltaB}"${flags} />`;
+    })
+    .join('\n');
+
+  // Action menus — render once so the matrix is interpretable
+  // without re-parsing every cell's label.
+  const aActionList = g.playerAActions.map((a) => a.name).join(' | ');
+  const bActionList = g.playerBActions.map((a) => a.name).join(' | ');
+
+  const nashSummary =
+    ne.length === 0
+      ? 'none'
+      : ne
+          .map((c) => `${xmlEscape(c.aActionName)}/${xmlEscape(c.bActionName)}`)
+          .join(', ');
+
+  const rankSummary = (() => {
+    const parts: string[] = [];
+    if (rankA) parts.push(`A@${rankA.rank}/${rankA.total}`);
+    if (rankB) parts.push(`B@${rankB.rank}/${rankB.total}`);
+    return parts.length > 0 ? parts.join(' ') : 'n/a';
+  })();
+
+  // Deltas in absolute and signed form so the LLM can quote either.
+  const aDeltaSigned = aAfter - aBefore >= 0 ? `+${(aAfter - aBefore).toFixed(1)}` : (aAfter - aBefore).toFixed(1);
+  const bDeltaSigned = bAfter - bBefore >= 0 ? `+${(bAfter - bBefore).toFixed(1)}` : (bAfter - bBefore).toFixed(1);
+
+  return [
+    `      <game type="${xmlEscape(g.gameType)}" axis="${xmlEscape(g.actionAxis)}"`,
+    ` playerA="${xmlEscape(g.playerAName)}" playerB="${xmlEscape(g.playerBName)}"`,
+    ` realizedA="${xmlEscape(g.realizedAAction)}" realizedB="${xmlEscape(g.realizedBAction)}"`,
+    ` winner="${winner}" margin="${margin.toFixed(2)}"`,
+    ` nashCount="${ne.length}" realizedIsNash="${realizedNash}"`,
+    ` stakeRank="${rankSummary}">\n`,
+    `        <actions playerA="${xmlEscape(aActionList)}" playerB="${xmlEscape(bActionList)}" />\n`,
+    `        <matrix nash="${xmlEscape(nashSummary)}">\n${matrixCells}\n        </matrix>\n`,
+    `        <elo-after playerA-before="${Math.round(aBefore)}" playerA-after="${Math.round(aAfter)}" playerA-delta="${aDeltaSigned}" playerB-before="${Math.round(bBefore)}" playerB-after="${Math.round(bAfter)}" playerB-delta="${bDeltaSigned}" />\n`,
+    `        <rationale>${xmlEscape(g.rationale ?? '')}</rationale>\n`,
+    `      </game>`,
+  ].join('');
 }
 

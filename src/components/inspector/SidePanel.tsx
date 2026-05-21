@@ -14,7 +14,7 @@ import { type SceneRange } from "@/components/timeline/SceneRangeSelector";
 import { useStore } from "@/lib/store";
 import type { WorldBuild } from "@/types/narrative";
 import { isScene, type TimelineEntry } from "@/types/narrative";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ArcDetail from "./ArcDetail";
 import ArtifactDetail from "./ArtifactDetail";
 import CharacterDetail from "./CharacterDetail";
@@ -122,7 +122,27 @@ function getDefaultContext(state: ReturnType<typeof useStore>["state"]) {
 
 export default function SidePanel() {
   const { state, dispatch } = useStore();
-  const ctx = state.viewState.inspectorContext ?? getDefaultContext(state);
+  // Latch the scene-derived default the first time it resolves for this
+  // narrative. Without latching, scrubbing scenes (arrow keys, timeline
+  // clicks) would silently rotate the displayed entity whenever the
+  // operator hasn't pinned an explicit inspector context — the panel
+  // should stay on whatever was last visible until they navigate.
+  const narrativeId = state.activeNarrative?.id ?? null;
+  const latchedDefaultRef = useRef<{
+    narrativeId: string | null;
+    context: ReturnType<typeof getDefaultContext>;
+  }>({ narrativeId: null, context: null });
+  if (
+    !state.viewState.inspectorContext &&
+    latchedDefaultRef.current.narrativeId !== narrativeId
+  ) {
+    latchedDefaultRef.current = {
+      narrativeId,
+      context: getDefaultContext(state),
+    };
+  }
+  const ctx =
+    state.viewState.inspectorContext ?? latchedDefaultRef.current.context;
   const [tab, setTab] = useState<Tab>("inspector");
 
   // Auto-switch to inspector tab when a new inspector context is set
