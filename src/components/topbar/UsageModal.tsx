@@ -157,25 +157,65 @@ const METRIC_CONFIG: Record<MetricKey, { title: string; color: string; format: (
   },
 };
 
-// ── Catmull-Rom spline → cubic Bezier path ───────────────────────────────────
+// ── Monotone cubic (Fritsch-Carlson) → cubic Bezier path ────────────────────
 //
-// Produces the smooth wavy shape from the reference. Each segment uses tangent
-// estimates from neighbouring points; endpoints clamp to their own slope.
+// Smooth curve that never overshoots its data points. Catmull-Rom produces
+// nicer-looking peaks but dips below the baseline at sharp falls-to-zero;
+// monotone cubic preserves the floor at the cost of slightly flatter peaks.
+// Right trade-off for a usage chart with a hard floor at 0.
 
 function smoothPath(pts: { x: number; y: number }[]): string {
-  if (pts.length === 0) return '';
-  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+  const n = pts.length;
+  if (n === 0) return '';
+  if (n === 1) return `M ${pts[0].x} ${pts[0].y}`;
+
+  // Secant slopes between consecutive points
+  const dx: number[] = [];
+  const slopes: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const h = pts[i + 1].x - pts[i].x;
+    dx.push(h);
+    slopes.push(h === 0 ? 0 : (pts[i + 1].y - pts[i].y) / h);
+  }
+
+  // Initial tangents — average of neighbouring secants; endpoints take their own
+  const tangents: number[] = new Array(n);
+  tangents[0] = slopes[0];
+  tangents[n - 1] = slopes[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (slopes[i - 1] * slopes[i] <= 0) {
+      tangents[i] = 0; // local extremum — flat tangent prevents overshoot
+    } else {
+      tangents[i] = (slopes[i - 1] + slopes[i]) / 2;
+    }
+  }
+
+  // Fritsch-Carlson monotonicity adjustment
+  for (let i = 0; i < n - 1; i++) {
+    if (slopes[i] === 0) {
+      tangents[i] = 0;
+      tangents[i + 1] = 0;
+      continue;
+    }
+    const a = tangents[i] / slopes[i];
+    const b = tangents[i + 1] / slopes[i];
+    const h = Math.hypot(a, b);
+    if (h > 3) {
+      const t = 3 / h;
+      tangents[i] = t * a * slopes[i];
+      tangents[i + 1] = t * b * slopes[i];
+    }
+  }
+
+  // Emit cubic Beziers — convert (point, tangent) pairs to control points
   let d = `M ${pts[0].x} ${pts[0].y}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i];
+    const cp1x = pts[i].x + h / 3;
+    const cp1y = pts[i].y + (tangents[i] * h) / 3;
+    const cp2x = pts[i + 1].x - h / 3;
+    const cp2y = pts[i + 1].y - (tangents[i + 1] * h) / 3;
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${pts[i + 1].x.toFixed(2)} ${pts[i + 1].y.toFixed(2)}`;
   }
   return d;
 }
@@ -378,7 +418,7 @@ function AreaChart({
       {/* Legend */}
       <div className="flex items-center justify-center gap-2 mt-2">
         <span className="inline-flex items-center gap-1.5 text-[12px]" style={{ color: config.color }}>
-          <span className="inline-block w-3 h-[2px] rounded" style={{ background: config.color }} />
+          <span className="inline-block w-3 h-0.5 rounded" style={{ background: config.color }} />
           <span className="inline-block w-1.5 h-1.5 rounded-full border" style={{ borderColor: config.color }} />
           <span>{config.title.replace('Daily ', '')}</span>
         </span>
