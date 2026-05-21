@@ -13,6 +13,7 @@ import type { CharacterRole } from "@/types/narrative";
 import React, { useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
 import ImagePromptEditor from "./ImagePromptEditor";
+import { buildPlayerGameSummary } from "@/lib/game-theory-player";
 
 type Props = {
   characterId: string;
@@ -286,7 +287,7 @@ export default function CharacterDetail({ characterId }: Props) {
           }
 
           return (
-            <CollapsibleSection title="Recent" count={totalCount} defaultOpen>
+            <CollapsibleSection title="Recent" count={totalCount}>
               <div className="flex flex-col gap-0.5">
                 <button
                   type="button"
@@ -587,7 +588,6 @@ export default function CharacterDetail({ characterId }: Props) {
             <CollapsibleSection
               title="Scenes"
               count={lifecycle.length}
-              defaultOpen
             >
               <ul className="flex flex-col gap-2">
                 {pageItems.map(
@@ -684,6 +684,111 @@ export default function CharacterDetail({ characterId }: Props) {
             </CollapsibleSection>
           );
         })()}
+
+      {/* Game theory — per-character ELO trajectory + W/L/D. Pulls
+          from gameAnalysis on resolved-branch scenes up to the
+          operator's current scene, so the chart matches the scrubber.
+          Hidden entirely when this character has never been a
+          player. */}
+      {(() => {
+        const summary = buildPlayerGameSummary(
+          narrative,
+          characterId,
+          state.resolvedEntryKeys,
+          state.viewState.currentSceneIndex,
+        );
+        if (!summary) return null;
+        return (
+          <CollapsibleSection title="Game theory" count={summary.games}>
+            <PlayerGameSummaryView summary={summary} />
+          </CollapsibleSection>
+        );
+      })()}
     </div>
+  );
+}
+
+/** Compact per-character ELO + W/L/D summary. Sparkline reads the
+ *  trajectory directly; stats list current / peak / trough plus
+ *  decisive record. */
+function PlayerGameSummaryView({
+  summary,
+}: {
+  summary: ReturnType<typeof buildPlayerGameSummary> & object;
+}) {
+  const { currentElo, peakElo, troughElo, history, games, wins, losses, draws } = summary;
+  return (
+    <div className="flex flex-col gap-3">
+      <EloSparkline history={history} />
+      <div className="grid grid-cols-3 gap-2 text-[10px]">
+        <Stat label="Current" value={Math.round(currentElo)} accent="text-text-primary" />
+        <Stat label="Peak" value={Math.round(peakElo)} accent="text-emerald-300/85" />
+        <Stat label="Trough" value={Math.round(troughElo)} accent="text-rose-300/85" />
+      </div>
+      <div className="grid grid-cols-4 gap-2 text-[10px]">
+        <Stat label="Games" value={games} />
+        <Stat label="W" value={wins} accent="text-emerald-300/85" />
+        <Stat label="L" value={losses} accent="text-rose-300/85" />
+        <Stat label="D" value={draws} accent="text-text-dim/85" />
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent = 'text-text-secondary',
+}: {
+  label: string;
+  value: number;
+  accent?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[9px] uppercase tracking-wider font-mono text-text-dim/60">
+        {label}
+      </span>
+      <span className={`text-[12px] font-mono tabular-nums ${accent}`}>{value}</span>
+    </div>
+  );
+}
+
+function EloSparkline({ history }: { history: number[] }) {
+  if (history.length < 2) {
+    return (
+      <div className="h-16 flex items-center justify-center text-[10px] text-text-dim/50 italic">
+        Trajectory appears after the first game.
+      </div>
+    );
+  }
+  const W = 280;
+  const H = 64;
+  const PAD = 4;
+  const min = Math.min(...history);
+  const max = Math.max(...history);
+  const range = max - min || 1;
+  const xAt = (i: number) => PAD + ((W - 2 * PAD) * i) / (history.length - 1);
+  const yAt = (v: number) => PAD + (H - 2 * PAD) * (1 - (v - min) / range);
+  const d = history.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(v)}`).join(' ');
+  const tail = history[history.length - 1];
+  // Final-rating dot in the colour of the trajectory's net direction.
+  const netColour = tail >= history[0] ? '#34d399' : '#fb7185';
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-16">
+      {/* Baseline at the starting ELO so the line's direction is legible. */}
+      <line
+        x1={PAD}
+        x2={W - PAD}
+        y1={yAt(history[0])}
+        y2={yAt(history[0])}
+        stroke="#fff"
+        strokeWidth={0.5}
+        opacity={0.08}
+        strokeDasharray="2 3"
+      />
+      <path d={d} fill="none" stroke={netColour} strokeWidth={1.5} opacity={0.85} strokeLinecap="round" />
+      <circle cx={xAt(history.length - 1)} cy={yAt(tail)} r={2.5} fill={netColour} opacity={0.95} />
+    </svg>
   );
 }

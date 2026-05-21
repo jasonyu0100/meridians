@@ -9,7 +9,9 @@ import {
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import {
   futureContext,
+  gameTheoryContext,
   hasFutureScenarios,
+  hasGameTheory,
   hasInvestigation,
   hasMode,
   investigationContext,
@@ -22,6 +24,7 @@ import {
   buildEntityPersonaPrompt,
   buildFatePersonaPrompt,
   buildFutureChatPrompt,
+  buildGameTheoryChatPrompt,
   buildInvestigationChatPrompt,
   buildModeChatPrompt,
   buildNarrativeChatPrompt,
@@ -79,7 +82,7 @@ export default function ChatPanel() {
   const [streamText, setStreamText] = useState("");
   const [reasoningText, setReasoningText] = useState("");
   const [contextMode, setContextMode] = useState<
-    "narrative" | "outline" | "scene" | "future" | "mode" | "investigation"
+    "narrative" | "outline" | "scene" | "future" | "mode" | "investigation" | "game-theory"
   >("narrative");
   // personaId: null (Assistant), PERSONA_FATE, PERSONA_SYSTEM, or a real
   // character ID. The two sentinels coalesce all threads / all system-graph
@@ -337,6 +340,10 @@ export default function ChatPanel() {
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
       const mode = modeContext(n);
       return buildModeChatPrompt(n, sceneAnchor, outline, mode);
+    }
+    if (contextMode === "game-theory") {
+      const gameTheory = gameTheoryContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      return buildGameTheoryChatPrompt(n, sceneAnchor, gameTheory);
     }
 
     const narrativeBlock = narrativeContext(n, state.resolvedEntryKeys, contextSceneIndex);
@@ -877,8 +884,10 @@ export default function ChatPanel() {
             const modeAvailable = !!state.activeNarrative && hasMode(state.activeNarrative);
             const investigationAvailable = !!state.activeNarrative
               && hasInvestigation(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
+            const gameTheoryAvailable = !!state.activeNarrative
+              && hasGameTheory(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modes: Array<{
-              value: "narrative" | "outline" | "scene" | "future" | "mode" | "investigation";
+              value: "narrative" | "outline" | "scene" | "future" | "mode" | "investigation" | "game-theory";
               label: string;
               hint: string;
             }> = [
@@ -907,10 +916,17 @@ export default function ChatPanel() {
                 hint: "Active per-arc Causal Reasoning Graph — in-arc inference.",
               });
             }
-            // If the user had Future / Mode / Investigation selected and
-            // it's no longer available (world commit, active PRG cleared,
-            // navigated to an arc without investigations), drop back to
-            // narrative on next render.
+            if (gameTheoryAvailable) {
+              modes.push({
+                value: "game-theory",
+                label: "Game theory",
+                hint: "Outline enriched with per-scene game decompositions + ELO rankings.",
+              });
+            }
+            // If the user had Future / Mode / Investigation / Game theory
+            // selected and it's no longer available (world commit, active
+            // PRG cleared, navigated to an arc without investigations or
+            // games), drop back to narrative on next render.
             if (contextMode === "future" && !futureAvailable) {
               setContextMode("narrative");
             }
@@ -918,6 +934,9 @@ export default function ChatPanel() {
               setContextMode("narrative");
             }
             if (contextMode === "investigation" && !investigationAvailable) {
+              setContextMode("narrative");
+            }
+            if (contextMode === "game-theory" && !gameTheoryAvailable) {
               setContextMode("narrative");
             }
             const currentLabel = modes.find((m) => m.value === contextMode)?.label

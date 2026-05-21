@@ -32,8 +32,6 @@ export const PREDICTIVE_MODEL = "google/gemini-2.5-flash";
  *  The graph carries the causal/structural burden, so the scene pass becomes
  *  graph execution rather than open-ended construction — a fast graph-capable
  *  model is the right cost/quality trade-off there. */
-export const GENERATE_MODEL_GRAPH_GUIDED = "google/gemini-2.5-flash";
-
 /** Model for prose (creative writing tasks). */
 export const WRITING_MODEL = "deepseek/deepseek-v4-flash";
 
@@ -43,6 +41,12 @@ export const PLANNING_MODEL = "google/gemini-2.5-flash";
 /** Model for the analysis pipeline (extraction, reconciliation, fate re-extract,
  *  beat-plan reverse-engineering). */
 export const ANALYSIS_MODEL = "google/gemini-2.5-flash";
+
+/** Model for the per-scene game-theory decomposition pass (2x2 payoff
+ *  matrices, axis classification, realised-action tagging). Run on its
+ *  own constant so it can be tuned independently of the structural
+ *  analysis pipeline. */
+export const GAME_THEORY_MODEL = "deepseek/deepseek-v4-flash";
 
 /** Model for interactive / conversational calls — chat, surveys, interviews. */
 export const INTERACTION_MODEL = "deepseek/deepseek-v4-flash";

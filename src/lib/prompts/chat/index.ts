@@ -31,4 +31,5 @@ export {
   buildFutureChatPrompt,
   buildInvestigationChatPrompt,
   buildModeChatPrompt,
+  buildGameTheoryChatPrompt,
 } from './contexts';

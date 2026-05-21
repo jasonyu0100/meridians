@@ -123,7 +123,7 @@ export default function LocationDetail({ locationId }: Props) {
           : [];
         if (children.length === 0 && siblings.length === 0) return null;
         return (
-          <CollapsibleSection title="Spatial" count={children.length + siblings.length} defaultOpen>
+          <CollapsibleSection title="Spatial" count={children.length + siblings.length}>
             <div className="flex flex-col gap-2">
               {children.length > 0 && (
                 <div>
@@ -175,7 +175,7 @@ export default function LocationDetail({ locationId }: Props) {
         const tied = tiedIds.map(id => narrative.characters[id]).filter(Boolean);
         if (tied.length === 0) return null;
         return (
-          <CollapsibleSection title="Ties" count={tied.length} defaultOpen>
+          <CollapsibleSection title="Ties" count={tied.length}>
             <ul className="flex flex-col gap-1">
               {tied.map((char) => (
                 <li key={char.id}>
@@ -206,7 +206,7 @@ export default function LocationDetail({ locationId }: Props) {
       {worldNodes.length > 0 && (() => {
         const { pageItems, totalPages, safePage } = paginateRecent(worldNodes, continuityPage);
         return (
-          <CollapsibleSection title="World" count={worldNodes.length} defaultOpen>
+          <CollapsibleSection title="World" count={worldNodes.length}>
             <ul className="flex flex-col gap-1">
               {pageItems.map((node, i) => (
                 <li key={`${node.id}-${i}`} className="flex items-start gap-2">
@@ -224,7 +224,7 @@ export default function LocationDetail({ locationId }: Props) {
       {threadIds.length > 0 && (() => {
         const { pageItems, totalPages, safePage } = paginateRecent(threadIds, threadPage);
         return (
-          <CollapsibleSection title="Threads" count={threadIds.length} defaultOpen>
+          <CollapsibleSection title="Threads" count={threadIds.length}>
             <ul className="flex flex-col gap-1">
               {pageItems.map((tid, i) => (
                 <li key={`${tid}-${i}`}>
@@ -280,7 +280,7 @@ export default function LocationDetail({ locationId }: Props) {
       {lifecycle.length > 0 && (() => {
         const { pageItems, totalPages, safePage } = paginateRecent(lifecycle, scenesPage);
         return (
-          <CollapsibleSection title="Scenes" count={lifecycle.length} defaultOpen>
+          <CollapsibleSection title="Scenes" count={lifecycle.length}>
             {pageItems.length > 0 && (
               <ul className="flex flex-col gap-2">
                 {pageItems.map(({ sceneId, threadDeltas, worldDeltas, arrivals }) => (

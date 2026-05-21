@@ -248,7 +248,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
 
       {/* Connections */}
       {grouped.length > 0 && (
-        <CollapsibleSection title="Connections" count={connections.length} defaultOpen>
+        <CollapsibleSection title="Connections" count={connections.length}>
           <ul className="flex flex-col gap-2">
             {grouped.map(([otherId, { other, relations }]) => (
               <li key={otherId} className="flex flex-col gap-0.5">
@@ -297,7 +297,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
           the introduction scene is marked to preserve the creation/
           reference distinction. */}
       {activations.length > 0 && (
-        <CollapsibleSection title="Attributions" count={activations.length} defaultOpen>
+        <CollapsibleSection title="Attributions" count={activations.length}>
           <ul className="flex flex-col gap-1">
             {activations.map(({ sceneId, sceneTitle, isIntroduction }) => (
               <li key={sceneId} className="flex items-start gap-1.5">

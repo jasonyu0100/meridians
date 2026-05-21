@@ -8,6 +8,7 @@ import { describeTimeGap, formatTimeDelta } from '@/lib/time-deltas';
 import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/network-graph';
 import { getActiveMode } from '@/lib/mode-graph';
 import { buildSequentialPath } from '@/lib/prompts/reasoning/sequential-path';
+import { computeEloHistories, gameScoreA } from '@/lib/game-theory';
 
 // ── Prose Profile Builder ─────────────────────────────────────────────────────
 
@@ -1897,5 +1898,200 @@ export function hasInvestigation(
   const arc = arcAtIndex(n, resolvedKeys, currentIndex);
   if (!arc) return false;
   return Object.values(n.investigations ?? {}).some((inv) => inv.arcId === arc.id);
+}
+
+// ── Game-theory chat context ──────────────────────────────────────────
+//
+// Outline view enriched with per-scene game-theory analysis. For every
+// scene up to the cursor, the scene summary is followed by every BeatGame
+// the LLM analysis pass produced for that scene — axis, type, realized
+// actions, the rationale that explains why the author landed on the
+// realized cell. A player-rankings tail block summarises current ELO,
+// peak/trough, and win/loss/draw counts across the resolved branch.
+// Designed for chat questions like "where did Harry's ELO drop and why"
+// or "is the realized cell a Nash in the scene-X coordination problem".
+//
+// Scenes with no gameAnalysis still render so the outline stays
+// chronologically complete; they just omit the <game-theory> tail.
+
+/** True when at least one scene on the resolved branch carries
+ *  gameAnalysis. ChatPanel gates the dropdown option off this. */
+export function hasGameTheory(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+): boolean {
+  const limit = Math.min(currentIndex, resolvedKeys.length - 1);
+  for (let i = 0; i <= limit; i++) {
+    const scene = n.scenes[resolvedKeys[i]];
+    if (scene?.kind !== 'scene') continue;
+    const games = scene.gameAnalysis?.games ?? [];
+    if (games.length > 0) return true;
+  }
+  return false;
+}
+
+export function gameTheoryContext(
+  n: NarrativeState,
+  resolvedKeys: string[],
+  currentIndex: number,
+): string {
+  const limit = Math.min(currentIndex, resolvedKeys.length - 1);
+  const keysUpToCurrent = resolvedKeys.slice(0, limit + 1);
+
+  // Same arc-grouped scaffolding as outlineContext so the chat reads as
+  // an enriched outline rather than a flat game list.
+  const arcForScene = new Map<string, string>();
+  for (const arc of Object.values(n.arcs)) {
+    for (const sid of arc.sceneIds) arcForScene.set(sid, arc.id);
+  }
+
+  type Section =
+    | { kind: 'arc'; arcName: string; entries: string[]; arcId: string }
+    | { kind: 'world-commit'; line: string };
+  const sections: Section[] = [];
+  const arcGroupMap = new Map<string, Section & { kind: 'arc' }>();
+  const lastKey = keysUpToCurrent[keysUpToCurrent.length - 1];
+
+  // Collect every BeatGame in scene-order so the player-ranking tail
+  // reflects the same cut the operator is looking at.
+  const orderedGames: NonNullable<Scene['gameAnalysis']>['games'] = [];
+
+  let sceneNum = 0;
+  for (const k of keysUpToCurrent) {
+    const entry = resolveEntry(n, k);
+    if (!entry) continue;
+    const isLatest = k === lastKey;
+    const presentAttr = isLatest ? ' present="true"' : '';
+
+    if (entry.kind === 'world_build') {
+      sections.push({
+        kind: 'world-commit',
+        line: `<world-commit${presentAttr}>${xmlEscape(entry.summary)}</world-commit>`,
+      });
+      continue;
+    }
+
+    sceneNum++;
+    const arcId = arcForScene.get(entry.id);
+    const arc = arcId ? n.arcs[arcId] : null;
+
+    let group: Section & { kind: 'arc' };
+    if (arcId && arcGroupMap.has(arcId)) {
+      group = arcGroupMap.get(arcId)!;
+    } else {
+      const name = arc?.name ?? 'Standalone';
+      group = { kind: 'arc', arcName: name, entries: [], arcId: arcId ?? '' };
+      if (arcId) arcGroupMap.set(arcId, group);
+      sections.push(group);
+    }
+
+    const povName = entry.povId
+      ? (n.characters[entry.povId]?.name ?? entry.povId)
+      : 'narrator';
+    const locName = n.locations[entry.locationId]?.name ?? entry.locationId;
+    const timeGap = entry.timeDelta ? formatTimeDelta(entry.timeDelta) : '';
+    const timeGapAttr = timeGap ? ` time-gap="${timeGap}"` : '';
+
+    const games = (entry as Scene).gameAnalysis?.games ?? [];
+    for (const g of games) orderedGames.push(g);
+
+    const gameBlock = games.length > 0
+      ? `\n    <game-theory count="${games.length}">\n${games
+          .map((g) => {
+            const score = gameScoreA(g);
+            const winner = score === 1
+              ? `${xmlEscape(g.playerAName)}`
+              : score === 0
+                ? `${xmlEscape(g.playerBName)}`
+                : 'tie';
+            return [
+              `      <game type="${xmlEscape(g.gameType)}" axis="${xmlEscape(g.actionAxis)}"`,
+              ` playerA="${xmlEscape(g.playerAName)}" playerB="${xmlEscape(g.playerBName)}"`,
+              ` realizedA="${xmlEscape(g.realizedAAction)}" realizedB="${xmlEscape(g.realizedBAction)}"`,
+              ` winner="${winner}">${xmlEscape(g.rationale ?? '')}</game>`,
+            ].join('');
+          })
+          .join('\n')}\n    </game-theory>`
+      : '';
+
+    group.entries.push(
+      `  <scene index="${sceneNum}" pov="${xmlEscape(povName)}" location="${xmlEscape(locName)}"${timeGapAttr}${presentAttr}>${xmlEscape(entry.summary)}${gameBlock}\n  </scene>`,
+    );
+  }
+
+  const latestEntry = lastKey ? resolveEntry(n, lastKey) : null;
+  const latestArcId =
+    latestEntry?.kind === 'scene' ? arcForScene.get(latestEntry.id) : undefined;
+
+  const arcSections = sections
+    .map((s) => {
+      if (s.kind === 'world-commit') return s.line;
+      const presentAttr =
+        latestArcId && s.arcId === latestArcId ? ' present="true"' : '';
+      return `<arc name="${xmlEscape(s.arcName)}"${presentAttr}>\n${s.entries.join('\n')}\n</arc>`;
+    })
+    .join('\n\n');
+
+  // Player rankings — ELO tail, walked over the same game sequence the
+  // outline rendered. Sorted by current rating descending so the
+  // dominant players surface first.
+  const histories = computeEloHistories(orderedGames);
+  type PlayerRow = {
+    id: string;
+    name: string;
+    currentElo: number;
+    peakElo: number;
+    troughElo: number;
+    games: number;
+    wins: number;
+    losses: number;
+    draws: number;
+  };
+  const playerNameById = new Map<string, string>();
+  for (const g of orderedGames) {
+    if (g.playerAId) playerNameById.set(g.playerAId, g.playerAName);
+    if (g.playerBId) playerNameById.set(g.playerBId, g.playerBName);
+  }
+  const rows: PlayerRow[] = [];
+  for (const [id, hist] of histories) {
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    for (const gIdx of hist.games) {
+      const game = orderedGames[gIdx];
+      if (!game) continue;
+      const score = gameScoreA(game);
+      const asA = game.playerAId === id;
+      if (score === 0.5) draws++;
+      else if ((asA && score === 1) || (!asA && score === 0)) wins++;
+      else losses++;
+    }
+    rows.push({
+      id,
+      name: playerNameById.get(id) ?? id,
+      currentElo: hist.ratings[hist.ratings.length - 1],
+      peakElo: Math.max(...hist.ratings),
+      troughElo: Math.min(...hist.ratings),
+      games: hist.games.length,
+      wins,
+      losses,
+      draws,
+    });
+  }
+  rows.sort((a, b) => b.currentElo - a.currentElo);
+
+  const rankingsBlock = rows.length > 0
+    ? `\n<player-rankings count="${rows.length}" hint="ELO is updated per BeatGame using margin-of-victory; current is post-final-game. W/L/D from this player's perspective.">\n${rows
+        .map(
+          (r) =>
+            `  <player name="${xmlEscape(r.name)}" current-elo="${Math.round(r.currentElo)}" peak="${Math.round(r.peakElo)}" trough="${Math.round(r.troughElo)}" games="${r.games}" wins="${r.wins}" losses="${r.losses}" draws="${r.draws}" />`,
+        )
+        .join('\n')}\n</player-rankings>`
+    : '';
+
+  return `<story-outline-with-game-theory title="${xmlEscape(n.title)}" scenes="${sceneNum}" games="${orderedGames.length}" hint="Outline scenes grouped by arc, chronological. Each scene's <game-theory> tail lists every BeatGame the analysis pass identified: action axis + game shape + realized cell + the LLM's rationale for why the author landed on that cell. present=\\"true\\" marks the cursor's position.">
+${arcSections}${rankingsBlock}
+</story-outline-with-game-theory>`;
 }
 

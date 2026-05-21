@@ -184,6 +184,9 @@ export function SceneProseView({
       const planSource = narrative.storySettings?.planExtractionSource ?? 'structure';
       const planForProse = planSource === 'prose' ? undefined : resolvedPlan;
 
+      // Broadcast on the bulk-event channel so the EngineReasoning
+      // panel surfaces manual prose writes too, not just bulk runs.
+      window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId: scene.id } }));
       try {
         const result = await generateSceneProse(
           narrative,
@@ -194,11 +197,13 @@ export function SceneProseView({
               text: prev.text + token,
               status: "loading",
             }));
+            window.dispatchEvent(new CustomEvent('bulk:prose-token', { detail: { sceneId: scene.id, token } }));
           },
           guidance,
           planForProse,
         );
         setProseState({ text: result.prose, status: "ready" });
+        window.dispatchEvent(new CustomEvent('bulk:prose-complete', { detail: { sceneId: scene.id } }));
         dispatch({
           type: "UPDATE_SCENE",
           sceneId: scene.id,
@@ -237,6 +242,7 @@ export function SceneProseView({
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setProseState((prev) => ({ ...prev, status: "error", error: message }));
+        window.dispatchEvent(new CustomEvent('bulk:prose-complete', { detail: { sceneId: scene.id } }));
       }
     },
     [narrative, scene, resolvedKeys, dispatch, currentPlanVersion, resolvedPlan],

@@ -177,6 +177,10 @@ export function ScenePlanView({
       setPlanCache({ plan: null, status: "loading" });
       setReasoning("");
       setMeta(null);
+      // Also broadcast on the bulk-event channel so the EngineReasoning
+      // panel (and any other scene view watching the same scene) picks
+      // up manual plan generation, not just bulk runs.
+      window.dispatchEvent(new CustomEvent('bulk:plan-start', { detail: { sceneId: scene.id } }));
       try {
         // Two creation modes:
         //   'structure' (default): forward-generate plan from scene structure
@@ -194,7 +198,10 @@ export function ScenePlanView({
             narrative,
             resolvedProse!,
             scene.summary ?? '',
-            (_token, accumulated) => setReasoning(accumulated),
+            (_token, accumulated) => {
+              setReasoning(accumulated);
+              window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId: scene.id, token: accumulated } }));
+            },
           );
           plan = result.plan;
           beatProseMap = result.beatProseMap ?? undefined;
@@ -203,7 +210,10 @@ export function ScenePlanView({
             narrative,
             scene,
             resolvedKeys,
-            (token) => setReasoning((prev) => prev + token),
+            (token) => {
+              setReasoning((prev) => prev + token);
+              window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId: scene.id, token } }));
+            },
             (m) => setMeta(m),
             guidance || undefined,
           );
@@ -211,6 +221,7 @@ export function ScenePlanView({
         setPlanCache({ plan, status: "ready" });
         setReasoning("");
         setMeta(null);
+        window.dispatchEvent(new CustomEvent('bulk:plan-complete', { detail: { sceneId: scene.id } }));
         dispatch({
           type: "UPDATE_SCENE",
           sceneId: scene.id,
@@ -222,6 +233,7 @@ export function ScenePlanView({
         setPlanCache({ plan: null, status: "error", error: message });
         setReasoning("");
         setMeta(null);
+        window.dispatchEvent(new CustomEvent('bulk:plan-complete', { detail: { sceneId: scene.id } }));
       }
     },
     [narrative, scene, resolvedKeys, dispatch, canReverseEngineer, resolvedProse, planBlockedByMissingProse],

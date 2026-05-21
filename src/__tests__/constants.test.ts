@@ -3,8 +3,8 @@ import {
   ANALYSIS_CONCURRENCY,
   ANALYSIS_MAX_CORPUS_WORDS,
   ANALYSIS_MODEL,
+  GAME_THEORY_MODEL,
   GENERATE_MODEL,
-  GENERATE_MODEL_GRAPH_GUIDED,
   INTERACTION_MODEL,
   PLANNING_MODEL,
   ANALYSIS_STAGGER_DELAY_MS,
@@ -82,14 +82,14 @@ describe("AI Model Constants", () => {
     expect(typeof GENERATE_MODEL).toBe("string");
     expect(GENERATE_MODEL.length).toBeGreaterThan(0);
   });
-  it("GENERATE_MODEL_GRAPH_GUIDED is a valid model identifier", () => {
-    expect(typeof GENERATE_MODEL_GRAPH_GUIDED).toBe("string");
-    expect(GENERATE_MODEL_GRAPH_GUIDED.length).toBeGreaterThan(0);
-    expect(GENERATE_MODEL_GRAPH_GUIDED).toContain("/");
-  });
   it("INTERACTION_MODEL is a valid model identifier", () => {
     expect(typeof INTERACTION_MODEL).toBe("string");
     expect(INTERACTION_MODEL.length).toBeGreaterThan(0);
+  });
+  it("GAME_THEORY_MODEL is a valid model identifier", () => {
+    expect(typeof GAME_THEORY_MODEL).toBe("string");
+    expect(GAME_THEORY_MODEL.length).toBeGreaterThan(0);
+    expect(GAME_THEORY_MODEL).toContain("/");
   });
 });
 describe("AI Pricing Constants", () => {

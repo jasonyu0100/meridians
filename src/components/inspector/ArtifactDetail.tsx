@@ -149,7 +149,7 @@ export default function ArtifactDetail({ artifactId }: Props) {
       {worldNodes.length > 0 && (() => {
         const { pageItems, totalPages, safePage } = paginateRecent(worldNodes, continuityPage);
         return (
-          <CollapsibleSection title="World" count={worldNodes.length} defaultOpen>
+          <CollapsibleSection title="World" count={worldNodes.length}>
             <ul className="flex flex-col gap-1">
               {pageItems.map((node, i) => (
                 <li key={`${node.id}-${i}`} className="flex items-start gap-2">
@@ -196,7 +196,7 @@ export default function ArtifactDetail({ artifactId }: Props) {
       {lifecycle.length > 0 && (() => {
         const { pageItems, totalPages, safePage } = paginateRecent(lifecycle, scenesPage);
         return (
-          <CollapsibleSection title="Scenes" count={lifecycle.length} defaultOpen>
+          <CollapsibleSection title="Scenes" count={lifecycle.length}>
             <ul className="flex flex-col gap-2">
               {pageItems.map(({ sceneId, usages, worldMuts, ownershipDeltas, threadDeltas }) => (
                 <li key={sceneId} className="flex flex-col gap-0.5">
