@@ -57,73 +57,6 @@ function formatCost(v: number): string {
   return `$${v.toFixed(4)}`;
 }
 
-/** Group entries into per-month buckets for all time */
-function bucketByMonth(logs: ApiLogEntry[]): { label: string; shortLabel: string; entries: ApiLogEntry[] }[] {
-  const success = logs.filter((l) => l.status === 'success');
-  if (success.length === 0) return [];
-
-  const map = new Map<string, ApiLogEntry[]>();
-  let minTs = Infinity;
-  for (const log of success) {
-    const d = new Date(log.timestamp);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(log);
-    if (log.timestamp < minTs) minTs = log.timestamp;
-  }
-
-  const result: { label: string; shortLabel: string; entries: ApiLogEntry[] }[] = [];
-  const cursor = new Date(minTs);
-  cursor.setDate(1);
-  cursor.setHours(0, 0, 0, 0);
-  const now = new Date();
-  while (cursor <= now) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-    const shortLabel = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${String(cursor.getFullYear()).slice(2)}`;
-    result.push({ label: key, shortLabel, entries: map.get(key) ?? [] });
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-  return result;
-}
-
-/** Group entries into per-week buckets for the last 12 weeks */
-function bucketByWeek(logs: ApiLogEntry[]): { label: string; shortLabel: string; entries: ApiLogEntry[] }[] {
-  const now = new Date();
-  now.setHours(23, 59, 59, 999);
-  const start = new Date(now);
-  start.setDate(start.getDate() - 83); // 12 weeks
-  start.setHours(0, 0, 0, 0);
-  const windowStart = start.getTime();
-
-  const map = new Map<string, ApiLogEntry[]>();
-  for (const log of logs) {
-    if (log.status !== 'success' || log.timestamp < windowStart) continue;
-    const d = new Date(log.timestamp);
-    // Week key: year + ISO week number
-    const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1; // Mon=0
-    const weekStart = new Date(d);
-    weekStart.setDate(d.getDate() - dayOfWeek);
-    weekStart.setHours(0, 0, 0, 0);
-    const key = weekStart.getTime().toString();
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(log);
-  }
-
-  const result: { label: string; shortLabel: string; entries: ApiLogEntry[] }[] = [];
-  const cursor = new Date(start);
-  // Align to Monday
-  const dayOfWeek = cursor.getDay() === 0 ? 6 : cursor.getDay() - 1;
-  cursor.setDate(cursor.getDate() - dayOfWeek);
-  cursor.setHours(0, 0, 0, 0);
-  while (cursor <= now) {
-    const key = cursor.getTime().toString();
-    const shortLabel = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${String(cursor.getDate()).padStart(2, '0')}`;
-    result.push({ label: key, shortLabel, entries: map.get(key) ?? [] });
-    cursor.setDate(cursor.getDate() + 7);
-  }
-  return result;
-}
-
 /** Group entries into per-day buckets for the last 30 days ending now */
 function bucketByDay(logs: ApiLogEntry[]): { label: string; shortLabel: string; entries: ApiLogEntry[] }[] {
   const now = new Date();
@@ -397,11 +330,16 @@ function BarChart({
   );
 }
 
-// ── Dropdown Panel ───────────────────────────────────────────────────────────
+// ── GasMeter Dropdown ────────────────────────────────────────────────────────
+//
+// Real-time performance dashboard. Minute / hour / day / week / month windows
+// for cost, tokens, calls, throughput. Companion to the historical day-based
+// UsageModal — GasMeter is the in-the-moment view you watch *while*
+// generating; UsageModal is the looking-back-over-time view.
 
-export function UsageDropdown({ logs }: { logs: ApiLogEntry[] }) {
+export function GasMeter({ logs, onOpenHistory }: { logs: ApiLogEntry[]; onOpenHistory?: () => void }) {
   const [view, setView] = useState<'cost' | 'tokens' | 'calls' | 'speed'>('cost');
-  const [granularity, setGranularity] = useState<'minute' | 'hour' | 'day' | 'week' | 'month'>('day');
+  const [granularity, setGranularity] = useState<'minute' | 'hour' | 'day'>('day');
 
   const successLogs = useMemo(() => logs.filter((l) => l.status === 'success'), [logs]);
 
@@ -450,7 +388,7 @@ export function UsageDropdown({ logs }: { logs: ApiLogEntry[] }) {
   }, [successLogs]);
 
   const chartData = useMemo(() => {
-    const buckets = granularity === 'minute' ? bucketByMinute(logs) : granularity === 'hour' ? bucketByHour(logs) : granularity === 'week' ? bucketByWeek(logs) : granularity === 'month' ? bucketByMonth(logs) : bucketByDay(logs);
+    const buckets = granularity === 'minute' ? bucketByMinute(logs) : granularity === 'hour' ? bucketByHour(logs) : bucketByDay(logs);
     return buckets.map((b): BarDatum => {
       if (view === 'tokens') {
         let v1 = 0, v2 = 0, v3 = 0;
@@ -478,6 +416,12 @@ export function UsageDropdown({ logs }: { logs: ApiLogEntry[] }) {
 
   return (
     <div className="absolute top-full right-0 mt-1 z-50 bg-bg-base border border-white/10 rounded-lg shadow-2xl p-4 w-[560px] max-h-[80vh] overflow-y-auto">
+      {/* Title bar */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[11px] font-semibold text-text-primary tracking-wide">Gas Meter</span>
+        <span className="text-[9px] text-text-dim uppercase tracking-wider">live</span>
+      </div>
+
       {/* Summary row */}
       <div className="grid grid-cols-4 gap-2 mb-4">
         <MiniCard label="Total Cost" value={formatCost(totals.totalCost)} color="#a78bfa" />
@@ -511,7 +455,7 @@ export function UsageDropdown({ logs }: { logs: ApiLogEntry[] }) {
           ))}
         </div>
         <div className="flex items-center rounded border border-white/8 overflow-hidden">
-          {(['minute', 'hour', 'day', 'week', 'month'] as const).map((g) => (
+          {(['minute', 'hour', 'day'] as const).map((g) => (
             <button
               key={g}
               onClick={() => setGranularity(g)}
@@ -519,7 +463,7 @@ export function UsageDropdown({ logs }: { logs: ApiLogEntry[] }) {
                 granularity === g ? 'bg-white/10 text-text-primary' : 'text-text-dim hover:text-text-secondary'
               }`}
             >
-              {g === 'minute' ? '60m' : g === 'hour' ? '24h' : g === 'day' ? '30d' : g === 'week' ? '12w' : 'All'}
+              {g === 'minute' ? '60m' : g === 'hour' ? '24h' : '30d'}
             </button>
           ))}
         </div>
@@ -581,6 +525,22 @@ export function UsageDropdown({ logs }: { logs: ApiLogEntry[] }) {
           </span>
         ))}
       </div>
+
+      {/* Historical view CTA */}
+      {onOpenHistory && (
+        <button
+          onClick={onOpenHistory}
+          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 hover:border-emerald-500/50 text-emerald-300 text-[12px] font-medium transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          <span>Open historical usage</span>
+          <span aria-hidden className="text-emerald-400/70">→</span>
+        </button>
+      )}
     </div>
   );
 }

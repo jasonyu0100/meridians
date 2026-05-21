@@ -31,9 +31,10 @@ import { PropositionAnalysisModal } from "@/components/topbar/PropositionAnalysi
 import SystemLogModal from "@/components/topbar/SystemLogModal";
 import { GameTheoryDashboard } from "@/components/topbar/GameTheoryDashboard";
 import {
-  UsageDropdown,
+  GasMeter,
   computeTotalCost,
-} from "@/components/topbar/UsageAnalyticsModal";
+} from "@/components/topbar/GasMeter";
+import { UsageModal } from "@/components/topbar/UsageModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { assetManager } from "@/lib/asset-manager";
 import { exportEpub } from "@/lib/epub-export";
@@ -363,6 +364,7 @@ export default function TopBar() {
   const [gameTheoryOpen, setGameTheoryOpen] = useState(false);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+  const [usageHistoryOpen, setUsageHistoryOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportPackageOpen, setExportPackageOpen] = useState(false);
   const [importPackageOpen, setImportPackageOpen] = useState(false);
@@ -1416,7 +1418,15 @@ export default function TopBar() {
                   : `$${usageCost.toFixed(4)}`}
             </span>
           </button>
-          {usageOpen && <UsageDropdown logs={narrativeLogs} />}
+          {usageOpen && (
+            <GasMeter
+              logs={narrativeLogs}
+              onOpenHistory={() => {
+                setUsageOpen(false);
+                setUsageHistoryOpen(true);
+              }}
+            />
+          )}
         </div>
 
         {/* Scorecard pill */}
@@ -2297,6 +2307,12 @@ export default function TopBar() {
         <ApiKeyModal access={access} onClose={() => setApiKeysOpen(false)} />
       )}
       {logsOpen && <ApiLogsModal onClose={() => setLogsOpen(false)} />}
+      {usageHistoryOpen && (
+        <UsageModal
+          logs={narrativeLogs}
+          onClose={() => setUsageHistoryOpen(false)}
+        />
+      )}
       {systemLogsOpen && (
         <SystemLogModal onClose={() => setSystemLogsOpen(false)} />
       )}
