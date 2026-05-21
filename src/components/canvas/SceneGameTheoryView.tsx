@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { generateSceneGameAnalysis } from "@/lib/ai";
+import { BulkStreamBanner } from "./BulkStreamBanner";
 import {
   nashEquilibria,
   outcomeAt,
@@ -60,12 +61,18 @@ export function SceneGameTheoryView({
       setIsGenerating(true);
       setError(null);
       setReasoning("");
+      // Also broadcast on the bulk-event channel so other scene views
+      // watching the cross-scene stream pick up manual generations too.
+      window.dispatchEvent(new CustomEvent('bulk:game-start', { detail: { sceneId: scene.id } }));
       try {
         const result = await generateSceneGameAnalysis(
           narrative,
           scene,
           undefined,
-          (_token, accumulated) => setReasoning(accumulated),
+          (_token, accumulated) => {
+            setReasoning(accumulated);
+            window.dispatchEvent(new CustomEvent('bulk:game-reasoning', { detail: { sceneId: scene.id, token: accumulated } }));
+          },
         );
         dispatch({
           type: "SET_GAME_ANALYSIS",
@@ -76,6 +83,7 @@ export function SceneGameTheoryView({
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
+        window.dispatchEvent(new CustomEvent('bulk:game-complete', { detail: { sceneId: scene.id } }));
         setIsGenerating(false);
       }
     }
@@ -101,25 +109,28 @@ export function SceneGameTheoryView({
     setBulkActive(false);
   }, [scene.id]);
 
-  // ── Auto-mode (bulk) streaming — mirror the plan/prose pattern ────────
-  // Surface bulk reasoning regardless of which scene the bulk is on, so
-  // the operator can sit on any scene in the timeline and still watch the
-  // current generation pass. Local error state stays tied to *this*
-  // scene's own manual generation and is not cleared by bulk starts on
-  // other scenes.
+  // ── Bulk streaming for THIS scene — mirrors the plan/prose pattern.
+  // Cross-scene bulk activity (when a different scene is being processed)
+  // surfaces via <BulkStreamBanner /> below; this effect only manages the
+  // in-view streaming UI for the current scene.
   useEffect(() => {
-    const onStart = () => {
+    const onStart = (e: Event) => {
+      const { sceneId } = (e as CustomEvent).detail ?? {};
+      if (sceneId !== scene.id) return;
       setBulkActive(true);
       setReasoning("");
     };
     const onReasoning = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { token?: string };
-      setReasoning((prev) => prev + (detail?.token ?? ""));
+      const { sceneId, token } = (e as CustomEvent).detail ?? {};
+      if (sceneId !== scene.id) return;
+      // game-reasoning emits the accumulated string, not deltas.
+      setReasoning(typeof token === 'string' ? token : '');
     };
-    const onComplete = () => {
+    const onComplete = (e: Event) => {
+      const { sceneId } = (e as CustomEvent).detail ?? {};
+      if (sceneId !== scene.id) return;
       setBulkActive(false);
-      // Leave the reasoning text intact between scenes so the preview
-      // doesn't flicker empty while the next bulk:game-start fires.
+      setReasoning("");
     };
     window.addEventListener("bulk:game-start", onStart);
     window.addEventListener("bulk:game-reasoning", onReasoning);
@@ -129,11 +140,13 @@ export function SceneGameTheoryView({
       window.removeEventListener("bulk:game-reasoning", onReasoning);
       window.removeEventListener("bulk:game-complete", onComplete);
     };
-  }, []);
+  }, [scene.id]);
 
   return (
     <div className="h-full w-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="w-full px-10 py-10">
+        <BulkStreamBanner mode="game" currentSceneId={scene.id} />
+
         {isStreaming && !analysis && (
           <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
             <div className="flex items-center gap-2 mb-4">

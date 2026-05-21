@@ -17,6 +17,7 @@ import type {
 import { BEAT_FN_LIST, BEAT_MECHANISM_LIST } from "@/types/narrative";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlanCandidatesModal } from "./PlanCandidatesModal";
+import { BulkStreamBanner } from "./BulkStreamBanner";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
 import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
 
@@ -451,6 +452,7 @@ export function ScenePlanView({
 
   return (
     <div className="h-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+      <BulkStreamBanner mode="plan" currentSceneId={scene.id} />
       <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
         {/* Loading */}
         {isLoading && (

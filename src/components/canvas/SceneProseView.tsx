@@ -6,6 +6,7 @@ import { getResolvedPlanVersion } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
 import type { NarrativeState, Scene } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BulkStreamBanner } from "./BulkStreamBanner";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
 import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
 
@@ -417,6 +418,7 @@ export function SceneProseView({
 
   return (
     <div className="h-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+      <BulkStreamBanner mode="prose" currentSceneId={scene.id} />
       {showBeatPlan && hasBeatMapping ? (
         // Linked view: each beat row has plan on left, prose on right
         <div className="px-6 pt-6 pb-48">
