@@ -1,71 +1,78 @@
 /**
- * Intuitive tooltips for game-theory UI terms.
+ * Plain-language tooltips for the game-theory UI.
  *
- * Plain-language explanations aimed at a reader who is not a game theorist.
- * Every string lives here so the vocabulary stays consistent across the scene
- * view, the dashboard, and the export. When adding a new badge or chip in the
- * UI, add a `title={GT_TIPS.x}` from this file rather than inventing copy in
- * place.
+ * Written for someone meeting these ideas for the first time. The
+ * vocabulary lives here so the whole app speaks with one voice — when
+ * adding a chip or stat in the UI, pull from GT_TIPS rather than
+ * inventing copy in place.
  */
 
 export const GT_TIPS = {
+  // ── Thesis line ─────────────────────────────────────────────────────
+  thesis:
+    "Every consequential moment has a SHAPE: the full space of choices each party could have made, and what would have happened in each pairing. What actually happened is one cell in that space. Game theory describes how stake CAN move; the realized cell describes how it DID move; the gap between them describes what was left on the table.",
+
   // ── Core concepts ─────────────────────────────────────────────────────
   nashEquilibrium:
-    "A stable outcome — neither player would switch their action if they knew the other's choice. Think of it as a resting point the game naturally settles into.",
+    "Nash equilibrium — a cell where neither player would change their action even if they knew the other's choice. Both are best-responding to each other. Game theory's resting point: where the game settles when everyone plays the locally-rational move.",
   nashCell:
-    "This cell is a Nash equilibrium: it is self-reinforcing. Any unilateral switch would leave the switcher no better off.",
+    "This cell is a Nash equilibrium — neither side could improve by switching unilaterally. If the realized cell is here, the moment played out the way rational self-interest would predict.",
   realizedCell:
-    "The cell the author actually wrote. Shown in amber so you can compare the chosen outcome against the alternatives that were on the table.",
+    "The cell that actually happened on the page. Highlighted in amber so you can compare what HAPPENED against what COULD HAVE — every other cell in this grid was on the table at this moment.",
   realizedEqNash:
-    "The author's chosen outcome is a Nash equilibrium — the narrative landed on a strategically stable cell.",
+    "The realized cell IS a Nash equilibrium — the story landed where rational play predicts. The moment played as expected.",
   offNash:
-    "The realized cell is NOT a Nash equilibrium — someone had a better-for-them option available and didn't take it. Usually signals the author trading local optimality for character arc, identity, or thematic weight.",
+    "The realized cell is NOT a Nash equilibrium — someone had a better-for-them option and didn't take it. This is information, not error: the author traded local optimality for character, theme, identity, or arc. The arc-cost number tells you how much stake they left behind.",
   noPureNash:
-    "No single cell is self-reinforcing for both sides. The decision has no stable resting point — any outcome leaves at least one player wanting to switch.",
+    "No pure-strategy Nash equilibrium exists — whatever happens, at least one player wishes they'd done something else. These moments are unresolved by rational play alone; what happens reveals character.",
 
-  // ── Payoff / stake ───────────────────────────────────────────────────
+  // ── Stake / payoff ────────────────────────────────────────────────────
   stakeDelta:
-    "How much this outcome advances (+) or harms (−) the player's arc-level interests, on a −4 to +4 scale. +4 = ideal outcome, 0 = neutral, −4 = catastrophic.",
+    "How much this outcome would help (+) or hurt (−) the player's arc-level interests, on a −4 to +4 scale. +4 = ideal, 0 = neutral, −4 = catastrophic. The magnitude IS the importance of the moment — a beat where ±1 is the ceiling is a low-stakes beat; ±4 says this moment is structurally pivotal.",
   stakeDeltaPair:
-    "Stake deltas: (player A) / (player B). Each number is how much this cell helps or hurts that player, from −4 (catastrophic) to +4 (ideal).",
+    "Stake change for (player A) / (player B). Each number is how much this cell helps or hurts that player, −4 (catastrophic) to +4 (ideal).",
   stakeRank:
-    "Where the realized cell sits when all outcomes are ranked by stake delta for this player. Rank 1 = best available, rank N = worst. Shows whether the author gave them an optimal, middling, or bad outcome.",
+    "Where the realized cell sits in this player's personal ranking of cells, best to worst. Rank 1 means 'the best they could have got here'. Rank N (worst) means 'the worst available'. Tells you whether the moment was generous, cruel, or middling to them.",
+  arcCost:
+    "How much stake the player gave up by NOT taking the locally-best option. 0 = they captured what was available. A positive number = they accepted a worse outcome — often deliberately, in service of arc, identity, or principle. The visible signature of irrational / arc-driven play.",
 
   // ── ELO / standings ──────────────────────────────────────────────────
   elo:
-    "A running score of strategic success across the story. Each game's ELO update uses a continuous margin score — a +4/−4 crush is a full win (max move), a +1/0 marginal edge barely moves the needle, a dead-even cell is neutral. W/L/D is a separate binary tally you read alongside, not what ELO consumes.",
+    "A running rating of strategic success, the same idea as a chess rating. Starts at 1500 for every player. Goes up when a player captures more stake than their counterpart in a moment; goes down when they capture less. Crucial moments (high stakes on the table) move the rating more; low-stakes beats barely touch it.",
+  eloCrucialMoments:
+    "Crucial moments move the rating more. A ±4 grid is a pivotal beat — the rating shifts a lot. A ±1 grid is a quiet beat — the rating barely moves. This means a character who steadily wins low-stakes beats but loses the big ones will end up LOWER rated than a character with a few decisive high-stakes wins.",
   nashCompliance:
-    "% of realized cells that are Nash equilibria. High = the story tends to land on strategically stable outcomes. Low = the author frequently overrides local optimality for narrative reasons (character, theme, irony).",
+    "How often the realized cell is a Nash equilibrium — the percentage of moments where the story landed where rational play predicts. High = a world where strategic logic carries; low = a world where character, arc, or theme routinely overrides what self-interest would dictate.",
   trajectorySparkline:
-    "The player's ELO over time. A rising line means their realized outcomes are beating counterparts' outcomes; a falling line means they're losing ground.",
+    "The player's rating over time. A rising line = their realized outcomes are beating counterparts'. A falling line = they're losing ground. The shape of the line is the strategic biography in miniature.",
   wld:
-    "Wins / Losses / Draws — a win is a realized cell where this player's stake delta exceeds the counterpart's. A loss is the reverse. A draw is a tie.",
+    "Wins / Losses / Draws. A win means their realized cell gave them more stake than the counterpart got. A loss means the reverse. A draw means even.",
 
   // ── Outcome mix ──────────────────────────────────────────────────────
   outcomeMix:
-    "Distribution of realized cells by stake sign. Green = positive stake (gain), red = negative (loss). Shows whether the author tends to give this player good or bad outcomes.",
+    "Of the realized cells this player landed in, what fraction were positive (gained stake) vs negative (lost stake). Tells you whether the story tends to deliver good or bad outcomes to them — independent of how they did against any one counterpart.",
   avgStake:
-    "Mean stake delta per realized cell, on the −4..+4 scale. Positive = the author typically gives this player favorable outcomes; negative = they're typically hurt by what happens.",
+    "Mean stake change per realized cell, on the −4..+4 scale. Positive = the story is broadly favorable to this player. Negative = the story is broadly costly.",
 
   // ── Grid structure ───────────────────────────────────────────────────
   gridAxis:
-    "All options for one player. Every cell in a row or column pairs this action with every option the other player could have taken.",
+    "All the options for one player. Every cell in a row pairs this player's action with every action the other player could have taken.",
   actionAxis:
-    "The dimension both players' actions are organised along — the shared trade being negotiated (e.g., trust, disclosure, pressure). Both sides' choices live on this axis.",
+    "The dimension along which both players' actions live — the thing being traded in this moment. Trust, information, status, resources, commitment, etc. Both sides' choices are different positions on the same axis.",
   gameType:
-    "The classical strategic shape of the beat — coordination, dilemma, zero-sum, etc. Hovering the chip shows the one-line definition.",
+    "The strategic shape of the moment — coordination, dilemma, signaling, zero-sum, etc. Tells you what KIND of game is being played. Hover the chip for the one-line definition.",
   rationaleRealized:
-    "One-sentence reading of why the author chose this specific cell over the others on the grid — often the most interesting question, especially when the realized cell is dominated.",
+    "One-sentence reading of why the realized cell landed here rather than anywhere else on the grid. Most interesting when the realized cell is dominated — when the choice cost the player stake, why was it worth the cost?",
 
   // ── Strategic style archetypes ───────────────────────────────────────
   coalition:
-    "A tight group where every pair cooperates (lands in mutual-gain cells) above a high threshold. Coalitions are stable structural alliances within the cast.",
+    "A tight group where every pair routinely lands in mutual-gain cells together. The structural alliances inside the cast — who consistently rises (or falls) together.",
   rivalry:
-    "A pair of players with sustained conflict — many games together, many realized cells where one gains and the other loses.",
+    "Two players with sustained, asymmetric conflict — many moments shared, many cells where one gains while the other loses, with a clear winner.",
   cohesion:
-    "A coalition's weakest pairwise bond, as a cooperation rate. High cohesion means even the least-aligned members still cooperate most of the time.",
+    "A coalition's weakest pairwise bond, as a cooperation rate. High = even the least-aligned members still cooperate most of the time. Low = the coalition holds together loosely.",
   intensityScore:
-    "Composite rivalry measure: number of games × conflict rate × win asymmetry. A high-intensity rivalry has many games, many conflict outcomes, and a clear winner.",
+    "How significant a rivalry is, combining shared games, conflict rate, and asymmetry. High = lots of games, lots of conflict, clear winner.",
 } as const;
 
 export type GtTipKey = keyof typeof GT_TIPS;

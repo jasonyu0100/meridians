@@ -351,10 +351,10 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
 
   // Game-type participation shares used by multiple tag groups.
   const gtCounts = p.gameTypeCounts;
-  const infoShare = ((gtCounts.get("signaling") ?? 0) + (gtCounts.get("principal-agent") ?? 0) + (gtCounts.get("screening") ?? 0) + (gtCounts.get("stealth") ?? 0) + (gtCounts.get("cheap-talk") ?? 0)) / p.games;
+  const infoShare = ((gtCounts.get("signaling") ?? 0) + (gtCounts.get("principal-agent") ?? 0) + (gtCounts.get("screening") ?? 0) + (gtCounts.get("stealth") ?? 0)) / p.games;
   const powerShare = ((gtCounts.get("stackelberg") ?? 0) + (gtCounts.get("commitment-game") ?? 0) + (gtCounts.get("bargaining") ?? 0)) / p.games;
-  const conflictShare = ((gtCounts.get("zero-sum") ?? 0) + (gtCounts.get("pure-opposition") ?? 0) + (gtCounts.get("chicken") ?? 0) + (gtCounts.get("anti-coordination") ?? 0)) / p.games;
-  const coopShare = ((gtCounts.get("coordination") ?? 0) + (gtCounts.get("stag-hunt") ?? 0) + (gtCounts.get("collective-action") ?? 0) + (gtCounts.get("battle-of-sexes") ?? 0)) / p.games;
+  const conflictShare = ((gtCounts.get("zero-sum") ?? 0) + (gtCounts.get("chicken") ?? 0) + (gtCounts.get("divergence") ?? 0)) / p.games;
+  const coopShare = ((gtCounts.get("coordination") ?? 0) + (gtCounts.get("stag-hunt") ?? 0) + (gtCounts.get("collective-action") ?? 0)) / p.games;
 
   const roleTotalGames = p.asRoleA + p.asRoleB;
   const aShare = roleTotalGames > 0 ? p.asRoleA / roleTotalGames : 0;
@@ -392,35 +392,35 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "extractor",
       label: "extractor",
-      description: "Often lands in cells where they gain stake while the counterpart loses. Wins at someone's expense.",
+      description: "Wins at someone's expense. Their realized moments routinely leave them better off and the other party worse off — gain isn't shared, it's taken.",
       tone: "conflict",
     });
   } else if (sacrificeRate >= 0.3) {
     tags.push({
       id: "sacrificial",
       label: "sacrificial",
-      description: "Often lands in cells where they lose stake while the counterpart gains. Absorbs cost for others.",
+      description: "Pays so others can gain. Their realized moments routinely leave them worse off and the other party better off — they absorb the cost.",
       tone: "moral",
     });
   } else if (mutualLossRate >= 0.3) {
     tags.push({
       id: "destructive",
       label: "destructive",
-      description: "Often lands in mutual-loss cells — no-win confrontations, spoiled alliances.",
+      description: "Brings everyone down. Their moments land disproportionately in cells where both sides lose — no-win confrontations, spoiled alliances.",
       tone: "conflict",
     });
   } else if (teamRate >= 0.4 && asymmetry >= 1.0) {
     tags.push({
       id: "lopsided",
-      label: "lopsided cooperator",
-      description: "Cooperation cells are stacked in their favor — both sides gain, but they gain much more. The alliance benefits them disproportionately.",
+      label: "uneven ally",
+      description: "Cooperates, but the cooperation is stacked in their favour. Both sides gain — they gain much more. The alliance is real but unequal.",
       tone: "conflict",
     });
   } else if (teamRate >= 0.5 && Math.abs(asymmetry) < 0.7) {
     tags.push({
       id: "teammate",
       label: "teammate",
-      description: "Most realized cells leave both parties with roughly-equal gains. Genuine cooperative trajectory.",
+      description: "A genuine cooperator. Most of their realized moments leave both parties roughly even — when they work with someone, both sides benefit.",
       tone: "cooperation",
     });
   }
@@ -430,35 +430,35 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "dominant",
       label: "dominant",
-      description: "Realized cells skew to the top of each grid. The author routinely gives them the best available outcome.",
+      description: "Tends to land near the top of every grid they're in. When this player is at the table, the story routinely gives them the best available outcome.",
       tone: "win",
     });
   } else if (eloDelta >= 80) {
     tags.push({
       id: "ascendant",
-      label: "ascendant",
-      description: "ELO climbed sharply across the narrative. Gained ground through the arc.",
+      label: "rising",
+      description: "Rating climbed sharply across the story. They gained strategic ground from where they started.",
       tone: "win",
     });
   } else if (eloDelta <= -80) {
     tags.push({
       id: "fading",
-      label: "fading",
-      description: "ELO eroded across the narrative. Stake delivery weakened over time.",
+      label: "falling",
+      description: "Rating eroded across the story. The strategic ground they once held has been lost.",
       tone: "loss",
     });
   } else if (p.eloVolatility >= 18) {
     tags.push({
       id: "volatile",
       label: "volatile",
-      description: "Big ELO swings between games. High-variance outcomes — wins big, loses big.",
+      description: "Wins big and loses big. Rating swings wildly between moments — high-variance player, never settled in one spot for long.",
       tone: "strategic",
     });
   } else if (p.eloVolatility <= 6 && p.games >= 5) {
     tags.push({
       id: "steady",
       label: "steady",
-      description: "Low ELO volatility across many games. Consistent, even outcomes.",
+      description: "Consistent outcomes across many moments. Rating barely swings — a reliable, even-keeled presence.",
       tone: "strategic",
     });
   }
@@ -471,22 +471,22 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   if (nashRate <= 0.35 && eloDelta >= 50 && p.avgStakeDelta >= 1) {
     tags.push({
       id: "arc-breaker",
-      label: "arc-breaker",
-      description: "Keeps landing on off-Nash cells AND coming out ahead. Author overrides strategic equilibrium to grant them wins — the 'main-character force' is visibly acting on them.",
+      label: "main-character force",
+      description: "Routinely wins moments rational play says they shouldn't. The story bends in their favour even when strategic logic would have given the win to the other side — the unmistakable signature of a protagonist.",
       tone: "strategic",
     });
   } else if (nashRate >= 0.75 && p.avgStakeDelta >= 0) {
     tags.push({
       id: "strategist",
       label: "strategist",
-      description: "Most realized cells sit on a Nash equilibrium. Outcomes line up with strategic stability — reads the grid clearly and lands where a clear-eyed player would.",
+      description: "Reads the room. Their realized moments overwhelmingly land on the Nash equilibrium — they play the locally-rational, defensible move and it pays off.",
       tone: "strategic",
     });
   } else if (nashRate <= 0.2 && p.games >= 5) {
     tags.push({
       id: "off-script",
       label: "off-script",
-      description: "Realized cells rarely coincide with Nash. Author systematically overrides strategic expectation in their scenes.",
+      description: "Rarely plays the rational move. Their realized moments routinely sit off the Nash equilibrium — driven by something other than self-interest. Watch the arc-cost.",
       tone: "strategic",
     });
   }
@@ -500,7 +500,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "schemer",
       label: "schemer",
-      description: "Thrives in information-asymmetric games (signaling, principal-agent, cheap-talk) while coming out ahead. Wields what is shown and hidden to structure outcomes in their favor.",
+      description: "Plays the information game and wins it. Their moments concentrate in scenes where someone is hiding something (signals, sortings, covert action, delegation) — and they come out ahead by controlling what others know.",
       tone: "strategic",
     });
   }
@@ -508,7 +508,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "power-broker",
       label: "power-broker",
-      description: "Frequently the first mover in stackelberg / commitment / bargaining beats. Sets the terms others respond to — controls the frame of the interaction.",
+      description: "Sets the terms. Frequently the first mover in moments where commitment, sequencing, or bargaining is the game — others react to what they decide first.",
       tone: "strategic",
     });
   }
@@ -516,7 +516,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "oppositional",
       label: "oppositional",
-      description: "Most decisions sit inside zero-sum, chicken, or pure-opposition games. Their arc runs through direct collisions rather than coordination.",
+      description: "Lives in direct collision. Their moments concentrate in zero-sum, chicken, and divergence games — the kind where someone has to lose for someone to win.",
       tone: "conflict",
     });
   }
@@ -524,7 +524,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "coordinator",
       label: "coordinator",
-      description: "Most appearances are coordination, stag-hunt, or collective-action games — alignment problems rather than collisions. Their strategic work is building shared action.",
+      description: "Builds shared action. Their moments concentrate in alignment problems — coordination, trust-gated cooperation, group threshold contribution. Their strategic work is making things work together.",
       tone: "cooperation",
     });
   }
@@ -1108,36 +1108,41 @@ export function GameTheoryDashboard({
       : null;
 
   return (
-    <Modal onClose={onClose} size="6xl">
+    <Modal onClose={onClose} fullScreen>
       <ModalHeader onClose={onClose}>
-        <div className="flex items-baseline gap-3">
-          <h2 className="text-[13px] font-semibold text-text-primary">
-            Game Theory Dashboard
-          </h2>
-          <span className="text-[10px] text-text-dim/60">
-            player ratings + narrative insights
-          </span>
-          {positionLabel && (
-            <span
-              className={`text-[10px] font-mono ${
-                truncated ? "text-amber-300/80" : "text-text-dim/55"
-              }`}
-              title={
-                truncated
-                  ? "Dashboard reflects cumulative branch state up to the current reading position — later scenes on this branch are excluded. Advance the reader to see their impact."
-                  : "Dashboard reflects the full branch (you're at the last entry)."
-              }
-            >
-              {positionLabel}
+        <div className="flex flex-col gap-1.5 w-full">
+          <div className="flex items-baseline gap-4 flex-wrap">
+            <h2 className="text-[18px] font-semibold text-text-primary tracking-tight">
+              Game Theory
+            </h2>
+            <span className="text-[11px] text-text-dim/70">
+              Who's actually winning this story
             </span>
-          )}
+            {positionLabel && (
+              <span
+                className={`text-[10px] font-mono ml-auto ${
+                  truncated ? "text-amber-300/80" : "text-text-dim/55"
+                }`}
+                title={
+                  truncated
+                    ? "Showing cumulative state up to your current reading position — later scenes on this branch are excluded. Advance the reader to include them."
+                    : "Showing the full branch (you're at the last entry)."
+                }
+              >
+                {positionLabel}
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-text-dim/70 leading-relaxed max-w-4xl">
+            Every consequential moment has a <span className="text-text-secondary">SHAPE</span> — the full space of choices each party could have made, and what would have happened in each pairing. What actually happened is one cell in that space. This dashboard shows who consistently captures the most stake when the stakes are highest.
+          </p>
         </div>
       </ModalHeader>
-      <ModalBody className="p-0">
+      <ModalBody className="p-0 bg-bg-base">
         {agg.totalDecisions === 0 ? (
           <EmptyDashboard />
         ) : (
-          <div className="p-6 flex flex-col gap-8">
+          <div className="max-w-400 mx-auto px-8 py-8 flex flex-col gap-10">
             <KeyMetrics agg={agg} />
             <PlayerRankings
               agg={agg}
@@ -1181,24 +1186,61 @@ function KeyMetrics({ agg }: { agg: Aggregate }) {
     agg.nashCompliance > 0.4 ? "text-amber-400" :
     "text-red-400";
 
+  // Friendly read of the Nash rate — gives the operator a one-word
+  // characterisation of the world's strategic logic without forcing them
+  // to interpret the percentage.
+  const nashRead =
+    agg.nashCompliance > 0.7 ? "rational world" :
+    agg.nashCompliance > 0.4 ? "mixed logic" :
+    "arc overrides reason";
+
   return (
     <div className="grid grid-cols-4 gap-3">
       <Stat
-        label="Top player"
+        label="Strongest player"
         value={top?.name ?? "—"}
-        sub={top ? `${Math.round(top.currentElo)} ELO` : undefined}
+        sub={top ? `rating ${Math.round(top.currentElo)} — most stake captured` : undefined}
         color="text-emerald-300"
         tip={GT_TIPS.elo}
       />
-      <Stat label="Players" value={agg.profiles.length} sub={`across ${agg.scenesAnalysed} scenes`} />
-      <Stat label="Decisions" value={agg.totalDecisions} sub="games recorded" />
+      <Stat label="Players tracked" value={agg.profiles.length} sub={`across ${agg.scenesAnalysed} scenes`} />
+      <Stat label="Decision moments" value={agg.totalDecisions} sub="strategic choices analysed" />
       <Stat
         label="Nash compliance"
         value={`${nashPct}%`}
         color={nashColor}
-        sub="chose equilibrium cell"
+        sub={nashRead}
         tip={GT_TIPS.nashCompliance}
       />
+    </div>
+  );
+}
+
+/** Shared section header — title in tight uppercase, optional one-line
+ *  subtitle explaining what this section is for. Used by every block on
+ *  the dashboard so the visual hierarchy is consistent. */
+function SectionHeader({
+  title,
+  subtitle,
+  aside,
+}: {
+  title: string;
+  subtitle?: string;
+  aside?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="flex flex-col gap-1 min-w-0">
+        <h3 className="text-[12px] uppercase tracking-[0.18em] text-text-secondary font-semibold">
+          {title}
+        </h3>
+        {subtitle && (
+          <p className="text-[10px] text-text-dim/65 leading-relaxed max-w-2xl">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {aside && <div className="shrink-0">{aside}</div>}
     </div>
   );
 }
@@ -1218,21 +1260,25 @@ function Stat({
 }) {
   return (
     <div
-      className="rounded-lg border border-white/8 bg-white/3 px-3 py-2.5"
+      className="rounded-xl border border-white/10 bg-white/2.5 px-5 py-4 hover:border-white/15 transition-colors"
       title={tip}
     >
+      <div className="text-[9px] uppercase tracking-[0.15em] text-text-dim/65 font-semibold mb-2">
+        {label}
+      </div>
       <div
-        className={`text-[18px] font-semibold tabular-nums truncate ${
+        className={`text-[28px] font-semibold tabular-nums truncate leading-none ${
           color ?? "text-text-primary"
         }`}
         title={tip ?? String(value)}
       >
         {value}
       </div>
-      <div className="text-[9px] uppercase tracking-wider text-text-dim/60 font-semibold mt-1">
-        {label}
-      </div>
-      {sub && <div className="text-[9px] text-text-dim/50 mt-0.5">{sub}</div>}
+      {sub && (
+        <div className="text-[10px] text-text-dim/60 mt-2 leading-snug">
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -1252,24 +1298,22 @@ function PlayerRankings({
 
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-[10px] uppercase tracking-[0.15em] text-text-dim/70 font-semibold">
-          Player Rankings
-        </h3>
-        <span className="text-[9px] text-text-dim/50">ELO starts at {ELO_INITIAL}</span>
-      </div>
-      <div className="rounded-lg border border-white/8 overflow-hidden">
+      <SectionHeader
+        title="Player rankings"
+        subtitle={`Ratings start at ${ELO_INITIAL} and move when a player captures more stake than their counterpart in a moment. Crucial moments (high stakes on the table) move the rating more.`}
+      />
+      <div className="rounded-xl border border-white/10 overflow-hidden bg-white/2.5">
         <table className="w-full text-[11px]">
           <thead>
-            <tr className="bg-white/3 text-text-dim/70 text-[9px] uppercase tracking-wider">
-              <th className="text-left py-2 px-3 font-semibold w-8">#</th>
-              <th className="text-left py-2 px-3 font-semibold">Player</th>
-              <th className="text-right py-2 px-3 font-semibold" title={GT_TIPS.elo}>ELO</th>
-              <th className="text-left py-2 px-3 font-semibold w-40" title={GT_TIPS.trajectorySparkline}>Trajectory</th>
-              <th className="text-right py-2 px-3 font-semibold" title={GT_TIPS.wld}>W/L/D</th>
-              <th className="text-center py-2 px-3 font-semibold" title={GT_TIPS.outcomeMix}>Outcome mix</th>
-              <th className="text-right py-2 px-3 font-semibold" title={GT_TIPS.avgStake}>Avg stake</th>
-              <th className="text-right py-2 px-3 font-semibold" title={GT_TIPS.nashCompliance}>Nash</th>
+            <tr className="bg-white/3 text-text-dim/75 text-[9px] uppercase tracking-[0.12em] border-b border-white/8">
+              <th className="text-left py-3 px-4 font-semibold w-10">#</th>
+              <th className="text-left py-3 px-4 font-semibold">Player</th>
+              <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.elo}>Rating</th>
+              <th className="text-left py-3 px-4 font-semibold w-56" title={GT_TIPS.trajectorySparkline}>Rating over time</th>
+              <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.wld}>Won / Tied / Lost</th>
+              <th className="text-center py-3 px-4 font-semibold" title={GT_TIPS.outcomeMix}>Gains vs losses</th>
+              <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.avgStake}>Avg outcome</th>
+              <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.nashCompliance}>Nash %</th>
             </tr>
           </thead>
           <tbody>
@@ -1282,9 +1326,9 @@ function PlayerRankings({
 
               return (
                 <tr key={p.id} className="border-t border-white/5 hover:bg-white/3 transition-colors">
-                  <td className="py-2.5 px-3 text-text-dim/50 tabular-nums">{i + 1}</td>
-                  <td className="py-2.5 px-3">
-                    <div className="text-text-primary font-medium truncate max-w-[220px]" title={p.name}>
+                  <td className="py-4 px-4 text-text-dim/50 tabular-nums align-top">{i + 1}</td>
+                  <td className="py-4 px-4 align-top">
+                    <div className="text-text-primary font-medium truncate max-w-72" title={p.name}>
                       {p.name}
                     </div>
                     <div className="text-[9px] text-text-dim/50 mt-0.5">
@@ -1292,15 +1336,15 @@ function PlayerRankings({
                     </div>
                     <ArchetypeTags tags={classifyPlayer(p)} />
                   </td>
-                  <td className="py-2.5 px-3 text-right">
-                    <div className={`font-semibold tabular-nums ${
+                  <td className="py-4 px-4 text-right align-top">
+                    <div className={`text-[14px] font-semibold tabular-nums leading-none ${
                       eloDelta > 50 ? "text-emerald-400" :
                       eloDelta < -50 ? "text-red-400" :
                       "text-text-primary"
                     }`}>
                       {Math.round(p.currentElo)}
                     </div>
-                    <div className={`text-[9px] tabular-nums ${
+                    <div className={`text-[9px] tabular-nums mt-1 ${
                       eloDelta > 0 ? "text-emerald-400/70" :
                       eloDelta < 0 ? "text-red-400/70" :
                       "text-text-dim/50"
@@ -1308,39 +1352,39 @@ function PlayerRankings({
                       {eloDelta > 0 ? "+" : ""}{Math.round(eloDelta)}
                     </div>
                   </td>
-                  <td className="py-2.5 px-3">
-                    <Sparkline values={p.eloHistory} width={140} height={28} />
+                  <td className="py-4 px-4 align-top">
+                    <Sparkline values={p.eloHistory} width={200} height={36} />
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums">
-                    <span className="text-emerald-400/80">{p.wins}</span>
-                    <span className="text-text-dim/40 mx-0.5">/</span>
-                    <span className="text-red-400/80">{p.losses}</span>
-                    <span className="text-text-dim/40 mx-0.5">/</span>
+                  <td className="py-4 px-4 text-right tabular-nums align-top">
+                    <span className="text-emerald-400/85">{p.wins}</span>
+                    <span className="text-text-dim/35 mx-1">/</span>
                     <span className="text-text-dim/60">{p.draws}</span>
+                    <span className="text-text-dim/35 mx-1">/</span>
+                    <span className="text-red-400/85">{p.losses}</span>
                   </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <div className="flex gap-px h-1.5 rounded-full overflow-hidden bg-white/5 w-32">
+                  <td className="py-4 px-4 align-top">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex gap-px h-2 rounded-full overflow-hidden bg-white/5 w-36">
                         {posPct > 0 && (
-                          <div className="bg-emerald-400/70 h-full" style={{ width: `${posPct}%` }} title="Realized cells with positive stake delta" />
+                          <div className="bg-emerald-400/75 h-full" style={{ width: `${posPct}%` }} title="Realized cells with positive stake delta" />
                         )}
                         {negPct > 0 && (
-                          <div className="bg-red-400/70 h-full" style={{ width: `${negPct}%` }} title="Realized cells with negative stake delta" />
+                          <div className="bg-red-400/75 h-full" style={{ width: `${negPct}%` }} title="Realized cells with negative stake delta" />
                         )}
                       </div>
-                      <div className="text-[9px] text-text-dim/60">
+                      <div className="text-[9px] text-text-dim/65">
                         {outcomeMixLabel(posPct)}
                       </div>
                     </div>
                   </td>
-                  <td className={`py-2.5 px-3 text-right tabular-nums ${
+                  <td className={`py-4 px-4 text-right tabular-nums align-top ${
                     p.avgStakeDelta > 0.5 ? "text-emerald-300" :
-                    p.avgStakeDelta < -0.5 ? "text-red-400/80" :
+                    p.avgStakeDelta < -0.5 ? "text-red-400/85" :
                     "text-text-secondary"
                   }`}>
                     {p.avgStakeDelta >= 0 ? "+" : ""}{p.avgStakeDelta.toFixed(1)}
                   </td>
-                  <td className={`py-2.5 px-3 text-right tabular-nums font-medium ${
+                  <td className={`py-4 px-4 text-right tabular-nums font-medium align-top ${
                     nashPct === null ? "text-text-dim/40" :
                     nashPct > 70 ? "text-emerald-400" :
                     nashPct > 40 ? "text-amber-400" :
@@ -1355,22 +1399,34 @@ function PlayerRankings({
         </table>
       </div>
 
-      {/* Column explanations */}
-      <div className="flex items-center gap-4 mt-3 text-[9px] text-text-dim/50">
-        <span>Outcome mix: <span className="text-emerald-400/80">gains</span> vs <span className="text-red-400/80">losses</span> in realized cells</span>
-        <span>· Avg stake: mean stake delta per realized cell (-4..+4)</span>
-        <span>· Nash: % of realized cells that are Nash equilibria</span>
+      {/* Column explanations — written for a reader meeting these ideas
+          for the first time, not just as a key. */}
+      <div className="flex flex-col gap-1 mt-3 text-[10px] text-text-dim/55 leading-snug">
+        <p>
+          <span className="text-text-dim/75">Rating</span> climbs when this player captures more stake than their counterpart in a moment. The trajectory shows the strategic arc.
+        </p>
+        <p>
+          <span className="text-text-dim/75">Gains vs losses</span> = of the cells this player landed in, what fraction were positive (<span className="text-emerald-400/70">gains</span>) vs negative (<span className="text-red-400/70">losses</span>). Independent of who they faced.
+        </p>
+        <p>
+          <span className="text-text-dim/75">Avg outcome</span> = mean stake change per moment, on a −4 (catastrophic) to +4 (ideal) scale.
+        </p>
+        <p>
+          <span className="text-text-dim/75">Nash %</span> = how often the realized choice was a Nash equilibrium — the cell where neither player could improve by unilaterally switching. Low values flag arc, identity, or principle overriding self-interest.
+        </p>
       </div>
     </div>
   );
 }
 
+/** Plain-language read of the gains-vs-losses bar — chosen so a glance
+ *  tells you whether this player is generally favoured by the story. */
 function outcomeMixLabel(posPct: number): string {
-  if (posPct >= 80) return "winner";
-  if (posPct >= 60) return "net gain";
-  if (posPct >= 40) return "balanced";
-  if (posPct >= 20) return "net loss";
-  return "loser";
+  if (posPct >= 80) return "mostly wins";
+  if (posPct >= 60) return "more wins than losses";
+  if (posPct >= 40) return "even split";
+  if (posPct >= 20) return "more losses than wins";
+  return "mostly loses";
 }
 
 // ── Sparkline — inline ELO timeline ────────────────────────────────────────
@@ -1540,25 +1596,26 @@ function NarrativeInsights({
 
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-[10px] uppercase tracking-[0.15em] text-text-dim/70 font-semibold">
-        Narrative Insights
-      </h3>
+      <SectionHeader
+        title="Narrative insights"
+        subtitle="Each card spotlights the player who most strongly expresses one strategic pattern — the cast's most-extracting, most-sacrificing, most-strategic, most-irrational players. The world's archetype gallery, derived from realized cells."
+      />
 
       {/* Archetype exemplar cards — one card per characterising pattern */}
       {cards.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {cards.map((c, i) => (
             <div
               key={i}
-              className={`rounded-lg border px-3 py-2.5 ${archetypeToneClasses(c.tone)}`}
+              className={`rounded-xl border px-4 py-3.5 ${archetypeToneClasses(c.tone)}`}
             >
-              <div className="text-[9px] uppercase tracking-wider opacity-70 font-semibold mb-1">
+              <div className="text-[9px] uppercase tracking-[0.15em] opacity-70 font-semibold mb-2">
                 {c.label}
               </div>
-              <div className="text-[13px] font-semibold truncate text-text-primary" title={c.name}>
+              <div className="text-[14px] font-semibold truncate text-text-primary" title={c.name}>
                 {c.name}
               </div>
-              <div className="text-[9px] text-text-dim/60 mt-0.5">{c.sub}</div>
+              <div className="text-[10px] text-text-dim/65 mt-1.5 leading-snug">{c.sub}</div>
             </div>
           ))}
           {topRivalry && (
@@ -1605,15 +1662,11 @@ function CoalitionsSection({ agg }: { agg: Aggregate }) {
   const coalitions = agg.coalitions;
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-[10px] uppercase tracking-[0.15em] text-text-dim/70 font-semibold">
-          Coalitions
-        </h3>
-        <span className="text-[9px] text-text-dim/50">
-          tight cliques · every pair cooperates {">"}60%
-        </span>
-      </div>
-      <div className="rounded-lg border border-white/8 overflow-hidden">
+      <SectionHeader
+        title="Coalitions"
+        subtitle="Tight groups where every pair routinely lands in mutual-gain cells. Structural alliances inside the cast — who rises (or falls) together."
+      />
+      <div className="rounded-xl border border-white/10 overflow-hidden bg-white/2.5">
         {coalitions.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-[11px] text-text-dim/70">No meaningful coalitions detected.</p>
@@ -1729,15 +1782,11 @@ function RivalriesSection({ agg }: { agg: Aggregate }) {
   const rivalries = agg.rivalries;
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-[10px] uppercase tracking-[0.15em] text-text-dim/70 font-semibold">
-          Rivalries
-        </h3>
-        <span className="text-[9px] text-text-dim/50">
-          pairs with sustained conflict ≥33%
-        </span>
-      </div>
-      <div className="rounded-lg border border-white/8 overflow-hidden">
+      <SectionHeader
+        title="Rivalries"
+        subtitle="Pairs locked in sustained conflict — many shared moments, many cells where one gains while the other loses, with a clear winner."
+      />
+      <div className="rounded-xl border border-white/10 overflow-hidden bg-white/2.5">
         {rivalries.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-[11px] text-text-dim/70">No meaningful rivalries detected.</p>

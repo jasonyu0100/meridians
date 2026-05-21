@@ -16,6 +16,7 @@ import { useStore } from "@/lib/store";
 import { generateSceneGameAnalysis } from "@/lib/ai";
 import { BulkStreamBanner } from "./BulkStreamBanner";
 import {
+  arcCost,
   nashEquilibria,
   outcomeAt,
   realizedIsNash,
@@ -473,6 +474,8 @@ function StrategicShape({ game }: { game: BeatGame }) {
   const isRealizedNash = realizedIsNash(game);
   const rankA = stakeRank(game, "A");
   const rankB = stakeRank(game, "B");
+  const arcCostA = arcCost(game, "A");
+  const arcCostB = arcCost(game, "B");
 
   return (
     <div>
@@ -516,18 +519,44 @@ function StrategicShape({ game }: { game: BeatGame }) {
         {rankA && (
           <div title={GT_TIPS.stakeRank}>
             <PlayerLink id={game.playerAId} name={game.playerAName} className="text-white font-medium" />
-            <span className="text-text-dim/75">: realized is rank {rankA.rank}/{rankA.total} by stake</span>
+            <span className="text-text-dim/75">
+              : got the {ordinal(rankA.rank)}-best of {rankA.total} possible outcomes
+              {arcCostA > 0 && (
+                <span className="text-amber-300/85" title={GT_TIPS.arcCost}>
+                  {" "}· left +{arcCostA} on the table
+                </span>
+              )}
+            </span>
           </div>
         )}
         {rankB && (
           <div title={GT_TIPS.stakeRank}>
             <PlayerLink id={game.playerBId} name={game.playerBName} className="text-sky-200 font-medium" />
-            <span className="text-text-dim/75">: realized is rank {rankB.rank}/{rankB.total} by stake</span>
+            <span className="text-text-dim/75">
+              : got the {ordinal(rankB.rank)}-best of {rankB.total} possible outcomes
+              {arcCostB > 0 && (
+                <span className="text-amber-300/85" title={GT_TIPS.arcCost}>
+                  {" "}· left +{arcCostB} on the table
+                </span>
+              )}
+            </span>
           </div>
         )}
       </div>
     </div>
   );
+}
+
+/** "1st", "2nd", "3rd", ... for the stake-rank line. */
+function ordinal(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
 }
 
 // ── Matrix board — dynamic NxM grid ────────────────────────────────────────

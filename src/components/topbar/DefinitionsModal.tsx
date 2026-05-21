@@ -22,6 +22,7 @@ const tabs = [
   "Archetypes",
   "Shapes",
   "Scales",
+  "Game theory",
 ] as const;
 type Tab = (typeof tabs)[number];
 
@@ -826,6 +827,192 @@ function ScalesTab() {
   );
 }
 
+// ── Game Theory Tab ──────────────────────────────────────────────────────────
+
+const GAME_SHAPES: Array<{ name: string; family: string; desc: string }> = [
+  // Symmetric-info preference structures
+  { name: "coordination",     family: "Alignment",         desc: "Both want to end up in the same place. Stake moves together when actions match. Includes the case where both want to meet but prefer different focal points." },
+  { name: "stag-hunt",        family: "Alignment",         desc: "Coordination with a trust gate. Team up for a big shared prize, or play it safe alone. The big prize is the Nash equilibrium, but the safe play is risk-dominant." },
+  { name: "dilemma",          family: "Mixed motives",     desc: "Mutual cooperation would leave both better off, but each has a private incentive to defect. Prisoner's-dilemma shape." },
+  { name: "chicken",          family: "Mixed motives",     desc: "Both want the other to yield. If neither does, both crash. Mutual yielding is acceptable — the question is who blinks. Includes war-of-attrition." },
+  { name: "divergence",       family: "Opposed",           desc: "Both actively want to differ from each other on a shared axis. If only one wants to diverge and the other prefers alignment, it's not divergence (likely stealth or zero-sum)." },
+  { name: "zero-sum",         family: "Opposed",           desc: "The payoff grid literally sums to zero in every cell. Any +X for one is −X for the other on a shared currency." },
+  // Asymmetric-info structures
+  { name: "signaling",        family: "Hidden info",       desc: "Informed party reveals their type through a costly, hard-to-fake action. The signal is credible because weaker types couldn't afford to send it. Absorbs cheap-talk when the talk itself carries cost." },
+  { name: "screening",        family: "Hidden info",       desc: "Uninformed party DESIGNS a mechanism that sorts agents by type — evaluations, tests, auctions, loyalty trials, ultimatum-framed challenges." },
+  { name: "principal-agent",  family: "Hidden info",       desc: "Requires BOTH (a) explicit delegation — one party hands a task to another — AND (b) hidden action — the principal can't directly observe what the agent does." },
+  { name: "stealth",          family: "Hidden info",       desc: "One party acts covertly; the other's move is passive attention allocation (scrutinise vs overlook), not active counter-action. No delegation (that's principal-agent)." },
+  // Mechanism / structural
+  { name: "stackelberg",      family: "Mechanism",         desc: "One moves first and commits visibly; the other watches, then best-responds. First-mover advantage or trap." },
+  { name: "bargaining",       family: "Mechanism",         desc: "Offer → counter → accept/reject rounds. Each side strategises over when to concede. Grid size signals round count; one-shot ultimatum is the degenerate case." },
+  { name: "commitment-game",  family: "Mechanism",         desc: "Whether one party can credibly bind themselves IS the game (vow, burned bridge, hostage, contract). Credibility of the promise is the whole strategic content." },
+  // Multi-party
+  { name: "contest",          family: "Multi-party",       desc: "Multiple players compete for a rank-ordered prize — tournament, auction, scramble for status." },
+  { name: "collective-action",family: "Multi-party",       desc: "A group needs enough contributors to clear a threshold. Each is tempted to free-ride on others' effort." },
+  // Degenerate
+  { name: "trivial",          family: "Degenerate",        desc: "No real strategic content — a beat where the choice is in name only." },
+];
+
+const ACTION_AXES: Array<{ name: string; group: string; desc: string }> = [
+  { name: "information", group: "Information & self", desc: "reveal ↔ conceal — what facts about the world does each side expose or hide?" },
+  { name: "identity",    group: "Information & self", desc: "claim ↔ disown — do I assert who I am, or distance myself from it?" },
+  { name: "trust",       group: "Relational stance",  desc: "extend ↔ guard — do I lower my defenses, or keep them up?" },
+  { name: "alliance",    group: "Relational stance",  desc: "ally ↔ separate — are we on the same side going forward, or not?" },
+  { name: "status",      group: "Relational stance",  desc: "assert ↔ defer — do I push for the higher position, or yield rank?" },
+  { name: "pressure",    group: "Force & magnitude",  desc: "press ↔ yield — how much force am I applying, or absorbing? (Absorbs control bind/release and confrontation engage/evade.)" },
+  { name: "stakes",      group: "Force & magnitude",  desc: "escalate ↔ deescalate — am I raising or lowering what's on the line?" },
+  { name: "resources",   group: "Resource & owed",    desc: "take ↔ give — who ends up holding the resources, lives, or knowledge?" },
+  { name: "obligation",  group: "Resource & owed",    desc: "incur ↔ discharge — am I taking on a debt or favour, or paying it off? (The owed-ness that survives the transfer.)" },
+  { name: "commitment",  group: "Self & tempo",       desc: "commit ↔ withdraw / hedge — am I binding myself, or keeping options open? Absorbs moral: committing to a principle is moral self-binding." },
+  { name: "timing",      group: "Self & tempo",       desc: "act ↔ wait — do I move now, or hold and watch?" },
+];
+
+const GAME_CONCEPTS: Array<{ term: string; desc: string }> = [
+  { term: "Decision space",       desc: "The full grid of choices for every player at a moment, and the consequence of every pairing. Game theory's object of study — the shape exists independent of any path realised through it." },
+  { term: "Realised cell",        desc: "The cell that actually happened on the page. One signature on the decision space. In fiction the author selected it; in non-fiction the writer; in simulation the rules and priors; in analysis reality." },
+  { term: "Stake delta",          desc: "How much an outcome advances (+) or harms (−) a player's arc-level interests, on a −4 to +4 scale. Magnitude is importance: a pivotal beat uses the full ±4 range; a quiet beat stays in ±1." },
+  { term: "Nash equilibrium",     desc: "A cell where neither player would change their action even if they knew the other's choice. Both are best-responding to each other. The resting point self-interest converges to." },
+  { term: "Pure-strategy Nash",   desc: "A Nash equilibrium that doesn't require randomising — a single deterministic cell that's stable. Some grids have none (matching-pennies shape); these are unresolved by rational play alone." },
+  { term: "Off-Nash cell",        desc: "A realised cell that ISN'T a Nash equilibrium — someone had a better-for-them option and didn't take it. Signal, not error: usually the author trading local stake for arc, identity, or principle." },
+  { term: "Arc-cost",             desc: "How much stake a player gave up by NOT taking the locally-best option. Derived from the grid — no LLM declaration. The visible signature of irrational / arc-driven play." },
+  { term: "Stake rank",           desc: "Where the realised cell sits in this player's personal ranking of cells, best to worst. Rank 1 = best available; rank N = worst. Tells you whether the moment was generous, cruel, or middling to them." },
+  { term: "ELO rating",           desc: "Running strategic rating, same idea as chess. Starts at 1500. Goes up when a player captures more stake than their counterpart in a moment; goes down when they capture less. Crucial moments (high stakes on the table) move the rating more." },
+  { term: "Stake-weighted K",     desc: "ELO's K-factor (how much one game moves the rating) scales with the largest absolute stake in the grid. ±4 grids move the rating fully; ±1 grids barely touch it. Crucial moments dominate the rating." },
+  { term: "Margin score",         desc: "scoreA = clamp(0.5 + (ΔA − ΔB) / 16, 0, 1). Folds margin-of-victory into the ELO math — a ±4 crush yields 1.0, a ±1 edge yields ~0.56, a tie yields 0.5." },
+  { term: "Nash compliance",      desc: "% of realised cells that are Nash equilibria. High = a world where strategic logic carries. Low = a world where character, arc, or theme routinely overrides what self-interest would dictate." },
+  { term: "Coalition",            desc: "A tight group where every pair routinely lands in mutual-gain cells together. The structural alliances inside the cast — who rises (or falls) together." },
+  { term: "Rivalry",              desc: "Two players with sustained, asymmetric conflict — many shared moments, many cells where one gains while the other loses, with a clear winner." },
+];
+
+const FAMILY_COLOR: Record<string, string> = {
+  "Alignment":       "text-emerald-300",
+  "Mixed motives":   "text-amber-300",
+  "Opposed":         "text-rose-300",
+  "Hidden info":     "text-sky-300",
+  "Mechanism":       "text-violet-300",
+  "Multi-party":     "text-blue-300",
+  "Degenerate":      "text-text-dim",
+};
+
+const AXIS_GROUP_COLOR: Record<string, string> = {
+  "Information & self":  "text-sky-300",
+  "Relational stance":   "text-emerald-300",
+  "Force & magnitude":   "text-amber-300",
+  "Resource & owed":     "text-violet-300",
+  "Self & tempo":        "text-rose-300",
+};
+
+function GameTheoryTab() {
+  return (
+    <div className="space-y-6">
+      <div className="text-[10px] text-text-dim leading-relaxed">
+        Every consequential moment has a <strong>shape</strong> — the full space of
+        choices each party could have made, and what would have happened in each
+        pairing. The realised cell is one signature on that space. Across fiction,
+        non-fiction, simulation, and analysis the shape is the same; only who
+        selected the path differs. ELO rates the agents based on which signatures
+        they leave at the moments that matter most.
+      </div>
+
+      {/* Core concepts */}
+      <div>
+        <h3 className="text-[10px] font-semibold text-text-primary uppercase tracking-widest mb-3">
+          Core concepts
+        </h3>
+        <div className="space-y-2">
+          {GAME_CONCEPTS.map((c) => (
+            <div
+              key={c.term}
+              className="bg-bg-elevated/50 rounded-lg p-3 border border-border/20"
+            >
+              <div className="font-semibold text-[11px] text-text-primary mb-1">
+                {c.term}
+              </div>
+              <p className="text-[10px] text-text-secondary leading-relaxed">
+                {c.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Game shapes */}
+      <div>
+        <div className="flex items-baseline justify-between mb-3 pt-2 border-t border-border/20">
+          <h3 className="text-[10px] font-semibold text-text-primary uppercase tracking-widest">
+            Game shapes
+          </h3>
+          <span className="text-[9px] text-text-dim">
+            What kind of game is being played
+          </span>
+        </div>
+        <div className="space-y-2">
+          {GAME_SHAPES.map((g) => (
+            <div
+              key={g.name}
+              className="bg-bg-elevated/50 rounded-lg p-3 border border-border/20"
+            >
+              <div className="flex items-baseline gap-2 mb-1">
+                <div className="font-semibold text-[11px] text-text-primary font-mono">
+                  {g.name}
+                </div>
+                <div className={`text-[9px] uppercase tracking-wider ${FAMILY_COLOR[g.family] ?? "text-text-dim"}`}>
+                  {g.family}
+                </div>
+              </div>
+              <p className="text-[10px] text-text-secondary leading-relaxed">
+                {g.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Action axes */}
+      <div>
+        <div className="flex items-baseline justify-between mb-3 pt-2 border-t border-border/20">
+          <h3 className="text-[10px] font-semibold text-text-primary uppercase tracking-widest">
+            Action axes
+          </h3>
+          <span className="text-[9px] text-text-dim">
+            What's being traded in the moment
+          </span>
+        </div>
+        <div className="text-[10px] text-text-dim leading-relaxed mb-3">
+          Both players' actions live on the SAME axis — pick the axis by asking
+          what SHIFTS as a result of the decision. That thing is what's being
+          traded.
+        </div>
+        <div className="space-y-2">
+          {ACTION_AXES.map((a) => (
+            <div
+              key={a.name}
+              className="bg-bg-elevated/50 rounded-lg p-3 border border-border/20"
+            >
+              <div className="flex items-baseline gap-2 mb-1">
+                <div className="font-semibold text-[11px] text-text-primary font-mono">
+                  {a.name}
+                </div>
+                <div className={`text-[9px] uppercase tracking-wider ${AXIS_GROUP_COLOR[a.group] ?? "text-text-dim"}`}>
+                  {a.group}
+                </div>
+              </div>
+              <p className="text-[10px] text-text-secondary leading-relaxed">
+                {a.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-[9px] text-text-dim italic pt-2 border-t border-border/20">
+        The shape says how stake CAN move. The realised cell says how it DID move.
+        Arc-cost says what was left on the table.
+      </div>
+    </div>
+  );
+}
+
 // ── Main Modal ───────────────────────────────────────────────────────────────
 
 export function DefinitionsModal({ onClose }: Props) {
@@ -857,6 +1044,7 @@ export function DefinitionsModal({ onClose }: Props) {
         {tab === "Archetypes" && <ArchetypesTab />}
         {tab === "Shapes" && <ShapesTab />}
         {tab === "Scales" && <ScalesTab />}
+        {tab === "Game theory" && <GameTheoryTab />}
       </ModalBody>
     </Modal>
   );

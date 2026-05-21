@@ -1833,120 +1833,112 @@ export type ArcInvestigation = {
 };
 
 // ── Game Theory Analysis (opt-in, post-hoc) ───────────────────────────────────
-// Each beat that bears a strategic decision is modelled as an N×M game between
-// two players. This is an EVALUATOR: the outcome grid is the decision space,
-// not a predictor. The realized cell (what the author actually did) can be
-// Nash, Nash-adjacent, or strictly dominated — that's information, not error.
-// Characters who trade local optimality for arc-level payoff are exactly what
-// we want to learn about.
+// Every consequential moment has a SHAPE — the full space of choices each
+// party could have made, and the consequence of every pairing. What
+// actually happened is one cell in that space. The shape names how stake
+// CAN move between agents; the realised cell names how it DID move; the
+// gap (arcCost) names what was left on the table.
+//
+// The shape exists independent of who realises a path through it: in
+// fiction the author traces one, in argument the writer traces one, in
+// simulation the rules and priors trace one, in analysis reality already
+// traced one. ELO scores the agents in the world — never the author,
+// rules, or analyst. They select; only the agents compete.
 
 /** Dimension along which both players' actions are organised.
  *
- *  SCOPE: This taxonomy models **interpersonal strategic beats** — decisions
- *  between two (or more) agentic parties. Internal beats (self vs self, pure
- *  introspection) are out of scope and should be skipped or flagged trivial;
- *  a separate lightweight system covers those.
+ *  SCOPE: Interpersonal strategic beats — decisions between two (or more)
+ *  agentic parties. Internal beats (self vs self) are out of scope.
  */
 export type ActionAxis =
   // — Information & self-presentation —
-  | "disclosure"       // reveal ↔ conceal
-  | "identity"         // claim ↔ disown
+  | "information"      // reveal ↔ conceal (facts about the world)
+  | "identity"         // claim ↔ disown (who one is)
 
   // — Stance toward other party —
-  | "trust"            // extend ↔ guard
-  | "alliance"         // ally ↔ separate
-  | "confrontation"    // engage ↔ evade
-  | "status"           // assert ↔ defer
+  | "trust"            // extend ↔ guard (individual vulnerability)
+  | "alliance"         // ally ↔ separate (factional / group)
+  | "status"           // assert ↔ defer (relative rank)
 
   // — Force & magnitude within interaction —
-  | "pressure"         // press ↔ yield
-  | "stakes"           // escalate ↔ deescalate
-  | "control"          // bind ↔ release
+  | "pressure"         // press ↔ yield (intensity; absorbs control + confrontation)
+  | "stakes"           // escalate ↔ deescalate (magnitude of consequence)
 
   // — Resource & obligation flow —
-  | "acquisition"      // take ↔ give
-  | "obligation"       // incur ↔ discharge
-
-  // — Moral / normative —
-  | "moral"            // transgress ↔ uphold (acts against a principle or person)
+  | "resources"        // take ↔ give (physical transfer of value)
+  | "obligation"       // incur ↔ discharge (debt / favor that survives transfer)
 
   // — Self-binding & tempo —
-  | "commitment"       // commit ↔ withdraw / hedge
+  | "commitment"       // commit ↔ withdraw / hedge (incl. moral — binding to a principle)
   | "timing";          // act ↔ wait
 
-/** Classical strategic structure of the beat. Consolidated taxonomy —
- *  war-of-attrition folds into chicken; ultimatum folds into bargaining.
- *  Screening is kept separate from principal-agent because conflating them
- *  drives principal-agent overuse (any asymmetric-info beat drifts into it). */
+/** Strategic shape of the beat. The shape names how stake CAN move; the
+ *  realised cell names how it DID move. Compressed from 19 — battle-of-sexes
+ *  folds into coordination, cheap-talk into signaling, pure-opposition
+ *  drops (rare, usually zero-sum in disguise), anti-coordination renamed
+ *  to divergence. */
 export type GameType =
-  // — Symmetric payoff structures —
-  | "coordination"       // both want the same outcome; alignment problem
-  | "anti-coordination"  // players want opposite outcomes on a shared axis
-  | "battle-of-sexes"    // both want to coordinate but prefer different equilibria
-  | "dilemma"            // mutual cooperation pareto-optimal but each tempted to defect
-  | "stag-hunt"          // coordination with payoff-dominant vs risk-dominant trade-off
-  | "chicken"            // mutual yielding vs mutual collision (incl. time-extended war-of-attrition)
-  | "zero-sum"           // one gains exactly what the other loses (payoff grid sums to zero)
-  | "pure-opposition"    // conflict over incommensurable values (honor vs survival, love vs duty)
+  // — Symmetric-info preference structures —
+  | "coordination"       // both want to align (incl. battle-of-sexes flavour)
+  | "stag-hunt"          // coordination with payoff-dominant vs risk-dominant trade
+  | "dilemma"            // mutual cooperation pareto-best but defection pays unilaterally
+  | "chicken"            // mutual yield vs mutual collision (incl. war-of-attrition)
+  | "divergence"         // both want to diverge (renamed anti-coordination)
+  | "zero-sum"           // grid sums to zero — any gain matched by equal loss
 
-  // — Asymmetric / structural —
-  | "contest"            // n-player competition for rank-ordered prize
-  | "collective-action"  // n-player threshold contribution; free-rider dynamics
-  | "principal-agent"    // delegation with HIDDEN action — principal can't directly observe what agent did
-  | "screening"          // uninformed party structures choices to sort agent types (evaluations, tests, auctions)
-  | "signaling"          // informed party reveals type through costly, hard-to-fake action
-  | "stealth"            // actor acts covertly; observer's move is attention allocation, not active counter-action
-  | "stackelberg"        // sequential; leader commits visibly, follower best-responds
+  // — Asymmetric-info structures —
+  | "signaling"          // informed party reveals type via costly action (incl. cheap-talk when costly enough)
+  | "screening"          // uninformed party designs mechanism to sort agents by type
+  | "principal-agent"    // delegation with hidden action (both required — task handed off AND execution opaque)
+  | "stealth"            // covert action vs unaware observer (no delegation; observer's move is attention)
 
-  // — Communication / mechanism layers —
-  | "cheap-talk"         // non-binding communication shapes the beat
-  | "commitment-game"    // binding vs non-binding promise is the crux
-  | "bargaining"         // propose / counter / accept dynamics (incl. one-shot ultimatum)
+  // — Mechanism / structural —
+  | "stackelberg"        // sequential commit-then-respond (leader visible, follower best-responds)
+  | "bargaining"         // offer / counter / accept rounds (incl. one-shot ultimatum)
+  | "commitment-game"    // credibility of self-binding promise IS the crux
+
+  // — Multi-party —
+  | "contest"            // n-player rank-ordered competition for a prize
+  | "collective-action"  // n-player threshold contribution with free-rider dynamics
 
   // — Degenerate —
-  | "trivial";           // no real strategic content — use sparingly
+  | "trivial";           // no real strategic content
 
-/** Intuitive explanation for each action axis — "dichotomy — question the axis
- *  asks of the beat". Phrased as the question a reader can apply to the scene. */
+/** Intuitive explanation for each action axis — phrased as the question the
+ *  axis asks of the beat. Both players' actions live on the SAME axis. */
 export const ACTION_AXIS_LABELS: Record<ActionAxis, string> = {
-  disclosure:    "reveal ↔ conceal — what information does each side expose or hide?",
+  information:   "reveal ↔ conceal — what facts about the world does each side expose or hide?",
   identity:      "claim ↔ disown — do I assert who I am, or distance myself from it?",
   trust:         "extend ↔ guard — do I lower my defenses, or keep them up?",
   alliance:      "ally ↔ separate — are we on the same side going forward, or not?",
-  confrontation: "engage ↔ evade — do I meet this head-on or find a way around it?",
   status:        "assert ↔ defer — do I push for the higher position, or yield rank?",
-  pressure:      "press ↔ yield — how much force am I applying, or absorbing?",
+  pressure:      "press ↔ yield — how much force am I applying, or absorbing? (Absorbs control: bind/release; and confrontation: engage/evade.)",
   stakes:        "escalate ↔ deescalate — am I raising or lowering what's on the line?",
-  control:       "bind ↔ release — am I imposing constraint, or lifting it?",
-  acquisition:   "take ↔ give — who ends up holding the resources / lives / knowledge?",
-  obligation:    "incur ↔ discharge — am I taking on a debt/favor, or paying it off?",
-  moral:         "transgress ↔ uphold — does this act violate a principle, or honor it?",
-  commitment:    "commit ↔ withdraw / hedge — am I binding myself, or keeping options open?",
+  resources:     "take ↔ give — who ends up holding the resources / lives / knowledge?",
+  obligation:    "incur ↔ discharge — am I taking on a debt/favor, or paying it off? (Distinct from resources: the owed-ness that survives the transfer.)",
+  commitment:    "commit ↔ withdraw / hedge — am I binding myself, or keeping options open? (Absorbs moral: committing to a principle is moral self-binding.)",
   timing:        "act ↔ wait — do I move now, or hold and watch?",
 };
 
-/** Intuitive explanation for each game type — the strategic shape as it would
- *  feel to a reader, not a game theorist. One concrete hint per line. */
+/** Strategic shape of the beat — how stake CAN move. One concrete hint per
+ *  line so the analyser reaches for the SHAPE, not the surface topic. */
 export const GAME_TYPE_LABELS: Record<GameType, string> = {
-  "coordination":      "Both want to end up in the same place. The question is just: which place?",
-  "anti-coordination": "BOTH players actively want to diverge — mutual desire to differ. If only one party wants to diverge and the other would prefer to align (e.g., a sneak vs. a guard — the guard would like to be where the sneak is), this is stealth or zero-sum, not anti-coordination.",
-  "battle-of-sexes":   "Both want to meet, but each prefers their own venue. Coordination with a tug-of-war underneath.",
-  "dilemma":           "Cooperation would be best for both, but each has a private incentive to betray — prisoner's-dilemma shape.",
-  "stag-hunt":         "Team up for a big shared prize, or play it safe alone. Trust and risk-appetite decide.",
-  "chicken":           "Both want the other to yield. If neither does, both crash — escalation contest.",
-  "zero-sum":          "The payoff grid literally sums to zero — anything I gain, you lose, same magnitude. If any cell leaves both positive (or both negative), this is NOT zero-sum.",
-  "pure-opposition":   "Values clash with NO SHARED CURRENCY — honor vs survival, love vs duty, faith vs reason. Rare and specific. If both parties care about the same axis (power, reputation, control, resources) and simply want different amounts, that's zero-sum or anti-coordination, not pure-opposition. Ask: can I name the single thing both want more of? If yes, it's not this.",
-  "contest":           "Multiple players compete for a ranked prize — tournament, auction, scramble for status.",
-  "collective-action": "A group needs enough contributors to pull something off. Each is tempted to free-ride on others' effort.",
-  "principal-agent":   "Requires BOTH (a) explicit delegation — one party hands a task to another — AND (b) hidden action — the principal can't directly observe what the agent does and must rely on outcomes or design incentives. If either is missing, it's something else. Not a sink for asymmetric-info beats.",
-  "screening":         "Uninformed party structures choices to sort agents by type — evaluations, tests, auctions, interview questions designed to reveal who is who. Choose this over principal-agent when the beat is about sorting candidates, not monitoring a delegated task.",
-  "signaling":         "Informed party reveals their type through a costly, hard-to-fake action. The signal is only credible if weaker types couldn't afford to send it.",
-  "stealth":           "One player attempts something whose success depends on the other NOT NOTICING. The observer's 'move' is passive attention allocation (scrutinise vs. overlook), not an active counter-action. Covert actions, surveillance, concealed maneuvers, information theft — a player vs. an unaware or distracted counterpart.",
+  "coordination":      "Both want to end up in the same place. Stake moves together when actions match. Absorbs battle-of-sexes: if both want to meet but prefer different focal points, still coordination.",
+  "stag-hunt":         "Coordination with a trust gate. Team up for a big shared prize, or play it safe alone. Payoff-dominant Nash exists but is risk-dominated by the safe play.",
+  "dilemma":           "Mutual cooperation would pareto-dominate Nash, but each has a private incentive to defect — prisoner's-dilemma shape. Three structural facts must hold; see procedural gate.",
+  "chicken":           "Both want the other to yield. If neither does, both crash. Mutual yielding is acceptable; the question is who blinks. Includes war-of-attrition.",
+  "divergence":        "BOTH players actively want to differ from each other on a shared axis. If only one wants to diverge and the other prefers alignment (sneak vs guard), this is stealth or zero-sum, not divergence.",
+  "zero-sum":          "The grid literally sums to zero in every cell. Any +X for one is -X for the other on a SHARED currency. If any cell leaves both positive or both negative, the beat is not zero-sum.",
+  "signaling":         "Informed party reveals their type through a costly, hard-to-fake action. The signal is credible because weaker types couldn't afford to send it. Absorbs cheap-talk when the talk itself shapes the beat.",
+  "screening":         "Uninformed party DESIGNS a mechanism that sorts agents by type — evaluations, tests, auctions, loyalty trials, ultimatum-framed challenges. Distinct from signaling (informed party VOLUNTEERS) and principal-agent (requires delegation).",
+  "principal-agent":   "Requires BOTH (a) explicit delegation — one party hands a task to another — AND (b) hidden action — the principal can't directly observe what the agent does. If either is missing, it's something else. Not a sink for asymmetric-info beats.",
+  "stealth":           "One player acts covertly; the other's move is passive attention allocation (scrutinise vs overlook), not active counter-action. Concealed maneuvers, surveillance, information theft — a player vs. an unaware or distracted counterpart. NO delegation (that's principal-agent).",
   "stackelberg":       "One moves first and commits visibly; the other watches, then responds. First-mover advantage or trap.",
-  "cheap-talk":        "Words exchanged but nothing binds. Persuasion, posturing, bluffing — the talk itself is the move.",
-  "commitment-game":   "Can one party bind themselves to act (vow, burned bridge, hostage)? Credibility of the promise is the whole game.",
-  "bargaining":        "Offers and counteroffers across rounds — each side strategising over when to concede. Ultimatum is the one-round version.",
-  "trivial":           "No real strategic content — a beat where the choice is in name only.",
+  "bargaining":        "Offer → counter → accept/reject rounds. Each side strategising over when to concede. The grid size signals round count; one-shot ultimatum is the degenerate case.",
+  "commitment-game":   "Whether one party can credibly bind themselves IS the game (vow, burned bridge, hostage, tattoo, contract). The believability of the promise is the whole strategic content.",
+  "contest":           "Multiple players compete for a rank-ordered prize — tournament, auction, scramble for status.",
+  "collective-action": "A group needs enough contributors to clear a threshold. Each is tempted to free-ride on others' effort.",
+  "trivial":           "No real strategic content — a beat where the choice is in name only. Use sparingly.",
 };
 
 /** A single labelled action in a player's menu. */

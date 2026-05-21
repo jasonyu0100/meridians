@@ -45,9 +45,9 @@ function coerceAxis(v: unknown): ActionAxis {
 }
 
 function coerceGameType(v: unknown): GameType {
-  if (typeof v !== "string") return "pure-opposition";
+  if (typeof v !== "string") return "trivial";
   const s = v.trim().toLowerCase() as GameType;
-  return VALID_GAME_TYPES.has(s) ? s : "pure-opposition";
+  return VALID_GAME_TYPES.has(s) ? s : "trivial";
 }
 
 /** Clamp stake delta to integer in [-4, +4]. */

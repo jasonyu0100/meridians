@@ -56,7 +56,7 @@ function createGame(overrides: Partial<BeatGame> = {}): BeatGame {
     beatIndex: 0,
     beatExcerpt: "test beat",
     gameType: "coordination",
-    actionAxis: "disclosure",
+    actionAxis: "information",
     playerAId: "C-1",
     playerAName: "Alice",
     playerAActions: aActions,
@@ -641,56 +641,47 @@ describe("resolvePlayerName", () => {
 
 // ── Taxonomy coverage ──────────────────────────────────────────────────────
 // The sanitiser in ai/game-analysis.ts builds its valid-set from
-// GAME_TYPE_LABELS / ACTION_AXIS_LABELS. If the label maps drift out of sync
-// with the type unions we silently start dropping valid labels into the
-// default fallback ("pure-opposition" / "pressure"). These coverage checks
-// lock the surface.
+// GAME_TYPE_LABELS / ACTION_AXIS_LABELS. These coverage checks lock the
+// label surface against accidental drift.
 
 describe("game-theory taxonomy", () => {
   it("labels every GameType in the union", () => {
     const required: GameType[] = [
       "coordination",
-      "anti-coordination",
-      "battle-of-sexes",
-      "dilemma",
       "stag-hunt",
+      "dilemma",
       "chicken",
+      "divergence",
       "zero-sum",
-      "pure-opposition",
-      "contest",
-      "collective-action",
-      "principal-agent",
-      "screening",
       "signaling",
+      "screening",
+      "principal-agent",
       "stealth",
       "stackelberg",
-      "cheap-talk",
-      "commitment-game",
       "bargaining",
+      "commitment-game",
+      "contest",
+      "collective-action",
       "trivial",
     ];
     for (const t of required) {
       expect(GAME_TYPE_LABELS[t], `missing label for game type '${t}'`).toBeDefined();
       expect(GAME_TYPE_LABELS[t].length).toBeGreaterThan(0);
     }
-    // And no extras that wouldn't match a union member.
     expect(Object.keys(GAME_TYPE_LABELS).sort()).toEqual(required.slice().sort());
   });
 
   it("labels every ActionAxis in the union", () => {
     const required: ActionAxis[] = [
-      "disclosure",
+      "information",
       "identity",
       "trust",
       "alliance",
-      "confrontation",
       "status",
       "pressure",
       "stakes",
-      "control",
-      "acquisition",
+      "resources",
       "obligation",
-      "moral",
       "commitment",
       "timing",
     ];
@@ -701,19 +692,10 @@ describe("game-theory taxonomy", () => {
     expect(Object.keys(ACTION_AXIS_LABELS).sort()).toEqual(required.slice().sort());
   });
 
-  it("flags stealth as a distinct label from anti-coordination", () => {
-    // Regression guard for the stealth / anti-coordination tightening —
-    // collapsing them hides the one-sided-divergence distinction the prompt
-    // now leans on.
-    expect(GAME_TYPE_LABELS["stealth"]).not.toBe(GAME_TYPE_LABELS["anti-coordination"]);
-    expect(GAME_TYPE_LABELS["stealth"].toLowerCase()).toContain("notic");
-  });
-
-  it("flags pure-opposition as requiring incommensurable values", () => {
-    // Regression guard for the pure-opposition tightening — the prompt leans
-    // on the "no shared currency" gate to avoid a zero-sum sink.
-    expect(GAME_TYPE_LABELS["pure-opposition"].toLowerCase()).toMatch(
-      /incommensurable|no shared currency/,
-    );
+  it("flags stealth as a distinct label from divergence", () => {
+    // Regression guard: collapsing them hides the one-sided-divergence
+    // distinction the prompt leans on.
+    expect(GAME_TYPE_LABELS["stealth"]).not.toBe(GAME_TYPE_LABELS["divergence"]);
+    expect(GAME_TYPE_LABELS["stealth"].toLowerCase()).toContain("unaware");
   });
 });

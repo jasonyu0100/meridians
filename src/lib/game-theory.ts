@@ -1,15 +1,16 @@
 /**
- * Game-theoretic helpers — NxM evaluator model.
+ * Game-theoretic helpers — NxM decision-space model.
  *
- * The outcome grid is the DECISION SPACE, not a predictor. Nash equilibria,
- * best responses, and stake rankings are descriptive lenses on that space;
- * the realized cell is whatever the author actually wrote, whether or not it
- * aligns with any of them. Dominance violations are features, not bugs —
- * characters who trade local optimality for arc payoff are exactly the
- * patterns the ELO system learns.
+ * Every consequential moment has a SHAPE: the full space of choices each
+ * party could have made, and the consequence of every pairing. What
+ * actually happened (realized cell) is one signature on that space. The
+ * shape says how stake CAN move; the realized cell says how it DID move;
+ * arcCost says what was left on the table.
  *
- * Nash is computed on stake delta only. Continuity (identity-based scoring)
- * is deferred to a later phase.
+ * Nash equilibria and stake rankings are descriptive lenses, not
+ * normative judgements. A realized cell landing off-Nash is exactly the
+ * information the ELO system learns from — agents who trade local stake
+ * for arc-level payoff are a feature, not a bug.
  */
 
 import type {
@@ -133,6 +134,36 @@ export function stakeRank(
   void realizedValue;
 }
 
+// ── Arc cost — stake left on the table ─────────────────────────────────────
+
+/**
+ * How much stake the player gave up by landing on the realized cell
+ * instead of the best cell available to them in their realized row /
+ * column. Returns 0 when the player took the locally-best option (a
+ * "rational" play), and rises as the realized cell trades stake for
+ * arc / identity / principle.
+ *
+ *   arcCost(A) = max(stakeDeltaA across A's realized-row) − realizedDeltaA
+ *   arcCost(B) = max(stakeDeltaB across B's realized-column) − realizedDeltaB
+ *
+ * Derived from the grid — no LLM declaration. The visible signature of
+ * irrational / arc-driven play, surfaced wherever the operator can see
+ * "this character could have captured +3 more stake and chose not to".
+ */
+export function arcCost(game: BeatGame, player: "A" | "B"): number {
+  const cell = realizedOutcome(game);
+  if (!cell) return 0;
+  if (player === "A") {
+    const row = rowOutcomes(game, cell.aActionName);
+    const best = row.reduce((m, o) => (o.stakeDeltaA > m ? o.stakeDeltaA : m), -Infinity);
+    return Math.max(0, best - cell.stakeDeltaA);
+  } else {
+    const col = columnOutcomes(game, cell.bActionName);
+    const best = col.reduce((m, o) => (o.stakeDeltaB > m ? o.stakeDeltaB : m), -Infinity);
+    return Math.max(0, best - cell.stakeDeltaB);
+  }
+}
+
 // ── ELO rating ─────────────────────────────────────────────────────────────
 
 export const ELO_INITIAL = 1500;
@@ -163,6 +194,28 @@ export function gameMarginScore(game: BeatGame): number {
   return Math.max(0, Math.min(1, raw));
 }
 
+/**
+ * Stake-weighted K factor — the magnitude of the grid scales how much
+ * one game can move the rating. Crucial moments (high stakes on the
+ * table) move the rating fully; low-stakes beats barely move it.
+ *
+ *   K_effective = K_base × (max|stake| in grid / 4)
+ *
+ * A +4/−4 grid yields the full K; a ±1 grid yields K/4. Independent of
+ * who won — margin-of-victory still lives in scoreA. K answers "how
+ * much did this moment matter"; scoreA answers "who captured it".
+ */
+export function kEffective(game: BeatGame, kBase: number = ELO_K): number {
+  let maxAbs = 0;
+  for (const o of game.outcomes) {
+    const a = Math.abs(o.stakeDeltaA);
+    const b = Math.abs(o.stakeDeltaB);
+    if (a > maxAbs) maxAbs = a;
+    if (b > maxAbs) maxAbs = b;
+  }
+  return kBase * Math.min(1, maxAbs / 4);
+}
+
 export function eloUpdate(
   ra: number,
   rb: number,
@@ -176,9 +229,9 @@ export function eloUpdate(
 }
 
 /** Per-player ELO history across a sequence of games in narrative order.
- *  Uses the continuous margin score so margin-of-victory flows through the
- *  expected-vs-actual math naturally. K is constant (no external
- *  magnitude multiplier — the margin already lives in scoreA). */
+ *  K is stake-weighted per game so crucial moments dominate the rating
+ *  and low-stakes beats barely move it. Margin-of-victory lives in
+ *  scoreA via the continuous margin score. */
 export function computeEloHistories(
   games: BeatGame[],
 ): Map<string, { ratings: number[]; games: number[] }> {
@@ -197,7 +250,7 @@ export function computeEloHistories(
     ensure(g.playerBId);
     const ra = current.get(g.playerAId)!;
     const rb = current.get(g.playerBId)!;
-    const [newRa, newRb] = eloUpdate(ra, rb, gameMarginScore(g));
+    const [newRa, newRb] = eloUpdate(ra, rb, gameMarginScore(g), kEffective(g));
     current.set(g.playerAId, newRa);
     current.set(g.playerBId, newRb);
 
