@@ -42,7 +42,22 @@ export async function POST(req: NextRequest) {
         temperature: temperature ?? DEFAULT_TEMPERATURE,
         max_tokens: maxTokens || MAX_TOKENS_DEFAULT,
         ...(stream ? { stream: true } : {}),
-        ...(reasoningBudget && reasoningBudget > 0 ? { reasoning: { max_tokens: reasoningBudget } } : {}),
+        // OpenRouter's unified reasoning config. `enabled: true` is the
+        // universal opt-in (Gemini 2.5 Flash needs this — without it the
+        // model runs non-thinking and emits no reasoning deltas at all,
+        // which is why plan was silently empty while prose / game worked).
+        // `max_tokens` is the budget hint; OpenRouter rejects sending both
+        // `max_tokens` and `effort` together, so we use max_tokens only and
+        // rely on `enabled: true` to engage providers that don't honour the
+        // budget directly.
+        ...(reasoningBudget && reasoningBudget > 0
+          ? {
+              reasoning: {
+                enabled: true,
+                max_tokens: reasoningBudget,
+              },
+            }
+          : {}),
         // OpenRouter server tools — web_search grounds generation in current
         // public info, web_fetch lets the model deepen its read of any URL.
         // The two are paired so the model can decide whether to search or
@@ -112,7 +127,7 @@ export async function POST(req: NextRequest) {
                     const delta = chunk.choices?.[0]?.delta;
                     const token = delta?.content ?? '';
                     // Forward reasoning tokens separately so the client can capture them
-                    const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? '';
+                    const reasoning = delta?.reasoning ?? '';
                     if (token) {
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token })}\n\n`));
                     }

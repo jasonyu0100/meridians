@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { generateSceneGameAnalysis } from "@/lib/ai";
+import { useSceneBulkStream } from "@/lib/bulk-stream-store";
 import {
   arcCost,
   nashEquilibria,
@@ -46,23 +47,30 @@ export function SceneGameTheoryView({
   const { state, dispatch } = useStore();
   const analysis = scene.gameAnalysis;
   const [isGenerating, setIsGenerating] = useState(false);
-  const [bulkActive, setBulkActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reasoning, setReasoning] = useState("");
   const branchId = state.viewState.activeBranchId;
+
+  // Bulk game-analysis streaming — reasoning text accumulated globally
+  // per-sceneId by the bulk-stream-store. Switching scenes mid-stream
+  // shows the in-flight reasoning immediately rather than starting from
+  // empty. `bulkActive` here mirrors the in-flight state of THIS scene's
+  // entry only.
+  const bulkGame = useSceneBulkStream(scene.id, "game");
+  const reasoning = bulkGame.text;
+  const bulkActive = bulkGame.active;
 
   // Either local Generate or Auto-mode processing this scene counts as streaming.
   const isStreaming = isGenerating || bulkActive;
 
   // ── Palette events — listen for generate/clear from FloatingPalette ────
+  // Reasoning text is driven by useSceneBulkStream above; the dispatched
+  // bulk events feed it (accumulated string per token). No direct
+  // setReasoning calls needed in this component.
   useEffect(() => {
     async function handleGenerate() {
       if (isGenerating) return;
       setIsGenerating(true);
       setError(null);
-      setReasoning("");
-      // Also broadcast on the bulk-event channel so other scene views
-      // watching the cross-scene stream pick up manual generations too.
       window.dispatchEvent(new CustomEvent('bulk:game-start', { detail: { sceneId: scene.id } }));
       try {
         const result = await generateSceneGameAnalysis(
@@ -70,7 +78,6 @@ export function SceneGameTheoryView({
           scene,
           undefined,
           (_token, accumulated) => {
-            setReasoning(accumulated);
             window.dispatchEvent(new CustomEvent('bulk:game-reasoning', { detail: { sceneId: scene.id, token: accumulated } }));
           },
         );
@@ -79,7 +86,6 @@ export function SceneGameTheoryView({
           sceneId: scene.id,
           analysis: result,
         });
-        setReasoning("");
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -91,7 +97,6 @@ export function SceneGameTheoryView({
     function handleClear() {
       dispatch({ type: "CLEAR_GAME_ANALYSIS", sceneId: scene.id });
       setError(null);
-      setReasoning("");
     }
 
     window.addEventListener("canvas:generate-game", handleGenerate);
@@ -102,44 +107,9 @@ export function SceneGameTheoryView({
     };
   }, [narrative, scene, branchId, dispatch, isGenerating]);
 
-  // Clear local error/reasoning when scene changes
+  // Clear local error when scene changes
   useEffect(() => {
     setError(null);
-    setReasoning("");
-    setBulkActive(false);
-  }, [scene.id]);
-
-  // ── Bulk streaming for THIS scene — mirrors the plan/prose pattern.
-  // Each scene's view renders its own stream independently; navigating
-  // between scenes during a bulk run smoothly swaps which stream is
-  // visible without any cross-scene chrome.
-  useEffect(() => {
-    const onStart = (e: Event) => {
-      const { sceneId } = (e as CustomEvent).detail ?? {};
-      if (sceneId !== scene.id) return;
-      setBulkActive(true);
-      setReasoning("");
-    };
-    const onReasoning = (e: Event) => {
-      const { sceneId, token } = (e as CustomEvent).detail ?? {};
-      if (sceneId !== scene.id) return;
-      // game-reasoning emits the accumulated string, not deltas.
-      setReasoning(typeof token === 'string' ? token : '');
-    };
-    const onComplete = (e: Event) => {
-      const { sceneId } = (e as CustomEvent).detail ?? {};
-      if (sceneId !== scene.id) return;
-      setBulkActive(false);
-      setReasoning("");
-    };
-    window.addEventListener("bulk:game-start", onStart);
-    window.addEventListener("bulk:game-reasoning", onReasoning);
-    window.addEventListener("bulk:game-complete", onComplete);
-    return () => {
-      window.removeEventListener("bulk:game-start", onStart);
-      window.removeEventListener("bulk:game-reasoning", onReasoning);
-      window.removeEventListener("bulk:game-complete", onComplete);
-    };
   }, [scene.id]);
 
   return (

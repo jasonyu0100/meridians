@@ -14,7 +14,6 @@ import { MATRIX_PRESETS, STORYTELLER_PRESET, computeMatrixFromNarrative, type Tr
 import { DEFAULT_BEAT_SAMPLER, BEAT_PROFILE_PRESETS, computeSamplerFromResolvedScenes } from '@/lib/beat-profiles';
 import { MECHANISM_PROFILE_PRESETS, computeMechanismDist, DEFAULT_MECHANISM_DIST } from '@/lib/mechanism-profiles';
 import { IconChevronDown } from '@/components/icons';
-import { ThinkingSettings } from '@/components/generation/ThinkingPicker';
 
 type Tab = 'direction' | 'style' | 'pov' | 'audio' | 'thinking' | 'other';
 
@@ -832,26 +831,6 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                 </div>
                 <p className="text-[9px] text-text-dim/50 mt-2">
                   Enables OpenRouter&apos;s web_search and web_fetch server tools on all narrative-generation calls. The model decides when to search or fetch; results are grounded into generation with citations. Most useful for analysis / paper / non-fiction paradigms where current facts matter. Billed by OpenRouter per search call.
-                </p>
-              </div>
-
-              {/* Thinking Defaults — pre-populate the reasoning-graph pickers */}
-              <div>
-                <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-                  Reasoning-Graph Defaults
-                </label>
-                <ThinkingSettings
-                  mode={settings.defaultThinkingStyle ?? "abduction"}
-                  onModeChange={(m) => update({ defaultThinkingStyle: m })}
-                  force={settings.defaultThinkingResource ?? "freeform"}
-                  onForceChange={(f) => update({ defaultThinkingResource: f })}
-                  size={settings.defaultReasoningSize ?? "medium"}
-                  onSizeChange={(s) => update({ defaultReasoningSize: s })}
-                  networkBias={settings.defaultNetworkBias ?? "neutral"}
-                  onNetworkBiasChange={(b) => update({ defaultNetworkBias: b })}
-                />
-                <p className="text-[9px] text-text-dim/50 mt-2">
-                  Pre-populates the reasoning-graph pickers (mode of thinking, force bias, graph density). Always overridable per-generation.
                 </p>
               </div>
             </>

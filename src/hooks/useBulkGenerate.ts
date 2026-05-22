@@ -108,16 +108,25 @@ export function useBulkGenerate() {
       try {
         if (mode === 'game') {
           window.dispatchEvent(new CustomEvent('bulk:game-start', { detail: { sceneId } }));
+          // Stream contract: emit the ACCUMULATED string at every step so a
+          // listener can render it with a plain replace (setState(token)) —
+          // no per-listener accumulation, no double-fire mistakes across
+          // parallel scenes. Same contract for plan + prose below.
+          let gameTokenAcc = '';
           const analysis = await generateSceneGameAnalysis(
             activeNarrative,
             scene,
-            (token) => window.dispatchEvent(new CustomEvent('bulk:game-token', { detail: { sceneId, token } })),
-            (token) => window.dispatchEvent(new CustomEvent('bulk:game-reasoning', { detail: { sceneId, token } })),
+            (token) => {
+              gameTokenAcc += token;
+              window.dispatchEvent(new CustomEvent('bulk:game-token', { detail: { sceneId, token: gameTokenAcc } }));
+            },
+            (_token, accumulated) => window.dispatchEvent(new CustomEvent('bulk:game-reasoning', { detail: { sceneId, token: accumulated } })),
           );
           window.dispatchEvent(new CustomEvent('bulk:game-complete', { detail: { sceneId } }));
           dispatch({ type: 'SET_GAME_ANALYSIS', sceneId, analysis });
         } else if (mode === 'plan') {
           window.dispatchEvent(new CustomEvent('bulk:plan-start', { detail: { sceneId } }));
+          let planReasoningAcc = '';
           const plan = planSource === 'prose'
             ? (await reverseEngineerScenePlan(
                 activeNarrative,
@@ -127,7 +136,10 @@ export function useBulkGenerate() {
               )).plan
             : await generateScenePlan(
                 activeNarrative, scene, resolvedEntryKeys,
-                (token) => window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId, token } })),
+                (token) => {
+                  planReasoningAcc += token;
+                  window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId, token: planReasoningAcc } }));
+                },
               );
           window.dispatchEvent(new CustomEvent('bulk:plan-complete', { detail: { sceneId } }));
           dispatch({ type: 'UPDATE_SCENE', sceneId, updates: { plan }, versionType: 'generate' });
@@ -136,9 +148,13 @@ export function useBulkGenerate() {
           // Prose mode + 'prose' source: generate prose without a plan so it flows free,
           // then reverse-engineer the plan from the resulting prose.
           const planForProse = planSource === 'prose' ? undefined : resolvedPlan;
+          let proseAcc = '';
           const { prose, beatProseMap } = await generateSceneProse(
             activeNarrative, scene, resolvedEntryKeys,
-            (token) => window.dispatchEvent(new CustomEvent('bulk:prose-token', { detail: { sceneId, token } })),
+            (token) => {
+              proseAcc += token;
+              window.dispatchEvent(new CustomEvent('bulk:prose-token', { detail: { sceneId, token: proseAcc } }));
+            },
             undefined, planForProse,
           );
           window.dispatchEvent(new CustomEvent('bulk:prose-complete', { detail: { sceneId } }));

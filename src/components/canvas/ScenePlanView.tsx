@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PlanCandidatesModal } from "./PlanCandidatesModal";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
 import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
+import { useSceneBulkStream } from "@/lib/bulk-stream-store";
 
 const FN_COLORS: Record<string, string> = {
   breathe: "#6b7280",
@@ -103,34 +104,14 @@ export function ScenePlanView({
     return () => window.removeEventListener("canvas:open-candidates", handleOpenCandidates);
   }, []);
 
-  // Listen for bulk plan streaming events (from useBulkGenerate)
-  useEffect(() => {
-    const onStart = (e: Event) => {
-      const { sceneId } = (e as CustomEvent).detail;
-      if (sceneId !== scene.id) return;
-      setPlanCache({ plan: null, status: "loading" });
-      setReasoning("");
-      setMeta(null);
-    };
-    const onReasoning = (e: Event) => {
-      const { sceneId, token } = (e as CustomEvent).detail;
-      if (sceneId !== scene.id) return;
-      setReasoning((prev) => prev + token);
-    };
-    const onComplete = (e: Event) => {
-      const { sceneId } = (e as CustomEvent).detail;
-      if (sceneId !== scene.id) return;
-      setReasoning("");
-    };
-    window.addEventListener("bulk:plan-start", onStart);
-    window.addEventListener("bulk:plan-reasoning", onReasoning);
-    window.addEventListener("bulk:plan-complete", onComplete);
-    return () => {
-      window.removeEventListener("bulk:plan-start", onStart);
-      window.removeEventListener("bulk:plan-reasoning", onReasoning);
-      window.removeEventListener("bulk:plan-complete", onComplete);
-    };
-  }, [scene.id]);
+  // Bulk plan streaming — reasoning text accumulated globally per-sceneId
+  // by the bulk-stream-store. Read directly at render time below; doesn't
+  // mutate local reasoning state, so view-switches mid-stream show the
+  // in-flight reasoning immediately with no cascading-effect render.
+  // Local `reasoning` state still drives the rewritePlan path which streams
+  // through generateScenePlan's own callback (not the bulk event channel).
+  const bulkPlan = useSceneBulkStream(scene.id, "plan");
+  const displayedReasoning = bulkPlan.active ? bulkPlan.text : reasoning;
 
   // Listen for scroll-to-beat event from search and proposition connections
   useEffect(() => {
@@ -177,9 +158,11 @@ export function ScenePlanView({
       setPlanCache({ plan: null, status: "loading" });
       setReasoning("");
       setMeta(null);
-      // Also broadcast on the bulk-event channel so the EngineReasoning
-      // panel (and any other scene view watching the same scene) picks
-      // up manual plan generation, not just bulk runs.
+      // Broadcast on the bulk-event channel so any other view watching this
+      // scene picks up the stream. Token event carries the ACCUMULATED
+      // reasoning string (post-2026-05-23 contract); listeners replace,
+      // never append. The local component state is driven via
+      // useSceneBulkStream above — no direct setReasoning here.
       window.dispatchEvent(new CustomEvent('bulk:plan-start', { detail: { sceneId: scene.id } }));
       try {
         // Two creation modes:
@@ -199,20 +182,20 @@ export function ScenePlanView({
             resolvedProse!,
             scene.summary ?? '',
             (_token, accumulated) => {
-              setReasoning(accumulated);
               window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId: scene.id, token: accumulated } }));
             },
           );
           plan = result.plan;
           beatProseMap = result.beatProseMap ?? undefined;
         } else {
+          let reasoningAcc = '';
           plan = await generateScenePlan(
             narrative,
             scene,
             resolvedKeys,
             (token) => {
-              setReasoning((prev) => prev + token);
-              window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId: scene.id, token } }));
+              reasoningAcc += token;
+              window.dispatchEvent(new CustomEvent('bulk:plan-reasoning', { detail: { sceneId: scene.id, token: reasoningAcc } }));
             },
             (m) => setMeta(m),
             guidance || undefined,
@@ -446,7 +429,10 @@ export function ScenePlanView({
     [scene.id, dispatch],
   );
 
-  const isLoading = planCache.status === "loading";
+  // Bulk streaming in flight also counts as loading so the reasoning
+  // card stays visible when a parallel auto-mode pass is feeding this
+  // scene from elsewhere.
+  const isLoading = planCache.status === "loading" || bulkPlan.active;
   const hasError = planCache.status === "error";
 
   return (
@@ -466,9 +452,9 @@ export function ScenePlanView({
                 </span>
               )}
             </div>
-            {reasoning && (
+            {displayedReasoning && (
               <p className="text-[11px] text-text-dim/60 leading-relaxed whitespace-pre-wrap">
-                {reasoning}
+                {displayedReasoning}
               </p>
             )}
           </div>

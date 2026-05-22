@@ -178,21 +178,10 @@ export function GeneratePanel({
     ...DEFAULT_EXPANSION_FILTER,
   });
 
-  // Arc reasoning options — initialized from story-level defaults so the
-  // user doesn't have to re-pick their preferred thinking style each time.
-  const thinkingDefaults = state.activeNarrative?.storySettings;
-  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>(
-    thinkingDefaults?.defaultThinkingResource ?? "freeform",
-  );
-  const [reasoningSize, setReasoningSize] = useState<ReasoningSize>(
-    thinkingDefaults?.defaultReasoningSize ?? "medium",
-  );
-  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>(
-    thinkingDefaults?.defaultThinkingStyle ?? "abduction",
-  );
-  const [networkBias, setNetworkBias] = useState<NetworkBias>(
-    thinkingDefaults?.defaultNetworkBias ?? "neutral",
-  );
+  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>("freeform");
+  const [reasoningSize, setReasoningSize] = useState<ReasoningSize>("medium");
+  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>("abduction");
+  const [networkBias, setNetworkBias] = useState<NetworkBias>("neutral");
 
   // Shared
   const [loading, setLoading] = useState(false);

@@ -127,15 +127,8 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
   const [constraints, setConstraints] = useState("");
   const [arcTarget, setArcTarget] = useState(3);
   const [threadConfigs, setThreadConfigs] = useState<Record<string, ThreadConfig>>({});
-  // Initialized from story-level defaults so user doesn't have to re-pick
-  // their preferred thinking style each time.
-  const thinkingDefaults = state.activeNarrative?.storySettings;
-  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>(
-    thinkingDefaults?.defaultThinkingResource ?? "freeform",
-  );
-  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>(
-    thinkingDefaults?.defaultThinkingStyle ?? "abduction",
-  );
+  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>("freeform");
+  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>("abduction");
 
   // Generation state
   const [loading, setLoading] = useState(false);

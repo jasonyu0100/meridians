@@ -6,6 +6,7 @@ import { getResolvedPlanVersion } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
 import type { NarrativeState, Scene } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSceneBulkStream } from "@/lib/bulk-stream-store";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
 import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
 
@@ -141,36 +142,12 @@ export function SceneProseView({
     setIsEditing(false);
   }, [scene.id, resolvedProse]);
 
-  // Listen for bulk prose streaming events (from useBulkGenerate)
-  useEffect(() => {
-    const onStart = (e: Event) => {
-      const { sceneId } = (e as CustomEvent).detail;
-      if (sceneId !== scene.id) return;
-      setProseState({ text: "", status: "loading" });
-      setIsEditing(false);
-    };
-    const onToken = (e: Event) => {
-      const { sceneId, token } = (e as CustomEvent).detail;
-      if (sceneId !== scene.id) return;
-      setProseState((prev) => ({
-        text: prev.text + token,
-        status: "loading",
-      }));
-    };
-    const onComplete = (e: Event) => {
-      const { sceneId } = (e as CustomEvent).detail;
-      if (sceneId !== scene.id) return;
-      // Final state is set by the store update triggering resolvedProse sync
-    };
-    window.addEventListener("bulk:prose-start", onStart);
-    window.addEventListener("bulk:prose-token", onToken);
-    window.addEventListener("bulk:prose-complete", onComplete);
-    return () => {
-      window.removeEventListener("bulk:prose-start", onStart);
-      window.removeEventListener("bulk:prose-token", onToken);
-      window.removeEventListener("bulk:prose-complete", onComplete);
-    };
-  }, [scene.id]);
+  // Bulk prose streaming — text accumulated globally per-sceneId by the
+  // bulk-stream-store. Switching scenes mid-stream shows the in-flight
+  // text immediately rather than starting from empty. Read directly at
+  // render time below (`displayText`); doesn't mutate proseState so
+  // there's no cascading-effect render.
+  const bulkProse = useSceneBulkStream(scene.id, "prose");
 
   const generateProse = useCallback(
     async (guidance?: string) => {
@@ -184,20 +161,19 @@ export function SceneProseView({
       const planSource = narrative.storySettings?.planExtractionSource ?? 'structure';
       const planForProse = planSource === 'prose' ? undefined : resolvedPlan;
 
-      // Broadcast on the bulk-event channel so the EngineReasoning
-      // panel surfaces manual prose writes too, not just bulk runs.
+      // Broadcast on the bulk-event channel so any other view watching this
+      // scene picks up the stream. Token event carries the ACCUMULATED
+      // string (post-2026-05-23 contract); listeners replace, never append.
       window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId: scene.id } }));
       try {
+        let proseAcc = '';
         const result = await generateSceneProse(
           narrative,
           scene,
           resolvedKeys,
           (token) => {
-            setProseState((prev) => ({
-              text: prev.text + token,
-              status: "loading",
-            }));
-            window.dispatchEvent(new CustomEvent('bulk:prose-token', { detail: { sceneId: scene.id, token } }));
+            proseAcc += token;
+            window.dispatchEvent(new CustomEvent('bulk:prose-token', { detail: { sceneId: scene.id, token: proseAcc } }));
           },
           guidance,
           planForProse,
@@ -397,7 +373,14 @@ export function SceneProseView({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [isEditing, saveEdit]);
 
-  const { status, text, error } = proseState;
+  // While bulk streaming is in-flight for this scene, override the local
+  // proseState text/status with the live accumulated stream so view-switches
+  // mid-stream show the in-flight text immediately. Local proseState
+  // continues to drive editing + final-state rendering once the stream
+  // completes (the dispatched STORE update flows into resolvedProse).
+  const status = bulkProse.active ? "loading" : proseState.status;
+  const text = bulkProse.active ? bulkProse.text : proseState.text;
+  const error = proseState.error;
   const hasProse = status === "ready" && !!text;
   const isLoading = status === "loading";
   const hasError = status === "error";

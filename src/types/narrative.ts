@@ -2168,37 +2168,6 @@ export type StorySettings = {
    */
   planExtractionSource: PlanExtractionSource;
   /**
-   * Default thinking mode pre-populated into the reasoning-graph pickers.
-   * User can override per-generation. Mirrors ThinkingStyle in lib/ai.
-   */
-  defaultThinkingStyle: "freeform" | "divergent" | "deduction" | "abduction" | "induction";
-  /**
-   * Default force preference pre-populated into the reasoning-graph
-   * pickers. User can override per-generation. Mirrors ThinkingResource
-   * in lib/ai.
-   */
-  defaultThinkingResource:
-    | "freeform"
-    | "fate"
-    | "world"
-    | "system"
-    | "chaos";
-  /**
-   * Default graph density pre-populated into the reasoning-graph
-   * pickers. User can override per-generation.
-   */
-  defaultReasoningSize: "small" | "medium" | "large";
-  /**
-   * Default network thinking mode — biases reasoning toward, away from, or
-   * balanced across the cumulative activation pattern of the narrative's
-   * entities, threads, and system nodes. Pre-populates the per-generation
-   * picker; always overridable via ArcReasoningOptions.networkBias.
-   *  - `inside`: anchor in HOT nodes; deepen the gravitational centres
-   *  - `outside`: reach for COLD or FRESH nodes; break the dominant pattern
-   *  - `neutral`: use what the arc needs — balanced across hot and cold
-   */
-  defaultNetworkBias: "inside" | "outside" | "neutral";
-  /**
    * When true (default), storyDirection and storyConstraints are cleared
    * from this settings object after they guide a scene or CRG generation.
    * Prevents a directive from silently shaping every subsequent generation
@@ -2231,10 +2200,6 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   audioModel: "tts-1",
   proseFormat: "prose",
   planExtractionSource: "structure",
-  defaultThinkingStyle: "abduction",
-  defaultThinkingResource: "freeform",
-  defaultReasoningSize: "medium",
-  defaultNetworkBias: "neutral",
   autoClearDirection: true,
 };
 

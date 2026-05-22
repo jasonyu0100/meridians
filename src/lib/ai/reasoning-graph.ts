@@ -98,18 +98,16 @@ export type {
 export { reasoningScale, buildSequentialPath, extractPatternWarningDirectives };
 
 /**
- * Resolve the engine settings the CRG was built under. Pulls thinkingResource
- * and thinkingStyle from the per-call options; falls back to the narrative's
- * default network bias if the call didn't override. Returns undefined when
- * no settings would be persisted (keeps the snapshot clean for default runs).
+ * Resolve the engine settings the CRG was built under from per-call options.
+ * Returns undefined when no settings would be persisted (keeps the snapshot
+ * clean for default runs).
  */
 function extractArcSettings(
   options: ArcReasoningOptions | undefined,
-  narrative: NarrativeState,
 ): ArcSettings | undefined {
   const thinkingResource = options?.thinkingResource;
   const thinkingStyle = options?.thinkingStyle;
-  const networkBias = options?.networkBias ?? narrative.storySettings?.defaultNetworkBias;
+  const networkBias = options?.networkBias;
   if (!thinkingResource && !thinkingStyle && (!networkBias || networkBias === "neutral")) {
     return undefined;
   }
@@ -296,7 +294,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
     modeSection: buildActiveModeSection(narrative, "reasoning-arc"),
     forcePreferenceBlockText: forcePreferenceBlock("arc", options?.thinkingResource),
     reasoningModeBlockText: reasoningModeBlock(options?.thinkingStyle),
-    networkBiasBlockText: networkBiasBlock(options?.networkBias ?? narrative.storySettings?.defaultNetworkBias),
+    networkBiasBlockText: networkBiasBlock(options?.networkBias),
     nodeCountMin: Math.round((8 + sceneCount * 4.5) * scale),
     nodeCountMax: Math.round((14 + sceneCount * 5.5) * scale),
   });
@@ -404,7 +402,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
       sceneCount,
       summary: typeof data.summary === "string" ? data.summary : `Reasoning graph for ${arcName}`,
       plannedNodeCount: typeof data.plannedNodeCount === "number" ? data.plannedNodeCount : undefined,
-      arcSettings: extractArcSettings(options, narrative),
+      arcSettings: extractArcSettings(options),
     };
   } catch (err) {
     logError("Failed to parse reasoning graph", err, {
