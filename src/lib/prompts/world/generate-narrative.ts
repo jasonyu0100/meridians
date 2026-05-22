@@ -6,7 +6,7 @@
  */
 
 export const GENERATE_NARRATIVE_SYSTEM =
-  'You are a narrative architect spinning a complete seed from a title + premise. Build a tight, focused world with named entities, threads with named outcomes, and system rules. Full mode: also produce an 8-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity with seed nodes; never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a narrative architect spinning a complete seed from a title + premise. Detect the register first: fiction / non-fiction / simulation populate a world (characters, locations, artifacts, threads, system rules); analysis / paper populate a system-knowledge graph (propositions, methods, mechanisms, predictions, threads-as-argument-questions) where characters / locations / artifacts are optional and may be empty. Full mode: also produce an 8-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you DO emit with seed nodes — never emit blank world graphs for an entity you commit to. Return ONLY valid JSON matching the schema in the user prompt.';
 
 export const DETECT_PATTERNS_SYSTEM =
   'You are a literary diagnostician. Read prose, structure, and content; identify the narrative\'s register, genre, and subgenre; derive concrete pattern / anti-pattern commandments that encourage variety and prevent stagnation. Patterns are positive directives that unlock fresh territory within the register; anti-patterns are negative directives that flag staleness. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -83,9 +83,9 @@ Return JSON with this exact structure:
     {
       "id": "S-1",
       "arcId": "ARC-1",
-      "locationId": "L-1",
-      "povId": "C-1",
-      "participantIds": ["C-1"],
+      "locationId": "L-1 — existing location ID, OR null when no locations are populated (analysis / paper)",
+      "povId": "C-1 — viewpoint entity ID, OR null for omniscient / analytical / voice-of-nobody scenes",
+      "participantIds": ["C-1 — may be empty array for analysis / paper scenes with no on-stage participants"],
       "summary": "REQUIRED — WRITE THIS FIRST. The spine of the scene; every delta below must trace back to something stated here. Prose in NAMES not IDs. Length adapts to content — 3-6 sentences for routine scenes (physical action, dialogue, observable events, single-thread movements, scene-setting beats), expand WITHOUT UPPER BOUND for cognition-dense scenes (multi-step planning, scenario modelling, scheme construction, modelling other agents' reactions, complex world-rule reveals, layered argument). For dense scenes, capture the ACTUAL computation — name each scenario weighed, each tradeoff accepted, each conclusion reached, each agent modelled with their predicted reaction. Stand-in cognitive verbs ('considered the situation', 'planned carefully', 'weighed his options') are failures: name what was cognised. This is the prose writer's only brief and the only artifact other scenes can read — detail that lives only in prose evaporates at the scene boundary. Include context that shapes how the scene is written (time span, technique, tone). No sentences ending in emotions or realizations without a named, attributed referent.",
       "timeDelta": {"value": 1, "unit": "hour"},
       "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did — how it delivered utility"}],
@@ -118,14 +118,22 @@ Return JSON with this exact structure:
 }
 </output-format>
 
-<rules name="opening-arc" hint="Establish a tight, focused world. Counts below are minimums; exceed when the premise warrants it.">
+<rules name="opening-arc" hint="Establish a tight, focused world. Counts below are minimums; exceed when the premise warrants it. Entity counts are register-conditional — see register-handling.">
+  <register-handling critical="true" hint="Detect the register from the premise BEFORE applying entity counts.">
+    <register name="fiction / non-fiction / simulation">Populated worlds. Characters, locations, artifacts, relationships are load-bearing — apply all minimums below.</register>
+    <register name="analysis / paper">Argument-driven works. The world is primarily SYSTEM KNOWLEDGE (claims, mechanisms, methods, evidence chains, propagation laws, predictions). Characters, locations, artifacts, relationships are OPTIONAL — include them ONLY when the source genuinely contains them: a cited theorist, a named primary source, a documented archive or field site, an attribution dispute. Zero of any populated-world entity type is a valid output. Universal minimums (threads, system-nodes) still apply; system-nodes should lean HIGHER (≥20) since the system graph IS the argument.</register>
+  </register-handling>
   <minimums>
-    <count entity="characters" target="≥8">2+ anchors, 3+ recurring, 3+ transient</count>
-    <count entity="locations" target="≥6">parent/child hierarchy with at least 2 nesting levels</count>
-    <count entity="threads" target="≥4">DELIBERATE MIX of shapes (see thread-shapes). 1+ discrete-resolution, 1+ slow-burn, 1+ constant-tension. At least 2 must share participants so their markets correlate.</count>
-    <count entity="relationships" target="≥8">at least 1 hostile</count>
-    <count entity="artifacts" target="≥1">when the premise involves tools, documents, instruments, sources, or objects that carry weight</count>
-    <count entity="system-nodes" target="≥12">with ≥8 edges. The foundational system graph every future scene draws from; a thin root means thin scenes forever. Each node MUST be 15-25 words describing a general rule or structural fact. Include micro-rules (specific mechanics), mid-rules (institutional/economic), and macro-rules (cosmological/thematic).</count>
+    <universal hint="Required regardless of register — these are the spine.">
+      <count entity="threads" target="≥4">DELIBERATE MIX of shapes (see thread-shapes). 1+ discrete-resolution, 1+ slow-burn, 1+ constant-tension. At least 2 must share participants so their markets correlate. For analysis / paper, threads are argument-questions (does X explain Y? does the prediction hold district by district?) — participants are claims / sources / mechanisms, not characters.</count>
+      <count entity="system-nodes" target="≥12 (populated registers) / ≥20 (analysis / paper)">with ≥8 edges. The foundational system graph every future scene draws from; a thin root means thin scenes forever. Each node MUST be 15-25 words describing a general rule or structural fact. Include micro-rules (specific mechanics), mid-rules (institutional/economic), and macro-rules (cosmological/thematic). For analysis / paper, nodes are propositions, methods, mechanisms, evidence relations, predictions — the substrate the argument runs on.</count>
+    </universal>
+    <populated-world hint="Apply to fiction / non-fiction / simulation. For analysis / paper, each is OPTIONAL — include only when the source genuinely contains them; 0 of any is valid.">
+      <count entity="characters" target="≥8 (populated registers) / ≥0 (analysis / paper)">2+ anchors, 3+ recurring, 3+ transient. For analysis / paper: include only authors, theorists, named subjects the argument explicitly engages; omit entirely when the argument is voice-of-nobody.</count>
+      <count entity="locations" target="≥6 (populated registers) / ≥0 (analysis / paper)">parent/child hierarchy with at least 2 nesting levels. For analysis / paper: include only places the argument is grounded in (an archive, a field site, a documented region); omit entirely otherwise.</count>
+      <count entity="relationships" target="≥8 (populated registers) / ≥0 (analysis / paper)">at least 1 hostile. For analysis / paper: include only intellectual lineages or attribution disputes the argument explicitly engages.</count>
+      <count entity="artifacts" target="≥1 when the premise involves tools / documents / instruments / sources">For analysis / paper: cited primary sources, datasets, foundational papers, instruments ARE artifacts when the argument leans on them; omit when the argument is purely conceptual.</count>
+    </populated-world>
     <example category="bad" reason="too-short">Tribunal</example>
     <example category="good" register="fiction" flavour="fantasy">A house's right to bind rain to its lands lapses if the founding water-compact goes three generations without a renewing oath; lapsed lands return to common drought rotation under the regent's ledger.</example>
     <example category="good" register="fiction" flavour="cultivation">A disciple ascends a tier only when the sect elder witnesses a tribulation crossing AND the qi-reservoir admits the new draw; reservoir capacity binds the sect to a fixed succession rate.</example>
@@ -256,9 +264,9 @@ Return JSON with this exact structure:
     <invariant>Artifacts must feel integral to the world. Key artifacts should have world edges (capability motivated_by history, weakness caused_by trait).</invariant>
   </artifacts-and-tools>${worldOnly ? '' : `
 
-  <scene-coverage>
-    <rule>Every anchor must appear in at least 3 scenes.</rule>
-    <rule>Use at least 6 different locations across the 8 scenes.</rule>
+  <scene-coverage hint="Applies when characters / locations are populated. For analysis / paper with no characters or locations, scenes are sections of argument — these coverage rules do not bind. Scene fields locationId and povId may be null in that case.">
+    <rule when="anchors present">Every anchor must appear in at least 3 scenes.</rule>
+    <rule when="locations present">Use at least 6 different locations across the 8 scenes.</rule>
   </scene-coverage>
 
   <time-delta required="true">

@@ -10,15 +10,68 @@ import { suggestPremise } from "@/lib/ai/premise";
 import { useStore } from "@/lib/store";
 import { useWizard } from "@/lib/wizard-context";
 import { Modal, StreamingStatus } from "@/components/Modal";
-import type {
-  CharacterSketch,
-  LocationSketch,
-  ThreadSketch,
+import {
+  DEFAULT_STORY_SETTINGS,
+  type CharacterSketch,
+  type LocationSketch,
+  type NarrativeState,
+  type ThreadSketch,
+  type WorldBuild,
 } from "@/types/narrative";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const ROLES: CharacterSketch["role"][] = ["anchor", "recurring", "transient"];
+
+function buildBlankNarrative(title: string): NarrativeState {
+  const now = Date.now();
+  const worldBuildId = `WB-${now}-INIT`;
+  const branchId = `B-${now}`;
+  const initialWorldBuild: WorldBuild = {
+    kind: "world_build",
+    id: worldBuildId,
+    createdAt: new Date(now).toISOString(),
+    summary: "Blank world — created without a premise.",
+    expansionManifest: {
+      newCharacters: [],
+      newLocations: [],
+      newThreads: [],
+      newArtifacts: [],
+      systemDeltas: { addedNodes: [], addedEdges: [] },
+      relationshipDeltas: [],
+    },
+  };
+  return {
+    id: `N-${now}`,
+    title: title.trim(),
+    description: "",
+    characters: {},
+    locations: {},
+    threads: {},
+    artifacts: {},
+    arcs: {},
+    scenes: {},
+    worldBuilds: { [worldBuildId]: initialWorldBuild },
+    branches: {
+      [branchId]: {
+        id: branchId,
+        name: "Main",
+        parentBranchId: null,
+        forkEntryId: null,
+        entryIds: [worldBuildId],
+        createdAt: now,
+      },
+    },
+    relationships: [],
+    systemGraph: { nodes: {}, edges: [] },
+    worldSummary: "",
+    storySettings: { ...DEFAULT_STORY_SETTINGS },
+    patterns: [],
+    antiPatterns: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 export function CreationWizard() {
   const router = useRouter();
@@ -106,6 +159,16 @@ export function CreationWizard() {
     } finally {
       setSuggesting(false);
     }
+  }
+
+  // ── Start blank ──────────────────────────────────────────────────────
+  function handleStartBlank() {
+    if (!wd.title.trim() || isDuplicate) return;
+    const narrative = buildBlankNarrative(wd.title);
+    dispatch({ type: "ADD_NARRATIVE", narrative });
+    wizardDispatch({ type: "CLOSE" });
+    wizardDispatch({ type: "SET_STEP", step: "form" });
+    router.push(`/narrative/${narrative.id}`);
   }
 
   // ── Generate ─────────────────────────────────────────────────────────
@@ -202,7 +265,11 @@ export function CreationWizard() {
         <div className="p-6">
           <div className="flex flex-col gap-5">
             {loading ? (
-              <StreamingStatus label="Generating world…" streamText={streamText} maxHeight="max-h-72" />
+              <StreamingStatus
+                label="Generating world…"
+                streamText={streamText}
+                maxHeight="max-h-72"
+              />
             ) : (
               <h2 className="text-sm font-semibold text-text-primary">
                 Generation failed
@@ -244,7 +311,12 @@ export function CreationWizard() {
   // ── Step 2: Details view ───────────────────────────────────────────
   if (isDetails) {
     return (
-      <Modal onClose={closeWizard} size="2xl" maxHeight="85vh" panelClassName="glass">
+      <Modal
+        onClose={closeWizard}
+        size="2xl"
+        maxHeight="85vh"
+        panelClassName="glass"
+      >
         <div className="p-6 relative">
           <button
             onClick={closeWizard}
@@ -509,7 +581,12 @@ export function CreationWizard() {
 
   // ── Step 1: Title & Premise ────────────────────────────────────────
   return (
-    <Modal onClose={closeWizard} size="2xl" maxHeight="85vh" panelClassName="glass">
+    <Modal
+      onClose={closeWizard}
+      size="2xl"
+      maxHeight="85vh"
+      panelClassName="glass"
+    >
       <div className="p-6 relative">
         <button
           onClick={closeWizard}
@@ -578,26 +655,37 @@ export function CreationWizard() {
 
           {/* Navigation */}
           <div className="flex items-center justify-between pt-1">
-            <button
-              onClick={() =>
-                wizardDispatch({ type: "SET_STEP", step: "details" })
-              }
-              disabled={!canGenerate}
-              className="text-text-dim text-xs hover:text-text-secondary transition disabled:opacity-30 disabled:pointer-events-none"
-            >
-              Add details &rarr;
-            </button>
-            <button
-              onClick={() =>
-                wizardDispatch({ type: "SET_STEP", step: "generate" })
-              }
-              disabled={!canGenerate}
-              className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition disabled:opacity-30 disabled:pointer-events-none"
-            >
-              Generate
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() =>
+                  wizardDispatch({ type: "SET_STEP", step: "details" })
+                }
+                disabled={!canGenerate}
+                className="text-text-dim text-xs hover:text-text-secondary transition disabled:opacity-30 disabled:pointer-events-none"
+              >
+                Add details &rarr;
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleStartBlank}
+                disabled={!wd.title.trim() || isDuplicate}
+                title="Skip the premise and start with an empty world — only the title is kept."
+                className="group flex items-center gap-2 bg-white/4 hover:bg-white/8 border border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary text-xs font-medium px-3.5 py-2 rounded-lg transition disabled:opacity-30 disabled:pointer-events-none disabled:hover:bg-white/4 disabled:hover:border-white/10"
+              >
+                Start blank
+              </button>
+              <button
+                onClick={() =>
+                  wizardDispatch({ type: "SET_STEP", step: "generate" })
+                }
+                disabled={!canGenerate}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition disabled:opacity-30 disabled:pointer-events-none"
+              >
+                New World View
+              </button>
+            </div>
           </div>
-
         </div>
       </div>
     </Modal>
