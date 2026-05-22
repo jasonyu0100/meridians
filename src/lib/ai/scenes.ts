@@ -371,6 +371,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     povRestrictedHint,
     hasPacingSequence: !!sequencePrompt,
     sharedRulesBlock,
+    paradigm: narrative.paradigm,
   });
 
   // Retry on JSON parse failures (truncation, malformed output)

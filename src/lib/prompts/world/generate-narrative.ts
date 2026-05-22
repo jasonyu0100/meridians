@@ -29,8 +29,8 @@ type ParadigmShape = 'populated-narrative' | 'agentic-ai-team' | 'singular-think
 const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directive: string }> = {
   'fiction':      { shape: 'populated-narrative', directive: 'Invented people in an invented world. Apply the populated minimums; use the cultural palette the premise implies.' },
   'non-fiction':  { shape: 'populated-narrative', directive: 'Real people, places, and documented events. Honour historical accuracy where the premise names real figures; the world IS the documented record.' },
-  'simulation':   { shape: 'populated-narrative', directive: 'Real / modelled-world figures the rules act on (Khrushchev, Yi, an in-world commander or cultivator). System-knowledge IS load-bearing — the rule set drives consequence.' },
-  'analysis':     { shape: 'agentic-ai-team',     directive: 'Construct a virtual team of AI agents with memorable single-word names (Atlas, Cipher, Nexus, Vanguard) so the user can invoke them across future passes. Apply the agentic-team-pattern: include a devil\'s-advocate role; bake in ≥1 adversarial pair; collective goal-thread tracks the team\'s thesis.' },
+  'simulation':   { shape: 'populated-narrative', directive: 'In-world figures the rules act on (e.g Khrushchev, Yi, an in-world commander or cultivator). System rules are load-bearing. Forward-time event modelling IS the point — scenes narrate what happens to the modelled world as the rules act over time. (If the user wanted interpretation of present evidence, they would have picked analysis.)' },
+  'analysis':     { shape: 'agentic-ai-team',     directive: 'Virtual team of AI agents (Atlas, Cipher, Nexus, Vanguard) with devil\'s-advocate role + ≥1 adversarial pair, collective goal-thread tracks the thesis. CRITICAL: analysis ≠ simulation. The team works with EXISTING evidence (LLM knowledge + user\'s source material). Scenes are cognitive events over that evidence. NEVER narrate forward-time events, fabricated intercepts, or invented quotes as if freshly observed — scenarios are explicit hypotheticals the team models, not plot beats.' },
   'paper':        { shape: 'singular-thinker',    directive: 'One named author works through the argument. 1 anchor (the author), 1-3 transient cited interlocutors (the theorists / methods the paper engages or rebuts). System-graph IS the argument substrate; internal friction substitutes for inter-agent disagreement.' },
   'essay':        { shape: 'singular-thinker',    directive: 'One named author whose voice the work IS. 1 anchor, 1-3 transient interlocutors. The author\'s mind is the world; threads track the argument-questions they are pursuing.' },
 };
@@ -76,11 +76,26 @@ const PARADIGM_AGENTIC_TEAM = `<agentic-team-pattern critical="true" hint="Analy
   <continuity-discipline>
     <rule>Each agent's world graph encodes role-coded nodes: capability, belief (methodological priors), history (prior commitments / completed analyses), weakness (blind spot), goal.</rule>
     <rule>≥1 adversarial pair baked in (methodological dispute, recency-vs-historical bias, breadth-vs-depth). Disagreement gives narrative tension without inventing fictional drama.</rule>
-    <rule>The team's collective objective is a constant-tension thread ("does the thesis hold?"). Sub-questions become discrete-resolution threads, one per agent's focus. Transient sources feed evidence shifting probabilities.</rule>
+    <rule>The team's collective objective is a constant-tension thread ("does the thesis hold?"). Sub-questions become discrete-resolution threads, one per agent's focus.</rule>
   </continuity-discipline>
 
+  <analysis-vs-simulation critical="true" hint="Most important discipline for analysis — get it wrong and the work degenerates into LARPing.">
+    <core>Analysis works with EXISTING evidence (LLM knowledge of present + user's source material). Scenes are cognitive events over that evidence; simulation is forward-time event modelling and lives in a different paradigm.</core>
+    <forbidden>
+      <rule>No forward-time narration ("three days later, the PLA conducted an exercise"; "a new piece of data hits"). The only time-progression in analysis scenes is COGNITIVE (next meeting / next model run) — not external events.</rule>
+      <rule>No fabricated intelligence ("Argus intercepted comms"; "Xi privately told Trump"; "Tribune's off-record memo"). Use publicly known evidence + user's source material — not invented covert sources.</rule>
+      <rule>No specific numbers presented as freshly observed ("oil exports rebounded to 1.2 million bpd") unless from the source material or well-attested in LLM knowledge. Mark anything else as a model output or scenario assumption.</rule>
+    </forbidden>
+    <permitted>
+      <rule>Scenarios as explicit hypotheticals ("the team models the case where the PLA exercises — under that scenario, conviction drops 12 points"). Reasoning over possible worlds, not narrating that they arrived.</rule>
+      <rule>Re-interpretation of evidence on the table; model recalibration with adjusted priors; devil's-advocate challenges to readings — friction from competing READINGS of the SAME evidence.</rule>
+      <rule>Name evidence gaps honestly when the team lacks data. Don't paper over with invented numbers.</rule>
+    </permitted>
+    <test>If "in the scene, X happened" can be replaced with "the team imagined a scenario where X would happen" without loss, the scene is analytical. If X must be a real new event, you've drifted into simulation — rewrite.</test>
+  </analysis-vs-simulation>
+
   <example category="good" archetype="macro-team">
-    Real World Investment Thesis. Team: Atlas (synthesiser, commits the macro view), Cipher (geopolitical analyst, reads policy directives), Nexus (data scientist, runs the cross-correlation model), Vanguard (devil's advocate, presses on weak evidence), Beacon (sector specialist, EU / energy), Quill (field researcher, talks to sources). Transient sources: Argus (a signals-intelligence channel), Tribune (a Washington insider). Adversarial pair: Vanguard vs Atlas on conviction thresholds; Nexus vs Quill on data-versus-narrative weighting. Goal-thread: does the team's macro thesis outperform consensus over twelve months?
+    Real World Investment Thesis. Team: Atlas (synthesiser), Cipher (geopolitical analyst, reads policy directives), Nexus (model runner), Vanguard (devil's advocate), Beacon (sector specialist), Quill (sources / open-source intelligence reader). Goal-thread: does the team's macro thesis outperform consensus over twelve months? Scene shape: the team re-reads the user's source material with the LLM's present knowledge, runs the Sentry Engine over varying priors, challenges each sub-thesis adversarially, and synthesises — they do NOT narrate "a new event arrived" as plot.
   </example>
 </agentic-team-pattern>`;
 
@@ -206,6 +221,8 @@ Return JSON with this exact structure:
 {
   "worldSummary": "2-3 sentence world description",
   "worldBuildSummary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this initial world commit — what creative space it opens, what tension it primes, which load-bearing entities, factions, or rules it brings into play. Used downstream to steer arc generation when this commit is read as <world-build-focus>, so name the load-bearing additions, not counts.",
+  "genre": "Primary genre WITHIN the chosen paradigm — e.g. for fiction: fantasy, sci-fi, thriller, romance, horror, mystery, literary; for non-fiction: biography, history, memoir, reportage; for simulation: counterfactual, wargame, policy modelling, cultivation; for analysis: macro-strategy, investigation, multi-agent reasoning; for paper: empirical, theoretical, methods; for essay: personal, critical, polemical.",
+  "subgenre": "Specific sub-form within the genre — e.g. progression fantasy, cozy mystery, autobiographical memoir, Mughal-succession counterfactual, monetary-policy wargame, geopolitical macro strategy, applied-econometrics paper, literary criticism essay. Pick the most identifying form.",
   "imageStyle": "A concise visual style directive for all generated images (e.g. 'watercolour style with soft lighting'). Should capture the tone, medium, palette, and aesthetic that best fits this world.",
   "characters": [
     {"id": "C-1", "name": "Full name matching the cultural palette of the world — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-1"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}

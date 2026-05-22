@@ -6,9 +6,49 @@
  */
 
 import { modePriorityEntry } from "../mode/application";
+import type { NarrativeParadigm } from '@/types/narrative';
 
 export const GENERATE_SCENES_SYSTEM =
   'You are a scene generator producing one arc of structurally rich scenes. Honour the brief (reasoning graph / coordination plan / direction), the pacing sequence, and the active threads. Read the world-state across the three forces (fate / world / system); let the established work\'s profile decide which lead this arc — a Classic is fate-dominant, a Show is world-dominant, a Paper is system-dominant. Each scene should reshape future possibility-space (precedents, relationships, inner state, conceptual ground) rather than land without lasting effect. Different actors hold incompatible models — the same event gets divergent readings; emergence often arrives through actions taken on false, partial, or stale beliefs. Every scene pairs its summary with rich threadDeltas (rationale grounded in the scene), worldDeltas (15–25 word present-tense facts across 3+ entities), and ≥1 systemDelta. Match the narrative\'s naming style for any new entities. Return ONLY valid JSON matching the schema in the user prompt.';
+
+// ── Per-paradigm scene discipline ────────────────────────────────────────────
+// Mirrors the world-gen paradigm pattern: when the narrative carries a
+// paradigm, inject ONLY the matching discipline block so the model sees a
+// focused, deterministic standard for the scene shape it should produce.
+
+const PARADIGM_SCENE_POPULATED_NARRATIVE = `<paradigm-scene-discipline paradigm="populated-narrative" hint="Fiction / non-fiction / simulation. Scenes are events in a populated world — characters act, places host action, time moves forward, the world changes through what happens in the scene.">
+  <rule>Forward-time event narration IS the point. Scenes name what happens, who does it, what changes as a result.</rule>
+  <rule>Names match the cultural palette of the existing cast — NEVER AI-coded single-word names (Atlas, Cipher) here; those belong only in the analysis paradigm.</rule>
+</paradigm-scene-discipline>`;
+
+const PARADIGM_SCENE_AGENTIC_TEAM = `<paradigm-scene-discipline paradigm="agentic-ai-team" critical="true" hint="Analysis. The AI agent team works with EXISTING evidence (LLM knowledge of the present + the narrative's source material). Scenes are cognitive events; not plot beats.">
+  <forbidden>
+    <rule>No forward-time event narration ("three days later, the PLA conducted an exercise"; "a new piece of data hits"). Time progresses through the team's COGNITIVE process (next meeting / next model run), not through external world events.</rule>
+    <rule>No fabricated intelligence ("Argus intercepted comms"; "Xi privately told Trump"; "Tribune's off-record memo"). Use publicly known evidence + the narrative's source material — not invented covert sources.</rule>
+    <rule>No specific numbers presented as freshly observed ("oil exports rebounded to 1.2 million bpd") unless they come from the source material or are well-attested in LLM knowledge. Otherwise mark them as model outputs or scenario assumptions.</rule>
+  </forbidden>
+  <permitted>
+    <rule>Scenarios as explicit hypotheticals ("the team models the case where the PLA exercises — under that scenario, conviction drops 12 points"). Reasoning over possible worlds, not narrating that they arrived.</rule>
+    <rule>Re-interpretation of evidence on the table, model recalibration with adjusted priors, devil's-advocate challenges to readings. Friction comes from competing READINGS of the SAME evidence.</rule>
+    <rule>Name evidence gaps honestly when the team lacks data — don't paper over with invented numbers.</rule>
+  </permitted>
+  <test>If "in the scene, X happened" can be replaced with "the team imagined a scenario where X would happen" without loss, the scene is analytical. If X must be a real new event, you've drifted into simulation — rewrite.</test>
+</paradigm-scene-discipline>`;
+
+const PARADIGM_SCENE_SINGULAR_THINKER = `<paradigm-scene-discipline paradigm="singular-thinker" hint="Paper / essay. One named author works through the argument; scenes are sections of cognition — claims considered, evidence weighed, counter-positions engaged, conclusions arrived at.">
+  <rule>Forward-time event narration is rare. Scenes track the AUTHOR'S thinking process — the next claim taken up, the next counter engaged, the next implication derived.</rule>
+  <rule>Internal friction (the author considering and rejecting alternatives) substitutes for inter-agent disagreement; cited interlocutors enter to be engaged or rebutted, not to be characters in a story.</rule>
+  <rule>No fabricated quotes from real interlocutors. Engage cited positions as written; if you need an interlocutor's view you don't have, mark it as the author's inferred reading, not a quote.</rule>
+</paradigm-scene-discipline>`;
+
+const PARADIGM_SHAPE_MAP: Record<NarrativeParadigm, string> = {
+  'fiction':      PARADIGM_SCENE_POPULATED_NARRATIVE,
+  'non-fiction':  PARADIGM_SCENE_POPULATED_NARRATIVE,
+  'simulation':   PARADIGM_SCENE_POPULATED_NARRATIVE,
+  'analysis':     PARADIGM_SCENE_AGENTIC_TEAM,
+  'paper':        PARADIGM_SCENE_SINGULAR_THINKER,
+  'essay':        PARADIGM_SCENE_SINGULAR_THINKER,
+};
 
 export type GenerateScenesPromptArgs = {
   /** Pre-built `<inputs>...</inputs>` body (all input blocks joined). */
@@ -19,6 +59,9 @@ export type GenerateScenesPromptArgs = {
   hasPacingSequence: boolean;
   /** Pre-built modular prompt blocks shared across scene generation paths. */
   sharedRulesBlock: string;
+  /** Narrative paradigm — injects the matching scene-shape discipline block.
+   *  When omitted, no paradigm-specific block is emitted (back-compat). */
+  paradigm?: NarrativeParadigm;
 };
 
 export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): string {
@@ -28,6 +71,7 @@ export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): strin
     povRestrictedHint,
     hasPacingSequence,
     sharedRulesBlock,
+    paradigm,
   } = args;
 
   const priorities = [
@@ -40,6 +84,8 @@ export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): strin
     `  <priority rank="7">NARRATIVE CONTEXT — characters, threads, system knowledge, recent history.</priority>`,
   ].filter(Boolean).join('\n');
 
+  const paradigmBlock = paradigm ? `\n${PARADIGM_SHAPE_MAP[paradigm]}\n` : '';
+
   return `<inputs>
 ${inputBlocks}
 </inputs>
@@ -47,6 +93,7 @@ ${inputBlocks}
 <integration-hierarchy hint="Priority order when inputs conflict.">
 ${priorities}
 </integration-hierarchy>
+${paradigmBlock}
 
 <summary-discipline>The summary IS the delta budget. Write the summary so every intended delta has a source sentence — every entity-change, rule-surfacing, thread-move, and off-screen-affected party traceable to a sentence. Under-tagging is the dominant failure mode.
   <rule name="no-raw-ids" critical="true">NEVER echo engine identifiers in summary prose. Forbidden tokens: any "PREFIX-NUMBER" form — C-N, L-N, T-N, A-N, S-N, ARC-N, K-N, SYS-N, SYS-GEN-N, etc. The summary is read by downstream prose and plan stages as the authoritative scene brief; an ID slug inside prose ("using SYS-98", "via T-12") leaks engine bookkeeping into the rendered text. Translate every reference to its in-world name or concept:
