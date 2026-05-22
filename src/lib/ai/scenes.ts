@@ -4,7 +4,7 @@ import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrativ
 import { nextId, nextIds } from '@/lib/narrative-utils';
 import { newNarratorBelief } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
-import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { GENERATE_SCENES_SYSTEM } from '@/lib/prompts/scenes/generate';
 import { WRITING_MODEL, GENERATE_MODEL, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { parseJson } from './json';
@@ -381,10 +381,11 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const reasoningBudget = resolveReasoningBudget(narrative);
+      const websearch = resolveWebsearch(narrative);
       const useStream = !!(onToken || onReasoning);
       const raw = useStream
-        ? await callGenerateStream(prompt, GENERATE_SCENES_SYSTEM, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning)
-        : await callGenerate(prompt, GENERATE_SCENES_SYSTEM, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget);
+        ? await callGenerateStream(prompt, GENERATE_SCENES_SYSTEM, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+        : await callGenerate(prompt, GENERATE_SCENES_SYSTEM, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
       parsed = parseJson(raw, 'generateScenes') as { arcName?: string; directionVector?: string; worldState?: string; scenes: Scene[] };
       break;
     } catch (err) {
@@ -784,9 +785,10 @@ async function extractCompulsoryPropositions(
     sceneXml: sceneContext(narrative, scene),
   });
 
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(userPrompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', PLANNING_MODEL, reasoningBudget, onReasoning)
-    : await callGenerate(userPrompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', PLANNING_MODEL, reasoningBudget);
+    ? await callGenerateStream(userPrompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', PLANNING_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(userPrompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan.extractPropositions', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
 
   const parsed = parseJson(raw, 'generateScenePlan.extractPropositions') as { propositions?: unknown[] };
   return parsePropositions(Array.isArray(parsed.propositions) ? parsed.propositions : []);
@@ -986,9 +988,10 @@ ${proseProfileBlock}
 
   const prompt = buildScenePlanUserPrompt({ inputBlocks: inputBlocks.join('\n') });
 
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan', PLANNING_MODEL, reasoningBudget, onReasoning)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan', PLANNING_MODEL, reasoningBudget);
+    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'generateScenePlan', PLANNING_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'generateScenePlan', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
 
   const parsed = parseJson(raw, 'generateScenePlan') as { beats?: unknown[] };
   const rawBeats = parsed.beats ?? [];
@@ -1166,7 +1169,8 @@ export async function editScenePlan(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
-  const raw = await callGenerate(prompt, buildScenePlanEditSystemPrompt(narrative.title), MAX_TOKENS_SMALL, 'editScenePlan', PLANNING_MODEL, reasoningBudget);
+  const websearch = resolveWebsearch(narrative);
+  const raw = await callGenerate(prompt, buildScenePlanEditSystemPrompt(narrative.title), MAX_TOKENS_SMALL, 'editScenePlan', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
 
   const parsed = parseJson(raw, 'editScenePlan') as { beats?: unknown[]; propositions?: unknown[] };
   const beats = (parsed.beats ?? []).map((b: unknown) => {
@@ -1308,9 +1312,10 @@ async function reverseEngineerScenePlanOnce(
 
   let accumulated = '';
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   const raw = onToken
-    ? await callGenerateStream(prompt, systemPrompt, (token) => { accumulated += token; onToken(token, accumulated); }, MAX_TOKENS_LARGE, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, undefined, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, systemPrompt, (token) => { accumulated += token; onToken(token, accumulated); }, MAX_TOKENS_LARGE, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, undefined, ANALYSIS_TEMPERATURE, websearch)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'reverseEngineerScenePlan', ANALYSIS_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE, websearch);
 
   type BeatData = { fn: string; mechanism: string; what: string; propositions: unknown[] };
   const parsed = parseJson(raw, 'reverseEngineerScenePlan') as { beats?: unknown[] };
@@ -1473,9 +1478,10 @@ WHEN MODIFYING A BEAT:
 Scene-level "propositions" should capture the overall takeaways from the scene.`;
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'rewriteScenePlan', PLANNING_MODEL, reasoningBudget, onReasoning)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'rewriteScenePlan', PLANNING_MODEL, reasoningBudget);
+    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_SMALL, 'rewriteScenePlan', PLANNING_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_SMALL, 'rewriteScenePlan', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'rewriteScenePlan') as { beats?: unknown[]; propositions?: unknown[] };
 
   const beats = (parsed.beats ?? []).map((b: unknown) => {
@@ -1715,13 +1721,14 @@ ${b.propositions.map(p => `      <proposition>${p.content}</proposition>`).join(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
 
   // Helper: Generate raw prose from LLM
   const generateRaw = async (): Promise<string> => {
     if (onToken) {
-      return callGenerateStream(prompt, systemPrompt, onToken, MAX_TOKENS_DEFAULT, 'generateSceneProse', WRITING_MODEL, reasoningBudget);
+      return callGenerateStream(prompt, systemPrompt, onToken, MAX_TOKENS_DEFAULT, 'generateSceneProse', WRITING_MODEL, reasoningBudget, undefined, undefined, websearch);
     }
-    return callGenerate(prompt, systemPrompt, MAX_TOKENS_DEFAULT, 'generateSceneProse', WRITING_MODEL, reasoningBudget, false);
+    return callGenerate(prompt, systemPrompt, MAX_TOKENS_DEFAULT, 'generateSceneProse', WRITING_MODEL, reasoningBudget, false, undefined, websearch);
   };
 
   // Generation with retry on marker failure (max 2 attempts)

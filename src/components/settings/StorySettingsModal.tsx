@@ -5,7 +5,8 @@ import { apiHeaders } from '@/lib/api-headers';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useStore } from '@/lib/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
-import type { StorySettings, POVMode, WorldFocusMode, ReasoningLevel, NarrativeState, ProseFormat, PlanExtractionSource } from '@/types/narrative';
+import type { StorySettings, POVMode, WorldFocusMode, ReasoningLevel, WebsearchLevel, NarrativeState, ProseFormat, PlanExtractionSource } from '@/types/narrative';
+import { WEBSEARCH_MAX_RESULTS } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, REASONING_BUDGETS } from '@/types/narrative';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import type { CubeCornerKey } from '@/types/narrative';
@@ -800,6 +801,37 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                 </div>
                 <p className="text-[9px] text-text-dim/50 mt-2">
                   Applies to structural calls (scene skeletons, direction, evaluation, planning) — not prose. Reasoning tokens are billed as output tokens.
+                </p>
+              </div>
+
+              {/* Websearch Level — OpenRouter web_search + web_fetch server tools */}
+              <div>
+                <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
+                  Websearch Level
+                </label>
+                <div className="space-y-1.5">
+                  {([
+                    { value: 'none' as WebsearchLevel, label: 'None', desc: 'No web tools — fastest, cheapest. Model uses training knowledge only.' },
+                    { value: 'low' as WebsearchLevel, label: 'Low', desc: `Up to ${WEBSEARCH_MAX_RESULTS.low} results per search — light grounding for occasional fact checks` },
+                    { value: 'medium' as WebsearchLevel, label: 'Medium', desc: `Up to ${WEBSEARCH_MAX_RESULTS.medium} results per search — balanced grounding for current-affairs analysis / paper / non-fiction` },
+                    { value: 'high' as WebsearchLevel, label: 'High', desc: `Up to ${WEBSEARCH_MAX_RESULTS.high} results per search — deep grounding when up-to-date understanding is load-bearing` },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => update({ websearchLevel: opt.value })}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                        (settings.websearchLevel ?? 'none') === opt.value
+                          ? 'border-blue-500/50 bg-blue-500/10'
+                          : 'border-white/5 bg-white/2 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px] font-semibold text-text-primary">{opt.label}</span>
+                      <span className="text-[10px] text-text-dim ml-2">{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-text-dim/50 mt-2">
+                  Enables OpenRouter&apos;s web_search and web_fetch server tools on all narrative-generation calls. The model decides when to search or fetch; results are grounded into generation with citations. Most useful for analysis / paper / non-fiction paradigms where current facts matter. Billed by OpenRouter per search call.
                 </p>
               </div>
 

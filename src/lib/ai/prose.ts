@@ -1,5 +1,5 @@
 import type { NarrativeState, Scene, ProseFormat } from '@/types/narrative';
-import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { WRITING_MODEL, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import { parseJson } from './json';
 import { sceneContext, buildProseProfile } from './context';
@@ -172,13 +172,14 @@ export async function rewriteSceneProse(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   let prose: string;
   if (onToken) {
-    const rawStream = await callGenerateStream(prompt, systemPrompt, onToken, MAX_TOKENS_DEFAULT, 'rewriteSceneProse', WRITING_MODEL, reasoningBudget);
+    const rawStream = await callGenerateStream(prompt, systemPrompt, onToken, MAX_TOKENS_DEFAULT, 'rewriteSceneProse', WRITING_MODEL, reasoningBudget, undefined, undefined, websearch);
     // LLM may ignore "no JSON" instruction — extract prose if it returned JSON
     prose = rawStream;
   } else {
-    const raw = await callGenerate(prompt, systemPrompt, MAX_TOKENS_DEFAULT, 'rewriteSceneProse', WRITING_MODEL, reasoningBudget);
+    const raw = await callGenerate(prompt, systemPrompt, MAX_TOKENS_DEFAULT, 'rewriteSceneProse', WRITING_MODEL, reasoningBudget, true, undefined, websearch);
     const parsed = parseJson(raw, 'rewriteSceneProse') as { prose: string };
     prose = parsed.prose;
   }
@@ -192,6 +193,9 @@ export async function rewriteSceneProse(
     'rewriteChangelog',
     DEFAULT_MODEL,
     reasoningBudget,
+    true,
+    undefined,
+    websearch,
   );
   const changelogParsed = parseJson(changelogRaw, 'rewriteChangelog') as { changelog: unknown };
   const rawChangelog = changelogParsed.changelog;

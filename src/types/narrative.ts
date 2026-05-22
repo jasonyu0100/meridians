@@ -1213,7 +1213,8 @@ export type ReasoningNodeSnapshot = {
     | "reasoning"
     | "pattern"
     | "warning"
-    | "chaos"   // Creative agent — introduces new entities (characters/locations/artifacts/threads)
+    | "chaos"        // Creative agent — introduces new entities (characters/locations/artifacts/threads)
+    | "conclusion"   // Load-bearing terminal answer to the investigation's direction. Uses the universal inference-shape: `detail` carries the concrete answer, `considered` / `breaks` / `opens` carry alternatives / falsification / cascades. Exactly one per graph when the direction is a question.
     // Plan-spine types — only produced by coordination-plan-derived
     // investigations. Manual investigations never emit these. Kept in the
     // shared union so the sidebar + canvas can render both kinds of
@@ -2076,6 +2077,20 @@ export const REASONING_BUDGETS: Record<ReasoningLevel, number> = {
   high: 24576,
 };
 
+/** Web search effort — enables OpenRouter's web plugin so the model can ground
+ *  generation in up-to-date public information. Higher levels = more results
+ *  retrieved per call, slower + more billed tokens. Defaults to 'none'.
+ *  Maps to OpenRouter's `plugins: [{ id: 'web', max_results }]` parameter. */
+export type WebsearchLevel = "none" | "low" | "medium" | "high";
+
+/** Max web-search results per level (0 = plugin disabled entirely). */
+export const WEBSEARCH_MAX_RESULTS: Record<WebsearchLevel, number> = {
+  none: 0,
+  low: 3,
+  medium: 5,
+  high: 10,
+};
+
 /** Output format for prose generation */
 export type ProseFormat = "prose" | "screenplay" | "simulation" | "meta";
 
@@ -2125,6 +2140,12 @@ export type StorySettings = {
   expansionStrategy: "depth" | "breadth" | "dynamic";
   /** Reasoning effort — how much thinking the model does before responding. Higher = better structural decisions, slower generation. */
   reasoningLevel: ReasoningLevel;
+  /** Web search effort — whether the model uses OpenRouter's web plugin to
+   *  ground generation in up-to-date public information. Higher = more
+   *  retrieved results per call. Useful for analysis / paper / non-fiction
+   *  paradigms where the model benefits from current data; usually 'none'
+   *  for pure fiction. Defaults to 'none' on legacy narratives. */
+  websearchLevel?: WebsearchLevel;
   /** Beat profile preset key — selects a published work's beat/prose profile. Empty = default profile. */
   beatProfilePreset: string;
   /** Mechanism profile preset key — selects delivery mechanism distribution. Empty = default. */
@@ -2201,6 +2222,7 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   worldFocus: "none",
   expansionStrategy: "dynamic",
   reasoningLevel: "low",
+  websearchLevel: "none",
   beatProfilePreset: "",
   mechanismProfilePreset: "",
   usePacingChain: false,
@@ -2637,6 +2659,10 @@ export type WizardData = {
   /** Selected paradigm — steers world generation into one of the engine's
    *  canonical world-shapes. Defaults to 'fiction'. */
   paradigm: NarrativeParadigm;
+  /** Websearch effort for the wizard-time world-generation call. Defaults to
+   *  'none'. Mirrors StorySettings.websearchLevel — post-creation, the user
+   *  can adjust per-narrative in Story Settings. */
+  websearchLevel?: WebsearchLevel;
   characters: CharacterSketch[];
   locations: LocationSketch[];
   threads: ThreadSketch[];

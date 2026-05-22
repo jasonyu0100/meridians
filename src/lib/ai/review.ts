@@ -1,6 +1,6 @@
 import type { NarrativeState, StructureReview, ProseEvaluation, ProseSceneEval, PlanEvaluation, PlanSceneEval, SceneEval, SceneVerdict, Scene, Arc } from '@/types/narrative';
 import { resolveEntry, isScene } from '@/types/narrative';
-import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { logInfo } from '@/lib/system-logger';
@@ -105,9 +105,10 @@ ${guidance.trim()}`
 
   const maxTokens = MAX_TOKENS_DEFAULT;
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, BRANCH_REVIEW_SYSTEM, () => {}, maxTokens, 'evaluateBranch', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, BRANCH_REVIEW_SYSTEM, maxTokens, 'evaluateBranch', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, BRANCH_REVIEW_SYSTEM, () => {}, maxTokens, 'evaluateBranch', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE, websearch)
+    : await callGenerate(prompt, BRANCH_REVIEW_SYSTEM, maxTokens, 'evaluateBranch', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE, websearch);
 
   const parsed = parseJson(raw, 'evaluateBranch') as {
     overall?: string;
@@ -241,9 +242,10 @@ ${profile.rules?.length ? `Rules:\n${profile.rules.map((r) => `  - ${r}`).join('
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, PROSE_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, PROSE_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, PROSE_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE, websearch)
+    : await callGenerate(prompt, PROSE_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluateProseQuality', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE, websearch);
 
   const parsed = parseJson(raw, 'evaluateProseQuality') as {
     overall?: string;
@@ -353,9 +355,10 @@ export async function reviewPlanQuality(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, PLAN_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE)
-    : await callGenerate(prompt, PLAN_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    ? await callGenerateStream(prompt, PLAN_REVIEW_SYSTEM, () => {}, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', DEFAULT_MODEL, reasoningBudget, onReasoning, ANALYSIS_TEMPERATURE, websearch)
+    : await callGenerate(prompt, PLAN_REVIEW_SYSTEM, MAX_TOKENS_DEFAULT, 'evaluatePlanQuality', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE, websearch);
 
   const parsed = parseJson(raw, 'evaluatePlanQuality') as {
     overall?: string;

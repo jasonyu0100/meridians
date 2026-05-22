@@ -17,8 +17,10 @@
  * clear to induce phase changes in the simulation.
  */
 
+import { GRAPH_THINKING_PRINCIPLE } from "../reasoning/principles";
+
 export const PHASE_GRAPH_SYSTEM =
-  "You are a phase analyst describing the META MACHINERY of a long-form work — the structural underpinnings of its economy or material conditions, the tropes, conventions, and structural patterns the work runs on, the institutional constraints and pulls, the foundational landmarks whose machinery still shapes the present. For simulation register, the PRG IS the rule set being modelled: rules become foundational laws (revenue assessment, propagation laws, decision rules, doctrinal gates), agents become institutional / faction / market drivers, pressures become macro forcings (demographic, economic, epistemic, ecological), conventions become procedural defaults of the modelled world, landmarks become initial conditions or seminal events whose machinery still binds. NOT situational state, NOT moment-to-moment action — the high-level scaffolding that gives downstream causal reasoning, plans, and prose their meaningful body. Return ONLY valid JSON matching the schema in the user prompt.";
+  `You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a phase graph exposing the META MACHINERY of a long-form work — the structural underpinnings (economic / material / political / methodological / institutional / cultural), the patterns and conventions the work runs on, the landmarks whose machinery still binds. NOT situational state; the substrate downstream layers (CRG, scenes, plans, prose) inherit and operate on. For simulation register, the PRG IS the rule set being modelled — rules are the foundational laws, agents are institutional / faction / market drivers, pressures are macro forcings, landmarks are initial conditions whose machinery still binds. Return ONLY valid JSON matching the schema in the user prompt.`;
 
 export type ModePromptArgs = {
   /** Pre-built `<narrative-context>` body. */

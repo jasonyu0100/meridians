@@ -508,6 +508,35 @@ export function ReasoningGraphModal({
         {/* Summary */}
         <p className="text-xs text-text-secondary mb-4 max-w-3xl">{graph.summary}</p>
 
+        {/* Conclusion banner — when the investigation yielded a definitive
+            answer (conclusion-type node), surface it above the graph so the
+            reader sees the result before parsing structure. Click to focus
+            the underlying node in the graph. */}
+        {(() => {
+          const conclusion = sortedNodes.find((n) => n.type === "conclusion");
+          if (!conclusion) return null;
+          const palette = NODE_COLORS[conclusion.type];
+          return (
+            <button
+              type="button"
+              onClick={() => setFocusedIndex(sortedNodes.indexOf(conclusion))}
+              className="mb-4 max-w-3xl text-left rounded-lg border px-3 py-2.5 transition hover:bg-white/3"
+              style={{ borderColor: palette.stroke, backgroundColor: `${palette.fill}18` }}
+              title="Click to focus this node in the graph"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] leading-none" style={{ color: palette.stroke }}>★</span>
+                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: palette.stroke }}>Answer</span>
+                <span className="text-[10px] text-text-dim ml-auto">index {conclusion.index}</span>
+              </div>
+              <h3 className="text-sm font-medium text-text-primary leading-snug mb-1">{conclusion.label}</h3>
+              {conclusion.detail && (
+                <p className="text-xs text-text-secondary leading-relaxed">{conclusion.detail}</p>
+              )}
+            </button>
+          );
+        })()}
+
         {/* Progress bar */}
         <div className="mb-4">
           <div className="h-2 bg-white/6 rounded-full overflow-hidden">

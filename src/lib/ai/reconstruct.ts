@@ -2,7 +2,7 @@ import type { NarrativeState, StructureReview, SceneEval, SceneVerdict, Scene, A
 import { resolveEntry, isScene, isWorldBuild } from '@/types/narrative';
 import { nextId } from '@/lib/narrative-utils';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
-import { callGenerate, resolveReasoningBudget } from './api';
+import { callGenerate, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { sanitizeScenes } from './scenes';
 import { GENERATE_MODEL, PROSE_CONCURRENCY, MAX_TOKENS_SMALL } from '@/lib/constants';
@@ -596,7 +596,8 @@ async function editScene(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
-  const raw = await callGenerate(prompt, RECONSTRUCT_EDIT_SYSTEM, MAX_TOKENS_SMALL, 'editScene', GENERATE_MODEL, reasoningBudget);
+  const websearch = resolveWebsearch(narrative);
+  const raw = await callGenerate(prompt, RECONSTRUCT_EDIT_SYSTEM, MAX_TOKENS_SMALL, 'editScene', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'editScene') as Partial<Scene>;
 
   const edited: Scene = {
@@ -680,7 +681,8 @@ async function mergeScenes(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
-  const raw = await callGenerate(prompt, RECONSTRUCT_MERGE_SYSTEM, MAX_TOKENS_SMALL, 'mergeScenes', GENERATE_MODEL, reasoningBudget);
+  const websearch = resolveWebsearch(narrative);
+  const raw = await callGenerate(prompt, RECONSTRUCT_MERGE_SYSTEM, MAX_TOKENS_SMALL, 'mergeScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'mergeScenes') as Partial<Scene>;
 
   const merged: Scene = {
@@ -723,7 +725,8 @@ async function insertScene(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
-  const raw = await callGenerate(prompt, RECONSTRUCT_INSERT_SYSTEM, MAX_TOKENS_SMALL, 'insertScene', GENERATE_MODEL, reasoningBudget);
+  const websearch = resolveWebsearch(narrative);
+  const raw = await callGenerate(prompt, RECONSTRUCT_INSERT_SYSTEM, MAX_TOKENS_SMALL, 'insertScene', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'insertScene') as Partial<Scene>;
 
   const inserted: Scene = {

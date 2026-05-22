@@ -34,7 +34,7 @@ import { getMarketMargin } from '@/lib/narrative-utils';
 import { THREAD_CATEGORY_LABEL } from '@/lib/thread-category';
 import { getStoryPhase } from '@/lib/auto-engine';
 import { getActiveMode } from '@/lib/mode-graph';
-import { callGenerate, callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { MARKET_BRIEFING_SYSTEM, buildMarketBriefingPrompt } from '@/lib/prompts/briefing';
 import {
@@ -108,6 +108,7 @@ export async function generateMarketBriefing(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   const raw = onReasoning
     ? await callGenerateStream(
         prompt,
@@ -118,6 +119,8 @@ export async function generateMarketBriefing(
         undefined,
         reasoningBudget,
         onReasoning,
+        undefined,
+        websearch,
       )
     : await callGenerate(
         prompt,
@@ -126,6 +129,9 @@ export async function generateMarketBriefing(
         'generateMarketBriefing',
         undefined,
         reasoningBudget,
+        true,
+        undefined,
+        websearch,
       );
 
   const parsed = parseJson(raw, 'generateMarketBriefing') as Partial<MarketBriefing>;

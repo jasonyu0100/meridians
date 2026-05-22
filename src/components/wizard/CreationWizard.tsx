@@ -12,11 +12,13 @@ import { useWizard } from "@/lib/wizard-context";
 import { Modal } from "@/components/Modal";
 import {
   DEFAULT_STORY_SETTINGS,
+  WEBSEARCH_MAX_RESULTS,
   type CharacterSketch,
   type LocationSketch,
   type NarrativeParadigm,
   type NarrativeState,
   type ThreadSketch,
+  type WebsearchLevel,
   type WorldBuild,
 } from "@/types/narrative";
 import { useRouter } from "next/navigation";
@@ -31,6 +33,13 @@ const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
   { value: "analysis",    label: "Analysis",    hint: "AI agent team pursuing a thesis" },
   { value: "paper",       label: "Paper",       hint: "Single author + cited interlocutors" },
   { value: "essay",       label: "Essay",       hint: "Singular thinker working an argument" },
+];
+
+const WEBSEARCH_LEVELS: { value: WebsearchLevel; label: string; hint: string }[] = [
+  { value: "none",   label: "None",   hint: "Training knowledge only" },
+  { value: "low",    label: "Low",    hint: `Up to ${WEBSEARCH_MAX_RESULTS.low} web results / call` },
+  { value: "medium", label: "Medium", hint: `Up to ${WEBSEARCH_MAX_RESULTS.medium} web results / call` },
+  { value: "high",   label: "High",   hint: `Up to ${WEBSEARCH_MAX_RESULTS.high} web results / call` },
 ];
 
 function buildBlankNarrative(title: string): NarrativeState {
@@ -241,6 +250,7 @@ export function CreationWizard() {
         wd.worldOnly ?? false,
         wd.paradigm,
         wd.sourceText,
+        WEBSEARCH_MAX_RESULTS[wd.websearchLevel ?? "none"],
       );
       dispatch({ type: "ADD_NARRATIVE", narrative });
       wizardDispatch({ type: "CLOSE" });
@@ -355,6 +365,39 @@ export function CreationWizard() {
               </div>
               <p className="text-[10px] text-text-dim/60 italic mt-2">
                 Steers generation into one of the engine&apos;s six canonical world-shapes.
+              </p>
+            </section>
+
+            {/* Websearch */}
+            <section className="border-t border-white/8 pt-8">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
+                Websearch
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {WEBSEARCH_LEVELS.map((w) => {
+                  const active = (wd.websearchLevel ?? "none") === w.value;
+                  return (
+                    <button
+                      key={w.value}
+                      type="button"
+                      onClick={() => update({ websearchLevel: w.value })}
+                      title={w.hint}
+                      className={`text-[11px] px-3 py-2 rounded-lg border transition text-left ${
+                        active
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                          : "bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <div className="font-medium">{w.label}</div>
+                      <div className={`text-[10px] mt-0.5 leading-tight ${active ? "text-emerald-300/70" : "text-text-dim"}`}>
+                        {w.hint}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-text-dim/60 italic mt-2">
+                Gives the model OpenRouter&apos;s web_search + web_fetch tools at world-gen time. Most useful for analysis / paper / non-fiction paradigms where current facts matter. Adjustable per-narrative in Story Settings afterwards.
               </p>
             </section>
 

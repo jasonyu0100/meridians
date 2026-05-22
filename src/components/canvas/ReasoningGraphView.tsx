@@ -516,6 +516,26 @@ export function ReasoningGraphView({
                 </button>
               )}
             </div>
+            {/* Conclusion preview — when the investigation yielded a
+                definitive answer, surface the conclusion node's label inline
+                so the canvas view reads the result without needing to walk
+                the graph. Detail lives in the inspector when the user opens
+                the node. */}
+            {(() => {
+              const conclusion = graph.nodes.find((n) => n.type === "conclusion");
+              if (!conclusion) return null;
+              return (
+                <div className="mt-2 pt-2 border-t border-white/8">
+                  <div className="flex items-baseline gap-1.5 mb-0.5">
+                    <span className="text-[10px] leading-none text-amber-300">★</span>
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-amber-300/80 font-mono">Answer</span>
+                  </div>
+                  <div className="text-[11px] text-text-primary leading-snug whitespace-normal wrap-break-word">
+                    {conclusion.label}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}

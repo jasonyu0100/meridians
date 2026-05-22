@@ -5,6 +5,7 @@ vi.mock('@/lib/ai/api', () => ({
   callGenerate: vi.fn(),
   callGenerateStream: vi.fn(),
   resolveReasoningBudget: vi.fn(() => 0),
+  resolveWebsearch: vi.fn(() => 0),
   SYSTEM_PROMPT: 'Test system prompt',
 }));
 import {

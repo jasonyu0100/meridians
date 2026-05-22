@@ -7,6 +7,7 @@ vi.mock('@/lib/ai/api', () => ({
   callGenerate: vi.fn(),
   callGenerateStream: vi.fn(),
   resolveReasoningBudget: vi.fn(() => 0),
+  resolveWebsearch: vi.fn(() => 0),
 }));
 // Mock constants with smaller chunk sizes for faster tests
 vi.mock('@/lib/constants', () => ({

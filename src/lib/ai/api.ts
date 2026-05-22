@@ -1,13 +1,20 @@
 import { apiHeaders } from '@/lib/api-headers';
 import { DEFAULT_MODEL, API_TIMEOUT_MS, API_STREAM_TIMEOUT_MS } from '@/lib/constants';
 import { FatalApiError, isFatalStatus } from '@/lib/ai/errors';
-import { REASONING_BUDGETS, type NarrativeState } from '@/types/narrative';
+import { REASONING_BUDGETS, WEBSEARCH_MAX_RESULTS, type NarrativeState } from '@/types/narrative';
 
 /** Resolve a story's reasoning budget (thinking tokens) from its settings.
  *  Returns the canonical number (including 0 for "none") so callers pass
  *  the user's intent through unchanged. */
 export function resolveReasoningBudget(narrative: NarrativeState | undefined | null): number {
   return REASONING_BUDGETS[narrative?.storySettings?.reasoningLevel ?? 'low'];
+}
+
+/** Resolve a story's websearch effort from its settings. Returns the max
+ *  results per call (0 = plugin disabled). Pass directly to callGenerate /
+ *  callGenerateStream — they emit OpenRouter's web plugin only when > 0. */
+export function resolveWebsearch(narrative: NarrativeState | undefined | null): number {
+  return WEBSEARCH_MAX_RESULTS[narrative?.storySettings?.websearchLevel ?? 'none'];
 }
 
 export async function callGenerateStream(
@@ -20,6 +27,9 @@ export async function callGenerateStream(
   reasoningBudget?: number,
   onReasoning?: (token: string) => void,
   temperature?: number,
+  /** Max websearch results per call (0 = disabled). Pass the value
+   *  from resolveWebsearch(narrative). */
+  websearchMaxResults?: number,
 ): Promise<string> {
   const resolvedModel = model ?? DEFAULT_MODEL;
   const { logApiCall, updateApiLog } = await import('@/lib/api-logger');
@@ -34,7 +44,7 @@ export async function callGenerateStream(
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: apiHeaders(),
-      body: JSON.stringify({ prompt, systemPrompt, stream: true, ...(maxTokens ? { maxTokens } : {}), ...(model ? { model } : {}), ...(reasoningBudget !== undefined ? { reasoningBudget } : {}), ...(temperature !== undefined ? { temperature } : {}) }),
+      body: JSON.stringify({ prompt, systemPrompt, stream: true, ...(maxTokens ? { maxTokens } : {}), ...(model ? { model } : {}), ...(reasoningBudget !== undefined ? { reasoningBudget } : {}), ...(temperature !== undefined ? { temperature } : {}), ...(websearchMaxResults && websearchMaxResults > 0 ? { websearchMaxResults } : {}) }),
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -134,7 +144,7 @@ export async function callGenerateStream(
   }
 }
 
-export async function callGenerate(prompt: string, systemPrompt: string, maxTokens?: number, caller = 'callGenerate', model?: string, reasoningBudget?: number, jsonMode = true, temperature?: number): Promise<string> {
+export async function callGenerate(prompt: string, systemPrompt: string, maxTokens?: number, caller = 'callGenerate', model?: string, reasoningBudget?: number, jsonMode = true, temperature?: number, websearchMaxResults?: number): Promise<string> {
   const resolvedModel = model ?? DEFAULT_MODEL;
   const { logApiCall, updateApiLog } = await import('@/lib/api-logger');
   const logId = logApiCall(caller, prompt.length + (systemPrompt?.length ?? 0), prompt, resolvedModel, systemPrompt);
@@ -148,7 +158,7 @@ export async function callGenerate(prompt: string, systemPrompt: string, maxToke
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: apiHeaders(),
-      body: JSON.stringify({ prompt, systemPrompt, ...(maxTokens ? { maxTokens } : {}), ...(model ? { model } : {}), ...(reasoningBudget !== undefined ? { reasoningBudget } : {}), ...(jsonMode ? { jsonMode: true } : {}), ...(temperature !== undefined ? { temperature } : {}) }),
+      body: JSON.stringify({ prompt, systemPrompt, ...(maxTokens ? { maxTokens } : {}), ...(model ? { model } : {}), ...(reasoningBudget !== undefined ? { reasoningBudget } : {}), ...(jsonMode ? { jsonMode: true } : {}), ...(temperature !== undefined ? { temperature } : {}), ...(websearchMaxResults && websearchMaxResults > 0 ? { websearchMaxResults } : {}) }),
       signal: controller.signal,
     });
     if (!res.ok) {

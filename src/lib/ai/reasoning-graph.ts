@@ -22,7 +22,7 @@ import type {
   ReasoningGraphSnapshot,
 } from "@/types/narrative";
 import { REASONING_BUDGETS, resolveEntry } from "@/types/narrative";
-import { callGenerate, callGenerateStream } from "./api";
+import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext, getStateAtIndex } from "./context";
 import { parseJson } from "./json";
@@ -36,7 +36,7 @@ import { logError, logWarning } from "@/lib/system-logger";
  *  substrate, not selections; spine nodes (peak/valley/moment) are
  *  commitments, not inferences. Anything else is inference-tier and the
  *  prompt requires `considered` on it. */
-const INFERENCE_TIER_TYPES = new Set(["reasoning", "pattern", "warning", "chaos"]);
+const INFERENCE_TIER_TYPES = new Set(["reasoning", "pattern", "warning", "chaos", "conclusion"]);
 import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/network-graph";
 import type { CoordinationPlanContext } from "./scenes";
 import { buildActiveModeSection } from "./mode-graph";
@@ -302,6 +302,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
   });
 
   const reasoningBudget = defaultReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
 
   const raw = onReasoning
     ? await callGenerateStream(
@@ -313,6 +314,8 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
         PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
+        undefined,
+        websearch,
       )
     : await callGenerate(
         prompt,
@@ -321,6 +324,9 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
         "generateReasoningGraph",
         PLANNING_MODEL,
         reasoningBudget,
+        true,
+        undefined,
+        websearch,
       );
 
   // Parse JSON response
@@ -695,6 +701,7 @@ export async function generateCoordinationPlan(
   });
 
   const reasoningBudget = defaultReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
 
   const raw = onReasoning
     ? await callGenerateStream(
@@ -706,6 +713,8 @@ export async function generateCoordinationPlan(
         PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
+        undefined,
+        websearch,
       )
     : await callGenerate(
         prompt,
@@ -714,6 +723,9 @@ export async function generateCoordinationPlan(
         "generateCoordinationPlan",
         PLANNING_MODEL,
         reasoningBudget,
+        true,
+        undefined,
+        websearch,
       );
 
   // Parse and validate (parseJson handles markdown fences)

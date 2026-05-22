@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { prompt, systemPrompt, model, maxTokens, stream, temperature, reasoningBudget, jsonMode } = body as {
+    const { prompt, systemPrompt, model, maxTokens, stream, temperature, reasoningBudget, jsonMode, websearchMaxResults } = body as {
       prompt: string;
       systemPrompt?: string;
       model?: string;
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       temperature?: number;
       reasoningBudget?: number;
       jsonMode?: boolean;
+      websearchMaxResults?: number;
     };
 
     const response = await fetch(OPENROUTER_URL, {
@@ -42,6 +43,23 @@ export async function POST(req: NextRequest) {
         max_tokens: maxTokens || MAX_TOKENS_DEFAULT,
         ...(stream ? { stream: true } : {}),
         ...(reasoningBudget && reasoningBudget > 0 ? { reasoning: { max_tokens: reasoningBudget } } : {}),
+        // OpenRouter server tools — web_search grounds generation in current
+        // public info, web_fetch lets the model deepen its read of any URL.
+        // The two are paired so the model can decide whether to search or
+        // fetch as it generates. Docs:
+        //   https://openrouter.ai/docs/guides/features/server-tools/web-search
+        //   https://openrouter.ai/docs/guides/features/server-tools/web-fetch
+        ...(websearchMaxResults && websearchMaxResults > 0
+          ? {
+              tools: [
+                {
+                  type: 'openrouter:web_search',
+                  parameters: { max_results: websearchMaxResults },
+                },
+                { type: 'openrouter:web_fetch' },
+              ],
+            }
+          : {}),
         ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
       }),
     });

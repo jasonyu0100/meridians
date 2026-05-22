@@ -23,6 +23,7 @@ import { TileLabel } from './variables/BentoTile';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { IconFlask } from '@/components/icons';
 import { findHeadArc } from '@/hooks/useExperimentation';
+import { InferenceFields } from '@/components/shared/InferenceFields';
 
 /**
  * Variables view — Control → Present | Future.
@@ -362,7 +363,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       // Cohort = the other committed scenarios. Used for relative anchoring.
       const cohort = scenarios.filter((s) => s.id !== pending.id);
       const result = await rescoreScenario({
-        narrativeTitle: narrative.title,
+        narrative,
         arc: {
           id: focusedArc.id,
           name: focusedArc.name,
@@ -405,7 +406,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     setStreamingReasoning('');
     try {
       const { variables, description, reasoning, considered, breaks, opens, priorLogit } = await extractArcPresent({
-        narrativeTitle: narrative.title,
+        narrative,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
         outline,
@@ -445,7 +446,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       // projection of the arc's Present. Both surfaces draw from the same
       // historical record (scenes, threads, roster, prior arcs).
       const generated = await generatePlanningScenarios({
-        narrativeTitle: narrative.title,
+        narrative,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
         outline,
@@ -984,75 +985,6 @@ function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => v
   );
 }
 
-// ── Expandable inference-shape field ─────────────────────────────────────
-//
-// Reasoning / Considered / Breaks / Opens hold a lot of text now. Default
-// the secondary handles closed with a 1-line preview so the panel stays
-// scannable; user expands the ones they want to read fully. Shared between
-// PresentBento and the Future scenario detail panel so the affordance is
-// the same wherever inference-shape lives.
-
-function ExpandableField({
-  label, icon, iconColor, content, defaultOpen = false, italic = false,
-}: {
-  label: string;
-  /** Glyph rendered before the label (e.g. ×, !, ⇒). Optional. */
-  icon?: string;
-  iconColor?: string;
-  content: string;
-  defaultOpen?: boolean;
-  italic?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  // Preview: first sentence (or first ~80 chars). Skipped when defaultOpen
-  // since the full content is visible from the start.
-  const preview = useMemo(() => {
-    if (defaultOpen) return '';
-    const firstSentenceEnd = content.search(/[.!?](\s|$)/);
-    const trimmed = firstSentenceEnd > 0 && firstSentenceEnd < 100
-      ? content.slice(0, firstSentenceEnd + 1)
-      : content.slice(0, 80) + (content.length > 80 ? '…' : '');
-    return trimmed;
-  }, [content, defaultOpen]);
-  // Minimal quote-style: thin left border, coloured via `border-current` so
-  // it inherits the icon's text colour with one decision. Reads as a
-  // marginalia rule rather than a card — light weight, space-efficient.
-  // Wrapper sets the colour; the border line + content stay neutral.
-  return (
-    <div className={`${iconColor ?? 'text-text-dim/40'} ${open ? '' : 'opacity-60 hover:opacity-100'} transition-opacity`}>
-      <div className="flex flex-col border-l-2 border-current pl-2.5">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1.5 py-0.5 text-left w-full group"
-        >
-          {icon && (
-            <span className="text-[11px] leading-none font-bold w-2.5 text-center">
-              {icon}
-            </span>
-          )}
-          <span className="text-[9px] uppercase tracking-[0.18em] text-text-secondary font-mono font-medium">
-            {label}
-          </span>
-          {!open && preview && (
-            <span className={`flex-1 min-w-0 text-[11px] text-text-dim/70 leading-snug truncate ${italic ? 'italic' : ''}`}>
-              {preview}
-            </span>
-          )}
-          <span className="ml-auto shrink-0 text-text-dim/40 group-hover:text-text-secondary transition text-[11px] leading-none font-mono">
-            {open ? '−' : '+'}
-          </span>
-        </button>
-        {open && (
-          <p className={`pt-0.5 pb-1 text-[11px] text-text-secondary leading-relaxed ${italic ? 'italic' : ''}`}>
-            {content}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Logit badge ───────────────────────────────────────────────────────────
 //
 // Surfaces a coordination's log-prior plausibility (in MARKET_EVIDENCE
@@ -1187,20 +1119,13 @@ function PresentBento({
                     </p>
                   </div>
                 )}
-                {reasoning && (
-                  <ExpandableField label="Reasoning" content={reasoning} defaultOpen />
-                )}
-                {/* Universal inference-shape — same handles as CRG / PRG / Future scenarios.
-                    Collapsed by default to keep the panel scannable. */}
-                {considered && (
-                  <ExpandableField label="Considered" icon="×" iconColor="text-amber-400" content={considered} />
-                )}
-                {breaks && (
-                  <ExpandableField label="Breaks" icon="!" iconColor="text-rose-400" content={breaks} />
-                )}
-                {opens && (
-                  <ExpandableField label="Opens" icon="⇒" iconColor="text-emerald-400" content={opens} />
-                )}
+                <InferenceFields
+                  detail={reasoning}
+                  considered={considered}
+                  breaks={breaks}
+                  opens={opens}
+                  detailLabel="Reasoning"
+                />
               </div>
             </>
           )}
@@ -1372,20 +1297,13 @@ function FutureBento(props: FutureBentoProps) {
                     </p>
                   </div>
                 )}
-                {activeScenario.reasoning && (
-                  <ExpandableField label="Reasoning" content={activeScenario.reasoning} defaultOpen />
-                )}
-                {/* Universal inference-shape — same handles as CRG / PRG nodes.
-                    Collapsed by default so the panel stays scannable. */}
-                {activeScenario.considered && (
-                  <ExpandableField label="Considered" icon="×" iconColor="text-amber-400" content={activeScenario.considered} />
-                )}
-                {activeScenario.breaks && (
-                  <ExpandableField label="Breaks" icon="!" iconColor="text-rose-400" content={activeScenario.breaks} />
-                )}
-                {activeScenario.opens && (
-                  <ExpandableField label="Opens" icon="⇒" iconColor="text-emerald-400" content={activeScenario.opens} />
-                )}
+                <InferenceFields
+                  detail={activeScenario.reasoning}
+                  considered={activeScenario.considered}
+                  breaks={activeScenario.breaks}
+                  opens={activeScenario.opens}
+                  detailLabel="Reasoning"
+                />
               </div>
             </>
           )}

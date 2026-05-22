@@ -23,12 +23,13 @@ import type {
   Artifact,
   Character,
   Location,
+  NarrativeState,
   PlanningScenario,
   Scene,
   Thread,
   Variable,
 } from "@/types/narrative";
-import { callGenerate, callGenerateStream } from "./api";
+import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { parseJson } from "./json";
 
 /** Plausibility scale for scenario priors. Reuses the prediction market's
@@ -333,7 +334,8 @@ Output strict JSON:
 }`;
 
 export interface ExtractPresentInput {
-  narrativeTitle: string;
+  /** Full narrative — used internally to resolve websearch + (optionally) reasoning. */
+  narrative: NarrativeState;
   arc: { id: string; name: string; directionVector?: string; summary?: string };
   context?: VariablesContextSource;
   /** Pre-rendered story outline (call `outlineContext` from caller) — gives
@@ -420,7 +422,7 @@ export async function extractArcPresent(
   const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
   const prompt = `<narrative>
-title: ${input.narrativeTitle}
+title: ${input.narrative.title}
 </narrative>
 
 <arc>
@@ -442,6 +444,7 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
         input.reasoningBudget,
         input.onReasoning,
         ANALYSIS_TEMPERATURE,
+        resolveWebsearch(input.narrative),
       )
     : await callGenerate(
         prompt,
@@ -452,6 +455,7 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
         input.reasoningBudget,
         true,
         ANALYSIS_TEMPERATURE,
+        resolveWebsearch(input.narrative),
       );
 
   const parsed = parseJson(raw, "extractArcPresent") as {
@@ -568,7 +572,8 @@ Output strict JSON:
 }`;
 
 export interface ScenarioGenerationInput {
-  narrativeTitle: string;
+  /** Full narrative — used internally to resolve websearch + (optionally) reasoning. */
+  narrative: NarrativeState;
   arc: { id: string; name: string; directionVector?: string; summary?: string };
   context?: VariablesContextSource;
   /** Pre-rendered story outline up to the current scene (`outlineContext`). */
@@ -613,7 +618,7 @@ export async function generatePlanningScenarios(
   // scenes, threads, roster, prior arcs). No Present-variable block —
   // Future and Present are two separate analyses of the same evidence.
   const prompt = `<narrative>
-title: ${input.narrativeTitle}
+title: ${input.narrative.title}
 </narrative>
 
 <current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
@@ -633,6 +638,7 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
         input.reasoningBudget,
         input.onReasoning,
         ANALYSIS_TEMPERATURE,
+        resolveWebsearch(input.narrative),
       )
     : await callGenerate(
         prompt,
@@ -643,6 +649,7 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
         input.reasoningBudget,
         true,
         ANALYSIS_TEMPERATURE,
+        resolveWebsearch(input.narrative),
       );
 
   const parsed = parseJson(raw, "generatePlanningScenarios") as {
@@ -783,7 +790,8 @@ Include the universal INFERENCE-SHAPE fields, each substantive (not a paraphrase
 Output strict JSON: { "priorLogit": <number>, "reasoning": "...", "considered": "...", "breaks": "...", "opens": "..." }`;
 
 export interface RescoreScenarioInput {
-  narrativeTitle: string;
+  /** Full narrative — used internally to resolve websearch + reasoning. */
+  narrative: NarrativeState;
   arc: { id: string; name: string; directionVector?: string; summary?: string };
   /** The scenario being rescored, in its edited state (post-user-edits). */
   scenario: PlanningScenario;
@@ -848,7 +856,7 @@ export async function rescoreScenario(
   const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
   const prompt = `<narrative>
-title: ${input.narrativeTitle}
+title: ${input.narrative.title}
 </narrative>
 
 <current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
@@ -874,6 +882,7 @@ Re-score this scenario's priorLogit given its edited coordination, the cohort co
     undefined,
     true,
     ANALYSIS_TEMPERATURE,
+    resolveWebsearch(input.narrative),
   );
 
   const parsed = parseJson(raw, "rescoreScenario") as {

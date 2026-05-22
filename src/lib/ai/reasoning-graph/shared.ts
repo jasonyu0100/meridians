@@ -44,6 +44,7 @@ export const VALID_NODE_TYPES = new Set([
   "pattern",
   "warning",
   "chaos",
+  "conclusion",
 ]);
 
 export const VALID_EDGE_TYPES = new Set([

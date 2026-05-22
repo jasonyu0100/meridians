@@ -57,6 +57,13 @@ export function extractPatternWarningDirectives(
 /**
  * Build a sequential reasoning path from the graph for LLM consumption.
  * Nodes are ordered by index, with connection IDs inline.
+ *
+ * When the graph carries a `conclusion`-type node (the investigation's
+ * load-bearing answer to its direction), it's surfaced ABOVE the walk in
+ * an `★ ANSWER` header block — so any downstream reader (LLM context,
+ * clipboard paste, prompt embedding) sees the result before parsing the
+ * structural justification. The conclusion is then ALSO rendered in its
+ * natural index position so the chain stays complete.
  */
 export function buildSequentialPath(graph: ReasoningGraphBase): string {
   const sortedNodes = [...graph.nodes].sort((a, b) => a.index - b.index);
@@ -76,6 +83,20 @@ export function buildSequentialPath(graph: ReasoningGraphBase): string {
   }
 
   const lines: string[] = [];
+
+  // Pre-walk: surface the conclusion (if present) above the structural
+  // walk so the answer reads first. Investigations whose direction is a
+  // question carry one such node; thematic / continuation graphs don't.
+  const conclusion = sortedNodes.find((n) => n.type === "conclusion");
+  if (conclusion) {
+    lines.push(`★ ANSWER: ${conclusion.label}`);
+    if (conclusion.detail) lines.push(`    ${conclusion.detail}`);
+    if (conclusion.considered) lines.push(`    × alternatives: ${conclusion.considered}`);
+    if (conclusion.breaks) lines.push(`    ! invalidated by: ${conclusion.breaks}`);
+    if (conclusion.opens) lines.push(`    ⇒ cascades: ${conclusion.opens}`);
+    lines.push(""); // blank line before the structural walk
+    lines.push(`── reasoning chain (index order) ──`);
+  }
 
   for (const node of sortedNodes) {
     const outgoing = outMap.get(node.id) ?? [];

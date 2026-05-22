@@ -12,64 +12,8 @@
 import { useStore } from "@/lib/store";
 import type { ModeEdgeSnapshot, ModeNodeType } from "@/types/narrative";
 import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
-import { useMemo, useState } from "react";
-
-/** Collapsible inference-shape field — same pattern as VariablesView's and
- *  ReasoningNodeDetail's ExpandableField. PRG nodes carry universal
- *  `considered` / `breaks` / `opens` plus `detail`; collapsed by default
- *  with a 1-line preview so the panel stays scannable. */
-function ExpandableField({
-  label, icon, iconColor, content, defaultOpen = false,
-}: {
-  label: string;
-  icon?: string;
-  iconColor?: string;
-  content: string;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const preview = useMemo(() => {
-    if (defaultOpen) return '';
-    const firstSentenceEnd = content.search(/[.!?](\s|$)/);
-    return firstSentenceEnd > 0 && firstSentenceEnd < 100
-      ? content.slice(0, firstSentenceEnd + 1)
-      : content.slice(0, 80) + (content.length > 80 ? '…' : '');
-  }, [content, defaultOpen]);
-  // Minimal quote-style — see VariablesView for the same component shape.
-  return (
-    <div className={`${iconColor ?? 'text-text-dim/40'} ${open ? '' : 'opacity-60 hover:opacity-100'} transition-opacity`}>
-      <div className="flex flex-col border-l-2 border-current pl-2.5">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1.5 py-0.5 text-left w-full group"
-        >
-          {icon && (
-            <span className="text-[12px] leading-none font-bold w-2.5 text-center">
-              {icon}
-            </span>
-          )}
-          <span className="text-[10px] uppercase tracking-wider text-text-secondary font-medium">
-            {label}
-          </span>
-          {!open && preview && (
-            <span className="flex-1 min-w-0 text-[11px] text-text-dim/70 leading-snug truncate">
-              {preview}
-            </span>
-          )}
-          <span className="ml-auto shrink-0 text-text-dim/40 group-hover:text-text-secondary transition text-[12px] leading-none font-mono">
-            {open ? '−' : '+'}
-          </span>
-        </button>
-        {open && (
-          <p className="pt-0.5 pb-1 text-[12px] leading-relaxed text-text-secondary">
-            {content}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
+import { useMemo } from "react";
+import { InferenceFields } from "@/components/shared/InferenceFields";
 
 type ModeEdgeType = ModeEdgeSnapshot["type"];
 
@@ -218,21 +162,17 @@ export default function ModeNodeDetail({ modeId, nodeId }: Props) {
         </div>
       )}
 
-      {/* Detail */}
-      {node.detail && <ExpandableField label="Detail" content={node.detail} defaultOpen />}
+      {/* Universal inference-shape — same renderer / glyphs / legend-tooltips
+          as CRG node detail and variables-scenario detail. On PRG nodes the
+          fields describe the world machinery's option space, falsification,
+          and cascades. */}
+      <InferenceFields
+        detail={node.detail}
+        considered={node.considered}
+        breaks={node.breaks}
+        opens={node.opens}
+      />
 
-      {/* Universal inference-shape — same three handles used by CRG and
-          scenarios; here they describe the world MACHINERY's option space,
-          where it FAILS, and what CASCADES from it. Collapsed by default. */}
-      {node.considered && (
-        <ExpandableField label="Considered" icon="×" iconColor="text-amber-400" content={node.considered} />
-      )}
-      {node.breaks && (
-        <ExpandableField label="Breaks" icon="!" iconColor="text-rose-400" content={node.breaks} />
-      )}
-      {node.opens && (
-        <ExpandableField label="Opens" icon="⇒" iconColor="text-emerald-400" content={node.opens} />
-      )}
 
       {/* Connections */}
       {connectedEdges.length > 0 && (

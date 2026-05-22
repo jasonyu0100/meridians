@@ -13,7 +13,7 @@
 
 import type { NarrativeState, Mode, ModeNodeSnapshot, ModeEdgeSnapshot, ModeNodeType } from "@/types/narrative";
 import { REASONING_BUDGETS } from "@/types/narrative";
-import { callGenerate, callGenerateStream } from "./api";
+import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext } from "./context";
 import { parseJson } from "./json";
@@ -107,6 +107,7 @@ export async function generateMode(
   });
 
   const reasoningBudget = REASONING_BUDGETS[reasoningLevel ?? narrative.storySettings?.reasoningLevel ?? "low"];
+  const websearch = resolveWebsearch(narrative);
 
   const raw = onReasoning
     ? await callGenerateStream(
@@ -118,6 +119,8 @@ export async function generateMode(
         PLANNING_MODEL,
         reasoningBudget,
         onReasoning,
+        undefined,
+        websearch,
       )
     : await callGenerate(
         prompt,
@@ -126,6 +129,9 @@ export async function generateMode(
         "generateMode",
         PLANNING_MODEL,
         reasoningBudget,
+        true,
+        undefined,
+        websearch,
       );
 
   try {

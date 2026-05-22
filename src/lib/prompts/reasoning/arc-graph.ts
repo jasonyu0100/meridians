@@ -17,12 +17,13 @@
  */
 
 import { modePriorityEntry } from "../mode/application";
+import { GRAPH_THINKING_PRINCIPLE } from "./principles";
 
 export const ARC_REASONING_GRAPH_SYSTEM =
-  "You are a thinking partner producing a causal reasoning graph that serves as a THINKING AID for the user. They have arrived at a position in the narrative and want to reason about it more deeply — the graph lays out the causal structure that supports that thinking. The user's DIRECTION is the primary steering input: if it asks a question, the graph's terminal is the answer; if it names an angle, the chain explores that angle. When no direction is supplied, default to continuing the narrative / arc — what is causally about to unfold from this position, and why. The artifact can additionally be reused as a continuation seed downstream, but the framing is reasoning support first. Build a typed graph (fate, reasoning, character, location, artifact, system, pattern, warning, chaos nodes; requires/enables/constrains/causes/reveals/develops/resolves/supersedes edges). Capture real causal complexity — fate, world and system interacting. Honour the thinking style (abduction / divergent / deduction / induction). Return ONLY valid JSON matching the schema in the user prompt.";
+  `You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a causal reasoning graph anchored to a position in the narrative. Investigations are open-ended chains — walk the substrate (entities, threads, system rules, fate, world) and surface what the position genuinely supports. When the direction asks for a hypothesis or outcome, yield it as a \`conclusion\` node grounded in real reasons drawn from the substrate. When the direction names an angle, explore it. When empty, continue from this position. Honour the thinking style (abduction / divergent / deduction / induction). Return ONLY valid JSON matching the schema in the user prompt.`;
 
 export const COORDINATION_PLAN_SYSTEM =
-  'You are a multi-arc planner using backward induction. Build a coordination plan organised around peaks (where forces converge, threads culminate) and valleys (where the arc pivots) — one anchor per arc. Use chronological indexing, distribute agency across actors, mix arc sizes and force compositions, route around any patterns/warnings. For simulation register, peaks and valleys often land as rule-driven thresholds (a modelled state crossing a gate, a pressure discharging, a constraint binding) rather than dramatic moments — both are valid spine anchors. Return ONLY valid JSON matching the schema in the user prompt.';
+  `You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a multi-arc coordination plan derived by BACKWARD INDUCTION — peaks (forces converge, threads culminate) and valleys (the arc pivots) as anchors, one per arc. Chronological indexing, agency distributed across actors, arc sizes and force compositions mixed, patterns/warnings routed around. For simulation register, peaks/valleys often land as rule-driven thresholds (a modelled state crossing a gate, a pressure discharging) rather than dramatic moments — both are valid spine anchors. Return ONLY valid JSON matching the schema in the user prompt.`;
 
 export type CoordinationPlanContextForPrompt = {
   arcIndex: number;
@@ -140,7 +141,7 @@ ${reasoningModeBlockText ? `  ${reasoningModeBlockText.replace(/\n/g, '\n  ')}\n
   <principle name="inference-exposes-its-machinery" critical="true">Reasoning, pattern, warning, and chaos nodes are INFERENCE-TIER — they exist to do thinking work the priors can't do alone. A reasoning node that only restates its predecessors is a description, not an inference. Genuine inference EXPOSES its machinery: what it selected from (rejected siblings), what would invalidate it (failure conditions), what it opens up (second-order possibilities). The four-field shape below is how the reader walks the chain and re-evaluates it at each step — without these handles, the graph collapses to chain-of-thought.</principle>
 </reasoning-doctrine>
 
-<inference-node-shape hint="Required on inference-tier nodes (reasoning, pattern, warning, chaos). Priors do NOT use this shape.">
+<inference-node-shape hint="Required on inference-tier nodes (reasoning, pattern, warning, chaos, conclusion). Priors do NOT use this shape.">
   <field name="detail" required="true">1–3 sentences. The causal logic — given predecessors, why this step follows. NOT graph-position metadata.</field>
   <field name="considered" required="true" critical="true">1–3 sentences naming sibling hypotheses considered and discarded, with why. Genuinely competitive, not strawmen. If no alternative genuinely applies (substrate fact / inherited constraint / terminal commitment), say so explicitly here — never omit silently.</field>
   <field name="breaks" required="strongly-encouraged">1–2 sentences. The load-bearing assumption whose negation voids the inference. If you can't name it, the inference doesn't predict.</field>
@@ -158,6 +159,7 @@ ${reasoningModeBlockText ? `  ${reasoningModeBlockText.replace(/\n/g, '\n  ')}\n
   <type name="pattern">NOVEL-PATTERN GENERATOR. Proposes a structural shape this work HAS NOT used before — fresh configuration, rhythm, or relational geometry. Specific, not generic. Examples: "First arc resolved through a non-POV actor's choice", "Two anchors separated across the arc". Scan prior arcs first.</type>
   <type name="warning">PATTERN-REPETITION DETECTOR. Flags shapes the narrative has already used — resolution rhythms, conflict geometries, dynamics, cadences — that this arc is drifting toward. Examples: "Third arc ending in external relief", "A and B have used tension-then-reconciliation three times", "Fourth consecutive fate-dominant arc". Name the repetition concretely.</type>
   <type name="chaos">OUTSIDE FORCE — operates outside fate/world/system. Two modes: unanticipated event (problems the existing entities couldn't anticipate, resolutions they couldn't construct — sudden interruption, new arrival, latent property surfacing); creative engine (seeds new threads later arcs develop). Sparingly under freeform; extensively under chaos-preference. Label = what arrives and its role. DO NOT set entityId or threadId — spawned via world expansion.</type>
+  <type name="conclusion">DEFINITIVE ANSWER — the load-bearing terminal when the direction asks for a hypothesis or outcome. Exactly one per graph or omitted; sits at the highest \`index\` with incoming \`requires\` edges from substrate-grounded reasoning nodes. \`detail\` IS the answer and MUST be concrete — named instruments, actors, events, outcomes, timings — specific enough to act on. Abstract restatements of the substrate ("growth despite tension", "the system adapts") are a failure mode.</type>
 </node-types>
 
 <edge-types>
@@ -173,8 +175,8 @@ ${reasoningModeBlockText ? `  ${reasoningModeBlockText.replace(/\n/g, '\n  ')}\n
 </edge-types>
 
 <requirements>
-  <requirement index="1" name="direction-shapes-the-graph" critical="true">The direction (or its absence) determines the graph's shape. With a directional question, the terminal IS the answer and the chain shows how the world's forces compose to produce it. With a thematic angle, the graph surfaces the causal structure underlying that theme. Empty direction = CONTINUATION mode: terminal is what is causally about to unfold from this position, the chain shows why the forces in play produce it. Name what you're investigating in the summary so the user can follow.</requirement>
-  <requirement index="2" name="start-where-pressure-strongest">In backward modes (abduction/induction), start from the terminal — the answer to the direction, or (in continuation mode) the most consequential next development the position is loaded with — and reason backward to the entity facts and rules that enable it. Terminal can be a fate node, a reasoning step, a character-transformation, or a system revelation; whichever shape best honours the direction.</requirement>
+  <requirement index="1" name="direction-shapes-the-graph" critical="true">The direction (or its absence) determines the graph's shape. When the direction asks for a hypothesis or outcome (actionable verbs: "what to buy / do / recommend", "which X", "should we / will"), yield a \`conclusion\` terminal grounded in real reasons drawn from the substrate — see the conclusion example below. Thematic angles explore causal structure without a conclusion. Empty direction = continuation mode. Name what you're investigating in the summary.</requirement>
+  <requirement index="2" name="start-where-pressure-strongest">In backward modes (abduction/induction), start from the terminal — the conclusion answering the direction, or the most consequential next development the position is loaded with — and reason backward to the entity facts and rules that enable it. Terminal can be a conclusion, fate, reasoning, character-transformation, or system-revelation node; whichever best honours the direction.</requirement>
   <requirement index="3" name="causal-complexity">Capture REAL complexity. Threads pull on multiple things, entities influence multiple moments, rules constrain several choices. When you add a node, show all the places it matters. A graph that reads as a single vertical chain is under-representing the structure.</requirement>
   <requirement index="4" name="aggregate-three-forces">Coherence comes from fate, world, and system interacting, not one dominating. Fate-only = thread sketch; world-only = entity study; system-only = rulebook. Let the three argue with each other.</requirement>
   <requirement index="5" name="sequential-indexing">\`index\` = causal topological order: 0 is root, predecessors have lower indices, terminal at highest. Walking ascending should feel coherent, not subgraph jumps. \`order\` (auto-captured from array position) may differ from \`index\` in backward modes. Emit \`plannedNodeCount\` before the nodes array.</requirement>
@@ -184,12 +186,12 @@ ${reasoningModeBlockText ? `  ${reasoningModeBlockText.replace(/\n/g, '\n  ')}\n
   <requirement index="9" name="creative-agent-counts">Pattern / warning / chaos nodes are optional — include them only when they meaningfully shape the chain. Pattern node = a fresh structural shape worth naming; warning = a specific repetition risk; chaos = an outside-force seed. Skip rather than pad.</requirement>
   <requirement index="10" name="non-deterministic">Each reasoning path contains at least one SURPRISE — something that doesn't follow obviously from the context. The point of the graph is to enrich the user's thinking, not confirm what they already know.</requirement>
   <requirement index="11" name="reasoning-node-details" critical="true">Every reasoning node's \`detail\` carries its OWN causal logic — 1-3 sentences explaining WHY this inference follows given its predecessors and WHAT it makes possible for its successors. Walking the chain by ascending \`index\` should read as a continuous argument the user can follow step by step. A graph whose details all read as graph-position attributions ("backward from the terminal", "step in the chain") has labelled the diagram instead of doing the reasoning.</requirement>
-  <requirement index="12" name="inference-shape-on-inference-tier" critical="true">Every INFERENCE-TIER node (reasoning, pattern, warning, chaos) carries the full <inference-node-shape> above: \`detail\` + \`considered\` + \`breaks\` + \`opens\`. Inference-tier nodes that emit only \`detail\` are description, not reasoning — the other three fields are what lifts the graph above default chain-of-thought into a thinking aid the user can re-evaluate at each step. Priors (character, location, artifact, system, fate) do NOT carry this shape — they're substrate, not selections over it. Skipping a field on an inference node only when nothing genuinely fits (e.g. \`considered\` on a node with no real alternatives, \`opens\` on a terminal node that closes rather than opens); silent omission across the graph means the discipline is being skipped, not honoured.</requirement>
+  <requirement index="12" name="inference-shape-on-inference-tier" critical="true">Every INFERENCE-TIER node (reasoning, pattern, warning, chaos, conclusion) carries the full <inference-node-shape> above: \`detail\` + \`considered\` + \`breaks\` + \`opens\`. Inference-tier nodes that emit only \`detail\` are description, not reasoning — the other three fields are what lifts the graph above default chain-of-thought into a thinking aid the user can re-evaluate at each step. Priors (character, location, artifact, system, fate) do NOT carry this shape — they're substrate, not selections over it. Skipping a field on an inference node only when nothing genuinely fits (e.g. \`considered\` on a node with no real alternatives, \`opens\` on a terminal node that closes rather than opens); silent omission across the graph means the discipline is being skipped, not honoured.</requirement>
   <requirement index="13" name="no-subject-or-pattern-repetition">Same actor + action + target = one node with more edges. Same SHAPE rephrased ("X exploits chaos to acquire Y" iterated for three Y's) = one pattern rehearsed. Each reasoning node brings a different mode of inference — deduction, abduction, analogy, inversion, constraint propagation.</requirement>
 </requirements>
 
 <shape-of-good-investigation-graph>
-  A thinking aid. The user reads the chain and learns something they didn't see on entry — a tension, a constraint, a path, a hidden coupling. The terminal is the payoff (the answer to direction, or the resolution of the free-form investigation). Key entities connect to several reasoning nodes; rules constrain multiple choices; the chain converges from several roots rather than running as a single vertical line. The summary names what is being investigated in one sentence so the user can decide whether to follow it through.
+  A thinking aid. The user reads the chain and learns something they didn't see on entry — a tension, a constraint, a path, a hidden coupling. The terminal is the payoff (a conclusion when direction asked a question, or the resolution of the free-form investigation otherwise). Key entities connect to several reasoning nodes; rules constrain multiple choices; the chain converges from several roots rather than running as a single vertical line. The summary names what is being investigated in one sentence so the user can decide whether to follow it through.
 </shape-of-good-investigation-graph>
 
 <output-format>
@@ -236,6 +238,51 @@ Return a JSON object.
     {"id": "e4", "from": "chaos-outsider-seeks-entry", "to": "reason-position-needs-coalition", "type": "enables"},
     {"id": "e5", "from": "reason-position-needs-coalition", "to": "reason-observer-exposure", "type": "causes"},
     {"id": "e6", "from": "reason-observer-exposure", "to": "fate-observer-leverage", "type": "causes"}
+  ]
+}
+</example>
+
+<example hint="Question-shaped direction — terminal is a CONCLUSION node. Direction was an actionable question, so the graph MUST yield a concrete named answer at the highest index. Pattern adapts to ANY domain — investment ('what to buy'), wargame ('which course of action'), forecasting ('when does X collapse'), narrative ('which faction wins the succession'), research ('what does the data support').">
+{
+  "summary": "Investigating which exposures the current regime favours beyond the user's existing gold position.",
+  "plannedNodeCount": 5,
+  "nodes": [
+    // Backward mode: conclusion first.
+    // order: 0 · index: 4 — the load-bearing answer. Concrete, named, actionable.
+    {
+      "id": "conclusion-pair-energy-payment-rails",
+      "index": 4,
+      "type": "conclusion",
+      "label": "Long energy-infrastructure + BRICS+ payment-rail basket; underweight USD duration",
+      "detail": "Add (1) midstream/transport energy infrastructure with cashflow profiles indexed to a stable $70-95 Brent band — XOM/EPD/KMI-shape exposures — over upstream majors whose torque to price volatility we expect compressed; (2) a BRICS+ cross-border payment-infrastructure basket — CIPS-adjacent fintech, mBridge participants, settlement-layer providers — sized 5-8% of new capital; and (3) underweight USD duration via shorter-dated TIPS plus a small EM-local-currency sleeve. Gold position stays — it's the regime hedge these exposures complement, not duplicate.",
+      "considered": "Long upstream oil majors (rejected: torque to Brent volatility we explicitly expect compressed under managed Iran ceasefire). Long EM sovereign hard-currency debt (rejected: USD-denominated, doesn't express the de-dollarisation thesis). Long China A-shares for managed-stability beta (rejected: stability is a floor not a tailwind; capital controls cap upside).",
+      "breaks": "Whole answer breaks if (a) Brent breaks above $130 from Hormuz closure — energy-infra cashflows decouple from price band; (b) a confirmed Trump-Xi meeting cancellation breaks the de-escalation cadence, forcing the equity tail risk back open; (c) a BRICS+ payment rail experiences a credibility-shaking liquidity failure.",
+      "opens": "Opens a pair-trade lattice (energy-infra vs gold, EM-local vs DXY) the user can re-balance as the cohort re-prices. Opens a watchlist of de-escalation-cadence trip-wires (next four Trump-Xi meetings)."
+    },
+    // order: 1 · index: 3 — supporting reasoning step.
+    {
+      "id": "reason-stable-brent-favors-infra",
+      "index": 3,
+      "type": "reasoning",
+      "label": "Stable Brent band favours infrastructure over extraction",
+      "detail": "If Iran ceasefire holds and China leverage caps Brent volatility, midstream/transport infrastructure earns the higher risk-adjusted return because its cashflows index to volumes through a stable price band, not to absolute price spikes. Upstream extractors lose their volatility option.",
+      "considered": "Could route through integrated majors that capture both extraction and infrastructure — rejected because the integration discount under stable bands is larger than the diversification benefit at this position size.",
+      "breaks": "Breaks if Brent volatility returns (Hormuz closure, OPEC+ discipline failure).",
+      "opens": "Opens a pair trade: long infra, short upstream majors as a volatility-compression expression."
+    },
+    // Roots.
+    // order: 2 · index: 0 — fate substrate (existing thread the conclusion couples to).
+    {"id": "fate-iran-ceasefire-holds", "index": 0, "type": "fate", "label": "Iran ceasefire holding caps oil volatility", "threadId": "T-USP-03"},
+    // order: 3 · index: 1 — system substrate.
+    {"id": "sys-china-leverage-iran", "index": 1, "type": "system", "label": "China's trade leverage over Iran enforces ceasefire", "systemNodeId": "SYS-27"},
+    // order: 4 · index: 2 — system substrate.
+    {"id": "sys-brics-rails-mature", "index": 2, "type": "system", "label": "BRICS+ payment rails reaching usable depth", "systemNodeId": "SYS-DED-16"}
+  ],
+  "edges": [
+    {"id": "e1", "from": "conclusion-pair-energy-payment-rails", "to": "reason-stable-brent-favors-infra", "type": "requires"},
+    {"id": "e2", "from": "conclusion-pair-energy-payment-rails", "to": "sys-brics-rails-mature", "type": "requires"},
+    {"id": "e3", "from": "reason-stable-brent-favors-infra", "to": "fate-iran-ceasefire-holds", "type": "requires"},
+    {"id": "e4", "from": "sys-china-leverage-iran", "to": "fate-iran-ceasefire-holds", "type": "enables"}
   ]
 }
 </example>

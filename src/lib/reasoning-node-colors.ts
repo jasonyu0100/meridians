@@ -33,6 +33,7 @@ export const REASONING_NODE_COLORS: {
   pattern: ReasoningNodePalette;
   warning: ReasoningNodePalette;
   chaos: ReasoningNodePalette;
+  conclusion: ReasoningNodePalette;
 } = {
   // Fate — red (bright, alert)
   fate: { fill: "#b91c1c", stroke: "#f87171", text: "#fee2e2" },
@@ -51,6 +52,9 @@ export const REASONING_NODE_COLORS: {
   // Chaos — vibrant magenta (outside-force agent; distinct from system indigo
   // and deep purples used elsewhere)
   chaos: { fill: "#be185d", stroke: "#f472b6", text: "#fce7f3" },
+  // Conclusion — deep gold (terminal answer; reads as a destination, distinct
+  // from every other hue in the palette so the eye finds it instantly)
+  conclusion: { fill: "#a16207", stroke: "#fbbf24", text: "#fef3c7" },
 };
 
 /**
