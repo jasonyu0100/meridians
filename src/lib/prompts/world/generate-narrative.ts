@@ -1,12 +1,12 @@
 /**
  * Whole-narrative generation — produces a complete world (characters,
  * locations, threads, artifacts, system rules, optional opening arc + scenes,
- * prose profile) from a title + premise. Two modes: full (8-scene opening
+ * prose profile) from a title + premise. Two modes: full (4-scene opening
  * arc) or worldOnly (entities + system, no scenes).
  */
 
 export const GENERATE_NARRATIVE_SYSTEM =
-  'You are a narrative architect. Detect the register first and pick the matching world-shape: fiction / non-fiction / simulation → POPULATED NARRATIVE (human or in-world characters — Khrushchev, Yi, invented people); analysis → AGENTIC AI TEAM with memorable single-word AI-coded names (Atlas, Cipher, Nexus, Vanguard) the user can invoke across passes; paper / essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors). See <register-handling> and the pattern blocks in the user prompt. Pure-abstract works (math theorem, formal proof) take zero populated-world entities. Full mode: also produce an 8-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a narrative architect. Detect the register first and pick the matching world-shape: fiction / non-fiction / simulation → POPULATED NARRATIVE (human or in-world characters — Khrushchev, Yi, invented people); analysis → AGENTIC AI TEAM with memorable single-word AI-coded names (Atlas, Cipher, Nexus, Vanguard) the user can invoke across passes; paper / essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors). See <register-handling> and the pattern blocks in the user prompt. Pure-abstract works (math theorem, formal proof) take zero populated-world entities. Full mode: also produce an 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 export const DETECT_PATTERNS_SYSTEM =
   'You are a literary diagnostician. Read prose, structure, and content; identify the narrative\'s register, genre, and subgenre; derive concrete pattern / anti-pattern commandments that encourage variety and prevent stagnation. Patterns are positive directives that unlock fresh territory within the register; anti-patterns are negative directives that flag staleness. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -209,7 +209,7 @@ ${sourceText.trim()}
     : '';
 
   return `<inputs>
-${paradigmDirectiveBlock}  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : 'Full mode — entities + 8-scene opening arc + prose profile.'}">${worldOnly
+${paradigmDirectiveBlock}  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : 'Full mode — entities + 4-scene opening arc + prose profile.'}">${worldOnly
     ? 'Extract and build a complete narrative world from the following plan. Do NOT generate scenes or arcs — output world entities only (characters, locations, threads, relationships, artifacts, rules, systems, prose profile).'
     : 'Create a complete narrative world.'}</task>
   <title>${title}</title>
@@ -292,7 +292,7 @@ Return JSON with this exact structure:
     <example category="good" register="fiction" flavour="sci-fi">A colony's memory-scent inheritance passes only along confirmed matrilineal lines registered at the genome archive; off-register children carry the chemistry but no inheritance rights, and the archive can be edited only by quorum.</example>
     <example category="good" register="simulation" flavour="wargame">A border raid escalates to open conflict only when the cumulative grievance ledger crosses the threshold set by the suzerain's tribute schedule, gating retaliation through a mandatory seven-day council convocation.</example>
     <example category="good" register="paper">A finding is admitted to the journal's record only after two reviewers, blind to author and institution, sign off on methods AND data within the 16-week revision cycle; managing-editor override requires written dissent.</example>${worldOnly ? '' : `
-    <count entity="scenes" target="≥8 in 1 arc">Averaging ~${forceReferenceMeansWorld} world nodes and ~${forceReferenceMeansSystem} system nodes per scene (the grading reference means). Some scenes quiet, some dense — but the MEAN across the arc must hit the reference or the whole opening grades in the 60s.</count>
+    <count entity="scenes" target="4 in 1 arc">Averaging ~${forceReferenceMeansWorld} world nodes and ~${forceReferenceMeansSystem} system nodes per scene (the grading reference means). Some scenes quiet, some dense — but the MEAN across the arc must hit the reference or the whole opening grades in the 60s. Keep the opening arc focused: 4 scenes is the target so the engine can validate quickly; richer arcs follow at the operator's pace.</count>
     <density typical="touches 3-5 entities; ${worldTypicalBand} world nodes; ${systemTypicalBand} system concepts" climactic="${worldClimaxBand} world; ${systemClimaxBand} system" />`}
   </minimums>
 
@@ -418,10 +418,6 @@ Return JSON with this exact structure:
     <invariant>Artifacts must feel integral to the world. Key artifacts should have world edges (capability motivated_by history, weakness caused_by trait).</invariant>
   </artifacts-and-tools>${worldOnly ? '' : `
 
-  <scene-coverage hint="Applies when characters / locations are populated. For analysis / paper with no characters or locations, scenes are sections of argument — these coverage rules do not bind. Scene fields locationId and povId may be null in that case.">
-    <rule when="anchors present">Every anchor must appear in at least 3 scenes.</rule>
-    <rule when="locations present">Use at least 6 different locations across the 8 scenes.</rule>
-  </scene-coverage>
 
   <time-delta required="true">
     <intent>Each scene is an instant; timeDelta captures the gap since the PRIOR scene as an estimate. Approximate is fine — captures the general flow.</intent>

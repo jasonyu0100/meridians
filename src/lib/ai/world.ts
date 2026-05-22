@@ -670,7 +670,14 @@ export async function generateNarrative(
     systemClimaxBand: fmtBand(FORCE_BANDS.system.climax),
   });
 
-  const reasoningBudget = REASONING_BUDGETS['medium'];
+  // Low reasoning is sufficient for world generation — the prompt fully
+  // specifies the structure (schema, minimums, paradigm blocks), so the
+  // model is doing a structural fill-in rather than open-ended reasoning.
+  // Higher budgets paid 6k+ extra thinking tokens that just stretched the
+  // wall-clock time without improving the output. Initial world generation
+  // is the slowest pass in the engine (huge JSON output); cutting reasoning
+  // tokens here is the most user-visible perf win.
+  const reasoningBudget = REASONING_BUDGETS['low'];
   const raw = onReasoning
     ? await callGenerateStream(prompt, GENERATE_NARRATIVE_SYSTEM, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning)
     : await callGenerate(prompt, GENERATE_NARRATIVE_SYSTEM, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget);
