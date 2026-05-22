@@ -151,7 +151,11 @@ export function getRelationshipsAtScene(
   for (let i = 0; i < resolvedEntryKeys.length; i++) {
     const scene = narrative.scenes[resolvedEntryKeys[i]];
     if (!scene) continue;
-    for (const rm of scene.relationshipDeltas) {
+    // Defensive: pre-fix narratives or malformed LLM output may emit a
+    // scene without `relationshipDeltas` even though the type marks it
+    // required. Treat missing/non-array as the empty case.
+    const deltas = Array.isArray(scene.relationshipDeltas) ? scene.relationshipDeltas : [];
+    for (const rm of deltas) {
       const pk = `${rm.from}-${rm.to}`;
       if (!firstDeltaIdx.has(pk)) firstDeltaIdx.set(pk, i);
     }

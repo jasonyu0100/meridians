@@ -492,13 +492,52 @@ function computeDerivedEntities(
   };
 }
 
+/** Heal scenes whose required array fields are missing or non-array.
+ *
+ *  The Scene type marks `participantIds`, `events`, `threadDeltas`,
+ *  `worldDeltas`, `relationshipDeltas` as required arrays — but
+ *  malformed LLM output (especially from argument-driven paradigms
+ *  where many scenes legitimately have empty deltas) can produce
+ *  scenes missing one or more of these fields. This normaliser runs
+ *  on every narrative passing through `withDerivedEntities`, so any
+ *  pre-existing bad narrative in IndexedDB gets fixed at read time
+ *  without needing a separate migration. */
+function normaliseScenes(scenes: NarrativeState['scenes']): NarrativeState['scenes'] {
+  let dirty = false;
+  const out: NarrativeState['scenes'] = {};
+  for (const [id, s] of Object.entries(scenes)) {
+    const needs =
+      !Array.isArray(s.participantIds) ||
+      !Array.isArray(s.events) ||
+      !Array.isArray(s.threadDeltas) ||
+      !Array.isArray(s.worldDeltas) ||
+      !Array.isArray(s.relationshipDeltas);
+    if (needs) {
+      dirty = true;
+      out[id] = {
+        ...s,
+        participantIds: Array.isArray(s.participantIds) ? s.participantIds : [],
+        events: Array.isArray(s.events) ? s.events : [],
+        threadDeltas: Array.isArray(s.threadDeltas) ? s.threadDeltas : [],
+        worldDeltas: Array.isArray(s.worldDeltas) ? s.worldDeltas : [],
+        relationshipDeltas: Array.isArray(s.relationshipDeltas) ? s.relationshipDeltas : [],
+      };
+    } else {
+      out[id] = s;
+    }
+  }
+  return dirty ? out : scenes;
+}
+
 export function withDerivedEntities(
   n: NarrativeState,
   resolvedKeys: string[],
 ): NarrativeState {
-  const derived = computeDerivedEntities(n.worldBuilds, n.scenes, resolvedKeys);
+  const scenes = normaliseScenes(n.scenes);
+  const derived = computeDerivedEntities(n.worldBuilds, scenes, resolvedKeys);
   return {
     ...n,
+    scenes,
     characters: derived.characters,
     locations: derived.locations,
     threads: derived.threads,

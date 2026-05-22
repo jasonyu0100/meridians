@@ -723,7 +723,25 @@ export async function generateNarrative(
   const scenes: NarrativeState['scenes'] = {};
   const sceneCreatedAt = new Date().toISOString();
   if (!worldOnly) {
-    for (const s of (parsed.scenes ?? [])) scenes[s.id] = { ...s, kind: 'scene', summary: s.summary || `Scene ${s.id}`, timeDelta: normalizeTimeDelta(s.timeDelta), createdAt: sceneCreatedAt };
+    for (const s of (parsed.scenes ?? [])) {
+      // Defensive normalization — the LLM may omit required array fields
+      // (especially in argument-driven paradigms like analysis / paper /
+      // essay where many scenes have no participants, no movements, no
+      // relationships). Default every required array to [] so downstream
+      // iteration (scene-filter, force formulas, inspector) never chokes.
+      scenes[s.id] = {
+        ...s,
+        kind: 'scene',
+        summary: s.summary || `Scene ${s.id}`,
+        timeDelta: normalizeTimeDelta(s.timeDelta),
+        createdAt: sceneCreatedAt,
+        participantIds: Array.isArray(s.participantIds) ? s.participantIds : [],
+        events: Array.isArray(s.events) ? s.events : [],
+        threadDeltas: Array.isArray(s.threadDeltas) ? s.threadDeltas : [],
+        worldDeltas: Array.isArray(s.worldDeltas) ? s.worldDeltas : [],
+        relationshipDeltas: Array.isArray(s.relationshipDeltas) ? s.relationshipDeltas : [],
+      };
+    }
   }
 
   const arcs: NarrativeState['arcs'] = {};
