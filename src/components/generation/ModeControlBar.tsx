@@ -28,8 +28,6 @@ type AutoModeProps = StopOnlyProps & {
   totalScenes: number;
   statusMessage: string;
   onOpenSettings: () => void;
-  /** Open the live stream / progress panel */
-  onOpenLog: () => void;
   /** Whether a coordination plan is active */
   hasCoordinationPlan?: boolean;
 };
@@ -298,22 +296,13 @@ export function ModeControlBar(props: Props) {
 
           {/* Mode-specific actions */}
           {props.mode === 'auto' && (
-            <>
-              <button
-                onClick={props.onOpenLog}
-                className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
-                title="View Log"
-              >
-                <IconDocument size={10} />
-              </button>
-              <button
-                onClick={props.onOpenSettings}
-                className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
-                title="Settings"
-              >
-                <IconSettings size={10} />
-              </button>
-            </>
+            <button
+              onClick={props.onOpenSettings}
+              className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
+              title="Settings"
+            >
+              <IconSettings size={10} />
+            </button>
           )}
           {props.mode === 'experimentation' && (
             <button
@@ -342,7 +331,6 @@ export function ModeControlBar(props: Props) {
             <span className="flex items-center justify-center gap-1">
               <IconWarning size={10} className="shrink-0" />
               <span className="truncate">{props.statusMessage}</span>
-              <button onClick={props.onOpenLog} className="underline hover:text-red-300 transition-colors shrink-0">logs</button>
             </span>
           ) : props.statusMessage.startsWith('Retry') ? (
             <span className="flex items-center justify-center gap-1">

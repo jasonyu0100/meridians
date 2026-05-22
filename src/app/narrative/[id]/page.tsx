@@ -20,7 +20,6 @@ import { CreationWizard } from '@/components/wizard/CreationWizard';
 import { GeneratePanel } from '@/components/generation/GeneratePanel';
 import { BranchModal } from '@/components/generation/BranchModal';
 import { AutoSettingsPanel } from '@/components/auto/AutoSettingsPanel';
-import { AutoStreamModal } from '@/components/auto/AutoStreamModal';
 import { useAutoPlay } from '@/hooks/useAutoPlay';
 import { useBulkGenerate } from '@/hooks/useBulkGenerate';
 import { useBulkAudioGenerate } from '@/hooks/useBulkAudioGenerate';
@@ -62,7 +61,6 @@ export default function SeriesPage() {
   } | null>(null);
   const [forkOpen, setForkOpen] = useState(false);
   const [autoSettingsOpen, setAutoSettingsOpen] = useState(false);
-  const [autoLogOpen, setAutoLogOpen] = useState(false);
   const [forceAnalyticsOpen, setForceAnalyticsOpen] = useState(false);
   const [castAnalyticsOpen, setCastAnalyticsOpen] = useState(false);
   const [proseProfileOpen, setProseProfileOpen] = useState(false);
@@ -84,6 +82,7 @@ export default function SeriesPage() {
   const bulk = useBulkGenerate();
   const bulkAudio = useBulkAudioGenerate();
   const id = params.id as string;
+
 
   // Activate narrative from URL param. The URL is the source of truth —
   // mirror it into state once the target narrative is in the list, and
@@ -292,7 +291,6 @@ export default function SeriesPage() {
                 statusMessage={state.viewState.autoRunState?.statusMessage ?? ''}
                 onStop={autoPlay.stop}
                 onOpenSettings={() => setAutoSettingsOpen(true)}
-                onOpenLog={() => setAutoLogOpen(true)}
                 hasCoordinationPlan={coordinationPlanRef.current.hasPlan}
               />
             )}
@@ -363,15 +361,6 @@ export default function SeriesPage() {
         <AutoSettingsPanel
           onClose={() => setAutoSettingsOpen(false)}
           onStart={() => autoPlay.start()}
-        />
-      )}
-      {autoLogOpen && (
-        <AutoStreamModal
-          streamText={state.viewState.autoRunState?.streamText ?? ''}
-          statusMessage={state.viewState.autoRunState?.statusMessage ?? ''}
-          currentCycle={autoPlay.currentCycle}
-          isRunning={autoPlay.isRunning}
-          onClose={() => setAutoLogOpen(false)}
         />
       )}
       {forceAnalyticsOpen && <ForceAnalytics onClose={() => setForceAnalyticsOpen(false)} />}

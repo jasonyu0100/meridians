@@ -14,7 +14,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { generateSceneGameAnalysis } from "@/lib/ai";
-import { BulkStreamBanner } from "./BulkStreamBanner";
 import {
   arcCost,
   nashEquilibria,
@@ -111,9 +110,9 @@ export function SceneGameTheoryView({
   }, [scene.id]);
 
   // ── Bulk streaming for THIS scene — mirrors the plan/prose pattern.
-  // Cross-scene bulk activity (when a different scene is being processed)
-  // surfaces via <BulkStreamBanner /> below; this effect only manages the
-  // in-view streaming UI for the current scene.
+  // Each scene's view renders its own stream independently; navigating
+  // between scenes during a bulk run smoothly swaps which stream is
+  // visible without any cross-scene chrome.
   useEffect(() => {
     const onStart = (e: Event) => {
       const { sceneId } = (e as CustomEvent).detail ?? {};
@@ -146,8 +145,6 @@ export function SceneGameTheoryView({
   return (
     <div className="h-full w-full overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
       <div className="w-full px-10 py-10">
-        <BulkStreamBanner mode="game" currentSceneId={scene.id} />
-
         {isStreaming && !analysis && (
           <div className="max-w-2xl mx-auto px-8 pt-6 pb-32">
             <div className="flex items-center gap-2 mb-4">
