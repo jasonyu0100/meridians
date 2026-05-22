@@ -86,7 +86,7 @@ Return JSON with this exact structure:
       "locationId": "L-1",
       "povId": "C-1",
       "participantIds": ["C-1"],
-      "summary": "REQUIRED — WRITE THIS FIRST. This is the spine of the scene; every delta below must trace back to something stated here. Rich prose sentences using character NAMES and location NAMES (never raw IDs). Include specifics: actions, consequences, dialogue snippets. Include any context that shapes how the scene is written (time span, technique, tone). No sentences ending in emotions or realizations.",
+      "summary": "REQUIRED — WRITE THIS FIRST. The spine of the scene; every delta below must trace back to something stated here. Prose in NAMES not IDs. Length adapts to content — 3-6 sentences for routine scenes (physical action, dialogue, observable events, single-thread movements, scene-setting beats), expand WITHOUT UPPER BOUND for cognition-dense scenes (multi-step planning, scenario modelling, scheme construction, modelling other agents' reactions, complex world-rule reveals, layered argument). For dense scenes, capture the ACTUAL computation — name each scenario weighed, each tradeoff accepted, each conclusion reached, each agent modelled with their predicted reaction. Stand-in cognitive verbs ('considered the situation', 'planned carefully', 'weighed his options') are failures: name what was cognised. This is the prose writer's only brief and the only artifact other scenes can read — detail that lives only in prose evaporates at the scene boundary. Include context that shapes how the scene is written (time span, technique, tone). No sentences ending in emotions or realizations without a named, attributed referent.",
       "timeDelta": {"value": 1, "unit": "hour"},
       "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did — how it delivered utility"}],
       "events": ["event_tag"],
@@ -127,9 +127,11 @@ Return JSON with this exact structure:
     <count entity="artifacts" target="≥1">when the premise involves tools, documents, instruments, sources, or objects that carry weight</count>
     <count entity="system-nodes" target="≥12">with ≥8 edges. The foundational system graph every future scene draws from; a thin root means thin scenes forever. Each node MUST be 15-25 words describing a general rule or structural fact. Include micro-rules (specific mechanics), mid-rules (institutional/economic), and macro-rules (cosmological/thematic).</count>
     <example category="bad" reason="too-short">Tribunal</example>
-    <example category="good" register="fiction">The tribunal weighs claims by oath-witness count, with each verdict accompanied by a public ledger entry, a binding remedy, and an appeal window of seven days.</example>
-    <example category="good" register="research">The journal applies double-blind peer review with two reviewers per submission, a managing editor adjudicating disagreements, and a 16-week revision cycle.</example>
-    <example category="good" register="simulation">A border raid escalates to open conflict only when the cumulative grievance ledger crosses the threshold set by the suzerain's tribute schedule, gating retaliation through a mandatory seven-day council convocation.</example>${worldOnly ? '' : `
+    <example category="good" register="fiction" flavour="fantasy">A house's right to bind rain to its lands lapses if the founding water-compact goes three generations without a renewing oath; lapsed lands return to common drought rotation under the regent's ledger.</example>
+    <example category="good" register="fiction" flavour="cultivation">A disciple ascends a tier only when the sect elder witnesses a tribulation crossing AND the qi-reservoir admits the new draw; reservoir capacity binds the sect to a fixed succession rate.</example>
+    <example category="good" register="fiction" flavour="sci-fi">A colony's memory-scent inheritance passes only along confirmed matrilineal lines registered at the genome archive; off-register children carry the chemistry but no inheritance rights, and the archive can be edited only by quorum.</example>
+    <example category="good" register="simulation" flavour="wargame">A border raid escalates to open conflict only when the cumulative grievance ledger crosses the threshold set by the suzerain's tribute schedule, gating retaliation through a mandatory seven-day council convocation.</example>
+    <example category="good" register="paper">A finding is admitted to the journal's record only after two reviewers, blind to author and institution, sign off on methods AND data within the 16-week revision cycle; managing-editor override requires written dissent.</example>${worldOnly ? '' : `
     <count entity="scenes" target="≥8 in 1 arc">Averaging ~${forceReferenceMeansWorld} world nodes and ~${forceReferenceMeansSystem} system nodes per scene (the grading reference means). Some scenes quiet, some dense — but the MEAN across the arc must hit the reference or the whole opening grades in the 60s.</count>
     <density typical="touches 3-5 entities; ${worldTypicalBand} world nodes; ${systemTypicalBand} system concepts" climactic="${worldClimaxBand} world; ${systemClimaxBand} system" />`}
   </minimums>
@@ -154,10 +156,13 @@ Return JSON with this exact structure:
     <entity id="threads">
       <definition>QUESTIONS that shape fate — stakes, uncertainty, contested outcomes. Match the narrative's register.</definition>
       <example category="bad">Will X succeed?</example>
-      <example category="good" register="narrative">Can Ayesha clear her grandfather's name before the tribunal ends?</example>
-      <example category="good" register="argument">Does the proposed mechanism explain the anomalies the prior model cannot?</example>
-      <example category="good" register="inquiry">What role did diaspora networks play in the movement before digital coordination?</example>
-      <example category="good" register="simulation">Under the modelled tribute schedule and grievance threshold, does the border alliance hold past the third raid cycle?</example>
+      <example category="good" register="fiction" flavour="fantasy">Can the Carrow branch line stand as witness to the founding oath before the equinox closes the water-compact for good?</example>
+      <example category="good" register="fiction" flavour="cultivation">Does Disciple Lin Wei's tier crossing hold under Elder Ji's witness, or does the Iron Cloud reservoir reject the draw and seal the sect to a two-year ascension drought?</example>
+      <example category="good" register="fiction" flavour="sci-fi">Will the off-register heirs win Quorum to edit the genome archive before the inheritance vote closes on the next generation?</example>
+      <example category="good" register="simulation" flavour="wargame">Under the modelled tribute schedule and grievance threshold, does the border alliance hold past the third raid cycle?</example>
+      <example category="good" register="non-fiction" flavour="biography">Does the 1934 archival record support the meson hypothesis emerging from Yukawa's dispute with Bohr, or did the field retrofit the attribution later?</example>
+      <example category="good" register="analysis">Does the proposed structural cause explain the famine-relief failures across both colonial Bengal and 1980s Ethiopia?</example>
+      <example category="good" register="paper">Does the Song iron-coin abandonment correlate, district by district, with the garrison-reduction record the paper predicts it should?</example>
       <note>Thread logs track incremental answers.</note>
     </entity>
   </entity-definitions>
@@ -206,13 +211,13 @@ Return JSON with this exact structure:
     <intent>The premise may contain placeholder or generic names (e.g. "The Reincarnator", "The Elder Council", "Shadow Realm"). Replace ALL placeholder names with original, specific names. Naming is the single biggest quality signal.</intent>
     <directive>Name with cultural specificity, not generic invented syllables. Names should be rooted in real traditions of the world's implied culture.</directive>
     <step index="1" name="detect-cultural-origin">
-      <rule>Detect the cultural origin the premise actually implies, then source names from THAT palette. The failure mode is REFLEXIVE defaulting to Anglo/Celtic/Greek when the premise points elsewhere — a Mughal-court premise should yield Persian/Arabic/Turkic names, a Lagos-set narrative Yoruba/Igbo/Akan, a Heian-court tale Japanese. But when the premise IS genuinely Western (US politics with real figures like Trump / Biden / Harris, a 19th-century British memoir, a Greek-archaeology paper, a Silicon Valley startup), Western names — including diasporic names that fit the actual demographics — are correct. The rule is against unconditional defaulting, not against Western names per se.</rule>
+      <rule>Detect the cultural origin the premise implies, then source names from THAT palette. No palette is the default; no palette is disfavoured. The failure is reflexive defaulting in ANY direction — Anglo names on a Mughal premise, Yoruba names on a Silicon Valley premise, Japanese names on a US-politics premise are the same error. Mughal → Persian / Arabic / Turkic; Lagos → Yoruba / Igbo / Akan; Heian → Japanese; US politics, British memoir, Silicon Valley → Anglo / European / diasporic. Match what the premise asks for.</rule>
       <palette region="east-asian">Han Chinese (classical / modern), Japanese (kun/on readings), Korean, Vietnamese, Mongolian</palette>
       <palette region="south-asian">Sanskrit, Tamil/Dravidian, Bengali, Punjabi, Sinhala, Pashto</palette>
       <palette region="middle-eastern / west-asian">Arabic, Persian/Farsi, Turkish, Hebrew, Aramaic, Kurdish</palette>
       <palette region="african">Yoruba, Igbo, Akan, Amharic, Swahili, Zulu, Wolof, Hausa, Malagasy, Tamazight</palette>
       <palette region="indigenous">Nahuatl, Quechua, Navajo, Cree, Māori, Hawaiian, Sami — use respectfully, avoid sacred/taboo names</palette>
-      <palette region="european">Slavic, Baltic, Nordic, Celtic, Greek, Latin — treat these as one palette among many, not the default</palette>
+      <palette region="european">Anglo / English, Romance (French / Spanish / Italian / Portuguese / Romanian), Germanic, Slavic, Baltic, Nordic, Celtic, Greek, Latin</palette>
       <palette region="post-colonial / maritime">Latin American, Caribbean, Lusophone African, Filipino, Indonesian, Malay</palette>
       <palette region="diasporic / multicultural">Names that mark hybridity (e.g. Chinese-Peruvian, Lebanese-Brazilian, British-Nigerian) where the premise calls for it</palette>
     </step>
@@ -223,7 +228,7 @@ Return JSON with this exact structure:
     <step index="6" name="surnames">From occupations, geography, patronymics/matronymics, or clan names — never compound noun+noun invention (Stormrider, Shadowbane).</step>
     <step index="7" name="locations">Derive from terrain, founders, or linguistic corruption of older words. They should sound like they've been mispronounced for centuries within their own language family.</step>
     <step index="8" name="threads-and-systems">Concrete and specific. "The Tithe of Ash" not "The Power System". "The Lazar Compact" not "The Ancient Alliance". Match the cultural palette — a Mughal-inspired system might be "The Mansabdari Ledger", a West African one "The Ọba's Covenant".</step>
-    <test>If a name could appear interchangeably across 10 different generic Anglo-Western works in the same register, it's too generic. If it could only belong to THIS world and this culture, it's right.</test>
+    <test>If a name could appear interchangeably across 10 different generic works in any register or culture, it's too generic. If it could only belong to THIS world and this culture, it's right.</test>
     <respect>When drawing from Indigenous or living religious traditions, avoid names with explicit sacred/taboo status. Use the tradition's everyday register, not its ceremonial one, unless the premise explicitly calls for the latter and handles it with weight.</respect>
   </naming>
 

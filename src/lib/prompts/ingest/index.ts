@@ -10,7 +10,7 @@
  */
 
 export const INGEST_PROSE_PROFILE_SYSTEM =
-  'You extract a prose profile — voice, register, stance, devices, rules, anti-patterns — from pasted text. Pick values that genuinely match the source; do not default to the 20th-century Anglo-European novel\'s toolkit. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You extract a prose profile — voice, register, stance, devices, rules, anti-patterns — from pasted text. Pick values that genuinely match the source; do not default to any single tradition\'s toolkit. Read the source on its own terms. Return ONLY valid JSON matching the schema in the user prompt.';
 
 export const DERIVE_PROSE_PROFILE_SYSTEM =
   'You derive a prose profile from a narrative\'s own context (entities, threads, prose excerpts) rather than a pasted style guide. Read the source\'s register from its own voice; do not import conventions the source does not earn. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -48,13 +48,13 @@ ${text}
     <field name="sentenceRhythm">terse | flowing | staccato | varied | periodic | cumulative</field>
     <field name="interiority">surface | moderate | deep | stream_of_consciousness | analytical | evidentiary | state-tracked (agent's modelled state under the rule set, for simulation registers)</field>
     <field name="dialogueWeight">heavy | moderate | sparse | minimal | none</field>
-    <field name="devices">Extract every device the source genuinely uses — no cap. Pick from a wide range; do not default to the 20th-century Anglo-European novel's toolkit.
+    <field name="devices">Extract every device the source genuinely uses — no cap. Pick from a wide range; no single tradition is the default.
       <set name="dramatic-realist">free_indirect_discourse, dramatic_irony, unreliable_narrator, extended_metaphor, epistolary_fragments, stream_of_consciousness</set>
       <set name="lyric / fabulist / mythic / oral">refrain, litany, invocation, catalogue, direct_address, mythic_cadence, liturgical, oracular, call_and_response, frame_tale, magical_realist_baseline, lyric_digression, image_as_argument</set>
       <set name="polyphonic / experimental">polyvocality, code_switching, document_collage, metafiction, framing_commentary, silence_as_beat, typographic_constraint (Oulipo), translation_as_form, hybrid_essay_fiction</set>
       <set name="non-fiction">signposting, rhetorical_question, parallel_structure, case_study, counterargument_staging, citation_weaving, worked_example, braided_essay, auto_theory, archival_fragment, testimony, reportage_cadence</set>
       <set name="simulation">rule_statement, initial_conditions_block, state_transition_log, diegetic_overlay (HUD / status sheet / dashboard rendered in-world), tier_gate, finding_log, anomaly_log, scenario_branch, counterfactual_clause, mechanism_first_exposition, observer_log_voice</set>
-      <note>Drawing from the 20th-century Anglo-European novel is one tradition among many. Prefer devices that genuinely match the source, including those native to West African epic, South Asian rasa-organised narrative, Caribbean polyvocality, Arabic/Persian frame-tale, Latin American magical realism, Japanese kishōtenketsu, Chinese wuxia/xianxia, Indigenous circular/ceremonial forms.</note>
+      <note>No tradition is the default. Prefer devices that genuinely match the source, drawn from any of: Anglo / European realist novel, West African epic, South Asian rasa, Caribbean polyvocality, Arabic / Persian frame-tale, Latin American magical realism, Japanese kishōtenketsu, Chinese wuxia / xianxia, Indigenous ceremonial forms, Russian psychological novel, Nordic minimalism. No palette favoured or disfavoured.</note>
     </field>
     <field name="rules">SPECIFIC imperatives for sentence-level craft — as many as the source's voice genuinely demands, no cap.</field>
     <field name="antiPatterns">SPECIFIC failures to avoid — as many as the source's voice genuinely defines against, no cap.</field>

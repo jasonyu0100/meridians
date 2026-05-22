@@ -8,24 +8,32 @@
  * history if that flow comes back.
  */
 
-export const PREMISE_SUGGEST_PROMPT = `<task>Generate an original premise for a long-form work — specific, evocative, register-coherent. The work may be fiction (novel, novella, short fiction, drama), non-fiction (memoir, essay, long-form reportage, research, history, case study), or simulation (a work that models real-life events from a stated rule set — historical counterfactual, economic / policy / political-wargame / pandemic / climate scenario, agent-based study, LitRPG / cultivation / xianxia where in-world mechanics drive events) — pick whichever register the premise most naturally belongs to.</task>
+export const PREMISE_SUGGEST_PROMPT = `<task>Generate an original premise for a long-form work — specific, evocative, register-coherent. Pick whichever register the premise most naturally belongs to from the five main categories:
+- **fiction** (novel, novella, short fiction, drama — including fantasy, sci-fi, cultivation / xianxia, secondary-world)
+- **non-fiction** (biography, history, memoir, long-form reportage)
+- **simulation** (a work modelling real-life events from a stated rule set — historical counterfactual, political wargame, economic / policy modelling, agent-based study, rule-systematised cultivation)
+- **analysis** (a structural argument built case-by-case from a documentary record against a stated causal model)
+- **paper** (a research paper presenting a finding with methods, evidence, and a testable prediction)</task>
 
 <rules>
   <rule>Be specific and evocative — not generic.</rule>
-  <rule name="originality">Draw from any genre, register, time period, or culture — East Asian, South Asian, African, Middle Eastern, Indigenous, Latin American, diasporic, non-Western-canonical — and do not default to Anglo/European settings.</rule>
-  <rule>Non-fiction and simulation premises are as welcome as fiction. Simulation premises must surface a load-bearing rule set: state the rules, the initial conditions, and the question the modelled system is being asked to answer.</rule>
-  <rule name="anti-genre">Avoid generic tropes of any genre — Western fantasy/sci-fi, thriller, academic abstraction, default LitRPG dungeon-crawl, off-the-shelf wargame setups — unless you subvert them. When you reach for simulation, span the range (historical counterfactual / economic-policy / political-wargame / pandemic / climate / agent-based / scientific-process / rule-systematised fiction); do not default to a single subgenre.</rule>
+  <rule name="originality">Draw from any culture (East Asian, South Asian, African, Middle Eastern, Indigenous, Latin American, Anglo / European, diasporic) with none favoured or disfavoured. Rotate across runs so the cohort spans the full range.</rule>
+  <rule>All five registers (fiction, non-fiction, simulation, analysis, paper) are equally welcome — rotate across them. Simulation premises must state the rules, initial conditions, and the question the modelled system answers. Paper premises must state the claim, the evidence base, and a testable prediction.</rule>
+  <rule name="anti-genre">Avoid generic tropes in either direction — Anglo / European fantasy, thriller, academic abstraction, off-the-shelf LitRPG / wargame setups, and exoticised non-Western framings ("ancient mystical order", "forgotten desert kingdom") — unless you subvert them. For simulation, span the range; do not default to a single subgenre.</rule>
   <rule>Surprise me.</rule>
 </rules>
 
-<examples hint="Span all three registers; do not weight toward any one.">
-  <example register="fiction">A retired Yoruba diviner is summoned to investigate disappearances in a Lagos high-rise where the lifts open onto floors absent from the building plans.</example>
-  <example register="non-fiction">A memoir of three generations of Bengali typesetters tracing how the metal slug, the linotype, and the Unicode code point each rewrote what could be printed in their language.</example>
-  <example register="simulation-counterfactual">What happens to the Mughal grain economy and Deccan succession if Dara Shukoh, not Aurangzeb, takes the Peacock Throne in 1659 — scene-by-scene under documented revenue rules and contemporaneous trade networks.</example>
-  <example register="simulation-wargame">A turn-by-turn 1962 Cuba escalation run from the Soviet Politburo's vantage: declassified intelligence as initial state, Khrushchev's known decision rules as the constraint set.</example>
-  <example register="simulation-policy">An agent-based model of caste-network reform under three contending land-redistribution policies in 1990s rural Bihar — scenes following individual cultivators as rules collide with kin obligations.</example>
-  <example register="simulation-pandemic">A propagation scenario run on real 2009 H1N1 mobility data with a counterfactual: what if São Paulo state schools had stayed open the full term?</example>
-  <example register="simulation-cultivation">A Daoist sect's hereditary qi-reservoir depletes a generation faster than its doctrine permits — what political and doctrinal states the sect reaches across twenty years under its own succession rules.</example>
+<examples hint="Five main registers, each with examples drawn from the engine's preferred flavours (wargame, cultivation, sci-fi, fantasy, biography, history). Each example names a specific figure / institution / place and carries a real stake. Skip urban contemporary mystery, pandemic-only scenarios, contemporary political reportage.">
+  <example register="fiction" flavour="fantasy">House Carrow's water-compact lapses at the next equinox: if the founding oath isn't witnessed in time, nine generations of rain return to the common drought rotation — and only the branch line vanished on the salt road can stand as witness.</example>
+  <example register="fiction" flavour="sci-fi">On a colony world where memory passes through inherited scent, the Quorum has begun editing the chemistry of newborns; one vote stands between four generations of grandparents and the kin none of them will remember being.</example>
+  <example register="fiction" flavour="cultivation">The Iron Cloud Sect's hereditary qi-reservoir has thinned a generation faster than doctrine permits; the next tier-crossing falls in spring, the elders are split three ways, and the founder's charter does not say what happens when the reservoir refuses an ascendant.</example>
+  <example register="non-fiction" flavour="biography">Hideki Yukawa, traced through the 1934 correspondence with Bohr — the rejected argument the meson hypothesis came out of, before the field had vocabulary for what he was claiming.</example>
+  <example register="non-fiction" flavour="history">Three generations of Calcutta typesetters across the metal slug, the linotype, and the Unicode code point — and what each technology silently mistranslated in Bengali that the previous one had carried fine.</example>
+  <example register="simulation" flavour="counterfactual">Dara Shukoh takes the Peacock Throne in 1659 instead of Aurangzeb — what happens to Mughal grain revenue, Deccan succession, and the Sufi-orthodox compromise, scene by scene under documented tax rolls and trade correspondence.</example>
+  <example register="simulation" flavour="wargame">The thirteen days of October 1962 from Khrushchev's chair: SS-4 deployment as initial state, Politburo decision rules as the constraint set, the moment-by-moment turn where the alternative was always still on the table.</example>
+  <example register="simulation" flavour="wargame">Admiral Yi's 1597 Myeongnyang campaign from inside the Joseon command — thirteen ships against three hundred and thirty, with the monsoon window and the tribute-grain logistics deciding what the rules allow.</example>
+  <example register="analysis">The argument that the 1943 Bengal famine and the 1984 Ethiopian famine failed in the same structural way — built case by case from the relief telegrams of both, against a stated causal model the figures must support.</example>
+  <example register="paper">A paper proposing that the Song dynasty's iron-coin standard was a deliberate response to military procurement, derived from regional smelter outputs — with the testable prediction that monetary abandonment tracks garrison reduction by district.</example>
 </examples>
 
 <output-format>
@@ -37,4 +45,4 @@ Return JSON:
 </output-format>`;
 
 export const PREMISE_SUGGEST_SYSTEM =
-  'You are a creative seed-spinner generating an original long-form premise. Be specific and evocative; favour non-Western settings; keep fiction, non-fiction, and simulation premises equally welcome (simulation = a rule-governed model of real-life events, including historical counterfactuals, economic / policy modelling, political wargames, pandemic / climate scenarios, agent-based studies, scientific-process modelling, and rule-systematised fiction). When proposing simulation, span the range — do not default to LitRPG. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a creative seed-spinner generating an original long-form premise. Be specific and evocative; rotate cultural palette across runs (no palette favoured or disfavoured — the chosen premise decides). Five registers are equally welcome: fiction (fantasy / sci-fi / cultivation / secondary-world), non-fiction (biography / history), simulation (counterfactual / wargame / policy modelling / agent-based), analysis (case-built structural argument), paper (research finding with methods and a testable prediction). Each premise should name a specific figure / institution / place and carry a real stake. Return ONLY valid JSON matching the schema in the user prompt.';

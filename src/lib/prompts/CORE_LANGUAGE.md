@@ -81,8 +81,9 @@ canonical form once and trust the model to read the source's register.
 
 These appear historically in the codebase but **should not be used as the
 default framing** in new prompts or reasoning copy. They bias the system toward
-fiction or Western-canonical storytelling. Use the register-neutral canonical
-form instead, or qualify explicitly.
+fiction or one storytelling tradition. Use the register-neutral canonical form
+instead, or qualify explicitly. (Bias correction applies in both directions —
+see §5.)
 
 | Avoid as default              | Prefer                                                           |
 |-------------------------------|------------------------------------------------------------------|
@@ -142,30 +143,30 @@ shifts where weight lives:
 
 ## 5. Cultural palette defaults
 
-Prompts that invoke naming, setting, or cultural reference **must not
-reflexively default to Anglo/Celtic/Greek when the premise points
-elsewhere**. The failure mode is generating Mughal-court entities with
-Anglo-Saxon names, or a Lagos-set story populated by Greek surnames. When
-the premise IS genuinely Western (US politics, European history, an
-English-language memoir, a Silicon Valley setting), Western names —
-including diasporic names that fit the actual demographics — are correct;
-the rule is against unconditional defaulting, not against Western names per
-se.
+Naming, setting, and cultural references must be **genuinely culture-agnostic**:
+the premise decides the palette, no single tradition is favoured or disfavoured.
+The failure is REFLEXIVE DEFAULTING IN ANY DIRECTION — Anglo-Saxon names on a
+Mughal-court premise are the same error as Yoruba names on a Silicon-Valley
+startup or Japanese names on a 19th-century British memoir.
 
-The codebase lists the supported palettes in
-[src/lib/ai/world.ts](../ai/world.ts) under NAMING. Any new prompt that touches
-naming or culture should either (a) defer to the narrative's own palette, or
-(b) enumerate a diverse list (East Asian, South Asian, Middle Eastern, African,
-Indigenous, Latin American, diasporic, plus Slavic/Nordic/Celtic/Greek/Latin as
-one option among many).
+Match the premise: Mughal → Persian / Arabic / Turkic; Lagos → Yoruba / Igbo /
+Akan; Heian → Japanese; US politics, British memoir, Silicon Valley → Anglo /
+European / diasporic. We are removing the reflex in both directions, not trading
+one default for another.
+
+Supported palettes live in
+[src/lib/prompts/world/generate-narrative.ts](world/generate-narrative.ts) under
+the `naming` block. New prompts touching naming should either defer to the
+narrative's own palette, or enumerate a diverse list with no item flagged as
+default or disfavoured.
 
 ## 6. Where this is enforced
 
 - Automated guard: [src/__tests__/core-language.test.ts](../../__tests__/core-language.test.ts)
-  asserts that centralised prompts contain the canonical terms and do not drift
-  toward the avoided defaults.
-- Human review: code review should flag new prompts that use "story"/"novel"/
-  "chapter" unqualified, or that default Western naming examples.
+  — canonical terms present, avoided defaults absent.
+- Human review: flag prompts using "story" / "novel" / "chapter" unqualified, OR
+  defaulting in either direction (Anglo on non-Western cast, or exoticised
+  non-Western on Anglo / European cast).
 
 ## 7. Scope
 

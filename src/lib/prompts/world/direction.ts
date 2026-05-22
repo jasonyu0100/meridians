@@ -33,7 +33,7 @@ ${args.narrativeContext}
   <rule name="naming">Use entity NAMES (characters, locations, artifacts) and thread DESCRIPTIONS in the direction and suggestion — never raw IDs.</rule>
   <rule name="rule-driven-honesty" hint="Simulation register only — informs framing without inventing register markers when the work is fiction or non-fiction.">If the narrative is rule-driven (a stated rule set governs consequences), respect what the rules force. Do not "rescue" a thread the model has condemned through authorial pull; recoveries must be earned by initial-condition shifts, rule changes, or agents finding new positions inside the existing rules. Surface the rule-driven trajectory honestly even when it is bleak.</rule>
   <rule name="vector-not-script">Direction is a VECTOR — names central pressure and shape of consequence. Does NOT script scenes or name beat-by-beat events. The arc-generation pass discovers the path.</rule>
-  <rule name="arc-name-criterion">2-4 words from the narrative's own palette. Mood-coded ("Seeds of Distrust", "The Quiet Year") fine when the source supports it; concrete-event ("Brother's Investigation", "Tier Tribulation") fine when the arc has a sharp central pressure. Bad: reflexive Anglo/Gothic abstractions when the narrative is set elsewhere.</rule>
+  <rule name="arc-name-criterion">2-4 words from the narrative's own palette. Mood-coded ("Seeds of Distrust", "The Quiet Year") or concrete-event ("Brother's Investigation", "Tier Tribulation") — both fine. Bad: palette mismatch in either direction (Anglo / Gothic on a non-Western narrative, or exoticised non-Western flourishes on an Anglophone one).</rule>
 </instructions>
 
 <output-format>
