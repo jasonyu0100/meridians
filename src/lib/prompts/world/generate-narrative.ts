@@ -148,6 +148,10 @@ function minimumsBlockFor(paradigm: NarrativeParadigm): string {
 export type GenerateNarrativeArgs = {
   title: string;
   premise: string;
+  /** Optional seeding context — extra source material the user pastes as
+   *  authoritative reference for the LLM to draw from when building the
+   *  initial world. Injected as a `<source-material>` block. */
+  sourceText?: string;
   /** When true: world entities only, no scenes/arcs. */
   worldOnly: boolean;
   /** Compulsory paradigm — selects the world-shape (populated-narrative /
@@ -165,6 +169,7 @@ export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): strin
   const {
     title,
     premise,
+    sourceText,
     worldOnly,
     paradigm,
     forceReferenceMeansWorld,
@@ -182,13 +187,19 @@ export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): strin
     <directive>${paradigmEntry.directive}</directive>
   </paradigm-directive>\n`;
 
+  const sourceMaterialBlock = sourceText && sourceText.trim()
+    ? `  <source-material hint="Authoritative seeding context supplied by the user. Treat as reference material the world should draw from — honour names, facts, structural details, and relationships present here. The premise above states the goal; this block provides the raw material.">
+${sourceText.trim()}
+  </source-material>\n`
+    : '';
+
   return `<inputs>
 ${paradigmDirectiveBlock}  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : 'Full mode — entities + 8-scene opening arc + prose profile.'}">${worldOnly
     ? 'Extract and build a complete narrative world from the following plan. Do NOT generate scenes or arcs — output world entities only (characters, locations, threads, relationships, artifacts, rules, systems, prose profile).'
     : 'Create a complete narrative world.'}</task>
   <title>${title}</title>
   <${worldOnly ? 'narrative-plan' : 'premise'}>${premise}</${worldOnly ? 'narrative-plan' : 'premise'}>
-</inputs>
+${sourceMaterialBlock}</inputs>
 
 <output-format>
 Return JSON with this exact structure:

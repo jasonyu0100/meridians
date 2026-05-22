@@ -37,12 +37,17 @@ import type {
   Thread,
   ThreadDelta,
   ThreadHorizon,
+  NarrativeParadigm,
   ThreadLogNodeType,
   TieDelta,
   TimeDelta,
   WorldBuild,
   WorldDelta,
 } from "@/types/narrative";
+
+const VALID_PARADIGMS: ReadonlySet<NarrativeParadigm> = new Set<NarrativeParadigm>([
+  "fiction", "non-fiction", "simulation", "analysis", "paper", "essay",
+]);
 import {
   DEFAULT_STORY_SETTINGS,
   NARRATOR_AGENT_ID,
@@ -2766,6 +2771,7 @@ export async function assembleNarrative(
   let imageStyle: string | undefined;
   let proseProfile: ProseProfile | undefined;
   let planGuidance = "";
+  let paradigm: NarrativeParadigm | undefined;
   let genre: string | undefined;
   let subgenre: string | undefined;
   let patterns: string[] = [];
@@ -2775,6 +2781,7 @@ export async function assembleNarrative(
     imageStyle = providedMeta.imageStyle;
     proseProfile = providedMeta.proseProfile;
     planGuidance = providedMeta.planGuidance ?? "";
+    paradigm = providedMeta.paradigm;
     genre = providedMeta.genre;
     subgenre = providedMeta.subgenre;
     patterns = providedMeta.patterns ?? [];
@@ -2822,6 +2829,12 @@ export async function assembleNarrative(
       ) {
         planGuidance = metaParsed.planGuidance.trim();
       }
+      if (typeof metaParsed.paradigm === "string") {
+        const raw = metaParsed.paradigm.trim().toLowerCase();
+        if (VALID_PARADIGMS.has(raw as NarrativeParadigm)) {
+          paradigm = raw as NarrativeParadigm;
+        }
+      }
       if (typeof metaParsed.genre === "string" && metaParsed.genre.trim()) {
         genre = metaParsed.genre.trim();
       }
@@ -2850,6 +2863,7 @@ export async function assembleNarrative(
     imageStyle,
     proseProfile,
     planGuidance,
+    paradigm,
     genre,
     subgenre,
     patterns,
@@ -2884,6 +2898,7 @@ export async function assembleNarrative(
     storySettings: planGuidance
       ? { ...DEFAULT_STORY_SETTINGS, planGuidance }
       : undefined,
+    paradigm,
     genre,
     subgenre,
     patterns: patterns.length > 0 ? patterns : undefined,

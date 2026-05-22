@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
+import { StarField } from '@/components/effects/StarField';
 
 type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl' | 'full';
 
@@ -40,8 +41,25 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 bg-bg-base z-50 flex flex-col">
-        {children}
+      <div className="fixed inset-0 bg-bg-base z-50 flex flex-col overflow-hidden">
+        {/* Cosmic background — nebulae + glow + star field, identical to the
+            home page's hero stack. Pointer-events-none so all input still
+            hits the modal content above. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="cosmos-container absolute inset-0 z-0">
+            <div className="nebula nebula-1" />
+            <div className="nebula nebula-2" />
+            <div className="nebula nebula-3" />
+            <div className="cosmos-glow" />
+          </div>
+          <div className="absolute inset-0 z-1">
+            <StarField />
+          </div>
+        </div>
+        {/* Content layer */}
+        <div className="relative z-10 flex flex-col h-full">
+          {children}
+        </div>
       </div>
     );
   }

@@ -642,6 +642,8 @@ export async function generateNarrative(
    *  world-shapes (populated-narrative / agentic-ai-team / singular-thinker).
    *  Defaults to 'fiction'. */
   paradigm: NarrativeParadigm = 'fiction',
+  /** Optional seeding context — extra source material to draw from. */
+  sourceText?: string,
 ): Promise<NarrativeState> {
   logInfo('Starting narrative generation', {
     source: 'manual-generation',
@@ -650,12 +652,14 @@ export async function generateNarrative(
       title,
       worldOnly,
       paradigm,
+      sourceTextLength: sourceText?.length,
     },
   });
 
   const prompt = buildGenerateNarrativePrompt({
     title,
     premise,
+    sourceText,
     worldOnly,
     paradigm,
     forceReferenceMeansWorld: FORCE_REFERENCE_MEANS.world,

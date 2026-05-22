@@ -2467,6 +2467,9 @@ export type AnalysisMeta = {
   imageStyle?: string;
   proseProfile?: ProseProfile;
   planGuidance?: string;
+  /** One of the six canonical paradigms — drives the narrative's world-shape
+   *  and every downstream generation pass once committed. */
+  paradigm?: NarrativeParadigm;
   genre?: string;
   subgenre?: string;
   patterns?: string[];
@@ -2627,6 +2630,10 @@ export type NarrativeParadigm =
 export type WizardData = {
   title: string;
   premise: string;
+  /** Optional seeding context — extra source material the user pastes in
+   *  alongside the premise. Treated as authoritative reference material for
+   *  the LLM to draw from when building the initial world. */
+  sourceText?: string;
   /** Selected paradigm — steers world generation into one of the engine's
    *  canonical world-shapes. Defaults to 'fiction'. */
   paradigm: NarrativeParadigm;

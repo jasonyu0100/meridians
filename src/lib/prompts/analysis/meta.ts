@@ -17,7 +17,16 @@ ${args.metaContext}
 </inputs>
 
 <instructions>
-  <task>Extract the visual style, prose voice, plan guidance, genre, and pattern / anti-pattern commandments for this narrative.</task>
+  <task>Extract the visual style, prose voice, plan guidance, paradigm, genre, and pattern / anti-pattern commandments for this narrative.</task>
+
+  <field name="paradigm" hint="One of the SIX canonical paradigms the engine supports. Pick EXACTLY one — this drives the world-shape every downstream generation pass operates under.">
+    <option name="fiction">Invented people in an invented world. World shape: populated narrative.</option>
+    <option name="non-fiction">Real people, real places, documented events — memoir, biography, history, reportage. World shape: populated narrative.</option>
+    <option name="simulation">Rule-driven modelling of real-life events with in-world figures the rules act on — counterfactual, wargame, agent-based, cultivation / xianxia where in-world mechanics drive events. World shape: populated narrative + load-bearing system rules.</option>
+    <option name="analysis">Thesis-driven analytical work pursued by a TEAM of AI agents collaborating to develop the thesis. World shape: agentic-ai-team with single-word AI agent names.</option>
+    <option name="paper">Research paper presenting a finding with methods + testable prediction. World shape: singular thinker (one named author + cited interlocutors).</option>
+    <option name="essay">An extended argument from a single named author's voice. World shape: singular thinker.</option>
+  </field>
 
   <field name="imageStyle">A short (1-2 sentence) visual style description for consistent imagery.</field>
 
@@ -76,8 +85,9 @@ ${args.metaContext}
 <output-format>
 Return JSON:
 {
+  "paradigm": "one of: fiction | non-fiction | simulation | analysis | paper | essay — EXACTLY one of these six values, no other strings allowed",
   "imageStyle": "style directive",
-  "genre": "primary register or genre — name what the work actually IS (e.g. literary fiction, memoir, lyric essay, criticism, longform journalism, investigative reportage, theoretical paper, empirical paper, archival history, historical counterfactual, policy / wargame scenario, agent-based study, LitRPG / cultivation; if fiction, name the genre; if simulation, name the rule-driven form).",
+  "genre": "primary register or genre within the paradigm (e.g. literary fiction, memoir, lyric essay, criticism, longform journalism, investigative reportage, theoretical paper, empirical paper, archival history, historical counterfactual, policy / wargame scenario, agent-based study, LitRPG / cultivation).",
   "subgenre": "specific subgenre or sub-form (e.g. progression fantasy, cozy mystery, autotheory, ablation paper, war reportage, oral history, Mughal-succession counterfactual, monetary-policy wargame, pandemic propagation scenario, cultivation-tier xianxia) — pick the most identifying form.",
   "proseProfile": {
     "register": "tonal register — e.g. 'literary, low-key', 'wry academic', 'plainspoken reportage'",

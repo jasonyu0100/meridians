@@ -9,7 +9,7 @@ import { generateNarrative } from "@/lib/ai/world";
 import { suggestPremise } from "@/lib/ai/premise";
 import { useStore } from "@/lib/store";
 import { useWizard } from "@/lib/wizard-context";
-import { Modal, StreamingStatus } from "@/components/Modal";
+import { Modal } from "@/components/Modal";
 import {
   DEFAULT_STORY_SETTINGS,
   type CharacterSketch,
@@ -240,6 +240,7 @@ export function CreationWizard() {
         (reasoning) => setStreamText((prev) => prev + reasoning),
         wd.worldOnly ?? false,
         wd.paradigm,
+        wd.sourceText,
       );
       dispatch({ type: "ADD_NARRATIVE", narrative });
       wizardDispatch({ type: "CLOSE" });
@@ -261,103 +262,148 @@ export function CreationWizard() {
   }, [isGenerating]);
 
   if (!wizardState.isOpen) return null;
+  // The two-step flow has been collapsed into a single page; `isDetails`
+  // remains exported in the wizard state type for back-compat but the
+  // component no longer routes to it.
+  void isDetails;
 
   const closeWizard = () => wizardDispatch({ type: "CLOSE" });
 
-  // ── Generate view ────────────────────────────────────────────────────
-  if (isGenerating) {
-    return (
-      <Modal
-        onClose={loading ? () => {} : closeWizard}
-        size="2xl"
-        maxHeight="85vh"
-        panelClassName="glass"
-      >
-        <div className="p-6">
-          <div className="flex flex-col gap-5">
-            {loading ? (
-              <StreamingStatus
-                label="Generating world…"
-                streamText={streamText}
-                maxHeight="max-h-72"
-              />
-            ) : (
-              <h2 className="text-sm font-semibold text-text-primary">
-                Generation failed
+  // ── Fullscreen single-page wizard ────────────────────────────────────
+  return (
+    <Modal onClose={loading ? () => {} : closeWizard} fullScreen>
+      <div className="relative flex flex-col h-full">
+        {/* Header — translucent so the constellations show through, with a
+            subtle gradient accent across the title */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-white/10 shrink-0 bg-bg-base/40 backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            {/* Tiny orbital glyph beside the title */}
+            <div className="relative w-7 h-7 shrink-0">
+              <div className="absolute inset-0 rounded-full border border-emerald-400/30" />
+              <div className="absolute inset-1.5 rounded-full border border-emerald-400/50" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)] animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold bg-linear-to-r from-emerald-300 via-cyan-200 to-violet-300 bg-clip-text text-transparent tracking-tight">
+                Generate New World View
               </h2>
-            )}
-
-            {error && (
-              <div className="bg-fate/10 border border-fate/30 rounded-lg px-3 py-2">
-                <p className="text-xs text-fate/80 mt-1">{error}</p>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between mt-1">
-              <button
-                onClick={() => {
-                  started.current = false;
-                  wizardDispatch({ type: "SET_STEP", step: "form" });
-                }}
-                disabled={loading}
-                className="text-text-dim text-xs hover:text-text-secondary transition disabled:opacity-30 disabled:pointer-events-none"
-              >
-                &larr; Back
-              </button>
-              {error && (
-                <button
-                  onClick={handleGenerate}
-                  className="bg-white/8 hover:bg-white/12 text-text-primary text-xs font-semibold px-5 py-2 rounded-lg transition"
-                >
-                  Retry
-                </button>
-              )}
+              <p className="text-[11px] text-text-dim mt-0.5">
+                Pick the paradigm, write a premise, optionally seed with source material and details.
+              </p>
             </div>
           </div>
-        </div>
-      </Modal>
-    );
-  }
-
-  // ── Step 2: Details view ───────────────────────────────────────────
-  if (isDetails) {
-    return (
-      <Modal
-        onClose={closeWizard}
-        size="2xl"
-        maxHeight="85vh"
-        panelClassName="glass"
-      >
-        <div className="p-6 relative">
           <button
             onClick={closeWizard}
-            className="absolute top-4 right-4 text-text-dim hover:text-text-primary text-lg leading-none"
+            disabled={loading}
+            className="text-text-dim hover:text-text-primary text-xl leading-none disabled:opacity-30 disabled:pointer-events-none w-8 h-8 rounded-lg hover:bg-white/5 transition flex items-center justify-center"
           >
             &times;
           </button>
+        </div>
 
-          <div className="flex flex-col gap-5 max-h-[75vh] overflow-y-auto pr-1">
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-mono text-text-dim">
-                  Step 2 of 2
-                </span>
+        {/* Scrollable form body */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-8 py-10 flex flex-col gap-8">
+            {/* Title */}
+            <section>
+              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
+                Title
+              </label>
+              <input
+                type="text"
+                value={wd.title}
+                onChange={(e) => update({ title: e.target.value })}
+                placeholder="e.g. The Gilded Cage"
+                className="bg-bg-elevated/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full outline-none placeholder:text-text-dim focus:border-white/16 transition"
+              />
+              {isDuplicate && (
+                <p className="text-[11px] text-fate mt-1.5">
+                  A series with this name already exists.
+                </p>
+              )}
+            </section>
+
+            {/* Paradigm */}
+            <section className="border-t border-white/8 pt-8">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
+                Paradigm
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {PARADIGMS.map((p) => {
+                  const active = wd.paradigm === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => update({ paradigm: p.value })}
+                      title={p.hint}
+                      className={`text-[11px] px-3 py-2 rounded-lg border transition text-left ${
+                        active
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                          : "bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <div className="font-medium">{p.label}</div>
+                      <div
+                        className={`text-[10px] mt-0.5 leading-tight ${active ? "text-emerald-300/70" : "text-text-dim"}`}
+                      >
+                        {p.hint}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <h2 className="text-sm font-semibold text-text-primary mb-1">
-                Details (Optional)
-              </h2>
-              <p className="text-[11px] text-text-dim">
-                Add characters, locations, threads, rules, or systems — or skip
-                and let the AI fill in everything.
+              <p className="text-[10px] text-text-dim/60 italic mt-2">
+                Steers generation into one of the engine&apos;s six canonical world-shapes.
               </p>
-            </div>
+            </section>
 
-            {/* Character Sketches */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+            {/* Premise */}
+            <section className="border-t border-white/8 pt-8">
+              <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim font-mono">
-                  Characters
+                  Premise
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSuggest}
+                  disabled={suggesting}
+                  className="text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
+                >
+                  {suggesting ? "Thinking…" : "Suggest"}
+                </button>
+              </div>
+              <textarea
+                value={wd.premise}
+                onChange={(e) => update({ premise: e.target.value })}
+                placeholder="Describe your world…"
+                className="bg-bg-elevated/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full h-32 resize-y outline-none placeholder:text-text-dim focus:border-white/16 transition"
+              />
+            </section>
+
+            {/* Source material — optional seeding context */}
+            <section className="border-t border-white/8 pt-8">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
+                Source material <span className="normal-case tracking-normal text-text-dim/60">(optional)</span>
+              </label>
+              <textarea
+                value={wd.sourceText ?? ""}
+                onChange={(e) => update({ sourceText: e.target.value })}
+                placeholder="Paste reference material…"
+                className="bg-bg-elevated/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full h-44 resize-y outline-none placeholder:text-text-dim focus:border-white/16 transition font-mono"
+              />
+              {wd.sourceText && wd.sourceText.length > 0 && (
+                <p className="text-[10px] text-text-dim/60 mt-1.5 font-mono">
+                  {wd.sourceText.length.toLocaleString()} characters
+                </p>
+              )}
+            </section>
+
+            {/* Characters */}
+            <section className="border-t border-white/8 pt-8">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim font-mono">
+                  Characters <span className="normal-case tracking-normal text-text-dim/60">(optional)</span>
                 </label>
                 <button
                   type="button"
@@ -367,72 +413,64 @@ export function CreationWizard() {
                   + Add
                 </button>
               </div>
-              {wd.characters.length === 0 && (
+              {wd.characters.length === 0 ? (
                 <p className="text-[11px] text-text-dim/60 italic">
-                  No characters defined — the AI will create them from the
-                  premise.
+                  No characters defined — the engine will create them from the premise.
                 </p>
-              )}
-              <div className="flex flex-col gap-2">
-                {wd.characters.map((ch, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-2 items-start bg-bg-elevated rounded-lg p-2.5 border border-border"
-                  >
-                    <div className="flex-1 flex flex-col gap-1.5">
-                      <div className="flex gap-2">
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {wd.characters.map((ch, i) => (
+                    <div
+                      key={i}
+                      className="flex gap-2 items-start bg-bg-elevated rounded-lg p-3 border border-border"
+                    >
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={ch.name}
+                            onChange={(e) => updateCharacter(i, { name: e.target.value })}
+                            placeholder="Name"
+                            className="flex-1 bg-transparent border-b border-border text-xs text-text-primary outline-none placeholder:text-text-dim focus:border-white/20 transition pb-0.5"
+                          />
+                          <select
+                            value={ch.role}
+                            onChange={(e) =>
+                              updateCharacter(i, { role: e.target.value as CharacterSketch["role"] })
+                            }
+                            className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none pb-0.5"
+                          >
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        </div>
                         <input
                           type="text"
-                          value={ch.name}
-                          onChange={(e) =>
-                            updateCharacter(i, { name: e.target.value })
-                          }
-                          placeholder="Name"
-                          className="flex-1 bg-transparent border-b border-border text-xs text-text-primary outline-none placeholder:text-text-dim focus:border-white/20 transition pb-0.5"
+                          value={ch.description}
+                          onChange={(e) => updateCharacter(i, { description: e.target.value })}
+                          placeholder="Brief description, goals, or traits…"
+                          className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none placeholder:text-text-dim/60 focus:border-white/20 transition pb-0.5"
                         />
-                        <select
-                          value={ch.role}
-                          onChange={(e) =>
-                            updateCharacter(i, {
-                              role: e.target.value as CharacterSketch["role"],
-                            })
-                          }
-                          className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none pb-0.5"
-                        >
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
                       </div>
-                      <input
-                        type="text"
-                        value={ch.description}
-                        onChange={(e) =>
-                          updateCharacter(i, { description: e.target.value })
-                        }
-                        placeholder="Brief description, goals, or traits..."
-                        className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none placeholder:text-text-dim/60 focus:border-white/20 transition pb-0.5"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => removeCharacter(i)}
+                        className="text-text-dim hover:text-text-secondary text-xs mt-0.5"
+                      >
+                        &times;
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeCharacter(i)}
-                      className="text-text-dim hover:text-text-secondary text-xs mt-0.5"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
-            {/* Location Sketches */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+            {/* Locations */}
+            <section className="border-t border-white/8 pt-8">
+              <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim font-mono">
-                  Locations
+                  Locations <span className="normal-case tracking-normal text-text-dim/60">(optional)</span>
                 </label>
                 <button
                   type="button"
@@ -442,55 +480,51 @@ export function CreationWizard() {
                   + Add
                 </button>
               </div>
-              {wd.locations.length === 0 && (
+              {wd.locations.length === 0 ? (
                 <p className="text-[11px] text-text-dim/60 italic">
-                  No locations defined — the AI will create them from the
-                  premise.
+                  No locations defined — the engine will create them from the premise.
                 </p>
-              )}
-              <div className="flex flex-col gap-2">
-                {wd.locations.map((loc, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-2 items-start bg-bg-elevated rounded-lg p-2.5 border border-border"
-                  >
-                    <div className="flex-1 flex flex-col gap-1.5">
-                      <input
-                        type="text"
-                        value={loc.name}
-                        onChange={(e) =>
-                          updateLocation(i, { name: e.target.value })
-                        }
-                        placeholder="Location name"
-                        className="flex-1 bg-transparent border-b border-border text-xs text-text-primary outline-none placeholder:text-text-dim focus:border-white/20 transition pb-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={loc.description}
-                        onChange={(e) =>
-                          updateLocation(i, { description: e.target.value })
-                        }
-                        placeholder="Description, atmosphere, significance..."
-                        className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none placeholder:text-text-dim/60 focus:border-white/20 transition pb-0.5"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeLocation(i)}
-                      className="text-text-dim hover:text-text-secondary text-xs mt-0.5"
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {wd.locations.map((loc, i) => (
+                    <div
+                      key={i}
+                      className="flex gap-2 items-start bg-bg-elevated rounded-lg p-3 border border-border"
                     >
-                      &times;
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={loc.name}
+                          onChange={(e) => updateLocation(i, { name: e.target.value })}
+                          placeholder="Location name"
+                          className="flex-1 bg-transparent border-b border-border text-xs text-text-primary outline-none placeholder:text-text-dim focus:border-white/20 transition pb-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={loc.description}
+                          onChange={(e) => updateLocation(i, { description: e.target.value })}
+                          placeholder="Description, atmosphere, significance…"
+                          className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none placeholder:text-text-dim/60 focus:border-white/20 transition pb-0.5"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeLocation(i)}
+                        className="text-text-dim hover:text-text-secondary text-xs mt-0.5"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
             {/* Threads */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+            <section className="border-t border-white/8 pt-8">
+              <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim font-mono">
-                  Threads
+                  Threads <span className="normal-case tracking-normal text-text-dim/60">(optional)</span>
                 </label>
                 <button
                   type="button"
@@ -500,238 +534,241 @@ export function CreationWizard() {
                   + Add
                 </button>
               </div>
-              {wd.threads.length === 0 && (
+              {wd.threads.length === 0 ? (
                 <p className="text-[11px] text-text-dim/60 italic">
-                  No threads defined — the AI will generate narrative tensions
-                  from the premise.
+                  No threads defined — the engine will generate narrative tensions from the premise.
                 </p>
-              )}
-              <div className="flex flex-col gap-2">
-                {wd.threads.map((th, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-2 items-start bg-bg-elevated rounded-lg p-2.5 border border-border"
-                  >
-                    <div className="flex-1 flex flex-col gap-1.5">
-                      <input
-                        type="text"
-                        value={th.description}
-                        onChange={(e) =>
-                          updateThread(i, { description: e.target.value })
-                        }
-                        placeholder="Describe the tension, conflict, or open question..."
-                        className="flex-1 bg-transparent border-b border-border text-xs text-text-primary outline-none placeholder:text-text-dim focus:border-white/20 transition pb-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={th.participantNames.join(", ")}
-                        onChange={(e) =>
-                          updateThread(i, {
-                            participantNames: e.target.value
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter(Boolean),
-                          })
-                        }
-                        placeholder="Participants (comma-separated names)..."
-                        className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none placeholder:text-text-dim/60 focus:border-white/20 transition pb-0.5"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeThread(i)}
-                      className="text-text-dim hover:text-text-secondary text-xs mt-0.5"
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {wd.threads.map((th, i) => (
+                    <div
+                      key={i}
+                      className="flex gap-2 items-start bg-bg-elevated rounded-lg p-3 border border-border"
                     >
-                      &times;
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={th.description}
+                          onChange={(e) => updateThread(i, { description: e.target.value })}
+                          placeholder="Describe the tension, conflict, or open question…"
+                          className="flex-1 bg-transparent border-b border-border text-xs text-text-primary outline-none placeholder:text-text-dim focus:border-white/20 transition pb-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={th.participantNames.join(", ")}
+                          onChange={(e) =>
+                            updateThread(i, {
+                              participantNames: e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                          placeholder="Participants (comma-separated names)…"
+                          className="bg-transparent border-b border-border text-[10px] text-text-dim outline-none placeholder:text-text-dim/60 focus:border-white/20 transition pb-0.5"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeThread(i)}
+                        className="text-text-dim hover:text-text-secondary text-xs mt-0.5"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Options */}
+            <section className="border-t border-white/8 pt-8">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
+                Options
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={wd.worldOnly ?? false}
+                  onChange={(e) => update({ worldOnly: e.target.checked })}
+                  className="accent-emerald-400 w-3.5 h-3.5"
+                />
+                <span className="text-xs text-text-dim">
+                  World only — skip introduction arc
+                  <span className="ml-1 text-text-dim/60">
+                    (use premise as story plan, generate entities only)
+                  </span>
+                </span>
+              </label>
+            </section>
+          </div>
+        </div>
+
+        {/* Footer actions — translucent so the constellations bleed through */}
+        <div className="border-t border-white/10 px-8 py-4 shrink-0 flex items-center justify-between bg-bg-base/40 backdrop-blur-md">
+          <button
+            onClick={closeWizard}
+            disabled={loading}
+            className="text-text-dim text-xs hover:text-text-secondary transition disabled:opacity-30 disabled:pointer-events-none"
+          >
+            Cancel
+          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleStartBlank}
+              disabled={!wd.title.trim() || isDuplicate || loading}
+              title="Skip the premise and start with an empty world — only the title is kept."
+              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary text-xs font-medium px-4 py-2 rounded-lg backdrop-blur-sm transition disabled:opacity-30 disabled:pointer-events-none"
+            >
+              Start blank
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate || loading}
+              className="relative bg-linear-to-r from-emerald-500/30 via-emerald-400/30 to-cyan-400/30 hover:from-emerald-500/40 hover:via-emerald-400/40 hover:to-cyan-400/40 border border-emerald-400/40 text-emerald-200 hover:text-emerald-100 text-xs font-semibold px-5 py-2 rounded-lg shadow-[0_0_16px_rgba(52,211,153,0.25)] hover:shadow-[0_0_24px_rgba(52,211,153,0.45)] transition disabled:opacity-30 disabled:pointer-events-none disabled:shadow-none"
+            >
+              {loading ? "Generating…" : "Generate World View"}
+            </button>
+          </div>
+        </div>
+
+        {/* Generation overlay — animated visual + timer + stream */}
+        {(loading || isGenerating || error) && (
+          <GenerationOverlay
+            loading={loading}
+            error={error}
+            streamText={streamText}
+            onCancel={() => {
+              started.current = false;
+              setError("");
+              wizardDispatch({ type: "SET_STEP", step: "form" });
+            }}
+            onRetry={handleGenerate}
+          />
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ── Generation overlay ───────────────────────────────────────────────────────
+// Full-pane orbital animation + mm:ss elapsed timer + collapsible stream view.
+
+function GenerationOverlay({
+  loading,
+  error,
+  streamText,
+  onCancel,
+  onRetry,
+}: {
+  loading: boolean;
+  error: string;
+  streamText: string;
+  onCancel: () => void;
+  onRetry: () => void;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  const [showStream, setShowStream] = useState(false);
+
+  useEffect(() => {
+    if (!loading) return;
+    const start = Date.now();
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+    }, 250);
+    return () => {
+      clearInterval(id);
+      setElapsed(0);
+    };
+  }, [loading]);
+
+  const mm = Math.floor(elapsed / 60).toString().padStart(2, "0");
+  const ss = (elapsed % 60).toString().padStart(2, "0");
+
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-base/70 backdrop-blur-md">
+      <div className="flex flex-col items-center gap-8 max-w-xl w-full px-8">
+        {loading ? (
+          <>
+            {/* Orbital animation */}
+            <div className="relative w-56 h-56">
+              {/* Concentric rings */}
+              <svg viewBox="0 0 224 224" className="absolute inset-0">
+                <circle cx="112" cy="112" r="96" fill="none" stroke="rgba(52, 211, 153, 0.06)" strokeWidth="1" />
+                <circle cx="112" cy="112" r="68" fill="none" stroke="rgba(52, 211, 153, 0.10)" strokeWidth="1" />
+                <circle cx="112" cy="112" r="40" fill="none" stroke="rgba(52, 211, 153, 0.14)" strokeWidth="1" />
+              </svg>
+
+              {/* Outer orbit — 1 large node, slow CW */}
+              <div className="absolute inset-0 animate-[spin_10s_linear_infinite]">
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
               </div>
+
+              {/* Middle orbit — 2 nodes opposite, medium CCW */}
+              <div className="absolute inset-0 animate-[spin_6s_linear_infinite_reverse]">
+                <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.6)]" />
+                <div className="absolute bottom-[14%] left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.6)]" />
+              </div>
+
+              {/* Inner orbit — 4 nodes (cardinal), fast CW */}
+              <div className="absolute inset-0 animate-[spin_4s_linear_infinite]">
+                <div className="absolute top-[28%] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-200/80" />
+                <div className="absolute bottom-[28%] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-200/80" />
+                <div className="absolute top-1/2 left-[28%] -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-200/80" />
+                <div className="absolute top-1/2 right-[28%] -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-200/80" />
+              </div>
+
+              {/* Center pulse */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_20px_rgba(52,211,153,0.9)]" />
             </div>
 
-            {/* World-only toggle */}
-            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
-              <input
-                type="checkbox"
-                checked={wd.worldOnly ?? false}
-                onChange={(e) => update({ worldOnly: e.target.checked })}
-                className="accent-emerald-400 w-3.5 h-3.5"
-              />
-              <span className="text-xs text-text-dim">
-                World only — skip introduction arc
-                <span className="ml-1 text-text-dim/60">
-                  (use premise as story plan, generate entities only)
-                </span>
-              </span>
-            </label>
+            {/* Label + timer */}
+            <div className="text-center">
+              <div className="text-sm font-medium text-text-primary">Generating world view…</div>
+              <div className="text-3xl font-mono text-emerald-400 mt-3 tabular-nums tracking-wider">
+                {mm}:{ss}
+              </div>
+              <div className="text-[10px] text-text-dim mt-2 tracking-wider uppercase">elapsed</div>
+            </div>
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between pt-1">
+            {/* Optional stream peek */}
+            <div className="w-full">
               <button
-                onClick={() =>
-                  wizardDispatch({ type: "SET_STEP", step: "form" })
-                }
+                onClick={() => setShowStream((s) => !s)}
+                className="text-[10px] text-text-dim hover:text-text-secondary uppercase tracking-wider transition"
+              >
+                {showStream ? "Hide reasoning ▴" : "Show reasoning ▾"}
+              </button>
+              {showStream && (
+                <pre className="mt-2 text-[10px] text-text-dim/80 font-mono whitespace-pre-wrap max-h-48 overflow-y-auto bg-white/3 border border-white/8 rounded-lg p-3 leading-relaxed">
+                  {streamText || "Waiting on first tokens…"}
+                </pre>
+              )}
+            </div>
+          </>
+        ) : error ? (
+          <>
+            <h3 className="text-sm font-semibold text-fate">Generation failed</h3>
+            <div className="bg-fate/10 border border-fate/30 rounded-lg px-4 py-3 w-full">
+              <p className="text-xs text-fate/80">{error}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onCancel}
                 className="text-text-dim text-xs hover:text-text-secondary transition"
               >
                 &larr; Back
               </button>
               <button
-                onClick={() =>
-                  wizardDispatch({ type: "SET_STEP", step: "generate" })
-                }
+                onClick={onRetry}
                 className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition"
               >
-                Generate
+                Retry
               </button>
             </div>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-
-  // ── Step 1: Title & Premise ────────────────────────────────────────
-  return (
-    <Modal
-      onClose={closeWizard}
-      size="2xl"
-      maxHeight="85vh"
-      panelClassName="glass"
-    >
-      <div className="p-6 relative">
-        <button
-          onClick={closeWizard}
-          className="absolute top-4 right-4 text-text-dim hover:text-text-primary text-lg leading-none"
-        >
-          &times;
-        </button>
-
-        <div className="flex flex-col gap-5 max-h-[75vh] overflow-y-auto pr-1">
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-mono text-text-dim">
-                Step 1 of 2
-              </span>
-            </div>
-            <h2 className="text-sm font-semibold text-text-primary mb-1">
-              New Series
-            </h2>
-            <p className="text-[11px] text-text-dim">
-              Give your series a title and describe the premise.
-            </p>
-          </div>
-
-          {/* Title */}
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-1.5 block font-mono">
-              Title
-            </label>
-            <input
-              type="text"
-              value={wd.title}
-              onChange={(e) => update({ title: e.target.value })}
-              placeholder="e.g. The Gilded Cage"
-              className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full outline-none placeholder:text-text-dim focus:border-white/16 transition"
-            />
-            {isDuplicate && (
-              <p className="text-[11px] text-fate mt-1">
-                A series with this name already exists.
-              </p>
-            )}
-          </div>
-
-          {/* Register */}
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-1.5 block font-mono">
-              Paradigm
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {PARADIGMS.map((p) => {
-                const active = wd.paradigm === p.value;
-                return (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => update({ paradigm: p.value })}
-                    title={p.hint}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition text-left ${
-                      active
-                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                        : "bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    <div className="font-medium">{p.label}</div>
-                    <div className={`text-[10px] mt-0.5 leading-tight ${active ? "text-emerald-300/70" : "text-text-dim"}`}>
-                      {p.hint}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-text-dim/60 italic mt-1.5">
-              Steers generation into one of the engine&apos;s six canonical world-shapes.
-            </p>
-          </div>
-
-          {/* Premise */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim font-mono">
-                Premise
-              </label>
-              <button
-                type="button"
-                onClick={handleSuggest}
-                disabled={suggesting}
-                className="text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
-              >
-                {suggesting ? "Thinking..." : "Suggest"}
-              </button>
-            </div>
-            <textarea
-              value={wd.premise}
-              onChange={(e) => update({ premise: e.target.value })}
-              placeholder="Describe your world, characters, and the central conflict..."
-              className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full h-28 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
-            />
-          </div>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() =>
-                  wizardDispatch({ type: "SET_STEP", step: "details" })
-                }
-                disabled={!canGenerate}
-                className="text-text-dim text-xs hover:text-text-secondary transition disabled:opacity-30 disabled:pointer-events-none"
-              >
-                Add details &rarr;
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleStartBlank}
-                disabled={!wd.title.trim() || isDuplicate}
-                title="Skip the premise and start with an empty world — only the title is kept."
-                className="group flex items-center gap-2 bg-white/4 hover:bg-white/8 border border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary text-xs font-medium px-3.5 py-2 rounded-lg transition disabled:opacity-30 disabled:pointer-events-none disabled:hover:bg-white/4 disabled:hover:border-white/10"
-              >
-                Start blank
-              </button>
-              <button
-                onClick={() =>
-                  wizardDispatch({ type: "SET_STEP", step: "generate" })
-                }
-                disabled={!canGenerate}
-                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition disabled:opacity-30 disabled:pointer-events-none"
-              >
-                New World View
-              </button>
-            </div>
-          </div>
-        </div>
+          </>
+        ) : null}
       </div>
-    </Modal>
+    </div>
   );
 }
