@@ -14,6 +14,7 @@ import {
   DEFAULT_STORY_SETTINGS,
   type CharacterSketch,
   type LocationSketch,
+  type NarrativeParadigm,
   type NarrativeState,
   type ThreadSketch,
   type WorldBuild,
@@ -22,6 +23,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const ROLES: CharacterSketch["role"][] = ["anchor", "recurring", "transient"];
+
+const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
+  { value: "fiction",     label: "Fiction",     hint: "Invented people in an invented world" },
+  { value: "non-fiction", label: "Non-fiction", hint: "Real people, places, documented events" },
+  { value: "simulation",  label: "Simulation",  hint: "Rule-driven scenario with in-world figures" },
+  { value: "analysis",    label: "Analysis",    hint: "AI agent team pursuing a thesis" },
+  { value: "paper",       label: "Paper",       hint: "Single author + cited interlocutors" },
+  { value: "essay",       label: "Essay",       hint: "Singular thinker working an argument" },
+];
 
 function buildBlankNarrative(title: string): NarrativeState {
   const now = Date.now();
@@ -229,6 +239,7 @@ export function CreationWizard() {
         buildEnhancedPremise(),
         (reasoning) => setStreamText((prev) => prev + reasoning),
         wd.worldOnly ?? false,
+        wd.paradigm,
       );
       dispatch({ type: "ADD_NARRATIVE", narrative });
       wizardDispatch({ type: "CLOSE" });
@@ -628,6 +639,39 @@ export function CreationWizard() {
                 A series with this name already exists.
               </p>
             )}
+          </div>
+
+          {/* Register */}
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-1.5 block font-mono">
+              Paradigm
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {PARADIGMS.map((p) => {
+                const active = wd.paradigm === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => update({ paradigm: p.value })}
+                    title={p.hint}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition text-left ${
+                      active
+                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                        : "bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <div className="font-medium">{p.label}</div>
+                    <div className={`text-[10px] mt-0.5 leading-tight ${active ? "text-emerald-300/70" : "text-text-dim"}`}>
+                      {p.hint}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-text-dim/60 italic mt-1.5">
+              Steers generation into one of the engine&apos;s six canonical world-shapes.
+            </p>
           </div>
 
           {/* Premise */}

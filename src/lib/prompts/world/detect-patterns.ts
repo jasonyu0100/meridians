@@ -56,9 +56,18 @@ ${proseSamples || 'No prose available yet'}
     Analyze this narrative's PROSE STYLE, STRUCTURE, and CONTENT to detect its REGISTER and GENRE, and derive patterns/anti-patterns. The goal is a LIVING narrative that evolves — patterns encourage growth and surprise; anti-patterns prevent comfortable ruts.
   </purpose>
 
-  <step name="detect-genre">Based on prose samples, world systems, and narrative structure, identify:
-    <field>Primary register — three first-class options, no default: FICTION (thriller, romance, horror, mystery, literary, speculative, screenplay, drama), NON-FICTION (memoir, essay, reportage, research paper, case study, history, biography, ethnography), or SIMULATION (rule-driven modelling of real-life events — historical counterfactual, economic / policy modelling, political wargame, pandemic / climate scenario, agent-based social-dynamics study, scientific process modelling, LitRPG / cultivation / xianxia, technological forecasting). Read the source and pick the term that fits.</field>
-    <field>Specific subgenre or sub-register — narrow it (e.g. cozy mystery, autobiographical memoir, investigative reportage, theoretical paper, Mughal-succession counterfactual, monetary-policy wargame, cultivation-tier xianxia). Match what the source actually is; do not default to any single tradition.</field>
+  <step name="detect-paradigm">Identify which of the SIX canonical paradigms the work IS. The paradigm picks the world-shape and downstream generation behaviour — pick EXACTLY ONE.
+    <paradigm name="fiction">Invented people, invented world — novels, novellas, short fiction, drama. World shape: populated narrative.</paradigm>
+    <paradigm name="non-fiction">Real people, real places, documented events — memoir, biography, history, reportage. World shape: populated narrative.</paradigm>
+    <paradigm name="simulation">Rule-driven modelling of real-life events with in-world figures the rules act on — historical counterfactual, political wargame, agent-based study, cultivation / xianxia where in-world mechanics drive events. World shape: populated narrative (humans + system rules).</paradigm>
+    <paradigm name="analysis">Thesis-driven analytical work pursued by a TEAM of AI agents collaborating to develop the thesis — investment analysis, strategy team, multi-agent reasoning. World shape: agentic-ai-team with single-word memorable agent names.</paradigm>
+    <paradigm name="paper">Research paper presenting a finding with methods + testable prediction. World shape: singular thinker (one named author + cited interlocutors).</paradigm>
+    <paradigm name="essay">An extended argument from a single named author's voice. World shape: singular thinker.</paradigm>
+  </step>
+
+  <step name="detect-genre-and-subgenre">Within the chosen paradigm, identify:
+    <field>Genre — the specific tradition or category within the paradigm (e.g. for fiction: thriller, romance, horror, fantasy, sci-fi, literary; for non-fiction: memoir, biography, reportage; for simulation: counterfactual, wargame, policy modelling; for analysis: macro-strategy, investigation, multi-agent reasoning; for paper: empirical, theoretical, methods; for essay: personal, critical, polemical).</field>
+    <field>Subgenre — narrow it (e.g. cozy mystery, autobiographical memoir, Mughal-succession counterfactual, monetary-policy wargame, geopolitical macro strategy, applied-econometrics paper, literary criticism essay).</field>
   </step>
 
   <step name="derive-patterns" count="5-7" hint="Positive commandments encouraging VARIETY and excellence.">
@@ -84,24 +93,26 @@ ${proseSamples || 'No prose available yet'}
   </step>
 
   <critical-output-rules>
+    <rule>"detectedParadigm" MUST be exactly one of: fiction, non-fiction, simulation, analysis, paper, essay.</rule>
     <rule>"detectedGenre" and "detectedSubgenre" MUST be populated as their own top-level fields.</rule>
-    <rule>DO NOT prefix any pattern or anti-pattern with "Genre:" or "Subgenre:" — those belong only in the dedicated fields.</rule>
-    <rule>Each pattern/anti-pattern must be a concrete commandment, not a genre or register label.</rule>
+    <rule>DO NOT prefix any pattern or anti-pattern with "Paradigm:" / "Genre:" / "Subgenre:" — those belong only in the dedicated fields.</rule>
+    <rule>Each pattern/anti-pattern must be a concrete commandment, not a paradigm or genre label.</rule>
   </critical-output-rules>
 </instructions>
 
 <output-format>
 Return JSON:
 {
-  "detectedGenre": "primary genre or register",
-  "detectedSubgenre": "specific subgenre or sub-register",
+  "detectedParadigm": "one of: fiction | non-fiction | simulation | analysis | paper | essay",
+  "detectedGenre": "primary genre within the paradigm",
+  "detectedSubgenre": "specific subgenre",
   "patterns": [
-    "Pattern 1 — concrete, actionable, fitted to the detected register",
+    "Pattern 1 — concrete, actionable, fitted to the detected paradigm + genre",
     "Pattern 2",
     "..."
   ],
   "antiPatterns": [
-    "Anti-pattern 1 — concrete, actionable, fitted to the detected register",
+    "Anti-pattern 1 — concrete, actionable, fitted to the detected paradigm + genre",
     "Anti-pattern 2",
     "..."
   ]

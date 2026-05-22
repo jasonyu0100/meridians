@@ -92,6 +92,7 @@ import type {
   StructureReview,
   SystemEdge,
   SystemGraph,
+  NarrativeParadigm,
   SystemDelta,
   SystemNode,
   Thread,
@@ -905,7 +906,7 @@ export type Action =
   | { type: "DELETE_PHASE_GRAPH"; modeId: string }
   | { type: "SET_GENRE"; genre: string }
   | { type: "SET_SUBGENRE"; subgenre: string }
-  | { type: "SET_DETECTED_PATTERNS"; genre: string; subgenre: string; patterns: string[]; antiPatterns: string[] }
+  | { type: "SET_DETECTED_PATTERNS"; paradigm?: NarrativeParadigm; genre: string; subgenre: string; patterns: string[]; antiPatterns: string[] }
   // Analysis
   | { type: "ADD_ANALYSIS_JOB"; job: AnalysisJob }
   | { type: "UPDATE_ANALYSIS_JOB"; id: string; updates: Partial<AnalysisJob> }
@@ -2877,6 +2878,7 @@ function reducer(state: AppState, action: Action): AppState {
     case "SET_DETECTED_PATTERNS":
       return updateNarrative(state, (n) => ({
         ...n,
+        ...(action.paradigm !== undefined ? { paradigm: action.paradigm } : {}),
         genre: action.genre,
         subgenre: action.subgenre,
         patterns: action.patterns,

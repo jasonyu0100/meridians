@@ -1,4 +1,4 @@
-import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild } from '@/types/narrative';
+import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm } from '@/types/narrative';
 import { resolveEntry, isScene, REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { resolveReasoningBudget } from './api';
 import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/narrative-utils';
@@ -638,6 +638,10 @@ export async function generateNarrative(
   /** When true: generate world entities only — no introduction arc or scenes.
    *  The premise is treated as a full story plan / world bible to seed from. */
   worldOnly = false,
+  /** Selected paradigm — steers generation into one of the engine's canonical
+   *  world-shapes (populated-narrative / agentic-ai-team / singular-thinker).
+   *  Defaults to 'fiction'. */
+  paradigm: NarrativeParadigm = 'fiction',
 ): Promise<NarrativeState> {
   logInfo('Starting narrative generation', {
     source: 'manual-generation',
@@ -645,6 +649,7 @@ export async function generateNarrative(
     details: {
       title,
       worldOnly,
+      paradigm,
     },
   });
 
@@ -652,6 +657,7 @@ export async function generateNarrative(
     title,
     premise,
     worldOnly,
+    paradigm,
     forceReferenceMeansWorld: FORCE_REFERENCE_MEANS.world,
     forceReferenceMeansSystem: FORCE_REFERENCE_MEANS.system,
     worldTypicalBand: fmtBand(FORCE_BANDS.world.typical),
@@ -1007,9 +1013,14 @@ export async function generateNarrative(
 export type DetectedPatterns = {
   patterns: string[];
   antiPatterns: string[];
+  detectedParadigm?: NarrativeParadigm;
   detectedGenre: string;
   detectedSubgenre: string;
 };
+
+const VALID_PARADIGMS: ReadonlySet<NarrativeParadigm> = new Set<NarrativeParadigm>([
+  'fiction', 'non-fiction', 'simulation', 'analysis', 'paper', 'essay',
+]);
 
 /**
  * Analyze an existing narrative and auto-detect patterns and anti-patterns
@@ -1112,6 +1123,7 @@ export async function detectPatterns(
       );
 
   const parsed = parseJson(raw, 'detectPatterns') as {
+    detectedParadigm?: unknown;
     detectedGenre?: unknown;
     detectedSubgenre?: unknown;
     patterns?: unknown;
@@ -1120,6 +1132,9 @@ export async function detectPatterns(
 
   let detectedGenre = typeof parsed.detectedGenre === 'string' ? parsed.detectedGenre.trim() : '';
   let detectedSubgenre = typeof parsed.detectedSubgenre === 'string' ? parsed.detectedSubgenre.trim() : '';
+  const rawParadigm = typeof parsed.detectedParadigm === 'string' ? parsed.detectedParadigm.trim().toLowerCase() : '';
+  const detectedParadigm: NarrativeParadigm | undefined =
+    VALID_PARADIGMS.has(rawParadigm as NarrativeParadigm) ? (rawParadigm as NarrativeParadigm) : undefined;
 
   const stripGenreLeak = (items: string[]): string[] => {
     const cleaned: string[] = [];
@@ -1149,6 +1164,7 @@ export async function detectPatterns(
     : [];
 
   return {
+    detectedParadigm,
     detectedGenre: detectedGenre || 'Unknown',
     detectedSubgenre: detectedSubgenre || 'Unknown',
     patterns: stripGenreLeak(rawPatterns),

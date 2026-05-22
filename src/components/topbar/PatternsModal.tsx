@@ -5,6 +5,16 @@ import { useStore } from '@/lib/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter, StreamingStatus } from '@/components/Modal';
 import { detectPatterns } from '@/lib/ai';
 import { IconRefresh } from '@/components/icons';
+import type { NarrativeParadigm } from '@/types/narrative';
+
+const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
+  { value: 'fiction',     label: 'Fiction',     hint: 'Invented people, invented world' },
+  { value: 'non-fiction', label: 'Non-fiction', hint: 'Real people, documented events' },
+  { value: 'simulation',  label: 'Simulation',  hint: 'Rule-driven scenario, in-world figures' },
+  { value: 'analysis',    label: 'Analysis',    hint: 'AI agent team pursuing a thesis' },
+  { value: 'paper',       label: 'Paper',       hint: 'Single author + cited interlocutors' },
+  { value: 'essay',       label: 'Essay',       hint: 'Singular thinker working an argument' },
+];
 
 type Props = {
   onClose: () => void;
@@ -176,6 +186,7 @@ export function PatternsModal({ onClose }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
 
+  const [paradigm, setParadigm] = useState<NarrativeParadigm | undefined>(narrative?.paradigm);
   const [genre, setGenre] = useState<string>(narrative?.genre ?? '');
   const [subgenre, setSubgenre] = useState<string>(narrative?.subgenre ?? '');
   const [patterns, setPatterns] = useState<string[]>(narrative?.patterns ?? []);
@@ -196,6 +207,7 @@ export function PatternsModal({ onClose }: Props) {
         headIndex,
         (token) => setStreamText((prev) => prev + token),
       );
+      if (result.detectedParadigm) setParadigm(result.detectedParadigm);
       setGenre(result.detectedGenre);
       setSubgenre(result.detectedSubgenre);
       setPatterns(result.patterns);
@@ -211,6 +223,7 @@ export function PatternsModal({ onClose }: Props) {
   const handleSave = () => {
     dispatch({
       type: 'SET_DETECTED_PATTERNS',
+      paradigm,
       genre,
       subgenre,
       patterns,
@@ -220,6 +233,7 @@ export function PatternsModal({ onClose }: Props) {
   };
 
   const hasChanges =
+    paradigm !== narrative?.paradigm ||
     genre !== (narrative?.genre ?? '') ||
     subgenre !== (narrative?.subgenre ?? '') ||
     JSON.stringify(patterns) !== JSON.stringify(narrative?.patterns ?? []) ||
@@ -251,12 +265,17 @@ export function PatternsModal({ onClose }: Props) {
           </button>
         )}
 
-        {/* Genre / Subgenre */}
+        {/* Paradigm / Genre / Subgenre */}
         <div className="border border-white/10 rounded-lg bg-bg-elevated/40 p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[10px] uppercase tracking-widest text-text-dim">Detected Classification</span>
-            {(genre || subgenre) && (
+            {(paradigm || genre || subgenre) && (
               <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {paradigm && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
+                    {paradigm}
+                  </span>
+                )}
                 {genre && (
                   <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-medium">
                     {genre}
@@ -269,6 +288,34 @@ export function PatternsModal({ onClose }: Props) {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Paradigm selector — six canonical world-shapes */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-text-dim">Paradigm</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {PARADIGMS.map((p) => {
+                const active = paradigm === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setParadigm(p.value)}
+                    title={p.hint}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition text-left ${
+                      active
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                        : 'bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <div className="font-medium">{p.label}</div>
+                    <div className={`text-[10px] mt-0.5 leading-tight ${active ? 'text-emerald-300/70' : 'text-text-dim'}`}>
+                      {p.hint}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">

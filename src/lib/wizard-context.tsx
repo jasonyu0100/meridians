@@ -27,6 +27,7 @@ export type WizardAction =
 const initialWizardData: WizardData = {
   title: "",
   premise: "",
+  paradigm: "fiction",
   characters: [],
   locations: [],
   threads: [],

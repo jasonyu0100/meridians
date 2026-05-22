@@ -1592,6 +1592,11 @@ export type NarrativeState = {
   proseEvaluations?: Record<string, ProseEvaluation>;
   /** Plan evaluations keyed by branch ID — most recent plan eval per branch */
   planEvaluations?: Record<string, PlanEvaluation>;
+  /** Paradigm — one of the six canonical world-shapes (fiction / non-fiction /
+   *  simulation / analysis / paper / essay). Set at creation (wizard or text
+   *  analysis); user can change post-hoc via the Patterns modal. Drives world
+   *  generation, scene generation, world expansion. */
+  paradigm?: NarrativeParadigm;
   /** Detected primary genre (fantasy, sci-fi, thriller, romance, horror, mystery, literary, etc.) */
   genre?: string;
   /** Detected specific subgenre (progression fantasy, space opera, cozy mystery, dark romance, LitRPG, xianxia, etc.) */
@@ -2605,9 +2610,26 @@ export type ThreadSketch = {
   participantNames: string[];
 };
 
+/** The six canonical paradigms the engine supports. Each maps to a world-shape
+ *  in the generation prompt:
+ *  - fiction / non-fiction / simulation → populated-narrative (human or in-world characters)
+ *  - analysis → agentic-ai-team (memorable single-word AI agents — Atlas, Cipher, Nexus, Vanguard)
+ *  - paper / essay → singular-thinker (one named author + cited interlocutors)
+ *  Defaults to 'fiction' in the wizard; the user can switch to any other paradigm. */
+export type NarrativeParadigm =
+  | 'fiction'
+  | 'non-fiction'
+  | 'simulation'
+  | 'analysis'
+  | 'paper'
+  | 'essay';
+
 export type WizardData = {
   title: string;
   premise: string;
+  /** Selected paradigm — steers world generation into one of the engine's
+   *  canonical world-shapes. Defaults to 'fiction'. */
+  paradigm: NarrativeParadigm;
   characters: CharacterSketch[];
   locations: LocationSketch[];
   threads: ThreadSketch[];

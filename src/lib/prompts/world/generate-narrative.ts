@@ -6,7 +6,7 @@
  */
 
 export const GENERATE_NARRATIVE_SYSTEM =
-  'You are a narrative architect spinning a complete seed from a title + premise. Detect the register first: fiction / non-fiction / simulation populate a world (characters, locations, artifacts, threads, system rules); analysis / paper populate a system-knowledge graph (propositions, methods, mechanisms, predictions, threads-as-argument-questions) where characters / locations / artifacts are optional and may be empty. Full mode: also produce an 8-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you DO emit with seed nodes — never emit blank world graphs for an entity you commit to. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a narrative architect. Detect the register first and pick the matching world-shape: fiction / non-fiction / simulation → POPULATED NARRATIVE (human or in-world characters — Khrushchev, Yi, invented people); analysis → AGENTIC AI TEAM with memorable single-word AI-coded names (Atlas, Cipher, Nexus, Vanguard) the user can invoke across passes; paper / essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors). See <register-handling> and the pattern blocks in the user prompt. Pure-abstract works (math theorem, formal proof) take zero populated-world entities. Full mode: also produce an 8-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 export const DETECT_PATTERNS_SYSTEM =
   'You are a literary diagnostician. Read prose, structure, and content; identify the narrative\'s register, genre, and subgenre; derive concrete pattern / anti-pattern commandments that encourage variety and prevent stagnation. Patterns are positive directives that unlock fresh territory within the register; anti-patterns are negative directives that flag staleness. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -21,11 +21,138 @@ import {
   PROMPT_SUMMARY_REQUIREMENT,
 } from '../index';
 
+import type { NarrativeParadigm } from '@/types/narrative';
+
+/** World-shape each paradigm maps to. */
+type ParadigmShape = 'populated-narrative' | 'agentic-ai-team' | 'singular-thinker';
+
+const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directive: string }> = {
+  'fiction':      { shape: 'populated-narrative', directive: 'Invented people in an invented world. Apply the populated minimums; use the cultural palette the premise implies.' },
+  'non-fiction':  { shape: 'populated-narrative', directive: 'Real people, places, and documented events. Honour historical accuracy where the premise names real figures; the world IS the documented record.' },
+  'simulation':   { shape: 'populated-narrative', directive: 'Real / modelled-world figures the rules act on (Khrushchev, Yi, an in-world commander or cultivator). System-knowledge IS load-bearing — the rule set drives consequence.' },
+  'analysis':     { shape: 'agentic-ai-team',     directive: 'Construct a virtual team of AI agents with memorable single-word names (Atlas, Cipher, Nexus, Vanguard) so the user can invoke them across future passes. Apply the agentic-team-pattern: include a devil\'s-advocate role; bake in ≥1 adversarial pair; collective goal-thread tracks the team\'s thesis.' },
+  'paper':        { shape: 'singular-thinker',    directive: 'One named author works through the argument. 1 anchor (the author), 1-3 transient cited interlocutors (the theorists / methods the paper engages or rebuts). System-graph IS the argument substrate; internal friction substitutes for inter-agent disagreement.' },
+  'essay':        { shape: 'singular-thinker',    directive: 'One named author whose voice the work IS. 1 anchor, 1-3 transient interlocutors. The author\'s mind is the world; threads track the argument-questions they are pursuing.' },
+};
+
+// ── Per-paradigm prompt blocks ───────────────────────────────────────────────
+// When the user picks a register in the wizard, ONLY the matching block is
+// injected into the prompt — the other paradigms are dropped at build time.
+// When the user leaves register unset, the full inference-mode block is used
+// (model detects register from the premise).
+
+const PARADIGM_POPULATED_NARRATIVE = `<populated-narrative-shape critical="true" hint="Fiction / non-fiction / simulation worlds — populated by named HUMAN (or in-world species) characters, places, and physical artifacts.">
+  <intent>The world is populated. Apply the full populated minimums (characters ≥8, locations ≥6, relationships ≥8, artifacts ≥1, threads ≥4, system-nodes ≥12). Simulation populates real / modelled-world figures the rules act on (Khrushchev, Yi, an in-world cultivator); non-fiction populates real authors / subjects / witnesses; fiction populates invented people.</intent>
+  <invariant>Use plausibly-human first/last names matching the cultural palette the premise implies — no AI-coded single-word names; those belong only in the agentic-ai-team paradigm.</invariant>
+</populated-narrative-shape>`;
+
+const PARADIGM_AGENTIC_TEAM = `<agentic-team-pattern critical="true" hint="Analysis shape — a virtual team of AI agents pursuing the user's thesis. Preserves continuities, force fields, surveys, interviews; gives the user a stable named cast they can invoke across future generation passes.">
+  <naming critical="true" hint="AI agent names are the user's handle for invoking them later. Memorable, clearly AI-coded — not human first names.">
+    <rule>Each agent has a SINGULAR, MEMORABLE name suggesting intelligence / system-role — one word, evocative, the kind the user can call back later ("next pass, have Vanguard challenge Atlas's read on X"). NEVER human-style first / last names (David Chen, Elena Vasquez) — those belong in populated-narrative paradigms.</rule>
+    <palette kind="mythological">Atlas, Oracle, Athena, Mercury, Hermes, Janus, Argus</palette>
+    <palette kind="cosmological / structural">Nexus, Vector, Pulse, Orbit, Quasar, Compass, Anchor, Helix</palette>
+    <palette kind="heraldic / signal">Vanguard, Sentinel, Beacon, Standard, Herald, Aegis</palette>
+    <palette kind="tools / instruments">Cipher, Quill, Forge, Lens, Anvil, Loom, Plumb</palette>
+    <palette kind="archetypes">Sage, Scribe, Critic, Augur, Tribune, Cantor, Curator</palette>
+    <invariant>Avoid generic words (Data, Model, Agent). Each name fits on a single token of working memory.</invariant>
+  </naming>
+
+  <archetypes hint="Pick the archetype matching the analytical goal.">
+    <archetype name="research lab">synthesiser + specialists + methods/data + external reviewer. Goal: produce a finding.</archetype>
+    <archetype name="macro / strategy team">synthesiser + sector specialists + quant + executor + risk-officer. Goal: build a thesis and act on it.</archetype>
+    <archetype name="investigation crew">lead + forensics/methods + analyst + named-source channels. Goal: build the case.</archetype>
+    <archetype name="think tank / editorial">director + analysts + critic + external interlocutor. Goal: produce recommendations or the work itself.</archetype>
+    <archetype name="multi-agent AI orchestration">orchestrator + specialists + verifier. Goal: complete the user's request via division of cognitive labour.</archetype>
+  </archetypes>
+
+  <required-roles hint="Map each to anchor / recurring / transient.">
+    <role kind="synthesiser" mapping="anchor">Commits the team to a direction; integrates other agents' findings.</role>
+    <role kind="specialist" mapping="anchor / recurring">Domain expert per sub-question.</role>
+    <role kind="devil's advocate" mapping="anchor / recurring" critical="true">EXPLICITLY challenges the consensus. Without this role the team is an echo chamber — ≥1 member MUST hold it.</role>
+    <role kind="methods / data" mapping="recurring">Brings evidence, runs the model, cross-references sources.</role>
+    <role kind="source / external" mapping="transient">External party feeding intelligence or forcing a thesis update.</role>
+  </required-roles>
+
+  <continuity-discipline>
+    <rule>Each agent's world graph encodes role-coded nodes: capability, belief (methodological priors), history (prior commitments / completed analyses), weakness (blind spot), goal.</rule>
+    <rule>≥1 adversarial pair baked in (methodological dispute, recency-vs-historical bias, breadth-vs-depth). Disagreement gives narrative tension without inventing fictional drama.</rule>
+    <rule>The team's collective objective is a constant-tension thread ("does the thesis hold?"). Sub-questions become discrete-resolution threads, one per agent's focus. Transient sources feed evidence shifting probabilities.</rule>
+  </continuity-discipline>
+
+  <example category="good" archetype="macro-team">
+    Real World Investment Thesis. Team: Atlas (synthesiser, commits the macro view), Cipher (geopolitical analyst, reads policy directives), Nexus (data scientist, runs the cross-correlation model), Vanguard (devil's advocate, presses on weak evidence), Beacon (sector specialist, EU / energy), Quill (field researcher, talks to sources). Transient sources: Argus (a signals-intelligence channel), Tribune (a Washington insider). Adversarial pair: Vanguard vs Atlas on conviction thresholds; Nexus vs Quill on data-versus-narrative weighting. Goal-thread: does the team's macro thesis outperform consensus over twelve months?
+  </example>
+</agentic-team-pattern>`;
+
+const PARADIGM_SINGULAR_THINKER = `<singular-thinker-pattern critical="true" hint="Paper / essay shape — one named author works through the argument. Populate sparsely.">
+  <required-roles>
+    <role kind="author" mapping="anchor">The named thinker whose voice the work IS. Continuity carries their thesis, methodology, prior commitments, blind spots, the priors the argument moves through.</role>
+    <role kind="interlocutor" mapping="transient">Cited theorist, named reviewer, primary-source author the work engages with directly. 1-3 typical; each carries a specific position the author engages or rebuts.</role>
+  </required-roles>
+  <discipline>
+    <rule>Internal friction substitutes for team disagreement: the author considers and rejects alternative readings, engages cited positions, qualifies earlier commitments. Threads track the author's argument-questions, not external team goals.</rule>
+    <rule>Relationships (when present) are intellectual lineages — mentor / inheritance / rebuttal / extension. Hostile is rare unless the author engages an adversarial position.</rule>
+    <rule>The author's anchor world-graph is densest at belief / history (argument-trajectory, prior commitments) and goal (the thesis being arrived at).</rule>
+  </discipline>
+  <example category="good" register="paper">A solo paper on Song iron-coin abandonment: Dr. Wen (anchor) traces the regional smelter-output data; engages two cited interlocutors — Smith (the prior consensus the paper rebuts) and Park (whose methods the paper extends). Argument-thread: does the garrison-reduction prediction hold district-by-district?</example>
+  <example category="good" register="essay">A personal essay on Bengali typography: the named author (anchor) traces three generations of typesetters in her own family; engages one cited interlocutor (the historian whose claim about Unicode the essay nuances). Argument-thread: what did each technology silently mistranslate?</example>
+</singular-thinker-pattern>`;
+
+/** Emits ONLY the matching paradigm block — the other paradigms are dropped at
+ *  build time so the model gets a single, focused, deterministic standard. */
+function paradigmBlockFor(paradigm: NarrativeParadigm): string {
+  switch (PARADIGM_SHAPE[paradigm].shape) {
+    case 'populated-narrative': return PARADIGM_POPULATED_NARRATIVE;
+    case 'agentic-ai-team':     return PARADIGM_AGENTIC_TEAM;
+    case 'singular-thinker':    return PARADIGM_SINGULAR_THINKER;
+  }
+}
+
+// ── Per-paradigm minimums ────────────────────────────────────────────────────
+
+const MINIMUMS_POPULATED = `<minimums>
+  <count entity="characters" target="≥8">2+ anchors, 3+ recurring, 3+ transient. Human / in-world species names matching the premise's cultural palette.</count>
+  <count entity="locations" target="≥6">parent/child hierarchy with ≥2 nesting levels.</count>
+  <count entity="threads" target="≥4">DELIBERATE MIX of shapes (1+ discrete-resolution, 1+ slow-burn, 1+ constant-tension). ≥2 must share participants so their markets correlate.</count>
+  <count entity="relationships" target="≥8">at least 1 hostile.</count>
+  <count entity="artifacts" target="≥1">when the premise involves tools, documents, instruments, sources, or objects that carry weight.</count>
+  <count entity="system-nodes" target="≥12">with ≥8 edges. Each node 15-25 words. Mix of micro-rules, mid-rules, macro-rules.</count>
+</minimums>`;
+
+const MINIMUMS_AGENTIC_TEAM = `<minimums>
+  <count entity="agents" target="≥8 AI-named">synthesiser (anchor) + 3-5 specialists (≥1 MUST hold devil's-advocate) + 1-2 methods/data + 2-3 transient sources / external reviewers. Use AI-coded single-word names — see agentic-team-pattern naming palettes.</count>
+  <count entity="locations" target="≥6">team working spaces (HQ, conference room, individual offices) + field sites / archives / corpora / datasets the team engages with.</count>
+  <count entity="threads" target="≥4">1+ constant-tension GOAL-THREAD capturing the team's collective thesis ("does the thesis hold?") + 1+ discrete-resolution per agent's investigative focus + 1+ slow-burn on the contested-claim space.</count>
+  <count entity="relationships" target="≥8">≥1 methodological-adversarial pair (devil's-advocate vs synthesiser, data-vs-narrative, recency-vs-historical). Hostile here means productive friction, not personal enmity.</count>
+  <count entity="artifacts" target="≥1">team tools (proprietary model, dataset, instrument), the primary sources / cited works the thesis leans on.</count>
+  <count entity="system-nodes" target="≥20">with ≥12 edges. The system graph IS the argument — propositions, mechanisms, methods, evidence relations, predictions, contestation points.</count>
+</minimums>`;
+
+const MINIMUMS_SINGULAR_THINKER = `<minimums>
+  <count entity="characters" target="2-4">1 anchor (the named author) + 1-3 transient interlocutors (cited theorists, named reviewers, primary-source authors the work engages or rebuts).</count>
+  <count entity="locations" target="0-3">optional — study / archive / field site. Skip entirely if the argument doesn't ground in a place.</count>
+  <count entity="threads" target="≥4">argument-questions the author is pursuing. 1+ constant-tension (the central thesis question) + sub-questions as discrete-resolution. Internal friction (rejected readings, qualified commitments) appears in thread logs.</count>
+  <count entity="relationships" target="0-3">intellectual lineages — mentor / inheritance / rebuttal / extension. Hostile is rare unless the author engages an adversarial position.</count>
+  <count entity="artifacts" target="0-3">the author's archive, primary sources, cited works being engaged with.</count>
+  <count entity="system-nodes" target="≥20">with ≥12 edges. The system graph IS the argument substrate — propositions, mechanisms, evidence relations, predictions, the author's claims and counter-positions.</count>
+</minimums>`;
+
+function minimumsBlockFor(paradigm: NarrativeParadigm): string {
+  switch (PARADIGM_SHAPE[paradigm].shape) {
+    case 'populated-narrative': return MINIMUMS_POPULATED;
+    case 'agentic-ai-team':     return MINIMUMS_AGENTIC_TEAM;
+    case 'singular-thinker':    return MINIMUMS_SINGULAR_THINKER;
+  }
+}
+
 export type GenerateNarrativeArgs = {
   title: string;
   premise: string;
   /** When true: world entities only, no scenes/arcs. */
   worldOnly: boolean;
+  /** Compulsory paradigm — selects the world-shape (populated-narrative /
+   *  agentic-ai-team / singular-thinker) and the per-paradigm prompt blocks. */
+  paradigm: NarrativeParadigm;
   forceReferenceMeansWorld: number;
   forceReferenceMeansSystem: number;
   worldTypicalBand: string;
@@ -39,6 +166,7 @@ export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): strin
     title,
     premise,
     worldOnly,
+    paradigm,
     forceReferenceMeansWorld,
     forceReferenceMeansSystem,
     worldTypicalBand,
@@ -47,8 +175,15 @@ export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): strin
     systemClimaxBand,
   } = args;
 
+  const paradigmEntry = PARADIGM_SHAPE[paradigm];
+  const paradigmDirectiveBlock = `  <paradigm-directive critical="true" hint="User-selected paradigm. Generate the world in this shape.">
+    <paradigm>${paradigm}</paradigm>
+    <world-shape>${paradigmEntry.shape}</world-shape>
+    <directive>${paradigmEntry.directive}</directive>
+  </paradigm-directive>\n`;
+
   return `<inputs>
-  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : 'Full mode — entities + 8-scene opening arc + prose profile.'}">${worldOnly
+${paradigmDirectiveBlock}  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : 'Full mode — entities + 8-scene opening arc + prose profile.'}">${worldOnly
     ? 'Extract and build a complete narrative world from the following plan. Do NOT generate scenes or arcs — output world entities only (characters, locations, threads, relationships, artifacts, rules, systems, prose profile).'
     : 'Create a complete narrative world.'}</task>
   <title>${title}</title>
@@ -118,22 +253,11 @@ Return JSON with this exact structure:
 }
 </output-format>
 
-<rules name="opening-arc" hint="Establish a tight, focused world. Counts below are minimums; exceed when the premise warrants it. Entity counts are register-conditional — see register-handling.">
-  <register-handling critical="true" hint="Detect the register from the premise BEFORE applying entity counts.">
-    <register name="fiction / non-fiction / simulation">Populated worlds. Characters, locations, artifacts, relationships are load-bearing — apply all minimums below.</register>
-    <register name="analysis / paper">Argument-driven works. The world is primarily SYSTEM KNOWLEDGE (claims, mechanisms, methods, evidence chains, propagation laws, predictions). Characters, locations, artifacts, relationships are OPTIONAL — include them ONLY when the source genuinely contains them: a cited theorist, a named primary source, a documented archive or field site, an attribution dispute. Zero of any populated-world entity type is a valid output. Universal minimums (threads, system-nodes) still apply; system-nodes should lean HIGHER (≥20) since the system graph IS the argument.</register>
-  </register-handling>
-  <minimums>
-    <universal hint="Required regardless of register — these are the spine.">
-      <count entity="threads" target="≥4">DELIBERATE MIX of shapes (see thread-shapes). 1+ discrete-resolution, 1+ slow-burn, 1+ constant-tension. At least 2 must share participants so their markets correlate. For analysis / paper, threads are argument-questions (does X explain Y? does the prediction hold district by district?) — participants are claims / sources / mechanisms, not characters.</count>
-      <count entity="system-nodes" target="≥12 (populated registers) / ≥20 (analysis / paper)">with ≥8 edges. The foundational system graph every future scene draws from; a thin root means thin scenes forever. Each node MUST be 15-25 words describing a general rule or structural fact. Include micro-rules (specific mechanics), mid-rules (institutional/economic), and macro-rules (cosmological/thematic). For analysis / paper, nodes are propositions, methods, mechanisms, evidence relations, predictions — the substrate the argument runs on.</count>
-    </universal>
-    <populated-world hint="Apply to fiction / non-fiction / simulation. For analysis / paper, each is OPTIONAL — include only when the source genuinely contains them; 0 of any is valid.">
-      <count entity="characters" target="≥8 (populated registers) / ≥0 (analysis / paper)">2+ anchors, 3+ recurring, 3+ transient. For analysis / paper: include only authors, theorists, named subjects the argument explicitly engages; omit entirely when the argument is voice-of-nobody.</count>
-      <count entity="locations" target="≥6 (populated registers) / ≥0 (analysis / paper)">parent/child hierarchy with at least 2 nesting levels. For analysis / paper: include only places the argument is grounded in (an archive, a field site, a documented region); omit entirely otherwise.</count>
-      <count entity="relationships" target="≥8 (populated registers) / ≥0 (analysis / paper)">at least 1 hostile. For analysis / paper: include only intellectual lineages or attribution disputes the argument explicitly engages.</count>
-      <count entity="artifacts" target="≥1 when the premise involves tools / documents / instruments / sources">For analysis / paper: cited primary sources, datasets, foundational papers, instruments ARE artifacts when the argument leans on them; omit when the argument is purely conceptual.</count>
-    </populated-world>
+<rules name="opening-arc" hint="Establish a tight, focused world. Counts are minimums; exceed when warranted. Paradigm is fixed by the user's selection (or inferred when omitted) — see the paradigm block above.">
+  ${paradigmBlockFor(paradigm)}
+
+  ${minimumsBlockFor(paradigm)}
+  <example-block hint="System-node examples — what good foundational rules look like across paradigms.">
     <example category="bad" reason="too-short">Tribunal</example>
     <example category="good" register="fiction" flavour="fantasy">A house's right to bind rain to its lands lapses if the founding water-compact goes three generations without a renewing oath; lapsed lands return to common drought rotation under the regent's ledger.</example>
     <example category="good" register="fiction" flavour="cultivation">A disciple ascends a tier only when the sect elder witnesses a tribulation crossing AND the qi-reservoir admits the new draw; reservoir capacity binds the sect to a fixed succession rate.</example>
@@ -171,7 +295,9 @@ Return JSON with this exact structure:
       <example category="good" register="non-fiction" flavour="biography">Does the 1934 archival record support the meson hypothesis emerging from Yukawa's dispute with Bohr, or did the field retrofit the attribution later?</example>
       <example category="good" register="analysis">Does the proposed structural cause explain the famine-relief failures across both colonial Bengal and 1980s Ethiopia?</example>
       <example category="good" register="paper">Does the Song iron-coin abandonment correlate, district by district, with the garrison-reduction record the paper predicts it should?</example>
-      <note>Thread logs track incremental answers.</note>
+      <example category="good" register="analysis" shape="agentic-team-goal-thread">Does the MacroFund team's geopolitical thesis outperform consensus benchmarks over the next twelve months? — constant-tension goal-thread the whole team is pursuing.</example>
+      <example category="good" register="paper" shape="agentic-team-goal-thread">Does Dr. Wen's iron-coin team produce a paper that survives the journal's two-reviewer cycle without methodological revision? — the team's collective goal-thread.</example>
+      <note>Thread logs track incremental answers. For agentic-team worlds, ALWAYS include one constant-tension goal-thread that captures the team's collective objective; sub-threads track each agent's investigative focus.</note>
     </entity>
   </entity-definitions>
 

@@ -8,7 +8,7 @@
  * information density, not a fixed word count.
  */
 
-export const PROMPT_SUMMARY_REQUIREMENT = `<summary-requirement length="adaptive — 3-6 sentences for routine scenes; expand without upper bound for cognition-dense scenes" hint="The prose writer's only brief for the scene. Match the register of the source material (fiction, non-fiction such as memoir / essay / reportage / research, or simulation — works modelling real-life events from a stated rule set).">
+export const PROMPT_SUMMARY_REQUIREMENT = `<summary-requirement length="adaptive — depends on register" hint="The prose writer's only brief. Match the register: fiction, non-fiction, simulation (rule-set-modelled events), essay / analysis (case-built argument), or paper (research finding with methods + prediction).">
 
   <length-policy hint="Calibrate to information density. Under-writing dense scenes is the dominant failure mode.">
     <default kind="routine" length="3-6 sentences">Physical action, dialogue, observable events, single-thread movements, scene-setting beats.</default>
@@ -22,6 +22,11 @@ export const PROMPT_SUMMARY_REQUIREMENT = `<summary-requirement length="adaptive
 
       Expand the summary as far as the reasoning demands — multiple paragraphs are normal for genuinely dense scenes. The penalty is for missing content, not length.
     </expand>
+
+    <by-register hint="Register shifts which case is the default. The cognition-dense bar above stays the same; what shifts is how often you'll cross it.">
+      <register name="fiction / non-fiction-narrative / simulation">Routine is the default; expand to cognition-dense when triggers fire (multi-step planning, complex reveals, layered argument staged through a viewpoint).</register>
+      <register name="essay / paper / analysis">Cognition-dense is the DEFAULT — most sections weigh claims, present evidence, state a mechanism, engage a counter, or derive an implication. A 3-6 sentence summary in these registers signals a framing or transitional section; argument-bearing sections will read longer.</register>
+    </by-register>
   </length-policy>
 
   <division-of-labour>
@@ -42,6 +47,16 @@ export const PROMPT_SUMMARY_REQUIREMENT = `<summary-requirement length="adaptive
     <pattern>Inner-state verbs (realizes, confirms, understands, suspects, decides) standing alone as the ONLY delta — unless the realisation itself is NAMED (a specific new claim, a specific reframing) and ATTRIBUTED (to author, narrator, or source). "She felt something shift" fails. "The narrator realises the archive is organised by the logic of its absences, not its holdings" works.</pattern>
     <pattern>Stand-in cognitive verbs that label thinking without naming content: "considered the situation", "weighed his options", "planned carefully". Name what — the scenarios, the tradeoffs, the conclusion.</pattern>
     <pattern>Gestural emotion-words ("felt", "seemed", "somehow", "a strange sense", "face etched", "expression unreadable", "groundbreaking implications") without a specific tether.</pattern>
-    <pattern>Emotional or thematic endings that assert a feeling with no observable consequence.</pattern>
+    <pattern>Emotional or thematic endings that assert a feeling with no observable consequence. "David leaves unsettled, realising his source's narrative may be only one side of the story" partially redeems itself with a named reframe (one-side-of-two) but "unsettled" is gestural. Tether the consequence: "David downgrades his confidence in the Zhang lead from canonical to contested, now treating it as one of two competing narratives the next scene must reconcile."</pattern>
   </name-the-thing>
+
+  <no-engine-metadata critical="true" hint="The summary is IN-WORLD content. Engine bookkeeping has its own structured fields — never narrate the bookkeeping inside the summary.">
+    <rule>NEVER reference engine field names — threadDeltas, worldDeltas, systemDeltas, relationshipDeltas, attributions, attributionEdges, ownershipDeltas, tieDeltas, characterMovements, artifactUsages, events — as bookkeeping inside summary prose. These fields exist SEPARATELY in the JSON. The cross-reference discipline (every delta traces to a summary sentence) lives in your reasoning, NOT in the summary text.</rule>
+    <wrong>"ThreadDeltas update T-1 and T-5 with strong positive evidence for decoupling acceleration."</wrong>
+    <wrong>"SystemDeltas add a rule about Chinese policy leak dual purposes."</wrong>
+    <wrong>"WorldDeltas capture Elena's skepticism and each expert's conviction."</wrong>
+    <wrong>"ThreadDeltas update T-3 with evidence against overextension, shifting probability towards 'contain'."</wrong>
+    <right>Write the in-world content that JUSTIFIES those deltas — what was claimed, what evidence shifted the read, what rule the scene established as canonical fact. "Zhang's hint on direct R&D subsidy adds a concrete bypass mechanism to the model, raising the team's 2027-trigger probability from 65% to 70%." "The committee commits to a 70% confidence floor before allocating, citing the 2008 carry-trade incident as Elena's reference."</right>
+    <why>Engine-bookkeeping recap in the summary is a self-checklist of what you intend to put in the delta fields. The fields catch up structurally — you do not need to narrate them. Reclaim that budget for the in-world substance.</why>
+  </no-engine-metadata>
 </summary-requirement>`;

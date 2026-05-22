@@ -1,4 +1,4 @@
-import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
+import type { NarrativeState, NarrativeParadigm, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
 import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS } from '@/types/narrative';
 import { buildCumulativeSystemGraph, getMarketBelief, getMarketMargin, getMarketProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
@@ -464,6 +464,22 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
   if (s.storyConstraints.trim()) {
     elements.push(
       `<story-constraints hint="Do NOT do any of the following.">${s.storyConstraints.trim()}</story-constraints>`,
+    );
+  }
+  // Paradigm — one of the six canonical world-shapes (fiction / non-fiction /
+  // simulation / analysis / paper / essay). Drives downstream generation
+  // shape: populated-narrative vs agentic-ai-team vs singular-thinker.
+  if (n.paradigm) {
+    const shapeMap: Record<NarrativeParadigm, string> = {
+      'fiction':      'populated-narrative — invented people in an invented world',
+      'non-fiction':  'populated-narrative — real people, documented events',
+      'simulation':   'populated-narrative — in-world figures the rules act on',
+      'analysis':     'agentic-ai-team — virtual team of AI agents (single-word names like Atlas, Cipher, Nexus, Vanguard) pursuing the user\'s thesis; include devil\'s-advocate role and adversarial pairs',
+      'paper':        'singular-thinker — one named author + 1-3 cited interlocutors; internal friction substitutes for inter-agent disagreement',
+      'essay':        'singular-thinker — one named author whose voice the work IS',
+    };
+    elements.push(
+      `<paradigm hint="The canonical world-shape this narrative was built under. All in-narrative generation (scene gen, world expansion, plan, prose) must honour it.">\n  <name>${n.paradigm}</name>\n  <shape>${shapeMap[n.paradigm]}</shape>\n</paradigm>`,
     );
   }
   // Patterns / anti-patterns
