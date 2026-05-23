@@ -17,6 +17,7 @@ import {
   gradeForces,
   inferDominanceWeights,
   nextId,
+  resolveCanonBranchId,
   resolveEntrySequence,
   resolvePlanForBranch,
   resolveProseForBranch,
@@ -550,8 +551,13 @@ export function withDerivedEntities(
 export function narrativeToEntry(n: NarrativeState): NarrativeEntry {
   const threadValues = Object.values(n.threads);
 
-  // Compute shape, archetype, and score from scenes
-  const branchId = getRootBranchId(n);
+  // Compute shape, archetype, and score from the CANON branch's scenes.
+  // Canon is the world view's official record; cards on the landing page
+  // and dashboard show its stats specifically (not the currently-active
+  // branch's, which can be a what-if fork or scratch exploration).
+  // Falls back to the oldest branch when no canon is explicitly set —
+  // see resolveCanonBranchId for the fallback rules.
+  const branchId = resolveCanonBranchId(n);
   const keys = branchId
     ? resolveEntrySequence(n.branches, branchId)
     : [...Object.keys(n.scenes), ...Object.keys(n.worldBuilds)];
@@ -844,6 +850,7 @@ export type Action =
   | { type: "CREATE_BRANCH"; branch: Branch }
   | { type: "DELETE_BRANCH"; branchId: string }
   | { type: "RENAME_BRANCH"; branchId: string; name: string }
+  | { type: "SET_CANON_BRANCH"; branchId: string }
   | {
       type: "SET_VERSION_POINTER";
       branchId: string;
@@ -1863,7 +1870,15 @@ function reducer(state: AppState, action: Action): AppState {
           }),
         );
 
-        return { ...n, branches: remaining, scenes, worldBuilds, arcs };
+        // Canon-branch upkeep — if the canon branch was deleted, clear
+        // the explicit pointer so resolveCanonBranchId falls back to the
+        // oldest surviving branch. Leaving a dangling id would mean the
+        // resolver also falls back (it checks `branches[id]`), but
+        // clearing it keeps the persisted state honest.
+        const canonBranchId =
+          n.canonBranchId && toDelete.has(n.canonBranchId) ? undefined : n.canonBranchId;
+
+        return { ...n, branches: remaining, scenes, worldBuilds, arcs, canonBranchId };
       });
 
       if (result.activeNarrative && result.viewState.activeBranchId) {
@@ -1892,6 +1907,12 @@ function reducer(state: AppState, action: Action): AppState {
             [action.branchId]: { ...branch, name: action.name },
           },
         };
+      });
+
+    case "SET_CANON_BRANCH":
+      return updateNarrative(state, (n) => {
+        if (!n.branches[action.branchId]) return n;
+        return { ...n, canonBranchId: action.branchId };
       });
 
     case "CLEAR_SCENE_PROSE_VERSION":

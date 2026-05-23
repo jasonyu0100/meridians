@@ -1630,6 +1630,16 @@ export type NarrativeState = {
    * field is the only mutation users perform on mode state.
    */
   currentModeId?: string;
+  /**
+   * Canon branch — the one branch this world view treats as its OFFICIAL
+   * record. Separate from `activeBranchId` (the branch the operator is
+   * currently viewing / editing): canon is what other surfaces consume as
+   * the world view's objective reality (landing-page cards, dashboard
+   * cards, exported summaries), independent of where the operator's
+   * cursor is right now. Defaults to the first-created branch when unset;
+   * users can promote any other branch via the BranchModal.
+   */
+  canonBranchId?: string;
   /** Last market briefing the operator generated for this narrative — held
    *  so the Brief tab can hydrate without re-calling the LLM, and so a
    *  stale briefing flags itself when the head moves on or the active

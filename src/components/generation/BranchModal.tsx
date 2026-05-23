@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useStore } from '@/lib/store';
-import { resolveEntrySequence } from '@/lib/narrative-utils';
+import { resolveEntrySequence, resolveCanonBranchId } from '@/lib/narrative-utils';
 import { Modal } from '@/components/Modal';
 import { BranchChat } from './BranchChat';
 import type { Branch, NarrativeState } from '@/types/narrative';
@@ -472,8 +472,11 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 pb-2 min-h-0">
-            {allBranches.map((b) => {
+            {(() => {
+              const canonBranchId = resolveCanonBranchId(narrative);
+              return allBranches.map((b) => {
               const isActive = b.id === state.viewState.activeBranchId;
+              const isCanon = b.id === canonBranchId;
               const isSelected = selectedBranchId === b.id;
               const isInCompare = compareBranchIds.includes(b.id);
               const isRenaming = renamingId === b.id;
@@ -487,8 +490,12 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
                 <div
                   key={b.id}
                   className={`group flex items-stretch gap-2 px-2 py-2 rounded-lg mb-0.5 cursor-pointer transition-colors ${
-                    cardActive ? 'bg-white/8' : 'hover:bg-white/4'
-                  }`}
+                    cardActive
+                      ? 'bg-white/8'
+                      : isCanon
+                        ? 'bg-amber-400/4 hover:bg-amber-400/8'
+                        : 'hover:bg-white/4'
+                  } ${isCanon ? 'ring-1 ring-amber-400/30' : ''}`}
                   onClick={() => {
                     if (viewMode !== 'graph') toggleCompare(b.id);
                     else setSelectedBranchId(b.id);
@@ -511,7 +518,32 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
                       />
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
+                        {/* Canon star — set this branch as the world view's
+                            official record. Always visible (the canon role
+                            is structurally important across surfaces), gold
+                            when active and dim when not. Click toggles. */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isCanon) dispatch({ type: 'SET_CANON_BRANCH', branchId: b.id });
+                          }}
+                          disabled={isCanon}
+                          className={`shrink-0 w-4 h-4 flex items-center justify-center rounded-full transition-colors ${
+                            isCanon
+                              ? 'text-amber-300 cursor-default'
+                              : 'text-text-dim/30 hover:text-amber-300/80 hover:bg-amber-400/10'
+                          }`}
+                          title={isCanon ? 'Canon branch — the official record' : 'Set as canon (the official record)'}
+                          aria-label={isCanon ? 'Canon branch' : 'Set as canon'}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill={isCanon ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                          </svg>
+                        </button>
                         <span className="text-xs text-text-primary truncate flex-1">{b.name}</span>
+                        {isCanon && (
+                          <span className="text-[8px] uppercase tracking-wider text-amber-300/90 shrink-0">canon</span>
+                        )}
                         {isActive && (
                           <span className="text-[8px] uppercase tracking-wider text-text-dim shrink-0">current</span>
                         )}
@@ -608,7 +640,8 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
                   </div>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
 
         </aside>

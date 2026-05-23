@@ -6,6 +6,7 @@ import {
   computeSwingMagnitudes,
   FORCE_REFERENCE_MEANS,
   gradeForces,
+  resolveCanonBranchId,
   resolveEntrySequence,
 } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
@@ -460,6 +461,7 @@ function BranchSwitcherChip({
         <BranchTreePopover
           branches={branches}
           activeBranchId={activeBranch?.id ?? null}
+          canonBranchId={resolveCanonBranchId(narrative)}
           onSwitch={onSwitch}
           onClose={() => setOpen(false)}
           onOpenFullView={() => window.dispatchEvent(new CustomEvent('open-branch-modal'))}

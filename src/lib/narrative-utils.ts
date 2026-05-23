@@ -25,6 +25,42 @@ import {
   DELIVERY_SMOOTH_SIGMA,
 } from '@/lib/constants';
 
+// ── Canon branch ────────────────────────────────────────────────────────────
+
+/**
+ * Return the world view's CANON branch id — the branch treated as the
+ * official record. Falls back to the oldest branch (the original / root
+ * trunk) when `canonBranchId` is unset, so every narrative resolves to
+ * exactly one canon branch even if the field was never explicitly set.
+ *
+ * Returns null only when the narrative has no branches at all (which
+ * shouldn't happen after creation, but the API stays total).
+ */
+export function resolveCanonBranchId(narrative: NarrativeState): string | null {
+  const explicit = narrative.canonBranchId;
+  if (explicit && narrative.branches[explicit]) return explicit;
+  const branches = Object.values(narrative.branches);
+  if (branches.length === 0) return null;
+  let oldest = branches[0];
+  for (const b of branches) {
+    if (b.createdAt < oldest.createdAt) oldest = b;
+  }
+  return oldest.id;
+}
+
+/** Convenience over `resolveCanonBranchId` — returns the Branch object
+ *  (or null when the narrative has none). */
+export function resolveCanonBranch(narrative: NarrativeState): Branch | null {
+  const id = resolveCanonBranchId(narrative);
+  return id ? narrative.branches[id] ?? null : null;
+}
+
+/** True iff the given branch id is the canon for this narrative. Cheap
+ *  to call from JSX (UI surfaces use it to render canon distinction). */
+export function isCanonBranch(narrative: NarrativeState, branchId: string): boolean {
+  return resolveCanonBranchId(narrative) === branchId;
+}
+
 // ── Scene & entity helpers ──────────────────────────────────────────────────
 
 /** The POV character a scene effectively renders through — the declared povId
