@@ -5,7 +5,7 @@ vi.mock('@/lib/ai/api', () => ({
   callGenerate: vi.fn(),
   callGenerateStream: vi.fn(),
   resolveReasoningBudget: vi.fn(() => 0),
-  resolveWebsearch: vi.fn(() => 0),
+  resolveWebsearch: vi.fn(() => null),
   SYSTEM_PROMPT: 'Test system prompt',
 }));
 // Mock narrative context (not relevant to the paths under test)

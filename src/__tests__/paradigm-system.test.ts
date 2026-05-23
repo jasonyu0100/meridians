@@ -387,7 +387,7 @@ describe("World-gen prompt — source material injection", () => {
 // ── 8. Websearch resolution ──────────────────────────────────────────────────
 
 describe("resolveWebsearch", () => {
-  function narrativeWithLevel(level: "none" | "low" | "medium" | "high" | undefined): NarrativeState {
+  function narrativeWithLevel(level: "none" | "low" | "medium" | "high"): NarrativeState {
     return {
       id: "N-1",
       title: "T",
@@ -396,31 +396,33 @@ describe("resolveWebsearch", () => {
       worldBuilds: {}, branches: {}, relationships: [],
       systemGraph: { nodes: {}, edges: [] },
       worldSummary: "",
-      storySettings:
-        level === undefined
-          ? { ...DEFAULT_STORY_SETTINGS, websearchLevel: undefined }
-          : { ...DEFAULT_STORY_SETTINGS, websearchLevel: level },
+      storySettings: { ...DEFAULT_STORY_SETTINGS, websearchLevel: level },
       createdAt: 0,
       updatedAt: 0,
     };
   }
 
-  it("returns 0 for null narratives", () => {
-    expect(resolveWebsearch(null)).toBe(0);
-    expect(resolveWebsearch(undefined)).toBe(0);
+  it("returns null for missing narratives", () => {
+    expect(resolveWebsearch(null)).toBeNull();
+    expect(resolveWebsearch(undefined)).toBeNull();
   });
 
-  it("returns 0 when websearchLevel is unset (legacy narratives)", () => {
-    expect(resolveWebsearch(narrativeWithLevel(undefined))).toBe(0);
+  it("returns null when websearchLevel is 'none'", () => {
+    expect(resolveWebsearch(narrativeWithLevel("none"))).toBeNull();
   });
 
-  it("returns 0 when websearchLevel is explicitly 'none'", () => {
-    expect(resolveWebsearch(narrativeWithLevel("none"))).toBe(0);
+  it("returns canonical maxResults + the configured total cap per level", () => {
+    const lo = resolveWebsearch(narrativeWithLevel("low"));
+    expect(lo?.maxResults).toBe(WEBSEARCH_MAX_RESULTS.low);
+    expect(lo?.maxTotalResults).toBe(DEFAULT_STORY_SETTINGS.websearchMaxTotalResults);
+
+    expect(resolveWebsearch(narrativeWithLevel("medium"))?.maxResults).toBe(WEBSEARCH_MAX_RESULTS.medium);
+    expect(resolveWebsearch(narrativeWithLevel("high"))?.maxResults).toBe(WEBSEARCH_MAX_RESULTS.high);
   });
 
-  it("returns the canonical max_results per level", () => {
-    expect(resolveWebsearch(narrativeWithLevel("low"))).toBe(WEBSEARCH_MAX_RESULTS.low);
-    expect(resolveWebsearch(narrativeWithLevel("medium"))).toBe(WEBSEARCH_MAX_RESULTS.medium);
-    expect(resolveWebsearch(narrativeWithLevel("high"))).toBe(WEBSEARCH_MAX_RESULTS.high);
+  it("respects a custom websearchMaxTotalResults", () => {
+    const narrative = narrativeWithLevel("medium");
+    narrative.storySettings = { ...narrative.storySettings!, websearchMaxTotalResults: 7 };
+    expect(resolveWebsearch(narrative)?.maxTotalResults).toBe(7);
   });
 });

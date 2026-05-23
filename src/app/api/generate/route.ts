@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { prompt, systemPrompt, model, maxTokens, stream, temperature, reasoningBudget, jsonMode, websearchMaxResults } = body as {
+    const { prompt, systemPrompt, model, maxTokens, stream, temperature, reasoningBudget, jsonMode, websearch } = body as {
       prompt: string;
       systemPrompt?: string;
       model?: string;
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       temperature?: number;
       reasoningBudget?: number;
       jsonMode?: boolean;
-      websearchMaxResults?: number;
+      websearch?: { maxResults: number; maxTotalResults?: number };
     };
 
     const response = await fetch(OPENROUTER_URL, {
@@ -61,15 +61,22 @@ export async function POST(req: NextRequest) {
         // OpenRouter server tools — web_search grounds generation in current
         // public info, web_fetch lets the model deepen its read of any URL.
         // The two are paired so the model can decide whether to search or
-        // fetch as it generates. Docs:
+        // fetch as it generates. `max_results` caps results per individual
+        // search call; `max_total_results` caps total across all calls in
+        // this request, bounding cost in agentic loops. Docs:
         //   https://openrouter.ai/docs/guides/features/server-tools/web-search
         //   https://openrouter.ai/docs/guides/features/server-tools/web-fetch
-        ...(websearchMaxResults && websearchMaxResults > 0
+        ...(websearch && websearch.maxResults > 0
           ? {
               tools: [
                 {
                   type: 'openrouter:web_search',
-                  parameters: { max_results: websearchMaxResults },
+                  parameters: {
+                    max_results: websearch.maxResults,
+                    ...(websearch.maxTotalResults && websearch.maxTotalResults > 0
+                      ? { max_total_results: websearch.maxTotalResults }
+                      : {}),
+                  },
                 },
                 { type: 'openrouter:web_fetch' },
               ],

@@ -2080,15 +2080,29 @@ export const REASONING_BUDGETS: Record<ReasoningLevel, number> = {
 /** Web search effort — enables OpenRouter's web plugin so the model can ground
  *  generation in up-to-date public information. Higher levels = more results
  *  retrieved per call, slower + more billed tokens. Defaults to 'none'.
- *  Maps to OpenRouter's `plugins: [{ id: 'web', max_results }]` parameter. */
+ *  Maps to OpenRouter's web_search tool's `max_results` parameter. */
 export type WebsearchLevel = "none" | "low" | "medium" | "high";
 
-/** Max web-search results per level (0 = plugin disabled entirely). */
+/** Max web-search results per individual search call (0 = plugin disabled).
+ *  OpenRouter's web_search `max_results` parameter, applied per call. */
 export const WEBSEARCH_MAX_RESULTS: Record<WebsearchLevel, number> = {
   none: 0,
   low: 3,
   medium: 5,
   high: 10,
+};
+
+/** Default cap on total results across all search calls in one request.
+ *  Bounds cost / context size in agentic loops; configurable per story in
+ *  Story Settings. Sized to fully load research-paradigm world generation
+ *  with current data — the wizard's "Research mode" also lands here. */
+export const WEBSEARCH_DEFAULT_MAX_TOTAL = 25;
+
+/** Resolved websearch config — what the API layer attaches to a single
+ *  generate call as OpenRouter web_search parameters. */
+export type WebsearchConfig = {
+  maxResults: number;
+  maxTotalResults: number;
 };
 
 /** Output format for prose generation */
@@ -2140,12 +2154,14 @@ export type StorySettings = {
   expansionStrategy: "depth" | "breadth" | "dynamic";
   /** Reasoning effort — how much thinking the model does before responding. Higher = better structural decisions, slower generation. */
   reasoningLevel: ReasoningLevel;
-  /** Web search effort — whether the model uses OpenRouter's web plugin to
-   *  ground generation in up-to-date public information. Higher = more
-   *  retrieved results per call. Useful for analysis / paper / non-fiction
-   *  paradigms where the model benefits from current data; usually 'none'
-   *  for pure fiction. Defaults to 'none' on legacy narratives. */
-  websearchLevel?: WebsearchLevel;
+  /** Web search effort — controls OpenRouter web_search's per-call result
+   *  count. 'none' disables the plugin entirely. Useful for analysis /
+   *  paper / non-fiction paradigms; usually 'none' for pure fiction. */
+  websearchLevel: WebsearchLevel;
+  /** Cap on total search results across all search calls in one request.
+   *  Bounds cost / context size in agentic loops. Ignored when
+   *  websearchLevel is 'none'. */
+  websearchMaxTotalResults: number;
   /** Beat profile preset key — selects a published work's beat/prose profile. Empty = default profile. */
   beatProfilePreset: string;
   /** Mechanism profile preset key — selects delivery mechanism distribution. Empty = default. */
@@ -2192,6 +2208,7 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   expansionStrategy: "dynamic",
   reasoningLevel: "low",
   websearchLevel: "none",
+  websearchMaxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL,
   beatProfilePreset: "",
   mechanismProfilePreset: "",
   usePacingChain: false,
@@ -2624,10 +2641,12 @@ export type WizardData = {
   /** Selected paradigm — steers world generation into one of the engine's
    *  canonical world-shapes. Defaults to 'fiction'. */
   paradigm: NarrativeParadigm;
-  /** Websearch effort for the wizard-time world-generation call. Defaults to
-   *  'none'. Mirrors StorySettings.websearchLevel — post-creation, the user
-   *  can adjust per-narrative in Story Settings. */
-  websearchLevel?: WebsearchLevel;
+  /** "Research mode" toggle for the wizard. When true, the world-generation
+   *  call attaches OpenRouter's web plugin at the 'high' max-results-per-call
+   *  tier with a saturating total-results cap (WEBSEARCH_RESEARCH_MAX_TOTAL).
+   *  The new narrative is created with websearchLevel='high' and that same
+   *  cap stored; Story Settings then lets the user dial level + cap down. */
+  researchMode?: boolean;
   characters: CharacterSketch[];
   locations: LocationSketch[];
   threads: ThreadSketch[];

@@ -6,7 +6,7 @@ import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useStore } from '@/lib/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import type { StorySettings, POVMode, WorldFocusMode, ReasoningLevel, WebsearchLevel, NarrativeState, ProseFormat, PlanExtractionSource } from '@/types/narrative';
-import { WEBSEARCH_MAX_RESULTS } from '@/types/narrative';
+import { WEBSEARCH_MAX_RESULTS, WEBSEARCH_DEFAULT_MAX_TOTAL } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, REASONING_BUDGETS } from '@/types/narrative';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import type { CubeCornerKey } from '@/types/narrative';
@@ -803,17 +803,17 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                 </p>
               </div>
 
-              {/* Websearch Level — OpenRouter web_search + web_fetch server tools */}
+              {/* Websearch — OpenRouter web_search + web_fetch server tools */}
               <div>
                 <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-                  Websearch Level
+                  Web research — results per search call
                 </label>
                 <div className="space-y-1.5">
                   {([
-                    { value: 'none' as WebsearchLevel, label: 'None', desc: 'No web tools — fastest, cheapest. Model uses training knowledge only.' },
-                    { value: 'low' as WebsearchLevel, label: 'Low', desc: `Up to ${WEBSEARCH_MAX_RESULTS.low} results per search — light grounding for occasional fact checks` },
-                    { value: 'medium' as WebsearchLevel, label: 'Medium', desc: `Up to ${WEBSEARCH_MAX_RESULTS.medium} results per search — balanced grounding for current-affairs analysis / paper / non-fiction` },
-                    { value: 'high' as WebsearchLevel, label: 'High', desc: `Up to ${WEBSEARCH_MAX_RESULTS.high} results per search — deep grounding when up-to-date understanding is load-bearing` },
+                    { value: 'none' as WebsearchLevel, label: 'Off', desc: 'No web tools — fastest and cheapest. Generation runs on the model’s training knowledge alone.' },
+                    { value: 'low' as WebsearchLevel, label: 'Light', desc: `${WEBSEARCH_MAX_RESULTS.low} results per search — fact-check pass for the occasional current detail.` },
+                    { value: 'medium' as WebsearchLevel, label: 'Balanced', desc: `${WEBSEARCH_MAX_RESULTS.medium} results per search — solid current-affairs grounding for analysis, paper, non-fiction work.` },
+                    { value: 'high' as WebsearchLevel, label: 'Deep', desc: `${WEBSEARCH_MAX_RESULTS.high} results per search — saturating coverage when up-to-date understanding is load-bearing.` },
                   ]).map((opt) => (
                     <button
                       key={opt.value}
@@ -830,9 +830,35 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
                 <p className="text-[9px] text-text-dim/50 mt-2">
-                  Enables OpenRouter&apos;s web_search and web_fetch server tools on all narrative-generation calls. The model decides when to search or fetch; results are grounded into generation with citations. Most useful for analysis / paper / non-fiction paradigms where current facts matter. Billed by OpenRouter per search call.
+                  Attaches OpenRouter&apos;s web_search + web_fetch tools to every generation call. The model decides when to search or fetch; results land in the prompt with citations. Best for analysis / paper / non-fiction paradigms grounded in current facts. Billed by OpenRouter per search call.
                 </p>
               </div>
+
+              {/* Total results cap — bounds cost in agentic loops */}
+              {(settings.websearchLevel ?? 'none') !== 'none' && (
+                <div>
+                  <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
+                    Total results per request
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={1}
+                      max={50}
+                      step={1}
+                      value={settings.websearchMaxTotalResults ?? WEBSEARCH_DEFAULT_MAX_TOTAL}
+                      onChange={(e) => update({ websearchMaxTotalResults: Number(e.target.value) })}
+                      className="flex-1 accent-blue-500"
+                    />
+                    <span className="text-[11px] text-text-primary font-mono w-20 text-right">
+                      {settings.websearchMaxTotalResults ?? WEBSEARCH_DEFAULT_MAX_TOTAL} results
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-text-dim/50 mt-2">
+                    Caps total search results across all search calls in a single generate request. Bounds cost and context size when the model loops through multiple searches. Lower this if requests feel bloated; raise it for deep research passes.
+                  </p>
+                </div>
+              )}
             </>
           )}
 

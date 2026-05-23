@@ -13,12 +13,12 @@ import { Modal } from "@/components/Modal";
 import {
   DEFAULT_STORY_SETTINGS,
   WEBSEARCH_MAX_RESULTS,
+  WEBSEARCH_DEFAULT_MAX_TOTAL,
   type CharacterSketch,
   type LocationSketch,
   type NarrativeParadigm,
   type NarrativeState,
   type ThreadSketch,
-  type WebsearchLevel,
   type WorldBuild,
 } from "@/types/narrative";
 import { useRouter } from "next/navigation";
@@ -35,12 +35,6 @@ const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
   { value: "essay",       label: "Essay",       hint: "Singular thinker working an argument" },
 ];
 
-const WEBSEARCH_LEVELS: { value: WebsearchLevel; label: string; hint: string }[] = [
-  { value: "none",   label: "None",   hint: "Training knowledge only" },
-  { value: "low",    label: "Low",    hint: `Up to ${WEBSEARCH_MAX_RESULTS.low} web results / call` },
-  { value: "medium", label: "Medium", hint: `Up to ${WEBSEARCH_MAX_RESULTS.medium} web results / call` },
-  { value: "high",   label: "High",   hint: `Up to ${WEBSEARCH_MAX_RESULTS.high} web results / call` },
-];
 
 function buildBlankNarrative(title: string): NarrativeState {
   const now = Date.now();
@@ -243,6 +237,7 @@ export function CreationWizard() {
     setStreamText("");
     setError("");
     try {
+      const research = wd.researchMode ?? false;
       const narrative = await generateNarrative(
         wd.title,
         buildEnhancedPremise(),
@@ -250,8 +245,20 @@ export function CreationWizard() {
         wd.worldOnly ?? false,
         wd.paradigm,
         wd.sourceText,
-        WEBSEARCH_MAX_RESULTS[wd.websearchLevel ?? "none"],
+        research
+          ? { maxResults: WEBSEARCH_MAX_RESULTS.high, maxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL }
+          : null,
       );
+      // Persist the wizard-time choice onto the new narrative so subsequent
+      // generations inherit the same effort by default.
+      if (research) {
+        narrative.storySettings = {
+          ...DEFAULT_STORY_SETTINGS,
+          ...narrative.storySettings,
+          websearchLevel: "high",
+          websearchMaxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL,
+        };
+      }
       dispatch({ type: "ADD_NARRATIVE", narrative });
       wizardDispatch({ type: "CLOSE" });
       wizardDispatch({ type: "SET_STEP", step: "form" });
@@ -368,36 +375,51 @@ export function CreationWizard() {
               </p>
             </section>
 
-            {/* Websearch */}
+            {/* Research mode — saturating websearch for world-gen */}
             <section className="border-t border-white/8 pt-8">
               <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
-                Websearch
+                Research mode
               </label>
-              <div className="grid grid-cols-4 gap-2">
-                {WEBSEARCH_LEVELS.map((w) => {
-                  const active = (wd.websearchLevel ?? "none") === w.value;
-                  return (
-                    <button
-                      key={w.value}
-                      type="button"
-                      onClick={() => update({ websearchLevel: w.value })}
-                      title={w.hint}
-                      className={`text-[11px] px-3 py-2 rounded-lg border transition text-left ${
-                        active
-                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                          : "bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary"
+              {(() => {
+                const active = wd.researchMode ?? false;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => update({ researchMode: !active })}
+                    aria-pressed={active}
+                    className={`w-full flex items-center justify-between gap-4 text-left px-4 py-3 rounded-lg border transition ${
+                      active
+                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                        : "bg-white/4 hover:bg-white/8 border-white/10 hover:border-white/20 text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-medium">
+                        {active ? "On — saturating web research" : "Off"}
+                      </span>
+                      <span className={`text-[10px] mt-0.5 ${active ? "text-emerald-300/70" : "text-text-dim"}`}>
+                        {active
+                          ? `Up to ${WEBSEARCH_MAX_RESULTS.high} results / call, ${WEBSEARCH_DEFAULT_MAX_TOTAL} total — full context load for world-gen`
+                          : "Use model training knowledge only"}
+                      </span>
+                    </div>
+                    {/* Toggle pill */}
+                    <span
+                      className={`relative inline-flex shrink-0 w-9 h-5 rounded-full transition ${
+                        active ? "bg-emerald-400/70" : "bg-white/15"
                       }`}
                     >
-                      <div className="font-medium">{w.label}</div>
-                      <div className={`text-[10px] mt-0.5 leading-tight ${active ? "text-emerald-300/70" : "text-text-dim"}`}>
-                        {w.hint}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      <span
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition ${
+                          active ? "left-4" : "left-0.5"
+                        }`}
+                      />
+                    </span>
+                  </button>
+                );
+              })()}
               <p className="text-[10px] text-text-dim/60 italic mt-2">
-                Gives the model OpenRouter&apos;s web_search + web_fetch tools at world-gen time. Most useful for analysis / paper / non-fiction paradigms where current facts matter. Adjustable per-narrative in Story Settings afterwards.
+                When on, world generation gets OpenRouter&apos;s web_search + web_fetch tools at the saturating tier. Best for analysis / paper / non-fiction / simulation paradigms grounded in current facts. Tune level + total-results cap per narrative afterwards in Story Settings.
               </p>
             </section>
 

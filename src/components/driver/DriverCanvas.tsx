@@ -3,12 +3,12 @@
 /**
  * DriverCanvas — daily-ingest workspace rendered as a canvas mode.
  *
- * Renders Entry (Apple-Notes-style note workspace) OR Search (the
+ * Renders Queue (Apple-Notes-style entry workspace) OR Search (the
  * existing vector search), driven by graphViewMode:
- *   - 'driver' → Entry
+ *   - 'driver' → Queue
  *   - 'search' → Search (relocated under Driver in the topbar)
  *
- * The Entry/Search sub-tab switcher lives in CanvasTopBar, matching
+ * The Queue/Search sub-tab switcher lives in CanvasTopBar, matching
  * the same pattern other canvas modes use for their sub-toggles
  * (Plan/Prose/Audio under Scene, Variables/Phase under Control).
  * Sub-tabs are persisted in graphViewMode so external callers (e.g.
@@ -29,6 +29,8 @@ import type { DriverEntry } from '@/types/narrative';
 import { SearchView } from '@/components/canvas/SearchView';
 import { CompactPreviewModal } from './CompactPreviewModal';
 import { DriverPalette } from './DriverPalette';
+import { generateDriverEntry } from '@/lib/ai';
+import { logError } from '@/lib/system-logger';
 
 function isLocked(entry: DriverEntry): boolean {
   return !!entry.usedInFileIds && entry.usedInFileIds.length > 0;
@@ -118,9 +120,29 @@ export function DriverCanvas() {
       entry: { id, text: '', capturedAt: Date.now() },
     });
     setActiveId(id);
-    // Ensure we're on the Entry sub-tab in case operator was on Search.
+    // Ensure we're on the Queue sub-tab in case operator was on Search.
     if (state.graphViewMode === 'search') {
       dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'driver' });
+    }
+  }
+
+  async function generateEntry(direction: string, sourceUrl?: string) {
+    try {
+      const { title, text } = await generateDriverEntry(narrative, direction, sourceUrl);
+      const id = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      dispatch({
+        type: 'CREATE_DRIVER_ENTRY',
+        entry: { id, title: title || undefined, text, capturedAt: Date.now() },
+      });
+      setActiveId(id);
+      if (state.graphViewMode === 'search') {
+        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'driver' });
+      }
+    } catch (err) {
+      logError('Driver entry generation failed', err, {
+        source: 'ingest',
+        operation: 'generate-driver-entry',
+      });
     }
   }
 
@@ -250,7 +272,9 @@ export function DriverCanvas() {
 
         <DriverPalette
           queueCount={queue.length}
+          websearchEnabled={(narrative?.storySettings?.websearchLevel ?? 'none') !== 'none'}
           onCreate={createEntry}
+          onGenerate={generateEntry}
           onSynthesiseAll={() => {
             setCompactScope('queue');
             setCompactOpen(true);

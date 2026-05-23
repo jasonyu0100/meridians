@@ -1102,13 +1102,13 @@ export function CanvasTopBar() {
           </div>
         )}
 
-        {/* Driver sub-mode toggle — Entry / Search. Mirrors the Control
+        {/* Driver sub-mode toggle — Queue / Search. Mirrors the Control
             and Scene sub-toggles. Active when canvasMode is driver or
             search (both are sub-modes of Driver). */}
         {(canvasMode === 'driver' || canvasMode === 'search') && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'driver' as const, Icon: IconList, label: 'Entry' },
+              { mode: 'driver' as const, Icon: IconList, label: 'Queue' },
               { mode: 'search' as const, Icon: IconSearch, label: 'Search' },
             ].map(({ mode, Icon, label }, idx) => {
               const isActive = graphViewMode === mode;

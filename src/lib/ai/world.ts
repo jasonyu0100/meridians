@@ -1,4 +1,4 @@
-import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm } from '@/types/narrative';
+import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm, WebsearchConfig } from '@/types/narrative';
 import { resolveEntry, isScene, REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { resolveReasoningBudget, resolveWebsearch } from './api';
 import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/narrative-utils';
@@ -648,9 +648,9 @@ export async function generateNarrative(
   paradigm: NarrativeParadigm = 'fiction',
   /** Optional seeding context — extra source material to draw from. */
   sourceText?: string,
-  /** Websearch max-results — pass WEBSEARCH_MAX_RESULTS[level] from the
-   *  wizard. 0 (default) disables the OpenRouter web plugin. */
-  websearchMaxResults: number = 0,
+  /** Websearch config for the wizard-time world-gen call. null disables
+   *  the OpenRouter web plugin entirely. */
+  websearch: WebsearchConfig | null = null,
 ): Promise<NarrativeState> {
   logInfo('Starting narrative generation', {
     source: 'manual-generation',
@@ -686,8 +686,8 @@ export async function generateNarrative(
   // tokens here is the most user-visible perf win.
   const reasoningBudget = REASONING_BUDGETS['low'];
   const raw = onReasoning
-    ? await callGenerateStream(prompt, GENERATE_NARRATIVE_SYSTEM, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearchMaxResults)
-    : await callGenerate(prompt, GENERATE_NARRATIVE_SYSTEM, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, true, undefined, websearchMaxResults);
+    ? await callGenerateStream(prompt, GENERATE_NARRATIVE_SYSTEM, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(prompt, GENERATE_NARRATIVE_SYSTEM, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = parseJson(raw, 'generateNarrative') as any;
 

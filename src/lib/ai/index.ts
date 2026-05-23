@@ -20,6 +20,9 @@ export { rewriteSceneProse } from './prose';
 // Premise
 export { suggestPremise } from './premise';
 
+// Driver entry generation
+export { generateDriverEntry } from './driver';
+
 // Image prompt
 export { suggestImagePrompt } from './image-prompt';
 export type { ImagePromptEntityKind } from './image-prompt';
