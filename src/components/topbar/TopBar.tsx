@@ -1138,7 +1138,7 @@ export default function TopBar() {
                                       setDeleteConfirm("");
                                     }}
                                     className="px-2.5 py-1 mr-1.5 text-text-dim hover:text-fate text-xs rounded transition-colors shrink-0 hover:bg-white/5"
-                                    title="Delete narrative"
+                                    title="Delete world view"
                                   >
                                     &times;
                                   </button>
@@ -1242,7 +1242,7 @@ export default function TopBar() {
                 <div className="border-t border-white/8 py-1">
                   <div className="px-3 pt-1.5 pb-1">
                     <span className="text-[9px] font-semibold text-text-dim uppercase tracking-widest">
-                      Current Story
+                      Current World View
                     </span>
                   </div>
                   {(() => {
@@ -1340,7 +1340,7 @@ export default function TopBar() {
           anyMenuOpen={openMenu !== null}
           items={[
             {
-              label: "Story Profile",
+              label: "Prose Profile",
               onClick: () =>
                 window.dispatchEvent(new Event("open-prose-profile")),
               disabled: !hasNarrative,

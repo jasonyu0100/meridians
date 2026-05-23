@@ -298,7 +298,7 @@ export default function MarketBriefingView() {
 
             <Composer
               accent="emerald"
-              title="Story direction"
+              title="Direction"
               subtitle="Composed from arc directions · steers next scene generation"
               composed={composedArcDirection}
               currentValue={currentStoryDirection}
@@ -864,7 +864,7 @@ function Composer({
       <textarea
         value={composed}
         onChange={(e) => onEdit(e.target.value)}
-        placeholder={`Stack cards above to compose your ${title.toLowerCase()} — or write freehand. Apply commits to story settings.`}
+        placeholder={`Stack cards above to compose your ${title.toLowerCase()} — or write freehand. Apply commits to world view settings.`}
         className={`w-full h-28 bg-bg-elevated/70 border border-white/8 rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder:text-text-dim/40 outline-none ${style.focus} resize-none leading-relaxed`}
       />
 
@@ -911,7 +911,7 @@ function EmptyState({ onRun }: { onRun: () => void }) {
     <div className="rounded-xl border border-dashed border-white/10 px-6 py-10 flex flex-col items-center gap-3">
       <p className="text-[12px] text-text-secondary text-center max-w-md">
         Read the current portfolio, then mix and match arc directions and world directions to compose
-        the next move. Apply saves to story settings; the action buttons launch generation pre-filled.
+        the next move. Apply saves to world view settings; the action buttons launch generation pre-filled.
       </p>
       <button
         onClick={onRun}

@@ -523,7 +523,7 @@ export type FnMechanismDistribution = Partial<
   Record<BeatFn, Partial<Record<BeatMechanism, number>>>
 >;
 
-/** Beat sampling data — derived from analyzed works, separate from voice profile. */
+/** Beat sampling data — derived from analyzed narratives, separate from voice profile. */
 export type BeatSampler = {
   /** Markov chain transition probabilities between beat functions */
   markov: BeatTransitionMatrix;

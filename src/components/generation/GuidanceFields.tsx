@@ -94,7 +94,7 @@ export function GuidanceFields({
         <textarea
           value={direction}
           onChange={(e) => { onDirectionChange(e.target.value); setUseStoryDir(false); }}
-          placeholder="What should the narrative focus on?"
+          placeholder="What should the world view focus on?"
           className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-14 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
         />
       </Field>
@@ -146,7 +146,7 @@ function Field({ label, storyValue, useStory, onToggleStory, suggesting, onSugge
           <label className="flex items-center gap-1 cursor-pointer select-none">
             <input type="checkbox" checked={useStory} onChange={(e) => onToggleStory(e.target.checked)}
               className="accent-white/50 w-2.5 h-2.5" />
-            <span className="text-[9px] text-text-dim">Use story settings</span>
+            <span className="text-[9px] text-text-dim">Use world view settings</span>
           </label>
         </div>
       )}

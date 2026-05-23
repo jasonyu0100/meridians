@@ -96,7 +96,7 @@ export function DriverCanvas() {
   if (!narrative) {
     return (
       <div className="h-full flex items-center justify-center text-text-dim text-sm">
-        Open a narrative to use Driver.
+        Open a world view to use Driver.
       </div>
     );
   }

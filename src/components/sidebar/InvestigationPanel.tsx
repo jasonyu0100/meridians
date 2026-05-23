@@ -79,7 +79,7 @@ export default function InvestigationPanel() {
   if (!narrative) {
     return (
       <div className="p-4 text-[11px] text-text-dim">
-        Open a narrative to investigate its arcs.
+        Open a world view to investigate its arcs.
       </div>
     );
   }

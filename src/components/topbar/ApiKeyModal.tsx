@@ -29,7 +29,7 @@ export default function ApiKeyModal({ access, onClose }: Props) {
       </ModalHeader>
       <ModalBody>
         <p className="text-[11px] text-text-dim mb-3 -mt-1">
-          InkTide uses AI models via OpenRouter to analyze, generate, and refine stories. You&apos;ll need an OpenRouter API key to get started.
+          InkTide uses AI models via OpenRouter to analyze, generate, and refine world views. You&apos;ll need an OpenRouter API key to get started.
         </p>
 
         <div className="space-y-3">

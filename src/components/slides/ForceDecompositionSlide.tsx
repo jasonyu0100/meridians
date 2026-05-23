@@ -109,7 +109,7 @@ export function ForceDecompositionSlide({ data }: { data: SlidesData }) {
     <div className="flex flex-col justify-center h-full px-12 py-8">
       <h2 className="text-2xl font-bold text-text-primary mb-2">Force Decomposition</h2>
       <p className="text-sm text-text-secondary mb-4">
-        Raw force values over time — showing which narrative engine drives each phase of the story.
+        Raw force values over time — showing which narrative engine drives each phase of the world view.
       </p>
 
       <svg ref={svgRef} className="w-full" style={{ height: 300 }} />

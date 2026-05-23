@@ -139,7 +139,7 @@ export default function SeriesPage() {
     window.addEventListener('open-cast-analytics', handleOpenCastAnalytics);
     window.addEventListener('open-prose-profile', handleOpenProseProfile);
     window.addEventListener('open-experimentation-panel', handleOpenExperimentation);
-    window.addEventListener('open-story-settings', handleOpenStorySettings);
+    window.addEventListener('open-world-view-settings', handleOpenStorySettings);
     window.addEventListener('open-coordination-plan', handleOpenCoordinationPlan);
     return () => {
       window.removeEventListener('open-generate-panel', handleOpenGenerate);
@@ -149,7 +149,7 @@ export default function SeriesPage() {
       window.removeEventListener('open-cast-analytics', handleOpenCastAnalytics);
       window.removeEventListener('open-prose-profile', handleOpenProseProfile);
       window.removeEventListener('open-experimentation-panel', handleOpenExperimentation);
-      window.removeEventListener('open-story-settings', handleOpenStorySettings);
+      window.removeEventListener('open-world-view-settings', handleOpenStorySettings);
       window.removeEventListener('open-coordination-plan', handleOpenCoordinationPlan);
     };
   }, []);
@@ -178,7 +178,7 @@ export default function SeriesPage() {
   if (!state.activeNarrative) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <span className="text-text-dim text-sm">Loading narrative...</span>
+        <span className="text-text-dim text-sm">Loading world view...</span>
       </div>
     );
   }

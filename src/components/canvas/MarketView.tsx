@@ -1356,7 +1356,7 @@ export default function MarketView() {
                   formatValue={(v) => v.toFixed(0)}
                   formatDelta={(d) => d.toFixed(1)}
                   hint={
-                    "ATTENTION over time — cumulative volume across open markets, scene by scene.\n\nRising = story is loading more narrative weight onto active threads. Falling = attention is decaying faster than new evidence is coming in."
+                    "ATTENTION over time — cumulative volume across open markets, scene by scene.\n\nRising = the world view is loading more narrative weight onto active threads. Falling = attention is decaying faster than new evidence is coming in."
                   }
                   accent="#38bdf8"
                   deltaBetter="up"
@@ -1368,7 +1368,7 @@ export default function MarketView() {
                   formatValue={(v) => `${Math.round(v)}%`}
                   formatDelta={(d) => `${d.toFixed(1)}pp`}
                   hint={
-                    "UNCERTAINTY over time — average normalized entropy across open markets.\n\n100% = every outcome equally likely. A healthy arc usually trends down as markets commit; a flat-high line means the story isn't paying off its questions."
+                    "UNCERTAINTY over time — average normalized entropy across open markets.\n\n100% = every outcome equally likely. A healthy arc usually trends down as markets commit; a flat-high line means the world view isn't paying off its questions."
                   }
                   accent="#fbbf24"
                   yMin={0}
@@ -1382,7 +1382,7 @@ export default function MarketView() {
                   formatValue={(v) => `σ ${v.toFixed(2)}`}
                   formatDelta={(d) => d.toFixed(2)}
                   hint={
-                    "VOLATILITY over time — average EWMA of recent evidence magnitude.\n\nSpikes mark scenes where multiple markets took large shocks. Flat = quiet book. Use this to spot when the story entered a turbulent stretch."
+                    "VOLATILITY over time — average EWMA of recent evidence magnitude.\n\nSpikes mark scenes where multiple markets took large shocks. Flat = quiet stretch. Use this to spot when the world view entered a turbulent phase."
                   }
                   accent="#a78bfa"
                   deltaBetter="neutral"
@@ -1408,7 +1408,7 @@ export default function MarketView() {
                   formatValue={(v) => `${Math.round(v)}%`}
                   formatDelta={(d) => `${d.toFixed(1)}pp`}
                   hint={
-                    "CONTESTED over time — share of live markets with entropy ≥ 70%.\n\nHigh contested rate = the story is keeping questions open. Falls as markets commit; a late-story climb usually signals fresh questions being opened."
+                    "CONTESTED over time — share of live markets with entropy ≥ 70%.\n\nHigh contested rate = the world view is keeping questions open. Falls as markets commit; a late climb usually signals fresh questions being opened."
                   }
                   accent={THREAD_CATEGORY_HEX.contested}
                   yMin={0}
@@ -1422,7 +1422,7 @@ export default function MarketView() {
                   formatValue={(v) => String(Math.round(v))}
                   formatDelta={(d) => `+${Math.round(d)}`}
                   hint={
-                    "RESOLVED over time — cumulative count of markets that have closed.\n\nMonotonically non-decreasing. Flat = no closures; steep step = a payoff beat just landed. Gives you the resolution rhythm of the story."
+                    "RESOLVED over time — cumulative count of markets that have closed.\n\nMonotonically non-decreasing. Flat = no closures; steep step = a payoff beat just landed. Gives you the resolution rhythm of the world view."
                   }
                   accent={THREAD_CATEGORY_HEX.resolved}
                   deltaBetter="up"

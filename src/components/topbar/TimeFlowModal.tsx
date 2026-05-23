@@ -18,7 +18,7 @@ type Props = { onClose: () => void };
 type View = 'rhythm' | 'cumulative' | 'gaps' | 'distribution';
 
 const VIEWS: { id: View; label: string; hint: string }[] = [
-  { id: 'rhythm', label: 'Rhythm', hint: 'Sequence at a glance — where the story is in-the-moment vs days apart.' },
+  { id: 'rhythm', label: 'Rhythm', hint: 'Sequence at a glance — where the world view is in-the-moment vs days apart.' },
   { id: 'cumulative', label: 'Cumulative', hint: 'Running total — line rises on forward, dips on flashbacks.' },
   { id: 'gaps', label: 'Per-Scene Gaps', hint: 'Each jump as a signed bar. Forward goes up, flashback goes down.' },
   { id: 'distribution', label: 'Distribution', hint: 'How many gaps fell in each unit band — pacing fingerprint.' },

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "InkTide",
-  description: "Where narrative forces rise and fall like tides. Generate and revise stories guided by computable structure.",
+  description: "A simulation engine for long-form reasoning. Extract, query, and generate world views — causally coherent knowledge structures over fate, world, and system.",
 };
 
 export default function RootLayout({

@@ -418,7 +418,7 @@ export default function NetworkView() {
   if (!narrative) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-text-dim text-sm italic">No narrative loaded.</p>
+        <p className="text-text-dim text-sm italic">No world view loaded.</p>
       </div>
     );
   }
@@ -429,7 +429,7 @@ export default function NetworkView() {
       <div className="shrink-0 flex items-center gap-0 px-2 h-7 border-b border-border glass-panel z-30 overflow-x-auto">
         <ScopeTab active={scope === 'scene'} onClick={() => setScope('scene')} label="Scene" />
         <ScopeTab active={scope === 'arc'} onClick={() => setScope('arc')} label="Arc" />
-        <ScopeTab active={scope === 'narrative'} onClick={() => setScope('narrative')} label="Narrative" />
+        <ScopeTab active={scope === 'narrative'} onClick={() => setScope('narrative')} label="World View" />
 
         <div className="w-px h-3 bg-border mx-1" />
 

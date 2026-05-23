@@ -238,7 +238,7 @@ export default function ThreadPortfolio() {
   if (!narrative) {
     return (
       <div className="p-4 text-[11px] text-text-dim">
-        Open a narrative to view its threads.
+        Open a world view to view its threads.
       </div>
     );
   }
@@ -253,7 +253,7 @@ export default function ThreadPortfolio() {
           <svg className="w-8 h-8 text-text-dim/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          <p className="text-[11px] text-text-dim/80">No threads in this narrative yet.</p>
+          <p className="text-[11px] text-text-dim/80">No threads in this world view yet.</p>
           <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
             Threads appear as soon as scenes register thread deltas — the engine
             records them, this panel shows the live portfolio.

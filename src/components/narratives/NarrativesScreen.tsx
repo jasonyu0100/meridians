@@ -42,16 +42,16 @@ export function NarrativesScreen() {
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center pt-20">
       <h1 className="text-lg font-semibold text-text-primary mb-1">InkTide</h1>
-      <p className="text-sm text-text-secondary mb-8">Thread-first storytelling</p>
+      <p className="text-sm text-text-secondary mb-8">A simulation engine for long-form reasoning</p>
 
       {narratives.length === 0 ? (
         <div className="flex flex-col items-center gap-4">
-          <p className="text-text-dim text-sm">No narratives yet</p>
+          <p className="text-text-dim text-sm">No world views yet</p>
           <button
             onClick={() => wizardDispatch({ type: 'OPEN' })}
             className="bg-bg-elevated hover:bg-bg-overlay text-text-secondary text-sm px-4 py-2 rounded-lg border border-border transition"
           >
-            New Narrative
+            New World View
           </button>
         </div>
       ) : (
@@ -65,7 +65,7 @@ export function NarrativesScreen() {
             onClick={() => wizardDispatch({ type: 'OPEN' })}
             className="bg-bg-elevated hover:bg-bg-overlay text-text-secondary text-sm px-4 py-2 rounded-lg border border-border mt-4 transition"
           >
-            New Narrative
+            New World View
           </button>
         </>
       )}

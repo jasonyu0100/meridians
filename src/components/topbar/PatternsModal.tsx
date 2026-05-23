@@ -247,14 +247,14 @@ export function PatternsModal({ onClose }: Props) {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="text-[13px] font-semibold text-text-primary">Genre & Patterns</h2>
-            <span className="text-[10px] text-text-dim">Auto-detect or manually define story commandments</span>
+            <span className="text-[10px] text-text-dim">Auto-detect or manually define world view commandments</span>
           </div>
         </div>
       </ModalHeader>
       <ModalBody className="p-5 space-y-5">
         {/* Detection section */}
         {detecting ? (
-          <StreamingStatus label="Analyzing narrative…" streamText={streamText} maxHeight="max-h-24" />
+          <StreamingStatus label="Analyzing world view…" streamText={streamText} maxHeight="max-h-24" />
         ) : (
           <button
             onClick={handleDetect}

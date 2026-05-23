@@ -187,7 +187,7 @@ export default function SystemLogModal({ onClose }: Props) {
                 className="bg-white/5 border border-white/10 text-text-primary text-[11px] px-2 py-1 rounded hover:bg-white/8 transition-colors"
               >
                 <option value="all">All</option>
-                <option value="narrative">Narrative</option>
+                <option value="narrative">World view</option>
                 <option value="analysis">Analysis</option>
               </select>
             </div>

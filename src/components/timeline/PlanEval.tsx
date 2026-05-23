@@ -307,7 +307,7 @@ export default function PlanEval({ sceneRange, onRangeChange }: { sceneRange?: S
   }
 
   if (!narrative) {
-    return <div className="p-4 text-text-dim text-xs">No narrative loaded.</div>;
+    return <div className="p-4 text-text-dim text-xs">No world view loaded.</div>;
   }
 
   const busy = loading || replanning;
@@ -525,7 +525,7 @@ export default function PlanEval({ sceneRange, onRangeChange }: { sceneRange?: S
             ) : (
               <>
                 <p>No scenes have beat plans yet.</p>
-                <p className="mt-1 text-[10px]">Select a scene and generate a plan from the story reader.</p>
+                <p className="mt-1 text-[10px]">Select a scene and generate a plan from the world view reader.</p>
               </>
             )}
           </div>

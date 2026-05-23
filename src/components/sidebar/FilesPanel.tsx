@@ -191,7 +191,7 @@ export default function FilesPanel() {
   if (!narrative) {
     return (
       <div className="p-4 text-[11px] text-text-dim">
-        Open a narrative to manage its source files.
+        Open a world view to manage its source files.
       </div>
     );
   }

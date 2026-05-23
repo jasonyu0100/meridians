@@ -72,7 +72,7 @@ export function NarrativeEditModal({ entry, onClose }: { entry: NarrativeEntry; 
   return (
     <Modal onClose={onClose} size="lg">
       <ModalHeader onClose={onClose}>
-        <h2 className="text-[13px] font-semibold text-text-primary">Edit Story</h2>
+        <h2 className="text-[13px] font-semibold text-text-primary">Edit World View</h2>
       </ModalHeader>
       <ModalBody className="p-5 space-y-5">
           {/* Cover */}

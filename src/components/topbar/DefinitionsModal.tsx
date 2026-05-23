@@ -44,7 +44,7 @@ function CubeTab() {
     <div className="space-y-4">
       <div className="text-[10px] text-text-dim leading-relaxed">
         The <strong>narrative cube</strong> maps scenes into 3D force space.
-        Each corner represents a distinct storytelling mode defined by high/low
+        Each corner represents a distinct mode defined by high/low
         combinations of the three forces.
       </div>
 
@@ -193,7 +193,7 @@ function BeatsTab() {
     <div className="space-y-5">
       <div className="text-[10px] text-text-dim leading-relaxed">
         Beats are the atomic units of scene structure — individual moments that
-        advance story, reveal character, or build world.
+        advance plot, reveal character, or build world.
       </div>
 
       <div>
@@ -472,7 +472,7 @@ const ARCHETYPES = [
     name: "Show",
     key: "show" as ArchetypeKey,
     forces: "W",
-    desc: "People-driven — characters transform and their journeys are the heart of the story",
+    desc: "People-driven — characters transform and their journeys are the heart of the world view",
   },
   {
     name: "Paper",
@@ -484,7 +484,7 @@ const ARCHETYPES = [
     name: "Emerging",
     key: "emerging" as ArchetypeKey,
     forces: "—",
-    desc: "No single force has reached its potential yet — the story is still finding its voice",
+    desc: "No single force has reached its potential yet — the world view is still finding its voice",
   },
 ];
 
@@ -492,7 +492,7 @@ function ArchetypesTab() {
   return (
     <div className="space-y-4">
       <div className="text-[10px] text-text-dim leading-relaxed">
-        Archetypes classify stories by <strong>force dominance</strong> — which
+        Archetypes classify world views by <strong>force dominance</strong> — which
         of the three forces reach narrative-grade strength.
       </div>
 
@@ -555,7 +555,7 @@ function ShapesTab() {
         <IconLineChart size={14} className="shrink-0 mt-0.5 text-text-dim/60" />
         <span>
           Shapes classify the <strong>macro-structure</strong> of delivery
-          curves — how intensity rises and falls across the full story.
+          curves — how intensity rises and falls across the full world view.
         </span>
       </div>
 
@@ -658,7 +658,7 @@ const DENSITIES = [
     name: "Sparse",
     key: "sparse",
     range: "< 0.5",
-    desc: "Minimal world scaffolding — story over setting",
+    desc: "Minimal world scaffolding — plot over setting",
     color: "#34D399",
   },
   {

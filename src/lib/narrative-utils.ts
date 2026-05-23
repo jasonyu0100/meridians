@@ -2061,7 +2061,7 @@ const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((s, v) => s + v, 0) /
 /** Reference means per force — the expected mean for a well-structured narrative.
  *  Raw force values are divided by these to produce a unit-free normalized value
  *  (x̃ = x̄ / μ_ref). At x̃ = 1 the grade reaches ~21/25 (dominance threshold).
- *  Calibrated against analyzed works: fate-dominant novels (HP, Alice) land
+ *  Calibrated against analyzed narratives: fate-dominant novels (HP, Alice) land
  *  23–24, system-dominant papers saturate to 25, and low forces across
  *  archetype mismatches sit in the mid-teens.
  *

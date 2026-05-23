@@ -142,7 +142,7 @@ export function ImportPackageModal({ onClose }: Props) {
   return (
     <Modal onClose={onClose} size="md">
       <ModalHeader onClose={onClose}>
-        <h2 className="text-[13px] font-semibold text-text-primary">Import Story Package</h2>
+        <h2 className="text-[13px] font-semibold text-text-primary">Import World View Package</h2>
       </ModalHeader>
       <ModalBody className="p-4 space-y-4">
         {/* File picker */}

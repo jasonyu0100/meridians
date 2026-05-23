@@ -536,7 +536,7 @@ function ScenarioRow({
         {metrics && (
           <span
             className={`font-mono text-[12px] font-bold w-7 text-right shrink-0 ${scoreColorClass(metrics.grade.overall)}`}
-            title="Predicted post-commit narrative score"
+            title="Predicted post-commit world view score"
           >
             {metrics.grade.overall}
           </span>

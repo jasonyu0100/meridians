@@ -288,7 +288,7 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
     return {
       id: "role-declining",
       label: "declining",
-      description: "Arc shifts visibly downward — started stronger than they end. The story is watching them lose ground across the window.",
+      description: "Arc shifts visibly downward — started stronger than they end. The world view is watching them lose ground across the window.",
       tone: "loss",
     };
   }
@@ -298,7 +298,7 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
     return {
       id: "role-trickster",
       label: "trickster",
-      description: "Thrives in information-asymmetric games (signaling, cheap-talk, principal-agent), high variance in outcomes, mostly ends ahead. Moves through the story by controlling what others know.",
+      description: "Thrives in information-asymmetric games (signaling, cheap-talk, principal-agent), high variance in outcomes, mostly ends ahead. Moves through the world view by controlling what others know.",
       tone: "strategic",
     };
   }
@@ -430,21 +430,21 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "dominant",
       label: "dominant",
-      description: "Tends to land near the top of every grid they're in. When this player is at the table, the story routinely gives them the best available outcome.",
+      description: "Tends to land near the top of every grid they're in. When this player is at the table, the world view routinely gives them the best available outcome.",
       tone: "win",
     });
   } else if (eloDelta >= 80) {
     tags.push({
       id: "ascendant",
       label: "rising",
-      description: "Rating climbed sharply across the story. They gained strategic ground from where they started.",
+      description: "Rating climbed sharply across the world view. They gained strategic ground from where they started.",
       tone: "win",
     });
   } else if (eloDelta <= -80) {
     tags.push({
       id: "fading",
       label: "falling",
-      description: "Rating eroded across the story. The strategic ground they once held has been lost.",
+      description: "Rating eroded across the world view. The strategic ground they once held has been lost.",
       tone: "loss",
     });
   } else if (p.eloVolatility >= 18) {
@@ -472,7 +472,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     tags.push({
       id: "arc-breaker",
       label: "main-character force",
-      description: "Routinely wins moments rational play says they shouldn't. The story bends in their favour even when strategic logic would have given the win to the other side — the unmistakable signature of a protagonist.",
+      description: "Routinely wins moments rational play says they shouldn't. The world view bends in their favour even when strategic logic would have given the win to the other side — the unmistakable signature of a protagonist.",
       tone: "strategic",
     });
   } else if (nashRate >= 0.75 && p.avgStakeDelta >= 0) {
@@ -538,7 +538,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
       tags.push({
         id: "arc-rising",
         label: "redemption arc",
-        description: "Late-game outcomes are substantially better than early ones. The arc moves upward over the story — growth, redemption, or belated recognition.",
+        description: "Late-game outcomes are substantially better than early ones. The arc moves upward over the world view — growth, redemption, or belated recognition.",
         tone: "win",
       });
     } else if (arcShift <= -1.5) {
@@ -1116,7 +1116,7 @@ export function GameTheoryDashboard({
               Game Theory
             </h2>
             <span className="text-[11px] text-text-dim/70">
-              Who's actually winning this story
+              Who's actually winning this world view
             </span>
             {positionLabel && (
               <span
@@ -1609,7 +1609,7 @@ function NarrativeInsights({
   return (
     <div className="flex flex-col gap-4">
       <SectionHeader
-        title="Narrative insights"
+        title="World view insights"
         subtitle="Each card spotlights the player who most strongly expresses one strategic pattern — the cast's most-extracting, most-sacrificing, most-strategic, most-irrational players. The world's archetype gallery, derived from realized cells."
       />
 

@@ -80,7 +80,7 @@ export default function DashboardPage() {
                 onChange={(e) => setAnalysisText(e.target.value)}
                 rows={4}
                 className="w-full bg-transparent text-white text-sm px-4 pt-4 pb-2 resize-none focus:outline-none placeholder:text-white/25"
-                placeholder="Paste text to analyze into a narrative..."
+                placeholder="Paste text to analyze into a world view..."
               />
               <div className="flex items-center justify-between px-4 pb-3">
                 <span className="text-[10px] text-white/20 font-mono">
@@ -103,10 +103,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Your Stories */}
+          {/* Your World Views */}
           <div className="max-w-4xl mx-auto mb-12">
             <div className="flex items-center gap-3 mb-5">
-              <h2 className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono">Your Stories</h2>
+              <h2 className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono">Your World Views</h2>
               <div className="flex-1 h-px bg-white/6" />
             </div>
             {userSeries.length > 0 ? (
@@ -117,7 +117,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="text-center py-12 border border-dashed border-white/8 rounded-lg">
-                <p className="text-white/25 text-sm">No stories yet</p>
+                <p className="text-white/25 text-sm">No world views yet</p>
                 <button
                   onClick={() => openCreate()}
                   className="mt-3 text-xs text-white/40 hover:text-white/70 underline underline-offset-2 transition"

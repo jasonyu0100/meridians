@@ -498,7 +498,7 @@ export default function ChatPanel() {
   if (!state.activeNarrative) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-text-dim">Open a story to start</p>
+        <p className="text-sm text-text-dim">Open a world view to start</p>
       </div>
     );
   }
@@ -746,10 +746,10 @@ export default function ChatPanel() {
         {messages.length === 0 && !activePersona && (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
             <p className="text-sm text-text-secondary font-medium mb-1">
-              Story Q&A
+              World View Q&A
             </p>
             <p className="text-[11px] text-text-dim mb-2">
-              Ask anything about your story so far
+              Ask anything about your world view so far
             </p>
             <div className="flex flex-wrap gap-1 justify-center max-w-55">
               {[
@@ -1001,7 +1001,7 @@ export default function ChatPanel() {
                 >
                   <div className="font-medium">Assistant</div>
                   <div className="text-[9px] text-text-dim">
-                    Story consultant — full context
+                    World view consultant — full context
                   </div>
                 </button>
                 {personaSections.map((section) => (

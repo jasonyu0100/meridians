@@ -246,9 +246,9 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
     <Modal onClose={onClose} size="2xl" maxHeight="85vh">
       <ModalHeader onClose={onClose}>
         <div>
-          <h2 className="text-sm font-semibold text-text-primary">Story Settings</h2>
+          <h2 className="text-sm font-semibold text-text-primary">World View Settings</h2>
           <p className="text-[10px] text-text-dim uppercase tracking-wider">
-            Shape how your narrative is generated
+            Shape how your world view is generated
           </p>
         </div>
       </ModalHeader>
@@ -276,7 +276,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
             <>
               <div>
                 <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-                  Story Direction
+                  Direction
                 </label>
                 <textarea
                   value={settings.storyDirection}
@@ -285,7 +285,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
                 />
                 <p className="text-[9px] text-text-dim/50 mt-1">
-                  High-level guidance for where the story should go. Steers every arc.
+                  High-level guidance for where the world view should go. Steers every arc.
                 </p>
               </div>
 
@@ -325,7 +325,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                     Auto-clear after use
                   </span>
                   <span className="text-[9px] text-text-dim/50">
-                    Clear Story Direction + Constraints after they guide a scene generation, and World Direction after it guides a world expansion. Default on — prevents a one-off steer from silently shaping every subsequent run.
+                    Clear Direction + Constraints after they guide a scene generation, and World Direction after it guides a world expansion. Default on — prevents a one-off steer from silently shaping every subsequent run.
                   </span>
                 </div>
                 <button
@@ -359,7 +359,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
             ).length >= 3;
 
             // ── Build preset arrays: [Storyteller, This Story?, ...works] ──
-            const selfPreset = { key: 'self', name: 'This Story', description: 'Derived from the current branch.' };
+            const selfPreset = { key: 'self', name: 'This World View', description: 'Derived from the current branch.' };
 
             const allPacingPresets = [
               MATRIX_PRESETS[0] ?? STORYTELLER_PRESET,

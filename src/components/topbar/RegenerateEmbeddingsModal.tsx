@@ -59,7 +59,7 @@ export function RegenerateEmbeddingsModal({ onClose }: Props) {
             Regenerate missing embeddings for the current narrative. Useful when:
           </p>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li>Importing narratives from before embeddings existed</li>
+            <li>Importing world views from before embeddings existed</li>
             <li>Embedding generation failed during plan/scene creation</li>
             <li>Manual plan edits (embeddings not auto-regenerated)</li>
             <li>Embeddings corrupted or incomplete</li>

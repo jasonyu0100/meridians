@@ -95,7 +95,7 @@ export function ExportPackageModal({ narrative, onClose }: Props) {
   return (
     <Modal onClose={onClose} size="md">
       <ModalHeader onClose={onClose}>
-        <h2 className="text-[13px] font-semibold text-text-primary">Export Story Package</h2>
+        <h2 className="text-[13px] font-semibold text-text-primary">Export World View Package</h2>
       </ModalHeader>
       <ModalBody className="p-4 space-y-4">
         {/* Story info */}
@@ -170,7 +170,7 @@ export function ExportPackageModal({ narrative, onClose }: Props) {
         {/* Size estimate */}
         <div className="p-3 bg-white/3 rounded-lg border border-white/8 space-y-1.5">
           <div className="flex items-center justify-between text-[10px]">
-            <span className="text-text-dim">Narrative structure</span>
+            <span className="text-text-dim">World view structure</span>
             <span className="text-text-secondary font-mono">{formatBytes(estimate.narrative)}</span>
           </div>
           {options.includeEmbeddings && estimate.embeddings > 0 && (

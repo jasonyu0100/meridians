@@ -323,7 +323,7 @@ export default function ProseEval({ sceneRange, onRangeChange }: { sceneRange?: 
   }
 
   if (!narrative) {
-    return <div className="p-4 text-text-dim text-xs">No narrative loaded.</div>;
+    return <div className="p-4 text-text-dim text-xs">No world view loaded.</div>;
   }
 
   const busy = loading || rewriting;
@@ -536,7 +536,7 @@ export default function ProseEval({ sceneRange, onRangeChange }: { sceneRange?: 
             ) : (
               <>
                 <p>No scenes have prose yet.</p>
-                <p className="mt-1 text-[10px]">Select a scene and generate prose from the story reader.</p>
+                <p className="mt-1 text-[10px]">Select a scene and generate prose from the world view reader.</p>
               </>
             )}
           </div>

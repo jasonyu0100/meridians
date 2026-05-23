@@ -1600,7 +1600,7 @@ export function NarrativeReport({
           </Section>
 
           {/* ── 05 Narrative Walkthrough ── */}
-          <Section title="Narrative Walkthrough" number={++sec}>
+          <Section title="World View Walkthrough" number={++sec}>
             {data.segments.map((seg, segIdx) => {
               // Collect peaks and valleys in this segment
               const segMoments = [

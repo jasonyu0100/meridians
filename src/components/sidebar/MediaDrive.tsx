@@ -347,7 +347,7 @@ export default function MediaDrive() {
   if (!narrative) {
     return (
       <div className="flex-1 flex items-center justify-center px-3">
-        <p className="text-xs text-text-dim text-center">Select a narrative</p>
+        <p className="text-xs text-text-dim text-center">Select a world view</p>
       </div>
     );
   }

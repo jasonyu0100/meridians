@@ -33,7 +33,7 @@ A world view is modelled as a **knowledge graph** that mutates section by sectio
 - **Variable scenario modelling** — probabilistic alternative to the CRG. Extract a pool of load-bearing variables (forces, not symptoms), produce a cohort of next-arc timelines as coordinations over that pool, score each with a priorLogit and softmax to a relative probability. Cohort follows the power-law shape of real possibility space (most mass on modal continuation, thin tail on rupture)
 - **Four thinking modes** — abduction (default, backward selective), divergent (forward expansive), deduction (forward narrow), induction (backward generalising)
 - **Arc settings sync** — force preference, reasoning mode, and network bias persist on the CRG snapshot so scene generation inherits the same engine tilt without callers re-threading settings
-- **Markov chain pacing** — transition matrices from analyzed works shape scene-by-scene rhythm
+- **Markov chain pacing** — transition matrices from analyzed narrative shape scene-by-scene rhythm
 - **Experimentation batch** — one parallel arc continuation per Future variable scenario; softmax-ranked cohort, top result becomes active branch, rest attach as sister divergences
 - **Planning with course correction** — direction vectors rewritten after each arc
 - **Iterative revision** — evaluate → verdict (ok/edit/merge/insert/cut) → reconstruct versioned branches

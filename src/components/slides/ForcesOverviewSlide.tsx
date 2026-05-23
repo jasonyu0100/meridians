@@ -107,7 +107,7 @@ export function ForcesOverviewSlide({ data }: { data: SlidesData }) {
 
   const forceDescriptions: Record<string, string> = {
     fate: 'Thread resolutions and relationship shifts carry the narrative weight',
-    world: 'Character transformation and world deltas shape the story forward',
+    world: 'Character transformation and world deltas shape the world view forward',
     system: 'World-building density — new concepts, systems, and connections expand the reader\'s understanding',
   };
 

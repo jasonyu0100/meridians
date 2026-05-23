@@ -419,7 +419,7 @@ export function CreationWizard() {
                 );
               })()}
               <p className="text-[10px] text-text-dim/60 italic mt-2">
-                When on, world generation gets OpenRouter&apos;s web_search + web_fetch tools at the saturating tier. Best for analysis / paper / non-fiction / simulation paradigms grounded in current facts. Tune level + total-results cap per narrative afterwards in Story Settings.
+                When on, world generation gets OpenRouter&apos;s web_search + web_fetch tools at the saturating tier. Best for analysis / paper / non-fiction / simulation paradigms grounded in current facts. Tune level + total-results cap per world view afterwards in World View Settings.
               </p>
             </section>
 
@@ -661,7 +661,7 @@ export function CreationWizard() {
                 <span className="text-xs text-text-dim">
                   World only — skip introduction arc
                   <span className="ml-1 text-text-dim/60">
-                    (use premise as story plan, generate entities only)
+                    (use premise as the world view's plan, generate entities only)
                   </span>
                 </span>
               </label>

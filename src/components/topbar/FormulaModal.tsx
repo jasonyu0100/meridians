@@ -93,7 +93,7 @@ function DynamicsTab() {
         </p>
       </S>
 
-      <S title="Swing" analogy="The story breathing — great stories alternate loud and quiet.">
+      <S title="Swing" analogy="The world view breathing — great world views alternate loud and quiet.">
         <Block tex={String.raw`\text{Sw}_i = \sqrt{\left(\tfrac{\Delta F}{\mu_F}\right)^{2} + \left(\tfrac{\Delta W}{\mu_W}\right)^{2} + \left(\tfrac{\Delta S}{\mu_S}\right)^{2}}`} />
         <p className="text-[10px] text-text-dim">
           Normalised Euclidean distance between consecutive force snapshots. Each delta divided by its reference mean (<Tex>{String.raw`\mu_F, \mu_W, \mu_S`}</Tex>) so the three forces contribute equally regardless of their natural scales.

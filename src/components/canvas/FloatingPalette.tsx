@@ -963,8 +963,8 @@ export default function FloatingPalette({
               type="button"
               className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${state.graphViewMode === 'search' ? "text-text-primary bg-white/10" : "text-text-secondary hover:text-text-primary hover:bg-white/6"}`}
               onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'search' })}
-              aria-label="Search narrative"
-              title="Search narrative"
+              aria-label="Search world view"
+              title="Search world view"
             >
               <IconSearch size={12} />
             </button>
@@ -1249,9 +1249,9 @@ export default function FloatingPalette({
               type="button"
               className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
               onClick={() =>
-                window.dispatchEvent(new CustomEvent("open-story-settings"))
+                window.dispatchEvent(new CustomEvent("open-world-view-settings"))
               }
-              title="Story settings"
+              title="World view settings"
             >
               <IconSettings size={14} />
             </button>
@@ -1287,8 +1287,8 @@ export default function FloatingPalette({
                 : "text-text-secondary hover:text-text-primary hover:bg-white/6"
             }`}
             onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'search' })}
-            aria-label="Search narrative"
-            title="Search narrative"
+            aria-label="Search world view"
+            title="Search world view"
           >
             <IconSearch size={12} />
           </button>
@@ -1393,9 +1393,9 @@ export default function FloatingPalette({
             type="button"
             className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
             onClick={() =>
-              window.dispatchEvent(new CustomEvent("open-story-settings"))
+              window.dispatchEvent(new CustomEvent("open-world-view-settings"))
             }
-            title="Story settings"
+            title="World view settings"
           >
             <IconSettings size={14} />
           </button>

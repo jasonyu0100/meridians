@@ -67,7 +67,7 @@ function DistributionTab({ narrative, resolvedKeys }: { narrative: NarrativeStat
   }, [sceneProfiles, narrative, resolvedKeys, getClassification]);
 
   if (!stats) {
-    return <div className="text-[10px] text-text-dim py-8 text-center">Classification not yet computed. Open a narrative with propositions.</div>;
+    return <div className="text-[10px] text-text-dim py-8 text-center">Classification not yet computed. Open a world view with propositions.</div>;
   }
 
   const maxCount = Math.max(...BASE_ORDER.map(b => stats.baseTotals[b]));

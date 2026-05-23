@@ -70,7 +70,7 @@ const LOG_TYPE_ORDER: ThreadLogNodeType[] = [
 // One-line reader-friendly definitions for every log type. Used in hover
 // tooltips so the user learns the vocabulary while browsing.
 const LOG_TYPE_GLOSS: Record<ThreadLogNodeType, string> = {
-  pulse: "Attention without movement — the story acknowledged this thread but the odds didn't shift.",
+  pulse: "Attention without movement — the world view acknowledged this thread but the odds didn't shift.",
   transition: "Lifecycle state changed — the thread crossed a structural boundary.",
   setup: "A promise is being planted — future payoff telegraphed, odds nudge gently.",
   escalation: "Stakes rising — pressure mounts without yet resolving direction.",
@@ -87,7 +87,7 @@ const LOG_TYPE_GLOSS: Record<ThreadLogNodeType, string> = {
 // the system should be able to understand any stat from its tooltip alone.
 const STAT_GLOSS = {
   volume:
-    "VOLUME — the cumulative narrative attention this market has earned.\n\nGrows when scenes touch it (volumeDelta); decays 10% each scene it's ignored. High volume = the story keeps coming back to this. Below " +
+    "VOLUME — the cumulative narrative attention this market has earned.\n\nGrows when scenes touch it (volumeDelta); decays 10% each scene it's ignored. High volume = the world view keeps coming back to this. Below " +
     MARKET_ABANDON_VOLUME +
     " triggers abandonment.",
   uncertainty:
@@ -99,7 +99,7 @@ const STAT_GLOSS = {
     MARKET_TAU_CLOSE +
     " with a payoff/twist of |evidence|≥3 triggers closure. Good shorthand for 'how decided is the leader?'",
   focus:
-    "FOCUS — composite importance × sway score.\n\nvolume × entropy × (1 + volatility) × recency^gap. The portfolio sidebar orders by this. High focus = a market the story is currently investing in AND is contested enough to still move.",
+    "FOCUS — composite importance × sway score.\n\nvolume × entropy × (1 + volatility) × recency^gap. The portfolio sidebar orders by this. High focus = a market the world view is currently investing in AND is contested enough to still move.",
   gap:
     "GAP — scenes since the market last received evidence.\n\n∞ if never touched. Large gap + low volume → heading for abandonment. Large gap + high volume → dormant but potent; often a setup for a callback.",
 };
@@ -269,7 +269,7 @@ function SaturationGauge({ margin }: { margin: number }) {
           title={
             "CLOSURE PROXIMITY — how close |margin| is to the τ threshold (" +
             MARKET_TAU_CLOSE +
-            ").\n\nAt 100%, the next payoff/twist with |evidence|≥3 can officially close the market. Under 66% = still in genuine play. Above 66% = the story is committing — expect a payoff soon."
+            ").\n\nAt 100%, the next payoff/twist with |evidence|≥3 can officially close the market. Under 66% = still in genuine play. Above 66% = the world view is committing — expect a payoff soon."
           }
         >
           Closure proximity
@@ -401,7 +401,7 @@ export default function ThreadDetail({ threadId }: Props) {
           return (
             <span
               className="text-[9px] text-text-dim font-mono ml-auto cursor-help"
-              title="ACTIVE ARCS — how many arcs on this branch have touched this thread.\n\nA thread that only appears in 1 arc is localized; one appearing in many arcs is load-bearing for the story's structure."
+              title="ACTIVE ARCS — how many arcs on this branch have touched this thread.\n\nA thread that only appears in 1 arc is localized; one appearing in many arcs is load-bearing for the world view's structure."
             >
               {touched}/{total} arcs
             </span>
@@ -668,7 +668,7 @@ export default function ThreadDetail({ threadId }: Props) {
                     {" · quality "}
                     <span
                       className="font-mono tabular-nums text-text-secondary cursor-help"
-                      title="RESOLUTION QUALITY — how earned the closure felt.\n\nFactors: volatility-adjusted lead, recency of contested state, how often the winning outcome held first place. Higher = the story built to this; lower = the outcome arrived without enough evidence."
+                      title="RESOLUTION QUALITY — how earned the closure felt.\n\nFactors: volatility-adjusted lead, recency of contested state, how often the winning outcome held first place. Higher = the world view built to this; lower = the outcome arrived without enough evidence."
                     >
                       {Math.round(thread.resolutionQuality * 100)}%
                     </span>

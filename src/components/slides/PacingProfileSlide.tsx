@@ -334,7 +334,7 @@ export function PacingProfileSlide({ data }: { data: SlidesData }) {
                 />
               </div>
               <p className="text-[9px] text-text-dim mt-1">
-                How evenly the story uses all 8 modes. High = wide range, low =
+                How evenly the world view uses all 8 modes. High = wide range, low =
                 repetitive.
               </p>
             </div>

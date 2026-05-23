@@ -33,7 +33,7 @@ export default function SurveyPanel() {
   if (!narrative) {
     return (
       <div className="p-4 text-[11px] text-text-dim">
-        Open a narrative to run surveys against its world.
+        Open a world view to run surveys against its world.
       </div>
     );
   }
@@ -102,7 +102,7 @@ function SurveyStream({
         </svg>
         <p className="text-[11px] text-text-dim/80">Ask a question of the whole world.</p>
         <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
-          Tap <span className="text-text-secondary">+ New</span> to compose a survey, or have the engine suggest one tailored to your narrative.
+          Tap <span className="text-text-secondary">+ New</span> to compose a survey, or have the engine suggest one tailored to your world view.
         </p>
       </div>
     );

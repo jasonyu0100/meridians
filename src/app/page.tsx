@@ -416,14 +416,15 @@ export default function HomePage() {
             <div className="max-w-5xl mx-auto">
               <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono whitespace-nowrap">
-                  Analyzed Works
+                  Analyzed World Views
                 </h2>
                 <div className="flex-1 h-px bg-white/6" />
               </div>
               <p className="text-[13px] text-white/55 leading-relaxed mb-8 max-w-lg">
-                Each analyzed work adds its pacing rhythm and prose patterns to
-                the system. Explore the structure underneath books that shaped a
-                generation.
+                Each analyzed work feeds the engine its priors — propositions,
+                pacing rhythms, force signatures, prose patterns. Fiction,
+                research, scenario brief: the same extraction, the same
+                queryable substrate.
               </p>
               <SeedCarousel seeds={analysisSeeds} openSlides />
             </div>
@@ -441,9 +442,9 @@ export default function HomePage() {
                 <div className="flex-1 h-px bg-white/6" />
               </div>
               <p className="text-[13px] text-white/55 leading-relaxed mb-5 max-w-lg">
-                AI-generated alternate paths from the same starting point.
-                Branch the timeline, compare force curves, see how different
-                structural choices reshape the same world.
+                AI-generated world views branching from a shared opening. Score
+                a cohort of continuations, compare force curves, see how
+                different structural choices reshape the same world view.
               </p>
               <SeedCarousel seeds={playgrounds} />
             </div>
@@ -495,7 +496,7 @@ export default function HomePage() {
                 },
                 {
                   q: "Can it generate?",
-                  a: "Yes. A Phase Reasoning Graph mines the world's machinery; a Causal Reasoning Graph plans each arc; scenes execute the graph paced by Markov chains from analyzed works; prose follows beat plans that re-render into prose, screenplay, meta, or simulation formats.",
+                  a: "Yes. A Phase Reasoning Graph mines the world's machinery; a Causal Reasoning Graph plans each arc; scenes execute the graph paced by Markov chains from analyzed world views; prose follows beat plans that re-render into prose, screenplay, meta, or simulation formats.",
                 },
                 {
                   q: "What does it cost?",

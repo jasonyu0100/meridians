@@ -339,7 +339,7 @@ export function BeatProfileSlide({ data }: { data: SlidesData }) {
                 />
               </div>
               <p className="text-[9px] text-text-dim mt-1">
-                How evenly the story uses all 10 beat functions. High = wide
+                How evenly the world view uses all 10 beat functions. High = wide
                 range, low = repetitive.
               </p>
             </div>

@@ -295,9 +295,9 @@ export default function ProseProfilePanel({ onClose }: Props) {
                 }`}
               >
                 <span className={`text-[11px] font-medium leading-tight ${deriving ? 'text-violet-300' : 'text-text-secondary'}`}>
-                  {deriving ? 'Deriving…' : 'Derive from story'}
+                  {deriving ? 'Deriving…' : 'Derive from world view'}
                 </span>
-                <span className="text-[9px] text-text-dim leading-snug">Auto-generate from narrative context</span>
+                <span className="text-[9px] text-text-dim leading-snug">Auto-generate from world view context</span>
               </button>
               <button
                 onClick={() => setTab('import')}

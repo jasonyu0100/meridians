@@ -470,7 +470,7 @@ export default function BranchEval({ sceneRange, onRangeChange }: { sceneRange?:
 
   if (!narrative) {
     return (
-      <div className="p-4 text-text-dim text-xs">No narrative loaded.</div>
+      <div className="p-4 text-text-dim text-xs">No world view loaded.</div>
     );
   }
 

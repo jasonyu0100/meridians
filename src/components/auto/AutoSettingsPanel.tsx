@@ -65,7 +65,7 @@ export function AutoSettingsPanel({ onClose, onStart }: { onClose: () => void; o
       <ModalHeader onClose={onClose}>
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Auto Mode Settings</h2>
-          <p className="text-[10px] text-text-dim uppercase tracking-wider">Configure autonomous narrative generation</p>
+          <p className="text-[10px] text-text-dim uppercase tracking-wider">Configure autonomous world view generation</p>
         </div>
       </ModalHeader>
       <ModalBody className="p-6 space-y-4">

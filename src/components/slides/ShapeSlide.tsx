@@ -135,7 +135,7 @@ export function ShapeSlide({ data }: { data: SlidesData }) {
     <div className="flex flex-col justify-center h-full px-12 py-8">
       <div className="mb-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-text-primary mb-2">The Delivery of This Story</h2>
+          <h2 className="text-2xl font-bold text-text-primary mb-2">The Delivery of This World View</h2>
           <div className="flex items-center gap-2">
             {data.shape && (
               <span className="text-xs px-2.5 py-1 rounded-full border border-amber-400/20 bg-amber-400/5 text-amber-400 font-medium">

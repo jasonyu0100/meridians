@@ -151,9 +151,9 @@ export function SceneAudioView({
           {!hasVoice ? (
             <>
               <p className="text-[11px] text-text-dim">No voice configured.</p>
-              <button onClick={() => window.dispatchEvent(new CustomEvent('open-story-settings'))}
+              <button onClick={() => window.dispatchEvent(new CustomEvent('open-world-view-settings'))}
                 className="text-[10px] text-violet-400/80 hover:text-violet-400 transition">
-                Open Story Settings
+                Open World View Settings
               </button>
             </>
           ) : !hasProse ? (

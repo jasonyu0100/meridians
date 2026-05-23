@@ -277,7 +277,7 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
         </ModalHeader>
         <ModalBody className="p-6 space-y-5">
           {loading ? (
-            <StreamingStatus label="Planning narrative trajectory…" streamText={streamText} maxHeight="max-h-60" />
+            <StreamingStatus label="Planning world view trajectory…" streamText={streamText} maxHeight="max-h-60" />
           ) : (
             <>
               {/* Tab buttons */}

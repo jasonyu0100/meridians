@@ -32,7 +32,7 @@ export default function InterviewPanel() {
   if (!narrative) {
     return (
       <div className="p-4 text-[11px] text-text-dim">
-        Open a narrative to interview its characters, locations, or artifacts.
+        Open a world view to interview its characters, locations, or artifacts.
       </div>
     );
   }
