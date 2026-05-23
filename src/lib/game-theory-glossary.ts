@@ -50,7 +50,7 @@ export const GT_TIPS = {
 
   // ── Outcome mix ──────────────────────────────────────────────────────
   outcomeMix:
-    "Of the realized cells this player landed in, what fraction were positive (gained stake) vs negative (lost stake). Tells you whether the story tends to deliver good or bad outcomes to them — independent of how they did against any one counterpart.",
+    "The W / D / L count rendered as a stacked bar — wins in green, draws in grey, losses in red. Mirrors the W / D / L column at game granularity, not cell-delta sign, so the bar and the count tell the same story at a glance.",
   avgStake:
     "Mean stake change per realized cell, on the −4..+4 scale. Positive = the story is broadly favorable to this player. Negative = the story is broadly costly.",
 

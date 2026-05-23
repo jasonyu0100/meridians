@@ -1138,7 +1138,7 @@ export function GameTheoryDashboard({
           </p>
         </div>
       </ModalHeader>
-      <ModalBody className="p-0 bg-bg-base">
+      <ModalBody className="p-0">
         {agg.totalDecisions === 0 ? (
           <EmptyDashboard />
         ) : (
@@ -1311,16 +1311,22 @@ function PlayerRankings({
               <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.elo}>Rating</th>
               <th className="text-left py-3 px-4 font-semibold w-56" title={GT_TIPS.trajectorySparkline}>Rating over time</th>
               <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.wld}>Won / Tied / Lost</th>
-              <th className="text-center py-3 px-4 font-semibold" title={GT_TIPS.outcomeMix}>Gains vs losses</th>
+              <th className="text-center py-3 px-4 font-semibold" title={GT_TIPS.outcomeMix}>Outcome mix</th>
               <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.avgStake}>Avg outcome</th>
               <th className="text-right py-3 px-4 font-semibold" title={GT_TIPS.nashCompliance}>Nash %</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((p, i) => {
-              const totalCells = p.positiveCells + p.negativeCells;
-              const posPct = totalCells > 0 ? (p.positiveCells / totalCells) * 100 : 0;
-              const negPct = totalCells > 0 ? (p.negativeCells / totalCells) * 100 : 0;
+              // Bar segments mirror the W / D / L count in the column next
+              // to it so the two read the same. Previously the bar used
+              // cell-level stake-delta sign (positiveCells / negativeCells)
+              // which disagreed with W/L/D — a "draw" game can still have a
+              // realized cell with a small non-zero delta, so a row could
+              // show 1W/2D/0L while the bar showed mixed wins-and-losses.
+              const winPct = p.games > 0 ? (p.wins   / p.games) * 100 : 0;
+              const drawPct = p.games > 0 ? (p.draws / p.games) * 100 : 0;
+              const lossPct = p.games > 0 ? (p.losses / p.games) * 100 : 0;
               const nashPct = p.games > 0 ? (p.realizedNashCount / p.games) * 100 : null;
               const eloDelta = p.currentElo - ELO_INITIAL;
 
@@ -1365,15 +1371,18 @@ function PlayerRankings({
                   <td className="py-4 px-4 align-top">
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex gap-px h-2 rounded-full overflow-hidden bg-white/5 w-36">
-                        {posPct > 0 && (
-                          <div className="bg-emerald-400/75 h-full" style={{ width: `${posPct}%` }} title="Realized cells with positive stake delta" />
+                        {winPct > 0 && (
+                          <div className="bg-emerald-400/75 h-full" style={{ width: `${winPct}%` }} title={`${p.wins} win${p.wins === 1 ? '' : 's'}`} />
                         )}
-                        {negPct > 0 && (
-                          <div className="bg-red-400/75 h-full" style={{ width: `${negPct}%` }} title="Realized cells with negative stake delta" />
+                        {drawPct > 0 && (
+                          <div className="bg-white/15 h-full" style={{ width: `${drawPct}%` }} title={`${p.draws} draw${p.draws === 1 ? '' : 's'}`} />
+                        )}
+                        {lossPct > 0 && (
+                          <div className="bg-red-400/75 h-full" style={{ width: `${lossPct}%` }} title={`${p.losses} loss${p.losses === 1 ? '' : 'es'}`} />
                         )}
                       </div>
                       <div className="text-[9px] text-text-dim/65">
-                        {outcomeMixLabel(posPct)}
+                        {outcomeMixLabel(winPct, drawPct, lossPct)}
                       </div>
                     </div>
                   </td>
@@ -1406,7 +1415,7 @@ function PlayerRankings({
           <span className="text-text-dim/75">Rating</span> climbs when this player captures more stake than their counterpart in a moment. The trajectory shows the strategic arc.
         </p>
         <p>
-          <span className="text-text-dim/75">Gains vs losses</span> = of the cells this player landed in, what fraction were positive (<span className="text-emerald-400/70">gains</span>) vs negative (<span className="text-red-400/70">losses</span>). Independent of who they faced.
+          <span className="text-text-dim/75">Outcome mix</span> = the W / D / L count rendered as a stacked bar — <span className="text-emerald-400/70">wins</span> in green, <span className="text-text-secondary">draws</span> in grey, <span className="text-red-400/70">losses</span> in red. Mirrors the W / D / L column on the same scale.
         </p>
         <p>
           <span className="text-text-dim/75">Avg outcome</span> = mean stake change per moment, on a −4 (catastrophic) to +4 (ideal) scale.
@@ -1419,14 +1428,17 @@ function PlayerRankings({
   );
 }
 
-/** Plain-language read of the gains-vs-losses bar — chosen so a glance
- *  tells you whether this player is generally favoured by the story. */
-function outcomeMixLabel(posPct: number): string {
-  if (posPct >= 80) return "mostly wins";
-  if (posPct >= 60) return "more wins than losses";
-  if (posPct >= 40) return "even split";
-  if (posPct >= 20) return "more losses than wins";
-  return "mostly loses";
+/** Plain-language read of the W / D / L bar — chosen so a glance tells
+ *  you whether this player is generally favoured by the story. Three
+ *  inputs because draws are their own category, not "half a win". */
+function outcomeMixLabel(winPct: number, drawPct: number, lossPct: number): string {
+  if (winPct === 0 && drawPct === 0 && lossPct === 0) return "no games";
+  if (winPct >= 80) return "mostly wins";
+  if (lossPct >= 80) return "mostly loses";
+  if (drawPct >= 80) return "mostly draws";
+  if (winPct > lossPct) return drawPct >= 40 ? "wins, often drawing" : "more wins than losses";
+  if (lossPct > winPct) return drawPct >= 40 ? "loses, often drawing" : "more losses than wins";
+  return drawPct >= 40 ? "even, often drawing" : "even split";
 }
 
 // ── Sparkline — inline ELO timeline ────────────────────────────────────────

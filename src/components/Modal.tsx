@@ -39,6 +39,16 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  // Lock body scroll while a modal is open so the page scrollbar behind
+  // the overlay doesn't appear alongside the modal's own scroll container.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   if (fullScreen) {
     return (
       <div className="fixed inset-0 bg-bg-base z-50 flex flex-col overflow-hidden">
