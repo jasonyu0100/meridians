@@ -10,6 +10,11 @@ export type MediaItem = {
   imageUrl: string;
   label: string;
   sublabel?: string;
+  /** The prompt this image was generated from. Shown as a quiet footer
+   *  under the caption so the operator can read what produced the image
+   *  without opening a separate inspector. Omit when no prompt exists
+   *  (e.g. uploaded covers). */
+  prompt?: string;
   aspectClass: string; // e.g. 'aspect-[3/4]' or 'aspect-video'
 };
 
@@ -56,10 +61,17 @@ export default function MediaPreview({ items, currentIndex, onNavigate, onClose 
         className="relative flex flex-col items-center max-w-[90vw] max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button — inset into the image's top-right corner. Sits
+            on a translucent black pill so it's legible against any
+            artwork. Stops click propagation so the backdrop's own
+            onClose doesn't double-fire. */}
         <button
-          onClick={onClose}
-          className="absolute -top-2 -right-2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-white hover:bg-black/80 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="Close preview"
+          className="absolute top-3 right-3 z-20 w-7 h-7 flex items-center justify-center rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/75 hover:text-white hover:bg-black/75 hover:border-white/25 transition-colors"
         >
           <IconClose size={12} />
         </button>
@@ -81,10 +93,15 @@ export default function MediaPreview({ items, currentIndex, onNavigate, onClose 
           )}
         </div>
 
-        {/* Counter */}
-        <p className="text-[10px] text-white/30 mt-1">
-          {currentIndex + 1} / {items.length}
-        </p>
+        {/* Prompt — the text used to generate this image. Quiet, italic,
+            wraps across multiple lines without pushing nav arrows around.
+            Constrained to a comfortable reading width so it stays readable
+            on wide / narrow artwork alike. */}
+        {item.prompt && (
+          <p className="mt-2 max-w-[min(60ch,85vw)] px-4 text-[11px] text-white/50 italic leading-relaxed text-center whitespace-pre-wrap">
+            {item.prompt}
+          </p>
+        )}
 
         {/* Navigation arrows */}
         {hasPrev && (

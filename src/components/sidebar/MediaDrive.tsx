@@ -192,17 +192,26 @@ export default function MediaDrive() {
         imageUrl: c.imageUrl!,
         label: c.name,
         sublabel: c.role,
+        prompt: c.imagePrompt,
         aspectClass: 'aspect-[3/4]',
       }));
     }
     if (tab === 'locations') {
-      return locations.filter((l) => l.imageUrl).map((l) => ({
-        id: l.id,
-        imageUrl: l.imageUrl!,
-        label: l.name,
-        sublabel: l.parentId && narrative?.locations[l.parentId] ? `in ${narrative.locations[l.parentId].name}` : undefined,
-        aspectClass: 'aspect-video',
-      }));
+      return locations.filter((l) => l.imageUrl).map((l) => {
+        // Always lead with the prominence label (domain / place / margin)
+        // — same shape as characters' role + artifacts' significance.
+        // Parent location, when present, follows as a secondary clause.
+        const parentName = l.parentId ? narrative?.locations[l.parentId]?.name : undefined;
+        const sublabel = parentName ? `${l.prominence} · in ${parentName}` : l.prominence;
+        return {
+          id: l.id,
+          imageUrl: l.imageUrl!,
+          label: l.name,
+          sublabel,
+          prompt: l.imagePrompt,
+          aspectClass: 'aspect-video',
+        };
+      });
     }
     // artifacts
     return artifacts.filter((a) => a.imageUrl).map((a) => ({
@@ -210,6 +219,7 @@ export default function MediaDrive() {
       imageUrl: a.imageUrl!,
       label: a.name,
       sublabel: a.significance,
+      prompt: a.imagePrompt,
       aspectClass: 'aspect-square',
     }));
   }, [tab, characters, locations, artifacts, narrative]);
