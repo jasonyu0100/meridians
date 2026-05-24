@@ -12,11 +12,31 @@ import { useMemo, useState } from "react";
  *
  * UX shape mirrors Surveys / Interviews: top "+ New" opens the composer
  * modal; the stream below shows past investigations as compact cards.
+ *
+ * View scope: defaults to FOCUSED on the current arc (less noise — the
+ * operator usually wants what's relevant to where they're reading). A
+ * "View all" link reveals every investigation across the narrative; a
+ * back button returns to the focused view. When the cursor is on a
+ * world commit (no arc), the panel falls back to the all-view.
  */
 export default function InvestigationPanel() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const [composerOpen, setComposerOpen] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
+
+  // Resolve the current arc from the cursor. When the cursor is on a
+  // world commit (scene-less entry) or there's no narrative, this is
+  // null and the panel auto-shows the all-view.
+  const currentArcId = useMemo<string | null>(() => {
+    if (!narrative) return null;
+    const key = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
+    const scene = key ? narrative.scenes[key] : null;
+    return scene?.arcId ?? null;
+  }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
+  const currentArcName = currentArcId ? narrative?.arcs[currentArcId]?.name ?? null : null;
+  // Auto-fallback to all-view when no current arc is in scope.
+  const effectiveViewAll = viewAll || !currentArcId;
 
   // Last scene index per arc — used to sort the list in narrative order and
   // to navigate to an arc when an investigation is opened. Indices are
@@ -53,7 +73,7 @@ export default function InvestigationPanel() {
     return map;
   }, [narrative, state.resolvedEntryKeys]);
 
-  const investigations = useMemo<ArcInvestigation[]>(() => {
+  const allInvestigations = useMemo<ArcInvestigation[]>(() => {
     const all = Object.values(narrative?.investigations ?? {});
     // Show investigations whose host arc is in the current branch's resolved
     // timeline, plus any coordination-plan-derivative investigations (those
@@ -66,6 +86,14 @@ export default function InvestigationPanel() {
     // is "what did I just generate?", so recency beats arc-chronology.
     return visible.sort((a, b) => b.createdAt - a.createdAt);
   }, [narrative?.investigations, arcLastSceneIndex]);
+
+  // Focused view shows only investigations on the current arc; all-view
+  // shows everything. Auto-falls-back to all when the cursor isn't on
+  // an arc (e.g. parked on a world commit).
+  const investigations = useMemo<ArcInvestigation[]>(() => {
+    if (effectiveViewAll) return allInvestigations;
+    return allInvestigations.filter((inv) => inv.arcId === currentArcId);
+  }, [allInvestigations, effectiveViewAll, currentArcId]);
 
   function openInvestigation(inv: ArcInvestigation) {
     const idx = arcLastSceneIndex.get(inv.arcId);
@@ -86,17 +114,47 @@ export default function InvestigationPanel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-text-dim/70">
-          {investigations.length}{" "}
-          {investigations.length === 1 ? "investigation" : "investigations"}
-        </span>
-        <button
-          onClick={() => setComposerOpen(true)}
-          className="ml-auto text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-text-primary transition-colors"
-        >
-          + New
-        </button>
+      <div className="shrink-0 px-3 pt-2.5 pb-2 border-b border-white/8 flex flex-col gap-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          {effectiveViewAll && currentArcId ? (
+            <button
+              onClick={() => setViewAll(false)}
+              className="flex items-center gap-1 text-[10px] text-text-dim/70 hover:text-text-secondary transition-colors min-w-0"
+              title={`Back to ${currentArcName ?? 'current arc'}`}
+            >
+              <span className="leading-none">←</span>
+              <span className="truncate">Back</span>
+            </button>
+          ) : (
+            <span className="text-[11px] text-text-primary truncate min-w-0" title={currentArcName ?? undefined}>
+              {effectiveViewAll ? 'All investigations' : currentArcName ?? '—'}
+            </span>
+          )}
+          <button
+            onClick={() => setComposerOpen(true)}
+            className="ml-auto text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-text-primary transition-colors shrink-0"
+          >
+            + New
+          </button>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-text-dim/60">
+            {investigations.length}{" "}
+            {investigations.length === 1 ? "investigation" : "investigations"}
+            {!effectiveViewAll && allInvestigations.length > investigations.length && (
+              <span className="text-text-dim/40"> · {allInvestigations.length} total</span>
+            )}
+          </span>
+          {!effectiveViewAll && currentArcId && allInvestigations.length > 0 && (
+            <button
+              onClick={() => setViewAll(true)}
+              className="ml-auto text-[10px] text-text-dim/60 hover:text-text-secondary transition-colors"
+              title="Show investigations across every arc"
+            >
+              View all →
+            </button>
+          )}
+        </div>
       </div>
 
       {investigations.length === 0 ? (
@@ -105,10 +163,28 @@ export default function InvestigationPanel() {
             <circle cx="11" cy="11" r="7" />
             <path strokeLinecap="round" d="m20 20-3.5-3.5" />
           </svg>
-          <p className="text-[11px] text-text-dim/80">Open a causal investigation on any arc.</p>
-          <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
-            Tap <span className="text-text-secondary">+ New</span> to reason about the forces shaping an arc. Copy the result back into generation as direction.
-          </p>
+          {!effectiveViewAll && allInvestigations.length > 0 ? (
+            <>
+              <p className="text-[11px] text-text-dim/80">No investigations on this arc yet.</p>
+              <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
+                Tap <span className="text-text-secondary">+ New</span> to investigate <span className="text-text-secondary">{currentArcName ?? 'this arc'}</span>, or{" "}
+                <button
+                  onClick={() => setViewAll(true)}
+                  className="text-text-secondary underline underline-offset-2 hover:text-text-primary transition-colors"
+                >
+                  view all {allInvestigations.length}
+                </button>{" "}
+                across the world view.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] text-text-dim/80">Open a causal investigation on any arc.</p>
+              <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
+                Tap <span className="text-text-secondary">+ New</span> to reason about the forces shaping an arc. Copy the result back into generation as direction.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-2">
