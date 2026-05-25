@@ -1050,6 +1050,25 @@ export type Action =
   // chronological position rather than floating outside the timeline.
   | { type: "ADD_SYSTEM_EDGE"; sceneId: string; edge: SystemEdge };
 
+// Scene navigation should drag a scene-typed inspector context along with the
+// cursor, otherwise the panel stays pinned to whichever entry was clicked
+// first. Other context types (character, thread, knowledge node, etc.) stay
+// pinned by design so the operator can scrub the timeline under a stable lens.
+// World-build entries are valid targets too — SceneDetail renders both kinds
+// off the same entry id.
+function applySceneNavigation(state: AppState, nextIndex: number): AppState {
+  const viewState = { ...state.viewState, currentSceneIndex: nextIndex };
+  const ctx = state.viewState.inspectorContext;
+  const narrative = state.activeNarrative;
+  if (ctx?.type === "scene" && narrative) {
+    const nextKey = state.resolvedEntryKeys[nextIndex];
+    if (nextKey && (narrative.scenes[nextKey] || narrative.worldBuilds?.[nextKey])) {
+      viewState.inspectorContext = { type: "scene", sceneId: nextKey };
+    }
+  }
+  return { ...state, viewState };
+}
+
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "HYDRATE_NARRATIVES": {
@@ -1109,14 +1128,14 @@ function reducer(state: AppState, action: Action): AppState {
     case "NEXT_SCENE": {
       const max = state.resolvedEntryKeys.length - 1;
       const nextIdx = Math.min(state.viewState.currentSceneIndex + 1, Math.max(0, max));
-      return { ...state, viewState: { ...state.viewState, currentSceneIndex: nextIdx } };
+      return applySceneNavigation(state, nextIdx);
     }
     case "PREV_SCENE": {
       const prevIdx = Math.max(state.viewState.currentSceneIndex - 1, 0);
-      return { ...state, viewState: { ...state.viewState, currentSceneIndex: prevIdx } };
+      return applySceneNavigation(state, prevIdx);
     }
     case "SET_SCENE_INDEX":
-      return { ...state, viewState: { ...state.viewState, currentSceneIndex: action.index } };
+      return applySceneNavigation(state, action.index);
     case "SET_INSPECTOR": {
       // Push current context to history stack before navigating (max 20 entries)
       const history = state.viewState.inspectorContext

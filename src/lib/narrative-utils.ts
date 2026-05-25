@@ -1080,7 +1080,20 @@ export function scoreSystemNodes(
   reach: number;
   score: number;
 }> {
-  const graph = narrative.systemGraph;
+  // Build the cumulative graph AS OF the cursor so nodes / edges that
+  // haven't been introduced yet don't leak into the ranking. Without
+  // this gating, a node first added in a later scene still appeared in
+  // the panel with zero attributions — matching the canvas but not the
+  // narrative state up to where the operator is reading.
+  const graph =
+    upToIndex == null
+      ? narrative.systemGraph
+      : buildCumulativeSystemGraph(
+          narrative.scenes,
+          resolvedKeys,
+          upToIndex,
+          narrative.worldBuilds,
+        );
   if (!graph) return [];
 
   // 1) Degree — edges touching each node, in either direction.
