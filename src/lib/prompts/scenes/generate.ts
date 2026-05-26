@@ -63,6 +63,15 @@ const PARADIGM_SCENE_ADVERSARIAL_CONTEST = `<paradigm-scene-discipline paradigm=
   <rule>Names match the contest's setting — a courtroom has lawyers / judges / witnesses with plausibly-human names; a campaign has candidates / staffers with the same. No AI-coded single-word names.</rule>
 </paradigm-scene-discipline>`;
 
+const PARADIGM_SCENE_CHRONOLOGICAL_RECORD = `<paradigm-scene-discipline paradigm="chronological-record" critical="true" hint="Record. Each 'scene' is an ENTRY in a chronological log — a moment or period in time, time-stamped, recording what happened and what changed. Ordering of time IS the structure.">
+  <rule name="time-stamped-entries" critical="true">Every scene summary leads with a TIME marker matching the chronicle's declared velocity — a date (daily: '2023-10-14'), a month+year (monthly: 'Oct 2023'), a year (yearly: '273 V.E.'), or an explicit time field (dynamic: a date, month, year, or range). The time IS structurally load-bearing — entries are not just ordered, they're DATED.</rule>
+  <rule name="entries-record-not-arc">An entry records WHAT HAPPENED at this time-step and WHAT CHANGED — world deltas track entity state evolution; system deltas track rule / institution / pattern changes. There is no scene-level dramatic arc; the chronicler logs, doesn't narrate toward a resolution.</rule>
+  <rule name="chronicler-voice">The voice is documentary, not editorial — the chronicler records, the reader infers. Quotes are quoted (when real or attributable to a character); invented quotes don't appear unless the chronicle itself is invented and consistent. Gaps in the record are named, not papered over.</rule>
+  <rule name="threads-are-trajectories">Thread deltas in Record accumulate evidence ACROSS many entries — a war's progression, a market's trend, a doctrine's evolution. Pulse / setup / escalation logTypes dominate; payoff / twist are rare and reserved for entries marking a genuine terminal moment (a war ends, a person dies, a doctrine is replaced).</rule>
+  <rule name="velocity-coherence">Respect the declared velocity. A daily chronicle does not silently skip days (mark gaps explicitly). A yearly chronicle does not detour into a single afternoon's hour-by-hour. When the velocity is DYNAMIC, velocity shifts ARE editorial signal — granularity tracks importance, and the reader learns to read density.</rule>
+  <rule name="names">Names match the chronicled setting — real for documented chronicles, in-world for invented ones. No AI-coded single-word names (those belong only in panel paradigm when the cast is AI agents).</rule>
+</paradigm-scene-discipline>`;
+
 const PARADIGM_SHAPE_MAP: Record<NarrativeParadigm, string> = {
   'fiction':      PARADIGM_SCENE_POPULATED_NARRATIVE,
   'non-fiction':  PARADIGM_SCENE_POPULATED_NARRATIVE,
@@ -71,6 +80,7 @@ const PARADIGM_SHAPE_MAP: Record<NarrativeParadigm, string> = {
   'panel':        PARADIGM_SCENE_MULTI_THINKER,
   'atlas':        PARADIGM_SCENE_REFERENCE_TYPOLOGY,
   'debate':       PARADIGM_SCENE_ADVERSARIAL_CONTEST,
+  'record':       PARADIGM_SCENE_CHRONOLOGICAL_RECORD,
 };
 
 export type GenerateScenesPromptArgs = {

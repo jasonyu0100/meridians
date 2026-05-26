@@ -15,6 +15,7 @@ const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
   { value: 'panel',       label: 'Panel',       hint: 'A named cast (AI or human) deliberating over evidence' },
   { value: 'atlas',       label: 'Atlas',       hint: 'Reference / typology — entries, taxa, doctrines' },
   { value: 'debate',      label: 'Debate',      hint: 'Two or more parties in a zero-sum contest under rules' },
+  { value: 'record',      label: 'Record',      hint: 'Time-ordered chronicle — daily, monthly, yearly, or dynamic velocity' },
 ];
 
 type Props = {

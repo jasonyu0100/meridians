@@ -2627,7 +2627,7 @@ export type ThreadSketch = {
   participantNames: string[];
 };
 
-/** The seven canonical paradigms the engine supports. Each is an iconic
+/** The eight canonical paradigms the engine supports. Each is an iconic
  *  text-form name; each maps to a distinct world-shape in the generation
  *  prompt:
  *  - fiction / non-fiction → populated-narrative (invented vs. observed)
@@ -2639,9 +2639,13 @@ export type ThreadSketch = {
  *  - atlas                 → reference-typology (entries / classification, system-only)
  *  - debate                → adversarial-contest (2+ parties locked in zero-sum stakes
  *                            under explicit rules of engagement)
- *  Distinct on three axes: form of text (scenes / argument / entries / moves),
- *  voice cardinality (single / multi / cast), reality posture (invented /
- *  observed / rule-governed / typological).
+ *  - record                → chronological-record (time-ordered log of events, real
+ *                            or imagined; variable velocity — daily / monthly /
+ *                            yearly / dynamic — entries replace scenes, the ORDERING
+ *                            of time IS the structure)
+ *  Distinct on three axes: form of text (scenes / argument / entries / moves /
+ *  log), voice cardinality (single / multi / cast / chronicler), reality posture
+ *  (invented / observed / rule-governed / typological / chronological).
  *  Defaults to 'fiction' in the wizard; the user can switch to any other paradigm. */
 export type NarrativeParadigm =
   | 'fiction'
@@ -2650,7 +2654,8 @@ export type NarrativeParadigm =
   | 'essay'
   | 'panel'
   | 'atlas'
-  | 'debate';
+  | 'debate'
+  | 'record';
 
 export type WizardData = {
   title: string;

@@ -60,6 +60,7 @@ const ALL_PARADIGMS: NarrativeParadigm[] = [
   "panel",
   "atlas",
   "debate",
+  "record",
 ];
 
 function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
@@ -81,9 +82,9 @@ function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
 // ── 1. Type contract ─────────────────────────────────────────────────────────
 
 describe("NarrativeParadigm type contract", () => {
-  it("exposes exactly seven canonical paradigms", () => {
-    expect(ALL_PARADIGMS).toHaveLength(7);
-    expect(new Set(ALL_PARADIGMS).size).toBe(7);
+  it("exposes exactly eight canonical paradigms", () => {
+    expect(ALL_PARADIGMS).toHaveLength(8);
+    expect(new Set(ALL_PARADIGMS).size).toBe(8);
   });
 
   it("WEBSEARCH_MAX_RESULTS covers all four levels", () => {
@@ -164,6 +165,36 @@ describe("World-gen prompt — deterministic per paradigm", () => {
     expect(prompt).not.toContain("<reference-typology-shape");
   });
 
+  it("record gets ONLY the chronological-record shape", () => {
+    const prompt = buildPrompt("record");
+    expect(prompt).toContain("<chronological-record-shape");
+    expect(prompt).toContain("chronological-record");
+    expect(prompt).not.toContain("<populated-narrative-shape");
+    expect(prompt).not.toContain("<adversarial-contest-shape");
+    expect(prompt).not.toContain("<reference-typology-shape");
+  });
+
+  it("record declares all four time-velocity options", () => {
+    const prompt = buildPrompt("record");
+    // The four velocity modes must all be present so the model can
+    // pick the right one from the premise without inventing a fifth.
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('name="daily"');
+    expect(lower).toContain('name="monthly"');
+    expect(lower).toContain('name="yearly"');
+    expect(lower).toContain('name="dynamic"');
+  });
+
+  it("record requires time-stamped entries + chronicler voice", () => {
+    const prompt = buildPrompt("record");
+    const lower = prompt.toLowerCase();
+    // The structural rules of Record — entries are dated, ordering IS
+    // the structure, chronicler records (doesn't editorialise).
+    expect(lower).toContain("entries-are-time-stamped");
+    expect(lower).toContain("chronicler-voice");
+    expect(lower).toContain("velocity-coherence");
+  });
+
   it("populated-narrative paradigms forbid AI-coded single-word names", () => {
     const prompt = buildPrompt("fiction");
     // The block must explicitly call out the constraint so the model
@@ -202,7 +233,7 @@ describe("Panel paradigm — evidence discipline", () => {
   });
 
   it("does NOT include the evidence-discipline block in non-panel paradigms", () => {
-    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate"] as const) {
+    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate", "record"] as const) {
       const prompt = buildPrompt(p);
       expect(prompt).not.toContain("<evidence-discipline");
     }
@@ -261,6 +292,12 @@ describe("Scene-gen prompt — per-paradigm discipline", () => {
   it("debate gets the adversarial-contest scene discipline", () => {
     const prompt = buildScenePrompt("debate");
     expect(prompt).toContain('paradigm="adversarial-contest"');
+  });
+
+  it("record gets the chronological-record scene discipline with time-stamped entries", () => {
+    const prompt = buildScenePrompt("record");
+    expect(prompt).toContain('paradigm="chronological-record"');
+    expect(prompt.toLowerCase()).toContain("time-stamped-entries");
   });
 });
 

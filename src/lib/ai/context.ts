@@ -479,6 +479,7 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
       'panel':        'multi-thinker — a named cast of 2+ thinkers (AI agents OR human experts) pursuing a shared question over existing evidence; cooperative-with-disagreement, includes devil\'s-advocate role + ≥1 adversarial pair (REALITY POSTURE: observed evidence + named cast)',
       'atlas':        'reference-typology — entries / taxa / doctrines; system-graph IS the work; no fate threads, no character transformation (REALITY POSTURE: real-world typology OR invented-world codex — pick one and stay consistent)',
       'debate':       'adversarial-contest — 2+ named parties locked in zero-sum stakes under explicit rules; each scene a MOVE; threads track axes of contestation (REALITY POSTURE: documented contest OR hypothetical, with sourceable rules)',
+      'record':       'chronological-record — time-ordered log of events; entries replace scenes, each time-stamped (daily / monthly / yearly / dynamic velocity); ordering of time IS the structure; chronicler-voice records, doesn\'t narrate toward resolution (REALITY POSTURE: documented chronicle OR invented chronicle)',
     };
     elements.push(
       `<paradigm hint="The canonical world-shape this narrative was built under. All in-narrative generation (scene gen, world expansion, plan, prose) must honour it.">\n  <name>${n.paradigm}</name>\n  <shape>${shapeMap[n.paradigm]}</shape>\n</paradigm>`,

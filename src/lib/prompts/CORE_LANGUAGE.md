@@ -11,54 +11,67 @@ term feels wrong for a non-fiction or simulation register, **broaden the usage**
 (e.g. a "scene" of a research paper, a "beat" of an essay, a "scene" of a
 wargame turn) rather than introducing a parallel word.
 
-Rationale: InkTide is a multipurpose text engine. Seven top-level paradigms are
+Rationale: InkTide is a multipurpose text engine. Eight top-level paradigms are
 first-class, no paradigm preferenced over another. Each is named for an iconic
 text-form and occupies a distinct cell along three axes — **reality posture**
-(invented / observed / hybrid / typological), **voice cardinality** (single /
-multi / cast), and **form of text** (scenes / argument / entries / moves):
+(invented / observed / hybrid / typological / chronological), **voice cardinality**
+(single / multi / cast / chronicler), and **form of text** (scenes / argument /
+entries / moves / log):
 
 - **Fiction** — novel, novella, short fiction, screenplay, drama. REALITY
-  POSTURE: invented. The world is wholly authored; no entity, event, or rule
-  needs to be sourceable to anything external. Populated scene-narrative;
-  fate + world carry the force weight.
+  POSTURE: invented. Populated scene-narrative; characters, places, and
+  events are wholly authored. Fate (thread resolution) + World (character
+  transformation) carry the weight.
 - **Non-fiction** — memoir, history, biography, reportage, case study.
-  REALITY POSTURE: observed. The world IS the documented record — every
-  named person, place, event, and detail must be anchored to actual fact.
-  Same scene-shape as fiction; the only difference is sourcing discipline.
-- **Simulation** — historical counterfactuals (had the Mughal succession
-  gone differently); economic and policy modelling; political wargames;
-  pandemic and climate scenarios; agent-based social-dynamics studies;
-  LitRPG / cultivation / xianxia where in-world mechanics drive events.
-  REALITY POSTURE: hybrid — real rules over real or invented agents. The
-  rule set is load-bearing — the `system` force carries disproportionate
-  weight, threads close on rule-driven consequences, not authorial choice.
-  When rules surface as a diegetic overlay (HUD, log, dashboard, status
-  sheet), the overlay is *narrative content* and lives inside the prose
-  itself — rendered as bracketed lines, blockquoted readouts, or markdown
-  tables, depending on the chosen ProseFormat.
-- **Essay** — research paper, exploratory essay, manifesto / polemic. ONE
-  named author works through the argument; 1-3 transient cited interlocutors.
-  REALITY POSTURE: observed evidence + named author. The system-graph IS the
-  argument substrate; internal friction substitutes for multi-voice
-  disagreement.
+  REALITY POSTURE: observed. Populated scene-narrative documenting what
+  actually happened — every named person, place, event, and date anchored
+  to the real record. Same form as fiction; the discipline is sourcing.
+- **Simulation** — historical counterfactuals, economic and policy
+  modelling, political wargames, pandemic and climate scenarios,
+  agent-based social-dynamics studies, LitRPG / cultivation / xianxia where
+  in-world mechanics drive events. REALITY POSTURE: hybrid — sourceable
+  rules acting on real or invented agents. System is load-bearing and
+  drives what happens; threads close on rule-driven consequences, not
+  authorial choice. When rules surface as a diegetic overlay (HUD, log,
+  dashboard, status sheet), the overlay lives inside the prose as
+  bracketed lines, blockquoted readouts, or markdown tables depending on
+  the chosen ProseFormat.
+- **Essay** — research paper, exploratory essay, manifesto / polemic.
+  REALITY POSTURE: observed evidence + named author. ONE author plus 1-3
+  cited interlocutors. The system-graph IS the argument substrate;
+  internal friction (considered-and-rejected readings) substitutes for
+  multi-voice disagreement.
 - **Panel** — analyst team, advisory panel, podcast roundtable, expert
-  council. A named cast of 2+ thinkers (AI agents — Atlas, Cipher, Nexus,
-  Vanguard — OR human experts) pursuing a shared question. REALITY POSTURE:
-  observed evidence + named cast. Cooperative-with-disagreement: the work IS
-  the contest of minds becoming a synthesis. Includes a devil's-advocate
-  role + ≥1 adversarial pair. Scenes are cognitive events over existing
-  evidence, NOT fabricated forward-time events.
+  council. REALITY POSTURE: observed evidence + named cast. 2+ thinkers
+  (AI agents — Atlas, Cipher, Nexus, Vanguard — OR human experts; one
+  mode, not mixed) pursuing a shared question cooperatively-with-
+  disagreement. Includes a devil's-advocate role + ≥1 adversarial pair.
+  Scenes are cognitive events over existing evidence, not invented
+  forward-time events.
 - **Atlas** — field guide, codex, encyclopedia, doctrine, taxonomy.
-  REALITY POSTURE: either real-world typology or invented-world codex.
-  Reference / typology work — entries replace scenes. The SYSTEM force is
-  everything; the typological structure IS the work.
+  REALITY POSTURE: either real-world reference or invented codex. Form: a
+  typology of entries replacing scenes; the curator orchestrates,
+  specimens / categories populate the work. System is everything — the
+  typological structure IS the work, with dense cross-references between
+  entries. Fate minimal; World minimal; threads (when present) track
+  classification questions, not events.
 - **Debate** — trial, election, championship, M&A negotiation, structured
-  debate. REALITY POSTURE: either documented contest or hypothetical (rules
-  of engagement typically real). Two or more named parties locked in
-  zero-sum stakes under explicit rules. Each scene is a MOVE in the
-  contest; threads track axes of contestation.
+  debate. REALITY POSTURE: either documented contest or hypothetical
+  (rules of engagement typically sourceable). Two or more named parties
+  locked in zero-sum stakes under explicit rules. Each scene is a MOVE in
+  the contest; Fate + System carry the weight; threads are axes of
+  contestation.
+- **Record** — diary, annals, ship's log, board minutes, hospital chart,
+  pandemic chronicle, dynastic history. REALITY POSTURE: either documented
+  chronicle or invented chronicle. Form: a TIME-ORDERED LOG of events in a
+  chronicler's documentary voice; entries replace scenes; the ordering of
+  time IS the structure. Pick a TIME VELOCITY — daily, monthly, yearly, or
+  dynamic (granular during important periods, coarser during quiet
+  stretches) — and respect it; velocity shifts ARE editorial signal. World
+  + System carry the weight; Fate minimal; threads are long-running
+  trajectories tracked across entries.
 
-The same abstractions (scene, beat, arc, thread, delta) serve all seven.
+The same abstractions (scene, beat, arc, thread, delta) serve all eight.
 The abstractions only hold up if the vocabulary stays stable across paradigms.
 
 ---
