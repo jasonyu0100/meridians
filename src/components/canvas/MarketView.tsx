@@ -1220,16 +1220,17 @@ export default function MarketView() {
     return currentFocusIds(scrubbedNarrative, resolvedKeys, currentIndex);
   }, [scrubbedNarrative, resolvedKeys, currentIndex]);
 
-  // Featured thread — local to this view. A right-side list inside this tab
-  // lets the user switch between markets without leaving the dashboard.
+  // Featured thread — local to this view. Once seeded, the selection sticks
+  // across scene changes; the scrubber moves the data, not the picked market.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const featuredId =
-    selectedThreadId && scrubbedNarrative?.threads[selectedThreadId]
-      ? selectedThreadId
-      : rows.find((r) => focusIds.has(r.thread.id))?.thread.id ??
+  if (!selectedThreadId && rows.length > 0) {
+    setSelectedThreadId(
+      rows.find((r) => focusIds.has(r.thread.id))?.thread.id ??
         rows.find((r) => r.category !== 'resolved' && r.category !== 'abandoned')?.thread.id ??
-        rows[0]?.thread.id ??
-        null;
+        rows[0].thread.id,
+    );
+  }
+  const featuredId = selectedThreadId && scrubbedNarrative?.threads[selectedThreadId] ? selectedThreadId : null;
 
   const featuredThread = featuredId ? scrubbedNarrative?.threads[featuredId] : null;
   const featuredRow = rows.find((r) => r.thread.id === featuredId);
