@@ -248,7 +248,7 @@ export function PatternsModal({ onClose }: Props) {
       <ModalHeader onClose={onClose} hideClose={detecting}>
         <div className="flex items-center gap-3">
           <div>
-            <h2 className="text-[13px] font-semibold text-text-primary">Genre & Patterns</h2>
+            <h2 className="text-[13px] font-semibold text-text-primary">Pattern Profile</h2>
             <span className="text-[10px] text-text-dim">Auto-detect or manually define world view commandments</span>
           </div>
         </div>

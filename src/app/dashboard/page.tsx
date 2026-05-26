@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore, SEED_NARRATIVE_IDS } from '@/lib/store';
 import { useWizard } from '@/lib/wizard-context';
@@ -34,7 +34,22 @@ export default function DashboardPage() {
     wizardDispatch({ type: 'OPEN', prefill });
   }, [needsKeys, wizardDispatch]);
 
-  const userSeries = state.narratives.filter((e) => !SEED_NARRATIVE_IDS.has(e.id));
+  const [sortKey, setSortKey] = useState<'recent' | 'name'>('recent');
+  const [reversed, setReversed] = useState(false);
+
+  const toggleSort = (key: 'recent' | 'name') => {
+    if (key === sortKey) setReversed((r) => !r);
+    else { setSortKey(key); setReversed(false); }
+  };
+
+  const userSeries = useMemo(() => {
+    const list = state.narratives.filter((e) => !SEED_NARRATIVE_IDS.has(e.id));
+    const cmp = sortKey === 'recent'
+      ? (a: typeof list[number], b: typeof list[number]) => b.updatedAt - a.updatedAt
+      : (a: typeof list[number], b: typeof list[number]) => a.title.localeCompare(b.title);
+    const sorted = [...list].sort(cmp);
+    return reversed ? sorted.reverse() : sorted;
+  }, [state.narratives, sortKey, reversed]);
 
   return (
     <>
@@ -108,6 +123,26 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 mb-5">
               <h2 className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono">Your World Views</h2>
               <div className="flex-1 h-px bg-white/6" />
+              {userSeries.length > 1 && (
+                <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.15em]">
+                  {(['recent', 'name'] as const).map((k) => {
+                    const active = sortKey === k;
+                    const label = k === 'recent'
+                      ? (active && reversed ? 'Oldest' : 'Recent')
+                      : (active && reversed ? 'Z–A' : 'A–Z');
+                    return (
+                      <button
+                        key={k}
+                        onClick={() => toggleSort(k)}
+                        className={`px-2 py-1 rounded transition ${active ? 'text-white/80 bg-white/6' : 'text-white/30 hover:text-white/60'}`}
+                        title={active ? 'Reverse order' : `Sort by ${k === 'recent' ? 'recency' : 'name'}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             {userSeries.length > 0 ? (
               <div className="flex gap-3 flex-wrap">

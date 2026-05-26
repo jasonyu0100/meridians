@@ -1356,7 +1356,7 @@ export default function TopBar() {
               disabled: !hasNarrative,
             },
             {
-              label: "Patterns",
+              label: "Pattern Profile",
               onClick: () => setPatternsOpen(true),
               disabled: !hasNarrative,
             },

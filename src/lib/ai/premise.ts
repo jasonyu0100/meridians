@@ -7,7 +7,13 @@
 import { callGenerate } from './api';
 import { parseJson } from './json';
 import { PREMISE_SUGGEST_PROMPT, PREMISE_SUGGEST_SYSTEM } from '@/lib/prompts';
+import {
+  REFINE_NARRATIVE_META_SYSTEM,
+  buildRefineNarrativeMetaPrompt,
+  type RefineKind,
+} from '@/lib/prompts/premise/refine';
 import { logError, logInfo } from '@/lib/system-logger';
+import type { NarrativeState } from '@/types/narrative';
 
 /**
  * Suggest a random narrative premise with title.
@@ -32,5 +38,66 @@ export async function suggestPremise(): Promise<{ title?: string; premise?: stri
   return {
     title: typeof parsed.title === 'string' ? parsed.title : undefined,
     premise: typeof parsed.premise === 'string' ? parsed.premise : undefined,
+  };
+}
+
+/**
+ * Refine the title and / or description of an established world view using
+ * its accumulated narrative context (outline of arcs + scenes up to the
+ * cursor, paradigm metadata, patterns).
+ *
+ * The caller pre-renders the outline with `outlineContext(...)` so the
+ * refinement reads the same ground-truth artefact the rest of the pipeline
+ * uses — arc-grouped scene summaries with world commits and an explicit
+ * present marker — rather than a hand-rolled subset.
+ */
+export async function refineNarrativeMeta(args: {
+  kind: RefineKind;
+  narrative: Pick<
+    NarrativeState,
+    | 'title' | 'description' | 'paradigm' | 'genre' | 'subgenre'
+    | 'worldSummary' | 'patterns' | 'antiPatterns'
+  > & { id?: string };
+  /** Pre-rendered outline up to the cursor — produced by `outlineContext` in
+   *  the caller. Authoritative accumulated context. */
+  outline?: string;
+  guidance?: string;
+}): Promise<{ title?: string; description?: string }> {
+  const n = args.narrative;
+  logInfo('Refining narrative meta', {
+    source: 'ingest',
+    operation: 'refine-narrative-meta',
+    details: { kind: args.kind, narrativeId: n.id },
+  });
+
+  const prompt = buildRefineNarrativeMetaPrompt({
+    kind: args.kind,
+    title: n.title ?? '',
+    description: n.description ?? '',
+    paradigm: n.paradigm,
+    genre: n.genre,
+    subgenre: n.subgenre,
+    worldSummary: n.worldSummary,
+    patterns: n.patterns,
+    antiPatterns: n.antiPatterns,
+    outline: args.outline,
+    guidance: args.guidance,
+  });
+
+  let raw: string;
+  try {
+    raw = await callGenerate(prompt, REFINE_NARRATIVE_META_SYSTEM, 600, 'refineNarrativeMeta');
+  } catch (err) {
+    logError('refineNarrativeMeta call failed', err, {
+      source: 'ingest',
+      operation: 'refine-narrative-meta',
+    });
+    throw err;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parsed = parseJson(raw, 'refineNarrativeMeta') as any;
+  return {
+    title: typeof parsed?.title === 'string' ? parsed.title.trim() : undefined,
+    description: typeof parsed?.description === 'string' ? parsed.description.trim() : undefined,
   };
 }
