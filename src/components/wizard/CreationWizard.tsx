@@ -28,11 +28,12 @@ const ROLES: CharacterSketch["role"][] = ["anchor", "recurring", "transient"];
 
 const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
   { value: "fiction",     label: "Fiction",     hint: "Invented people in an invented world" },
-  { value: "non-fiction", label: "Non-fiction", hint: "Real people, places, documented events" },
-  { value: "simulation",  label: "Simulation",  hint: "Rule-driven scenario with in-world figures" },
-  { value: "analysis",    label: "Analysis",    hint: "AI agent team pursuing a thesis" },
-  { value: "paper",       label: "Paper",       hint: "Single author + cited interlocutors" },
-  { value: "essay",       label: "Essay",       hint: "Singular thinker working an argument" },
+  { value: "non-fiction", label: "Non-fiction", hint: "Real people, documented events — the world IS the record" },
+  { value: "simulation",  label: "Simulation",  hint: "Rule-driven forward modelling — the rules force what happens" },
+  { value: "essay",       label: "Essay",       hint: "One named author working an argument" },
+  { value: "panel",       label: "Panel",       hint: "A named cast (AI or human) deliberating over evidence" },
+  { value: "atlas",       label: "Atlas",       hint: "Reference / typology — entries, taxa, doctrines" },
+  { value: "debate",      label: "Debate",      hint: "Two or more parties in a zero-sum contest under rules" },
 ];
 
 

@@ -56,9 +56,10 @@ const ALL_PARADIGMS: NarrativeParadigm[] = [
   "fiction",
   "non-fiction",
   "simulation",
-  "analysis",
-  "paper",
   "essay",
+  "panel",
+  "atlas",
+  "debate",
 ];
 
 function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
@@ -80,9 +81,9 @@ function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
 // ── 1. Type contract ─────────────────────────────────────────────────────────
 
 describe("NarrativeParadigm type contract", () => {
-  it("exposes exactly six canonical paradigms", () => {
-    expect(ALL_PARADIGMS).toHaveLength(6);
-    expect(new Set(ALL_PARADIGMS).size).toBe(6);
+  it("exposes exactly seven canonical paradigms", () => {
+    expect(ALL_PARADIGMS).toHaveLength(7);
+    expect(new Set(ALL_PARADIGMS).size).toBe(7);
   });
 
   it("WEBSEARCH_MAX_RESULTS covers all four levels", () => {
@@ -109,56 +110,82 @@ describe("World-gen prompt — deterministic per paradigm", () => {
     }
   });
 
-  it("fiction / non-fiction / simulation get the populated-narrative shape", () => {
-    for (const p of ["fiction", "non-fiction", "simulation"] as const) {
+  it("fiction / non-fiction get the populated-narrative shape", () => {
+    for (const p of ["fiction", "non-fiction"] as const) {
       const prompt = buildPrompt(p);
       expect(prompt).toContain("populated-narrative");
       // Drops the other paradigm patterns.
-      expect(prompt).not.toContain("<agentic-team-pattern");
+      expect(prompt).not.toContain("<multi-thinker-pattern");
       expect(prompt).not.toContain("<singular-thinker-pattern");
+      expect(prompt).not.toContain("<reference-typology-shape");
+      expect(prompt).not.toContain("<adversarial-contest-shape");
+      expect(prompt).not.toContain("<rule-governed-narrative-shape");
     }
   });
 
-  it("analysis gets ONLY the agentic-ai-team pattern", () => {
-    const prompt = buildPrompt("analysis");
-    expect(prompt).toContain("<agentic-team-pattern");
-    expect(prompt).toContain("agentic-ai-team");
+  it("simulation gets the rule-governed-narrative shape", () => {
+    const prompt = buildPrompt("simulation");
+    expect(prompt).toContain("<rule-governed-narrative-shape");
+    expect(prompt).toContain("rule-governed-narrative");
+    expect(prompt).not.toContain("<populated-narrative-shape");
+    expect(prompt).not.toContain("<multi-thinker-pattern");
+    expect(prompt).not.toContain("<singular-thinker-pattern");
+  });
+
+  it("panel gets ONLY the multi-thinker pattern", () => {
+    const prompt = buildPrompt("panel");
+    expect(prompt).toContain("<multi-thinker-pattern");
+    expect(prompt).toContain("multi-thinker");
     expect(prompt).not.toContain("<singular-thinker-pattern");
     expect(prompt).not.toContain("<populated-narrative-shape");
   });
 
-  it("paper and essay get ONLY the singular-thinker pattern", () => {
-    for (const p of ["paper", "essay"] as const) {
-      const prompt = buildPrompt(p);
-      expect(prompt).toContain("<singular-thinker-pattern");
-      expect(prompt).toContain("singular-thinker");
-      expect(prompt).not.toContain("<agentic-team-pattern");
-      expect(prompt).not.toContain("<populated-narrative-shape");
-    }
+  it("essay gets ONLY the singular-thinker pattern", () => {
+    const prompt = buildPrompt("essay");
+    expect(prompt).toContain("<singular-thinker-pattern");
+    expect(prompt).toContain("singular-thinker");
+    expect(prompt).not.toContain("<multi-thinker-pattern");
+    expect(prompt).not.toContain("<populated-narrative-shape");
+  });
+
+  it("atlas gets ONLY the reference-typology shape", () => {
+    const prompt = buildPrompt("atlas");
+    expect(prompt).toContain("<reference-typology-shape");
+    expect(prompt).toContain("reference-typology");
+    expect(prompt).not.toContain("<populated-narrative-shape");
+    expect(prompt).not.toContain("<adversarial-contest-shape");
+  });
+
+  it("debate gets ONLY the adversarial-contest shape", () => {
+    const prompt = buildPrompt("debate");
+    expect(prompt).toContain("<adversarial-contest-shape");
+    expect(prompt).toContain("adversarial-contest");
+    expect(prompt).not.toContain("<populated-narrative-shape");
+    expect(prompt).not.toContain("<reference-typology-shape");
   });
 
   it("populated-narrative paradigms forbid AI-coded single-word names", () => {
     const prompt = buildPrompt("fiction");
-    // The block must explicitly call out the bidirectional palette
-    // constraint so the model doesn't drift into Atlas/Cipher names.
+    // The block must explicitly call out the constraint so the model
+    // doesn't drift into Atlas/Cipher names (those belong to panel).
     expect(prompt.toLowerCase()).toContain("no ai-coded single-word names");
   });
 
-  it("analysis paradigm requires AI-coded agent names + devil's advocate", () => {
-    const prompt = buildPrompt("analysis");
-    // The naming palette and the critical role MUST be present so the
-    // model produces a consistent, invocable cast.
+  it("panel paradigm requires devil's-advocate + adversarial pair", () => {
+    const prompt = buildPrompt("panel");
+    // Cast-mode naming palettes + the critical dissenter role MUST be
+    // present so the panel doesn't become an echo chamber.
     expect(prompt).toMatch(/Atlas|Cipher|Nexus|Vanguard/);
     expect(prompt.toLowerCase()).toContain("devil");
     expect(prompt.toLowerCase()).toContain("adversarial");
   });
 });
 
-// ── 3. Analysis-vs-simulation discipline ─────────────────────────────────────
+// ── 3. Panel paradigm — evidence discipline ───────────────────────────────────
 
-describe("Analysis paradigm — analysis-vs-simulation discipline", () => {
-  it("forbids forward-time event narration in analysis worlds", () => {
-    const prompt = buildPrompt("analysis");
+describe("Panel paradigm — evidence discipline", () => {
+  it("forbids forward-time event narration in panel worlds", () => {
+    const prompt = buildPrompt("panel");
     // The block calls out the failure modes from the LARPing pattern:
     // narrated forward events, fabricated intercepts, invented numbers.
     const lower = prompt.toLowerCase();
@@ -168,16 +195,16 @@ describe("Analysis paradigm — analysis-vs-simulation discipline", () => {
   });
 
   it("permitted moves include scenario hypotheticals and re-interpretation", () => {
-    const prompt = buildPrompt("analysis");
+    const prompt = buildPrompt("panel");
     const lower = prompt.toLowerCase();
     expect(lower).toContain("re-interpretation");
     expect(lower).toContain("recalibration");
   });
 
-  it("does NOT include the analysis-vs-simulation block in other paradigms", () => {
-    for (const p of ["fiction", "non-fiction", "simulation", "paper", "essay"] as const) {
+  it("does NOT include the evidence-discipline block in non-panel paradigms", () => {
+    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate"] as const) {
       const prompt = buildPrompt(p);
-      expect(prompt).not.toContain("<analysis-vs-simulation");
+      expect(prompt).not.toContain("<evidence-discipline");
     }
   });
 });
@@ -202,24 +229,38 @@ describe("Scene-gen prompt — per-paradigm discipline", () => {
   });
 
   it("populated-narrative paradigms get the populated scene discipline", () => {
-    for (const p of ["fiction", "non-fiction", "simulation"] as const) {
+    for (const p of ["fiction", "non-fiction"] as const) {
       const prompt = buildScenePrompt(p);
       expect(prompt).toContain('paradigm="populated-narrative"');
     }
   });
 
-  it("analysis paradigm gets the agentic-ai-team scene discipline with forbidden rules", () => {
-    const prompt = buildScenePrompt("analysis");
-    expect(prompt).toContain('paradigm="agentic-ai-team"');
+  it("simulation gets the rule-governed-narrative scene discipline", () => {
+    const prompt = buildScenePrompt("simulation");
+    expect(prompt).toContain('paradigm="rule-governed-narrative"');
+    expect(prompt.toLowerCase()).toContain("rule");
+  });
+
+  it("panel paradigm gets the multi-thinker scene discipline with forbidden rules", () => {
+    const prompt = buildScenePrompt("panel");
+    expect(prompt).toContain('paradigm="multi-thinker"');
     expect(prompt.toLowerCase()).toContain("forbidden");
     expect(prompt.toLowerCase()).toContain("fabricated");
   });
 
-  it("paper and essay get the singular-thinker scene discipline", () => {
-    for (const p of ["paper", "essay"] as const) {
-      const prompt = buildScenePrompt(p);
-      expect(prompt).toContain('paradigm="singular-thinker"');
-    }
+  it("essay gets the singular-thinker scene discipline", () => {
+    const prompt = buildScenePrompt("essay");
+    expect(prompt).toContain('paradigm="singular-thinker"');
+  });
+
+  it("atlas gets the reference-typology scene discipline", () => {
+    const prompt = buildScenePrompt("atlas");
+    expect(prompt).toContain('paradigm="reference-typology"');
+  });
+
+  it("debate gets the adversarial-contest scene discipline", () => {
+    const prompt = buildScenePrompt("debate");
+    expect(prompt).toContain('paradigm="adversarial-contest"');
   });
 });
 

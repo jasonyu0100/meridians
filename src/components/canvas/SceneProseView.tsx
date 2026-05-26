@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSceneBulkStream } from "@/lib/bulk-stream-store";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
 import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
+import { Markdown } from "@/components/ui/Markdown";
 
 // Persistent state that survives component unmounts (scene navigation, world commits)
 let beatPlanLinkedModePersisted = false;
@@ -100,6 +101,7 @@ export function SceneProseView({
   const { state, dispatch } = useStore();
   const { getClassification, getConnections } = usePropositionClassification();
   const [expandedProp, setExpandedProp] = useState<string | null>(null);
+  const isMarkdown = (narrative.storySettings?.proseFormat ?? 'prose') === 'markdown';
 
   // Resolve prose and plan for current branch
   const { prose: resolvedProse, beatProseMap: resolvedBeatProseMap } = useResolvedProse(scene);
@@ -545,18 +547,22 @@ export function SceneProseView({
                       no-op and prose fills the row as before. */}
                   <div className="flex-[1.3] basis-0 p-3 self-center">
                     <div className="prose-content">
-                      {chunk.prose.split("\n\n").map((para, paraIdx) => (
-                        <p
-                          key={paraIdx}
-                          className={`text-[13px] text-text-secondary leading-[1.8] mb-5 last:mb-0 ${
-                            idx === 0 && paraIdx === 0
-                              ? "first-letter:text-2xl first-letter:font-semibold first-letter:text-text-primary first-letter:mr-0.5"
-                              : ""
-                          }`}
-                        >
-                          {para}
-                        </p>
-                      ))}
+                      {isMarkdown ? (
+                        <Markdown text={chunk.prose} variant="reading" />
+                      ) : (
+                        chunk.prose.split("\n\n").map((para, paraIdx) => (
+                          <p
+                            key={paraIdx}
+                            className={`text-[13px] text-text-secondary leading-[1.8] mb-5 last:mb-0 ${
+                              idx === 0 && paraIdx === 0
+                                ? "first-letter:text-2xl first-letter:font-semibold first-letter:text-text-primary first-letter:mr-0.5"
+                                : ""
+                            }`}
+                          >
+                            {para}
+                          </p>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -578,14 +584,18 @@ export function SceneProseView({
               </div>
               {text && (
                 <div className="prose-content">
-                  {text.split("\n\n").map((paragraph, i) => (
-                    <p
-                      key={i}
-                      className="text-[13px] text-text-secondary leading-[1.8] mb-5 first:first-letter:text-2xl first:first-letter:font-semibold first:first-letter:text-text-primary first:first-letter:mr-0.5"
-                    >
-                      {paragraph}
-                    </p>
-                  ))}
+                  {isMarkdown ? (
+                    <Markdown text={text} variant="reading" />
+                  ) : (
+                    text.split("\n\n").map((paragraph, i) => (
+                      <p
+                        key={i}
+                        className="text-[13px] text-text-secondary leading-[1.8] mb-5 first:first-letter:text-2xl first:first-letter:font-semibold first:first-letter:text-text-primary first:first-letter:mr-0.5"
+                      >
+                        {paragraph}
+                      </p>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -633,14 +643,18 @@ export function SceneProseView({
             ) : (
               // Regular prose view
               <div className="prose-content">
-                {formatProse(text).map((paragraph, i) => (
-                  <p
-                    key={i}
-                    className="text-[13px] text-text-secondary leading-[1.8] mb-4 indent-6 first:indent-0 first:first-letter:text-2xl first:first-letter:font-semibold first:first-letter:text-text-primary first:first-letter:mr-0.5"
-                  >
-                    {paragraph}
-                  </p>
-                ))}
+                {isMarkdown ? (
+                  <Markdown text={text} variant="reading" />
+                ) : (
+                  formatProse(text).map((paragraph, i) => (
+                    <p
+                      key={i}
+                      className="text-[13px] text-text-secondary leading-[1.8] mb-4 indent-6 first:indent-0 first:first-letter:text-2xl first:first-letter:font-semibold first:first-letter:text-text-primary first:first-letter:mr-0.5"
+                    >
+                      {paragraph}
+                    </p>
+                  ))
+                )}
               </div>
             ))}
 

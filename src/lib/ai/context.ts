@@ -467,16 +467,18 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
     );
   }
   // Paradigm — one of the six canonical world-shapes (fiction / non-fiction /
-  // simulation / analysis / paper / essay). Drives downstream generation
-  // shape: populated-narrative vs agentic-ai-team vs singular-thinker.
+  // simulation / essay / panel / atlas / debate). Drives downstream generation
+  // shape: populated-narrative vs rule-governed-narrative vs singular-thinker
+  // vs multi-thinker vs reference-typology vs adversarial-contest.
   if (n.paradigm) {
     const shapeMap: Record<NarrativeParadigm, string> = {
-      'fiction':      'populated-narrative — invented people in an invented world',
-      'non-fiction':  'populated-narrative — real people, documented events',
-      'simulation':   'populated-narrative — in-world figures the rules act on',
-      'analysis':     'agentic-ai-team — virtual team of AI agents (single-word names like Atlas, Cipher, Nexus, Vanguard) pursuing the user\'s thesis; include devil\'s-advocate role and adversarial pairs',
-      'paper':        'singular-thinker — one named author + 1-3 cited interlocutors; internal friction substitutes for inter-agent disagreement',
-      'essay':        'singular-thinker — one named author whose voice the work IS',
+      'fiction':      'populated-narrative — invented people in an invented world (REALITY POSTURE: invented)',
+      'non-fiction':  'populated-narrative — real people, documented events; the world IS the record (REALITY POSTURE: observed)',
+      'simulation':   'rule-governed-narrative — in-world figures the rules ACT ON; rules are load-bearing, threads close on rule-driven consequences (REALITY POSTURE: hybrid — real rules over real or invented agents)',
+      'essay':        'singular-thinker — one named author + 1-3 cited interlocutors; internal friction substitutes for multi-voice disagreement (REALITY POSTURE: observed evidence + named author)',
+      'panel':        'multi-thinker — a named cast of 2+ thinkers (AI agents OR human experts) pursuing a shared question over existing evidence; cooperative-with-disagreement, includes devil\'s-advocate role + ≥1 adversarial pair (REALITY POSTURE: observed evidence + named cast)',
+      'atlas':        'reference-typology — entries / taxa / doctrines; system-graph IS the work; no fate threads, no character transformation (REALITY POSTURE: real-world typology OR invented-world codex — pick one and stay consistent)',
+      'debate':       'adversarial-contest — 2+ named parties locked in zero-sum stakes under explicit rules; each scene a MOVE; threads track axes of contestation (REALITY POSTURE: documented contest OR hypothetical, with sourceable rules)',
     };
     elements.push(
       `<paradigm hint="The canonical world-shape this narrative was built under. All in-narrative generation (scene gen, world expansion, plan, prose) must honour it.">\n  <name>${n.paradigm}</name>\n  <shape>${shapeMap[n.paradigm]}</shape>\n</paradigm>`,

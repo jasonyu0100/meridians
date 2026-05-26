@@ -1,24 +1,17 @@
 'use client';
 
 /**
- * Lightweight markdown renderer — handles the small set of constructs
- * the platform's LLM prompts emit: H2/H3 headings, paragraphs, lists,
- * bold/italic/code inline tokens. Avoids pulling react-markdown for
- * the surface area we actually need. Shared by BranchChat,
- * CompactPreviewModal, and any other place we render LLM markdown.
+ * Markdown renderer — full CommonMark + GitHub-flavored markdown (tables,
+ * strikethrough, task lists, autolinks) via react-markdown + remark-gfm,
+ * with Tailwind-styled component overrides matching the app's dark theme.
  *
  * The `variant` prop tunes spacing density:
  *   - 'compact' — tight, designed for chat bubbles and inline previews
  *   - 'reading' — generous, designed for document-style content
  */
 
-import React, { useMemo } from 'react';
-
-type MdBlock =
-  | { type: 'h2'; text: string }
-  | { type: 'h3'; text: string }
-  | { type: 'p'; text: string }
-  | { type: 'list'; items: string[] };
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function Markdown({
   text,
@@ -27,8 +20,8 @@ export function Markdown({
   text: string;
   variant?: 'compact' | 'reading';
 }) {
-  const blocks = useMemo(() => parseMarkdownBlocks(text), [text]);
   const isReading = variant === 'reading';
+  const components = isReading ? READING_COMPONENTS : COMPACT_COMPONENTS;
   return (
     <div
       className={
@@ -37,166 +30,165 @@ export function Markdown({
           : 'text-[12.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5'
       }
     >
-      {blocks.map((b, i) => {
-        if (b.type === 'h2') {
-          return (
-            <h3
-              key={i}
-              className={
-                isReading
-                  ? 'text-[16px] text-text-primary font-semibold mt-3'
-                  : 'text-[11px] uppercase tracking-widest text-text-primary/85 font-semibold mt-2'
-              }
-            >
-              {renderInline(b.text)}
-            </h3>
-          );
-        }
-        if (b.type === 'h3') {
-          return (
-            <h4
-              key={i}
-              className={
-                isReading
-                  ? 'text-[13px] text-text-primary font-semibold mt-2'
-                  : 'text-[11px] text-text-primary/75 font-semibold'
-              }
-            >
-              {renderInline(b.text)}
-            </h4>
-          );
-        }
-        if (b.type === 'list') {
-          return (
-            <ul key={i} className="flex flex-col gap-1 pl-3">
-              {b.items.map((it, j) => (
-                <li key={j} className="text-text-secondary leading-relaxed">
-                  <span className="text-text-dim/50 mr-1.5">·</span>
-                  {renderInline(it)}
-                </li>
-              ))}
-            </ul>
-          );
-        }
-        return (
-          <p key={i} className="leading-relaxed">
-            {renderInline(b.text)}
-          </p>
-        );
-      })}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {text}
+      </ReactMarkdown>
     </div>
   );
 }
 
-function parseMarkdownBlocks(text: string): MdBlock[] {
-  const lines = text.split('\n');
-  const out: MdBlock[] = [];
-  let buf: string[] = [];
-  let listBuf: string[] = [];
+const SHARED_COMPONENTS: Components = {
+  strong: ({ children }) => (
+    <strong className="text-text-primary font-semibold">{children}</strong>
+  ),
+  em: ({ children }) => (
+    <em className="italic text-text-secondary">{children}</em>
+  ),
+  del: ({ children }) => (
+    <del className="text-text-dim line-through">{children}</del>
+  ),
+  code: ({ className, children }) => {
+    // Fenced code blocks get a `language-*` className from remark; inline
+    // code does not. Inline gets the chip styling; fenced relies on the
+    // parent <pre> for layout and keeps the className for any future
+    // syntax highlighter to consume.
+    if (className && /language-/.test(className)) {
+      return <code className={className}>{children}</code>;
+    }
+    return (
+      <code className="text-text-primary bg-white/6 rounded px-1 py-px text-[11px] font-mono">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => (
+    <pre className="bg-black/40 border border-white/8 rounded-md p-3 overflow-x-auto text-[11.5px] font-mono text-text-secondary leading-relaxed">
+      {children}
+    </pre>
+  ),
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="text-sky-400 hover:text-sky-300 underline decoration-sky-400/40 hover:decoration-sky-300 underline-offset-2"
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-white/15 pl-3 text-text-secondary/85 italic">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="border-0 border-t border-white/10 my-1" />,
+  img: ({ src, alt }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={typeof src === 'string' ? src : undefined}
+      alt={alt ?? ''}
+      className="max-w-full rounded-md border border-white/8"
+    />
+  ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto -mx-1 my-1">
+      <table className="w-full border-collapse text-[12.5px]">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead>{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => (
+    <tr className="border-b border-white/5 even:bg-white/2">{children}</tr>
+  ),
+  th: ({ children, style }) => (
+    <th
+      className="px-2 py-1.5 text-text-primary font-semibold border-b border-white/15"
+      style={style}
+    >
+      {children}
+    </th>
+  ),
+  td: ({ children, style }) => (
+    <td
+      className="px-2 py-1.5 align-top text-text-secondary"
+      style={style}
+    >
+      {children}
+    </td>
+  ),
+  ul: ({ children }) => (
+    <ul className="flex flex-col gap-1 pl-4 list-disc marker:text-text-dim/50">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="flex flex-col gap-1 pl-5 list-decimal marker:text-text-dim/60">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => (
+    <li className="text-text-secondary leading-relaxed">{children}</li>
+  ),
+  input: ({ type, checked, disabled }) => {
+    if (type !== 'checkbox') return null;
+    return (
+      <input
+        type="checkbox"
+        checked={!!checked}
+        disabled={disabled}
+        readOnly
+        className="mr-1.5 accent-sky-400 align-middle"
+      />
+    );
+  },
+};
 
-  function flushPara() {
-    if (buf.length) {
-      out.push({ type: 'p', text: buf.join(' ').trim() });
-      buf = [];
-    }
-  }
-  function flushList() {
-    if (listBuf.length) {
-      out.push({ type: 'list', items: listBuf });
-      listBuf = [];
-    }
-  }
+const COMPACT_COMPONENTS: Components = {
+  ...SHARED_COMPONENTS,
+  h1: ({ children }) => (
+    <h2 className="text-[12px] uppercase tracking-widest text-text-primary font-semibold mt-2">
+      {children}
+    </h2>
+  ),
+  h2: ({ children }) => (
+    <h3 className="text-[11px] uppercase tracking-widest text-text-primary/85 font-semibold mt-2">
+      {children}
+    </h3>
+  ),
+  h3: ({ children }) => (
+    <h4 className="text-[11px] text-text-primary/75 font-semibold">{children}</h4>
+  ),
+  h4: ({ children }) => (
+    <h5 className="text-[10.5px] text-text-primary/65 font-semibold">{children}</h5>
+  ),
+  h5: ({ children }) => (
+    <h6 className="text-[10px] text-text-primary/55 font-semibold">{children}</h6>
+  ),
+  h6: ({ children }) => (
+    <h6 className="text-[10px] text-text-primary/55 font-semibold">{children}</h6>
+  ),
+  p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+};
 
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, '');
-    if (!line.trim()) {
-      flushPara();
-      flushList();
-      continue;
-    }
-    const h2 = /^##\s+(.+)/.exec(line);
-    if (h2) {
-      flushPara();
-      flushList();
-      out.push({ type: 'h2', text: h2[1] });
-      continue;
-    }
-    const h3 = /^###\s+(.+)/.exec(line);
-    if (h3) {
-      flushPara();
-      flushList();
-      out.push({ type: 'h3', text: h3[1] });
-      continue;
-    }
-    const li = /^\s*[-*]\s+(.+)/.exec(line);
-    if (li) {
-      flushPara();
-      listBuf.push(li[1]);
-      continue;
-    }
-    flushList();
-    buf.push(line);
-  }
-  flushPara();
-  flushList();
-  return out;
-}
-
-function renderInline(text: string): React.ReactNode {
-  const out: React.ReactNode[] = [];
-  let i = 0;
-  let key = 0;
-  while (i < text.length) {
-    if (text.startsWith('**', i)) {
-      const end = text.indexOf('**', i + 2);
-      if (end > -1) {
-        out.push(
-          <strong key={key++} className="text-text-primary font-semibold">
-            {text.slice(i + 2, end)}
-          </strong>,
-        );
-        i = end + 2;
-        continue;
-      }
-    }
-    if (text[i] === '*') {
-      const end = text.indexOf('*', i + 1);
-      if (end > -1) {
-        out.push(
-          <em key={key++} className="italic text-text-secondary">
-            {text.slice(i + 1, end)}
-          </em>,
-        );
-        i = end + 1;
-        continue;
-      }
-    }
-    if (text[i] === '`') {
-      const end = text.indexOf('`', i + 1);
-      if (end > -1) {
-        out.push(
-          <code
-            key={key++}
-            className="text-text-primary bg-white/6 rounded px-1 py-px text-[11px] font-mono"
-          >
-            {text.slice(i + 1, end)}
-          </code>,
-        );
-        i = end + 1;
-        continue;
-      }
-    }
-    const next = nextSpecial(text, i);
-    out.push(text.slice(i, next));
-    i = next;
-  }
-  return out;
-}
-
-function nextSpecial(text: string, from: number): number {
-  for (let i = from; i < text.length; i++) {
-    const c = text[i];
-    if (c === '*' || c === '`') return i;
-  }
-  return text.length;
-}
+const READING_COMPONENTS: Components = {
+  ...SHARED_COMPONENTS,
+  h1: ({ children }) => (
+    <h1 className="text-[20px] text-text-primary font-semibold mt-4">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-[16px] text-text-primary font-semibold mt-3">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-[13px] text-text-primary font-semibold mt-2">{children}</h3>
+  ),
+  h4: ({ children }) => (
+    <h4 className="text-[12.5px] text-text-primary/85 font-semibold mt-2">{children}</h4>
+  ),
+  h5: ({ children }) => (
+    <h5 className="text-[12px] text-text-primary/75 font-semibold">{children}</h5>
+  ),
+  h6: ({ children }) => (
+    <h6 className="text-[12px] text-text-primary/65 font-semibold">{children}</h6>
+  ),
+  p: ({ children }) => <p className="leading-[1.8]">{children}</p>,
+};

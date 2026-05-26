@@ -35,12 +35,4 @@ const FORMAT_BODIES: Partial<Record<ProseFormat, string>> = {
     <rule name="comic">Name the VISIBLE COMIC DEVICE — reaction shot, visual undercut, off-beat punchline cue. Comic register on stage is bodily, not authorial.</rule>
   </interior-mechanisms>
   <blank-stage-test>For any beat with two or more participants holding still in a room, name what the camera will see and hear: a candle burning down, a guard's footfall, sweat at a temple, an INSERT cut. Stillness needs texture or staging; if 'what' offers neither, the rendering will fail.</blank-stage-test>`,
-  meta: `  <accent>
-    <rule>Beats render as fluid prose interleaved with bracketed engine observations. Plan the prose for natural beats — the overlay rides on top, it doesn't replace propositions.</rule>
-    <rule>Inflection-point beats (thread commitments, payoffs, reveals, arc pivots) carry observation density; quiet beats run prose-only. Plan with that rhythm in mind — don't pack every beat with shift-worthy material.</rule>
-  </accent>`,
-  simulation: `  <accent>
-    <rule>Beats render as fluid prose interleaved with bracketed in-world system logs. Plan the prose for natural beats — the HUD overlay rides on top.</rule>
-    <rule>The work's diegetic rules / systems / state transitions surface as logs at the moments they fire in the source — examples span the simulation range: a treaty clause holding under pressure (counterfactual), a tariff threshold crossing and the modelled trade-flow response (policy model), a containment trigger firing as R0 drifts past 1 (pandemic scenario), an agent-based cascade tipping (social-dynamics), a finding or anomaly log (research paper), a cultivation tier gate or LitRPG stat change (rule-systematised fiction). Defer to the narrative's own declared scenario; do NOT default to LitRPG. Plan beats so the trigger moment lands cleanly — a [System Rule Triggered] should follow a beat that DEPICTS the trigger, not narrates around it.</rule>
-  </accent>`,
 };

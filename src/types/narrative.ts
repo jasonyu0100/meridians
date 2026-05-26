@@ -2116,7 +2116,7 @@ export type WebsearchConfig = {
 };
 
 /** Output format for prose generation */
-export type ProseFormat = "prose" | "screenplay" | "simulation" | "meta";
+export type ProseFormat = "prose" | "screenplay" | "markdown";
 
 /**
  * How a scene's beat plan is created.
@@ -2627,19 +2627,30 @@ export type ThreadSketch = {
   participantNames: string[];
 };
 
-/** The six canonical paradigms the engine supports. Each maps to a world-shape
- *  in the generation prompt:
- *  - fiction / non-fiction / simulation → populated-narrative (human or in-world characters)
- *  - analysis → agentic-ai-team (memorable single-word AI agents — Atlas, Cipher, Nexus, Vanguard)
- *  - paper / essay → singular-thinker (one named author + cited interlocutors)
+/** The seven canonical paradigms the engine supports. Each is an iconic
+ *  text-form name; each maps to a distinct world-shape in the generation
+ *  prompt:
+ *  - fiction / non-fiction → populated-narrative (invented vs. observed)
+ *  - simulation            → rule-governed-narrative (rules are load-bearing)
+ *  - essay                 → singular-thinker (one named author working an argument)
+ *  - panel                 → multi-thinker (AI agent team OR named human panel —
+ *                            cooperative-with-disagreement, the work IS the contest
+ *                            of minds becoming a synthesis)
+ *  - atlas                 → reference-typology (entries / classification, system-only)
+ *  - debate                → adversarial-contest (2+ parties locked in zero-sum stakes
+ *                            under explicit rules of engagement)
+ *  Distinct on three axes: form of text (scenes / argument / entries / moves),
+ *  voice cardinality (single / multi / cast), reality posture (invented /
+ *  observed / rule-governed / typological).
  *  Defaults to 'fiction' in the wizard; the user can switch to any other paradigm. */
 export type NarrativeParadigm =
   | 'fiction'
   | 'non-fiction'
   | 'simulation'
-  | 'analysis'
-  | 'paper'
-  | 'essay';
+  | 'essay'
+  | 'panel'
+  | 'atlas'
+  | 'debate';
 
 export type WizardData = {
   title: string;

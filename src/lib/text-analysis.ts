@@ -46,7 +46,7 @@ import type {
 } from "@/types/narrative";
 
 const VALID_PARADIGMS: ReadonlySet<NarrativeParadigm> = new Set<NarrativeParadigm>([
-  "fiction", "non-fiction", "simulation", "analysis", "paper", "essay",
+  "fiction", "non-fiction", "simulation", "essay", "panel", "atlas", "debate",
 ]);
 import {
   DEFAULT_STORY_SETTINGS,

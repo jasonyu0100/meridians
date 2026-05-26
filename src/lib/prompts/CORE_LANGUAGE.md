@@ -11,30 +11,55 @@ term feels wrong for a non-fiction or simulation register, **broaden the usage**
 (e.g. a "scene" of a research paper, a "beat" of an essay, a "scene" of a
 wargame turn) rather than introducing a parallel word.
 
-Rationale: InkTide is a multipurpose text engine. Four top-level registers are
-first-class, no register preferenced over another:
+Rationale: InkTide is a multipurpose text engine. Seven top-level paradigms are
+first-class, no paradigm preferenced over another. Each is named for an iconic
+text-form and occupies a distinct cell along three axes — **reality posture**
+(invented / observed / hybrid / typological), **voice cardinality** (single /
+multi / cast), and **form of text** (scenes / argument / entries / moves):
 
-- **Fiction** — novel, novella, short fiction, screenplay, drama.
-- **Non-fiction** — memoir, essay, reportage, case study, history, biography.
-- **Analysis** — research paper, technical writeup, formal investigation
-  with hypothesis-testing structure, formulas, tables, figures, citations.
-  (Previously folded under non-fiction; now first-class given how distinct
-  its conventions are.)
-- **Simulation** — works that model real-life events from a stated rule set.
-  The central proposition is "given these rules and these initial conditions,
-  what happens?" Examples: historical counterfactuals (had the Mughal
-  succession gone differently, had a Tang–Tibetan border treaty held);
-  economic and policy modelling; political wargames; pandemic and climate
-  scenarios; agent-based social-dynamics studies; LitRPG / cultivation /
-  xianxia where in-world mechanics drive events; technological forecasting.
-  The rule set is load-bearing — the `system` force carries the real weight
-  in this register, and threads close on rule-driven consequences rather than
-  authorial choice. When rules surface as a diegetic overlay (HUD, log,
-  dashboard, status sheet), the overlay is *narrative content*, rendered via
-  the `simulation` ProseFormat.
+- **Fiction** — novel, novella, short fiction, screenplay, drama. REALITY
+  POSTURE: invented. The world is wholly authored; no entity, event, or rule
+  needs to be sourceable to anything external. Populated scene-narrative;
+  fate + world carry the force weight.
+- **Non-fiction** — memoir, history, biography, reportage, case study.
+  REALITY POSTURE: observed. The world IS the documented record — every
+  named person, place, event, and detail must be anchored to actual fact.
+  Same scene-shape as fiction; the only difference is sourcing discipline.
+- **Simulation** — historical counterfactuals (had the Mughal succession
+  gone differently); economic and policy modelling; political wargames;
+  pandemic and climate scenarios; agent-based social-dynamics studies;
+  LitRPG / cultivation / xianxia where in-world mechanics drive events.
+  REALITY POSTURE: hybrid — real rules over real or invented agents. The
+  rule set is load-bearing — the `system` force carries disproportionate
+  weight, threads close on rule-driven consequences, not authorial choice.
+  When rules surface as a diegetic overlay (HUD, log, dashboard, status
+  sheet), the overlay is *narrative content* and lives inside the prose
+  itself — rendered as bracketed lines, blockquoted readouts, or markdown
+  tables, depending on the chosen ProseFormat.
+- **Essay** — research paper, exploratory essay, manifesto / polemic. ONE
+  named author works through the argument; 1-3 transient cited interlocutors.
+  REALITY POSTURE: observed evidence + named author. The system-graph IS the
+  argument substrate; internal friction substitutes for multi-voice
+  disagreement.
+- **Panel** — analyst team, advisory panel, podcast roundtable, expert
+  council. A named cast of 2+ thinkers (AI agents — Atlas, Cipher, Nexus,
+  Vanguard — OR human experts) pursuing a shared question. REALITY POSTURE:
+  observed evidence + named cast. Cooperative-with-disagreement: the work IS
+  the contest of minds becoming a synthesis. Includes a devil's-advocate
+  role + ≥1 adversarial pair. Scenes are cognitive events over existing
+  evidence, NOT fabricated forward-time events.
+- **Atlas** — field guide, codex, encyclopedia, doctrine, taxonomy.
+  REALITY POSTURE: either real-world typology or invented-world codex.
+  Reference / typology work — entries replace scenes. The SYSTEM force is
+  everything; the typological structure IS the work.
+- **Debate** — trial, election, championship, M&A negotiation, structured
+  debate. REALITY POSTURE: either documented contest or hypothetical (rules
+  of engagement typically real). Two or more named parties locked in
+  zero-sum stakes under explicit rules. Each scene is a MOVE in the
+  contest; threads track axes of contestation.
 
-The same abstractions serve all three. The abstractions only hold up if the
-vocabulary stays stable across registers.
+The same abstractions (scene, beat, arc, thread, delta) serve all seven.
+The abstractions only hold up if the vocabulary stays stable across paradigms.
 
 ---
 

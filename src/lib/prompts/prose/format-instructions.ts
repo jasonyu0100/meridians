@@ -1,18 +1,18 @@
 /**
  * Prose Format Instructions
  *
- * Format-specific system roles and rules for prose vs screenplay vs overlay
- * formats. The `formatRules` strings are nested XML so the LLM parses
- * structure (categories, rules, enums) rather than skimming prose paragraphs.
- * The caller wraps them in `<format-rules>...</format-rules>`.
+ * Format-specific system roles and rules. The `formatRules` strings are
+ * nested XML so the LLM parses structure (categories, rules, enums) rather
+ * than skimming prose paragraphs. The caller wraps them in
+ * `<format-rules>...</format-rules>`.
  *
  * Register vs format are INDEPENDENT axes. Register = source intent (fiction,
  * non-fiction, simulation — see CORE_LANGUAGE.md). Format = output rendering
- * (prose, screenplay, meta, simulation). Any register can be rendered in any
- * format: a fiction work can render in `simulation` HUD-overlay; a simulation
- * work can render in plain `prose` with the rule machinery worked through
- * dialogue, action, and narration. The rules below describe the OUTPUT shape;
- * source register is honoured separately via the prose profile and POV.
+ * (prose, screenplay, markdown). Any register can be rendered in any format:
+ * a fiction work can render in plain `prose` or `markdown`; an analysis
+ * work can render in `markdown` with headings, lists, emphasis. The rules
+ * below describe the OUTPUT shape; source register is honoured separately
+ * via the prose profile and POV.
  */
 
 import type { ProseFormat } from '@/types/narrative';
@@ -30,18 +30,6 @@ const MECHANISM_DELIVERY = `<mechanism-delivery>
 const DIALOGUE_RENDERING = `<dialogue-rendering>
   Default to QUOTED SPEECH with attribution and non-verbal business (e.g. \`"I'm not going," she said, not looking up.\`) — not paraphrase or reported speech. Each line is spoken by a named character from the beat's participants to a specific audience drawn from that list; characters react to each other's actual words, not abstractions. Read the beat's 'what' for SUBJECT and TENSION; let quoted lines expose them. Small talk is welcome — greetings, mundane observations, off-topic asides. Non-quoted rendering (free-indirect, reported, choral) is reserved for when the prose profile explicitly declares a non-quoted register (analytical, essayistic, oral-epic).
 </dialogue-rendering>`;
-
-/** Shared between meta + simulation overlay formats: both produce fluid prose
- *  interleaved with bracketed observations/logs. */
-const OVERLAY_PROSE_RULES = `<prose-track>
-  The prose portion is the non-overlay text. Write it as if there were no overlay; layer observations on top as a separate track. Honour the declared PROSE PROFILE in full — the overlay does not relax profile compliance. The prose does not narrate what observations say; observations do not rephrase the prose. Use straight quotes (" and '), never smart/curly.
-  ${MECHANISM_DELIVERY}
-  ${DIALOGUE_RENDERING}
-</prose-track>`;
-
-const OVERLAY_GRAMMAR = `<overlay-grammar hint="Strict bracketed entries the UI parses.">
-  Pattern: \`[TYPE: primary-label — key: value — key: value]\`. Each entry on its own line. "[" and "]" literal. Exactly one ": " separates TYPE from the body. Body fields separated by " — " (space, em-dash U+2014, space) — never "--" or "-". First field = primary label (plain text, typically a short quoted description). Subsequent fields = "key: value" (lowercase keys) or freeform notes. State transitions use " → " (space, U+2192, space).
-</overlay-grammar>`;
 
 export const FORMAT_INSTRUCTIONS: Record<ProseFormat, FormatInstructionSet> = {
   prose: {
@@ -105,148 +93,47 @@ ${DIALOGUE_RENDERING}`,
   Cut inside (visualised aperture / flashback / INSERT) so the internal mechanism becomes external spectacle. Intercut physical signs (sweat, trembling, a clock's tick, footsteps in a corridor, light shifting at a window) so stillness has texture. Add a ticking element — something audibly counting down — so stillness compounds rather than diffuses. A scene that fails this test is prose with sluglines.
 </blank-stage-test>`,
   },
-  meta: {
-    systemRole: 'You are a prose writer producing fluid prose interleaved with bracketed engine observations that expose INKTIDE\'S OWN META-SYSTEM qualitatively — the engine noticing moments of shift in its understanding of the work as it writes. Not counts, not force values, not numeric deltas: the QUALITATIVE events InkTide registers — thread committing, seed planting, payoff landing, entity deepening, pattern crystallising, arc pivoting, proposition anchoring, force shifting, continuity risking. The overlay reads like an editorial assistant whispering "something just happened here," not a debugger printing field values.',
-    formatRules: `<intent>Fluid prose interleaved with bracketed engine observations naming QUALITATIVE shifts in InkTide's understanding. Phenomenological notes, not numeric telemetry.</intent>
+  markdown: {
+    systemRole: 'You are a prose writer producing markdown-formatted output. The substance is the same prose you would otherwise write — voiced, plan-driven, register-faithful — but the surface is marked up with markdown so structural reading cues survive the round-trip to a markdown renderer. Use headings, emphasis, lists, blockquotes, and inline code as the work\'s own register naturally calls for them: scene/section titles or part breaks become headings; emphasised moments use *italics* or **bold** where the prose profile sanctions emphasis; documents, transcripts, code, evidence blocks, citations, and parameter readouts use the markdown construct that fits the register. The marks are READING SIGNAL, not decoration — every construct must be load-bearing.',
+    formatRules: `<intent>Markdown-formatted prose. Same craft, same plan, same register — additional surface marks that a markdown renderer can lift into reading structure (headings, lists, emphasis, quoted blocks, inline code). Marks must be load-bearing; ornamental markdown is forbidden.</intent>
 
-${OVERLAY_PROSE_RULES}
+<output-rules>
+  Output is parsed as markdown — every formatting mark survives to the rendered surface. Use straight quotes (" and '), never smart/curly, so quoted speech reads cleanly inside markdown. Lock to the POV the source declares and to that POV's senses, reasoning, or evidentiary frame. Specific particulars carry every register — concrete sensory texture, named action, evidence, citation, image, lived detail.
+</output-rules>
 
-<engine-observations>
-  ${OVERLAY_GRAMMAR}
+${MECHANISM_DELIVERY}
 
-  <discipline>
-    Name KINDS of moments, not numbers. If what you want to log is a number, don't log it. If unsure which type fits, prefer no log over a mis-categorised one.
-    <example category="ok">
-      <log>[Thread committed: "<description>" — the question can no longer be abandoned]</log>
-      <log>[Seed planted: "<what the seed is>"]</log>
-      <log>[Payoff landed: "<what paid off>" — seed: "<earlier seed this answers>"]</log>
-      <log>[Entity deepened: "<name>" — aspect: trait]</log>
-      <log>[Arc pivot: "<arc>" — opening to complication]</log>
-      <log>[Pattern crystallised: "<what just became visible>"]</log>
-      <log>[Force shift: world-dominant → fate-dominant]</log>
-      <log>[Rhyme: this beat echoes an earlier scene]</log>
-    </example>
-    <example category="forbidden">
-      <log>[F=1.8 W=12 S=3]</log>
-      <log>[+2 nodes added]</log>
-      <log>[activeArcs: 3/5]</log>
-      <log>[valenceDelta: -0.3]</log>
-    </example>
-  </discipline>
+${DIALOGUE_RENDERING}
 
-  <type-enum closed="true">
-    <category id="threads" intent="kinds of movement">
-      <type pattern='[Thread committed: "<description>" — the question can no longer be abandoned]' />
-      <type pattern='[Thread stalled: "<description>" — silent for some time]' />
-      <type pattern='[Thread resolved: "<description>" — answer landed]' />
-      <type pattern='[Thread subverted: "<description>" — answer reversed expectation]' />
-      <type pattern='[Thread abandoned: "<description>" — set down, may return]' />
-      <type pattern='[Thread collision: "<thread A>" crossed "<thread B>"]' />
-      <type pattern='[Thread convergence: "<thread A>" feeding into "<thread B>"]' />
-    </category>
-    <category id="propositions" intent="kinds of formation">
-      <type pattern='[Seed planted: "<what the seed is>"]' />
-      <type pattern='[Payoff landed: "<what paid off>" — seed: "<earlier seed this answers>"]' />
-      <type pattern='[Callback: "<what was referenced>"]' />
-      <type pattern='[Anchor formed: "<what became load-bearing>" — connects backward and forward]' />
-      <type pattern='[Close formed: "<what just closed>" — closes: "<its seed>"]' />
-      <type pattern='[Texture: "<atmospheric note>" — stays local]' />
-    </category>
-    <category id="entities" intent="kinds of change">
-      <type pattern='[Entity introduced: "<name>" — role: <anchor|recurring|transient>]' />
-      <type pattern='[Entity deepened: "<name>" — <aspect: trait|belief|capability|wound|secret|goal|relation>]' />
-      <type pattern='[Entity revealed: "<name>" — <what was hidden>]' />
-      <type pattern='[Relationship shifted: "<A>" & "<B>" — <qualitative direction: warmed|cooled|fractured|bonded|flipped|severed|forgiven>]' />
-    </category>
-    <category id="world-and-system" intent="kinds of expansion">
-      <type pattern='[World expanded: "<new place, entity, or relation>"]' />
-      <type pattern='[System expanded: "<new rule or concept>"]' />
-      <type pattern='[Rule surfaced: "<rule>" — <first reveal or re-invocation>]' />
-    </category>
-    <category id="arcs-and-pacing" intent="kinds of pivot">
-      <type pattern='[Arc pivot: "<arc>" — <qualitative turn: opening to complication|complication to crisis|crisis to resolution|resolution to coda>]' />
-      <type pattern='[Phase transition: <from: setup|rising|midpoint|escalation|climax|resolution> → <to: same enum>]' />
-      <type pattern='[Pacing shift: from <quiet|building|convergent|synthesis> to <same enum>]' />
-    </category>
-    <category id="forces" intent="kinds of dominance">
-      <type pattern='[Force shift: <fate-dominant|world-dominant|system-dominant|balanced> → <same enum>]' />
-      <type pattern='[Convergence moment: all three forces in play]' />
-    </category>
-    <category id="rhythm-and-structure" intent="kinds of recognition">
-      <type pattern='[Rhyme: this beat echoes <earlier beat or scene — plain description>]' />
-      <type pattern='[Breath: scene is sitting with its material]' />
-      <type pattern='[Compression: structural territory being covered quickly]' />
-      <type pattern='[Expansion: a small moment held open]' />
-    </category>
-    <category id="risk-and-repair" intent="kinds of concern">
-      <type pattern='[Continuity risk: "<the issue>"]' />
-      <type pattern='[Plan revision: "<what the engine originally planned>" — now: "<what changed>"]' />
-      <type pattern='[Commitment made: "<what can no longer be undone>"]' />
-    </category>
-  </type-enum>
+<markdown-constructs hint="Use each construct only where it carries reading weight in the source's register. Marking everything reads as noise.">
+  <construct id="headings">
+    \`## Heading\` and \`### Sub-heading\` for genuine structural breaks — a scene title, a section header, a part break, a labelled excerpt. Do NOT heading-stamp every paragraph or every beat boundary. If the source register doesn't surface headings (close-third fiction stretches, lyric passages), use none.
+  </construct>
+  <construct id="emphasis">
+    \`*italics*\` for the conventional italicised cases — interior thought set off from narration, the title of a work referenced, an emphasised word, a foreign or technical term on first introduction, ship/document/court-case names depending on the register's house style. \`**bold**\` for genuine emphasis where the prose profile sanctions it (analytical / essayistic / instructional registers use bold more freely than fiction). Do not double-stack \`***\`.
+  </construct>
+  <construct id="lists">
+    Bulleted (\`- \`) or numbered (\`1. \`) lists for content the source register would naturally enumerate — evidence, steps, claims, observations, parameter sets. Lists are NOT a substitute for prose. A list in a fiction scene where the POV would naturally narrate the items reads as a register break; an essay laying out three claims is appropriate.
+  </construct>
+  <construct id="blockquotes">
+    \`> \` for embedded canonical text — a letter, a citation, a transmitted message, a recalled line, an epigraph, a witness statement. The quoted text reads as a discrete document layered into the prose, not as the POV's own voice.
+  </construct>
+  <construct id="inline-code">
+    Backticks for literal tokens that need to read as code — identifiers, commands, equations, schema fragments, technical strings the reader is meant to recognise verbatim. Avoid for ordinary terminology that the register would simply italicise.
+  </construct>
+  <construct id="links">
+    \`[text](url)\` only when the source register genuinely cites external URLs (reportage, academic, technical). Do not invent links to dress prose; never substitute a link for an in-scene specific.
+  </construct>
+  <construct id="horizontal-rules">
+    \`---\` for hard breaks the renderer should show as a rule — a section pivot, a time jump the prose can't carry alone, an epigraph closure. Sparing use.
+  </construct>
+</markdown-constructs>
 
-  <usage>Target 0-3 observations per paragraph, clustered on inflection points. Pure-prose stretches log nothing.</usage>
-</engine-observations>`,
-  },
-  simulation: {
-    systemRole: 'You are a prose writer producing fluid prose interleaved with bracketed in-world system logs — a HUD-overlay rendering. This format is the natural fit for the SIMULATION REGISTER (works that model real-life events from a stated rule set, asking "given these rules and these initial conditions, what happens?" — spanning historical counterfactual, economic and policy modelling, political wargame, pandemic and climate scenario, agent-based social-dynamics study, scientific-process / research-finding work, technological forecasting, and stylised rule-systems such as LitRPG / cultivation / xianxia where in-world mechanics drive events). It can ALSO be used to render any other register (fiction, non-fiction) when the source has surfaced rules, instrumentation, or telemetry the user wants visible — the format is the rendering, not the source intent. Across all uses the logs surface the WORLD\'S OWN diegetic state — gates opening, thresholds crossed, agents acting, modelled cascades, finding logs, anomaly reports, treaties holding or breaking, market-clearing prices. The logs belong to the world being written, not to the engine writing it: they are the readout the modelled system would emit if it had a HUD, dashboard, or status sheet, layered as a game-style overlay on top of natural prose.',
-    formatRules: `<intent>Fluid prose interleaved with strict in-world system logs (HUD overlay) for the simulation register. The logs surface the world's diegetic state under its rule set — rule-driven transitions, modelled cascades, agent actions, threshold crossings, findings — not the engine's bookkeeping. Any simulation subgenre (counterfactual, policy model, wargame, scenario, agent-based study, research / finding work, LitRPG-cultivation) should feel native; the source's own diegetic vocabulary decides which log types fire.</intent>
-
-${OVERLAY_PROSE_RULES}
-
-<system-logs>
-  ${OVERLAY_GRAMMAR}
-
-  <conventions>
-    State/enum values in SCREAMING_SNAKE_CASE (OPEN, SEVERED, MOBILISATION, BIMODAL). Names/descriptions/numbers stay in normal case. Durations/counts explicit with units: "21 days elapsed", "4 years open", "8 nations".
-  </conventions>
-
-  <referent>
-    Logs report the WORLD's in-world telemetry under its stated rule set, not the engine's bookkeeping. A counterfactual logs a treaty holding or a succession breaking, not "thread N escalated". A policy model logs a tariff threshold crossed and the modelled trade-flow response, not "delta applied". A pandemic scenario logs basic-reproduction-number drift and a containment trigger firing, not "scene N generated". A magic-system world logs its own tier gate opening; a research work logs its own empirical anomaly. The referent is always inside the narrative's world, expressed in that world's own vocabulary.
-  </referent>
-
-  <type-enum closed="true" hint="Pick the types the world naturally reports on; do not force ones the register doesn't speak.">
-    <category id="world-scene">
-      <type pattern="[Location Entered: <name> — <metadata>]" />
-      <type pattern="[Location Left: <name>]" />
-      <type pattern="[Time Jump: <from> → <to> — <duration>]" />
-    </category>
-    <category id="threads" intent="in-world open questions, obligations, or commitments">
-      <status-vocabulary>OPEN, CLOSED, SEVERED, ACTIVE, ESCALATING, RESOLVED, ABANDONED, DISPUTED, SUPERSEDED — adapt to the world's own vocabulary.</status-vocabulary>
-      <type pattern="[Thread Activated: <in-world question or commitment> — status: <status>]" />
-      <type pattern="[Thread Escalated: <in-world question or commitment> — status: <from> → <to>]" />
-      <type pattern="[Thread Closed: <in-world question or commitment> — <duration or terminal state>]" />
-      <type pattern="[Thread: <in-world question or commitment> — status: <status> — <metadata>]" />
-    </category>
-    <category id="systems-and-rules" intent="the world's own diegetic rules">
-      <type pattern="[System Rule Active: <rule> — <metadata>]" />
-      <type pattern="[System Rule Triggered: <rule> — <consequence>]" />
-      <type pattern="[System Introduced: <name> — status: <status>]" />
-      <type pattern="[System: <subject> — <claim or state>]" />
-    </category>
-    <category id="entities" intent="in-world state changes">
-      <type pattern="[World delta: <entity or concept> — <change>]" />
-      <type pattern="[Relationship: <A> & <B> — state change: <from> → <to>]" />
-      <type pattern="[Entities affected: <scope> — state change: <from> → <to>]" />
-    </category>
-    <category id="observation" intent="named diegetic patterns (common in self-help, essay, analytical registers)">
-      <type pattern="[Pattern detected: <pattern> — trigger: <cause>]" />
-      <type pattern="[Tension accumulation: <level> — resolution distance: <distance>]" />
-    </category>
-    <category id="inquiry-research" intent="for works whose substance is findings about a domain">
-      <type pattern="[Finding: <measurement> — <key>: <value> — status: <state>]" />
-      <type pattern="[Anomaly detected: <measurement> — expected: <e> — observed: <o>]" />
-      <type pattern="[Claim: <claim> — <metadata>]" />
-      <type pattern="[Measurement decision: <field> — operationalisation: <how>]" />
-      <type pattern="[Known limitation: <statement>]" />
-    </category>
-  </type-enum>
-
-  <type-selection hint="The source's own diegetic vocabulary chooses which types fire — adapt to what this work would naturally surface, not to a fixed register table.">
-    Rule-dense scenarios (counterfactual, wargame, agent-based, LitRPG-cultivation) lean System Rule Active, System Rule Triggered, Thread Activated, Location Entered — the form rewards density. Policy / economic / pandemic / climate models lean Tension accumulation, Pattern detected, Entities affected, System Rule Triggered with cascade metadata. Empirical / research sources surface Finding, Anomaly detected, Measurement decision, Known limitation. Character-driven simulations lean spare on Relationship, World delta, Thread Closed (logs mark turning points only). Pattern detected and Tension accumulation suit any source whose diegesis explicitly names its own dynamics.
-  </type-selection>
-
-  <restraint>0-3 logs per paragraph typical; more at inflection points, none in quiet stretches. Annotating every sentence flattens the overlay.</restraint>
-</system-logs>`,
+<prohibitions>
+  <rule>No part/chapter sluglines or meta-commentary on the scene itself ("Scene 1: ..."). The scene is the unit; the work above the scene supplies its own framing elsewhere.</rule>
+  <rule>No markdown that exists only to look formatted. If removing the mark would leave the prose unchanged in meaning, the mark didn't belong.</rule>
+  <rule>No raw HTML tags. Markdown only.</rule>
+  <rule>No code fences (\`\`\`) around the whole output. The output IS markdown; it is not a fenced code block.</rule>
+</prohibitions>`,
   },
 };
