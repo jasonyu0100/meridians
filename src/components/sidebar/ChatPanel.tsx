@@ -34,7 +34,7 @@ import {
   buildSystemPersonaPrompt,
   buildWorldPersonaPrompt,
 } from "@/lib/prompts/chat";
-import { callGenerateStream, resolveReasoningBudget } from "@/lib/ai/api";
+import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from "@/lib/ai/api";
 import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
 import {
   ReasoningCollapsed,
@@ -415,6 +415,7 @@ export default function ChatPanel() {
       .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join("\n\n");
     const reasoningBudget = resolveReasoningBudget(state.activeNarrative);
+    const websearch = resolveWebsearch(state.activeNarrative);
     const start = performance.now();
 
     let reasoningAcc = "";
@@ -432,6 +433,8 @@ export default function ChatPanel() {
           reasoningAcc += tok;
           setReasoningText((prev) => prev + tok);
         },
+        undefined,
+        websearch,
       );
       const durationMs = Math.round(performance.now() - start);
       dispatch({

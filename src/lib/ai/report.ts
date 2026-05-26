@@ -2,7 +2,7 @@ import type { SlidesData } from '@/lib/slides-data';
 import type { NarrativeState, Scene } from '@/types/narrative';
 import { NARRATIVE_CUBE, type CubeCornerKey, resolveEntry, isScene } from '@/types/narrative';
 import { detectCubeCorner, resolveEntityName } from '@/lib/narrative-utils';
-import { callGenerate, resolveReasoningBudget } from './api';
+import { callGenerate, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { DEFAULT_MODEL, MAX_TOKENS_SMALL, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { REPORT_SYSTEM, REPORT_ANALYSIS_PROMPT, REPORT_SECTIONS } from '@/lib/prompts';
@@ -274,9 +274,10 @@ export async function generateReportAnalysis(
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
   let result: string;
   try {
-    result = await callGenerate(prompt, REPORT_SYSTEM, MAX_TOKENS_SMALL, 'generateReportAnalysis', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE);
+    result = await callGenerate(prompt, REPORT_SYSTEM, MAX_TOKENS_SMALL, 'generateReportAnalysis', DEFAULT_MODEL, reasoningBudget, true, ANALYSIS_TEMPERATURE, websearch);
   } catch (err) {
     logError('Report analysis generation failed', err, {
       source: 'analysis',

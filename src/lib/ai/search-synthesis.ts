@@ -8,7 +8,7 @@
  * similarity to the query (supplementary thematic context).
  */
 
-import { callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { DEFAULT_MODEL } from '../constants';
 import { logInfo, logError } from '../system-logger';
 import { buildSearchSynthesisPrompt, SEARCH_SYNTHESIS_SYSTEM } from '@/lib/prompts/search';
@@ -190,6 +190,7 @@ export async function synthesizeSearchResults(
       resolveReasoningBudget(narrative),
       undefined,
       0.3,
+      resolveWebsearch(narrative),
     );
 
     const citationMatches = accumulatedText.match(/\[(\d+)\]/g) || [];

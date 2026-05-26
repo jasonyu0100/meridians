@@ -18,7 +18,7 @@
 import { ANALYSIS_TEMPERATURE, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import type { NarrativeState } from '@/types/narrative';
 import { resolveEntrySequence } from '@/lib/narrative-utils';
-import { callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -270,6 +270,7 @@ export async function streamBranchChatTurn(opts: {
     .join('\n\n');
 
   const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
 
   return callGenerateStream(
     userPrompt,
@@ -281,5 +282,6 @@ export async function streamBranchChatTurn(opts: {
     reasoningBudget,
     onReasoning,
     ANALYSIS_TEMPERATURE,
+    websearch,
   );
 }

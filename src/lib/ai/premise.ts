@@ -4,7 +4,7 @@
  * The prompt body lives in src/lib/prompts/premise/ — see PREMISE_SUGGEST_PROMPT.
  */
 
-import { callGenerate } from './api';
+import { callGenerate, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { PREMISE_SUGGEST_PROMPT, PREMISE_SUGGEST_SYSTEM } from '@/lib/prompts';
 import {
@@ -56,7 +56,7 @@ export async function refineNarrativeMeta(args: {
   narrative: Pick<
     NarrativeState,
     | 'title' | 'description' | 'paradigm' | 'genre' | 'subgenre'
-    | 'worldSummary' | 'patterns' | 'antiPatterns'
+    | 'worldSummary' | 'patterns' | 'antiPatterns' | 'storySettings'
   > & { id?: string };
   /** Pre-rendered outline up to the cursor — produced by `outlineContext` in
    *  the caller. Authoritative accumulated context. */
@@ -84,9 +84,10 @@ export async function refineNarrativeMeta(args: {
     guidance: args.guidance,
   });
 
+  const websearch = resolveWebsearch(n as NarrativeState);
   let raw: string;
   try {
-    raw = await callGenerate(prompt, REFINE_NARRATIVE_META_SYSTEM, 600, 'refineNarrativeMeta');
+    raw = await callGenerate(prompt, REFINE_NARRATIVE_META_SYSTEM, 600, 'refineNarrativeMeta', undefined, undefined, true, undefined, websearch);
   } catch (err) {
     logError('refineNarrativeMeta call failed', err, {
       source: 'ingest',
