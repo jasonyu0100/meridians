@@ -6,6 +6,7 @@ import { newNarratorBelief } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { GENERATE_SCENES_SYSTEM } from '@/lib/prompts/scenes/generate';
+import { proseShapeDirective } from '@/lib/prompts/paradigm-roles';
 import { WRITING_MODEL, GENERATE_MODEL, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext, sceneContext, buildProseProfile } from './context';
@@ -372,6 +373,9 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     hasPacingSequence: !!sequencePrompt,
     sharedRulesBlock,
     paradigm: narrative.paradigm,
+    narrativeTitle: narrative.title,
+    genre: narrative.genre,
+    subgenre: narrative.subgenre,
   });
 
   // Retry on JSON parse failures (truncation, malformed output)
@@ -964,14 +968,24 @@ ${slotXml}
     const parts = [narrative.storySettings?.planGuidance?.trim(), guidance?.trim()].filter(Boolean);
     return parts.length > 0 ? `\n\n<plan-guidance>\n${parts.map(p => `  <directive>${p}</directive>`).join('\n')}\n</plan-guidance>` : '';
   })();
-  const systemPrompt = buildScenePlanSystemPrompt() + planGuidanceBlock;
+  const systemPrompt = buildScenePlanSystemPrompt({
+    narrativeTitle: narrative.title,
+    paradigm: narrative.paradigm,
+    genre: narrative.genre,
+    subgenre: narrative.subgenre,
+  }) + planGuidanceBlock;
 
   const groundingBlock = buildParticipantGroundingBlock(narrative, scene);
   const completedBeatsBlock = buildCompletedBeatsPrompt(narrative, resolvedKeys, contextIndex);
   const proseProfileBlock = buildProseProfile(resolveProfile(narrative));
+  const planParadigmShape = proseShapeDirective(narrative.paradigm);
 
   const inputBlocks: string[] = [];
-  inputBlocks.push(`  <prose-profile hint="The narrative's authorial voice — mechanism mix, register, devices. Beats inherit voice from this profile, not from prompt instructions.">
+  // Paradigm-shape FIRST: tells the planner what the scene actually IS before
+  // it sees any other context (profile, format, beat slots). Same priority
+  // discipline as the prose stage.
+  if (planParadigmShape) inputBlocks.push(`  ${planParadigmShape.replace(/\n/g, '\n  ')}`);
+  inputBlocks.push(`  <prose-profile hint="The work's authorial voice — mechanism mix, register, devices. Beats inherit voice from this profile, not from prompt instructions.">
 ${proseProfileBlock}
   </prose-profile>`);
   const planFormat = narrative.storySettings?.proseFormat ?? 'prose';
@@ -1170,7 +1184,12 @@ export async function editScenePlan(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, buildScenePlanEditSystemPrompt(narrative.title), MAX_TOKENS_SMALL, 'editScenePlan', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildScenePlanEditSystemPrompt({
+    narrativeTitle: narrative.title,
+    paradigm: narrative.paradigm,
+    genre: narrative.genre,
+    subgenre: narrative.subgenre,
+  }), MAX_TOKENS_SMALL, 'editScenePlan', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
 
   const parsed = parseJson(raw, 'editScenePlan') as { beats?: unknown[]; propositions?: unknown[] };
   const beats = (parsed.beats ?? []).map((b: unknown) => {
@@ -1447,7 +1466,12 @@ export async function rewriteScenePlan(
   ).join('\n');
 
 
-  const systemPrompt = buildScenePlanEditSystemPrompt(narrative.title);
+  const systemPrompt = buildScenePlanEditSystemPrompt({
+    narrativeTitle: narrative.title,
+    paradigm: narrative.paradigm,
+    genre: narrative.genre,
+    subgenre: narrative.subgenre,
+  });
 
   const sceneDesc = `Scene at branch head: ${scene.summary}`;
 
@@ -1655,10 +1679,14 @@ export async function generateSceneProse(
   const proseFormat = narrative.storySettings?.proseFormat ?? 'prose';
   const formatInstructions = FORMAT_INSTRUCTIONS[proseFormat];
 
-  // System prompt is minimal — style constraints moved to user prompt for stronger compliance
+  // System prompt is minimal — style constraints moved to user prompt for stronger compliance.
+  // The META (paradigm + genre + subgenre + title) fuses into a single identity line.
   const systemPrompt = buildSceneProseSystemPrompt({
     formatInstructions,
     narrativeTitle: narrative.title,
+    paradigm: narrative.paradigm,
+    genre: narrative.genre,
+    subgenre: narrative.subgenre,
     worldSummary: narrative.worldSummary,
     proseVoiceOverride: hasVoiceOverride ? narrative.storySettings!.proseVoice! : undefined,
     direction: guidance,
@@ -1666,9 +1694,15 @@ export async function generateSceneProse(
 
   const sceneBlock = sceneContext(narrative, scene, resolvedKeys, contextIndex);
 
+  // Paradigm-shape directive — top-priority cue so the writer renders in the
+  // right form (essay section / debate move / chronicle entry / atlas entry /
+  // panel cognition / simulation event / fiction scene) regardless of the
+  // beat-plan's surface vocabulary.
+  const paradigmShapeBlock = proseShapeDirective(narrative.paradigm);
+
   // Scene plan — when available, this is the primary creative direction
   const planBlock = activePlan
-    ? `<beat-plan hint="Follow this sequence — each beat maps to a passage of prose. The mechanism defines delivery MODE; the propositions are STORY WORLD FACTS to transmit through craft, never copied verbatim or stated flatly.">
+    ? `<beat-plan hint="Follow this sequence — each beat maps to a passage of prose. The mechanism defines delivery MODE; the propositions are WORLD-VIEW FACTS to transmit through craft, never copied verbatim or stated flatly.">
 ${activePlan.beats.map((b, i) =>
   `  <beat index="${i + 1}" fn="${b.fn}" mechanism="${b.mechanism}">
     <what>${b.what}</what>
@@ -1704,7 +1738,8 @@ ${b.propositions.map(p => `      <proposition>${p.content}</proposition>`).join(
     : buildProseInstructionsFreeform({ wordsPerBeat: WORDS_PER_BEAT });
 
   const inputBlocks: string[] = [];
-  if (profileSection.trim()) inputBlocks.push(`  <prose-profile hint="The narrative's authorial voice. Always law — rules in <instructions> apply only when this is silent on a given dimension.">${profileSection}\n  </prose-profile>`);
+  if (paradigmShapeBlock) inputBlocks.push(`  ${paradigmShapeBlock.replace(/\n/g, '\n  ')}`);
+  if (profileSection.trim()) inputBlocks.push(`  <prose-profile hint="The world view's authorial voice. Always law — rules in <instructions> apply only when this is silent on a given dimension.">${profileSection}\n  </prose-profile>`);
   const proseProseModeSection = buildActiveModeSection(narrative, 'scene-prose');
   if (proseProseModeSection) inputBlocks.push(`  ${proseProseModeSection.replace(/\n/g, '\n  ')}`);
   if (adjacentProseBlock) inputBlocks.push(`  ${adjacentProseBlock.replace(/\n/g, '\n  ')}`);

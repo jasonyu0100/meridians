@@ -80,14 +80,15 @@ const CRAFT_DOCTRINE = `
 export function buildProseInstructionsWithPlan(args: { wordsPerBeat: number }): string {
   const { wordsPerBeat } = args;
   return `<instructions>
-  <integration-hierarchy hint="Priority order when inputs tension.">
-    <priority rank="1">BEAT PLAN — structural backbone; render every beat's propositions in the assigned mechanism, in the assigned order.</priority>
-    <priority rank="2">PROSE PROFILE — authorial voice; rules below apply only when the profile is silent.</priority>
-    <priority rank="3">SCENE CONTEXT — POV, setting, participants, deltas; the substrate the beats render.</priority>
-    ${modePriorityEntry(4, "scene-prose")}
+  <integration-hierarchy hint="Priority order when inputs conflict.">
+    <priority rank="1" critical="true">PARADIGM-SHAPE DIRECTIVE — defines what this 'scene' actually is in the work's paradigm. The directive is authoritative. When beat plan, prose profile, or scene context use scene-language that conflicts with the paradigm shape (e.g. the plan tags "dialogue" beats for a typology entry, or scene context names a POV for a chronicle), render to the paradigm — the directive overrides default storytelling form.</priority>
+    <priority rank="2">BEAT PLAN — structural backbone WITHIN the paradigm; render every beat's propositions in the assigned mechanism and order.</priority>
+    <priority rank="3">PROSE PROFILE — authorial voice; rules below apply only where the profile is silent.</priority>
+    <priority rank="4">SCENE CONTEXT — POV, setting, participants, deltas; the substrate the beats render against.</priority>
+    ${modePriorityEntry(5, "scene-prose")}
   </integration-hierarchy>
 
-  <follow-plan>Each beat maps to a passage of prose. The mechanism defines the delivery MODE (dialogue, thought, action, etc); the propositions define FACTS TO TRANSMIT (in-world events, argued claims, observed evidence, rule-driven outcomes / modelled state transitions / agent decisions — whatever the source register carries: fiction, non-fiction, or simulation). Weave both into voiced prose.</follow-plan>
+  <follow-plan>Each beat maps to a passage of output. The mechanism defines the delivery MODE (dialogue, thought, action, environment, narration, memory, document, comic); the propositions define FACTS TO TRANSMIT — in-world events, argued claims, observed evidence, rule-driven outcomes, modelled state transitions, agent decisions, recorded changes, classified attributes, contest moves; the paradigm-shape directive decides which of these the work actually carries. Weave both into the paradigm's voice.</follow-plan>
 
   <beat-boundary-markers hint="Insert a marker line between beats; do NOT include a marker after the final beat. Markers are stripped from final output.">
     Format: \`[BEAT_END:N]\` on its own line — N is the 0-indexed beat number. Example for a 3-beat scene: [Prose for beat 0...] / [BEAT_END:0] / [Prose for beat 1...] / [BEAT_END:1] / [Prose for beat 2...]
@@ -160,9 +161,10 @@ export function buildProseInstructionsFreeform(args: { wordsPerBeat: number }): 
   const { wordsPerBeat } = args;
   return `<instructions>
   <integration-hierarchy hint="No beat plan in this mode.">
-    <priority rank="1">PROSE PROFILE — authorial voice; rules below apply only when the profile is silent.</priority>
-    <priority rank="2">SCENE CONTEXT — POV, setting, participants, deltas.</priority>
-    ${modePriorityEntry(3, "scene-prose")}
+    <priority rank="1" critical="true">PARADIGM-SHAPE DIRECTIVE — defines what this 'scene' actually is in the work's paradigm. The directive is authoritative; when other inputs conflict, render to the paradigm.</priority>
+    <priority rank="2">PROSE PROFILE — authorial voice; rules below apply only where the profile is silent.</priority>
+    <priority rank="3">SCENE CONTEXT — POV, setting, participants, deltas.</priority>
+    ${modePriorityEntry(4, "scene-prose")}
   </integration-hierarchy>
 
   <reference name="craft-doctrine">

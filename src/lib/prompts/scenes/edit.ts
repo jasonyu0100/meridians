@@ -1,12 +1,39 @@
 /**
- * Scene Plan Edit System Prompt — the "dramaturg" role.
+ * Scene Plan Edit System Prompt — targeted plan revisions.
  *
  * High-level identity only. The beat-fn/mechanism vocabulary, rewrite rules,
  * proposition guidance, and output schema live in the user prompt
  * (buildScenePlanEditUserPrompt).
+ *
+ * "Dramaturg" is fiction-coded; the work may be a typology, a contest, a
+ * chronicle, an essay, etc. The role is paradigm-neutral here — a plan
+ * editor making targeted revisions to the scaffold the writer will render.
  */
 
-/** Build the plan-edit (dramaturg) system prompt. Requires the narrative title. */
-export function buildScenePlanEditSystemPrompt(narrativeTitle: string): string {
-  return `You are a dramaturg making TARGETED REVISIONS to a scene plan for "${narrativeTitle}". This is NOT a regeneration — preserve the existing structure and only modify what the user prompt's issues specifically address. Return ONLY valid JSON.`;
+import type { NarrativeParadigm } from "@/types/narrative";
+import { composeWorkIdentity } from "../paradigm-roles";
+
+export type ScenePlanEditSystemPromptArgs = {
+  narrativeTitle: string;
+  paradigm?: NarrativeParadigm;
+  genre?: string;
+  subgenre?: string;
+};
+
+/** Build the plan-edit system prompt. Optional paradigm/genre/subgenre fuse
+ *  into the work META so the editor inherits the same identity the planner
+ *  and writer read. */
+export function buildScenePlanEditSystemPrompt(
+  args: ScenePlanEditSystemPromptArgs | string,
+): string {
+  // Back-compat: accept a bare title string for call-sites that haven't been
+  // migrated. New call-sites pass the full args object.
+  const a: ScenePlanEditSystemPromptArgs = typeof args === 'string' ? { narrativeTitle: args } : args;
+  const identity = composeWorkIdentity({
+    title: a.narrativeTitle,
+    paradigm: a.paradigm,
+    genre: a.genre,
+    subgenre: a.subgenre,
+  });
+  return `${identity} You are now making TARGETED REVISIONS to a scene plan — not a regeneration. Preserve the existing structure and only modify what the user prompt's issues specifically address. The scene's paradigm shape (typology entry / contest move / chronicle entry / essay section / panel session / rule-driven event / fiction or non-fiction event) MUST be preserved across the edit. Return ONLY valid JSON.`;
 }

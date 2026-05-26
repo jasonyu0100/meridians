@@ -7,7 +7,7 @@
  */
 
 export const META_EXTRACTION_SYSTEM =
-  'You are a literary analyst. Extract the visual style and prose voice of a narrative. Return only valid JSON.';
+  'You are a world-view analyst. Extract the visual style and prose voice of a world view (which may be narrative, argumentative, chronicled, typological, adversarial, or simulated — read what the source actually presents). Return only valid JSON.';
 
 export function buildMetaExtractionPrompt(args: { metaContext: string }): string {
   return `<inputs>

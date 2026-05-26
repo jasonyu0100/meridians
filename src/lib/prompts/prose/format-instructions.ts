@@ -33,7 +33,7 @@ const DIALOGUE_RENDERING = `<dialogue-rendering>
 
 export const FORMAT_INSTRUCTIONS: Record<ProseFormat, FormatInstructionSet> = {
   prose: {
-    systemRole: 'You are a prose writer crafting a single scene. Adapt to the source\'s register, voice, and POV — the scene is the unit of composition.',
+    systemRole: 'Output is plain prose. Adapt to the source\'s register, voice, and POV; the scene is the unit of composition.',
     formatRules: `<intent>Plain prose output. Adapt to the source's POV and register; deliver on the plan's mechanism scaffold; render dialogue as quoted speech by default.</intent>
 
 <output-rules>
@@ -45,7 +45,7 @@ ${MECHANISM_DELIVERY}
 ${DIALOGUE_RENDERING}`,
   },
   screenplay: {
-    systemRole: 'You are a professional screenwriter rendering a scene in industry-standard screenplay format for stage animation, live action, or animated adaptation. The beat plan is your substrate — the same plan that reads as prose must be RE-RENDERED here, not transliterated. Action lines describe only what the camera SEES and HEARS; interior state externalises through one of four conventions (V.O., soliloquy, pure performance, visualised aperture) — pick one for the scene and commit. Sparser propositions per minute than prose, dialogue-heavier — every line on the page must be camera-visible.',
+    systemRole: 'Output is industry-standard screenplay format. The beat plan is your substrate — the same plan that reads as prose must be RE-RENDERED here, not transliterated. Action lines describe only what the camera SEES and HEARS; interior state externalises through one of four conventions (V.O., soliloquy, pure performance, visualised aperture) — pick one for the scene and commit. Sparser propositions per minute than prose, dialogue-heavier — every line on the page must be camera-visible.',
     formatRules: `<intent>Industry-standard, externally observable. Action describes what the camera SEES and HEARS, never what a character KNOWS or FEELS.</intent>
 
 <page-format>
@@ -94,7 +94,7 @@ ${DIALOGUE_RENDERING}`,
 </blank-stage-test>`,
   },
   markdown: {
-    systemRole: 'You are a prose writer producing markdown-formatted output. The substance is the same prose you would otherwise write — voiced, plan-driven, register-faithful — but the surface is marked up with markdown so structural reading cues survive the round-trip to a markdown renderer. Use headings, emphasis, lists, blockquotes, and inline code as the work\'s own register naturally calls for them: scene/section titles or part breaks become headings; emphasised moments use *italics* or **bold** where the prose profile sanctions emphasis; documents, transcripts, code, evidence blocks, citations, and parameter readouts use the markdown construct that fits the register. The marks are READING SIGNAL, not decoration — every construct must be load-bearing.',
+    systemRole: 'Output is markdown-formatted prose. Substance is the same prose you would otherwise write — voiced, plan-driven, register-faithful — surfaced with markdown so structural reading cues survive the renderer. Use headings, emphasis, lists, blockquotes, and inline code as the work\'s own register naturally calls for them: scene/section titles or part breaks become headings; emphasised moments use *italics* or **bold** where the prose profile sanctions emphasis; documents, transcripts, code, evidence blocks, citations, and parameter readouts use the markdown construct that fits the register. Marks are READING SIGNAL, not decoration — every construct must be load-bearing.',
     formatRules: `<intent>Markdown-formatted prose. Same craft, same plan, same register — additional surface marks that a markdown renderer can lift into reading structure (headings, lists, emphasis, quoted blocks, inline code). Marks must be load-bearing; ornamental markdown is forbidden.</intent>
 
 <output-rules>

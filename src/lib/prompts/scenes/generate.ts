@@ -7,9 +7,10 @@
 
 import { modePriorityEntry } from "../mode/application";
 import type { NarrativeParadigm } from '@/types/narrative';
+import { composeWorkIdentity } from "../paradigm-roles";
 
 export const GENERATE_SCENES_SYSTEM =
-  'You are a scene generator producing one arc of structurally rich scenes. Honour the brief (reasoning graph / coordination plan / direction), the pacing sequence, and the active threads. Read the world-state across the three forces (fate / world / system); let the established work\'s profile decide which lead this arc — a Classic is fate-dominant, a Show is world-dominant, a Paper is system-dominant. Each scene should reshape future possibility-space (precedents, relationships, inner state, conceptual ground) rather than land without lasting effect. Different actors hold incompatible models — the same event gets divergent readings; emergence often arrives through actions taken on false, partial, or stale beliefs. Every scene pairs its summary with rich threadDeltas (rationale grounded in the scene), worldDeltas (15–25 word present-tense facts across 3+ entities), and ≥1 systemDelta. Match the narrative\'s naming style for any new entities. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a scene generator producing one arc of structurally rich scenes. The work may be a fiction or non-fiction narrative, a rule-driven simulation, an essay, a panel session, a typology, an adversarial contest, or a chronological record — read the paradigm-shape block in the user prompt to learn which, and produce scenes whose shape MATCHES the paradigm (a typology scene is a typology entry, not a sequence of events; a debate scene is a contest move, not a character\'s emotional arc; a record scene is a dated entry, not a forward-time narrative beat). Honour the brief (reasoning graph / coordination plan / direction), the pacing sequence, and the active threads. Read the world-state across the three forces (fate / world / system); let the established work\'s profile decide which leads this arc — a Classic is fate-dominant, a Show is world-dominant, a Paper is system-dominant. Each scene should reshape future possibility-space (precedents, relationships, inner state, conceptual ground) rather than land without lasting effect. Different actors hold incompatible models — the same event gets divergent readings; emergence often arrives through actions taken on false, partial, or stale beliefs. Every scene pairs its summary with rich threadDeltas (rationale grounded in the scene), worldDeltas (15–25 word present-tense facts across 3+ entities), and ≥1 systemDelta. Match the work\'s naming style for any new entities. Return ONLY valid JSON matching the schema in the user prompt.';
 
 // ── Per-paradigm scene discipline ────────────────────────────────────────────
 // Mirrors the world-gen paradigm pattern: when the narrative carries a
@@ -95,6 +96,11 @@ export type GenerateScenesPromptArgs = {
   /** Narrative paradigm — injects the matching scene-shape discipline block.
    *  When omitted, no paradigm-specific block is emitted (back-compat). */
   paradigm?: NarrativeParadigm;
+  /** Work title for the META identity. */
+  narrativeTitle?: string;
+  /** Genre + subgenre concretise the paradigm into a specific craft tradition. */
+  genre?: string;
+  subgenre?: string;
 };
 
 export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): string {
@@ -105,28 +111,39 @@ export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): strin
     hasPacingSequence,
     sharedRulesBlock,
     paradigm,
+    narrativeTitle,
+    genre,
+    subgenre,
   } = args;
 
   const priorities = [
-    `  <priority rank="1">USER-SUPPLIED CONTEXT — operator's direction, constraints, narrative settings, explicit guidance. Beats engine defaults whenever it speaks; defaults apply only where the operator is silent.</priority>`,
-    `  <priority rank="2">BRIEF — reasoning graph (CRG) / coordination-plan directive / direction. Scenes execute the brief.</priority>`,
-    `  <priority rank="3">ARC SETTINGS — force preference / reasoning mode / network bias the CRG was built under. Scenes inherit the engine tilt.</priority>`,
-    `  <priority rank="4">WORLD-BUILD FOCUS — recently-introduced entities and latent threads this arc must activate. Bring them on-screen.</priority>`,
-    hasPacingSequence ? `  <priority rank="5">PACING SEQUENCE — per-scene mode + force band targets.</priority>` : '',
-    `  ${modePriorityEntry(6, "scene-structure")}`,
-    `  <priority rank="7">NARRATIVE CONTEXT — characters, threads, system knowledge, recent history.</priority>`,
+    `  <priority rank="1" critical="true">PARADIGM-SHAPE DISCIPLINE — what KIND of scene this arc must produce (fictional event, documented event, rule-driven event, essay section, panel session, typology entry, contest move, chronicle entry). Block emitted below; render to it.</priority>`,
+    `  <priority rank="2">USER-SUPPLIED CONTEXT — operator's direction, constraints, settings, explicit guidance. Beats engine defaults whenever it speaks; defaults apply only where the operator is silent.</priority>`,
+    `  <priority rank="3">BRIEF — reasoning graph (CRG) / coordination-plan directive / direction. Scenes execute the brief.</priority>`,
+    `  <priority rank="4">ARC SETTINGS — force preference / reasoning mode / network bias the CRG was built under. Scenes inherit the engine tilt.</priority>`,
+    `  <priority rank="5">WORLD-BUILD FOCUS — recently-introduced entities and latent threads this arc must activate. Bring them on-screen.</priority>`,
+    hasPacingSequence ? `  <priority rank="6">PACING SEQUENCE — per-scene mode + force band targets.</priority>` : '',
+    `  ${modePriorityEntry(7, "scene-structure")}`,
+    `  <priority rank="8">WORK CONTEXT — entities, threads, system knowledge, recent history.</priority>`,
   ].filter(Boolean).join('\n');
 
-  const paradigmBlock = paradigm ? `\n${PARADIGM_SHAPE_MAP[paradigm]}\n` : '';
+  // META: paradigm + title + genre/subgenre fused. Appears at the TOP so the
+  // model reads "what work am I writing for" before any other input.
+  const metaBlock = narrativeTitle
+    ? `<work-meta hint="The work's identity. Paradigm decides the form; genre/subgenre concretise the tradition.">${composeWorkIdentity({ title: narrativeTitle, paradigm, genre, subgenre })}</work-meta>\n\n`
+    : '';
 
-  return `<inputs>
+  // Paradigm-shape discipline immediately follows the META, BEFORE inputs.
+  const paradigmBlock = paradigm ? `${PARADIGM_SHAPE_MAP[paradigm]}\n\n` : '';
+
+  return `${metaBlock}${paradigmBlock}<inputs>
 ${inputBlocks}
 </inputs>
 
 <integration-hierarchy hint="Priority order when inputs conflict.">
 ${priorities}
 </integration-hierarchy>
-${paradigmBlock}
+
 
 <summary-discipline>The summary IS the delta budget. Write the summary so every intended delta has a source sentence — every entity-change, rule-surfacing, thread-move, and off-screen-affected party traceable to a sentence. Under-tagging is the dominant failure mode.
   <rule name="no-raw-ids" critical="true">NEVER echo engine identifiers in summary prose. Forbidden tokens: any "PREFIX-NUMBER" form — C-N, L-N, T-N, A-N, S-N, ARC-N, K-N, SYS-N, SYS-GEN-N, etc. The summary is read by downstream prose and plan stages as the authoritative scene brief; an ID slug inside prose ("using SYS-98", "via T-12") leaks engine bookkeeping into the rendered text. Translate every reference to its in-world name or concept:

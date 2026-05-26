@@ -15,7 +15,7 @@
 import { PROMPT_ARC_STATE_GUIDANCE } from '@/lib/prompts/core/game-state';
 
 export const ARC_GROUPING_SYSTEM =
-  'You are a narrative analyst. Name arcs and emit arc metadata (direction + compact world state) based on scene summaries. Return only a JSON array of objects.';
+  'You are a world-view analyst. Name arcs and emit arc metadata (direction + compact world state) based on scene summaries. The world view may be a narrative, an argument, a chronicled record, a typology, an adversarial contest, or a modelled simulation — read what the summaries actually present and adapt. Return only a JSON array of objects.';
 
 export interface ArcGroup {
   sceneIndices: number[];

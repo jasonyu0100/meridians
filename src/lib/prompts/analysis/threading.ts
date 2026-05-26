@@ -6,7 +6,7 @@
  */
 
 export const THREADING_SYSTEM =
-  'You are a narrative structure analyst. Identify causal dependencies between threads — the prediction markets the narrative carries. Refer to threads by numeric ID — do not repeat descriptions in the output. Return only valid JSON.';
+  'You are a world-view structure analyst. Identify causal dependencies between threads — the prediction markets the world view carries. Refer to threads by numeric ID — do not repeat descriptions in the output. Return only valid JSON.';
 
 export function buildThreadingPrompt(canonicalThreads: string[]): string {
   return `<inputs>
