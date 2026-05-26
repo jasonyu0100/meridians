@@ -74,7 +74,7 @@ ${continuityBlock}
 <stylisation-menu hint="Pick 1 or 2, not more.">
   <option name="palette">2-3 dominant colours + one accent. "Deep indigo, bone-white linen, one rust-red sash."</option>
   <option name="materials">Lacquered wood, bronze, silk, oiled leather, linen, raw wool, jade, basalt. Deliberate, culturally consistent.</option>
-  <option name="aesthetic-tradition">Anchor to a real-world style the generator recognises — Edo period, Heian court, Mughal miniature, Byzantine mosaic, brutalist concrete, Ming dynasty robes. Match the name's cultural palette.</option>
+  <option name="aesthetic-tradition">Anchor to a real-world style the generator recognises — Edo period, Heian court, Mughal miniature, Byzantine mosaic, brutalist concrete, Ming dynasty robes. Match what the name implies.</option>
   <option name="silhouette-proportion">A single push — long sleeves, tall collar, shaved head, a heavy cloak. Mild exaggeration only.</option>
   <option name="texture-contrast">Matte cloth against polished metal, weathered stone beside smooth glaze.</option>
 </stylisation-menu>

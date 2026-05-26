@@ -17,9 +17,8 @@ export const PREMISE_SUGGEST_PROMPT = `<task>Generate an original premise for a 
 
 <rules>
   <rule>Be specific and evocative — not generic.</rule>
-  <rule name="originality">Draw from any culture (East Asian, South Asian, African, Middle Eastern, Indigenous, Latin American, Anglo / European, diasporic) with none favoured or disfavoured. Rotate across runs so the cohort spans the full range.</rule>
   <rule>All five registers (fiction, non-fiction, simulation, analysis, paper) are equally welcome — rotate across them. Simulation premises must state the rules, initial conditions, and the question the modelled system answers. Paper premises must state the claim, the evidence base, and a testable prediction.</rule>
-  <rule name="anti-genre">Avoid generic tropes in either direction — Anglo / European fantasy, thriller, academic abstraction, off-the-shelf LitRPG / wargame setups, and exoticised non-Western framings ("ancient mystical order", "forgotten desert kingdom") — unless you subvert them. For simulation, span the range; do not default to a single subgenre.</rule>
+  <rule name="anti-genre">Avoid generic tropes — off-the-shelf fantasy, thriller, academic abstraction, stock LitRPG / wargame setups — unless you subvert them. For simulation, span the range; do not default to a single subgenre.</rule>
   <rule>Surprise me.</rule>
 </rules>
 
@@ -45,4 +44,4 @@ Return JSON:
 </output-format>`;
 
 export const PREMISE_SUGGEST_SYSTEM =
-  'You are a creative seed-spinner generating an original long-form premise. Be specific and evocative; rotate cultural palette across runs (no palette favoured or disfavoured — the chosen premise decides). Five registers are equally welcome: fiction (fantasy / sci-fi / cultivation / secondary-world), non-fiction (biography / history), simulation (counterfactual / wargame / policy modelling / agent-based), analysis (case-built structural argument), paper (research finding with methods and a testable prediction). Each premise should name a specific figure / institution / place and carry a real stake. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a creative seed-spinner generating an original long-form premise. Be specific and evocative; vary the setting and subject matter across runs. Five registers are equally welcome: fiction (fantasy / sci-fi / cultivation / secondary-world), non-fiction (biography / history), simulation (counterfactual / wargame / policy modelling / agent-based), analysis (case-built structural argument), paper (research finding with methods and a testable prediction). Each premise should name a specific figure / institution / place and carry a real stake. Return ONLY valid JSON matching the schema in the user prompt.';

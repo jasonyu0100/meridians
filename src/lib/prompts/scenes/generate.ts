@@ -18,7 +18,7 @@ export const GENERATE_SCENES_SYSTEM =
 
 const PARADIGM_SCENE_POPULATED_NARRATIVE = `<paradigm-scene-discipline paradigm="populated-narrative" hint="Fiction / non-fiction / simulation. Scenes are events in a populated world — characters act, places host action, time moves forward, the world changes through what happens in the scene.">
   <rule>Forward-time event narration IS the point. Scenes name what happens, who does it, what changes as a result.</rule>
-  <rule>Names match the cultural palette of the existing cast — NEVER AI-coded single-word names (Atlas, Cipher) here; those belong only in the analysis paradigm.</rule>
+  <rule>Names match the existing cast's register — NEVER AI-coded single-word names (Atlas, Cipher) here; those belong only in the analysis paradigm.</rule>
 </paradigm-scene-discipline>`;
 
 const PARADIGM_SCENE_AGENTIC_TEAM = `<paradigm-scene-discipline paradigm="agentic-ai-team" critical="true" hint="Analysis. The AI agent team works with EXISTING evidence (LLM knowledge of the present + the narrative's source material). Scenes are cognitive events; not plot beats.">
@@ -123,7 +123,7 @@ ${paradigmBlock}
 Return JSON with this exact structure.
 
 {
-  "arcName": "2-4 words from the narrative's own palette. Mood-coded ('Seeds of Distrust') or concrete-event ('Tier Tribulation', 'Ratification Vote') — both fine. Bad: generic ('Continuation') or palette mismatch in either direction (Anglo / Gothic on a Mughal arc, Sanskrit on a Silicon-Valley arc).",
+  "arcName": "2-4 words drawn from the narrative's own register. Mood-coded ('Seeds of Distrust') or concrete-event ('Tier Tribulation', 'Ratification Vote') — both fine. Bad: generic ('Continuation') or a register that doesn't match the world the cast lives in.",
   "directionVector": "1-2 sentences. Central pressure (what is closing, sharpening, tipping) and shape of consequence. Vector, not script.",
   "worldState": "Compact state snapshot at END of arc — the chess-board position.",
   "scenes": [
@@ -158,7 +158,7 @@ Return JSON with this exact structure.
 <instructions>
   <rule name="introduce-new-entities">Introduce new entities liberally when the scene needs them (a messenger, a venue, a document, a new rivalry, a cited source). Each new entity needs ≥1 world node at creation; each new thread needs ≥1 setup log entry.</rule>
 
-  <rule name="naming-discipline">New entities use concrete, in-world proper names — match the existing cast's style (length, language family, honorific conventions). Descriptive labels belong in world-node content, NEVER in \`name\`. Bad: "Shadow Seeker", "The Stranger", "Old Man". Good: a name that could pass as one of the existing cast's. Defer to the source's palette; mismatch in either direction is the failure, not bias against any tradition.</rule>
+  <rule name="naming-discipline">New entities use concrete, in-world proper names — match the existing cast's style (length, language family, honorific conventions). Descriptive labels belong in world-node content, NEVER in \`name\`. Bad: "Shadow Seeker", "The Stranger", "Old Man". Good: a name that could pass as one of the existing cast's.</rule>
 
   <rule name="collapse-on-reveal" critical="true" hint="When a scene REVEALS a load-bearing fact (location, identity, capability, intent, relationship truth, artifact's effect, finding, source attribution, rule-driven outcome), the summary AND worldDelta MUST name the specific fact. Future scenes causally reason on whatever this scene commits.">
     Distinguish IN-CHARACTER UNCERTAINTY (a POV figure can suspect, infer, hypothesise without commitment) from CANONICAL FACT (when a worldDelta says the fact is now known/established/confirmed, the canon commits). Phrases like "probable location", "likely identity", "the answer", "the intelligence", "the rule-driven outcome" used as canonical commitments are placeholders that read as reveals while transmitting nothing. Test: if you can replace the named fact with "[REDACTED]" and the summary still reads as a reveal, you've written a placeholder — rewrite until the canon carries the actual fact.

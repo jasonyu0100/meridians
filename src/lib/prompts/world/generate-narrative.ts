@@ -27,7 +27,7 @@ import type { NarrativeParadigm } from '@/types/narrative';
 type ParadigmShape = 'populated-narrative' | 'agentic-ai-team' | 'singular-thinker';
 
 const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directive: string }> = {
-  'fiction':      { shape: 'populated-narrative', directive: 'Invented people in an invented world. Apply the populated minimums; use the cultural palette the premise implies.' },
+  'fiction':      { shape: 'populated-narrative', directive: 'Invented people in an invented world. Apply the populated minimums; match the register and setting the premise implies.' },
   'non-fiction':  { shape: 'populated-narrative', directive: 'Real people, places, and documented events. Honour historical accuracy where the premise names real figures; the world IS the documented record.' },
   'simulation':   { shape: 'populated-narrative', directive: 'In-world figures the rules act on (e.g Khrushchev, Yi, an in-world commander or cultivator). System rules are load-bearing. Forward-time event modelling IS the point — scenes narrate what happens to the modelled world as the rules act over time. (If the user wanted interpretation of present evidence, they would have picked analysis.)' },
   'analysis':     { shape: 'agentic-ai-team',     directive: 'Virtual team of AI agents (Atlas, Cipher, Nexus, Vanguard) with devil\'s-advocate role + ≥1 adversarial pair, collective goal-thread tracks the thesis. CRITICAL: analysis ≠ simulation. The team works with EXISTING evidence (LLM knowledge + user\'s source material). Scenes are cognitive events over that evidence. NEVER narrate forward-time events, fabricated intercepts, or invented quotes as if freshly observed — scenarios are explicit hypotheticals the team models, not plot beats.' },
@@ -43,7 +43,7 @@ const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directiv
 
 const PARADIGM_POPULATED_NARRATIVE = `<populated-narrative-shape critical="true" hint="Fiction / non-fiction / simulation worlds — populated by named HUMAN (or in-world species) characters, places, and physical artifacts.">
   <intent>The world is populated. Apply the full populated minimums (characters ≥8, locations ≥6, relationships ≥8, artifacts ≥1, threads ≥4, system-nodes ≥12). Simulation populates real / modelled-world figures the rules act on (Khrushchev, Yi, an in-world cultivator); non-fiction populates real authors / subjects / witnesses; fiction populates invented people.</intent>
-  <invariant>Use plausibly-human first/last names matching the cultural palette the premise implies — no AI-coded single-word names; those belong only in the agentic-ai-team paradigm.</invariant>
+  <invariant>Use plausibly-human first/last names matching the setting the premise implies — no AI-coded single-word names; those belong only in the agentic-ai-team paradigm.</invariant>
 </populated-narrative-shape>`;
 
 const PARADIGM_AGENTIC_TEAM = `<agentic-team-pattern critical="true" hint="Analysis shape — a virtual team of AI agents pursuing the user's thesis. Preserves continuities, force fields, surveys, interviews; gives the user a stable named cast they can invoke across future generation passes.">
@@ -126,7 +126,7 @@ function paradigmBlockFor(paradigm: NarrativeParadigm): string {
 // ── Per-paradigm minimums ────────────────────────────────────────────────────
 
 const MINIMUMS_POPULATED = `<minimums>
-  <count entity="characters" target="≥8">2+ anchors, 3+ recurring, 3+ transient. Human / in-world species names matching the premise's cultural palette.</count>
+  <count entity="characters" target="≥8">2+ anchors, 3+ recurring, 3+ transient. Human / in-world species names matching the premise's setting.</count>
   <count entity="locations" target="≥6">parent/child hierarchy with ≥2 nesting levels.</count>
   <count entity="threads" target="≥4">DELIBERATE MIX of shapes (1+ discrete-resolution, 1+ slow-burn, 1+ constant-tension). ≥2 must share participants so their markets correlate.</count>
   <count entity="relationships" target="≥8">at least 1 hostile.</count>
@@ -225,7 +225,7 @@ Return JSON with this exact structure:
   "subgenre": "Specific sub-form within the genre — e.g. progression fantasy, cozy mystery, autobiographical memoir, Mughal-succession counterfactual, monetary-policy wargame, geopolitical macro strategy, applied-econometrics paper, literary criticism essay. Pick the most identifying form.",
   "imageStyle": "A concise visual style directive for all generated images (e.g. 'watercolour style with soft lighting'). Should capture the tone, medium, palette, and aesthetic that best fits this world.",
   "characters": [
-    {"id": "C-1", "name": "Full name matching the cultural palette of the world — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-1"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}
+    {"id": "C-1", "name": "Full name matching the world's naming register — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-1"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}
   ],
   "locations": [
     {"id": "L-1", "name": "Location name from geography, founders, or corrupted older words — concrete and specific", "prominence": "domain|place|margin", "parentId": null, "threadIds": [], "imagePrompt": "1-2 sentence LITERAL visual description — concrete architecture, landscape, lighting. No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "LK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this location — history, rules, dangers, atmosphere, or properties"}]}}
@@ -371,26 +371,14 @@ Return JSON with this exact structure:
 
   <naming critical="true">
     <intent>The premise may contain placeholder or generic names (e.g. "The Reincarnator", "The Elder Council", "Shadow Realm"). Replace ALL placeholder names with original, specific names. Naming is the single biggest quality signal.</intent>
-    <directive>Name with cultural specificity, not generic invented syllables. Names should be rooted in real traditions of the world's implied culture.</directive>
-    <step index="1" name="detect-cultural-origin">
-      <rule>Detect the cultural origin the premise implies, then source names from THAT palette. No palette is the default; no palette is disfavoured. The failure is reflexive defaulting in ANY direction — Anglo names on a Mughal premise, Yoruba names on a Silicon Valley premise, Japanese names on a US-politics premise are the same error. Mughal → Persian / Arabic / Turkic; Lagos → Yoruba / Igbo / Akan; Heian → Japanese; US politics, British memoir, Silicon Valley → Anglo / European / diasporic. Match what the premise asks for.</rule>
-      <palette region="east-asian">Han Chinese (classical / modern), Japanese (kun/on readings), Korean, Vietnamese, Mongolian</palette>
-      <palette region="south-asian">Sanskrit, Tamil/Dravidian, Bengali, Punjabi, Sinhala, Pashto</palette>
-      <palette region="middle-eastern / west-asian">Arabic, Persian/Farsi, Turkish, Hebrew, Aramaic, Kurdish</palette>
-      <palette region="african">Yoruba, Igbo, Akan, Amharic, Swahili, Zulu, Wolof, Hausa, Malagasy, Tamazight</palette>
-      <palette region="indigenous">Nahuatl, Quechua, Navajo, Cree, Māori, Hawaiian, Sami — use respectfully, avoid sacred/taboo names</palette>
-      <palette region="european">Anglo / English, Romance (French / Spanish / Italian / Portuguese / Romanian), Germanic, Slavic, Baltic, Nordic, Celtic, Greek, Latin</palette>
-      <palette region="post-colonial / maritime">Latin American, Caribbean, Lusophone African, Filipino, Indonesian, Malay</palette>
-      <palette region="diasporic / multicultural">Names that mark hybridity (e.g. Chinese-Peruvian, Lebanese-Brazilian, British-Nigerian) where the premise calls for it</palette>
-    </step>
-    <step index="2" name="source-from-real-cultures">Source names from real census records, historical obscurities, regional naming traditions, or deliberate etymological construction rooted in SPECIFIC cultures matching the world's origin. A world inspired by Song Dynasty China should have names sourced from Chinese historical records. A world inspired by Ottoman history from Turkish/Arabic/Persian roots. A West African-inspired world from Yoruba, Akan, or Wolof roots. A Sanskrit-inflected world from Vedic or Tamil sources.</step>
-    <step index="3" name="multicultural-palettes">For multicultural worlds: each faction, region, or cultural group gets its own distinct naming palette reflecting its origin. Names should signal which part of the world a character comes from.</step>
-    <step index="4" name="internal-consistency">Pick a consistent cultural palette for each faction or region and stay within it. Internal consistency is more important than variety.</step>
-    <step index="5" name="texture">Prefer rough, blunt, asymmetric names where the source tradition allows it. Names with hard consonant clusters, unexpected syllable stress, tonal marks, or occupational origins feel lived-in. Smooth melodic names with open vowels feel generated — unless the palette is genuinely melodic (e.g. Hawaiian, Japanese), in which case lean into the tradition's own texture.</step>
-    <step index="6" name="surnames">From occupations, geography, patronymics/matronymics, or clan names — never compound noun+noun invention (Stormrider, Shadowbane).</step>
-    <step index="7" name="locations">Derive from terrain, founders, or linguistic corruption of older words. They should sound like they've been mispronounced for centuries within their own language family.</step>
-    <step index="8" name="threads-and-systems">Concrete and specific. "The Tithe of Ash" not "The Power System". "The Lazar Compact" not "The Ancient Alliance". Match the cultural palette — a Mughal-inspired system might be "The Mansabdari Ledger", a West African one "The Ọba's Covenant".</step>
-    <test>If a name could appear interchangeably across 10 different generic works in any register or culture, it's too generic. If it could only belong to THIS world and this culture, it's right.</test>
+    <directive>Name with specificity. Match the premise's setting — when the source clearly implies a non-Western tradition (Mughal court, Lagos newsroom, Heian Japan), draw names from that tradition; otherwise the default register is Western / Anglo and you should trust your strongest baseline.</directive>
+    <step index="1" name="source-from-real-traditions">Source names from real census records, historical obscurities, regional naming traditions, or deliberate etymological construction rooted in SPECIFIC traditions matching the world's origin. A world inspired by Song Dynasty China should have names sourced from Chinese historical records; an Ottoman one from Turkish / Arabic / Persian roots; an English-village one from real surnames + place-names; a Silicon Valley one from contemporary US naming conventions.</step>
+    <step index="2" name="internal-consistency">Pick a consistent naming register for each faction or region and stay within it. Internal consistency is more important than variety.</step>
+    <step index="3" name="texture">Prefer rough, blunt, asymmetric names where the source tradition allows it. Names with hard consonant clusters, unexpected syllable stress, tonal marks, or occupational origins feel lived-in. Smooth melodic names with open vowels feel generated — unless the register is genuinely melodic, in which case lean into it.</step>
+    <step index="4" name="surnames">From occupations, geography, patronymics/matronymics, or clan names — never compound noun+noun invention (Stormrider, Shadowbane).</step>
+    <step index="5" name="locations">Derive from terrain, founders, or linguistic corruption of older words. They should sound like they've been mispronounced for centuries within their own language family.</step>
+    <step index="6" name="threads-and-systems">Concrete and specific. "The Tithe of Ash" not "The Power System". "The Lazar Compact" not "The Ancient Alliance". Match the register the premise establishes.</step>
+    <test>If a name could appear interchangeably across 10 different generic works, it's too generic. If it could only belong to THIS world, it's right.</test>
     <respect>When drawing from Indigenous or living religious traditions, avoid names with explicit sacred/taboo status. Use the tradition's everyday register, not its ceremonial one, unless the premise explicitly calls for the latter and handles it with weight.</respect>
   </naming>
 

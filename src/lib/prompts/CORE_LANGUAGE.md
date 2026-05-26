@@ -82,8 +82,7 @@ canonical form once and trust the model to read the source's register.
 These appear historically in the codebase but **should not be used as the
 default framing** in new prompts or reasoning copy. They bias the system toward
 fiction or one storytelling tradition. Use the register-neutral canonical form
-instead, or qualify explicitly. (Bias correction applies in both directions —
-see §5.)
+instead, or qualify explicitly.
 
 | Avoid as default              | Prefer                                                           |
 |-------------------------------|------------------------------------------------------------------|
@@ -93,7 +92,7 @@ see §5.)
 | "character" as universal      | "entity" at the system level; "character" when fiction-specific  |
 | "protagonist" as universal    | "narrative voice" / "anchor entity" / qualify per register       |
 | "plot"                        | "fate" (the force) or "thread" (the unit)                        |
-| "fantasy" / "sci-fi" as examples | Draw from the narrative's declared cultural palette           |
+| "fantasy" / "sci-fi" as examples | Draw examples from the narrative's actual subject matter      |
 
 ## 4. Simulation register notes
 
@@ -141,32 +140,20 @@ shifts where weight lives:
   LitRPG-cultivation. Defer to the narrative's own declared scenario when
   one is set.
 
-## 5. Cultural palette defaults
+## 5. Naming + register
 
-Naming, setting, and cultural references must be **genuinely culture-agnostic**:
-the premise decides the palette, no single tradition is favoured or disfavoured.
-The failure is REFLEXIVE DEFAULTING IN ANY DIRECTION — Anglo-Saxon names on a
-Mughal-court premise are the same error as Yoruba names on a Silicon-Valley
-startup or Japanese names on a 19th-century British memoir.
-
-Match the premise: Mughal → Persian / Arabic / Turkic; Lagos → Yoruba / Igbo /
-Akan; Heian → Japanese; US politics, British memoir, Silicon Valley → Anglo /
-European / diasporic. We are removing the reflex in both directions, not trading
-one default for another.
-
-Supported palettes live in
-[src/lib/prompts/world/generate-narrative.ts](world/generate-narrative.ts) under
-the `naming` block. New prompts touching naming should either defer to the
-narrative's own palette, or enumerate a diverse list with no item flagged as
-default or disfavoured.
+Match the premise. When the source clearly implies a setting (Heian Japan, a
+Lagos newsroom, a Mughal court, Silicon Valley), draw names + register from
+that setting directly. Otherwise the default register is Western / Anglo —
+the model's strongest baseline — and intelligent register decisions handle the
+rest. No elaborate palette-mapping table; trust the model to read the premise
+and write what fits.
 
 ## 6. Where this is enforced
 
 - Automated guard: [src/__tests__/core-language.test.ts](../../__tests__/core-language.test.ts)
   — canonical terms present, avoided defaults absent.
-- Human review: flag prompts using "story" / "novel" / "chapter" unqualified, OR
-  defaulting in either direction (Anglo on non-Western cast, or exoticised
-  non-Western on Anglo / European cast).
+- Human review: flag prompts using "story" / "novel" / "chapter" unqualified.
 
 ## 7. Scope
 

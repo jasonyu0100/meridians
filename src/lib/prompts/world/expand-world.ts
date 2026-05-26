@@ -5,7 +5,7 @@
  */
 
 export const EXPAND_WORLD_SYSTEM =
-  'You are extending an established narrative. Honour the directive, the strategy, and the size budget; weave new entities into the existing fabric through relationships, location hierarchies, and shared threads. Match the narrative\'s cultural palette and naming conventions. Initialize every new entity (character, location, artifact) with at least one world node, and every new thread with a setup threadDelta. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are extending an established narrative. Honour the directive, the strategy, and the size budget; weave new entities into the existing fabric through relationships, location hierarchies, and shared threads. Match the narrative\'s naming conventions and register. Initialize every new entity (character, location, artifact) with at least one world node, and every new thread with a setup threadDelta. Return ONLY valid JSON matching the schema in the user prompt.';
 
 import { PROMPT_ENTITY_INTEGRATION } from '../entities/integration';
 import { modePriorityEntry } from '../mode/application';
@@ -125,7 +125,7 @@ Return JSON with this exact structure:
   "characters": [
     {
       "id": "${nextCharId}",
-      "name": "Full name matching the cultural palette of the world — rough, asymmetric, lived-in",
+      "name": "Full name matching the world's naming register — rough, asymmetric, lived-in",
       "role": "anchor|recurring|transient",
       "threadIds": [],
       "imagePrompt": "1-2 sentence LITERAL physical description: concrete traits like hair colour, build, clothing style. Never use metaphors, similes, or figurative language — image generators interpret them literally.",
@@ -201,7 +201,7 @@ ${PROMPT_ENTITY_INTEGRATION}
 </expansion-specific-rules>
 
 <naming-rules>
-  <rule>All new names must match the cultural palette and naming conventions already established in the world. Study the existing character and location names and produce names from the same linguistic roots.</rule>
+  <rule>All new names must match the naming conventions already established in the world. Study the existing character and location names and produce names from the same linguistic roots.</rule>
   <rule>Source from real census records, historical obscurities, occupational surnames, or regional dialects. Names should feel rough, asymmetric, and lived-in — never smooth or melodic in a generic way.</rule>
   <rule>Location names from geography, founders, or corrupted older words. Thread names concrete and specific.</rule>
 </naming-rules>

@@ -3,7 +3,7 @@
  * about artifacts.
  */
 
-export const PROMPT_ARTIFACTS = `<artifacts hint="Concrete things an entity can USE, possess, cite, transfer, or invoke under the rules. Pick examples from the work's own palette; do not default to any single register.">
+export const PROMPT_ARTIFACTS = `<artifacts hint="Concrete things an entity can USE, possess, cite, transfer, or invoke under the rules. Match the register the work establishes — instruments and documents that belong in this specific world.">
   <example type="good" kind="objects-and-tools">a jian, a ceremonial dagger, a cultivator's flying-sword, a starship signet, a court rapier, a treaty draft, a family heirloom manuscript — things wielded or carried.</example>
   <example type="good" kind="documents-and-records">a field notebook, an archival microfilm, an admiralty dispatch, a primary-source letter, a sect succession charter, a colony memory-scent registry, a court filing — concrete artefacts that can be cited or transferred.</example>
   <example type="good" kind="research-and-work-tools">a spectrometer, a calibrated mobility table, a primary-source archive, a working manuscript — instruments and datasets that are USED to produce findings.</example>
