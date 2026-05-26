@@ -18,7 +18,7 @@
  * operators to influence the markets directly.
  */
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { NarrativeState, Thread } from '@/types/narrative';
 import { useStore } from '@/lib/store';
 import {
@@ -1220,16 +1220,19 @@ export default function MarketView() {
     return currentFocusIds(scrubbedNarrative, resolvedKeys, currentIndex);
   }, [scrubbedNarrative, resolvedKeys, currentIndex]);
 
-  // Featured thread — local to this view. Once seeded, the selection sticks
-  // across scene changes; the scrubber moves the data, not the picked market.
+  // Featured thread — local to this view. Seeded once from the focus set; the
+  // selection then sticks across scene changes (scrubber moves data, not the
+  // picked market). Re-seeds only when the prior selection becomes invalid.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  if (!selectedThreadId && rows.length > 0) {
-    setSelectedThreadId(
+  useEffect(() => {
+    if (selectedThreadId && scrubbedNarrative?.threads[selectedThreadId]) return;
+    const seed =
       rows.find((r) => focusIds.has(r.thread.id))?.thread.id ??
-        rows.find((r) => r.category !== 'resolved' && r.category !== 'abandoned')?.thread.id ??
-        rows[0].thread.id,
-    );
-  }
+      rows.find((r) => r.category !== 'resolved' && r.category !== 'abandoned')?.thread.id ??
+      rows[0]?.thread.id;
+    if (seed) setSelectedThreadId(seed);
+  }, [selectedThreadId, scrubbedNarrative, rows, focusIds]);
+
   const featuredId = selectedThreadId && scrubbedNarrative?.threads[selectedThreadId] ? selectedThreadId : null;
 
   const featuredThread = featuredId ? scrubbedNarrative?.threads[featuredId] : null;
