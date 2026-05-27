@@ -5,6 +5,7 @@ import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
 import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@/lib/constants';
 import { getIntroducedIds } from '@/lib/scene-filter';
+import { computeCumulativePositions } from '@/lib/positions';
 import { describeTimeGap, formatTimeDelta } from '@/lib/time-deltas';
 import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/network-graph';
 import { getActiveMode } from '@/lib/mode-graph';
@@ -933,6 +934,25 @@ export function narrativeContext(
     })
     .join('\n\n');
 
+  // ── Character positions (resolved chess-board) ────────────────────
+  // Replay characterMovements across all prior scenes so the model sees
+  // where each in-scope character is RIGHT NOW. Removes the implicit
+  // "walk every <movement> tag myself" reasoning step.
+  const resolvedPositions = computeCumulativePositions(n, resolvedKeys, currentIndex);
+  const positionLines: string[] = [];
+  for (const c of branchCharacters) {
+    const locId = resolvedPositions[c.id];
+    if (!locId) continue;
+    const loc = n.locations[locId];
+    if (!loc) continue;
+    positionLines.push(`  <at character="${c.name}" location="${loc.name}" />`);
+  }
+  const characterPositionsBlock = positionLines.length > 0
+    ? `<character-positions hint="Resolved current locations after replaying characterMovements. Use as the chess-board for the next scene — emit characterMovements only when a character actually relocates.">
+${positionLines.join('\n')}
+</character-positions>`
+    : '';
+
   // ── System Knowledge Graph (scoped to time horizon) ────────────────
   const horizonSystemGraph = buildCumulativeSystemGraph(
     n.scenes, keysUpToCurrent, keysUpToCurrent.length - 1, n.worldBuilds,
@@ -975,7 +995,7 @@ ${threads}
 <relationships hint="Valence: negative = hostile, positive = allied. Interactions must reflect current valence. Shifts happen through dramatic moments.">
 ${relationships}
 </relationships>
-
+${characterPositionsBlock ? `\n${characterPositionsBlock}\n` : ''}
 <scene-history scope="${historyNote}" hint="Continuity grouped by arc. present=&quot;true&quot; marks the active arc and the latest entry within it. type=&quot;world-state&quot; is the active arc's chess-board snapshot. World-build entries sit between arcs. time-gap is elapsed time since the prior scene.">
 ${sceneHistory}
 </scene-history>
@@ -1428,14 +1448,22 @@ ${worldLines.join('\n')}
   // CHARACTER MOVEMENTS
   // ═══════════════════════════════════════════════════════════════════════════
   if (scene.characterMovements && Object.keys(scene.characterMovements).length > 0) {
+    // Position before this scene's movements applied — drives the correct
+    // `from` attribute so the prose writer narrates the right origin.
+    const priorPositions = resolvedKeys && currentIndex !== undefined
+      ? computeCumulativePositions(narrative, resolvedKeys, currentIndex - 1)
+      : {};
     const movementLines = Object.entries(scene.characterMovements).map(([charId, mv]) => {
       const char = narrative.characters[charId];
       const newLoc = narrative.locations[mv.locationId];
       if (!char || !newLoc) return null;
-      return `  <movement character="${char.name}" from="${location?.name ?? 'current'}" to="${newLoc.name}" transition="${mv.transition}" />`;
+      const fromLocId = priorPositions[charId];
+      const fromLoc = fromLocId ? narrative.locations[fromLocId] : undefined;
+      const fromAttr = fromLoc ? ` from="${fromLoc.name}"` : '';
+      return `  <movement character="${char.name}"${fromAttr} to="${newLoc.name}" transition="${mv.transition}" />`;
     }).filter(Boolean);
     if (movementLines.length > 0) {
-      sections.push(`<movements hint="Characters start at scene location and transition during the scene — do not show them already at destination">
+      sections.push(`<movements hint="Movements record the destination at end of scene. If a participant arrives from elsewhere to reach scene.locationId, narrate their arrival; if they depart mid-scene to another location, narrate the departure. The transition phrase carries the manner of travel.">
 ${movementLines.join('\n')}
 </movements>`);
     }

@@ -63,6 +63,8 @@ export default function WorldGraph() {
   const [showCharacters, setShowCharacters] = useState(true);
   const [showLocations, setShowLocations] = useState(true);
   const [showArtifacts, setShowArtifacts] = useState(true);
+  const [showRelationships, setShowRelationships] = useState(false);
+  const [showTies, setShowTies] = useState(false);
   const [groups, setGroups] = useState<GraphNode[][]>([]);
   const [focusedGroupIndex, setFocusedGroupIndex] = useState<number | null>(null);
   const [nodeTooltip, setNodeTooltip] = useState<{ x: number; y: number; label: string; kind: string; imagePrompt: string } | null>(null);
@@ -439,6 +441,14 @@ export default function WorldGraph() {
       const hiddenIds = new Set(nodes.filter(n => hiddenKinds.has(n.kind)).map(n => n.id));
       nodes = nodes.filter(n => !hiddenKinds.has(n.kind));
       links = links.filter(l => !hiddenIds.has(l.source as string) && !hiddenIds.has(l.target as string));
+    }
+
+    // Edge-kind visibility filters
+    const hiddenLinkKinds = new Set<string>();
+    if (!showRelationships) hiddenLinkKinds.add('relationship');
+    if (!showTies) hiddenLinkKinds.add('tie');
+    if (hiddenLinkKinds.size > 0) {
+      links = links.filter(l => !hiddenLinkKinds.has(l.linkKind));
     }
 
     // Store nodes ref for intra-arc updates
@@ -864,7 +874,7 @@ export default function WorldGraph() {
       gRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, sceneFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts]);
+  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, sceneFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies]);
 
   // ── Lightweight: update selected node highlight + relationship edges ──
   useEffect(() => {
@@ -1086,6 +1096,21 @@ export default function WorldGraph() {
             { key: 'chars', label: 'Characters', checked: showCharacters, toggle: () => setShowCharacters((v) => !v) },
             { key: 'locs', label: 'Locations', checked: showLocations, toggle: () => setShowLocations((v) => !v) },
             { key: 'arts', label: 'Artifacts', checked: showArtifacts, toggle: () => setShowArtifacts((v) => !v) },
+          ] as { key: string; label: string; checked: boolean; toggle: () => void }[]).map(({ key, label, checked, toggle }) => (
+            <button
+              key={key}
+              onClick={toggle}
+              className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${
+                checked ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <div className="w-px h-3 bg-border mx-1" />
+          {([
+            { key: 'rels', label: 'Relationships', checked: showRelationships, toggle: () => setShowRelationships((v) => !v) },
+            { key: 'ties', label: 'Ties', checked: showTies, toggle: () => setShowTies((v) => !v) },
           ] as { key: string; label: string; checked: boolean; toggle: () => void }[]).map(({ key, label, checked, toggle }) => (
             <button
               key={key}

@@ -2,6 +2,7 @@ import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatP
 import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrative-utils';
 import { nextId, nextIds } from '@/lib/narrative-utils';
+import { computeCumulativePositions } from '@/lib/positions';
 import { newNarratorStance } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
@@ -722,7 +723,15 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
       };
 
   if (!existingArc && scenes.length > 0) {
+    // Carry forward each character's last known position from prior scenes
+    // so positions persist across arc boundaries. Only fall back to the new
+    // arc's first-participation scene for characters with no prior history.
+    const priorPositions = computeCumulativePositions(narrative, resolvedKeys, currentIndex);
     for (const cid of arc.activeCharacterIds) {
+      if (priorPositions[cid]) {
+        arc.initialCharacterLocations[cid] = priorPositions[cid];
+        continue;
+      }
       const firstScene = scenes.find((s) => s.participantIds.includes(cid));
       if (firstScene) {
         arc.initialCharacterLocations[cid] = firstScene.locationId;
