@@ -18,19 +18,27 @@ import { SwingAnalysisSlide } from './SwingAnalysisSlide';
 import { ReportCardSlide } from './ReportCardSlide';
 import { ClosingSlide } from './ClosingSlide';
 import { PropositionOverviewSlide } from './PropositionOverviewSlide';
+import { TimeFlowSlide } from './TimeFlowSlide';
+import { ParadigmLensSlide } from './ParadigmLensSlide';
+import { BeliefSystemSlide } from './BeliefSystemSlide';
+import { KnowledgeStructureSlide } from './KnowledgeStructureSlide';
 
 // ── Slide Spec ─────────────────────────────────────────────────────────────────
 
 type SlideSpec =
   | { type: 'title' }
+  | { type: 'paradigm-lens' }
   | { type: 'shape' }
   | { type: 'cast' }
   | { type: 'forces' }
+  | { type: 'time-flow' }
   | { type: 'moment'; sceneIdx: number; kind: 'peak' | 'valley' }
   | { type: 'decomposition' }
   | { type: 'pacing-profile' }
   | { type: 'beat-profile' }
   | { type: 'mechanism' }
+  | { type: 'belief-system' }
+  | { type: 'knowledge-structure' }
   | { type: 'threads' }
   | { type: 'swing' }
   | { type: 'proposition-overview' }
@@ -42,9 +50,17 @@ function buildSlideList(data: SlidesData): SlideSpec[] {
 
   slides.push({ type: 'title' });
 
+  // Paradigm lens sits right after the title — it sets the frame the rest of
+  // the deck reads through (which force is structurally load-bearing).
+  slides.push({ type: 'paradigm-lens' });
+
   if (data.sceneCount >= 6) {
     slides.push({ type: 'shape' });
   }
+
+  // Signature is now folded into the paradigm-lens slide — same simplex,
+  // same archetype, paired with the paradigm reading so the structural
+  // picture lands in one beat.
 
   slides.push({ type: 'cast' });
 
@@ -53,6 +69,14 @@ function buildSlideList(data: SlidesData): SlideSpec[] {
   }
 
   slides.push({ type: 'forces' });
+
+  // Time-flow — only render when the work has any non-zero time deltas (a
+  // single-scene snapshot or a brief with no temporal data would render a
+  // flat line). Walk the scenes once to find at least one real delta.
+  const hasTimeData = data.scenes.some((s, i) => i > 0 && s.timeDelta && s.timeDelta.value !== 0);
+  if (hasTimeData) {
+    slides.push({ type: 'time-flow' });
+  }
 
   // Key moments — peaks and valleys in chronological order
   const allMoments: { sceneIdx: number; kind: 'peak' | 'valley' }[] = [
@@ -76,6 +100,19 @@ function buildSlideList(data: SlidesData): SlideSpec[] {
     slides.push({ type: 'mechanism' });
   }
 
+  // Belief system — every live thread rendered as its current stance. The
+  // Fate force made visible. Only worth rendering when there are live
+  // beliefs to show (closed-only and abandoned-only narratives skip this).
+  if (data.beliefs.length > 0) {
+    slides.push({ type: 'belief-system' });
+  }
+
+  // Knowledge structure — the System graph. Only worth rendering when there
+  // are nodes to show; a thin world without system content skips this.
+  if (data.knowledgeStructure.nodeCount > 0) {
+    slides.push({ type: 'knowledge-structure' });
+  }
+
   if (data.threadLifecycles.length > 0) {
     slides.push({ type: 'threads' });
   }
@@ -89,16 +126,21 @@ function buildSlideList(data: SlidesData): SlideSpec[] {
 function slideLabel(spec: SlideSpec): string {
   switch (spec.type) {
     case 'title': return 'Title';
+    case 'paradigm-lens': return 'Paradigm · Signature';
     case 'shape': return 'Shape';
     case 'cast': return 'Cast';
     case 'forces': return 'Forces';
+    case 'time-flow': return 'Time Flow';
     case 'moment': return `${spec.kind === 'peak' ? 'Peak' : 'Valley'} · Scene ${spec.sceneIdx + 1}`;
     case 'decomposition': return 'Decomposition';
     case 'pacing-profile': return 'Pacing Profile';
     case 'beat-profile': return 'Beat Profile';
     case 'mechanism': return 'Mechanisms';
+    case 'belief-system': return 'Belief System';
+    case 'knowledge-structure': return 'Knowledge Structure';
     case 'threads': return 'Threads';
     case 'swing': return 'Swing';
+    case 'proposition-overview': return 'Propositions';
     case 'report': return 'Report Card';
     case 'closing': return 'Closing';
     default: return '';
@@ -334,12 +376,16 @@ function renderSlide(spec: SlideSpec, data: SlidesData, onClose: () => void): Re
   switch (spec.type) {
     case 'title':
       return <TitleSlide data={data} />;
+    case 'paradigm-lens':
+      return <ParadigmLensSlide data={data} />;
     case 'shape':
       return <ShapeSlide data={data} />;
     case 'cast':
       return <CastSlide data={data} />;
     case 'forces':
       return <ForcesOverviewSlide data={data} />;
+    case 'time-flow':
+      return <TimeFlowSlide data={data} />;
     case 'moment':
       return <KeyMomentsSlide data={data} sceneIdx={spec.sceneIdx} kind={spec.kind} />;
     case 'decomposition':
@@ -350,6 +396,10 @@ function renderSlide(spec: SlideSpec, data: SlidesData, onClose: () => void): Re
       return <BeatProfileSlide data={data} />;
     case 'mechanism':
       return <MechanismSlide data={data} />;
+    case 'belief-system':
+      return <BeliefSystemSlide data={data} />;
+    case 'knowledge-structure':
+      return <KnowledgeStructureSlide data={data} />;
     case 'threads':
       return <ThreadLifecycleSlide data={data} />;
     case 'swing':

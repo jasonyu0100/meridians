@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import type { SlidesData } from '@/lib/slides-data';
+import { SlideShell } from './SlideShell';
 
 const FORCE_COLORS = {
   fate: '#EF4444',
@@ -112,12 +113,13 @@ export function ForcesOverviewSlide({ data }: { data: SlidesData }) {
   };
 
   return (
-    <div className="flex flex-col justify-center h-full px-12 py-8">
-      <h2 className="text-2xl font-bold text-text-primary mb-2">Forces At Play</h2>
-      <p className="text-sm text-text-secondary mb-6">
-        Four narrative forces graded against literary reference benchmarks.
-      </p>
-
+    <SlideShell
+      eyebrow="Forces · Overview"
+      title="Forces At Play"
+      subtitle="Four narrative forces graded against literary reference benchmarks."
+      align="center"
+      contentWidth="normal"
+    >
       <div className="flex items-center gap-12">
         {/* Radar chart */}
         <div className="shrink-0">
@@ -166,6 +168,6 @@ export function ForcesOverviewSlide({ data }: { data: SlidesData }) {
           </div>
         </div>
       </div>
-    </div>
+    </SlideShell>
   );
 }

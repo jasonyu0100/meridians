@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import type { SlidesData } from '@/lib/slides-data';
+import { SlideShell, SlideCard } from './SlideShell';
 
 export function SwingAnalysisSlide({ data }: { data: SlidesData }) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -83,41 +84,45 @@ export function SwingAnalysisSlide({ data }: { data: SlidesData }) {
       ? 'Erratic' : 'Varied';
 
   return (
-    <div className="flex flex-col justify-center h-full px-12 py-8">
-      <h2 className="text-2xl font-bold text-text-primary mb-2">Swing Analysis</h2>
-      <p className="text-sm text-text-secondary mb-4">
-        Scene-to-scene volatility in force space — high swing means dramatic shifts between consecutive scenes.
-      </p>
+    <SlideShell
+      eyebrow="Forces · Swing"
+      title="Swing Analysis"
+      subtitle="Scene-to-scene volatility in force space — high swing means dramatic shifts between consecutive scenes."
+      align="center"
+      contentWidth="wide"
+      footer={
+        <div className="flex items-center gap-5">
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-0.5 bg-yellow-400 rounded" /> Swing
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-0.5 bg-yellow-400/40 rounded" style={{ borderTop: '1px dashed' }} /> Moving Avg
+          </span>
+        </div>
+      }
+    >
+      <SlideCard>
+        <svg ref={svgRef} className="w-full" style={{ height: 240 }} />
+      </SlideCard>
 
-      <svg ref={svgRef} className="w-full" style={{ height: 220 }} />
-
-      <div className="flex items-center gap-8 mt-4">
+      <div className="grid grid-cols-4 gap-3 mt-5">
         <div className="flex flex-col items-center px-4 py-3 rounded-lg border border-white/8 bg-white/[0.02]">
           <span className="text-lg font-mono font-bold text-yellow-400">{avgSwing.toFixed(2)}</span>
-          <span className="text-[10px] text-text-dim uppercase tracking-wider">Avg Swing</span>
+          <span className="text-[10px] text-text-dim uppercase tracking-wider mt-0.5">Avg Swing</span>
         </div>
         <div className="flex flex-col items-center px-4 py-3 rounded-lg border border-white/8 bg-white/[0.02]">
           <span className="text-lg font-mono font-bold text-text-primary">{maxSwing.toFixed(2)}</span>
-          <span className="text-[10px] text-text-dim uppercase tracking-wider">Max Swing</span>
+          <span className="text-[10px] text-text-dim uppercase tracking-wider mt-0.5">Max Swing</span>
         </div>
         <div className="flex flex-col items-center px-4 py-3 rounded-lg border border-white/8 bg-white/[0.02]">
           <span className="text-lg font-mono font-bold text-text-secondary">{variance.toFixed(2)}</span>
-          <span className="text-[10px] text-text-dim uppercase tracking-wider">Std Dev</span>
+          <span className="text-[10px] text-text-dim uppercase tracking-wider mt-0.5">Std Dev</span>
         </div>
         <div className="flex flex-col items-center px-4 py-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.03]">
           <span className="text-lg font-semibold text-amber-400">{pacingType}</span>
-          <span className="text-[10px] text-text-dim uppercase tracking-wider">Pacing</span>
+          <span className="text-[10px] text-text-dim uppercase tracking-wider mt-0.5">Pacing</span>
         </div>
       </div>
-
-      <div className="flex items-center gap-4 mt-3 text-[10px] text-text-dim">
-        <span className="flex items-center gap-1.5">
-          <span className="w-4 h-0.5 bg-yellow-400 rounded" /> Swing
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-4 h-0.5 bg-yellow-400/40 rounded" style={{ borderTop: '1px dashed' }} /> Moving Avg
-        </span>
-      </div>
-    </div>
+    </SlideShell>
   );
 }

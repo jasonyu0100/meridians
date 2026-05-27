@@ -116,7 +116,7 @@ function Prose({ text, loading }: { text: string; loading: boolean }) {
       {paragraphs.map((p, i) => (
         <p
           key={i}
-          className="text-[13.5px] text-white/55 leading-[1.8] tracking-[0.01em]"
+          className="text-[14px] text-text-secondary leading-[1.75] tracking-[0.005em]"
         >
           {p}
         </p>
@@ -126,35 +126,49 @@ function Prose({ text, loading }: { text: string; loading: boolean }) {
 }
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
-
-const sectionCounter = 0;
+// Mirrors the SlideShell header pattern so the report and the slides read as
+// the same document: eyebrow (small uppercase category label) + large title
+// + optional subtitle. The number sits inside the eyebrow as "01 · Section".
 
 function Section({
   title,
   number,
+  eyebrow,
+  subtitle,
   children,
 }: {
   title: string;
   number: number;
+  /** Slide-style category label. Number gets prepended automatically. */
+  eyebrow?: string;
+  /** Optional one-line dim body under the title. */
+  subtitle?: string;
   children: React.ReactNode;
 }) {
+  const numeral = String(number).padStart(2, "0");
   return (
-    <section className="mb-16 scroll-mt-8 report-section">
-      <div className="flex items-baseline gap-3 mb-5">
-        <span className="text-[11px] font-mono text-white/20 tabular-nums">
-          {String(number).padStart(2, "0")}
-        </span>
-        <h2 className="text-[15px] font-semibold text-white/80 uppercase tracking-[0.15em]">
+    <section className="mb-20 scroll-mt-8 report-section">
+      <header className="mb-7">
+        <div className="text-[10px] uppercase tracking-[0.3em] text-text-dim mb-3 font-mono">
+          {numeral}{eyebrow ? ` · ${eyebrow}` : ''}
+        </div>
+        <h2 className="text-3xl font-bold text-text-primary tracking-tight leading-tight">
           {title}
         </h2>
-        <div className="flex-1 border-b border-white/[0.06] ml-2 translate-y-[-3px]" />
-      </div>
+        {subtitle && (
+          <p className="text-sm text-text-secondary leading-relaxed mt-2 max-w-3xl">
+            {subtitle}
+          </p>
+        )}
+      </header>
       {children}
     </section>
   );
 }
 
 // ── Figure wrapper ───────────────────────────────────────────────────────────
+// Visual twin of the slides' SlideCard so charts in the report sit in the
+// same bezel as charts in the deck.
 
 function Figure({
   caption,
@@ -165,11 +179,11 @@ function Figure({
 }) {
   return (
     <figure className="my-6 report-figure">
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] p-4 overflow-hidden">
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 overflow-hidden">
         {children}
       </div>
       {caption && (
-        <figcaption className="text-[10px] text-white/25 mt-2 italic tracking-wide">
+        <figcaption className="text-[10px] text-text-dim mt-2 italic tracking-wide">
           {caption}
         </figcaption>
       )}
@@ -185,18 +199,18 @@ function StatRow({
   items: { label: string; value: string; accent?: string }[];
 }) {
   return (
-    <div className="flex items-stretch gap-px rounded-lg overflow-hidden border border-white/[0.06] my-5">
+    <div className="flex items-stretch gap-px rounded-lg overflow-hidden border border-white/[0.08] my-5">
       {items.map((item, i) => (
         <div
           key={i}
-          className="flex-1 flex flex-col items-center justify-center py-3 bg-white/[0.015]"
+          className="flex-1 flex flex-col items-center justify-center py-3 bg-white/[0.02]"
         >
           <span
-            className={`text-sm font-mono font-semibold ${item.accent ?? "text-white/70"}`}
+            className={`text-sm font-mono font-semibold ${item.accent ?? "text-text-primary"}`}
           >
             {item.value}
           </span>
-          <span className="text-[9px] text-white/25 uppercase tracking-[0.12em] mt-0.5">
+          <span className="text-[9px] text-text-dim uppercase tracking-[0.15em] mt-0.5">
             {item.label}
           </span>
         </div>
@@ -1139,54 +1153,42 @@ export function NarrativeReport({
   let sec = 0;
 
   const reportContent = (
-    <div className="fixed inset-0 z-100 bg-[#0d0d0f] flex flex-col report-shell">
-      {/* ── Toolbar ── */}
-      <div className="report-toolbar flex items-center justify-between h-11 px-5 shrink-0 border-b border-white/[0.06] bg-white/[0.01]">
+    <div className="fixed inset-0 z-100 bg-bg-base flex flex-col report-shell">
+      {/* ── Toolbar — matches SlidesPlayer for a consistent modal language ── */}
+      <div className="report-toolbar flex items-center justify-between h-10 px-4 shrink-0 relative z-10">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/5 transition-all"
+            className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500/10 text-red-400/70 hover:bg-red-500/20 hover:text-red-400 border border-red-500/15 hover:border-red-500/30 transition-all"
             title="Close (Esc)"
           >
-            <IconClose size={16} />
+            <IconClose className="w-3.5 h-3.5" />
           </button>
-          <div className="w-px h-4 bg-white/[0.06]" />
-          <span className="text-[11px] text-white/30 tracking-wide">
+          <span className="text-[11px] text-white/40">
             Analysis Report
           </span>
+        </div>
+        <div className="flex items-center gap-2">
           {analysisLoading && (
-            <span className="text-[10px] text-amber-400/50 flex items-center gap-1.5 ml-2">
-              <span className="w-1 h-1 rounded-full bg-amber-400/80 animate-pulse" />
-              Writing...
+            <span className="text-[10px] text-amber-400/70 flex items-center gap-1.5 mr-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              Writing…
             </span>
           )}
           {analysisError && (
-            <span className="text-[10px] text-red-400/60 ml-2">
+            <span className="text-[10px] text-red-400/70 mr-1">
               Failed{" "}
-              <button
-                onClick={handleGenerate}
-                className="underline ml-1 hover:text-red-300"
-              >
+              <button onClick={handleGenerate} className="underline ml-1 hover:text-red-300">
                 retry
               </button>
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-1.5">
           {!analysis && !analysisLoading && (
             <button
               onClick={handleGenerate}
-              className="h-7 px-3 rounded text-[11px] font-medium text-amber-400/80 hover:text-amber-300 border border-amber-400/15 hover:border-amber-400/30 bg-amber-400/[0.04] hover:bg-amber-400/[0.08] transition-all flex items-center gap-1.5"
+              className="h-7 px-3 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 hover:bg-amber-400/20 hover:border-amber-400/40 hover:text-amber-300 transition-all flex items-center gap-1.5 text-[11px] font-medium"
             >
-              <svg
-                className="w-3.5 h-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
                 <path d="M2 12l10 5 10-5" />
@@ -1197,26 +1199,19 @@ export function NarrativeReport({
           {analysis && !analysisLoading && (
             <button
               onClick={handleGenerate}
-              className="h-7 px-2.5 rounded text-[11px] text-white/25 hover:text-white/40 hover:bg-white/[0.04] transition-all flex items-center gap-1.5"
+              className="h-7 px-2.5 rounded-full text-[11px] text-white/40 hover:text-white/70 border border-white/8 hover:border-white/15 transition-all flex items-center gap-1.5"
+              title="Regenerate enrichment"
             >
-              <IconRefresh size={12} />
+              <IconRefresh className="w-3 h-3" />
               Regenerate
             </button>
           )}
           <button
             onClick={handlePrint}
-            className="h-7 px-2.5 rounded text-[11px] text-white/30 hover:text-white/50 hover:bg-white/[0.04] transition-all flex items-center gap-1.5"
+            className="h-7 px-2.5 rounded-full text-[11px] text-white/40 hover:text-white/70 border border-white/8 hover:border-white/15 transition-all flex items-center gap-1.5"
             title="Print / Save as PDF"
           >
-            <svg
-              className="w-3.5 h-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 6 2 18 2 18 9" />
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
               <rect x="6" y="14" width="12" height="8" />
@@ -1229,77 +1224,73 @@ export function NarrativeReport({
       {/* ── Document ── */}
       <div className="flex-1 overflow-y-auto report-scroll">
         <div className="max-w-[680px] mx-auto px-6 py-14 report-body">
-          {/* ── Cover ── */}
-          <header className="mb-20 text-center report-cover">
-            <div className="inline-block mb-8">
-              <div className="w-12 h-px bg-white/10 mx-auto mb-6" />
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/20 mb-6">
-                Structural Analysis Report
+          {/* ── Cover — slide-hero pattern: large title, radial accent
+              behind the score, vibrant force colours so the cover reads
+              like a TitleSlide stamped into the head of the document. */}
+          <header className="mb-20 text-center report-cover relative overflow-hidden -mx-6 px-6 py-10">
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: `radial-gradient(ellipse 55% 45% at 50% 55%, ${gradeColor(data.overallGrades.overall)}10 0%, transparent 70%)`,
+              }}
+            />
+            <div className="relative">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-text-dim mb-6 font-mono">
+                Analysis Report
               </p>
-              <h1 className="text-[28px] font-light text-white/90 leading-tight tracking-tight mb-5">
+              <h1 className="text-[40px] font-bold text-text-primary leading-tight tracking-tight mb-5 max-w-2xl mx-auto">
                 {data.title}
               </h1>
-              <p className="text-[15px] text-white/40 italic max-w-lg mx-auto leading-relaxed">
+              <p className="text-[14px] text-text-secondary italic max-w-lg mx-auto leading-relaxed mb-10">
                 {"\u201C"}A{" "}
-                <span className="text-emerald-400/80 font-medium">
-                  {data.density.name}
-                </span>
+                <span className="text-emerald-400 font-semibold">{data.density.name}</span>
                 {", "}
-                <span className="text-amber-400/80 font-medium">
-                  {data.shape.name}
-                </span>{" "}
-                <span className="text-cyan-400/80 font-medium">
-                  {data.scale.name}
-                </span>
+                <span className="text-amber-400 font-semibold">{data.shape.name}</span>{" "}
+                <span className="text-cyan-400 font-semibold">{data.scale.name}</span>
                 {" of "}
-                <span className="text-violet-400/80 font-medium">
-                  {data.archetype.name}
-                </span>
+                <span className="text-violet-400 font-semibold">{data.archetype.name}</span>
                 {" archetype."}
                 {"\u201D"}
               </p>
-              <div className="w-12 h-px bg-white/10 mx-auto mt-6" />
-            </div>
 
-            {/* Headline metrics */}
-            <div className="flex items-center justify-center gap-8 mt-8">
-              <div className="text-center">
-                <div
-                  className="text-[42px] font-light font-mono tracking-tight"
-                  style={{ color: gradeColor(data.overallGrades.overall) }}
-                >
-                  {data.overallGrades.overall}
+              {/* Headline metrics — score + force breakdown */}
+              <div className="flex items-center justify-center gap-8">
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className="text-[56px] font-bold font-mono leading-none tracking-tight"
+                    style={{ color: gradeColor(data.overallGrades.overall) }}
+                  >
+                    {data.overallGrades.overall}
+                  </span>
+                  <span className="text-base text-text-dim">/100</span>
                 </div>
-                <div className="text-[9px] uppercase tracking-[0.2em] text-white/20 mt-1">
-                  Overall Score
-                </div>
-              </div>
-              <div className="w-px h-14 bg-white/[0.06]" />
-              <div className="flex flex-col gap-1.5 text-left">
-                {forces.map((f) => (
-                  <div key={f} className="flex items-center gap-2">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: FORCE_COLORS[f], opacity: 0.7 }}
-                    />
-                    <span className="text-[10px] w-14 text-white/30">
-                      {FORCE_LABELS[f]}
-                    </span>
-                    <div className="w-16 h-1 rounded-full bg-white/[0.04] overflow-hidden">
+                <div className="w-px h-16 bg-white/[0.08]" />
+                <div className="flex flex-col gap-1.5 text-left">
+                  {forces.map((f) => (
+                    <div key={f} className="flex items-center gap-2">
                       <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(data.overallGrades[f] / 25) * 100}%`,
-                          backgroundColor: FORCE_COLORS[f],
-                          opacity: 0.5,
-                        }}
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: FORCE_COLORS[f] }}
                       />
+                      <span className="text-[10px] w-14 capitalize" style={{ color: FORCE_COLORS[f] }}>
+                        {FORCE_LABELS[f]}
+                      </span>
+                      <div className="w-24 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(data.overallGrades[f] / 25) * 100}%`,
+                            backgroundColor: FORCE_COLORS[f],
+                            opacity: 0.7,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-text-dim w-8 text-right">
+                        {data.overallGrades[f]}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono text-white/35 w-6 text-right">
-                      {data.overallGrades[f]}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1327,8 +1318,9 @@ export function NarrativeReport({
           </header>
 
           {/* ── 01 Executive Summary ── */}
-          <Section title="Executive Summary" number={++sec}>
-            {prose("story_intro")}
+          <Section title="Executive Summary" number={++sec} eyebrow="Paradigm · Signature">
+            {prose("world_view_intro")}
+            {prose("paradigm_lens")}
             <div className="flex items-start gap-6 mt-4">
               <RadarChart data={data} />
               <div className="flex-1 pt-2">
@@ -1358,10 +1350,11 @@ export function NarrativeReport({
               </div>
             </div>
             {prose("verdict")}
+            {prose("signature")}
           </Section>
 
           {/* ── 02 Activity Curve ── */}
-          <Section title="Activity Curve" number={++sec}>
+          <Section title="Activity Curve" number={++sec} eyebrow="Activity · Shape · Time">
             <Figure
               caption={`Force activity across ${n} scenes. Triangles mark peaks and valleys.`}
             >
@@ -1397,10 +1390,11 @@ export function NarrativeReport({
               ]}
             />
             {prose("activity")}
+            {prose("time_flow")}
           </Section>
 
           {/* ── 03 Force Analysis ── */}
-          <Section title="Force Analysis" number={++sec}>
+          <Section title="Force Analysis" number={++sec} eyebrow="Forces · Decomposition">
             <div className="overflow-x-auto my-5 report-table">
               <table className="w-full">
                 <thead>
@@ -1465,6 +1459,7 @@ export function NarrativeReport({
               </table>
             </div>
             {prose("forces")}
+            {prose("knowledge_structure")}
             <Figure caption="Raw force decomposition over time.">
               <ForceDecompositionChart data={data} />
               <div className="flex items-center gap-4 mt-3 px-1">
@@ -1490,7 +1485,7 @@ export function NarrativeReport({
 
           {/* ── Proposition Structure ── */}
           {data.propositionCount > 0 && (
-            <Section title="Proposition Structure" number={++sec}>
+            <Section title="Proposition Structure" number={++sec} eyebrow="Propositions">
               {/* 4 base category cards */}
               <div className="grid grid-cols-4 gap-3 mb-6">
                 {(["Anchor", "Seed", "Close", "Texture"] as const).map(
@@ -1568,7 +1563,7 @@ export function NarrativeReport({
           )}
 
           {/* ── Swing Analysis ── */}
-          <Section title="Swing Analysis" number={++sec}>
+          <Section title="Swing Analysis" number={++sec} eyebrow="Forces · Swing">
             <Figure caption="Scene-to-scene volatility in force space. Dashed line shows moving average.">
               <SwingChart data={data} />
             </Figure>
@@ -1600,7 +1595,7 @@ export function NarrativeReport({
           </Section>
 
           {/* ── 05 Narrative Walkthrough ── */}
-          <Section title="World View Walkthrough" number={++sec}>
+          <Section title="World View Walkthrough" number={++sec} eyebrow="Story · Segments">
             {data.segments.map((seg, segIdx) => {
               // Collect peaks and valleys in this segment
               const segMoments = [
@@ -1767,7 +1762,7 @@ export function NarrativeReport({
           </Section>
 
           {/* ── 06 Usage ── */}
-          <Section title="Usage" number={++sec}>
+          <Section title="Cast & Usage" number={++sec} eyebrow="World · Cast">
             <div className="grid grid-cols-2 gap-10 mt-5">
               <div>
                 <h3 className="text-[9px] uppercase tracking-[0.15em] text-white/20 mb-3">
@@ -1933,7 +1928,7 @@ export function NarrativeReport({
 
           {/* ── 07 Thread Portfolio ── */}
           {data.threadLifecycles.length > 0 && (
-            <Section title="Thread Portfolio" number={++sec}>
+            <Section title="Belief System" number={++sec} eyebrow="Fate · Belief System">
               <StatRow
                 items={[
                   {
@@ -1953,7 +1948,7 @@ export function NarrativeReport({
                   },
                 ]}
               />
-              {prose("threads")}
+              {prose("belief_system")}
               <div className="mt-5 space-y-px rounded-lg overflow-hidden border border-white/[0.05]">
                 {data.threadLifecycles.slice(0, 12).map((tl, i) => {
                   const endStatus =
@@ -1998,7 +1993,7 @@ export function NarrativeReport({
           )}
 
           {/* ── 08 Pacing Profile ── */}
-          <Section title="Pacing Profile" number={++sec}>
+          <Section title="Pacing Profile" number={++sec} eyebrow="Cube · Pacing">
             <Figure caption="Cube mode transition graph. Node size reflects visit frequency, edge weight reflects transition count.">
               <StateMachineGraph data={data} />
             </Figure>
@@ -2059,12 +2054,11 @@ export function NarrativeReport({
                 ))}
               </div>
             )}
-            {prose("modes")}
           </Section>
 
           {/* ── 09 Arc Progression ── */}
           {data.arcGrades.length > 0 && (
-            <Section title="Arc Progression" number={++sec}>
+            <Section title="Arc Progression" number={++sec} eyebrow="Story · Arcs">
               <Figure caption="Overall score by arc.">
                 <ArcScoreChart data={data} />
               </Figure>
@@ -2144,7 +2138,7 @@ export function NarrativeReport({
           )}
 
           {/* ── Conclusion ── */}
-          <Section title="Conclusion & Recommendations" number={++sec}>
+          <Section title="Conclusion" number={++sec} eyebrow="Closing">
             {prose("closing")}
           </Section>
 

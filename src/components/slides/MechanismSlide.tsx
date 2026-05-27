@@ -2,6 +2,7 @@
 
 import type { SlidesData } from '@/lib/slides-data';
 import { flattenFnMechDist } from '@/lib/mechanism-profiles';
+import { SlideShell } from './SlideShell';
 
 const MECH_COLORS: Record<string, string> = {
   dialogue: '#3b82f6',
@@ -59,12 +60,13 @@ export function MechanismSlide({ data }: { data: SlidesData }) {
   }
 
   return (
-    <div className="flex flex-col justify-center h-full px-12 py-8">
-      <h2 className="text-2xl font-bold text-text-primary mb-1">Mechanisms of Delivery</h2>
-      <p className="text-sm text-text-secondary mb-8">
-        How beats are rendered as prose — the delivery techniques that shape the reading experience.
-      </p>
-
+    <SlideShell
+      eyebrow="Prose · Mechanisms"
+      title="Mechanisms of Delivery"
+      subtitle="How beats are rendered as prose — the delivery techniques that shape the reading experience."
+      align="center"
+      contentWidth="wide"
+    >
       <div className="flex items-center gap-12">
         {/* Horizontal bar chart */}
         <div className="flex-1 space-y-3">
@@ -145,6 +147,6 @@ export function MechanismSlide({ data }: { data: SlidesData }) {
           </div>
         </div>
       </div>
-    </div>
+    </SlideShell>
   );
 }

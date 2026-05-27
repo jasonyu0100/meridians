@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import type { SlidesData } from '@/lib/slides-data';
+import { SlideShell, SlideCard } from './SlideShell';
 
 export function ShapeSlide({ data }: { data: SlidesData }) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -132,36 +133,33 @@ export function ShapeSlide({ data }: { data: SlidesData }) {
   }, [data]);
 
   return (
-    <div className="flex flex-col justify-center h-full px-12 py-8">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-text-primary mb-2">The Delivery of This World View</h2>
-          <div className="flex items-center gap-2">
-            {data.shape && (
-              <span className="text-xs px-2.5 py-1 rounded-full border border-amber-400/20 bg-amber-400/5 text-amber-400 font-medium">
-                {data.shape.name}
-              </span>
-            )}
-          </div>
+    <SlideShell
+      eyebrow="Activity · Shape"
+      title="Delivery Curve"
+      subtitle={`Narrative presence over ${data.sceneCount} scenes. Peaks mark high-intensity moments, valleys mark recovery deliveries.`}
+      align="center"
+      contentWidth="wide"
+      rightSlot={
+        data.shape && (
+          <span className="text-xs px-2.5 py-1 rounded-full border border-amber-400/20 bg-amber-400/5 text-amber-400 font-medium">
+            {data.shape.name}
+          </span>
+        )
+      }
+      footer={
+        <div className="flex items-center gap-5">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400" /> {data.peaks.length} peak{data.peaks.length === 1 ? '' : 's'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-300" /> {data.troughs.length} valle{data.troughs.length === 1 ? 'y' : 'ys'}
+          </span>
         </div>
-        <p className="text-sm text-text-secondary">
-          Delivery curve showing narrative presence over {data.sceneCount} scenes.
-          Peaks mark high-intensity moments, valleys mark recovery deliveries.
-        </p>
-      </div>
-
-      <div className="flex flex-col justify-center">
+      }
+    >
+      <SlideCard>
         <svg ref={svgRef} className="w-full" style={{ height: 280 }} />
-      </div>
-
-      <div className="mt-6 flex items-center gap-4 text-xs text-text-dim">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400" /> Peaks: {data.peaks.length}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-300" /> Valleys: {data.troughs.length}
-        </span>
-      </div>
-    </div>
+      </SlideCard>
+    </SlideShell>
   );
 }

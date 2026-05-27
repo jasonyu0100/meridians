@@ -265,15 +265,25 @@ export function KeyMomentsSlide({ data, sceneIdx, kind }: { data: SlidesData; sc
                 {threadChanges.slice(0, 7).map((tc, i) => {
                   const desc = data.threadDescriptions[tc.threadId];
                   const label = desc ? (desc.length > 55 ? desc.slice(0, 55) + '\u2026' : desc) : tc.threadId;
+                  const updates = 'updates' in tc ? tc.updates : [];
                   return (
-                    <div key={i} className="flex items-center gap-2 text-[10px] px-3 py-1.5 rounded bg-white/3 border border-white/5">
-                      <span className="text-text-secondary flex-1 truncate" title={desc}>{label}</span>
-                      <span className="text-text-dim shrink-0 font-mono text-[9px]">[{('logType' in tc) ? tc.logType : ''}]</span>
-                      <span className="text-text-primary font-medium shrink-0 font-mono text-[9px]">
-                        {('updates' in tc ? tc.updates : [])
-                          .map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`)
-                          .join(' ')}
-                      </span>
+                    <div key={i} className="text-[10px] px-3 py-1.5 rounded bg-white/3 border border-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-secondary flex-1 min-w-0 truncate" title={desc}>{label}</span>
+                        <span className="text-text-dim shrink-0 font-mono text-[9px]">[{('logType' in tc) ? tc.logType : ''}]</span>
+                      </div>
+                      {updates.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px]">
+                          {updates.map((u, j) => (
+                            <span key={j} className="text-text-dim">
+                              <span className="text-text-primary">{u.outcome}</span>
+                              <span className={u.evidence >= 0 ? 'text-emerald-400/80 ml-0.5' : 'text-rose-400/80 ml-0.5'}>
+                                {u.evidence >= 0 ? '+' : ''}{u.evidence}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

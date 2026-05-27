@@ -11,33 +11,39 @@ import { logError, logInfo } from '@/lib/system-logger';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type ReportAnalysis = {
-  /** 1-2 sentences. What is this story about? Set the stage for someone who hasn't read it. */
-  story_intro: string;
-  /** 2-3 sentences. The headline verdict — score, shape, what defines this narrative. */
+  /** 2-3 sentences. Opens with the world-view framing — what reality the work models, what paradigm it sits in, who or what populates it. */
+  world_view_intro: string;
+  /** 2-3 sentences. The work's paradigm explicitly named, plus how the three forces should be read through it (which is structurally load-bearing). */
+  paradigm_lens: string;
+  /** 2-3 sentences. Headline: overall score + signature archetype + dominant force. Sits beside the score display. */
   verdict: string;
-  /** 1-2 short paragraphs. What the activity curve reveals about the reading experience. */
+  /** 3-5 sentences. The work's signature on the unit 3-simplex — archetype, force balance, what the mix means as a structural choice. */
+  signature: string;
+  /** 1-2 short paragraphs. What the activity curve reveals about how hard the world view is working — peaks (all three forces firing) vs valleys. */
   activity: string;
-  /** 1-2 short paragraphs. How the three forces (Fate, World, System) interact. */
+  /** 1-2 short paragraphs. How Fate, World, and System interact; which is load-bearing for the paradigm; which carries the work in practice. */
   forces: string;
-  /** 1 short paragraph. What the force decomposition chart shows over time. */
+  /** 3-5 sentences. Per-force evolution over the timeline — z-scored peaks/valleys, phase takeovers, convergences. */
   forces_over_time: string;
-  /** 1 short paragraph. What swing tells us about the scene-to-scene experience. */
+  /** 3-5 sentences. Scene-to-scene volatility — steady / varied / erratic; a specific high-swing moment and which force lurched. */
   swing: string;
+  /** 3-5 sentences. How time advances — concurrent / minute / day / year-paced compressions and dilations; flashback handling. */
+  time_flow: string;
   /** Array of per-segment commentaries — one short paragraph each, in order. */
   segments: string[];
-  /** 1 short paragraph. How the cast of entities is deployed — who carries the narrative (protagonists, lead authors, investigators, subjects). */
+  /** 3-5 sentences. The anchor entities — who/what carries the world view (characters, sources, panelists, agents). POV distribution. */
   cast: string;
-  /** 1 short paragraph. How locations serve (or don't serve) the narrative — as setting, as stake, as evidentiary ground. */
+  /** 2-3 sentences. Whether settings do structural work or are interchangeable backdrops. For non-fiction, the institutional / archival ground. */
   locations: string;
-  /** 1-2 short paragraphs. The thread portfolio — what's driving the story forward. */
-  threads: string;
-  /** 1 short paragraph. What the mode distribution tells us about variety. */
-  modes: string;
-  /** 1-2 short paragraphs. How quality evolves across arcs. */
+  /** 2-3 short paragraphs. The work's belief system — aggregate of every open stance. Saturating / contested / volatile / committed beliefs, in lean-and-doubt language. */
+  belief_system: string;
+  /** 2-3 short paragraphs. The System force made visible — rule set depth, principle interconnection, whether rules compose or sit isolated. */
+  knowledge_structure: string;
+  /** 1-2 short paragraphs. How quality evolves across arcs; where force weight shifts between arcs. */
   arcs: string;
-  /** 1-2 short paragraphs. Proposition classification — structural roles and what the distribution reveals about narrative craft. */
+  /** 1-2 short paragraphs. Proposition classification — anchor ratio, seed→close conversion, local/global balance across arcs. */
   propositions: string;
-  /** 2-3 sentences. What this story does best and the single most impactful improvement. */
+  /** 2-3 sentences. What this world view does best + the single most impactful change to deepen it. Forward-looking. */
   closing: string;
 };
 

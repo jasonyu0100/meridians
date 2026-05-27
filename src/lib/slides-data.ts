@@ -3,6 +3,8 @@ import type {
   Character, Location, Artifact, Thread,
   BeatSampler,
   PropositionBaseCategory,
+  NarrativeParadigm,
+  SystemNodeType,
 } from '@/types/narrative';
 import { NARRATIVE_CUBE, isScene, resolveEntry } from '@/types/narrative';
 import { computeSamplerFromPlans } from '@/lib/beat-profiles';
@@ -19,16 +21,22 @@ import {
   detectCubeCorner,
   gradeForces,
   FORCE_REFERENCE_MEANS,
+  getStanceMargin,
   getStanceProbs,
+  getThreadStance,
   isThreadAbandoned,
   isThreadClosed,
+  scoreSystemNodes,
   type ActivityPoint,
+  type ForceSignature,
   type NarrativeShape,
   type ForceGrades,
   type NarrativeArchetype,
   type NarrativeScale,
   type WorldDensity,
 } from '@/lib/narrative-utils';
+import { classifyThreadCategory, type ThreadCategory } from '@/lib/thread-category';
+import { buildThreadTrajectory } from '@/lib/portfolio-analytics';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -94,6 +102,53 @@ export type ArcGrade = {
   grades: ForceGrades;
 };
 
+/** A single open question's current stance — the unit of the work's belief
+ *  system. Lives on the Fate force. Surfaces enough state for a slide to
+ *  render lean and doubt in prose without recomputing softmax / margin. */
+export type BeliefSnapshot = {
+  threadId: string;
+  description: string;
+  participantNames: string[];
+  category: ThreadCategory;
+  /** Leading outcome by softmax probability. */
+  lean: string;
+  /** Softmax probability of the leading outcome. */
+  pLean: number;
+  /** Logit margin to the runner-up — how decisive the lean is. */
+  margin: number;
+  volume: number;
+  volatility: number;
+  /** Full distribution over outcomes — name + softmax probability. */
+  outcomes: { name: string; p: number }[];
+  /** Per-scene probability trajectory over the resolved timeline. One sample
+   *  per scene the thread is alive on; `probs[k]` aligns 1:1 with `outcomes`.
+   *  Populated for the top-N beliefs only (heavy to compute for all). */
+  trajectory: { sceneOrdinal: number; probs: number[] }[];
+};
+
+/** The work's knowledge structure — the System force made visible. Snapshots
+ *  the system graph so the slide can render rule density and interconnection
+ *  without holding the graph itself. Plus the ranked node list mirroring the
+ *  sidebar's KnowledgePanel (score = degree + attributions + reach). */
+export type KnowledgeStructure = {
+  nodeCount: number;
+  edgeCount: number;
+  /** Counts per node type — principle, system, concept, tension, event, ... */
+  nodesByType: Partial<Record<SystemNodeType, number>>;
+  /** Top-ranked nodes by impact (degree + attributions + reach). Mirrors the
+   *  sidebar's KnowledgePanel ranking — the load-bearing pieces the rest of
+   *  the world view leans on. */
+  rankedNodes: {
+    id: string;
+    concept: string;
+    type: SystemNodeType;
+    degree: number;
+    attributions: number;
+    reach: number;
+    score: number;
+  }[];
+};
+
 export type SlidesData = {
   title: string;
   description: string;
@@ -148,6 +203,30 @@ export type SlidesData = {
   characterNames: Record<string, string>;
   locationNames: Record<string, string>;
   threadDescriptions: Record<string, string>;
+
+  // ── World-view-specific fields (paradigm-aware report + slides) ──────────
+
+  /** The work's paradigm classification (fiction / non-fiction / simulation /
+   *  essay / panel / atlas / debate / record). Null when the narrative
+   *  predates paradigm tagging. */
+  paradigm: NarrativeParadigm | null;
+
+  /** Full force signature — weights on the 3-simplex, primary/secondary
+   *  channel, profile string, nearest archetype. Distinct from `archetype`
+   *  (the snapped label) — exposes the raw weights for ternary-plot rendering
+   *  and the duality bands the SignatureSlide reads. */
+  signature: ForceSignature;
+
+  /** Belief system snapshot — every LIVE (non-closed, non-abandoned) thread
+   *  with its current stance. Sorted by volume desc so the load-bearing
+   *  questions come first. Feeds the BeliefSystemSlide and the
+   *  belief_system report section. */
+  beliefs: BeliefSnapshot[];
+
+  /** Knowledge-structure snapshot — System graph node-type counts, edge
+   *  count, top-degree principles. Feeds the KnowledgeStructureSlide and
+   *  the knowledge_structure report section. */
+  knowledgeStructure: KnowledgeStructure;
 };
 
 // ── Computation ────────────────────────────────────────────────────────────────
@@ -431,6 +510,107 @@ export function computeSlidesData(
     characterNames: Object.fromEntries(Object.entries(narrative.characters).map(([id, c]) => [id, c.name])),
     locationNames: Object.fromEntries(Object.entries(narrative.locations).map(([id, l]) => [id, l.name])),
     threadDescriptions: Object.fromEntries(Object.entries(narrative.threads).map(([id, t]) => [id, t.description])),
+
+    // ── World-view-specific fields ──────────────────────────────────────────
+    paradigm: narrative.paradigm ?? null,
+    signature: sig,
+    beliefs: buildBeliefSnapshots(narrative, resolvedEntryKeys),
+    knowledgeStructure: buildKnowledgeStructure(narrative, resolvedEntryKeys),
+  };
+}
+
+// ── World-view helpers ────────────────────────────────────────────────────────
+
+/** How many live beliefs get a full per-scene trajectory replay attached.
+ *  Trajectory replay is O(scenes × outcomes) per thread; capping the top-N
+ *  keeps the slide computation cheap on long narratives while still letting
+ *  the slide render meaningful prediction graphs for the load-bearing
+ *  questions. The rest get an empty trajectory and render as stance-only. */
+const BELIEF_TRAJECTORY_CAP = 8;
+
+/** Snapshot every LIVE belief (open thread) as a stance + per-scene
+ *  trajectory (top-N by volume). Drops closed / abandoned threads — the
+ *  belief system carries only what's still in flux. Sorted by volume desc so
+ *  the load-bearing questions lead. */
+function buildBeliefSnapshots(
+  narrative: NarrativeState,
+  resolvedEntryKeys: string[],
+): BeliefSnapshot[] {
+  const snapshots: BeliefSnapshot[] = [];
+  for (const thread of Object.values(narrative.threads)) {
+    if (isThreadClosed(thread) || isThreadAbandoned(thread)) continue;
+    const stance = getThreadStance(thread);
+    if (!stance) continue;
+    const probs = getStanceProbs(thread);
+    const { topIdx, margin } = getStanceMargin(thread);
+    const lean = thread.outcomes[topIdx] ?? '';
+    const participantNames = thread.participants.map((p) => {
+      if (p.type === 'character') return narrative.characters[p.id]?.name ?? p.id;
+      if (p.type === 'location') return narrative.locations[p.id]?.name ?? p.id;
+      if (p.type === 'artifact') return narrative.artifacts?.[p.id]?.name ?? p.id;
+      return p.id;
+    });
+    snapshots.push({
+      threadId: thread.id,
+      description: thread.description,
+      participantNames,
+      category: classifyThreadCategory(thread),
+      lean,
+      pLean: probs[topIdx] ?? 0,
+      margin,
+      volume: stance.volume,
+      volatility: stance.volatility,
+      outcomes: thread.outcomes.map((name, i) => ({ name, p: probs[i] ?? 0 })),
+      trajectory: [],
+    });
+  }
+  snapshots.sort((a, b) => b.volume - a.volume);
+
+  // Attach trajectories to the top-N beliefs only. Trajectory replay is the
+  // expensive bit; the rest get an empty array so the slide can opt out of
+  // rendering a chart for them.
+  for (let i = 0; i < Math.min(BELIEF_TRAJECTORY_CAP, snapshots.length); i++) {
+    const snap = snapshots[i];
+    const points = buildThreadTrajectory(narrative, snap.threadId, resolvedEntryKeys);
+    snap.trajectory = points.map((p) => ({
+      sceneOrdinal: p.sceneOrdinal,
+      probs: p.probs,
+    }));
+  }
+  return snapshots;
+}
+
+/** Summarise the system graph — counts per node type, edge count, and the
+ *  ranked nodes by impact (degree + attributions + reach). Mirrors the
+ *  sidebar's KnowledgePanel scoring so the slide's ranking matches what an
+ *  operator sees in the inspector. */
+function buildKnowledgeStructure(
+  narrative: NarrativeState,
+  resolvedEntryKeys: string[],
+): KnowledgeStructure {
+  const graph = narrative.systemGraph;
+  const nodes = Object.values(graph?.nodes ?? {});
+  const edges = graph?.edges ?? [];
+  const nodesByType: Partial<Record<SystemNodeType, number>> = {};
+  for (const node of nodes) {
+    nodesByType[node.type] = (nodesByType[node.type] ?? 0) + 1;
+  }
+  // Score the cumulative graph as of the full timeline — slides always
+  // present the complete world view, not a mid-arc snapshot.
+  const ranked = scoreSystemNodes(narrative, resolvedEntryKeys).map((r) => ({
+    id: r.node.id,
+    concept: r.node.concept,
+    type: r.node.type,
+    degree: r.degree,
+    attributions: r.attributions,
+    reach: r.reach,
+    score: r.score,
+  }));
+  return {
+    nodeCount: nodes.length,
+    edgeCount: edges.length,
+    nodesByType,
+    rankedNodes: ranked,
   };
 }
 

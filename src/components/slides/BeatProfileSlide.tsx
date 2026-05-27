@@ -310,10 +310,11 @@ export function BeatProfileSlide({ data }: { data: SlidesData }) {
         {/* Metrics panel */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
           <div>
-            <h2 className="text-xl font-bold text-text-primary mb-0.5">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-text-dim mb-1.5">Prose · Beats</div>
+            <h2 className="text-2xl font-bold text-text-primary tracking-tight leading-tight">
               Beat Profile
             </h2>
-            <p className="text-[11px] text-text-dim">
+            <p className="text-[11px] text-text-dim mt-1">
               {sequence.length} beats · {sequence.length - 1} transitions
               {metrics.density > 0 && <> · {metrics.density} beats/kword</>}
             </p>
