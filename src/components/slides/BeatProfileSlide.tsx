@@ -4,6 +4,7 @@ import type { SlidesData } from "@/lib/slides-data";
 import type { BeatFn } from "@/types/narrative";
 import { BEAT_FN_LIST } from "@/types/narrative";
 import { useMemo, useState } from "react";
+import { SlideShell } from "./SlideShell";
 
 const FN_COLORS: Record<BeatFn, string> = {
   breathe: "#6b7280",
@@ -179,17 +180,31 @@ export function BeatProfileSlide({ data }: { data: SlidesData }) {
 
   if (sequence.length === 0) {
     return (
-      <div className="flex flex-col h-full items-center justify-center px-10 py-6">
-        <p className="text-text-dim text-sm">No beat plans available yet.</p>
-        <p className="text-[11px] text-text-dim mt-1">
-          Generate scene plans to see beat profile analytics.
-        </p>
-      </div>
+      <SlideShell
+        eyebrow="Prose · Beats"
+        title="Beat Profile"
+        subtitle="Beat-function transitions across the work's scene plans (Markov chain)."
+        align="center"
+        contentWidth="wide"
+      >
+        <div className="flex flex-col items-center justify-center flex-1 text-center">
+          <p className="text-text-dim text-sm">No beat plans available yet.</p>
+          <p className="text-[11px] text-text-dim mt-1">
+            Generate scene plans to see beat profile analytics.
+          </p>
+        </div>
+      </SlideShell>
     );
   }
 
   return (
-    <div className="flex flex-col h-full px-10 py-6 overflow-y-auto">
+    <SlideShell
+      eyebrow="Prose · Beats"
+      title="Beat Profile"
+      subtitle={`${sequence.length} beats · ${sequence.length - 1} transitions${metrics.density > 0 ? ` · ${metrics.density} beats/kword` : ''} (Markov chain).`}
+      align="center"
+      contentWidth="wide"
+    >
       <div className="flex gap-6 items-center flex-1 min-h-0">
         {/* Graph */}
         <div className="shrink-0">
@@ -309,17 +324,6 @@ export function BeatProfileSlide({ data }: { data: SlidesData }) {
 
         {/* Metrics panel */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.3em] text-text-dim mb-1.5">Prose · Beats</div>
-            <h2 className="text-2xl font-bold text-text-primary tracking-tight leading-tight">
-              Beat Profile
-            </h2>
-            <p className="text-[11px] text-text-dim mt-1">
-              {sequence.length} beats · {sequence.length - 1} transitions
-              {metrics.density > 0 && <> · {metrics.density} beats/kword</>}
-            </p>
-          </div>
-
           <div className="flex flex-col gap-3">
             {/* Variety */}
             <div>
@@ -470,6 +474,6 @@ export function BeatProfileSlide({ data }: { data: SlidesData }) {
           </div>
         </div>
       </div>
-    </div>
+    </SlideShell>
   );
 }

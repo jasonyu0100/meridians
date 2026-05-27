@@ -6,6 +6,7 @@ import { BASE_COLORS, BASE_COLORS_GLOBAL, classificationLabel, ALL_PROFILE_LABEL
 import { usePropositionClassification } from '@/hooks/usePropositionClassification';
 import type { PropositionBaseCategory } from '@/types/narrative';
 import { resolveEntry, isScene } from '@/types/narrative';
+import { SlideShell } from './SlideShell';
 
 const BASE_ORDER: PropositionBaseCategory[] = ['Anchor', 'Seed', 'Close', 'Texture'];
 
@@ -85,34 +86,52 @@ export function PropositionOverviewSlide({ data }: { data: SlidesData }) {
 
   if (total === 0) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-white/30 text-sm">No propositions found.</p>
-      </div>
+      <SlideShell
+        eyebrow="Propositions · Overview"
+        title="Propositions"
+        subtitle="Structural claims by role — anchors / seeds / closes / textures — and how each class trends across arcs."
+        align="center"
+        contentWidth="wide"
+      >
+        <div className="flex items-center justify-center flex-1">
+          <p className="text-text-dim text-sm italic">No propositions found.</p>
+        </div>
+      </SlideShell>
     );
   }
 
   const maxLabel = hasClassified ? Math.max(...Object.values(labelCounts), 1) : 1;
 
   return (
-    <div className="h-full flex items-stretch px-14 py-12">
+    <SlideShell
+      eyebrow="Propositions · Overview"
+      title="Propositions"
+      subtitle="Structural claims by role — anchors / seeds / closes / textures — and how each class trends across arcs."
+      contentWidth="wide"
+      rightSlot={
+        <span className="text-xs text-text-dim font-mono">
+          {total.toLocaleString()} total
+        </span>
+      }
+    >
       {hasClassified ? (
-        <>
+        <div className="grid grid-cols-2 gap-8 flex-1 min-h-0">
           {/* ── Left: Distribution ── */}
-          <div className="flex-1 flex flex-col justify-center">
-            <h2 className="text-[11px] uppercase tracking-[0.2em] text-white/20 font-mono mb-2">
-              Propositions <span className="text-white/35 ml-2">{total.toLocaleString()}</span>
-            </h2>
+          <div className="flex flex-col">
+            <div className="text-[10px] uppercase tracking-widest text-text-dim mb-4">
+              Distribution
+            </div>
 
             {/* 4 base percentages */}
-            <div className="flex items-end gap-7 mb-8">
+            <div className="flex items-end gap-6 mb-6">
               {BASE_ORDER.map(base => {
                 const pct = total > 0 ? (totals[base] / total) * 100 : 0;
                 return (
                   <div key={base}>
-                    <div className="text-[32px] font-bold font-mono leading-none" style={{ color: BASE_COLORS[base] }}>
+                    <div className="text-[34px] font-bold font-mono leading-none" style={{ color: BASE_COLORS[base] }}>
                       {pct.toFixed(0)}%
                     </div>
-                    <div className="text-[10px] font-medium lowercase mt-1 opacity-70" style={{ color: BASE_COLORS[base] }}>{base}</div>
+                    <div className="text-[10px] font-medium lowercase mt-1.5 opacity-70" style={{ color: BASE_COLORS[base] }}>{base}</div>
                   </div>
                 );
               })}
@@ -126,26 +145,23 @@ export function PropositionOverviewSlide({ data }: { data: SlidesData }) {
                 return (
                   <div key={label} className="flex items-center gap-3">
                     <span className="text-[10px] w-24 text-right font-medium" style={{ color }}>{label}</span>
-                    <div className="flex-1 h-4 bg-white/4 rounded-sm overflow-hidden">
+                    <div className="flex-1 h-4 bg-white/[0.04] rounded-sm overflow-hidden">
                       <div className="h-full rounded-sm" style={{ width: `${barPct}%`, backgroundColor: color, opacity: 0.7 }} />
                     </div>
-                    <span className="text-[9px] font-mono text-white/25 w-10 text-right">{count}</span>
+                    <span className="text-[9px] font-mono text-text-dim w-10 text-right tabular-nums">{count}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* ── Divider ── */}
-          <div className="w-px bg-white/8 mx-8 self-stretch" />
-
           {/* ── Right: Arc Trajectory ── */}
-          <div className="flex-1 flex flex-col justify-center">
-            <h2 className="text-[11px] uppercase tracking-[0.2em] text-white/20 font-mono mb-6">
+          <div className="flex flex-col">
+            <div className="text-[10px] uppercase tracking-widest text-text-dim mb-4">
               Arc Trajectory
-            </h2>
+            </div>
 
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
               {BASE_ORDER.map((base) => {
                 const count = totals[base];
                 const values = arcTrajectory?.[base];
@@ -153,15 +169,15 @@ export function PropositionOverviewSlide({ data }: { data: SlidesData }) {
                 const trend = values ? values[values.length - 1] - values[0] : 0;
 
                 return (
-                  <div key={base} className="rounded-xl p-4 border border-white/6 bg-white/2">
-                    <div className="flex items-baseline justify-between mb-3">
-                      <span className="text-[14px] font-semibold lowercase" style={{ color: BASE_COLORS[base] }}>{base}</span>
-                      <span className="text-[10px] font-mono text-white/20">{count}</span>
+                  <div key={base} className="rounded-lg p-3 border border-white/[0.08] bg-white/[0.02] flex flex-col">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="text-[13px] font-semibold lowercase" style={{ color: BASE_COLORS[base] }}>{base}</span>
+                      <span className="text-[10px] font-mono text-text-dim tabular-nums">{count}</span>
                     </div>
 
                     {values && values.length >= 2 ? (
                       <>
-                        <div className="flex items-end gap-1.5 h-24">
+                        <div className="flex items-end gap-1 flex-1 min-h-0 h-20">
                           {values.map((v, i) => (
                             <div
                               key={i}
@@ -174,27 +190,27 @@ export function PropositionOverviewSlide({ data }: { data: SlidesData }) {
                             />
                           ))}
                         </div>
-                        <div className="text-[9px] font-mono text-white/20 mt-2">
+                        <div className="text-[9px] font-mono text-text-dim/70 mt-2 tabular-nums">
                           {trend >= 0 ? '\u2191' : '\u2193'} {Math.abs(trend).toFixed(1)}% across arcs
                         </div>
                       </>
                     ) : (
-                      <div className="h-24 flex items-center justify-center text-[10px] text-white/15">single arc</div>
+                      <div className="flex-1 flex items-center justify-center text-[10px] text-text-dim/60 italic">single arc</div>
                     )}
                   </div>
                 );
               })}
             </div>
           </div>
-        </>
+        </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-[36px] font-bold font-mono text-white/50">{total.toLocaleString()}</div>
-            <div className="text-[10px] text-white/25 mt-2 uppercase tracking-widest">propositions</div>
+            <div className="text-[36px] font-bold font-mono text-text-secondary">{total.toLocaleString()}</div>
+            <div className="text-[10px] text-text-dim mt-2 uppercase tracking-widest">propositions \u00b7 run classification to see the breakdown</div>
           </div>
         </div>
       )}
-    </div>
+    </SlideShell>
   );
 }
