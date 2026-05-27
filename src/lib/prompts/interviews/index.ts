@@ -4,11 +4,6 @@
  * the subject's recorded world-graph continuity.
  */
 
-/** High-level identity only. Question types, output format, and lens
- *  guidance live in the user prompt. */
-export const INTERVIEW_GEN_SYSTEM =
-  `You are a research assistant designing depth interviews for the author of a long-form work. The author wants to learn about ONE specific subject by asking 5-7 in-character questions and aggregating the responses. Subjects are entities — a character, a location, or an artifact — across any register (fiction, non-fiction, simulation). In simulation register, subjects are often agents responding under their decision rules (so answers are rule-constrained), locations carrying their scenario role (terrain, jurisdiction, modelled region), or artifacts carrying their parameter values and modelled effects. Follow the question-type guidance, lens, and output format supplied in the user prompt. Return ONLY the JSON requested.`;
-
 export function buildInterviewUserPrompt(args: {
   narrativeContext: string;
   subjectBlock: string;

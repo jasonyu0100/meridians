@@ -1325,8 +1325,8 @@ export default function FloatingPalette({
               </button>
 
               {/* Experimentation is no longer exposed here — it now lives
-                  in the Future view's topbar, alongside the scenarios that
-                  feed it. The bottom palette stays focused on view-level
+                  in the Compass view's topbar, alongside the cohort that
+                  feeds it. The bottom palette stays focused on view-level
                   generation actions (Generate, Auto). */}
 
               {/* Auto */}
@@ -1345,7 +1345,7 @@ export default function FloatingPalette({
                 <IconAutoLoop size={14} />
               </button>
 
-              {/* Future — jump to Future view and kick off scenario generation */}
+              {/* Compass — jump to Compass view and kick off cohort generation */}
               <button
                 type="button"
                 className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-blue-400 bg-blue-500/10 hover:bg-blue-500/20"
@@ -1358,15 +1358,15 @@ export default function FloatingPalette({
                   // VariablesView consumes it on mount.
                   try {
                     sessionStorage.setItem(
-                      "inktide:pending-generate-future",
+                      "inktide:pending-generate-compass",
                       "1",
                     );
                   } catch {
                     // ignore — falls back to manual regenerate
                   }
-                  dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "future" });
+                  dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "compass" });
                 }}
-                title="Generate future scenarios"
+                title="Generate Compass — cohort of feasible next directions"
               >
                 <IconFlask size={14} />
               </button>

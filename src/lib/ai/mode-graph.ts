@@ -19,12 +19,13 @@ import { narrativeContext } from "./context";
 import { parseJson } from "./json";
 import { logError, logWarning } from "@/lib/system-logger";
 import {
-  PHASE_GRAPH_SYSTEM,
+  buildPhaseGraphSystem,
   buildModePrompt,
   buildModeSection,
   buildPriorModeSection,
   type ModeScope,
 } from "@/lib/prompts/mode";
+import { workIdentityFor } from "@/lib/prompts/paradigm-analyst";
 import { VALID_EDGE_TYPES } from "./reasoning-graph/shared";
 import type { ReasoningEdgeType } from "./reasoning-graph/types";
 import { getActiveMode } from "@/lib/mode-graph";
@@ -108,11 +109,12 @@ export async function generateMode(
 
   const reasoningBudget = REASONING_BUDGETS[reasoningLevel ?? narrative.storySettings?.reasoningLevel ?? "low"];
   const websearch = resolveWebsearch(narrative);
+  const phaseSystem = buildPhaseGraphSystem(workIdentityFor(narrative));
 
   const raw = onReasoning
     ? await callGenerateStream(
         prompt,
-        PHASE_GRAPH_SYSTEM,
+        phaseSystem,
         () => {},
         undefined,
         "generateMode",
@@ -124,7 +126,7 @@ export async function generateMode(
       )
     : await callGenerate(
         prompt,
-        PHASE_GRAPH_SYSTEM,
+        phaseSystem,
         undefined,
         "generateMode",
         PLANNING_MODEL,

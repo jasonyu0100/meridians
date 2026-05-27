@@ -215,7 +215,7 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
 
       {/* Universal inference-shape — detail load-bearing, considered / breaks
           / opens supporting. Same renderer powers PRG node detail, variables
-          (Future/Present), and any other surface that uses the inference-shape;
+          (Compass/Present), and any other surface that uses the inference-shape;
           label hover-tooltips carry the legend so the visual taxonomy is
           learnable in-place. */}
       <InferenceFields

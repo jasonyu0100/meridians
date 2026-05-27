@@ -16,10 +16,10 @@ import { parseJson } from "@/lib/ai/json";
 import { INTERACTION_MODEL, ANALYSIS_TEMPERATURE } from "@/lib/constants";
 import { CATEGORY_GUIDANCE, RESEARCH_CATEGORIES, type ResearchCategory } from "@/lib/research-categories";
 import {
-  INTERVIEW_GEN_SYSTEM,
   INTERVIEW_FRAME_FALLBACK,
   buildInterviewUserPrompt,
 } from "@/lib/prompts/interviews";
+import { buildInterviewGenSystem, workIdentityFor } from "@/lib/prompts/paradigm-analyst";
 import {
   buildRespondentPersona,
   buildSurveyUserPrompt,
@@ -185,7 +185,7 @@ export async function generateInterviewBatch(
 
   const raw = await callGenerate(
     userPrompt,
-    INTERVIEW_GEN_SYSTEM,
+    buildInterviewGenSystem(workIdentityFor(narrative)),
     undefined,
     `generateInterviewBatch${category ? `:${category}` : ""}`,
     INTERACTION_MODEL,

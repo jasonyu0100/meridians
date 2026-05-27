@@ -5,12 +5,6 @@
  * arc) or worldOnly (entities + system, no scenes).
  */
 
-export const GENERATE_NARRATIVE_SYSTEM =
-  'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, or chronicled entries. See the pattern blocks in the user prompt. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
-
-export const DETECT_PATTERNS_SYSTEM =
-  'You are a world-view diagnostician. Read content, structure, and register; identify the world view\'s register, genre, and subgenre — these may be narrative, but may equally be argumentative, typological, chronicled, or adversarial. Derive concrete pattern / anti-pattern commandments that encourage variety and prevent stagnation within the world view\'s actual paradigm. Patterns are positive directives that unlock fresh territory; anti-patterns are negative directives that flag staleness. Return ONLY valid JSON matching the schema in the user prompt.';
-
 import {
   PROMPT_POV,
   PROMPT_FORCE_STANDARDS,
@@ -20,6 +14,24 @@ import {
   PROMPT_ARC_STATE_GUIDANCE,
   PROMPT_SUMMARY_REQUIREMENT,
 } from '../index';
+import {
+  composeAnalystIdentity,
+  type WorkIdentity,
+} from '../paradigm-roles';
+
+export const GENERATE_NARRATIVE_SYSTEM =
+  'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, or chronicled entries. See the pattern blocks in the user prompt. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+
+export const DETECT_PATTERNS_SYSTEM =
+  'You are a world-view diagnostician. Read content, structure, and register; identify the world view\'s register, genre, and subgenre — these may be narrative, but may equally be argumentative, typological, chronicled, or adversarial. Derive concrete pattern / anti-pattern commandments that encourage variety and prevent stagnation within the world view\'s actual paradigm. Patterns are positive directives that unlock fresh territory; anti-patterns are negative directives that flag staleness. Return ONLY valid JSON matching the schema in the user prompt.';
+
+/** Build the detect-patterns system prompt with optional work identity.
+ *  When paradigm is set, sharpens the prompt to detect patterns WITHIN that
+ *  paradigm rather than from scratch. */
+export function buildDetectPatternsSystem(work?: WorkIdentity): string {
+  if (!work?.paradigm) return DETECT_PATTERNS_SYSTEM;
+  return `${composeAnalystIdentity(work)} You diagnose THIS work's patterns and anti-patterns — concrete commandments that encourage variety and prevent stagnation within the operator-declared paradigm. Patterns are positive directives that unlock fresh territory within this paradigm's idiom; anti-patterns are negative directives that flag staleness specific to this paradigm. Return ONLY valid JSON matching the schema in the user prompt.`;
+}
 
 import type { NarrativeParadigm } from '@/types/narrative';
 

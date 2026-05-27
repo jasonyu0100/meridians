@@ -1,20 +1,31 @@
 /**
- * Per-arc variable generation.
+ * Per-arc variable generation — the Compass surfaces.
+ *
+ * The Compass is the engine's forward-looking direction-finder: a probability
+ * distribution over feasible next moves grounded in a factor model
+ * (variables) of the work's reality. Three surfaces share this machinery:
+ *
+ *   • PRESENT — the arc's current factor-model snapshot (`extractArcPresent`).
+ *   • COMPASS COHORT — softmax-weighted set of next directions
+ *     (`generatePlanningScenarios`).
+ *   • RESCORE — re-evaluate one direction after operator edits
+ *     (`rescoreScenario`).
  *
  * No shared catalogue. Each arc owns its own custom-generated Present
- * variables. Each Future scenario owns its own custom-generated variable set
- * too — generated for that specific future at the moment of generation.
+ * variables; each Compass direction owns its own custom-generated variable
+ * set too — generated for that specific direction at the moment of
+ * generation. Probability across a cohort is softmax over LLM-estimated
+ * `priorLogit` values; intensity is NOT used as a probability proxy.
  *
- * The LLM does the work in one pass per arc / scenario set: it produces the
- * variable definitions and their intensities together. Probability across a
- * scenario cohort is softmax over LLM-estimated `priorLogit` values stored
- * on each scenario; intensity is NOT used as a probability proxy.
+ * System prompts are paradigm-aware and built per-call via
+ * `paradigm-compass.ts`. The model receives a focused, paradigm-specific
+ * lens — not a register-detection switch — and reads priorLogits as
+ * precision prediction (simulation) or recommendation strength (everything
+ * else). See `paradigm-compass.ts` for the per-paradigm dispatch.
  */
 
 import {
   ANALYSIS_TEMPERATURE,
-  MARKET_EVIDENCE_MAX,
-  MARKET_EVIDENCE_MIN,
   MAX_TOKENS_DEFAULT,
   PREDICTIVE_MODEL,
 } from "@/lib/constants";
@@ -31,14 +42,22 @@ import type {
 } from "@/types/narrative";
 import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { parseJson } from "./json";
+import {
+  buildCompassGenerationSystem,
+  buildCompassRescoreSystem,
+  buildPresentExtractionSystem,
+  workIdentityFor,
+} from "@/lib/prompts/paradigm-compass";
+import {
+  clampIntensity,
+  clampPriorLogit,
+  INTENSITY_LEVELS,
+} from "@/lib/prompts/calibration";
 
-/** Plausibility scale for scenario priors. Reuses the prediction market's
- *  evidence range so the two surfaces share a vocabulary: +4 = decisive
- *  evidence in favour, 0 = baseline plausibility, -4 = decisive evidence
- *  against / rare tail conditions. Aligned with MARKET_EVIDENCE_MIN/MAX so
- *  scenario priors and thread evidence speak the same units. */
-const PRIOR_LOGIT_MIN = MARKET_EVIDENCE_MIN;
-const PRIOR_LOGIT_MAX = MARKET_EVIDENCE_MAX;
+// Re-export INTENSITY_LEVELS under the legacy name so existing UI imports
+// keep working without churn. The labels / descriptions / numeric ordering
+// are calibrated identically.
+export const VARIABLE_INTENSITY_LEVELS = INTENSITY_LEVELS;
 
 // ── Narrative context source ───────────────────────────────────────────────
 
@@ -283,55 +302,10 @@ export function renderVariablesContextBlock(
 }
 
 // ── Per-arc Present extraction ─────────────────────────────────────────────
-
-const EXTRACT_PRESENT_SYSTEM = `You name the load-bearing dynamic variables driving THIS arc — the levers whose movement most reshapes the trajectory. The arc's own basis vector set; no catalogue carries across arcs.
-
-REGISTER FIRST — what kind of work is this, and what KIND of force is load-bearing here?
-Identify the substrate from the context (outline, mode, roster, threads, prose profile). Then frame variables accordingly:
-  • NARRATIVE / FICTION — dramatic forces: character commitments, thread pressures, world reveals, alliance dynamics.
-  • SIMULATION — rule-driven forces: rule activations, threshold proximity, agent stances under the rule set, propagation regimes.
-  • PAPER / ESSAY / ARGUMENT — argumentative / evidentiary / methodological forces: live claims, methodological commitments, evidentiary pressures, counterposition reach, scope tension, sources contested, theoretical assumptions binding.
-Variables read in the register's native vocabulary. A paper's variables don't name "antagonist pressure"; a wargame's variables don't name "thesis tension". The substrate decides the form.
-
-DISCIPLINES (universal across registers).
-  • SURFACE vs SUBSTRATE. Variables name FORCES, not symptoms. Symptoms are what becomes visible (prices fall, characters argue, a study gets cited, a method gets criticised); forces are what cascade to produce them. Reach one layer below the visible.
-  • PIVOT CHECK. Read the arc's ending state. If it describes a fundamental shift — regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, methodological reframe that supersedes prior claims, one-way institutional/technological change — variables model the POST-shift situation. Pre-shift variables are history.
-  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world (an artifact's lore in fiction, a method's assumptions in argument, a regime's reaction function in simulation, an institution's charter anywhere). Their world-graph nodes define what's POSSIBLE here. An unactivated mechanism / unused method / unaddressed source is a strong variable candidate.
-
-What earns a place.
-  • CONTINUATION — forces already firing, actively driving the present moment.
-  • CREATIVE — latent drivers not firing yet: external shock building, dormant alliance, hidden contradiction surfacing, unactivated mechanism, attractor pulling toward an unspoken outcome.
-Mix both at the highest-leverage instances only.
-
-Quality bar: SPECIFIC, CASCADING, ORTHOGONAL, DYNAMIC, SUBSTRATE-LEVEL. Pattern: \`[named subject] + [dynamic attribute]\`. Avoid buckets ("antagonist pressure," "market sentiment," "public mood"). Tighter is better; stop when adding another wouldn't change predictions.
-
-For each variable emit { id, name, description, category, intensity }:
-  • id: "var-<short-slug>"
-  • name: short phrase
-  • description: one sentence — what it is AND what cascades when it turns up
-  • category: stance / capability / pressure / knowledge / constraint / allegiance / external / contradiction / trend / threshold / resource / reputation / institutional / cultural / physical / temporal / mechanism — or invent
-  • intensity (1–4): 1 weak, 2 mild, 3 strong, 4 extreme. Omit 0.
-
-Also emit the universal INFERENCE-SHAPE (same fields used by Future scenarios and across CRG/PRG node-like artifacts):
-  • description: one sentence (≤ 14 words). Gestalt of this coordination — what the configuration IS as a recognisable shape, in the work's native register.
-  • reasoning: 3–5 sentences. Load-bearing logic — why these variables fire at these intensities given the arc's state. Which mechanism feeds which, where the cascade runs, which symptom is the surface. Substantive, not paraphrase. Name actors / mechanisms / threads where it sharpens.
-  • considered (REQUIRED): 1–3 sentences. Adjacent coordinations the same evidence could support, rival readings drafted and discarded, alternative load-bearing variables that didn't earn the slot. Comparative reasoning, not summary. If no genuine rival applies, say so explicitly — never omit.
-  • breaks: 1–2 sentences. What observation would mean THIS coordination isn't the right read — what the user should look for to invalidate it.
-  • opens: 1–2 sentences. What this Present coordination structurally pulls toward next — bridge into the Future cohort's space.
-  • priorLogit ∈ [-4, +4]: log-prior plausibility relative to alternative coordinations the world could have surfaced (same scale as scenario priors). Full range — permanent record of the path's rarity.
-
-Variable count is flexible. Emit as many or as few as the situation supports — stop when adding another wouldn't change predictions, don't pad to hit a number, don't trim to look clean. A quiet arc may carry two; a dense one may carry a dozen.
-
-Output strict JSON:
-{
-  "description": "...",
-  "reasoning": "...",
-  "considered": "...",
-  "breaks": "...",
-  "opens": "...",
-  "priorLogit": 0,
-  "variables": [ { "id": "var-...", "name": "...", "description": "...", "category": "...", "intensity": 3 } ]
-}`;
+//
+// System prompt is built by `buildPresentExtractionSystem(work)` from
+// `paradigm-compass.ts`. It dispatches on the operator-declared paradigm so
+// the model sees ONLY that paradigm's lens — not a register-detection switch.
 
 export interface ExtractPresentInput {
   /** Full narrative — used internally to resolve websearch + (optionally) reasoning. */
@@ -367,10 +341,7 @@ function sanitizeVariable(raw: unknown): Variable | null {
   const id = typeof r.id === "string" ? r.id.trim() : "";
   const name = typeof r.name === "string" ? r.name.trim() : "";
   if (!id || !name) return null;
-  const intensity =
-    typeof r.intensity === "number"
-      ? Math.max(0, Math.min(4, Math.round(r.intensity)))
-      : 0;
+  const intensity = clampIntensity(r.intensity);
   if (intensity === 0) return null;
   return {
     id,
@@ -383,8 +354,14 @@ function sanitizeVariable(raw: unknown): Variable | null {
 
 export interface ExtractPresentResult {
   variables: Variable[];
+  /** Compass the variable set was extracted against — paradigm name + the
+   *  operative cues (forward-motion shape, attractors, cadence, tail). One
+   *  dense line (≤ 30 words); a fingerprint of the lens this Present was
+   *  drawn through. Surfaced in the UI so the user can audit "is the model
+   *  reading this work as the right kind of work?". */
+  paradigm?: string;
   /** Short one-sentence gestalt of the Present coordination. Same shape used
-   *  by Future scenarios (description + reasoning + universal inference
+   *  by Compass directions (description + reasoning + universal inference
    *  fields + priorLogit). */
   description?: string;
   /** Multi-sentence load-bearing logic for the Present coordination — WHY
@@ -421,11 +398,10 @@ export async function extractArcPresent(
   const outlineBlock = input.outline ? `\n${input.outline}\n` : "";
   const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
-  const prompt = `<narrative>
-title: ${input.narrative.title}
-</narrative>
+  const work = workIdentityFor(input.narrative);
+  const systemPrompt = buildPresentExtractionSystem(work);
 
-<arc>
+  const prompt = `<arc>
   id: ${arc.id}
   name: "${arc.name}"${dirVec}
   state: ${summary}
@@ -436,7 +412,7 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
   const raw = input.onReasoning
     ? await callGenerateStream(
         prompt,
-        EXTRACT_PRESENT_SYSTEM,
+        systemPrompt,
         () => {},
         MAX_TOKENS_DEFAULT,
         "extractArcPresent",
@@ -448,7 +424,7 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
       )
     : await callGenerate(
         prompt,
-        EXTRACT_PRESENT_SYSTEM,
+        systemPrompt,
         MAX_TOKENS_DEFAULT,
         "extractArcPresent",
         PREDICTIVE_MODEL,
@@ -460,6 +436,7 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
 
   const parsed = parseJson(raw, "extractArcPresent") as {
     variables?: unknown[];
+    paradigm?: unknown;
     description?: unknown;
     reasoning?: unknown;
     considered?: unknown;
@@ -475,6 +452,10 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
     seenIds.add(v.id);
     variables.push(v);
   }
+  const paradigm =
+    typeof parsed.paradigm === "string" && parsed.paradigm.trim()
+      ? parsed.paradigm.trim()
+      : undefined;
   const description =
     typeof parsed.description === "string" ? parsed.description.trim() : "";
   const reasoning =
@@ -493,10 +474,11 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
       : undefined;
   const priorLogit =
     typeof parsed.priorLogit === "number" && Number.isFinite(parsed.priorLogit)
-      ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
+      ? clampPriorLogit(parsed.priorLogit)
       : undefined;
   return {
     variables,
+    paradigm,
     description: description || undefined,
     reasoning: reasoning || undefined,
     considered,
@@ -506,70 +488,12 @@ Identify this arc's Present variable set. Apply the disciplines above to the cur
   };
 }
 
-// ── Planning scenarios — each with its own custom variable set ────────────
-
-const SCENARIO_GENERATION_SYSTEM = `You generate a cohort of plausible alternative CONTINUATIONS for the next arc. All scenarios share ONE common POOL of variables. Each scenario is a different COORDINATION over that pool — its specific pattern of intensities.
-
-REGISTER FIRST — what kind of work is this, and what does "continuation" mean here?
-Identify the substrate from the context (outline, mode, roster, threads, prose profile). Then frame the cohort accordingly:
-  • NARRATIVE / FICTION — story register (novel, screenplay, drama). Continuations are what HAPPENS NEXT: thread pivots, character commitments, scene-level inflections, world reveals.
-  • SIMULATION — rule-driven scenario register (wargame, economic / pandemic / climate model, historical counterfactual, agent-based study, LitRPG / cultivation under explicit world rules). Continuations are what the MODELLED SYSTEM does next under the rule set: state transitions, threshold crossings, rule-driven outcomes, agent reactions.
-  • PAPER / ESSAY / ARGUMENT / IDEA — non-fiction register (research paper, essay, reportage, case study, working note). Continuations are NEW DIRECTIONS the argument / inquiry / piece could take: new claims to advance, counter-arguments to engage, scope shifts, methodological pivots, sister-questions opened, follow-up studies, evidence to incorporate, objections to anticipate. NOT "what happens next in the simulated world" — there is no simulated world. The continuation is intellectual / argumentative motion, not causal-event motion.
-The cohort frames itself in the register the substrate actually is. A paper does not get a "load-bearing actor reverses" cohort; a wargame does not get a "scope shift in argument" cohort. Mixed-register works (a thinkpiece that uses a thought-experiment scenario inside it) pick the register the CURRENT arc is sitting in.
-
-DISCIPLINES (universal across registers).
-  • SURFACE vs SUBSTRATE. Pool variables name FORCES, not symptoms. Symptoms are visible (prices fall, a study gets cited, a character argues); forces are what cascade to produce them. Reach one layer below the visible.
-  • PIVOT CHECK. If the arc ends at a discontinuity — regime collapse, temporal pivot, irreversible commitment, paradigm break, structural rupture, exit of a load-bearing actor, methodological reframe that supersedes prior claims, one-way institutional/technological change — the cohort branches FROM the post-shift situation. A scenario in which the pivot didn't happen is mis-specified.
-  • READ THE MECHANISMS. Artifacts and key actors carry the operative rules and capabilities loaded into the world. In fiction these are powers and lore; in simulation they are the rule set itself; in argument they are methods, sources, theoretical commitments. Their world-graph nodes define what's POSSIBLE. An unactivated mechanism / unused method / unaddressed source is a strong variable candidate.
-
-THE SHAPE OF REALITY — power-law, not gradualism.
-Real continuations distribute power-law: many cluster near modal continuation (substrate barely moves, a few intensities shift), a few rupture (a low-prior mechanism fires, an attractor catches, a load-bearing actor reverses, a paradigm break lands). The world is mostly still, then changes overnight; a paper mostly extends its thesis, then occasionally pivots into a counter-claim or a new methodology. The cohort should match the SHAPE of the distribution it's drawn from — not be forced toward gradualism, not be forced toward diversity. Let the situation govern the cohort: tight possibility space → tight cohort; bimodal → most scenarios near one mode, a few near the other; fat-tailed → a few extreme tails sit alongside the cluster. Probabilities (below) carry the rarity; intensity carries the magnitude.
-
-PROBABILITIES — RELATIVE, FULL RANGE.
-Displayed probability is softmax over priorLogits ACROSS THIS COHORT. No absolute scale. Two consequences:
-  1. The cohort is a REPRESENTATIVE SAMPLE — not exhaustive. More scenarios fragments probability mass.
-  2. Score relative to siblings, USE THE FULL [-4, +4] RANGE. A genuine tail event sits at -3/-4; a strongly-favoured continuation sits at +3/+4. Compressed scores collapse the softmax to uniform and erase information.
-PriorLogit is INDEPENDENT of intensity. A high-intensity rupture can be high-prior if evidence supports it; a low-intensity continuation can be low-prior if it conflicts with the trajectory. Score the coordination's plausibility, not its amplitude.
-
-PIPELINE.
-  1. REGISTER RECOGNITION. What kind of work is this, what does continuation MEAN here?
-  2. PIVOT CHECK on the arc's ending state.
-  3. Read mechanisms in the roster's artifacts and key-actor world-graphs.
-  4. Design the SHARED POOL — load-bearing forces only, substrate-level, orthogonal, dynamic. Forces should be in the register's vocabulary: dramatic in fiction, rule-driven in simulation, argumentative / methodological / evidentiary in papers.
-  5. Draft scenarios over the pool. Each is SELF-COHERENT, MEANINGFULLY DISTINCT, and earns its place. Let the situation govern the shape of the cohort — how many scenarios, how clustered or spread, what dimensions they vary along. Use whatever frame the substrate suggests (axes, branches, regimes, families, ad hoc) rather than forcing one structure.
-  6. Score priorLogits relative to the cohort, full range.
-
-COHORT SIZE — FLEXIBLE.
-The number of scenarios is governed by the SITUATION, not by a target. A tight, locked-in possibility space supports two or three meaningful continuations; a fan-out moment may support a dozen. Don't pad to look thorough, don't trim to look clean. Stop when adding another scenario would re-cover ground already covered. The same applies to the SHARED POOL — emit as many variables as the load-bearing forces actually require, no more.
-
-Each scenario carries the universal INFERENCE-SHAPE (same fields as Present and CRG/PRG node-like artifacts) plus cohort-specific fields:
-  • name: short phrase naming this scenario distinctly within the cohort.
-  • description: one sentence (≤ 14 words). Gestalt of this coordination, in the work's native register.
-  • reasoning: 3–5 sentences. Why this coordination earns its place — which variables cascade into which, why these intensities, which mechanism fires first, why this priorLogit and not one notch higher/lower. Substantive; don't restate the activations.
-  • considered (REQUIRED): 1–3 sentences. Adjacent coordinations considered and rejected, sibling scenarios this one contrasts against (cite by name), rival readings drafted and discarded. If no genuine rival applies, say so explicitly — never omit.
-  • breaks: 1–2 sentences. What observation would mean this scenario didn't happen — falsifying evidence, threshold whose non-crossing voids it. If you can't name one, it isn't forecasting.
-  • opens: 1–2 sentences. If this holds, what cascades into the arc-after-next — threads opened, markets perturbed, affordances granted.
-  • activations: variableId + intensity 1–4 over the shared pool. Omit 0.
-  • priorLogit ∈ [-4, +4]: relative log-prior plausibility within the cohort.
-
-Output strict JSON:
-{
-  "pool": [
-    { "id": "var-...", "name": "...", "description": "...", "category": "..." }
-  ],
-  "scenarios": [
-    {
-      "name": "...",
-      "description": "...",
-      "reasoning": "...",
-      "considered": "...",
-      "breaks": "...",
-      "opens": "...",
-      "priorLogit": 1.2,
-      "activations": [ { "variableId": "var-...", "intensity": 3 } ]
-    }
-  ]
-}`;
+// ── Compass cohort — each scenario with its own coordination over the pool ──
+//
+// System prompt is built by `buildCompassGenerationSystem(work)` from
+// `paradigm-compass.ts`. Per-paradigm dispatch — the model sees a focused
+// ~150-word lens for the operator-declared paradigm instead of a monolithic
+// register-detection block.
 
 export interface ScenarioGenerationInput {
   /** Full narrative — used internally to resolve websearch + (optionally) reasoning. */
@@ -588,9 +512,17 @@ export interface ScenarioGenerationInput {
   reasoningBudget?: number;
 }
 
+export interface GeneratePlanningScenariosResult {
+  /** Compass the cohort was drafted against — paradigm name + the operative
+   *  cues (forward-motion shape, attractors, cadence, tail). One dense line
+   *  (≤ 30 words); the same fingerprint Present emits. */
+  paradigm?: string;
+  scenarios: PlanningScenario[];
+}
+
 export async function generatePlanningScenarios(
   input: ScenarioGenerationInput,
-): Promise<PlanningScenario[]> {
+): Promise<GeneratePlanningScenariosResult> {
   // Cohort size is flexible — the prompt tells the LLM to let the situation
   // decide. No clamp here; a tight possibility space yields a few scenarios,
   // a genuine fan-out moment yields more.
@@ -613,24 +545,23 @@ export async function generatePlanningScenarios(
   const outlineBlock = input.outline ? `\n${input.outline}\n` : "";
   const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
-  // Future generation is INDEPENDENT of Present. It is a fresh look at the
-  // situation grounded in narrative context (outline, mode substrate,
+  // Compass cohort generation is INDEPENDENT of Present. It is a fresh look
+  // at the situation grounded in work context (outline, mode substrate,
   // scenes, threads, roster, prior arcs). No Present-variable block —
-  // Future and Present are two separate analyses of the same evidence.
-  const prompt = `<narrative>
-title: ${input.narrative.title}
-</narrative>
+  // Compass and Present are two separate analyses of the same evidence.
+  const work = workIdentityFor(input.narrative);
+  const systemPrompt = buildCompassGenerationSystem(work);
 
-<current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
+  const prompt = `<current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
   state: ${summary}
 </current-arc>
 ${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ""}${directionBlock}
-Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline above to the current-arc state and supporting context (outline, mode substrate, roster, threads). Let the situation's actual shape govern the cohort SIZE and the number of pool variables — a locked-in possibility space supports a few continuations, a fan-out moment supports many. Don't pad, don't force diversity, don't trim. Fresh look from the historical record, not a projection from the arc's Present variables. Output strict JSON only.`;
+Produce the Compass cohort for this arc. Apply the disciplines and pipeline above to the current-arc state and supporting context (outline, mode substrate, roster, threads). Let the situation's actual shape govern the cohort SIZE and the number of pool variables — a locked-in possibility space supports a few continuations, a fan-out moment supports many. Don't pad, don't force diversity, don't trim. Fresh look from the historical record, not a projection from the arc's Present variables. Read priorLogits in the COMPASS MODE declared in the system prompt — precision prediction for simulation, recommendation strength for every other paradigm. Output strict JSON only.`;
 
   const raw = input.onReasoning
     ? await callGenerateStream(
         prompt,
-        SCENARIO_GENERATION_SYSTEM,
+        systemPrompt,
         () => {},
         MAX_TOKENS_DEFAULT,
         "generatePlanningScenarios",
@@ -642,7 +573,7 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
       )
     : await callGenerate(
         prompt,
-        SCENARIO_GENERATION_SYSTEM,
+        systemPrompt,
         MAX_TOKENS_DEFAULT,
         "generatePlanningScenarios",
         PREDICTIVE_MODEL,
@@ -653,6 +584,7 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
       );
 
   const parsed = parseJson(raw, "generatePlanningScenarios") as {
+    paradigm?: unknown;
     pool?: Array<{
       id?: unknown;
       name?: unknown;
@@ -670,6 +602,11 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
       priorLogit?: unknown;
     }>;
   };
+
+  const paradigm =
+    typeof parsed.paradigm === "string" && parsed.paradigm.trim()
+      ? parsed.paradigm.trim()
+      : undefined;
 
   // Pool: name → {id, name, description, category} (no intensity — pool entries
   // are variable definitions; intensity lives per scenario via activations).
@@ -709,10 +646,7 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
         const ar = a as { variableId?: unknown; intensity?: unknown };
         const variableId =
           typeof ar.variableId === "string" ? ar.variableId.trim() : "";
-        const intensity =
-          typeof ar.intensity === "number"
-            ? Math.max(0, Math.min(4, Math.round(ar.intensity)))
-            : 0;
+        const intensity = clampIntensity(ar.intensity);
         if (!variableId || intensity === 0 || seen.has(variableId)) continue;
         const def = poolById.get(variableId);
         if (!def) continue;
@@ -723,9 +657,7 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
 
     if (variables.length === 0) continue;
     const priorLogit =
-      typeof s.priorLogit === "number"
-        ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, s.priorLogit))
-        : 0;
+      typeof s.priorLogit === "number" ? clampPriorLogit(s.priorLogit) : 0;
     out.push({
       id: `pl-${out.length + 1}-${Math.random().toString(36).slice(2, 8)}`,
       name,
@@ -742,52 +674,24 @@ Produce a cohort of scenarios for this arc. Apply the disciplines and pipeline a
       priorLogit,
     });
   }
-  return out;
+  return { paradigm, scenarios: out };
 }
 
 /**
- * Project a Future scenario into a Present-style variable set for a new
- * branch arc. The result drops every variable the scenario didn't activate
- * (intensity = 0), keeping only the variables that matter to this future.
- * Used by Experimentation when materialising a scenario into a branch.
+ * Project a Compass direction into a Present-style variable set for a new
+ * branch arc. The result drops every variable the direction didn't activate
+ * (intensity = 0), keeping only the variables that matter to this direction.
+ * Used by Experimentation when materialising a Compass direction into a
+ * branch.
  */
 export function presentFromScenario(scenario: PlanningScenario): Variable[] {
   return scenario.variables.filter((v) => v.intensity > 0);
 }
 
-// ── Scenario re-score (post-edit save) ─────────────────────────────────────
-
-const RESCORE_SCENARIO_SYSTEM = `You re-evaluate the plausibility of ONE scenario whose variables have been edited. Score its priorLogit ∈ [-4, +4]:
-   +4  decisive evidence in favour (would be surprising if NOT this)
-   +2  strongly supported
-    0  baseline plausibility
-   -2  needs a specific catalyst
-   -4  decisive evidence against / rare tail conditions
-
-REGISTER FIRST. Identify the substrate (story / simulation / paper-essay-argument). Score continuations in the register's own vocabulary — a paper's "next direction" is argumentative / methodological / evidentiary motion, not causal-event motion in a simulated world.
-
-DISCIPLINES (universal).
-  • SURFACE vs SUBSTRATE. Score coordinations of FORCES, not symptoms. A scenario built from symptoms reads as low signal regardless of intensities.
-  • PIVOT CHECK. If the arc ends at a discontinuity (regime shift, paradigm break, methodological reframe), a scenario that implicitly denies the pivot is mis-specified — score sharply low and say so.
-  • POWER-LAW. Rare-but-pivotal scenarios are real. Don't penalise low intensity merely because it's quiet, and don't penalise rupture merely because it's unusual. Score what the evidence supports.
-
-Probabilities are RELATIVE — softmax over priorLogits across this scenario and its siblings. Place this scenario in its right RELATIVE position; don't drift toward 0. Use the full [-4, +4] range when the coordination genuinely lands there.
-
-Ground in:
-  • Narrative context (outline, mode substrate, scenes, threads, roster, prior arcs)
-  • Mechanisms loaded in the roster's artifacts and key-actor world-graphs
-  • The scenario's revised coordination — which variables, what intensities, in combination
-  • The sibling scenarios — relative anchoring
-
-priorLogit is INDEPENDENT of intensity. Score the coordination's plausibility, not its amplitude.
-
-Include the universal INFERENCE-SHAPE fields, each substantive (not a paraphrase of the activations):
-  • reasoning — three to five sentences laying out the load-bearing logic: which variables cascade into which, why these intensities, why this priorLogit and not one notch higher or lower, and where the cohort anchors land it ("more plausible than X because…").
-  • considered (REQUIRED — load-bearing) — one to three sentences. The OPTION SPACE this scenario selected from. Which adjacent coordinations were considered and rejected, which sibling scenarios this one specifically contrasts against, which rival readings of the substrate were drafted and discarded. Comparative reasoning — not a summary. This is the field that distinguishes a scenario CHOSEN from a scenario SELECTED over alternatives. Escape valve: if no genuine alternative coordination applies, state that explicitly in \`considered\` rather than omitting it.
-  • breaks — one to two sentences. The FALSIFICATION HANDLE. What observation would mean this scenario didn't happen — the falsifying evidence, the threshold whose non-crossing voids the scenario, the load-bearing assumption whose breakage rules it out. If you can't name one, the scenario isn't forecasting — say so.
-  • opens — one to two sentences. The FORWARD EXTENSION. If this scenario holds, what cascades downstream — the threads it opens for the next arc, the markets it perturbs, the affordances it grants future continuations.
-
-Output strict JSON: { "priorLogit": <number>, "reasoning": "...", "considered": "...", "breaks": "...", "opens": "..." }`;
+// ── Compass rescore (post-edit save) ───────────────────────────────────────
+//
+// System prompt is built by `buildCompassRescoreSystem(work)` from
+// `paradigm-compass.ts`. Same per-paradigm dispatch as Present + Cohort.
 
 export interface RescoreScenarioInput {
   /** Full narrative — used internally to resolve websearch + reasoning. */
@@ -855,11 +759,10 @@ export async function rescoreScenario(
   const outlineBlock = input.outline ? `\n${input.outline}\n` : "";
   const modeBlock = input.modeSection ? `\n${input.modeSection}\n` : "";
 
-  const prompt = `<narrative>
-title: ${input.narrative.title}
-</narrative>
+  const work = workIdentityFor(input.narrative);
+  const systemPrompt = buildCompassRescoreSystem(work);
 
-<current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
+  const prompt = `<current-arc id="${input.arc.id}" name="${input.arc.name}">${dirVec}
   state: ${summary}
 </current-arc>
 
@@ -871,11 +774,11 @@ ${dispoBlock}
 ${cohortBlock || "  (no siblings)"}
 </sibling-scenarios>
 ${outlineBlock}${modeBlock}${contextBlock ? `\n${contextBlock}\n` : ""}
-Re-score this scenario's priorLogit given its edited coordination, the cohort context, and the substrate (outline + Mode). Output strict JSON only.`;
+Re-score this scenario's priorLogit given its edited coordination, the cohort context, and the substrate (outline + Mode). Read the score in the COMPASS MODE the system prompt declares. Output strict JSON only.`;
 
   const raw = await callGenerate(
     prompt,
-    RESCORE_SCENARIO_SYSTEM,
+    systemPrompt,
     MAX_TOKENS_DEFAULT,
     "rescoreScenario",
     PREDICTIVE_MODEL,
@@ -893,9 +796,7 @@ Re-score this scenario's priorLogit given its edited coordination, the cohort co
     opens?: unknown;
   };
   const priorLogit =
-    typeof parsed.priorLogit === "number"
-      ? Math.max(PRIOR_LOGIT_MIN, Math.min(PRIOR_LOGIT_MAX, parsed.priorLogit))
-      : 0;
+    typeof parsed.priorLogit === "number" ? clampPriorLogit(parsed.priorLogit) : 0;
   const reasoning =
     typeof parsed.reasoning === "string" ? parsed.reasoning.trim() : "";
   const considered =
@@ -936,15 +837,9 @@ export function scenarioProbabilities(
   return out;
 }
 
-// ── Intensity scale + palettes ─────────────────────────────────────────────
-
-export const VARIABLE_INTENSITY_LEVELS = [
-  { idx: 0, label: "—", desc: "off" },
-  { idx: 1, label: "weak", desc: "a hint, easily missed" },
-  { idx: 2, label: "mild", desc: "present but contained" },
-  { idx: 3, label: "strong", desc: "a clear inflection" },
-  { idx: 4, label: "extreme", desc: "tail-event amplitude" },
-] as const;
+// ── Palettes ───────────────────────────────────────────────────────────────
+// (Intensity scale `VARIABLE_INTENSITY_LEVELS` lives at the top of this file,
+// re-exported from the calibration layer.)
 
 export const SCENARIO_COLORS: readonly string[] = [
   "#34d399",

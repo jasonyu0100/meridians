@@ -1,18 +1,9 @@
 /**
- * Arc-direction and narrative-direction prompts — generated when the user asks
- * for a one-arc next-step suggestion or a multi-arc trajectory across the
- * whole narrative. Register-agnostic: works for fiction, non-fiction (memoir,
- * essay, reportage, research), and simulation (rule-driven modelling of
- * real-life events) alike. In simulation register, "direction" is set by
- * initial conditions and the trajectories the rule set forces, not by
- * authorial pull — surface those constraints rather than overriding them.
+ * Arc-direction and narrative-direction USER prompts — generated when the user
+ * asks for a one-arc next-step suggestion or a multi-arc trajectory across the
+ * whole work. The matching SYSTEM prompts live in `paradigm-analyst.ts` and
+ * dispatch on paradigm.
  */
-
-export const ARC_DIRECTION_SYSTEM =
-  'You are an editor proposing the next arc for a long-form work. The work may be a narrative (fiction or non-fiction), a rule-driven simulation, an essay, a panel session, a typology, an adversarial contest, or a chronicled record — read the paradigm and propose a direction whose SHAPE fits that paradigm (a typology\'s next "arc" is a new section of entries or sub-classification; a contest\'s next "arc" is the next phase of moves or the next axis to contest; a chronicle\'s next "arc" is the next time window at the declared velocity). Recommend a tight direction grounded in unresolved threads, entity tensions, accumulated momentum, or — for non-narrative paradigms — the next claim to argue, classification to articulate, move to make, or period to chronicle. Use entity NAMES, never raw IDs. Return ONLY valid JSON matching the schema in the user prompt.';
-
-export const NARRATIVE_DIRECTION_SYSTEM =
-  'You are an editor planning a multi-arc trajectory for a long-form work. The work may be a narrative, a simulation, an essay, a panel, a typology, a contest, or a chronicle — read the paradigm and propose a macro-direction whose shape fits it. Read the full work state and propose the high-level vision that should guide the next several arcs. Use entity NAMES, never raw IDs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 export function buildSuggestArcDirectionPrompt(args: { narrativeContext: string }): string {
   return `<inputs>

@@ -19,8 +19,8 @@ export {
 } from "./sequential-path";
 export {
   buildArcReasoningGraphPrompt,
-  ARC_REASONING_GRAPH_SYSTEM,
-  COORDINATION_PLAN_SYSTEM,
+  buildArcReasoningGraphSystem,
+  buildCoordinationPlanSystem,
 } from "./arc-graph";
 export type {
   ArcReasoningGraphArgs,

@@ -1,11 +1,10 @@
 /**
- * World expansion prompt — adds entities (characters, locations, artifacts),
- * threads, and system rules to an existing narrative. Heavily templated with
- * size, strategy, source-text, entity-filter, and computed metrics.
+ * World expansion USER prompt — adds entities (characters, locations,
+ * artifacts), threads, and system rules to an existing work. Heavily templated
+ * with size, strategy, source-text, entity-filter, and computed metrics. The
+ * matching SYSTEM prompt lives in `paradigm-analyst.ts` and dispatches on
+ * paradigm.
  */
-
-export const EXPAND_WORLD_SYSTEM =
-  'You are extending an established work. Read the paradigm-shape block: the work may be a populated narrative (fiction or non-fiction), a rule-governed simulation, an essay\'s author + interlocutors, a panel\'s named cast, an atlas typology, an adversarial contest, or a chronicled record — and the extension MUST fit the shape (an atlas extends by adding entries / taxa / cross-references, not by adding characters with arcs; a debate extends by adding moves, axes, or — at scope shifts — new contestants, not by adding side-characters with interiority; a record extends by adding chronicle entries and tracked subjects, not by inventing forward-time events). Honour the directive, the strategy, and the size budget; weave new entities into the existing fabric through whatever relations the paradigm carries (relationships, location hierarchies, shared threads in narrative shapes; cross-references and classification edges in typological shapes; participation in moves for contest shapes; appearance in entries for chronicle shapes). Match the work\'s naming conventions and register. Initialize every new entity (character, location, artifact) with at least one world node, and every new thread with a setup threadDelta. Return ONLY valid JSON matching the schema in the user prompt.';
 
 import { PROMPT_ENTITY_INTEGRATION } from '../entities/integration';
 import { modePriorityEntry } from '../mode/application';

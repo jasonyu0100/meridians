@@ -11,13 +11,16 @@ import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSyste
 import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/attribution';
 import { callGenerate, callGenerateStream } from './api';
 import {
-  ARC_DIRECTION_SYSTEM,
-  NARRATIVE_DIRECTION_SYSTEM,
-  EXPANSION_SUGGEST_SYSTEM,
-  EXPAND_WORLD_SYSTEM,
   GENERATE_NARRATIVE_SYSTEM,
-  DETECT_PATTERNS_SYSTEM,
+  buildDetectPatternsSystem,
 } from '@/lib/prompts/world';
+import {
+  buildArcDirectionSystem,
+  buildNarrativeDirectionSystem,
+  buildExpansionSuggestSystem,
+  buildExpandWorldSystem,
+  workIdentityFor,
+} from '@/lib/prompts/paradigm-analyst';
 import { buildActiveModeSection } from './mode-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
@@ -144,7 +147,7 @@ export async function suggestArcDirection(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, ARC_DIRECTION_SYSTEM, undefined, 'suggestDirection', undefined, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildArcDirectionSystem(workIdentityFor(narrative)), undefined, 'suggestDirection', undefined, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'suggestDirection') as {
     arcName?: string; direction?: string; sceneSuggestion?: string; suggestedSceneCount?: number;
   };
@@ -168,7 +171,7 @@ export async function suggestAutoDirection(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, NARRATIVE_DIRECTION_SYSTEM, undefined, 'suggestStoryDirection', undefined, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildNarrativeDirectionSystem(workIdentityFor(narrative)), undefined, 'suggestStoryDirection', undefined, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'suggestStoryDirection') as { direction?: string };
   return parsed.direction ?? '';
 }
@@ -370,7 +373,7 @@ export async function suggestWorldExpansion(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, EXPANSION_SUGGEST_SYSTEM, undefined, 'suggestWorldExpansion', undefined, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildExpansionSuggestSystem(workIdentityFor(narrative)), undefined, 'suggestWorldExpansion', undefined, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'suggestWorldExpansion') as { suggestion: string };
   return parsed.suggestion;
 }
@@ -489,9 +492,10 @@ ${m.recommendation === 'depth' ? EXPANSION_STRATEGY_PROMPTS.depth : m.recommenda
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
+  const expandSystem = buildExpandWorldSystem(workIdentityFor(narrative));
   const raw = onReasoning
-    ? await callGenerateStream(prompt, EXPAND_WORLD_SYSTEM, () => {}, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
-    : await callGenerate(prompt, EXPAND_WORLD_SYSTEM, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+    ? await callGenerateStream(prompt, expandSystem, () => {}, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(prompt, expandSystem, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = parseJson(raw, 'expandWorld') as any;
 
@@ -1125,9 +1129,11 @@ export async function detectPatterns(
     .map((s, i) => `${i + 1}. ${s.summary || 'Untitled scene'}`)
     .join('\n');
 
-  const existingPatterns = narrative.patterns?.join('\n- ') || 'None';
-  const existingAntiPatterns = narrative.antiPatterns?.join('\n- ') || 'None';
-
+  // No `existing-patterns` block — detection is a FRESH read of the work
+  // each pass. Feeding the prior result back biases the next derivation
+  // toward whatever the model said last time instead of letting it look at
+  // the substrate again. (Operator-declared paradigm/genre/subgenre travel
+  // through the system prompt, which is calibrated identity, not a result.)
   const prompt = buildDetectPatternsPrompt({
     narrativeContext: ctx,
     threadSummary,
@@ -1135,17 +1141,16 @@ export async function detectPatterns(
     systemSummary,
     sceneSummaries,
     proseSamples,
-    existingPatterns,
-    existingAntiPatterns,
   });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
+  const detectSystem = buildDetectPatternsSystem(workIdentityFor(narrative));
 
   const raw = onToken
     ? await callGenerateStream(
         prompt,
-        DETECT_PATTERNS_SYSTEM,
+        detectSystem,
         () => {},
         undefined,
         'detectPatterns',
@@ -1157,7 +1162,7 @@ export async function detectPatterns(
       )
     : await callGenerate(
         prompt,
-        DETECT_PATTERNS_SYSTEM,
+        detectSystem,
         undefined,
         'detectPatterns',
         undefined,

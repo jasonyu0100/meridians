@@ -1321,7 +1321,17 @@ async function reverseEngineerScenePlanOnce(
   const chunks = splitIntoWordChunks(cleanedProse);
   const chunksJson = JSON.stringify(chunks.map((c: string, i: number) => ({ index: i, text: c })));
 
-  const systemPrompt = buildBeatAnalystSystemPrompt(chunks.length);
+  const systemPrompt = buildBeatAnalystSystemPrompt(
+    chunks.length,
+    narrative
+      ? {
+          title: narrative.title,
+          paradigm: narrative.paradigm,
+          genre: narrative.genre,
+          subgenre: narrative.subgenre,
+        }
+      : undefined,
+  );
 
   const prompt = buildBeatAnalystUserPrompt({
     summary,

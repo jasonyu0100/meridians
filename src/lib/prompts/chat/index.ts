@@ -5,7 +5,7 @@
  *   - Personas: in-character speakers (Fate / System / World force-personas,
  *     plus per-entity character / location / artifact personas).
  *   - Contexts: the six contextMode prompts (scene / outline / narrative /
- *     future / investigation / mode) that frame the assistant with the
+ *     compass / investigation / mode) that frame the assistant with the
  *     right data block for the conversation.
  *
  * Every prompt is wrapped in a `<chat-system>` root with structured XML
@@ -28,7 +28,7 @@ export {
   buildSceneChatPrompt,
   buildOutlineChatPrompt,
   buildNarrativeChatPrompt,
-  buildFutureChatPrompt,
+  buildCompassChatPrompt,
   buildInvestigationChatPrompt,
   buildModeChatPrompt,
   buildGameTheoryChatPrompt,

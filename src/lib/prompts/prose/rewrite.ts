@@ -3,6 +3,10 @@
  * separate "changelog" pass that summarises what changed.
  */
 
+import type { WorkIdentity } from '../paradigm-roles';
+import { composeWorkIdentity } from '../paradigm-roles';
+import { PRINCIPLE_PARADIGM_FIDELITY } from '../principles';
+
 export type RewriteSystemPromptArgs = {
   formatSystemRole: string;
   formatRules: string;
@@ -13,11 +17,21 @@ export type RewriteSystemPromptArgs = {
   worldSummary: string;
   /** When streaming the rewrite as raw prose, no JSON disclaimer is emitted. */
   streaming: boolean;
+  /** Operator-declared work identity. When paradigm is known, the rewrite
+   *  honours the paradigm's criteria explicitly. */
+  work?: WorkIdentity;
 };
 
 export function buildRewriteSystemPrompt(args: RewriteSystemPromptArgs): string {
-  const { formatSystemRole, streaming } = args;
-  return `${formatSystemRole} Your task is to REWRITE scene prose based on the provided analysis. Follow the prose profile, format rules, author voice, and tone supplied in the user prompt.${streaming ? '' : ' Return ONLY valid JSON — no markdown, no commentary.'}`;
+  const { formatSystemRole, streaming, work } = args;
+  const identityLine = work?.title ? `${composeWorkIdentity({
+    title: work.title,
+    paradigm: work.paradigm,
+    genre: work.genre,
+    subgenre: work.subgenre,
+  })} ` : '';
+  const fidelity = work?.paradigm ? `\n\n${PRINCIPLE_PARADIGM_FIDELITY}` : '';
+  return `${identityLine}${formatSystemRole} Your task is to REWRITE scene prose based on the provided analysis. Follow the prose profile, format rules, author voice, and tone supplied in the user prompt.${streaming ? '' : ' Return ONLY valid JSON — no markdown, no commentary.'}${fidelity}`;
 }
 
 export function buildRewriteUserPrompt(args: {

@@ -51,9 +51,11 @@ export {
 // ── Ingest Prompts ──────────────────────────────────────────────────────────
 export {
   buildIngestProseProfilePrompt,
-  buildDeriveProseProfilePrompt,
+  buildRefineProseProfilePrompt,
+  buildProseSamplePrompt,
   INGEST_PROSE_PROFILE_SYSTEM,
-  DERIVE_PROSE_PROFILE_SYSTEM,
+  REFINE_PROSE_PROFILE_SYSTEM,
+  PROSE_SAMPLE_SYSTEM,
 } from './ingest';
 
 // ── Premise Prompts ─────────────────────────────────────────────────────────
@@ -154,14 +156,12 @@ export type {
 
 // ── Interview Prompts ───────────────────────────────────────────────────────
 export {
-  INTERVIEW_GEN_SYSTEM,
   INTERVIEW_FRAME_FALLBACK,
   buildInterviewUserPrompt,
 } from './interviews';
 
 // ── Search Synthesis Prompts ────────────────────────────────────────────────
 export {
-  SEARCH_SYNTHESIS_SYSTEM,
   buildSearchSynthesisPrompt,
 } from './search';
 
@@ -179,5 +179,19 @@ export {
   buildArtifactPersona,
   buildSurveyUserPrompt,
   buildSurveyProposalUserPrompt,
-  SURVEY_GEN_SYSTEM,
 } from './surveys';
+
+// ── Paradigm-aware analyst system prompts ───────────────────────────────────
+export {
+  buildBranchChatSystem,
+  buildSearchSynthesisSystem,
+  buildSurveyGenSystem,
+  buildInterviewGenSystem,
+  buildMarketBriefingSystem,
+  buildArcDirectionSystem,
+  buildNarrativeDirectionSystem,
+  buildExpandWorldSystem,
+  buildExpansionSuggestSystem,
+  workIdentityFor,
+  type WorkIdentity,
+} from './paradigm-analyst';

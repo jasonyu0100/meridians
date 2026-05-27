@@ -193,10 +193,10 @@ export default function SeriesPage() {
   // at the lowest divider line and the wash only spills downward.
   const hasCanvasLegend = GRAPH_MODES.has(state.graphViewMode);
   const barLightTop = hasCanvasLegend ? 28 : 0;
-  // Variables view (Present/Future) renders its OWN internal topbar with a
+  // Variables view (Present/Compass) renders its OWN internal topbar with a
   // dedicated wash anchored to its bottom edge. Suppress the page-level
   // light there so the two illuminations don't double up.
-  const suppressBarLight = state.graphViewMode === 'present' || state.graphViewMode === 'future';
+  const suppressBarLight = state.graphViewMode === 'present' || state.graphViewMode === 'compass';
 
   return (
     <PropositionClassificationProvider narrative={state.activeNarrative} resolvedKeys={state.resolvedEntryKeys}>

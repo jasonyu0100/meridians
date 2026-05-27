@@ -6,8 +6,8 @@
  * and an overall critique.
  */
 
-export const BRANCH_REVIEW_SYSTEM =
-  'You are an editor reviewing a complete branch of a work from scene summaries only — no prose. The work may be a narrative (fiction or non-fiction), a rule-driven simulation, an essay, a panel session, a typology, an adversarial contest, or a chronicled record. EVALUATE AGAINST THE PARADIGM\'S OWN CRITERIA, not against fiction defaults: for simulation, judge whether outcomes are rule-driven and the stated rule set holds consistently (do not penalise rule-driven what-if for "lacking emotional payoff"); for essay, judge claim chain, evidence weight, and counter-position engagement (do not demand dramatic arc); for panel, judge whether the cast actually disagrees over EXISTING evidence (flag manufactured forward-time events); for atlas, judge typological coverage, cross-references, classification rigour (do not demand resolution); for debate, judge whether moves are attributed, intent-targeted, and rule-scored (flag emotional-throughline narration); for record, judge time-velocity coherence, documentary voice, and gap-marking discipline (do not demand arc resolution within a single entry). Evaluate structure, pacing, repetition, entity development, threads, and theme through the paradigm\'s own logic. Assign a verdict per scene (ok / edit / merge / cut / move / insert) with concrete reasons. Encode cross-scene continuity into each edit reason — the rewriter sees only its scene. Return ONLY valid JSON matching the schema in the user prompt.';
+// System prompt is built per-call by `buildBranchReviewSystem(work)` in
+// `paradigm-review.ts` — case-based on the operator-declared paradigm.
 
 export interface BranchReviewPromptParams {
   title: string;

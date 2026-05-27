@@ -122,14 +122,119 @@ export function composeWorkIdentity(args: {
   subgenre?: string;
 }): string {
   const role = writerRoleFor(args.paradigm);
-  // Genre + subgenre as a concretisation tail: "<subgenre> (<genre>)" when both
-  // present; "<subgenre>" or "<genre>" alone when only one is. The subgenre
-  // carries the strongest trained association, so it leads.
+  return `${role}${workTail(args)}`;
+}
+
+/** Compose the genre/subgenre/title tail used by identity-line builders.
+ *  Empty string when no title is known (early-wizard surfaces). */
+function workTail(args: { title?: string; genre?: string; subgenre?: string }): string {
+  const title = args.title?.trim();
+  if (!title) return '';
   const g = args.genre?.trim();
   const sg = args.subgenre?.trim();
   let tail = '';
   if (sg && g && sg.toLowerCase() !== g.toLowerCase()) tail = ` — ${sg} (${g})`;
   else if (sg) tail = ` — ${sg}`;
   else if (g) tail = ` — ${g}`;
-  return `${role} The work is "${args.title}"${tail}.`;
+  return ` The work is "${title}"${tail}.`;
+}
+
+// ─── Analyst-side machinery ─────────────────────────────────────────────────
+//
+// Mirrors the writer-side helpers above. Where writer roles describe what the
+// engine GENERATES in each paradigm, analyst roles describe what the engine
+// READS / interrogates / compares. Used by analytical surfaces (branch chat,
+// search synthesis, threading, surveys, interviews, direction proposals, world
+// expansion, market briefing) so the model receives a paradigm-native analyst
+// identity rather than a multipurpose "could be anything" preamble.
+
+/** Per-paradigm ANALYST identity. Single-line claim — frames what the analyst
+ *  is reading and what the engine primitives MEAN in this paradigm. */
+export const ANALYST_ROLE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
+  'fiction':     'You analyse a long-form fiction work — invented characters, places, events; threads as the dramatic questions the work is pursuing.',
+  'non-fiction': 'You analyse a long-form non-fiction work — documented people, places, and events anchored to a real record; threads as the historical/biographical questions the work is pursuing.',
+  'simulation':  'You analyse a rule-driven simulation — agents acting under a stated rule set; threads as questions about what the rules force as conditions evolve; outcomes are rule-driven, not authorial.',
+  'essay':       'You analyse an essay — one named author working an argument across sections; threads as the argument-questions being pursued; cited interlocutors are positions engaged, not characters with arcs.',
+  'panel':       'You analyse a panel session — a named cast cognising over existing evidence; threads as the panel\'s shared questions and per-member sub-investigations; events are interpretive, not invented forward-time.',
+  'atlas':       'You analyse a reference typology — entries (specimens, taxa, doctrines, concepts) classified by structural attributes and position; threads, when present, track classification questions, not arcs.',
+  'debate':      'You analyse an adversarial contest — two or more named parties locked in zero-sum stakes under explicit rules; threads as axes of contestation whose outcomes favour one party or the other.',
+  'record':      'You analyse a chronological record — dated entries in a chronicler\'s voice at a declared time velocity; threads as long-running trajectories tracked across entries, not arcs that dramatically resolve.',
+};
+
+/** Convenience: analyst-role identity line. When paradigm is unset, fall back
+ *  to a deliberately neutral identity that names every form. */
+export function analystRoleFor(paradigm: NarrativeParadigm | undefined): string {
+  return paradigm
+    ? ANALYST_ROLE_BY_PARADIGM[paradigm]
+    : 'You analyse a long-form work — fiction, non-fiction, simulation, essay, panel, atlas, debate, or chronicle. Read the source\'s form and adapt vocabulary accordingly; engine primitives (branch, entry, arc, scene, thread, delta, divergence, commitment) stay constant.';
+}
+
+/** Compose the ANALYST identity sentence — analyst role fused with title +
+ *  genre + subgenre. Mirror of composeWorkIdentity for analytical surfaces.
+ *  Title may be omitted (early-wizard analytical calls); the tail simply
+ *  collapses to empty in that case. */
+export function composeAnalystIdentity(args: {
+  title?: string;
+  paradigm?: NarrativeParadigm;
+  genre?: string;
+  subgenre?: string;
+}): string {
+  return `${analystRoleFor(args.paradigm)}${workTail(args)}`;
+}
+
+/** Per-paradigm engine-primitive vocabulary. Re-exported from the
+ *  calibration layer — single source of truth lives in
+ *  `calibration/paradigm-vocab.ts`. */
+export { PARADIGM_VOCABULARY } from './calibration/paradigm-vocab';
+
+/** Identity for a NarrativeState — convenience extractor used at callsites. */
+export type WorkIdentity = {
+  title?: string;
+  paradigm?: NarrativeParadigm;
+  genre?: string;
+  subgenre?: string;
+};
+
+// ─── Compass framing ────────────────────────────────────────────────────────
+//
+// The Compass is the engine's forward-looking surface — a probability
+// distribution over feasible next directions, grounded in a factor model
+// (variables) of the work's reality. The interpretation of those probabilities
+// is paradigm-dependent:
+//
+//   • SIMULATION — PRECISION PREDICTION. The rule set is load-bearing; the
+//     cohort approximates the modelled distribution of outcomes. PriorLogits
+//     are the model's probability assignments. Tail scenarios are tail events.
+//
+//   • EVERY OTHER PARADIGM — RECOMMENDATION. The factor model is editorial /
+//     argumentative / typological / chronicled; the cohort is a curated set
+//     of high-leverage next moves. PriorLogits express how strongly the
+//     paradigm's compass pulls toward each. The cohort is what the engine
+//     thinks the operator SHOULD consider going next, not a forecast of what
+//     will objectively happen.
+//
+// Both interpretations use the same machinery (variables, priorLogits,
+// softmax) — what changes is what the operator should READ from the cohort.
+
+/** Per-paradigm framing of the compass surface. Single sentence; used to
+ *  prefix forward-looking prompts (Compass cohort generation, Present
+ *  extraction, scenario rescore, arc-direction proposal). */
+export const COMPASS_FRAMING_BY_PARADIGM: Record<NarrativeParadigm, string> = {
+  'fiction':     'COMPASS MODE: editorial recommendation. The factor model surfaces narrative drivers; the cohort recommends high-leverage next directions — which dramatic continuations the work\'s register and accumulated commitments most support. PriorLogits express editorial pull, not external probability.',
+  'non-fiction': 'COMPASS MODE: editorial recommendation anchored to the record. The factor model surfaces documented drivers (open questions, contested evidence, under-explored figures); the cohort recommends investigative directions the record actually supports. PriorLogits express how strongly the existing evidence pulls toward each.',
+  'simulation':  'COMPASS MODE: precision prediction. The rule set is load-bearing; the factor model names the rule-driven drivers; the cohort approximates what the modelled system will DO under different conditions. PriorLogits are probability assignments under the model — this is forecasting, not authorial recommendation. Authorial "rescue" is paradigm error.',
+  'essay':       'COMPASS MODE: argumentative recommendation. The factor model surfaces argument drivers (live claims, methodological commitments, counterposition reach); the cohort recommends next argumentative moves — which claim to defend, which counter-position to engage. PriorLogits express argumentative leverage, not external probability.',
+  'panel':       'COMPASS MODE: deliberative recommendation. The factor model surfaces the panel\'s active commitments and dissent vectors; the cohort recommends next cognitive moves — which scenario to model, which dissent to surface, which evidence to weigh. PriorLogits express deliberative leverage, not external probability.',
+  'atlas':       'COMPASS MODE: typological recommendation. The factor model surfaces classification drivers (gaps, edge-cases, cross-reference asymmetries); the cohort recommends next sections of the typology — which entries to add, which sub-classification to articulate. PriorLogits express structural leverage, not external probability.',
+  'debate':      'COMPASS MODE: strategic recommendation. The factor model surfaces contest drivers (axes of contestation, rule activations, leverage shifts); the cohort recommends next moves under the contest\'s rules — which move to make, which axis to target. PriorLogits express strategic leverage AS the contest plays out, not an external forecast.',
+  'record':      'COMPASS MODE: chronicle recommendation. The factor model surfaces trajectory drivers (long-running trends, regime changes, figures whose state is shifting); the cohort recommends what the next entry should record at the declared time velocity. PriorLogits express trajectory pull, not external probability.',
+};
+
+/** Convenience: compass framing line. When paradigm is unset, fall back to a
+ *  framing that names both interpretations and lets the model adapt to the
+ *  source — the same pre-rebrand behaviour. */
+export function compassFramingFor(paradigm: NarrativeParadigm | undefined): string {
+  return paradigm
+    ? COMPASS_FRAMING_BY_PARADIGM[paradigm]
+    : 'COMPASS MODE: paradigm-adaptive. In a simulation register the cohort is precision prediction under the modelled rules; in every other register the cohort is recommendation — high-leverage next directions the work\'s substrate and accumulated commitments pull toward. Match the read to what the work actually is.';
 }

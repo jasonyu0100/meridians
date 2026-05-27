@@ -1,5 +1,5 @@
 // Context builders
-export { narrativeContext, sceneContext, outlineContext, futureContext, hasFutureScenarios, modeContext, hasMode, investigationContext, hasInvestigation, gameTheoryContext, hasGameTheory } from './context';
+export { narrativeContext, sceneContext, outlineContext, compassContext, hasCompassScenarios, modeContext, hasMode, investigationContext, hasInvestigation, gameTheoryContext, hasGameTheory } from './context';
 
 // Scene generation
 export { generateScenes, generateScenePlan, rewriteScenePlan, generateSceneProse, reverseEngineerScenePlan, type CoordinationPlanContext } from './scenes';

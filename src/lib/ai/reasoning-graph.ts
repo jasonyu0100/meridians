@@ -73,9 +73,12 @@ import {
   extractPatternWarningDirectives,
   buildArcReasoningGraphPrompt,
   buildCoordinationPlanPrompt,
-  ARC_REASONING_GRAPH_SYSTEM,
-  COORDINATION_PLAN_SYSTEM,
 } from "@/lib/prompts/reasoning";
+import {
+  buildArcReasoningGraphSystem,
+  buildCoordinationPlanSystem,
+} from "@/lib/prompts/reasoning/arc-graph";
+import { workIdentityFor } from "@/lib/prompts/paradigm-analyst";
 
 // ── Public API re-exports ───────────────────────────────────────────────────
 // Keep existing import paths (`@/lib/ai/reasoning-graph`) working after the
@@ -301,11 +304,12 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
 
   const reasoningBudget = defaultReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
+  const arcReasoningSystem = buildArcReasoningGraphSystem(workIdentityFor(narrative));
 
   const raw = onReasoning
     ? await callGenerateStream(
         prompt,
-        ARC_REASONING_GRAPH_SYSTEM,
+        arcReasoningSystem,
         () => {}, // No token streaming for main output
         undefined,
         "generateReasoningGraph",
@@ -317,7 +321,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
       )
     : await callGenerate(
         prompt,
-        ARC_REASONING_GRAPH_SYSTEM,
+        arcReasoningSystem,
         undefined,
         "generateReasoningGraph",
         PLANNING_MODEL,
@@ -700,11 +704,12 @@ export async function generateCoordinationPlan(
 
   const reasoningBudget = defaultReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
+  const coordSystem = buildCoordinationPlanSystem(workIdentityFor(narrative));
 
   const raw = onReasoning
     ? await callGenerateStream(
         prompt,
-        COORDINATION_PLAN_SYSTEM,
+        coordSystem,
         () => {}, // No token streaming for main output
         undefined,
         "generateCoordinationPlan",
@@ -716,7 +721,7 @@ export async function generateCoordinationPlan(
       )
     : await callGenerate(
         prompt,
-        COORDINATION_PLAN_SYSTEM,
+        coordSystem,
         undefined,
         "generateCoordinationPlan",
         PLANNING_MODEL,

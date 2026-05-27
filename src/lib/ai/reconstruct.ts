@@ -12,10 +12,11 @@ import {
   buildEditScenePrompt,
   buildMergeScenesPrompt,
   buildInsertScenePrompt,
-  RECONSTRUCT_EDIT_SYSTEM,
-  RECONSTRUCT_MERGE_SYSTEM,
-  RECONSTRUCT_INSERT_SYSTEM,
+  buildReconstructEditSystem,
+  buildReconstructMergeSystem,
+  buildReconstructInsertSystem,
 } from '@/lib/prompts/reconstruct';
+import { workIdentityFor } from '@/lib/prompts/paradigm-analyst';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -597,7 +598,7 @@ async function editScene(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, RECONSTRUCT_EDIT_SYSTEM, MAX_TOKENS_SMALL, 'editScene', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildReconstructEditSystem(workIdentityFor(narrative)), MAX_TOKENS_SMALL, 'editScene', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'editScene') as Partial<Scene>;
 
   const edited: Scene = {
@@ -682,7 +683,7 @@ async function mergeScenes(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, RECONSTRUCT_MERGE_SYSTEM, MAX_TOKENS_SMALL, 'mergeScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildReconstructMergeSystem(workIdentityFor(narrative)), MAX_TOKENS_SMALL, 'mergeScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'mergeScenes') as Partial<Scene>;
 
   const merged: Scene = {
@@ -726,7 +727,7 @@ async function insertScene(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
-  const raw = await callGenerate(prompt, RECONSTRUCT_INSERT_SYSTEM, MAX_TOKENS_SMALL, 'insertScene', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  const raw = await callGenerate(prompt, buildReconstructInsertSystem(workIdentityFor(narrative)), MAX_TOKENS_SMALL, 'insertScene', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   const parsed = parseJson(raw, 'insertScene') as Partial<Scene>;
 
   const inserted: Scene = {

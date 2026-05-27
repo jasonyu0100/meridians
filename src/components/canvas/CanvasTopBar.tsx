@@ -66,7 +66,7 @@ const SCOPE_PAIRS: Record<string, { local: GraphViewMode; global: GraphViewMode 
 
 export const GRAPH_MODES = new Set<GraphViewMode>(['spatial', 'overview', 'spark', 'codex', 'pulse', 'threads', 'network']);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'driver' | 'reasoning' | 'market' | 'present' | 'future' | 'mode';
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'driver' | 'reasoning' | 'market' | 'present' | 'compass' | 'mode';
 type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'game';
 const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'game'];
 
@@ -320,7 +320,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'reasoning') return 'reasoning';
   if (graphViewMode === 'market') return 'market';
   if (graphViewMode === 'present') return 'present';
-  if (graphViewMode === 'future') return 'future';
+  if (graphViewMode === 'compass') return 'compass';
   if (graphViewMode === 'mode') return 'mode';
   return 'graph';
 }
@@ -359,10 +359,10 @@ export function CanvasTopBar() {
   const inSceneMode = (SCENE_MODES as string[]).includes(graphViewMode);
   // "Control" supersedes the old "Market" top-level slot — it bundles
   // Opinion (the reflecting-reality market view), Present (the realized
-  // variables disposition), Future (the predictive scenario cohort), and
-  // Phase (the working-machinery graph).
+  // variables disposition), Compass (the cohort of feasible next directions),
+  // and Phase (the working-machinery graph).
   const inControlMode = (
-    graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'future' || graphViewMode === 'mode'
+    graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
   );
   // "Driver" bundles Entry (the daily-ingest queue + note workspace) and
   // Search (vector search over the narrative). Both render through
@@ -375,10 +375,10 @@ export function CanvasTopBar() {
     }
   }, [graphViewMode]);
 
-  const lastControlSubModeRef = useRef<'market' | 'present' | 'future' | 'mode'>('market');
+  const lastControlSubModeRef = useRef<'market' | 'present' | 'compass' | 'mode'>('market');
   useEffect(() => {
     if (
-      graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'future' || graphViewMode === 'mode'
+      graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
     ) {
       lastControlSubModeRef.current = graphViewMode;
     }
@@ -673,7 +673,7 @@ export function CanvasTopBar() {
 
       {/* Divider after the Arc/Scene navigator — only rendered when a
           contextual section actually follows on the left half of the bar.
-          Modes with no inline content (present / future / mode, or graph
+          Modes with no inline content (present / compass / mode, or graph
           mode without a copy-eligible view) skip the divider so the
           navigator doesn't end with a dangling separator. */}
       {narrative && sceneNav.total > 0 && (
@@ -1035,17 +1035,18 @@ export function CanvasTopBar() {
           </>
         )}
 
-        {/* Control sub-mode toggle — Opinion · Present · Future · Mode.
+        {/* Control sub-mode toggle — Opinion · Present · Compass · Mode.
             Opinion reflects reality (markets); Present is the realized
-            variables disposition; Future is the predictive scenario cohort;
-            Mode is the working-machinery graph — a graphical context that
-            permeates downstream planning. */}
+            variables disposition; Compass is the cohort of feasible next
+            directions (precision prediction in simulation, recommendation
+            otherwise); Mode is the working-machinery graph — a graphical
+            context that permeates downstream planning. */}
         {inControlMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
               { mode: 'market' as const, label: 'Opinion' },
               { mode: 'present' as const, label: 'Present' },
-              { mode: 'future' as const, label: 'Future' },
+              { mode: 'compass' as const, label: 'Compass' },
               { mode: 'mode' as const, label: 'Mode' },
             ].map(({ mode, label }, idx) => {
               const isActive = graphViewMode === mode;

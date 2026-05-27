@@ -1,14 +1,15 @@
 /**
- * Experimentation — parallel scenario-driven branch generation.
+ * Experimentation — parallel Compass-driven branch generation.
  *
- * The user has a cohort of Future scenarios on the current arc. Each
- * scenario is a complete coordination of variables at chosen intensities.
- * Experimentation takes that cohort and generates ONE arc continuation
- * per scenario in parallel, with the scenario's variable coordination as
- * primary generation guidance. Each result becomes a candidate Branch in
- * the narrative graph; on commit, every scenario attaches as a sister
- * divergence off the same fork, and the softmax-top scenario's branch
- * becomes active.
+ * The user has a Compass cohort on the current arc — each direction a
+ * complete coordination of variables at chosen intensities, weighted by
+ * priorLogit (read as precision prediction in simulation, recommendation
+ * otherwise). Experimentation takes the cohort and generates ONE arc
+ * continuation per direction in parallel, with the direction's variable
+ * coordination as primary generation guidance. Each result becomes a
+ * candidate Branch in the work's graph; on commit, every direction attaches
+ * as a sister divergence off the same fork, and the softmax-top direction's
+ * branch becomes active.
  */
 
 import type { Scene, Arc, NarrativeState, PlanningScenario, Variable } from './narrative';

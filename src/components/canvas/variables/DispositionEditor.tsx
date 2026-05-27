@@ -10,7 +10,7 @@ interface Props {
   variables: Variable[];
   /** Optional pool of additional variables that are NOT in the active set
    *  but could plausibly be activated — typically variables from sibling
-   *  scenarios in the same Future cohort, or the arc's Present. Revealed
+   *  directions in the same Compass cohort, or the arc's Present. Revealed
    *  by a "Show more" toggle. Deduplicated against `variables` by id and
    *  name (lowercased). When activated, the parent's `onChange` is called
    *  with the variable id; the parent is responsible for adding the full

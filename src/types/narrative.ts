@@ -496,6 +496,16 @@ export type BeatTransitionMatrix = Partial<
   Record<BeatFn, Partial<Record<BeatFn, number>>>
 >;
 
+/** A user-saved prose profile that lives on a narrative. Different from the
+ *  built-in presets (works) which are global and immutable. Saved profiles
+ *  can be renamed, deleted, and used to switch the active proseProfile. */
+export type SavedProseProfile = {
+  id: string;
+  name: string;
+  profile: ProseProfile;
+  createdAt: number;
+};
+
 /** Authorial prose profile — voice and style applied to all prose generation. */
 export type ProseProfile = {
   /** Tonal register of the narration */
@@ -1026,15 +1036,11 @@ export function isWorldBuild(entry: TimelineEntry): entry is WorldBuild {
   return entry.kind === "world_build";
 }
 
-/** A variable that characterises the future-machinery of a narrative — the
- *  kinds of forces, pressures, or contingencies that can fire across arcs.
- *  Extracted per-narrative during text analysis; reused across arcs as the
- *  vocabulary that both present-state snapshots and forward planning
- *  hypotheses are built against. */
 /** A variable — a lever on the possibility field. Each Present (per arc) and
- *  each Future scenario owns its OWN custom variable set, generated for that
- *  particular moment. There is no shared catalogue, and scenarios don't
- *  reference back to the arc's Present variables — every set stands alone.
+ *  each Compass scenario owns its OWN custom variable set, generated for that
+ *  particular moment. There is no shared catalogue, and Compass scenarios
+ *  don't reference back to the arc's Present variables — every set stands
+ *  alone.
  *
  *  Intensity index maps to a 5-level scale: 0 off, 1 weak, 2 mild, 3 strong,
  *  4 extreme. */
@@ -1051,22 +1057,25 @@ export type Variable = {
   intensity: number;
 };
 
-/** A named hypothesis about how a future arc could unfold — a unique
- *  disposition of variables at chosen intensities. Multiple scenarios per
- *  arc let the author lay out a cohort of plausible futures and compare
- *  their dispositions before committing one as the basis for generation. */
+/** A named direction the Compass surfaces — a unique coordination of
+ *  variables at chosen intensities. The Compass produces a cohort of these
+ *  per arc, softmax-weighted by priorLogit. Read as precision prediction in
+ *  simulation (probability the modelled system reaches this state) and as
+ *  recommendation otherwise (how strongly the paradigm's compass pulls
+ *  toward this direction). The operator can compare directions before
+ *  committing one as the basis for next-arc generation. */
 export type PlanningScenario = {
   id: string;
   name: string;
-  /** Short one-sentence gestalt of the coordination — what this scenario IS
+  /** Short one-sentence gestalt of the coordination — what this direction IS
    *  as a recognisable shape. Same register as a chapter epigraph for fiction,
    *  a section heading for a paper, a scenario name for simulation. */
   description?: string;
-  /** Hex colour for the scenario's polyline / card accents. */
+  /** Hex colour for the direction's polyline / card accents. */
   color: string;
-  /** This scenario's OWN variable set — generated custom for this particular
-   *  future at the moment of generation. Does not reference back to the
-   *  arc's Present variables; each scenario stands alone. */
+  /** This direction's OWN variable set — generated custom for this particular
+   *  coordination at the moment of generation. Does not reference back to
+   *  the arc's Present variables; each direction stands alone. */
   variables: Variable[];
   /** LLM-estimated log-prior reflecting how plausible this scenario is given
    *  the narrative context. Range matches the prediction market's evidence
@@ -1095,9 +1104,9 @@ export type PlanningScenario = {
    *  rules it out. Forces genuine prediction-market work; if `breaks` is
    *  empty the scenario can't be wrong, which means it isn't forecasting. */
   breaks?: string;
-  /** What becomes possible / cascades downstream if this scenario holds —
+  /** What becomes possible / cascades downstream if this direction holds —
    *  the threads it opens for the next arc, the markets it perturbs, the
-   *  affordances it grants future continuations. */
+   *  affordances it grants subsequent continuations. */
   opens?: string;
 };
 
@@ -1115,15 +1124,23 @@ export type Arc = {
   /** Short sentence summarising the narrative direction of this arc */
   directionVector?: string;
   /** This arc's Present variables — the full definitions plus their realised
-   *  intensities for the arc. No shared narrative-wide catalogue: each arc
-   *  owns its own custom-generated set. Future scenarios on the same arc
-   *  each own their own independent variable sets too. Undefined / empty =
-   *  arc has no variables defined yet, UI shows the fresh-page seed state. */
+   *  intensities for the arc. No shared work-wide catalogue: each arc owns
+   *  its own custom-generated set. Compass directions on the same arc each
+   *  own their own independent variable sets too. Undefined / empty = arc
+   *  has no variables defined yet, UI shows the fresh-page seed state. */
   presentVariables?: Variable[];
+  /** Compass the Present variable set was extracted against — paradigm name
+   *  + the operative cues (forward-motion shape, native attractors, natural
+   *  cadence, tail vocabulary). One dense line (≤ 30 words) the model
+   *  commits to BEFORE selecting variables, so the lens is auditable. A
+   *  cultivation Present and a hardboiled-thriller Present read the same
+   *  evidence differently; this field is the fingerprint of which reading
+   *  was used. */
+  presentParadigm?: string;
   /** Short one-sentence gestalt of the Present coordination — what this
    *  configuration *is* as a recognisable shape. Generated alongside the
-   *  variables. When a Future scenario is committed via experimentation, the
-   *  scenario's own description is transferred onto the new arc's
+   *  variables. When a Compass direction is committed via experimentation,
+   *  the direction's own description is transferred onto the new arc's
    *  `presentDescription` so the lineage is preserved. */
   presentDescription?: string;
   /** Multi-sentence load-bearing logic for the Present variable coordination —
@@ -1133,31 +1150,40 @@ export type Arc = {
    *  experimentation commit. */
   presentReasoning?: string;
   /** Log-prior plausibility score for this Present coordination, in the
-   *  same MARKET_EVIDENCE_MIN/MAX range as scenario priorLogits ([-4, +4]).
-   *  When a Future scenario is committed via experimentation, the
-   *  scenario's `priorLogit` is transferred onto the new arc's
-   *  `presentLogit` — preserving "how likely was this when it was chosen"
-   *  as a permanent record of the path's rarity. When Present is
-   *  regenerated directly, the LLM emits a self-estimated logit. */
+   *  same MARKET_EVIDENCE_MIN/MAX range as Compass priorLogits ([-4, +4]).
+   *  When a Compass direction is committed via experimentation, the
+   *  direction's `priorLogit` is transferred onto the new arc's
+   *  `presentLogit` — preserving "how strongly was this pulled-toward when
+   *  it was chosen" as a permanent record of the path's rarity. When
+   *  Present is regenerated directly, the LLM emits a self-estimated logit. */
   presentLogit?: number;
   /** Universal inference-shape fields for Present — same semantics as the
-   *  fields on PlanningScenario and node snapshots: option space,
-   *  falsification handle, forward extension. Generated alongside the
-   *  variables; transferred from the parent scenario on experimentation
-   *  commit so lineage of the comparative + falsification reasoning is
-   *  preserved across the branch fork. */
+   *  fields on PlanningScenario (the Compass direction type) and node
+   *  snapshots: option space, falsification handle, forward extension.
+   *  Generated alongside the variables; transferred from the parent
+   *  Compass direction on experimentation commit so lineage of the
+   *  comparative + falsification reasoning is preserved across the branch
+   *  fork. */
   presentConsidered?: string;
   presentBreaks?: string;
   presentOpens?: string;
   /** Optional user-supplied direction string captured at the last regenerate
    *  for transparency — shows what guidance shaped the cohort. */
   scenarioDirection?: string;
-  /** Cohort of probable next-arc futures, each a unique disposition of
-   *  variables. Generated by the LLM and editable. Acts as the playground
-   *  for shaping continuation; the user picks one scenario and that becomes
-   *  the brief sent to scene generation. Empty / unset on past arcs unless
-   *  the user deliberately seeds them. */
+  /** Compass cohort — directions the engine recommends for the next arc,
+   *  each a unique coordination of variables with a softmax-weighted
+   *  priorLogit. Read as precision prediction in simulation, recommendation
+   *  otherwise. Generated by the LLM and editable. The user picks one
+   *  direction and that becomes the brief sent to scene generation. Empty /
+   *  unset on past arcs unless the user deliberately seeds them. */
   planningScenarios?: PlanningScenario[];
+  /** Compass lens the cohort was drafted against — paradigm name + the
+   *  operative cues (forward-motion shape, native attractors, natural
+   *  cadence, tail vocabulary). Cohort-level, distinct from
+   *  `presentParadigm`: Present and Compass are independent extractions
+   *  from the same evidence and may land on slightly different paradigm
+   *  framings if the substrate is genre-hybrid. */
+  planningParadigm?: string;
   /**
    * Compact snapshot of the global state AS OF the end of this arc — the
    * chess-board position. Who is where, what threads are live and at what
@@ -1575,6 +1601,9 @@ export type NarrativeState = {
   worldSummary: string;
   /** Authorial prose profile — voice, rhythm, and beat transition patterns for prose generation */
   proseProfile?: ProseProfile;
+  /** User-saved prose profiles, narrative-scoped. The active profile is mirrored
+   *  in `proseProfile`; this is the library for one-click switching. */
+  savedProseProfiles?: SavedProseProfile[];
   coverImageUrl?: ImageRef;
   /** Style directive appended to all image generation prompts for visual consistency */
   imageStyle?: string;
@@ -2698,7 +2727,7 @@ export type GraphViewMode =
   | "network"
   | "market"
   | "present"
-  | "future"
+  | "compass"
   | "mode";
 
 // ── Chat Threads ──────────────────────────────────────────────────────────────

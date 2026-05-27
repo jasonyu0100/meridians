@@ -71,12 +71,6 @@ ${args.worldSummary || "(no recorded setting)"}
 Speak with the focused awareness of an instrument — your function, your history, the meaning you carry for those who hold you.`;
 }
 
-/** System prompt for the proposal generator. High-level identity only —
- *  question-shape rules, scope rules, and output format live in the user
- *  prompt. */
-export const SURVEY_GEN_SYSTEM =
-  `You are a research assistant helping the author of a long-form work probe their narrative through ONE sharp survey question at a time. You will read the full narrative continuity and propose a SINGLE question the author should pose to every character / location / artifact in the world. Works span fiction, non-fiction, and simulation; in simulation register, surveys can interrogate agents about their decision rules (forcing the rule itself to surface), locations about their scenario role (terrain, jurisdiction, modelled region), and artifacts about their parameter values and modelled effects. Follow the question-shape rules, question types, scope guidance, and output format supplied in the user prompt. Return ONLY the JSON requested.`;
-
 /** Build the user prompt for the proposal generator. The optional category
  *  tilts the question toward a specific lens; "General" picks the
  *  highest-illumination probe with no predetermined angle. */

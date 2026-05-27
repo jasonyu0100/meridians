@@ -1,24 +1,22 @@
 /**
  * Ingestion Prompts
  *
- * Prompts for parsing pasted text into structured world data.
- *
- * Only the prose-profile path is wired in the current pipeline. The earlier
- * rules / systems extractors (buildIngestRulesPrompt / buildIngestSystemsPrompt
- * + their SYSTEM constants) were never called and were removed in the
- * prompt-cleanup pass — restore from git history if those extractors come back.
+ * Prompts for parsing pasted text into structured world data and for
+ * generating short prose samples that exercise a given profile (used by
+ * the blind taste test in the Prose Profile panel).
  */
 
 export const INGEST_PROSE_PROFILE_SYSTEM =
   'You extract a prose profile — voice, register, stance, devices, rules, anti-patterns — from pasted text. Pick values that genuinely match the source; do not default to any single tradition\'s toolkit. Read the source on its own terms. Return ONLY valid JSON matching the schema in the user prompt.';
 
-export const DERIVE_PROSE_PROFILE_SYSTEM =
-  'You derive a prose profile from a narrative\'s own context (entities, threads, prose excerpts) rather than a pasted style guide. Read the source\'s register from its own voice; do not import conventions the source does not earn. Return ONLY valid JSON matching the schema in the user prompt.';
+export const REFINE_PROSE_PROFILE_SYSTEM =
+  'You refine an existing prose profile using the user\'s guidance — pasted prose, editorial notes, or a natural-language adjustment ("make it more clinical", "add a rule against adverbs"). Keep fields the user did not touch; update only what the guidance demands. Return ONLY valid JSON matching the schema.';
+
+export const PROSE_SAMPLE_SYSTEM =
+  'You write a short prose sample (120-180 words) that exercises a given prose profile against a fully-specified seed scenario. The seed pins the character, setting, and observation — these are constants across every sample in the blind-comparison set. You must NOT rename the character, change the setting, or invent a different observation. Voice carries the difference: register, stance, rhythm, interiority, devices, rules. Return prose only — no preamble, no labels.';
 
 /**
  * Prompt for extracting prose profile from text.
- * Extracts voice, stance, devices, and rules.
- *
  * Register/stance/devices lists are register-neutral: they cover fiction,
  * non-fiction (memoir, essay, reportage, research, history, case study),
  * and simulation (works modelling real-life events from a stated rule set —
@@ -75,48 +73,73 @@ Return JSON:
 }
 
 /**
- * Prompt for deriving a prose profile from a narrative's own context
- * (characters, threads, prose excerpts) rather than a pasted style guide.
- * `context` is pre-built — pass the formatted narrative context block.
+ * Prompt for refining an existing profile with user guidance.
+ * The existing profile is the baseline; the guidance is either pasted prose
+ * the user wants the profile to move toward, or a natural-language instruction
+ * ("make it more clinical", "drop the adverbs rule"). Untouched fields stay.
  */
-export function buildDeriveProseProfilePrompt(context: string): string {
+export function buildRefineProseProfilePrompt(existingProfile: string, guidance: string): string {
   return `<inputs>
-  <narrative-context>
-${context}
-  </narrative-context>
+  <existing-profile hint="Baseline. Keep fields the guidance does not touch.">
+${existingProfile}
+  </existing-profile>
+  <guidance hint="Pasted prose, editorial notes, OR a natural-language adjustment.">
+${guidance}
+  </guidance>
 </inputs>
 
 <instructions>
-  <task>Derive the prose profile that best fits this narrative's voice. Read the source on its own terms; do not import conventions the source does not earn.</task>
+  <task>Return the existing profile updated according to the guidance. Preserve fields the guidance does not address — do not strip rules, devices, or values that are still valid.</task>
 
-  <consider>
-    <factor>What register suits this narrative's subject and intended readership? Detect across the three first-class registers — fiction, non-fiction, simulation. Simulation cues: a rule set is surfaced as load-bearing; in-world mechanics drive events; outcomes are rule-driven rather than authorial; diegetic overlays (HUD, log, dashboard, status sheet, tier gate) appear as narrative content.</factor>
-    <factor>What stance and tense fit the work as written? In simulation registers, stance often tracks an observer or modelled agent.</factor>
-    <factor>What sentence rhythm matches the pacing?</factor>
-    <factor>How deep should interiority go? Where the source operates analytically, interiority maps to reasoning and evidentiary framing rather than private thought. In simulation registers, interiority can map to the agent's modelled state under the rules.</factor>
-    <factor>What rhetorical devices would serve this work? Pick from the toolkit the source genuinely uses.</factor>
-    <factor>What craft rules should guide prose generation? (SPECIFIC imperatives, not generic advice.)</factor>
-    <factor>What specific prose failures would break this voice? (Concrete anti-patterns.)</factor>
-  </consider>
+  <discipline>
+    <rule>If the guidance is a prose sample, infer what changed (register, rhythm, interiority, devices) and update only those.</rule>
+    <rule>If the guidance is editorial notes or a natural-language instruction, apply each instruction precisely. "More X" raises register, rhythm, or device weight in the direction of X; "less X" or "drop X" lowers or removes.</rule>
+    <rule>Do not invent rules or anti-patterns the guidance does not justify. Do not regress untouched fields to generic defaults.</rule>
+  </discipline>
 
-  <quality-bar hint="Derive from the declared voice, not from one school's doctrine.">
-    <bad>Write well / Be descriptive / Show don't tell / any universal platitude.</bad>
-    <good>Show emotion through physical reaction when stakes are high; name it when reflecting at distance.</good>
-    <good>Let the image carry the argument — weather, object-mood, and gesture are world-claims, not decoration.</good>
-    <good>Frontload the claim; let evidence earn it sentence by sentence.</good>
-    <good>Rotate voice per section; never let one register dominate for more than two sections running.</good>
-    <good>Each recurrence must carry a named variation — a new detail, a shifted POV, an inverted outcome.</good>
-    <bad-anti-pattern>Don't be boring / Avoid bad prose.</bad-anti-pattern>
-    <good-anti-pattern>NEVER use 'This was a [Name]' to introduce a mechanic — show what it does.</good-anti-pattern>
-    <good-anti-pattern>Do not hedge a strong claim with 'perhaps' or 'arguably' when you have the evidence to back it.</good-anti-pattern>
-    <good-anti-pattern>Do not follow an image with a sentence that explains the image.</good-anti-pattern>
-  </quality-bar>
-
-  <coverage>Extract as many devices, rules, and anti-patterns as the source genuinely carries — no cap on any. Use snake_case for multi-word values.</coverage>
+  <fields>Same schema as ingest — register, stance, tense, sentenceRhythm, interiority, dialogueWeight, devices[], rules[], antiPatterns[]. Use snake_case for multi-word values.</fields>
 </instructions>
 
 <output-format>
 Return JSON:
 {"register": "...", "stance": "...", "tense": "...", "sentenceRhythm": "...", "interiority": "...", "dialogueWeight": "...", "devices": [...], "rules": [...], "antiPatterns": [...]}
 </output-format>`;
+}
+
+/**
+ * Prompt for generating a short prose sample that exercises a given profile.
+ * Used by the blind taste test — multiple samples produced from the same seed
+ * scenario but different profiles. Voice carries the difference, not content.
+ */
+export function buildProseSamplePrompt(profileBlock: string, seedScenario: string): string {
+  return `<inputs>
+  <prose-profile>
+${profileBlock}
+  </prose-profile>
+  <seed-scenario hint="This scenario is constant across every sample in the comparison set. Character, setting, and observation are PINNED. Voice is the only thing that varies.">
+${seedScenario}
+  </seed-scenario>
+</inputs>
+
+<instructions>
+  <task>Write 120-180 words of prose for the seed scenario in the voice of the profile above. The scenario is fully specified — character, setting, and the load-bearing observation are constants you MUST honour exactly.</task>
+
+  <content-discipline hint="These are the controlled variables. If you change them, the comparison is broken.">
+    <rule>Use the EXACT character name and identity given in the seed. Do not rename, re-gender, or re-age the character.</rule>
+    <rule>Use the EXACT setting described in the seed. Do not relocate or re-skin it (no swapping a bedroom for an attic, an apartment for a house, a lab for a workshop).</rule>
+    <rule>The OBSERVATION named in the seed is the only thing that has changed. Do not invent additional changes, additional anomalies, or additional discoveries. Do not substitute a different object for the one specified.</rule>
+    <rule>Do not invent a backstory, a system, or a world-context the seed does not state. The seed gives you all the content you get.</rule>
+  </content-discipline>
+
+  <voice-discipline hint="This is where the profile shows.">
+    <rule>Honour the profile's stance (POV) and tense exactly.</rule>
+    <rule>Exercise at least two of the profile's devices visibly in the prose.</rule>
+    <rule>Honour the profile's rules and antiPatterns.</rule>
+    <rule>If the profile is non-fiction / analytical / simulation, the seed still applies — render the same character noticing the same thing in that register, do not switch to a different scenario.</rule>
+  </voice-discipline>
+
+  <output>
+    <rule>Return prose only — no preamble, no headings, no labels, no quote marks around the whole sample.</rule>
+  </output>
+</instructions>`;
 }

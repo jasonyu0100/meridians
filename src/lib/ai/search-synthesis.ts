@@ -11,7 +11,8 @@
 import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { DEFAULT_MODEL } from '../constants';
 import { logInfo, logError } from '../system-logger';
-import { buildSearchSynthesisPrompt, SEARCH_SYNTHESIS_SYSTEM } from '@/lib/prompts/search';
+import { buildSearchSynthesisPrompt } from '@/lib/prompts/search';
+import { buildSearchSynthesisSystem, workIdentityFor } from '@/lib/prompts/paradigm-analyst';
 import type { NarrativeState, SearchResult, SearchSynthesis } from '@/types/narrative';
 
 type AggregateScene = {
@@ -179,7 +180,7 @@ export async function synthesizeSearchResults(
   try {
     await callGenerateStream(
       prompt,
-      SEARCH_SYNTHESIS_SYSTEM,
+      buildSearchSynthesisSystem(workIdentityFor(narrative)),
       (token) => {
         accumulatedText += token;
         if (onToken) onToken(token);

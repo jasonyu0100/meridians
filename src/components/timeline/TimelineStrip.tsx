@@ -325,16 +325,15 @@ export default function TimelineStrip() {
 
             const handleClick = () => {
               dispatch({ type: "SET_SCENE_INDEX", index: i });
-              // Only seed the inspector with the clicked scene when nothing
-              // is open — if the operator already has a character / thread /
-              // node in view, navigating scenes should leave that view alone
-              // so they can scrub timeline content under a stable lens.
-              if (!state.viewState.inspectorContext) {
-                dispatch({
-                  type: "SET_INSPECTOR",
-                  context: { type: "scene", sceneId: entry.id },
-                });
-              }
+              // Clicking a scene is an explicit "show me this" — always open
+              // the scene/world-build detail in the inspector, replacing
+              // whatever was there. Arrow-key scrubbing keeps the stable-lens
+              // behaviour (character / thread / node views stay pinned); only
+              // the click acts as a hard override.
+              dispatch({
+                type: "SET_INSPECTOR",
+                context: { type: "scene", sceneId: entry.id },
+              });
             };
 
             return (

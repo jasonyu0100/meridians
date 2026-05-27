@@ -153,6 +153,12 @@ export async function rewriteSceneProse(
     profileSection,
     worldSummary: narrative.worldSummary,
     streaming: !!onToken,
+    work: {
+      title: narrative.title,
+      paradigm: narrative.paradigm,
+      genre: narrative.genre,
+      subgenre: narrative.subgenre,
+    },
   });
 
   const neighborBlock = neighborContext

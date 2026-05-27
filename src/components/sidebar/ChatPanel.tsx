@@ -8,9 +8,9 @@ import {
 } from "@/components/icons";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import {
-  futureContext,
+  compassContext,
   gameTheoryContext,
-  hasFutureScenarios,
+  hasCompassScenarios,
   hasGameTheory,
   hasInvestigation,
   hasMode,
@@ -23,7 +23,7 @@ import {
 import {
   buildEntityPersonaPrompt,
   buildFatePersonaPrompt,
-  buildFutureChatPrompt,
+  buildCompassChatPrompt,
   buildGameTheoryChatPrompt,
   buildInvestigationChatPrompt,
   buildModeChatPrompt,
@@ -82,7 +82,7 @@ export default function ChatPanel() {
   const [streamText, setStreamText] = useState("");
   const [reasoningText, setReasoningText] = useState("");
   const [contextMode, setContextMode] = useState<
-    "narrative" | "outline" | "scene" | "future" | "mode" | "investigation" | "game-theory"
+    "narrative" | "outline" | "scene" | "compass" | "mode" | "investigation" | "game-theory"
   >("narrative");
   // personaId: null (Assistant), PERSONA_FATE, PERSONA_SYSTEM, or a real
   // character ID. The two sentinels coalesce all threads / all system-graph
@@ -321,10 +321,10 @@ export default function ChatPanel() {
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
       return buildOutlineChatPrompt(n, sceneAnchor, outline);
     }
-    if (contextMode === "future") {
+    if (contextMode === "compass") {
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
-      const future = futureContext(n, state.resolvedEntryKeys, contextSceneIndex);
-      return buildFutureChatPrompt(n, sceneAnchor, outline, future);
+      const compass = compassContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      return buildCompassChatPrompt(n, sceneAnchor, outline, compass);
     }
     if (contextMode === "investigation") {
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
@@ -879,18 +879,18 @@ export default function ChatPanel() {
           </button>
 
           {!activePersona && (() => {
-            // Future is offered only when the currently-viewed scene's
-            // arc carries planning scenarios — hidden for world commits
-            // and arcs that haven't had Future generated.
-            const futureAvailable = !!state.activeNarrative
-              && hasFutureScenarios(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
+            // Compass is offered only when the currently-viewed scene's
+            // arc carries a Compass cohort — hidden for world commits
+            // and arcs that haven't had Compass generated.
+            const compassAvailable = !!state.activeNarrative
+              && hasCompassScenarios(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modeAvailable = !!state.activeNarrative && hasMode(state.activeNarrative);
             const investigationAvailable = !!state.activeNarrative
               && hasInvestigation(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const gameTheoryAvailable = !!state.activeNarrative
               && hasGameTheory(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modes: Array<{
-              value: "narrative" | "outline" | "scene" | "future" | "mode" | "investigation" | "game-theory";
+              value: "narrative" | "outline" | "scene" | "compass" | "mode" | "investigation" | "game-theory";
               label: string;
               hint: string;
             }> = [
@@ -898,11 +898,11 @@ export default function ChatPanel() {
               { value: "outline",   label: "Outline",   hint: "Condensed arc-by-arc recap." },
               { value: "scene",     label: "Scene",     hint: "Scene-level deltas + immediate context." },
             ];
-            if (futureAvailable) {
+            if (compassAvailable) {
               modes.push({
-                value: "future",
-                label: "Future",
-                hint: "Cohort of planning scenarios with logits + probabilities for this arc.",
+                value: "compass",
+                label: "Compass",
+                hint: "Cohort of feasible next directions with logits + softmax probabilities — precision prediction in simulation, recommendation otherwise.",
               });
             }
             if (modeAvailable) {
@@ -926,11 +926,11 @@ export default function ChatPanel() {
                 hint: "Outline enriched with per-scene game decompositions + ELO rankings.",
               });
             }
-            // If the user had Future / Mode / Investigation / Game theory
+            // If the user had Compass / Mode / Investigation / Game theory
             // selected and it's no longer available (world commit, active
             // PRG cleared, navigated to an arc without investigations or
             // games), drop back to narrative on next render.
-            if (contextMode === "future" && !futureAvailable) {
+            if (contextMode === "compass" && !compassAvailable) {
               setContextMode("narrative");
             }
             if (contextMode === "mode" && !modeAvailable) {

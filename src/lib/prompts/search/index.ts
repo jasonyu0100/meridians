@@ -4,9 +4,6 @@
  * summaries).
  */
 
-export const SEARCH_SYNTHESIS_SYSTEM =
-  'You are a narrative analysis assistant. Provide concise, accurate synthesis of search results with inline citations.';
-
 export function buildSearchSynthesisPrompt(args: {
   context: string;
   query: string;

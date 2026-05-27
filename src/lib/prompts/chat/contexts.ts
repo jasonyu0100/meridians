@@ -1,6 +1,6 @@
 /**
  * Chat context-mode prompts — the system prompts for the six contextModes
- * (scene / outline / narrative / future / investigation / mode).
+ * (scene / outline / narrative / compass / investigation / mode).
  *
  * Each prompt is wrapped in a `<chat-system mode="...">` root with
  * structured `<role>`, optional `<focus-rules>`, `<scene-anchor>`,
@@ -12,6 +12,24 @@
 import type { NarrativeState } from '@/types/narrative';
 import { resolveEntry, isScene } from '@/types/narrative';
 import { CHAT_OUTPUT_DISCIPLINE } from './discipline';
+import {
+  compassFramingFor,
+  composeAnalystIdentity,
+  type WorkIdentity,
+} from '@/lib/prompts/paradigm-roles';
+import { workIdentityFor } from '@/lib/prompts/paradigm-analyst';
+
+/** Render the work identity as a prelude sentence for the chat role. When
+ *  paradigm is known, this carries paradigm + genre + subgenre + title into
+ *  every chat mode. When unset, falls back to a generic prelude that names
+ *  only the title — preserving paradigm-less narratives unchanged. */
+function chatIdentityPrelude(work: WorkIdentity): string {
+  if (work.paradigm) return `${composeAnalystIdentity(work)} The user is collaborating with you on this work.`;
+  const title = work.title?.trim();
+  return title
+    ? `You are a helpful assistant. The user is working on the work titled "${title}".`
+    : 'You are a helpful assistant. The user is working on a long-form work.';
+}
 
 function xmlEscape(s: string): string {
   return s
@@ -71,7 +89,7 @@ type CommonArgs = {
 };
 
 /** Wrap a list of pre-built data context blocks under a single `<context>`
- *  parent. Each block carries its own root tag (`<outline>`, `<future>`,
+ *  parent. Each block carries its own root tag (`<outline>`, `<compass>`,
  *  etc.) — those tags are emitted as-is. */
 function contextWrapper(blocks: { tag: string; body: string }[]): string {
   if (blocks.length === 0) return '  <context empty="true" />';
@@ -113,10 +131,11 @@ export function buildSceneChatPrompt(
   sceneAnchor: string,
   sceneContextBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
   return composeChatSystem(
     'scene',
     narrative.title,
-    `You are a helpful assistant. The user is working on the world view "${narrative.title}" and has scene-level context attached below, but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the attached context when the question is about this world view; otherwise respond normally without forcing the conversation back to it. Be concise and specific.`,
+    `${chatIdentityPrelude(work)} Scene-level context is attached below; you are free to answer any question the user asks — creative, technical, personal, or anything else. Use the attached context when the question is about this work; otherwise respond normally without forcing the conversation back to it. Be concise and specific.`,
     [],
     {
       narrative,
@@ -133,10 +152,11 @@ export function buildOutlineChatPrompt(
   sceneAnchor: string,
   outlineBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
   return composeChatSystem(
     'outline',
     narrative.title,
-    `You are a helpful assistant. The user is working on the world view "${narrative.title}" and has a condensed outline attached below, but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the attached context when the question is about this world view; otherwise respond normally without forcing the conversation back to it. Be concise and specific.`,
+    `${chatIdentityPrelude(work)} A condensed outline is attached below; you are free to answer any question the user asks — creative, technical, personal, or anything else. Use the attached context when the question is about this work; otherwise respond normally without forcing the conversation back to it. Be concise and specific.`,
     [],
     {
       narrative,
@@ -153,10 +173,11 @@ export function buildNarrativeChatPrompt(
   sceneAnchor: string,
   narrativeBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
   return composeChatSystem(
     'narrative',
     narrative.title,
-    `You are a helpful assistant. The user is working on the world view "${narrative.title}" and has deep world-view context attached below (world, characters, threads, scene history up to the current point), but you are free to answer any question they ask — creative, technical, personal, or anything else. Use the attached context when the question is about this world view; otherwise respond normally without forcing the conversation back to it. When discussing the world view, be concise and specific. When suggesting directions, consider the existing threads and their maturity.`,
+    `${chatIdentityPrelude(work)} Deep work context is attached below (entities, threads, scene/entry history up to the current point); you are free to answer any question the user asks — creative, technical, personal, or anything else. Use the attached context when the question is about this work; otherwise respond normally without forcing the conversation back to it. When discussing the work, be concise and specific. When suggesting directions, consider the existing threads and their maturity through this paradigm's own logic.`,
     [],
     {
       narrative,
@@ -166,30 +187,33 @@ export function buildNarrativeChatPrompt(
   );
 }
 
-// ── Future ───────────────────────────────────────────────────────────────
+// ── Compass ──────────────────────────────────────────────────────────────
 
-export function buildFutureChatPrompt(
+export function buildCompassChatPrompt(
   narrative: NarrativeState,
   sceneAnchor: string,
   outlineBlock: string,
-  futureBlock: string,
+  compassBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
+  const framing = compassFramingFor(work.paradigm);
   return composeChatSystem(
-    'future',
+    'compass',
     narrative.title,
-    `You are a helpful assistant. The user is working on the world view "${narrative.title}" and wants to discuss the FUTURE scenarios on the currently-viewed arc — alternate next-arc unfoldings, each with a logit-based plausibility, a softmax probability over the cohort, and a coordination of named variables firing at different intensities. Two context blocks are attached: a WORLD-VIEW OUTLINE (historical recap so you understand how the world got here) and the FUTURE cohort (the scenarios + the arc's Present coordination for contrast). Be ready to reason about which scenarios are favoured and why, which dials would have to fire for a tail-event scenario to play out, and how the cohort coordinates against the Present.`,
+    `${chatIdentityPrelude(work)} ${framing} The user wants to discuss this work's COMPASS — the engine's forward-looking surface for the currently-viewed arc. The Compass is an AI direction-finder that surfaces a probability distribution over feasible next moves grounded in a factor model (variables) of the work's reality. Each scenario carries a logit-based score, a softmax probability over the cohort, and a coordination of named variables firing at different intensities. Two context blocks are attached: a WORLD-VIEW OUTLINE (historical recap so you understand how the work got here) and the COMPASS cohort (the scenarios + the arc's Present coordination for contrast). Be ready to reason about which scenarios are favoured and why, which variables would have to fire for a tail-event scenario to land, and how the cohort coordinates against the Present.`,
     [
-      'probabilities are softmax-relative within the cohort; logits are absolute on the [-4, +4] evidence scale (sigmoid gives an absolute plausibility)',
-      'rarity descriptors (expected / likely / even / rare / tail-event) map to logit bands and capture the qualitative read',
-      'variable coordinations are the "shape" of each scenario — the same dial firing at different intensities is what differentiates the futures',
-      'the outline tells you what happened; the future tells you what could happen next — anchor every plausibility claim in concrete events from the outline',
+      'priorLogits read as PREDICTION when the work is a simulation (rule-driven probability of the modelled outcome) and as RECOMMENDATION otherwise (how strongly the paradigm\'s compass pulls toward this direction)',
+      'probabilities are softmax-relative within the cohort; logits are absolute on the [-4, +4] scale (sigmoid gives an absolute plausibility / pull strength)',
+      'rarity / pull descriptors (expected / likely / even / rare / tail-event) map to logit bands and capture the qualitative read',
+      'variable coordinations are the "shape" of each scenario — the same variable firing at different intensities is what differentiates the cohort',
+      'the outline tells you what happened; the Compass tells you where the work could feasibly go next — anchor every claim in concrete events from the outline',
     ],
     {
       narrative,
       sceneAnchor,
       contextBlocks: [
         { tag: 'outline', body: outlineBlock },
-        { tag: 'future', body: futureBlock },
+        { tag: 'compass', body: compassBlock },
       ],
       extraDiscipline: 'Refer to scenarios by their human-readable names. Quote logits / probabilities inline only when they carry the argument, not as parentheticals after every noun.',
     },
@@ -204,10 +228,11 @@ export function buildInvestigationChatPrompt(
   outlineBlock: string,
   investigationBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
   return composeChatSystem(
     'investigation',
     narrative.title,
-    `You are a helpful assistant. The user is working on the world view "${narrative.title}" and wants to discuss the ACTIVE INVESTIGATION — the Causal Reasoning Graph (CRG) on the currently-viewed arc. Two context blocks are attached: a WORLD-VIEW OUTLINE (historical recap so you understand how the world got here) and the INVESTIGATION graph (the analyst's in-arc inference about what's happening and why). The investigation carries a direction (the brief that steered it), per-node inference-shape (detail, considered = rejected sibling hypotheses, breaks = falsifying conditions, opens = downstream cascades), and a sequential-path block that renders the graph's bidirectional edge structure. Be ready to walk the chain forward (priors → reasoning → terminal), re-evaluate at any step via the rejected-sibling reasoning, stress-test via failure conditions, and extend forward via second-order possibilities.`,
+    `${chatIdentityPrelude(work)} The user wants to discuss this work's ACTIVE INVESTIGATION — the Causal Reasoning Graph (CRG) on the currently-viewed arc. Two context blocks are attached: a WORLD-VIEW OUTLINE (historical recap so you understand how the world got here) and the INVESTIGATION graph (the analyst's in-arc inference about what's happening and why). The investigation carries a direction (the brief that steered it), per-node inference-shape (detail, considered = rejected sibling hypotheses, breaks = falsifying conditions, opens = downstream cascades), and a sequential-path block that renders the graph's bidirectional edge structure. Be ready to walk the chain forward (priors → reasoning → terminal), re-evaluate at any step via the rejected-sibling reasoning, stress-test via failure conditions, and extend forward via second-order possibilities.`,
     [
       "node types span four tiers — substrate (entities, threads, system rules), inference steps, meta agents (patterns to introduce, anti-patterns to avoid), and outside-force injections; read the tier the node belongs to but don't surface the tag",
       "the analyst's work lives in four fields per inference node: the inference itself, the rival hypotheses rejected, the conditions that would invalidate it, and the second-order possibilities it grants — these are what distinguish reasoning from description",
@@ -234,10 +259,11 @@ export function buildModeChatPrompt(
   outlineBlock: string,
   modeBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
   return composeChatSystem(
     'mode',
     narrative.title,
-    `You are a helpful assistant. The user is working on the world view "${narrative.title}" and wants to discuss the MODE — the work's Phase Reasoning Graph (PRG), i.e. the META MACHINERY of the world it runs on. Two context blocks are attached: a WORLD-VIEW OUTLINE (historical recap so you understand how the world got here) and the MODE graph (patterns, conventions, attractors, agents, rules, pressures, landmarks — each with a temporal stance and the universal inference-shape: detail, considered = rival readings, breaks = carve-outs, opens = downstream cascade). A sequential-path block at the end of the mode renders the same graph as bidirectional edge text. Be ready to reason about which machinery is firing, which carve-outs apply, where pressures discharge, and how downstream layers should inherit.`,
+    `${chatIdentityPrelude(work)} The user wants to discuss this work's MODE — the Phase Reasoning Graph (PRG), i.e. the META MACHINERY of the world it runs on. Two context blocks are attached: a WORLD-VIEW OUTLINE (historical recap so you understand how the world got here) and the MODE graph (patterns, conventions, attractors, agents, rules, pressures, landmarks — each with a temporal stance and the universal inference-shape: detail, considered = rival readings, breaks = carve-outs, opens = downstream cascade). A sequential-path block at the end of the mode renders the same graph as bidirectional edge text. Be ready to reason about which machinery is firing, which carve-outs apply, where pressures discharge, and how downstream layers should inherit.`,
     [
       'node type encodes a temporal stance — a pattern is currently active, a convention is currently followed, an attractor is future-pointing, an agent is currently driving, a rule is currently binding, a pressure is accumulating toward discharge, a landmark is past-but-anchoring. Read the stance, but in your output use natural prose ("the world is being pulled toward…", "this convention shapes how…") — never the type tag itself',
       "each node's substance lives in four facets: what the machinery is, the rival readings the analyst rejected, the carve-outs / conditions where it doesn't bind, and the downstream cascade later layers inherit. These are what make it legible",
@@ -263,10 +289,11 @@ export function buildGameTheoryChatPrompt(
   sceneAnchor: string,
   gameTheoryBlock: string,
 ): string {
+  const work = workIdentityFor(narrative);
   return composeChatSystem(
     'game-theory',
     narrative.title,
-    `You are a helpful assistant with deep game-theory knowledge. The user is working on the world view "${narrative.title}" and wants to discuss it through the lens of the per-scene strategic decompositions InkTide has extracted. The attached context is an OUTLINE WITH GAME-THEORY: every scene up to the cursor carries every BeatGame the analysis pass identified, rendered with FULL detail — game type (coordination / dilemma / chicken / stag-hunt / battle-of-sexes / zero-sum / signaling / commitment / bargaining / …), the action axis (disclosure, trust, control, status, pressure, stakes, …), each player's complete action menu, the COMPLETE PAYOFF MATRIX as one <cell> per (A-action, B-action) pairing with stake deltas for both sides (flagged with nash="true" on equilibrium cells and realized="true" on the cell the author wrote), Nash equilibria summary, stake-rank of the realized cell from each player's perspective, a margin score, and a running <elo-after> tag showing both players' ELO before→after the game inline. A closing <player-rankings> block consolidates final ELO, peak / trough, and W / L / D. Be ready to reason about whether realized cells are Nash, where dominant strategies were left on the table, which counterfactual cells would have flipped the outcome, which axes a character keeps losing, and how ELO trajectories reflect shifting leverage across the arc.`,
+    `${chatIdentityPrelude(work)} You bring deep game-theory knowledge to this conversation. The user wants to discuss this work through the lens of the per-scene strategic decompositions InkTide has extracted. The attached context is an OUTLINE WITH GAME-THEORY: every scene up to the cursor carries every BeatGame the analysis pass identified, rendered with FULL detail — game type (coordination / dilemma / chicken / stag-hunt / battle-of-sexes / zero-sum / signaling / commitment / bargaining / …), the action axis (disclosure, trust, control, status, pressure, stakes, …), each player's complete action menu, the COMPLETE PAYOFF MATRIX as one <cell> per (A-action, B-action) pairing with stake deltas for both sides (flagged with nash="true" on equilibrium cells and realized="true" on the cell the author wrote), Nash equilibria summary, stake-rank of the realized cell from each player's perspective, a margin score, and a running <elo-after> tag showing both players' ELO before→after the game inline. A closing <player-rankings> block consolidates final ELO, peak / trough, and W / L / D. Be ready to reason about whether realized cells are Nash, where dominant strategies were left on the table, which counterfactual cells would have flipped the outcome, which axes a character keeps losing, and how ELO trajectories reflect shifting leverage across the arc.`,
     [
       "the realized cell carries realized=\"true\" inside the matrix; cross-reference its deltaA / deltaB against the rest of the row + column to see what each player gave up by playing what they played",
       "nash=\"true\" marks unilaterally-stable cells. If the realized cell has realized=\"true\" but NOT nash=\"true\", at least one player could have deviated profitably — the rationale field is the place to look for why they didn't",

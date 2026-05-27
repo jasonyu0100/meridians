@@ -18,12 +18,27 @@
 
 import { modePriorityEntry } from "../mode/application";
 import { GRAPH_THINKING_PRINCIPLE } from "./principles";
+import {
+  composeAnalystIdentity,
+  type WorkIdentity,
+} from "../paradigm-roles";
+import { PRINCIPLE_PARADIGM_FIDELITY } from "../principles";
 
-export const ARC_REASONING_GRAPH_SYSTEM =
-  `You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a causal reasoning graph anchored to a position in the narrative. Investigations are open-ended chains — walk the substrate (entities, threads, system rules, fate, world) and surface what the position genuinely supports. When the direction asks for a hypothesis or outcome, yield it as a \`conclusion\` node grounded in real reasons drawn from the substrate. When the direction names an angle, explore it. When empty, continue from this position. Honour the thinking style (abduction / divergent / deduction / induction). Return ONLY valid JSON matching the schema in the user prompt.`;
+function reasoningIdentity(work?: WorkIdentity): string {
+  return work?.paradigm ? `${composeAnalystIdentity(work)} ` : '';
+}
 
-export const COORDINATION_PLAN_SYSTEM =
-  `You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a multi-arc coordination plan derived by BACKWARD INDUCTION — peaks (forces converge, threads culminate) and valleys (the arc pivots) as anchors, one per arc. Chronological indexing, agency distributed across actors, arc sizes and force compositions mixed, patterns/warnings routed around. For simulation register, peaks/valleys often land as rule-driven thresholds (a modelled state crossing a gate, a pressure discharging) rather than dramatic moments — both are valid spine anchors. Return ONLY valid JSON matching the schema in the user prompt.`;
+function reasoningFidelity(work?: WorkIdentity): string {
+  return work?.paradigm ? `\n\n${PRINCIPLE_PARADIGM_FIDELITY}` : '';
+}
+
+export function buildArcReasoningGraphSystem(work?: WorkIdentity): string {
+  return `${reasoningIdentity(work)}You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a causal reasoning graph anchored to a position in this work. Investigations are open-ended chains — walk the substrate (entities, threads, system rules, fate, world) and surface what the position genuinely supports. When the direction asks for a hypothesis or outcome, yield it as a \`conclusion\` node grounded in real reasons drawn from the substrate. When the direction names an angle, explore it. When empty, continue from this position. Honour the thinking style (abduction / divergent / deduction / induction). Return ONLY valid JSON matching the schema in the user prompt.${reasoningFidelity(work)}`;
+}
+
+export function buildCoordinationPlanSystem(work?: WorkIdentity): string {
+  return `${reasoningIdentity(work)}You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a multi-arc coordination plan derived by BACKWARD INDUCTION — peaks (forces converge, threads culminate) and valleys (the arc pivots) as anchors, one per arc. Chronological indexing, agency distributed across actors, arc sizes and force compositions mixed, patterns/warnings routed around. In this paradigm's native register, peaks/valleys land as the paradigm's own load-bearing turning points (a dramatic climax in fiction; a rule-driven threshold crossing in simulation; a counterclaim ascendance in essay; an axis flipping in debate; a regime change in record). Return ONLY valid JSON matching the schema in the user prompt.${reasoningFidelity(work)}`;
+}
 
 export type CoordinationPlanContextForPrompt = {
   arcIndex: number;

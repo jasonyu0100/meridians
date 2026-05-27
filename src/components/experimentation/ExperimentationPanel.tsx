@@ -30,9 +30,9 @@ import { IconRefresh, IconStop } from '@/components/icons';
  *
  * Three states the panel cycles through:
  *
- *   1. NO SCENARIOS — the focused arc has no Future scenarios yet. The
- *      panel shows a CTA pointing to the Future view so the user can
- *      generate predictive scenarios first.
+ *   1. NO SCENARIOS — the focused arc has no Compass cohort yet. The panel
+ *      shows a CTA pointing to the Compass view so the user can generate
+ *      a cohort first.
  *
  *   2. CONFIG (idle) — scenarios exist; the panel lists them with
  *      checkboxes, a parallel-workers selector, and an optional
@@ -59,8 +59,8 @@ export function ExperimentationPanel({
   const narrative = state.activeNarrative;
   // Experimentation always anchors on the HEAD arc — the latest arc in
   // the active branch — regardless of where the user is currently
-  // viewing. The cohort that drives the batch is the head arc's Future
-  // scenarios.
+  // viewing. The cohort that drives the batch is the head arc's Compass
+  // directions.
   const headArc = useMemo(
     () => (narrative ? findHeadArc(narrative, state.resolvedEntryKeys) : null),
     [narrative, state.resolvedEntryKeys],
@@ -82,7 +82,7 @@ export function ExperimentationPanel({
   // ── Prerequisite-aware empty state ──────────────────────────────────
   // Experimentation needs:
   //   1. At least one arc in the narrative (not just world commits)
-  //   2. Future scenarios generated on the HEAD arc (the latest one)
+  //   2. Compass cohort generated on the HEAD arc (the latest one)
   // The CTA explains the missing piece and routes the user there.
   if (isIdle && availableScenarios.length === 0) {
     const noArcs = !hasAnyArcs;
@@ -97,7 +97,7 @@ export function ExperimentationPanel({
         </ModalHeader>
         <ModalBody className="p-6 space-y-4">
           <p className="text-[12px] text-text-secondary leading-relaxed">
-            Experimentation always anchors on the <span className="text-text-primary font-medium">head arc</span> — the latest arc in the current branch. Each batch generates one continuation per Future scenario on that arc in parallel.
+            Experimentation always anchors on the <span className="text-text-primary font-medium">head arc</span> — the latest arc in the current branch. Each batch generates one continuation per Compass direction on that arc in parallel.
           </p>
           <div className="space-y-2 text-[11px] text-text-dim leading-relaxed">
             <div className="text-[10px] uppercase tracking-widest text-text-dim/80">Prerequisites</div>
@@ -111,11 +111,11 @@ export function ExperimentationPanel({
                   ? "Couldn't resolve the latest arc on this branch — try moving the cursor onto an arc scene."
                   : `Head arc: ${headArc!.name}.`}
             </Prereq>
-            <Prereq satisfied={availableScenarios.length > 0} label="Future scenarios on the head arc">
+            <Prereq satisfied={availableScenarios.length > 0} label="Compass directions on the head arc">
               {availableScenarios.length > 0
-                ? `${availableScenarios.length} scenarios ready.`
+                ? `${availableScenarios.length} directions ready.`
                 : headArc
-                  ? `${headArc.name} has no Future scenarios yet. Open the Future view to generate a cohort of predictive coordinations.`
+                  ? `${headArc.name} has no Compass directions yet. Open the Compass view to generate a cohort.`
                   : 'Will resolve once a head arc exists.'}
             </Prereq>
           </div>
@@ -129,12 +129,12 @@ export function ExperimentationPanel({
             {!!headArc && (
               <button
                 onClick={() => {
-                  dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'future' });
+                  dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'compass' });
                   onClose();
                 }}
                 className="h-9 px-5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold text-[12px] transition"
               >
-                Open Future view →
+                Open Compass view →
               </button>
             )}
           </div>
@@ -202,7 +202,7 @@ function ConfigModal({
   // The scenario's coordination IS the direction; no separate user-supplied
   // direction or constraints box. Each scenario's variables drive its own
   // generation, and the cohort as a whole already represents the user's
-  // intent (refined via the Future view).
+  // intent (refined via the Compass view).
   const [selected, setSelected] = useState<Set<string>>(() => new Set(scenarios.map((s) => s.id)));
 
   const toggle = (id: string) => {

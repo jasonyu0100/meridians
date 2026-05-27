@@ -1605,15 +1605,16 @@ ${arcSections}
 </story-summary>`;
 }
 
-// ── Future-scenario context ──────────────────────────────────────────────
+// ── Compass-scenario context ─────────────────────────────────────────────
 //
-// Compact XML shorthand of the head arc's Future scenarios — the
-// alternate-futures cohort the user has been shaping in the Variables
-// view. Designed for chat: every scenario's logit, softmax probability,
-// rarity tag, description, reasoning, and variable coordination ride along in
-// a structure dense enough to discuss but light enough not to crowd the
-// prompt. Pair with the narrative title + head arc state so the chat can
-// reason about *why* these scenarios are plausible.
+// Compact XML shorthand of the head arc's Compass cohort — the cohort of
+// feasible next directions the user has been shaping in the Variables view.
+// Designed for chat: every scenario's logit, softmax probability, rarity tag,
+// description, reasoning, and variable coordination ride along in a structure
+// dense enough to discuss but light enough not to crowd the prompt. Pair with
+// the work's title + head arc state so the chat can reason about *why* these
+// directions land where they do — read as precision prediction when the work
+// is a simulation, as recommendation otherwise.
 
 function xmlEscape(s: string): string {
   return s
@@ -1623,7 +1624,7 @@ function xmlEscape(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function futureRarityLabel(logit: number): string {
+function compassRarityLabel(logit: number): string {
   if (logit >= 3) return 'expected';
   if (logit >= 1) return 'likely';
   if (logit >= -1) return 'even';
@@ -1631,7 +1632,7 @@ function futureRarityLabel(logit: number): string {
   return 'tail-event';
 }
 
-const FUTURE_INTENSITY_LABELS = ['off', 'weak', 'mild', 'strong', 'extreme'];
+const COMPASS_INTENSITY_LABELS = ['off', 'weak', 'mild', 'strong', 'extreme'];
 
 /** Resolve the arc the user is currently viewing — derived from the
  *  scene at `currentIndex`. Returns null when the position is a
@@ -1645,22 +1646,22 @@ function arcAtIndex(n: NarrativeState, resolvedKeys: string[], currentIndex: num
 }
 
 /**
- * Build the XML context for the Future chat mode. Returns a string with
- * a `<future>` root, one `<scenario>` per planning scenario on the
+ * Build the XML context for the Compass chat mode. Returns a string with
+ * a `<compass>` root, one `<scenario>` per planning scenario on the
  * currently-viewed arc, and a small `<rarity-scale>` legend so the chat
- * knows what the rarity words mean. Returns an empty string when the
- * current position is a world commit, has no arc, or the arc has no
- * scenarios — the caller gates the Future option on
- * `hasFutureScenarios(n, resolvedKeys, currentIndex)` returning true.
+ * knows what the rarity / pull words mean. Returns an empty string when
+ * the current position is a world commit, has no arc, or the arc has no
+ * Compass cohort — the caller gates the Compass option on
+ * `hasCompassScenarios(n, resolvedKeys, currentIndex)` returning true.
  */
-export function futureContext(
+export function compassContext(
   n: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
 ): string {
-  // Future is anchored on the arc the user is currently viewing — not
+  // Compass is anchored on the arc the user is currently viewing — not
   // the head arc — so a user can step back to a prior arc and discuss
-  // the scenarios that were generated there.
+  // the cohort that was generated there.
   const arc = arcAtIndex(n, resolvedKeys, currentIndex);
   if (!arc) return '';
   const headArc = arc;
@@ -1684,7 +1685,7 @@ export function futureContext(
   indexed.sort((a, b) => b.p - a.p);
 
   const scenarioBlocks = indexed.map(({ s, p, l }, rank) => {
-    const rarity = futureRarityLabel(l);
+    const rarity = compassRarityLabel(l);
     const description = s.description
       ? `\n  <description>${xmlEscape(s.description)}</description>`
       : '';
@@ -1697,7 +1698,7 @@ export function futureContext(
       .sort((a, b) => b.intensity - a.intensity);
     const varLines = orderedVars.map((v) => {
       const intensity = Math.max(0, Math.min(4, Math.round(v.intensity)));
-      const intensityLabel = FUTURE_INTENSITY_LABELS[intensity] ?? '?';
+      const intensityLabel = COMPASS_INTENSITY_LABELS[intensity] ?? '?';
       const cat = v.category ? ` category="${xmlEscape(v.category)}"` : '';
       const desc = v.description
         ? `>${xmlEscape(v.description)}</variable>`
@@ -1713,7 +1714,7 @@ export function futureContext(
   });
 
   // Optional Present block — gives the chat a "where we are now" anchor
-  // it can contrast the scenarios against.
+  // it can contrast the cohort against.
   const presentBlock = (() => {
     const pv = headArc.presentVariables;
     if (!pv || pv.length === 0) return '';
@@ -1722,7 +1723,7 @@ export function futureContext(
       .sort((a, b) => b.intensity - a.intensity)
       .map((v) => {
         const intensity = Math.max(0, Math.min(4, Math.round(v.intensity)));
-        const label = FUTURE_INTENSITY_LABELS[intensity] ?? '?';
+        const label = COMPASS_INTENSITY_LABELS[intensity] ?? '?';
         return `    <variable name="${xmlEscape(v.name)}" intensity="${intensity}" intensity-label="${label}" />`;
       });
     const description = headArc.presentDescription ? `\n  <description>${xmlEscape(headArc.presentDescription)}</description>` : '';
@@ -1730,7 +1731,7 @@ export function futureContext(
       ? `\n  <reasoning>${xmlEscape(headArc.presentReasoning)}</reasoning>`
       : '';
     const logitAttr = typeof headArc.presentLogit === 'number'
-      ? ` logit="${headArc.presentLogit.toFixed(2)}" rarity="${futureRarityLabel(headArc.presentLogit)}"`
+      ? ` logit="${headArc.presentLogit.toFixed(2)}" rarity="${compassRarityLabel(headArc.presentLogit)}"`
       : '';
     return `\n<present${logitAttr}>${description}${reasoning}
   <variables count="${presentVars.length}">
@@ -1739,7 +1740,7 @@ ${presentVars.join('\n')}
 </present>\n`;
   })();
 
-  return `<future arc="${xmlEscape(headArc.name)}" scenarios="${scenarios.length}" hint="Cohort of plausible next-arc futures. Each scenario is a coordination of variables with a softmax probability over the cohort and a logit on the [-4,+4] evidence scale. Rarity is the natural-language descriptor for that logit.">
+  return `<compass arc="${xmlEscape(headArc.name)}" scenarios="${scenarios.length}" hint="Cohort of feasible next-arc directions. Each scenario is a coordination of variables with a softmax probability over the cohort and a logit on the [-4,+4] scale. Read priorLogits as precision prediction when the work is a simulation, as recommendation strength otherwise. Rarity / pull labels are the natural-language descriptor for the logit band.">
 <rarity-scale>
   <level logit-range="[3, 4]">expected</level>
   <level logit-range="[1, 3)">likely</level>
@@ -1748,14 +1749,14 @@ ${presentVars.join('\n')}
   <level logit-range="[-4, -3]">tail-event</level>
 </rarity-scale>
 ${presentBlock}${scenarioBlocks.join('\n')}
-</future>`;
+</compass>`;
 }
 
-/** Lightweight gate so callers can hide the Future option when there's
+/** Lightweight gate so callers can hide the Compass option when there's
  *  nothing to inspect. Tied to the currently-viewed scene's arc — a
- *  world commit position or an arc with no scenarios both return false,
- *  so the dropdown can be conditionally shown. */
-export function hasFutureScenarios(
+ *  world commit position or an arc with no Compass cohort both return
+ *  false, so the dropdown can be conditionally shown. */
+export function hasCompassScenarios(
   n: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
@@ -1769,12 +1770,12 @@ export function hasFutureScenarios(
 
 // ── Mode (Phase Reasoning Graph) chat context ───────────────────────────
 //
-// Mirrors `futureContext` shape — an XML data block dense enough for the
+// Mirrors `compassContext` shape — an XML data block dense enough for the
 // chat to reason about but light enough not to crowd the prompt. The Mode
 // graph is the META MACHINERY of the work (patterns, conventions,
 // attractors, agents, rules, pressures, landmarks) so the chat surface
-// here is "what's the working model of reality" — orthogonal to Future's
-// "what are the alternate next-arc unfoldings".
+// here is "what's the working model of reality" — orthogonal to the
+// Compass's "where could the work feasibly go next".
 
 /** Build the XML context for the Mode chat surface. Renders the currently
  *  active Mode (Phase Reasoning Graph) — its summary, optional guidance,
@@ -1833,7 +1834,7 @@ export function hasMode(n: NarrativeState): boolean {
 
 // ── Investigation (active CRG) chat context ─────────────────────────────
 //
-// Mirrors modeContext / futureContext shape but anchored on the active
+// Mirrors modeContext / compassContext shape but anchored on the active
 // investigation for the currently-viewed arc. The CRG is the work's
 // in-arc reasoning surface (what's happening and why right now), so this
 // pairs naturally with the outline recap — outline says how the world

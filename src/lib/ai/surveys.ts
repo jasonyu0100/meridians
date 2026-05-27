@@ -19,8 +19,8 @@ import {
   buildArtifactPersona,
   buildSurveyUserPrompt,
   buildSurveyProposalUserPrompt,
-  SURVEY_GEN_SYSTEM,
 } from "@/lib/prompts/surveys";
+import { buildSurveyGenSystem, workIdentityFor } from "@/lib/prompts/paradigm-analyst";
 import type {
   Artifact,
   Character,
@@ -293,7 +293,7 @@ export async function generateSurveyProposal(
 
   const raw = await callGenerate(
     userPrompt,
-    SURVEY_GEN_SYSTEM,
+    buildSurveyGenSystem(workIdentityFor(narrative)),
     undefined,
     "generateSurveyProposal",
     INTERACTION_MODEL,

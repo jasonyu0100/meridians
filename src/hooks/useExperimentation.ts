@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * useExperimentation — parallel scenario-driven branch generation.
+ * useExperimentation — parallel Compass-driven branch generation.
  *
- * Given the current arc's Future scenarios, kick off N parallel arc
- * continuations (one per scenario), each guided by that scenario's
+ * Given the current arc's Compass cohort, kick off N parallel arc
+ * continuations (one per direction), each guided by that direction's
  * variable coordination. Results are accumulated as candidate branches
  * the user can commit. Cancellable (Stop aborts all in-flight workers)
  * and stays out of the store until the commit step. No pause — each task
@@ -103,8 +103,8 @@ export function useExperimentation() {
   // ── Start ───────────────────────────────────────────────────────────────
 
   /**
-   * Kick off the batch. Reads the focused arc's Future scenarios and
-   * launches one generation per scenario with bounded parallelism. Returns
+   * Kick off the batch. Reads the focused arc's Compass cohort and
+   * launches one generation per direction with bounded parallelism. Returns
    * immediately; the run progresses in the background.
    */
   const start = useCallback(
@@ -116,8 +116,8 @@ export function useExperimentation() {
 
       // Anchor the batch at the HEAD of the current branch — Experimentation
       // always continues from the latest arc's tip, regardless of where the
-      // user's cursor currently sits. The head arc's Future scenarios drive
-      // the cohort.
+      // user's cursor currently sits. The head arc's Compass cohort drives
+      // the batch.
       const headIndex = resolvedEntryKeys.length - 1;
       const headArc = findHeadArc(activeNarrative, resolvedEntryKeys);
       if (!headArc) return;
@@ -176,8 +176,8 @@ export function useExperimentation() {
             });
           },
           {
-            // Run every scenario in parallel — the cohort is small (a
-            // handful of futures) and the user always wants to see all
+            // Run every direction in parallel — the cohort is small (a
+            // handful of directions) and the user always wants to see all
             // outcomes side-by-side rather than waiting in batches.
             parallel: selected.length,
             isCancelled: () => cancelledRef.current,

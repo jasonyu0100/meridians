@@ -1,11 +1,10 @@
 /**
- * Pre-expansion suggestion prompt — analyses the current world structure and
- * proposes a 2-4 sentence rationale for what the next expansion should add,
- * with explicit references to existing entities to integrate against.
+ * Pre-expansion suggestion USER prompt — analyses the current world structure
+ * and proposes a 2-4 sentence rationale for what the next expansion should
+ * add, with explicit references to existing entities to integrate against.
+ * The matching SYSTEM prompt lives in `paradigm-analyst.ts` and dispatches on
+ * paradigm.
  */
-
-export const EXPANSION_SUGGEST_SYSTEM =
-  'You are a world-building advisor. Read the current world structure and propose a tight rationale for the next expansion — what new entities (characters, locations, threads, system rules) the narrative needs and HOW they connect to existing ones. Use entity NAMES, never raw IDs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 export type WorldExpansionSize = 'small' | 'medium' | 'large' | 'exact';
 

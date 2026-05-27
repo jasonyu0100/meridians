@@ -26,21 +26,21 @@ import { findHeadArc } from '@/hooks/useExperimentation';
 import { InferenceFields } from '@/components/shared/InferenceFields';
 
 /**
- * Variables view — Control → Present | Future.
+ * Variables view — Control → Present | Compass.
  *
  * Each arc owns its OWN Present variable set, custom-generated for that
- * arc. Each Future scenario on an arc owns its OWN scenario-specific
- * variable set, custom-generated for that particular future. There is no
- * shared catalogue, no cross-arc vocabulary.
+ * arc. Each Compass scenario on an arc owns its OWN scenario-specific
+ * variable set, custom-generated for that particular direction. There is
+ * no shared catalogue, no cross-arc vocabulary.
  *
- * Fresh-page state: an arc with no Present variables (and a Future tab
- * with no scenarios) shows a seed form so the user can spin up that
- * scope's set on demand.
+ * Fresh-page state: an arc with no Present variables (and a Compass tab
+ * with no cohort) shows a seed form so the user can spin up that scope's
+ * set on demand.
  */
 
-type Mode = 'present' | 'future';
+type Mode = 'present' | 'compass';
 const PRESENT_TRACE_COLOR = '#a78bfa';
-const FUTURE_TRACE_COLOR = '#34d399';
+const COMPASS_TRACE_COLOR = '#34d399';
 
 interface VariablesViewProps {
   mode: Mode;
@@ -98,8 +98,8 @@ export default function VariablesView({ mode }: VariablesViewProps) {
   };
 
   // High-signal context blocks for every LLM call — built once here, reused
-  // by all three variable functions (Present extract, Future generation,
-  // scenario re-score). `narrativeContext` is the full tiered branch state
+  // by all three variable functions (Present extract, Compass generation,
+  // direction re-score). `narrativeContext` is the full tiered branch state
   // up to the current scene (cumulative network, threads, roster, deltas);
   // `buildActiveModeSection` folds in the working-machinery substrate so
   // variables inherit from it.
@@ -277,7 +277,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   };
 
   // Pool of variables the active scenario *could* adopt — drawn ONLY from
-  // sibling scenarios in the same cohort. Present and Future are separate
+  // sibling scenarios in the same cohort. Present and Compass are separate
   // surfaces; their variable sets never cross.
   const activeScenarioPool = useMemo<Variable[]>(() => {
     if (!activeScenario) return [];
@@ -398,14 +398,14 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   }, [pending, scenarios, narrative.title, focusedArc, contextSource, outline, modeSection, dispatch]);
 
   // Present has no pool — its variable set stands alone and does not borrow
-  // from Future scenarios. The two surfaces are separate by design.
+  // from Compass directions. The two surfaces are separate by design.
 
   const generatePresent = useCallback(async () => {
     setBusy(true);
     setError(null);
     setStreamingReasoning('');
     try {
-      const { variables, description, reasoning, considered, breaks, opens, priorLogit } = await extractArcPresent({
+      const { variables, paradigm, description, reasoning, considered, breaks, opens, priorLogit } = await extractArcPresent({
         narrative,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
@@ -419,6 +419,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         type: 'SET_ARC_PRESENT_VARIABLES',
         arcId: focusedArc.id,
         variables,
+        paradigm,
         description,
         reasoning,
         considered,
@@ -437,15 +438,15 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     }
   }, [focusedArc, narrative.title, contextSource, outline, modeSection, direction, dispatch]);
 
-  const generateFuture = useCallback(async () => {
+  const generateCompass = useCallback(async () => {
     setBusy(true);
     setError(null);
     setStreamingReasoning('');
     try {
-      // Future is an independent fresh look from narrative context — NOT a
+      // Compass is an independent fresh look from work context — NOT a
       // projection of the arc's Present. Both surfaces draw from the same
       // historical record (scenes, threads, roster, prior arcs).
-      const generated = await generatePlanningScenarios({
+      const { scenarios: generated, paradigm } = await generatePlanningScenarios({
         narrative,
         arc: { id: focusedArc.id, name: focusedArc.name, directionVector: focusedArc.directionVector, summary: focusedArc.worldState },
         context: contextSource,
@@ -456,7 +457,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         reasoningBudget: resolveReasoningBudget(narrative),
       });
       if (generated.length > 0) {
-        dispatch({ type: 'SET_ARC_PLANNING_SCENARIOS', arcId: focusedArc.id, scenarios: generated });
+        dispatch({ type: 'SET_ARC_PLANNING_SCENARIOS', arcId: focusedArc.id, scenarios: generated, paradigm });
         setActiveScenarioId(generated[0].id);
         if (direction.trim()) {
           dispatch({ type: 'SET_ARC_SCENARIO_DIRECTION', arcId: focusedArc.id, direction });
@@ -473,19 +474,19 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   }, [focusedArc, narrative.title, contextSource, outline, modeSection, direction, dispatch]);
 
   // Beaker quick-action — FloatingPalette sets this flag immediately before
-  // switching to the future view; consuming it here covers the render gap
+  // switching to the Compass view; consuming it here covers the render gap
   // (a custom event would fire before this component mounts).
   useEffect(() => {
-    if (mode !== 'future') return;
+    if (mode !== 'compass') return;
     let pending = false;
     try {
-      pending = sessionStorage.getItem('inktide:pending-generate-future') === '1';
-      if (pending) sessionStorage.removeItem('inktide:pending-generate-future');
+      pending = sessionStorage.getItem('inktide:pending-generate-compass') === '1';
+      if (pending) sessionStorage.removeItem('inktide:pending-generate-compass');
     } catch {
       // sessionStorage unavailable — skip
     }
-    if (pending && !busy) generateFuture();
-    // Run once per mount in future mode; generateFuture / busy intentionally
+    if (pending && !busy) generateCompass();
+    // Run once per mount in compass mode; generateCompass / busy intentionally
     // omitted from deps to avoid retriggering on every closure change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -509,12 +510,12 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     ? presentVariables.length === 0
     : scenarios.length === 0;
 
-  const accent = mode === 'present' ? PRESENT_TRACE_COLOR : FUTURE_TRACE_COLOR;
+  const accent = mode === 'present' ? PRESENT_TRACE_COLOR : COMPASS_TRACE_COLOR;
 
-  const onRegenerate = mode === 'present' ? generatePresent : generateFuture;
-  const regenerateLabel = mode === 'present' ? 'Regenerate Present' : 'Regenerate Future';
+  const onRegenerate = mode === 'present' ? generatePresent : generateCompass;
+  const regenerateLabel = mode === 'present' ? 'Regenerate Present' : 'Regenerate Compass';
 
-  const canExperiment = mode === 'future'
+  const canExperiment = mode === 'compass'
     && isHeadArc
     && scenarios.some((s) => Array.isArray(s.variables) && s.variables.length > 0);
 
@@ -525,7 +526,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         arcName={focusedArc.name}
         isHeadArc={isHeadArc}
         variableCount={mode === 'present' ? presentVariables.length : undefined}
-        scenariosCount={mode === 'future' ? scenarios.length : undefined}
+        scenariosCount={mode === 'compass' ? scenarios.length : undefined}
         error={error}
         busy={busy}
         directionSet={direction.trim().length > 0}
@@ -547,6 +548,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
           mode === 'present' ? (
             <PresentBento
               variables={presentVariables}
+              paradigm={focusedArc.presentParadigm}
               description={focusedArc.presentDescription}
               reasoning={focusedArc.presentReasoning}
               considered={focusedArc.presentConsidered}
@@ -557,8 +559,9 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
               error={error}
             />
           ) : (
-            <FutureBento
+            <CompassBento
               scenarios={displayedScenarios}
+              paradigm={focusedArc.planningParadigm}
               probs={probs}
               ranks={ranks}
               activeScenario={activeScenario}
@@ -584,7 +587,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         {busy && (
           <ReasoningOverlay
             accent={accent}
-            label={mode === 'present' ? 'Extracting present variables…' : 'Generating future scenarios…'}
+            label={mode === 'present' ? 'Extracting present variables…' : 'Generating compass…'}
             reasoning={streamingReasoning}
           />
         )}
@@ -622,8 +625,8 @@ function DirectionModal({
 }) {
   const placeholder = mode === 'present'
     ? "What should the variable extraction emphasise?"
-    : "What should the scenario cohort bias toward?";
-  const title = mode === 'present' ? 'Regenerate Present' : 'Regenerate Future';
+    : "What should the compass cohort bias toward?";
+  const title = mode === 'present' ? 'Regenerate Present' : 'Regenerate Compass';
 
   // Style mirrors GeneratePanel.tsx — same Modal size, same uppercase
   // section labels, same `bg-bg-elevated border border-border rounded-lg`
@@ -742,8 +745,8 @@ function VariablesTopBar({
   onOpenExperiment?: () => void;
   onWipe?: () => void;
 }) {
-  const accent = mode === 'present' ? PRESENT_TRACE_COLOR : FUTURE_TRACE_COLOR;
-  const modeLabel = mode === 'present' ? 'Present' : 'Future';
+  const accent = mode === 'present' ? PRESENT_TRACE_COLOR : COMPASS_TRACE_COLOR;
+  const modeLabel = mode === 'present' ? 'Present' : 'Compass';
   return (
     <div className="h-9 shrink-0 flex items-center px-2 gap-2 glass-panel border-b border-border">
       {arcName ? (
@@ -757,7 +760,7 @@ function VariablesTopBar({
         <span className="text-[9px] text-text-dim/60 font-mono tabular-nums">{variableCount} variables</span>
       )}
       {scenariosCount !== undefined && scenariosCount > 0 && (
-        <span className="text-[9px] text-text-dim/60 font-mono tabular-nums">{scenariosCount} futures</span>
+        <span className="text-[9px] text-text-dim/60 font-mono tabular-nums">{scenariosCount} directions</span>
       )}
       {error && <span className="text-[9px] text-rose-300/80 font-mono truncate max-w-[20vw]">{error}</span>}
 
@@ -860,11 +863,11 @@ function EmptyState({
 }) {
   const primary = message ?? (
     mode === 'present' ? 'No Present variables yet for this arc.' :
-    mode === 'future' ? 'No Future scenarios yet for this arc.' :
+    mode === 'compass' ? 'No Compass directions yet for this arc.' :
     'Nothing to show.'
   );
   const hint = mode && !message
-    ? `Use the Regenerate ${mode === 'present' ? 'Present' : 'Future'} action above to generate one.`
+    ? `Use the Regenerate ${mode === 'present' ? 'Present' : 'Compass'} action above to generate one.`
     : null;
   return (
     <div className="h-full flex flex-col items-center justify-center py-20 gap-3 px-8 text-center">
@@ -932,7 +935,7 @@ function HDivider() {
 
 // ── Resizable height ─────────────────────────────────────────────────────
 //
-// Both Present and Future bottom panels carry a lot of text now (Reasoning
+// Both Present and Compass bottom panels carry a lot of text now (Reasoning
 // + Considered + Breaks + Opens). Default to a compact ~150px and let the
 // user drag the top edge upward to grow the panel — same affordance as
 // NarrativePanel. Resize handle is rendered at the panel's top edge.
@@ -989,7 +992,7 @@ function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => v
 //
 // Surfaces a coordination's log-prior plausibility (in MARKET_EVIDENCE
 // units, [-4, +4]) as: the raw logit, a sigmoid-derived "how likely" %,
-// and a one-word rarity tag. Renders below the chart on Present/Future
+// and a one-word rarity tag. Renders below the chart on Present/Compass
 // footers so the path's rarity becomes a permanent, glanceable record —
 // "everything happened, but in retrospect there was a rarity to it."
 
@@ -1026,10 +1029,35 @@ function LogitBadge({ logit, accent }: { logit: number; accent: string }) {
   );
 }
 
+function ParadigmChip({ paradigm, accent }: { paradigm: string; accent: string }) {
+  // Compass fingerprint — paradigm name + operative cues the cohort/Present
+  // was drafted against. Single-row chip rendered above description so the
+  // user can audit the lens at a glance.
+  return (
+    <div className="flex items-baseline gap-2 font-mono">
+      <span
+        className="w-1.5 h-1.5 rounded-full shrink-0 self-center"
+        style={{ background: accent }}
+      />
+      <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 shrink-0">
+        Paradigm
+      </span>
+      <span className="text-[11px] text-text-secondary leading-snug">
+        {paradigm}
+      </span>
+    </div>
+  );
+}
+
 // ── Present bento ──────────────────────────────────────────────────────────
 
 interface PresentBentoProps {
   variables: Variable[];
+  /** Compass the variable set was extracted against — paradigm name +
+   *  operative cues. Rendered as a small chip above the description so the
+   *  user can audit "is the model reading this work as the right kind of
+   *  work?" without scrolling into the inference fields. */
+  paradigm?: string;
   /** Short one-sentence gestalt annotating the Present coordination —
    *  what the configuration IS. Generated alongside the variables and
    *  rendered as a labelled paragraph in the chart-column footer. */
@@ -1038,14 +1066,14 @@ interface PresentBentoProps {
    *  at these intensities given the arc's state. */
   reasoning?: string;
   /** Universal inference-shape fields — same handles used by CRG / PRG /
-   *  Future scenarios. Option space, falsification handle, forward
+   *  Compass directions. Option space, falsification handle, forward
    *  extension. */
   considered?: string;
   breaks?: string;
   opens?: string;
   /** Log-prior plausibility for this Present coordination, in
    *  MARKET_EVIDENCE_MIN/MAX range ([-4, +4]). When transferred from a
-   *  Future scenario via experimentation commit, this records "how
+   *  Compass direction via experimentation commit, this records "how
    *  likely was this coordination when it was chosen" — the rarity badge
    *  that gives the path its sense of specialness. */
   logit?: number;
@@ -1054,7 +1082,7 @@ interface PresentBentoProps {
 }
 
 function PresentBento({
-  variables, description, reasoning, considered, breaks, opens, logit, onChange, error,
+  variables, paradigm, description, reasoning, considered, breaks, opens, logit, onChange, error,
 }: PresentBentoProps) {
   const traces = useMemo(() =>
     variables.length > 0 ? [{ id: 'present', color: PRESENT_TRACE_COLOR, variables }] : [],
@@ -1098,7 +1126,7 @@ function PresentBento({
               </div>
             )}
           </div>
-          {(description || reasoning || considered || breaks || opens || typeof logit === 'number') && (
+          {(paradigm || description || reasoning || considered || breaks || opens || typeof logit === 'number') && (
             <>
               <HDivider />
               <ResizeHandle onMouseDown={onResizeMouseDown} />
@@ -1109,6 +1137,7 @@ function PresentBento({
                 {typeof logit === 'number' && (
                   <LogitBadge logit={logit} accent={PRESENT_TRACE_COLOR} />
                 )}
+                {paradigm && <ParadigmChip paradigm={paradigm} accent={PRESENT_TRACE_COLOR} />}
                 {description && (
                   <div className="flex flex-col gap-1">
                     <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
@@ -1131,7 +1160,7 @@ function PresentBento({
           )}
         </div>
         <VDivider />
-        {/* Variables sidebar — same width and chrome as the Future view's
+        {/* Variables sidebar — same width and chrome as the Compass view's
             variables sidebar so the editor sits in a familiar place. */}
         <div className="w-72 shrink-0 flex flex-col">
           <SectionHeader>
@@ -1152,10 +1181,15 @@ function PresentBento({
   );
 }
 
-// ── Future bento ───────────────────────────────────────────────────────────
+// ── Compass bento ──────────────────────────────────────────────────────────
 
-interface FutureBentoProps {
+interface CompassBentoProps {
   scenarios: PlanningScenario[];
+  /** Compass the cohort was drafted against — paradigm name + operative
+   *  cues. Cohort-level, identical across all scenarios. Rendered as a
+   *  chip above the per-scenario detail so the user can audit the lens
+   *  the whole cohort came out of. */
+  paradigm?: string;
   probs: Record<string, number>;
   ranks: Map<string, number>;
   activeScenario: PlanningScenario | null;
@@ -1182,9 +1216,9 @@ interface FutureBentoProps {
   error: string | null;
 }
 
-function FutureBento(props: FutureBentoProps) {
+function CompassBento(props: CompassBentoProps) {
   const {
-    scenarios, probs, ranks,
+    scenarios, paradigm, probs, ranks,
     activeScenario, activeScenarioId, setActiveScenarioId,
     hoveredScenarioId, setHoveredScenarioId,
     activeScenarioPool,
@@ -1269,7 +1303,8 @@ function FutureBento(props: FutureBentoProps) {
           </div>
           {activeScenario
             && (
-              activeScenario.description
+              paradigm
+                || activeScenario.description
                 || activeScenario.reasoning
                 || activeScenario.considered
                 || activeScenario.breaks
@@ -1287,6 +1322,7 @@ function FutureBento(props: FutureBentoProps) {
                 {typeof activeScenario.priorLogit === 'number' && (
                   <LogitBadge logit={activeScenario.priorLogit} accent={activeScenario.color} />
                 )}
+                {paradigm && <ParadigmChip paradigm={paradigm} accent={activeScenario.color} />}
                 {activeScenario.description && (
                   <div className="flex flex-col gap-1">
                     <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim/60 font-mono">
@@ -1425,7 +1461,7 @@ function ScenarioSidebar({
   return (
     <div className="flex flex-col h-full min-h-105">
       <div className="px-3 py-2 border-b border-white/6 flex items-baseline gap-2">
-        <TileLabel accent={FUTURE_TRACE_COLOR}>Scenarios</TileLabel>
+        <TileLabel accent={COMPASS_TRACE_COLOR}>Scenarios</TileLabel>
         <span className="text-[9px] text-text-dim/60 font-mono">{scenarios.length}</span>
         <button
           onClick={onAddDraft}

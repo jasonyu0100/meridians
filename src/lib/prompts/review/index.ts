@@ -1,12 +1,15 @@
 /**
  * Review Prompts — branch-level editorial passes.
+ *
+ * USER prompts live here; SYSTEM prompts are paradigm-aware and built per-call
+ * via `paradigm-review.ts`.
  */
 
-export { buildBranchReviewPrompt, BRANCH_REVIEW_SYSTEM } from './branch';
+export { buildBranchReviewPrompt } from './branch';
 export type { BranchReviewPromptParams } from './branch';
 
-export { buildProseReviewPrompt, PROSE_REVIEW_SYSTEM } from './prose';
+export { buildProseReviewPrompt } from './prose';
 export type { ProseReviewPromptParams } from './prose';
 
-export { buildPlanReviewPrompt, PLAN_REVIEW_SYSTEM } from './plan';
+export { buildPlanReviewPrompt } from './plan';
 export type { PlanReviewPromptParams } from './plan';

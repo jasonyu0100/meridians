@@ -77,6 +77,7 @@ import type {
   ProseEvaluation,
   ProseProfile,
   ProseScore,
+  SavedProseProfile,
   ReasoningGraphSnapshot,
   RelationshipEdge,
   RelationshipDelta,
@@ -777,6 +778,7 @@ export type Action =
       type: "SET_ARC_PRESENT_VARIABLES";
       arcId: string;
       variables: Variable[];
+      paradigm?: string;
       description?: string;
       reasoning?: string;
       considered?: string;
@@ -790,6 +792,7 @@ export type Action =
       type: "SET_ARC_PLANNING_SCENARIOS";
       arcId: string;
       scenarios: PlanningScenario[];
+      paradigm?: string;
     }
   | {
       // Store the last user-supplied direction string that shaped the cohort.
@@ -944,6 +947,10 @@ export type Action =
   | { type: "SET_STORY_SETTINGS"; settings: StorySettings }
   | { type: "SET_BRIEFING"; briefing: import("@/types/briefing").StoredBriefing | undefined }
   | { type: "SET_PROSE_PROFILE"; profile: ProseProfile | undefined }
+  | { type: "ADD_SAVED_PROSE_PROFILE"; saved: SavedProseProfile }
+  | { type: "RENAME_SAVED_PROSE_PROFILE"; id: string; name: string }
+  | { type: "UPDATE_SAVED_PROSE_PROFILE"; id: string; profile: ProseProfile }
+  | { type: "DELETE_SAVED_PROSE_PROFILE"; id: string }
   | { type: "SET_PATTERNS"; patterns: string[] }
   | { type: "SET_ANTI_PATTERNS"; antiPatterns: string[] }
   | { type: "ADD_PHASE_GRAPH"; graph: Mode }
@@ -1288,6 +1295,17 @@ function reducer(state: AppState, action: Action): AppState {
             [action.arcId]: {
               ...arc,
               presentVariables: action.variables.length > 0 ? action.variables : undefined,
+              // Paradigm is COMPASS-LEVEL, not per-coordination — survives
+              // partial updates (single-variable intensity tweaks etc.)
+              // unless the caller explicitly passes a new one or wipes the
+              // arc by clearing variables. Other annotations (description /
+              // reasoning / considered / breaks / opens / logit) describe
+              // the specific coordination and DO clear on partial update
+              // because they'd misdescribe the new state.
+              presentParadigm:
+                action.variables.length === 0
+                  ? undefined
+                  : (action.paradigm ?? arc.presentParadigm),
               presentDescription: action.description,
               presentReasoning: action.reasoning,
               presentConsidered: action.considered,
@@ -1310,6 +1328,13 @@ function reducer(state: AppState, action: Action): AppState {
             [action.arcId]: {
               ...arc,
               planningScenarios: action.scenarios.length > 0 ? action.scenarios : undefined,
+              // Paradigm is COMPASS-LEVEL — preserve across partial updates
+              // (edit / remove / commit-pending) unless the caller passes a
+              // new one or wipes the cohort.
+              planningParadigm:
+                action.scenarios.length === 0
+                  ? undefined
+                  : (action.paradigm ?? arc.planningParadigm),
             },
           },
         };
@@ -1342,7 +1367,9 @@ function reducer(state: AppState, action: Action): AppState {
             [action.arcId]: {
               ...arc,
               presentVariables: undefined,
+              presentParadigm: undefined,
               planningScenarios: undefined,
+              planningParadigm: undefined,
               scenarioDirection: undefined,
             },
           },
@@ -2890,6 +2917,34 @@ function reducer(state: AppState, action: Action): AppState {
       return updateNarrative(state, (n) => ({
         ...n,
         proseProfile: action.profile,
+      }));
+
+    case "ADD_SAVED_PROSE_PROFILE":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        savedProseProfiles: [...(n.savedProseProfiles ?? []), action.saved],
+      }));
+
+    case "RENAME_SAVED_PROSE_PROFILE":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        savedProseProfiles: (n.savedProseProfiles ?? []).map((s) =>
+          s.id === action.id ? { ...s, name: action.name } : s
+        ),
+      }));
+
+    case "UPDATE_SAVED_PROSE_PROFILE":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        savedProseProfiles: (n.savedProseProfiles ?? []).map((s) =>
+          s.id === action.id ? { ...s, profile: action.profile } : s
+        ),
+      }));
+
+    case "DELETE_SAVED_PROSE_PROFILE":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        savedProseProfiles: (n.savedProseProfiles ?? []).filter((s) => s.id !== action.id),
       }));
 
     case "SET_PATTERNS":

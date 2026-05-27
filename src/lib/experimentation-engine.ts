@@ -1,7 +1,7 @@
 /**
  * Experimentation engine — parallel scenario-driven batch generator.
  *
- * For each Future scenario in the cohort, generate ONE arc continuation
+ * For each Compass direction in the cohort, generate ONE arc continuation
  * in parallel, with the scenario's variable coordination as the primary
  * direction. Flat fan-out; the cohort's softmax probability ranks the
  * scenarios for commit ordering.
@@ -94,7 +94,7 @@ export type VirtualState = {
  *
  * Also transfers the scenario's description + reasoning onto the new arc
  * as `presentDescription` / `presentReasoning` so lineage is preserved —
- * the Future-scenario annotation becomes the new arc's Present annotation.
+ * the Compass-direction annotation becomes the new arc's Present annotation.
  *
  * Shared between the virtual preview (`buildVirtualState`) and the real
  * commit path (`useExperimentation.runScenario`) so both surfaces agree

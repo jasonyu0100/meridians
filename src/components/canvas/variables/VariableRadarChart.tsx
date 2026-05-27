@@ -34,8 +34,8 @@ const MAX_INTENSITY = 4;
  * axis; a trace's polygon is its visual signature.
  *
  * Single trace (Present) reads as one signature shape; multiple traces
- * (Future cohort) overlay so coordination signatures can be compared at a
- * glance — what makes one scenario distinct from its peers becomes the
+ * (Compass cohort) overlay so coordination signatures can be compared at a
+ * glance — what makes one direction distinct from its peers becomes the
  * shape difference.
  *
  * Same trace-key/category conventions as the parallel-coords view it

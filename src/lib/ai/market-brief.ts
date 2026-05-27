@@ -36,7 +36,8 @@ import { getStoryPhase } from '@/lib/auto-engine';
 import { getActiveMode } from '@/lib/mode-graph';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
-import { MARKET_BRIEFING_SYSTEM, buildMarketBriefingPrompt } from '@/lib/prompts/briefing';
+import { buildMarketBriefingPrompt } from '@/lib/prompts/briefing';
+import { buildMarketBriefingSystem, workIdentityFor } from '@/lib/prompts/paradigm-analyst';
 import {
   MOVE_PRIORITIES,
   MOVE_TYPES,
@@ -109,10 +110,11 @@ export async function generateMarketBriefing(
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
+  const systemPrompt = buildMarketBriefingSystem(workIdentityFor(narrative));
   const raw = onReasoning
     ? await callGenerateStream(
         prompt,
-        MARKET_BRIEFING_SYSTEM,
+        systemPrompt,
         () => {},
         MAX_TOKENS_DEFAULT,
         'generateMarketBriefing',
@@ -124,7 +126,7 @@ export async function generateMarketBriefing(
       )
     : await callGenerate(
         prompt,
-        MARKET_BRIEFING_SYSTEM,
+        systemPrompt,
         MAX_TOKENS_DEFAULT,
         'generateMarketBriefing',
         undefined,

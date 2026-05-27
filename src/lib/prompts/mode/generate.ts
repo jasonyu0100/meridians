@@ -18,9 +18,17 @@
  */
 
 import { GRAPH_THINKING_PRINCIPLE } from "../reasoning/principles";
+import {
+  composeAnalystIdentity,
+  type WorkIdentity,
+} from "../paradigm-roles";
+import { PRINCIPLE_PARADIGM_FIDELITY } from "../principles";
 
-export const PHASE_GRAPH_SYSTEM =
-  `You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a phase graph exposing the META MACHINERY of a long-form work — the structural underpinnings (economic / material / political / methodological / institutional / cultural), the patterns and conventions the work runs on, the landmarks whose machinery still binds. NOT situational state; the substrate downstream layers (CRG, scenes, plans, prose) inherit and operate on. For simulation register, the PRG IS the rule set being modelled — rules are the foundational laws, agents are institutional / faction / market drivers, pressures are macro forcings, landmarks are initial conditions whose machinery still binds. Return ONLY valid JSON matching the schema in the user prompt.`;
+export function buildPhaseGraphSystem(work?: WorkIdentity): string {
+  const identity = work?.paradigm ? `${composeAnalystIdentity(work)} ` : '';
+  const fidelity = work?.paradigm ? `\n\n${PRINCIPLE_PARADIGM_FIDELITY}` : '';
+  return `${identity}You are a thinking partner. ${GRAPH_THINKING_PRINCIPLE} Scope: a phase graph exposing the META MACHINERY of this work — the structural underpinnings (economic / material / political / methodological / institutional / cultural), the patterns and conventions the work runs on, the landmarks whose machinery still binds. NOT situational state; the substrate downstream layers (CRG, scenes, plans, prose) inherit and operate on. In a simulation paradigm, the PRG IS the rule set being modelled — rules are the foundational laws, agents are institutional / faction / market drivers, pressures are macro forcings, landmarks are initial conditions whose machinery still binds. In other paradigms, the PRG names the conventions, attractors, and pressures the paradigm's own logic operates under. Return ONLY valid JSON matching the schema in the user prompt.${fidelity}`;
+}
 
 export type ModePromptArgs = {
   /** Pre-built `<narrative-context>` body. */

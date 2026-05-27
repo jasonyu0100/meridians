@@ -1,12 +1,10 @@
 /**
  * Auto-detect patterns and anti-patterns prompt — analyses a narrative's
- * prose, structure, and content to identify the register/genre/subgenre and
- * derive concrete commandments that encourage variety and prevent stagnation.
- * Register-agnostic: fiction, non-fiction (memoir, essay, reportage,
- * research), and simulation (rule-driven modelling — historical
- * counterfactuals, economic-policy, political wargames, scientific scenarios,
- * LitRPG / cultivation) are all first-class registers; the prompt adapts to
- * whichever the narrative declares.
+ * prose, structure, and content to derive concrete pattern / anti-pattern
+ * commandments. Deliberately does NOT receive the work's current patterns —
+ * we want a fresh read each pass, not a perturbation of the prior result.
+ * Paradigm identity travels through the SYSTEM prompt (built via
+ * `buildDetectPatternsSystem`) when set.
  */
 
 export type DetectPatternsArgs = {
@@ -16,8 +14,6 @@ export type DetectPatternsArgs = {
   systemSummary: string;
   sceneSummaries: string;
   proseSamples: string;
-  existingPatterns: string;
-  existingAntiPatterns: string;
 };
 
 export function buildDetectPatternsPrompt(args: DetectPatternsArgs): string {
@@ -28,8 +24,6 @@ export function buildDetectPatternsPrompt(args: DetectPatternsArgs): string {
     systemSummary,
     sceneSummaries,
     proseSamples,
-    existingPatterns,
-    existingAntiPatterns,
   } = args;
 
   return `<inputs>
@@ -47,8 +41,6 @@ ${sceneSummaries || 'No scenes yet'}
   <prose-samples>
 ${proseSamples || 'No prose available yet'}
   </prose-samples>
-  <existing-patterns>${existingPatterns}</existing-patterns>
-  <existing-anti-patterns>${existingAntiPatterns}</existing-anti-patterns>
 </inputs>
 
 <instructions>

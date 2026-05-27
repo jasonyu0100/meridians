@@ -7,7 +7,7 @@
  */
 
 export {
-  PHASE_GRAPH_SYSTEM,
+  buildPhaseGraphSystem,
   buildModePrompt,
 } from "./generate";
 export type { ModePromptArgs } from "./generate";

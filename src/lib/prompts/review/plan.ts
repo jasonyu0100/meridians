@@ -5,8 +5,8 @@
  * cross-scene continuous, and deliver the declared deltas.
  */
 
-export const PLAN_REVIEW_SYSTEM =
-  'You are a continuity editor reviewing scene beat plans. For each scene check beat-to-delta alignment, cross-plan continuity, internal beat logic, entity knowledge, and spatial/temporal consistency. The plans may serve narrative, simulation, essay, panel, atlas, debate, or record paradigms — verify that each plan\'s shape matches its paradigm: simulation plans must deliver the rule-driven consequence the deltas claim (a system delta declaring a rule fires must have a beat where the rule is actually applied); essay plans must move through argument-shape beats (claim, evidence, counter, conclusion) not action beats; atlas plans must structure as classification not chronology; debate plans must trace attribution + intent + effect; record plans must respect time-stamp velocity. Assign verdict ok|edit per scene with precise issue references (cite beat numbers). Return ONLY valid JSON matching the schema in the user prompt.';
+// System prompt is built per-call by `buildPlanReviewSystem(work)` in
+// `paradigm-review.ts` — case-based on the operator-declared paradigm.
 
 export interface PlanReviewPromptParams {
   title: string;
