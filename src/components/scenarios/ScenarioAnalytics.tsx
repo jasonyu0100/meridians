@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Shared analytics + visualisation primitives for experimentation
+ * Shared analytics + visualisation primitives for scenarios
  * branches, ported from the legacy MCTS inspector. Pure functions over
  * `ScenarioRun.result` so the same widgets can render in the left rail
  * (compact) and the right inspector (expanded).
@@ -19,7 +19,7 @@ import {
   FORCE_REFERENCE_MEANS,
 } from '@/lib/narrative-utils';
 import type { Scene, ForceSnapshot, NarrativeState } from '@/types/narrative';
-import type { ScenarioRun } from '@/types/experimentation';
+import type { ScenarioRun } from '@/types/scenarios';
 import { IconLocationPin, IconEye } from '@/components/icons';
 
 // ── Score colouring (ported from legacy MCTSPanel) ───────────────────────
@@ -244,7 +244,7 @@ export function Sparkline({ series, width = 48, height = 14 }: {
 //   • macro-trend dashed white line
 //   • solid orange smoothed line on top
 //   • small circle peak markers (yellow), valley markers (light blue)
-// Plus an experimentation-specific arc-range highlight that tints the
+// Plus an scenarios-specific arc-range highlight that tints the
 // background where this scenario's new scenes sit.
 
 const ACTIVITY_COLOR = '#F59E0B';

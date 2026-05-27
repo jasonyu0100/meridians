@@ -227,6 +227,14 @@ export type ExpandWorldOptions = {
   onReasoning?: (token: string) => void;
   /** Filter which entity types to create — disabled types are excluded from prompt and stripped from output */
   entityFilter?: ExpansionEntityFilter;
+  /** Repair mode: skip the main expansion call and instead pass `raw`
+   *  through the LLM-assisted JSON repair helper, then resume the normal
+   *  parse + post-processing path. Used by the UI's "Repair" button after
+   *  a primary call returns unparseable JSON. */
+  repairFromRaw?: string;
+  /** Diagnostic hint from the UI auto-diagnose pass — names the specific
+   *  failure mode so the repair LLM can focus its cleanup. */
+  repairHint?: string;
 };
 
 export async function expandWorld(
@@ -237,7 +245,7 @@ export async function expandWorld(
   size: WorldExpansionSize = 'medium',
   options: ExpandWorldOptions = {},
 ): Promise<WorldExpansionResponse> {
-  const { sourceText, onReasoning, entityFilter } = options;
+  const { sourceText, onReasoning, entityFilter, repairFromRaw, repairHint } = options;
 
   logInfo('Starting world expansion', {
     source: 'world-expansion',
@@ -297,12 +305,18 @@ export async function expandWorld(
     nextKId,
   });
 
-  const reasoningBudget = resolveReasoningBudget(narrative);
-  const websearch = resolveWebsearch(narrative);
-  const expandSystem = buildExpandWorldSystem(workIdentityFor(narrative));
-  const raw = onReasoning
-    ? await callGenerateStream(prompt, expandSystem, () => {}, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
-    : await callGenerate(prompt, expandSystem, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  let raw: string;
+  if (repairFromRaw !== undefined) {
+    const { repairJsonOutput } = await import('./repair');
+    raw = await repairJsonOutput(repairFromRaw, 'expandWorld', repairHint);
+  } else {
+    const reasoningBudget = resolveReasoningBudget(narrative);
+    const websearch = resolveWebsearch(narrative);
+    const expandSystem = buildExpandWorldSystem(workIdentityFor(narrative));
+    raw = onReasoning
+      ? await callGenerateStream(prompt, expandSystem, () => {}, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+      : await callGenerate(prompt, expandSystem, MAX_TOKENS_LARGE, 'expandWorld', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = parseJson(raw, 'expandWorld') as any;
 
@@ -462,6 +476,14 @@ export async function generateNarrative(
   /** Websearch config for the wizard-time world-gen call. null disables
    *  the OpenRouter web plugin entirely. */
   websearch: WebsearchConfig | null = null,
+  /** Repair mode: skip the main generation call and instead pass `raw`
+   *  through the LLM-assisted JSON repair helper, then resume the normal
+   *  parse + post-processing path. Used by the wizard's "Repair" button
+   *  after a primary call returns unparseable JSON. */
+  repairFromRaw?: string,
+  /** Diagnostic hint from the UI auto-diagnose pass — names the specific
+   *  failure mode so the repair LLM can focus its cleanup. */
+  repairHint?: string,
 ): Promise<NarrativeState> {
   logInfo('Starting narrative generation', {
     source: 'manual-generation',
@@ -495,11 +517,17 @@ export async function generateNarrative(
   // wall-clock time without improving the output. Initial world generation
   // is the slowest pass in the engine (huge JSON output); cutting reasoning
   // tokens here is the most user-visible perf win.
-  const reasoningBudget = REASONING_BUDGETS['low'];
-  const systemPrompt = buildGenerateNarrativeSystem(paradigm);
-  const raw = onReasoning
-    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
-    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  let raw: string;
+  if (repairFromRaw !== undefined) {
+    const { repairJsonOutput } = await import('./repair');
+    raw = await repairJsonOutput(repairFromRaw, 'generateNarrative', repairHint);
+  } else {
+    const reasoningBudget = REASONING_BUDGETS['low'];
+    const systemPrompt = buildGenerateNarrativeSystem(paradigm);
+    raw = onReasoning
+      ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+      : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = parseJson(raw, 'generateNarrative') as any;
 
@@ -870,7 +898,7 @@ export type DetectedPatterns = {
 };
 
 const VALID_PARADIGMS: ReadonlySet<NarrativeParadigm> = new Set<NarrativeParadigm>([
-  'fiction', 'non-fiction', 'simulation', 'essay', 'panel', 'atlas', 'debate', 'record',
+  'fiction', 'non-fiction', 'simulation', 'essay', 'panel', 'atlas', 'debate', 'record', 'game',
 ]);
 
 /**

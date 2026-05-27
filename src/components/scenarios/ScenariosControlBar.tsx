@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { IconSpinner, IconStop, IconExpand } from '@/components/icons';
-import type { ExperimentationRunState } from '@/types/experimentation';
-import { runDoneCount, runFailedCount, runRunningCount } from '@/types/experimentation';
+import type { ScenariosRunState } from '@/types/scenarios';
+import { runDoneCount, runFailedCount, runRunningCount } from '@/types/scenarios';
 
 type Props = {
-  runState: ExperimentationRunState;
+  runState: ScenariosRunState;
   onStop: () => void;
   onOpenPanel: () => void;
 };
@@ -17,7 +17,7 @@ function formatTime(seconds: number): string {
   return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
 }
 
-export function ExperimentationControlBar({ runState, onStop, onOpenPanel }: Props) {
+export function ScenariosControlBar({ runState, onStop, onOpenPanel }: Props) {
   const { status, startedAt, scenarioOrder } = runState;
   const isRunning = status === 'running';
   const isComplete = status === 'complete';
@@ -66,7 +66,7 @@ export function ExperimentationControlBar({ runState, onStop, onOpenPanel }: Pro
               isComplete ? 'bg-green-400' : 'bg-text-dim'
             }`} />
           )}
-          <span className="text-[10px] text-text-dim uppercase tracking-wider">Experimentation</span>
+          <span className="text-[10px] text-text-dim uppercase tracking-wider">Scenarios</span>
         </div>
 
         <div className="w-px h-4 bg-white/12" />
@@ -115,7 +115,7 @@ export function ExperimentationControlBar({ runState, onStop, onOpenPanel }: Pro
           </button>
         )}
 
-        <button onClick={onOpenPanel} className="w-6 h-6 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/6 rounded transition-colors" title="Open Experimentation panel">
+        <button onClick={onOpenPanel} className="w-6 h-6 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/6 rounded transition-colors" title="Open Scenarios panel">
           <IconExpand size={12} />
         </button>
       </div>

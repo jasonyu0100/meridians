@@ -34,7 +34,7 @@ A world view is modelled as a **knowledge graph** that mutates section by sectio
 - **Four thinking modes** — abduction (default, backward selective), divergent (forward expansive), deduction (forward narrow), induction (backward generalising)
 - **Arc settings sync** — force preference, reasoning mode, and network bias persist on the CRG snapshot so scene generation inherits the same engine tilt without callers re-threading settings
 - **Markov chain pacing** — transition matrices from analyzed narrative shape scene-by-scene rhythm
-- **Experimentation batch** — one parallel arc continuation per Future variable scenario; softmax-ranked cohort, top result becomes active branch, rest attach as sister divergences
+- **Scenarios batch** — one parallel arc continuation per Future variable scenario; softmax-ranked cohort, top result becomes active branch, rest attach as sister divergences
 - **Planning with course correction** — direction vectors rewritten after each arc
 - **Iterative revision** — evaluate → verdict (ok/edit/merge/insert/cut) → reconstruct versioned branches
 - **Prose profiles** — beat plans with authorial Markov chains over a 10-function / 8-mechanism taxonomy
@@ -57,7 +57,7 @@ npm run lint     # ESLint
 - **Images:** Replicate API (Seedream 4.5) via `/api/generate-image`, `/api/generate-cover`
 - **State:** React Context + useReducer in `src/lib/store.tsx`
 - **Persistence:** IndexedDB (narratives, embeddings) + localStorage (meta) via `src/lib/persistence.ts`, `src/lib/idb.ts`
-- **Types:** Domain model in `src/types/narrative.ts`, experimentation types in `src/types/experimentation.ts`, config in `src/lib/constants.ts`
+- **Types:** Domain model in `src/types/narrative.ts`, scenarios types in `src/types/scenarios.ts`, config in `src/lib/constants.ts`
 
 ## Key Directories
 
@@ -77,7 +77,7 @@ src/
 │   ├── generation/         # GeneratePanel, BranchModal, PacingStrip, MarkovGraph
 │   ├── analytics/          # ForceTracker — stock-type force analysis
 │   ├── auto/               # AutoControlBar, AutoSettingsPanel
-│   ├── experimentation/    # ExperimentationPanel, ExperimentationControlBar
+│   ├── scenarios/    # ExperimentationPanel, ExperimentationControlBar
 │   ├── slides/             # SlidesPlayer + individual slide components
 │   ├── sidebar/            # SeriesPicker, ThreadPortfolio, MediaDrive
 │   ├── layout/             # AppShell, RulesPanel
@@ -100,9 +100,9 @@ src/
 │   ├── store.tsx           # State management + reducer actions
 │   ├── text-analysis.ts    # Corpus → NarrativeState extraction (scene-first: plans → structure → arcs)
 │   ├── auto-engine.ts      # Automated story generation — phase-aware force management
-│   ├── experimentation-engine.ts # Parallel scenario batch — direction builder + virtual state + pool
-│   ├── experimentation-state.ts  # Virtual narrative-state helpers for in-flight runs
-│   ├── experimentation-remap.ts  # Comprehensive ID remap for parallel commits
+│   ├── scenarios-engine.ts # Parallel scenario batch — direction builder + virtual state + pool
+│   ├── scenarios-state.ts  # Virtual narrative-state helpers for in-flight runs
+│   ├── scenarios-remap.ts  # Comprehensive ID remap for parallel commits
 │   ├── slides-data.ts      # Slide generation logic
 │   ├── constants.ts        # All tunable config values
 │   ├── persistence.ts      # IndexedDB + localStorage read/write
@@ -113,7 +113,7 @@ src/
 │   └── api-logger.ts       # API call logging & token tracking
 ├── types/
 │   ├── narrative.ts        # Domain types: Scene, Character, Location, Thread, Arc, StructureEvaluation, etc.
-│   └── experimentation.ts  # Scenario-batch run state types
+│   └── scenarios.ts  # Scenario-batch run state types
 ├── hooks/                  # useAutoPlay, useExperimentation, useFeatureAccess
 └── data/                   # Seed narratives (HP, LOTR, Star Wars, GoT, Reverend Insanity)
 ```
@@ -255,14 +255,14 @@ PriorLogit ∈ [-4, +4] log-odds units, scored relative to siblings. Cohort prob
 `rescoreScenario` re-evaluates a single scenario's priorLogit after user edits, anchored against sibling scenarios. Applies the same disciplines.
 
 ### Pipeline integration
-Scenarios feed **Experimentation** (`src/lib/experimentation-engine.ts`, `src/hooks/useExperimentation.ts`): one parallel arc continuation per scenario, with the scenario's coordination as primary generation guidance (via `buildDirectionFromScenario`). On commit, every scenario attaches as a sister branch off the same fork; the softmax-top scenario's branch becomes active. The committed branch carries the variable fingerprint (`stampScenarioVariables` writes the scenario's variables onto the new arc's `presentVariables`).
+Scenarios feed **Scenarios** (`src/lib/scenarios-engine.ts`, `src/hooks/useExperimentation.ts`): one parallel arc continuation per scenario, with the scenario's coordination as primary generation guidance (via `buildDirectionFromScenario`). On commit, every scenario attaches as a sister branch off the same fork; the softmax-top scenario's branch becomes active. The committed branch carries the variable fingerprint (`stampScenarioVariables` writes the scenario's variables onto the new arc's `presentVariables`).
 
 ### Files
 - `src/lib/ai/variables.ts` — `extractArcPresent`, `generatePlanningScenarios`, `rescoreScenario`, `scenarioProbabilities`, `renderVariablesContextBlock`, `VARIABLE_INTENSITY_LEVELS`, `SCENARIO_COLORS`
 - `src/components/canvas/VariablesView.tsx` — Present + Future surface
 - `src/components/canvas/variables/{DispositionEditor,VariableParallelCoords,BentoTile}.tsx` — editing rack, parallel-coords visualisation, layout primitives
-- `src/components/experimentation/ExperimentationPanel.tsx` — multi-scenario parallel branch generation UI
-- `src/lib/experimentation-engine.ts`, `src/hooks/useExperimentation.ts` — runs scenarios as parallel arc continuations
+- `src/components/scenarios/ExperimentationPanel.tsx` — multi-scenario parallel branch generation UI
+- `src/lib/scenarios-engine.ts`, `src/hooks/useExperimentation.ts` — runs scenarios as parallel arc continuations
 
 ## Semantic Search & Embeddings
 

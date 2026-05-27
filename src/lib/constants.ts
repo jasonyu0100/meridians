@@ -139,7 +139,7 @@ export const GAME_CONCURRENCY = 10;
 /** Concurrent prose rewrite slots */
 export const REWRITE_CONCURRENCY = 10;
 
-/** Max children per Experimentation node */
+/** Max children per Scenarios node */
 export const EXPERIMENT_MAX_NODE_CHILDREN = 8;
 
 /** Arcs per season before auto-engine manual stop */

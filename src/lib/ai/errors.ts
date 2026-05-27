@@ -3,7 +3,7 @@
  *
  * `FatalApiError` marks failures no amount of retrying will fix within this
  * session — missing or invalid API key (401), insufficient credits (402),
- * forbidden / account blocked (403). Auto-running loops (auto-play, Experimentation,
+ * forbidden / account blocked (403). Auto-running loops (auto-play, Scenarios,
  * bulk generation, analysis jobs) check `err instanceof FatalApiError` and
  * halt immediately, so a single credit exhaustion doesn't fan out into
  * dozens of failed API calls before the user can react.

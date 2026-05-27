@@ -9,6 +9,7 @@ type AppShellProps = {
   children: ReactNode;
   sidebar: ReactNode;
   sidepanel: ReactNode;
+  rail?: ReactNode;
 };
 
 function useResize(
@@ -61,9 +62,10 @@ function useResize(
   return { width: collapsed ? 0 : width, collapsed, onMouseDown, toggle };
 }
 
-export default function AppShell({ children, sidebar, sidepanel }: AppShellProps) {
+export default function AppShell({ children, sidebar, sidepanel, rail }: AppShellProps) {
   const left = useResize(300, 150, 600, 'left', true);
   const right = useResize(500, 150, 1200, 'right', false);
+  const railWidth = rail ? 56 : 0;
 
   return (
     <div className="h-screen bg-bg-base flex flex-col overflow-hidden relative">
@@ -87,6 +89,9 @@ export default function AppShell({ children, sidebar, sidepanel }: AppShellProps
 
       {/* Main row */}
       <div className="flex-1 flex min-h-0 relative z-10">
+        {/* Narrative rail — fixed-width thumbnail strip */}
+        {rail}
+
         {/* Left sidebar */}
         {!left.collapsed && (
           <div
@@ -126,7 +131,7 @@ export default function AppShell({ children, sidebar, sidepanel }: AppShellProps
             pill is pointer-events-auto with low resting opacity so it's always findable */}
         <div
           className="absolute top-0 bottom-0 z-30 w-4 flex items-center justify-center pointer-events-none"
-          style={{ left: left.collapsed ? 0 : left.width - 8 }}
+          style={{ left: railWidth + (left.collapsed ? 0 : left.width - 8) }}
         >
           <button
             onClick={left.toggle}

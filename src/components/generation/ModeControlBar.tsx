@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
-import type { ExperimentationRunState } from '@/types/experimentation';
+import type { ScenariosRunState } from '@/types/scenarios';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
 
-type ModeType = 'auto' | 'experimentation' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game';
+type ModeType = 'auto' | 'scenarios' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game';
 
 // Pause/resume apply to auto + bulk modes (which manage queues we can
-// genuinely pause between iterations). Experimentation runs are pure
+// genuinely pause between iterations). Scenarios runs are pure
 // in-flight LLM calls — Stop cancels, but mid-call pause is impossible.
 type PausableProps = {
   onPause: () => void;
@@ -32,9 +32,9 @@ type AutoModeProps = StopOnlyProps & {
   hasCoordinationPlan?: boolean;
 };
 
-type ExperimentationModeProps = StopOnlyProps & {
-  mode: 'experimentation';
-  runState: ExperimentationRunState;
+type ScenariosModeProps = StopOnlyProps & {
+  mode: 'scenarios';
+  runState: ScenariosRunState;
   onOpenPanel: () => void;
 };
 
@@ -70,7 +70,7 @@ type BulkGameProps = PausableProps & {
   statusMessage: string;
 };
 
-type Props = AutoModeProps | ExperimentationModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps;
+type Props = AutoModeProps | ScenariosModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ function scoreColorClass(v: number): string {
 
 const MODE_CONFIG: Record<ModeType, { label: string; color: string; bgColor: string }> = {
   'auto': { label: 'Auto', color: 'text-amber-400', bgColor: 'bg-amber-400' },
-  'experimentation': { label: 'Experimentation', color: 'text-blue-400', bgColor: 'bg-blue-400' },
+  'scenarios': { label: 'Scenarios', color: 'text-blue-400', bgColor: 'bg-blue-400' },
   'bulk-plan': { label: 'Plans', color: 'text-sky-400', bgColor: 'bg-sky-400' },
   'bulk-prose': { label: 'Prose', color: 'text-emerald-400', bgColor: 'bg-emerald-400' },
   'bulk-audio': { label: 'Audio', color: 'text-violet-400', bgColor: 'bg-violet-400' },
@@ -97,24 +97,24 @@ export function ModeControlBar(props: Props) {
   const config = MODE_CONFIG[props.mode];
 
   // Determine state
-  const isRunning = props.mode === 'experimentation'
+  const isRunning = props.mode === 'scenarios'
     ? props.runState.status === 'running'
     : props.isRunning;
-  // Auto mode and experimentation are stop-only — no pause state.
-  const isPaused = props.mode === 'experimentation' || props.mode === 'auto'
+  // Auto mode and scenarios are stop-only — no pause state.
+  const isPaused = props.mode === 'scenarios' || props.mode === 'auto'
     ? false
     : props.isPaused;
-  const isComplete = props.mode === 'experimentation' && props.runState.status === 'complete';
+  const isComplete = props.mode === 'scenarios' && props.runState.status === 'complete';
 
   // Auto mode error surfacing is handled inline via status messages now that
   // the per-cycle log is gone.
   const stoppedByError = false;
   const hasError = false;
 
-  // Experimentation timer
+  // Scenarios timer
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    if (props.mode !== 'experimentation') return;
+    if (props.mode !== 'scenarios') return;
     const { startedAt } = props.runState;
     if (!isRunning || !startedAt) { setElapsed(0); return; }
     setElapsed(Math.floor((Date.now() - startedAt) / 1000));
@@ -122,11 +122,11 @@ export function ModeControlBar(props: Props) {
       setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
     return () => clearInterval(id);
-  }, [props.mode === 'experimentation' ? props.runState.startedAt : null, isRunning, props.mode]);
+  }, [props.mode === 'scenarios' ? props.runState.startedAt : null, isRunning, props.mode]);
 
-  // Experimentation metrics — scenario-batched flow: count done / total
+  // Scenarios metrics — scenario-batched flow: count done / total
   // across the cohort, surface the leading scenario's name.
-  const experimentationMetrics = props.mode === 'experimentation' ? (() => {
+  const scenariosMetrics = props.mode === 'scenarios' ? (() => {
     const { runs, scenarioOrder } = props.runState;
     let done = 0;
     let failed = 0;
@@ -204,37 +204,37 @@ export function ModeControlBar(props: Props) {
           </>
         )}
 
-        {props.mode === 'experimentation' && experimentationMetrics && (
+        {props.mode === 'scenarios' && scenariosMetrics && (
           <>
             <span className="text-[10px] text-text-secondary font-mono tabular-nums">
-              {experimentationMetrics.done}
+              {scenariosMetrics.done}
             </span>
             <span className="text-[9px] text-text-dim/50">/</span>
             <span className="text-[10px] text-text-dim font-mono tabular-nums">
-              {experimentationMetrics.total}
+              {scenariosMetrics.total}
             </span>
             <span className="text-[9px] text-text-dim/60">scenarios</span>
-            {experimentationMetrics.running > 0 && (
+            {scenariosMetrics.running > 0 && (
               <>
                 <div className="w-px h-3 bg-white/10" />
                 <span className="text-[9px] text-blue-300/80 font-mono">
-                  {experimentationMetrics.running}↻
+                  {scenariosMetrics.running}↻
                 </span>
               </>
             )}
-            {experimentationMetrics.failed > 0 && (
+            {scenariosMetrics.failed > 0 && (
               <>
                 <div className="w-px h-3 bg-white/10" />
                 <span className="text-[9px] text-rose-300/80 font-mono">
-                  {experimentationMetrics.failed}✕
+                  {scenariosMetrics.failed}✕
                 </span>
               </>
             )}
-            {experimentationMetrics.topName && (
+            {scenariosMetrics.topName && (
               <>
                 <div className="w-px h-3 bg-white/10" />
-                <span className="text-[10px] text-text-secondary truncate max-w-32" title={experimentationMetrics.topName}>
-                  {experimentationMetrics.topName}
+                <span className="text-[10px] text-text-secondary truncate max-w-32" title={scenariosMetrics.topName}>
+                  {scenariosMetrics.topName}
                 </span>
               </>
             )}
@@ -268,7 +268,7 @@ export function ModeControlBar(props: Props) {
 
         {/* Controls */}
         <div className="flex items-center gap-0.5">
-          {props.mode !== 'experimentation' && props.mode !== 'auto' && isRunning && (
+          {props.mode !== 'scenarios' && props.mode !== 'auto' && isRunning && (
             <button
               onClick={props.onPause}
               className="w-5 h-5 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
@@ -277,7 +277,7 @@ export function ModeControlBar(props: Props) {
               <IconPause size={8} />
             </button>
           )}
-          {props.mode !== 'experimentation' && props.mode !== 'auto' && isPaused && (
+          {props.mode !== 'scenarios' && props.mode !== 'auto' && isPaused && (
             <button
               onClick={props.onResume}
               className={`w-5 h-5 flex items-center justify-center ${config.color} hover:bg-white/8 rounded-full transition-colors`}
@@ -304,11 +304,11 @@ export function ModeControlBar(props: Props) {
               <IconSettings size={10} />
             </button>
           )}
-          {props.mode === 'experimentation' && (
+          {props.mode === 'scenarios' && (
             <button
               onClick={props.onOpenPanel}
               className="w-5 h-5 flex items-center justify-center text-text-dim hover:text-text-primary hover:bg-white/8 rounded-full transition-colors"
-              title="Open Experimentation panel"
+              title="Open Scenarios panel"
             >
               <IconExpand size={10} />
             </button>
@@ -343,9 +343,9 @@ export function ModeControlBar(props: Props) {
         </div>
       )}
 
-      {/* Experimentation summary line — show the most recently started
+      {/* Scenarios summary line — show the most recently started
           run's name + phase as the status text. */}
-      {props.mode === 'experimentation' && isRunning && (() => {
+      {props.mode === 'scenarios' && isRunning && (() => {
         const latest = props.runState.scenarioOrder
           .map((id) => props.runState.runs[id])
           .filter((r) => r?.status === 'running')

@@ -66,9 +66,9 @@ const SCOPE_PAIRS: Record<string, { local: GraphViewMode; global: GraphViewMode 
 
 export const GRAPH_MODES = new Set<GraphViewMode>(['spatial', 'overview', 'spark', 'codex', 'pulse', 'threads', 'network']);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode';
-type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'game';
-const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'game'];
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode';
+type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'decision';
+const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'decision'];
 
 // Module-level state shared with SceneProseView
 let beatPlanLinkedModeGlobal = false;
@@ -314,7 +314,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'plan') return 'plan';
   if (graphViewMode === 'prose') return 'prose';
   if (graphViewMode === 'audio') return 'audio';
-  if (graphViewMode === 'game') return 'game';
+  if (graphViewMode === 'decision') return 'decision';
   if (graphViewMode === 'search') return 'search';
   if (graphViewMode === 'driver') return 'driver';
   if (graphViewMode === 'reasoning') return 'reasoning';
@@ -1071,15 +1071,19 @@ export function CanvasTopBar() {
         )}
 
         {/* Scene sub-mode toggle (renders to the LEFT of primary, matching
-            the graph scope/domain toggle pattern). Only shown in Scene mode. */}
-        {inSceneMode && currentScene && (
+            the graph scope/domain toggle pattern). Shown whenever Scene is
+            the active mode — even on world commits where currentScene is
+            null, mirroring Control's always-visible sub-toggle. The canvas
+            views below render an empty state ("No scene selected.") when
+            there's no scene to draw against. */}
+        {inSceneMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
               { mode: 'reasoning' as ScenePrimaryMode, Icon: IconReasoning, label: 'Investigation', hidden: currentArcInvestigations.length === 0 && !currentArcData.hasReasoningGraph && !currentWorldBuildData.hasReasoningGraph },
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
-              { mode: 'game' as ScenePrimaryMode, Icon: IconDice, label: 'Game', hidden: false },
+              { mode: 'decision' as ScenePrimaryMode, Icon: IconDice, label: 'Decision', hidden: false },
             ]
               .filter(({ hidden }) => !hidden)
               .map(({ mode, Icon, label }, idx) => {
@@ -1136,18 +1140,16 @@ export function CanvasTopBar() {
 
         {/* Main canvas mode selector. Plan/Prose/Audio collapse into "Scene";
             Belief/Variables/Phase collapse into "Control". The sub-mode
-            toggles render to the left for each cluster. */}
+            toggles render to the left for each cluster. All four tabs stay
+            visible regardless of commit type — Scene on a world commit
+            falls back to the canvas's "No scene selected." empty state. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
-            { mode: 'driver' as const, Icon: IconList, label: 'Driver', condition: 'always' as const, activeWhen: inDriverMode },
-            { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', condition: 'always' as const, activeWhen: canvasMode === 'graph' },
-            { mode: 'control' as const, Icon: IconBelief, label: 'Control', condition: 'always' as const, activeWhen: inControlMode },
-            { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', condition: 'sceneOnly' as const, activeWhen: inSceneMode },
+            { mode: 'driver' as const, Icon: IconList, label: 'Driver', activeWhen: inDriverMode },
+            { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', activeWhen: canvasMode === 'graph' },
+            { mode: 'control' as const, Icon: IconBelief, label: 'Control', activeWhen: inControlMode },
+            { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', activeWhen: inSceneMode },
           ]
-            .filter(({ condition }) => {
-              if (condition === 'sceneOnly' && !currentScene) return false;
-              return true;
-            })
             .map(({ mode, Icon, label, activeWhen }, idx) => {
               return (
                 <div key={mode} className="flex items-center">

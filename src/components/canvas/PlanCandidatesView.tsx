@@ -59,7 +59,7 @@ export function PlanCandidatesView({ narrative, scene, resolvedKeys, candidateCo
   };
 
 
-  // Auto-start candidates when component mounts (like Experimentation does)
+  // Auto-start candidates when component mounts (like Scenarios does)
   useEffect(() => {
     handleRunCandidates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,7 +243,7 @@ export function PlanCandidatesView({ narrative, scene, resolvedKeys, candidateCo
         )}
         </div>
 
-        {/* Commit Button - bottom right, similar to Experimentation */}
+        {/* Commit Button - bottom right, similar to Scenarios */}
         {!isGenerating && candidates && committedCandidate && (
           <div className="absolute bottom-6 right-6 z-20">
             <button

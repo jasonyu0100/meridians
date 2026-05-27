@@ -1677,7 +1677,7 @@ export function compassContext(
   if (scenarios.length === 0) return '';
 
   // Softmax over priorLogits — the same probability model the Variables
-  // view + Experimentation panel use. Wraps the scenario in a probability
+  // view + Scenarios panel use. Wraps the scenario in a probability
   // that's relative to its cohort.
   const logits = scenarios.map((s) => (typeof s.priorLogit === 'number' ? s.priorLogit : 0));
   const maxL = Math.max(...logits);

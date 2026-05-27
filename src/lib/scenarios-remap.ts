@@ -1,5 +1,5 @@
 /**
- * ID remapping for Experimentation commits.
+ * ID remapping for Scenarios commits.
  *
  * Every parallel scenario worker calls `generateScenes` against the SAME
  * root narrative, so each worker mints IDs (`ARC-N`, `S-N`, `C-N`,

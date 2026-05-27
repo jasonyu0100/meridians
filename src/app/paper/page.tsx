@@ -3562,7 +3562,7 @@ export default function PaperPage() {
               From scenarios to branches
             </h3>
             <P>
-              Scenarios drive <B>Experimentation</B>: one parallel arc
+              Scenarios drive <B>Scenarios</B>: one parallel arc
               continuation per scenario. On commit, every scenario attaches
               as a sister branch; the softmax-top scenario&apos;s branch
               becomes active. Every committed run carries the variable

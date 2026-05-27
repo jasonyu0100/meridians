@@ -21,8 +21,8 @@ import VariableGridChart from './variables/VariableGridChart';
 import VariableViewSwitcher, { type VariableViewMode } from './variables/VariableViewSwitcher';
 import { TileLabel } from './variables/BentoTile';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { IconFlask } from '@/components/icons';
-import { findHeadArc } from '@/hooks/useExperimentation';
+import { IconFork } from '@/components/icons';
+import { findHeadArc } from '@/hooks/useScenarios';
 import { InferenceFields } from '@/components/shared/InferenceFields';
 
 /**
@@ -133,10 +133,10 @@ interface InnerProps {
 
 function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outline, modeSection, resolvedEntryKeys, dispatch }: InnerProps) {
   // The "head arc" — the arc owning the latest scene in the active
-  // branch — is the only arc Experimentation can actually run against,
+  // branch — is the only arc Scenarios can actually run against,
   // because the parallel workers continue from the branch head. This
   // walks `resolvedEntryKeys` backward for the last scene, matching the
-  // same helper `useExperimentation` uses internally.
+  // same helper `useScenarios` uses internally.
   const headArc = useMemo(
     () => findHeadArc(narrative, resolvedEntryKeys),
     [narrative, resolvedEntryKeys],
@@ -535,7 +535,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         canWipe
         showExperiment={canExperiment}
         onOpenRegenerateModal={() => setDirectionModalOpen(true)}
-        onOpenExperiment={() => window.dispatchEvent(new CustomEvent('open-experimentation-panel'))}
+        onOpenExperiment={() => window.dispatchEvent(new CustomEvent('open-scenarios-panel'))}
         onWipe={wipeArc}
       />
 
@@ -771,11 +771,11 @@ function VariablesTopBar({
           <button
             onClick={onOpenExperiment}
             disabled={busy}
-            className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-blue-300/90 hover:text-blue-200 disabled:opacity-30 transition-colors"
-            title="Experiment — generate parallel branches from these scenarios"
+            className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-text-dim/70 hover:text-text-primary disabled:opacity-30 transition-colors"
+            title="Branch Scenarios — generate parallel branches from these scenarios"
           >
-            <IconFlask size={11} />
-            <span>Experiment</span>
+            <IconFork size={11} />
+            <span>Branch Scenarios</span>
           </button>
           <div className="w-px h-4 bg-white/10" />
         </>
@@ -1073,7 +1073,7 @@ interface PresentBentoProps {
   opens?: string;
   /** Log-prior plausibility for this Present coordination, in
    *  STANCE_EVIDENCE_MIN/MAX range ([-4, +4]). When transferred from a
-   *  Compass direction via experimentation commit, this records "how
+   *  Compass direction via scenarios commit, this records "how
    *  likely was this coordination when it was chosen" — the rarity badge
    *  that gives the path its sense of specialness. */
   logit?: number;

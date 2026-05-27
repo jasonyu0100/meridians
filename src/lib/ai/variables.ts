@@ -681,7 +681,7 @@ Produce the Compass cohort for this arc. Apply the disciplines and pipeline abov
  * Project a Compass direction into a Present-style variable set for a new
  * branch arc. The result drops every variable the direction didn't activate
  * (intensity = 0), keeping only the variables that matter to this direction.
- * Used by Experimentation when materialising a Compass direction into a
+ * Used by Scenarios when materialising a Compass direction into a
  * branch.
  */
 export function presentFromScenario(scenario: PlanningScenario): Variable[] {

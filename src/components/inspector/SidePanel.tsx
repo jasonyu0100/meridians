@@ -15,6 +15,7 @@ import { useStore } from "@/lib/store";
 import type { WorldBuild } from "@/types/narrative";
 import { isScene, type TimelineEntry } from "@/types/narrative";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import ArcDetail from "./ArcDetail";
 import ArtifactDetail from "./ArtifactDetail";
 import CharacterDetail from "./CharacterDetail";
@@ -27,6 +28,18 @@ import ThreadDetail from "./ThreadDetail";
 import ThreadLogNodeDetail from "./ThreadLogNodeDetail";
 import ReasoningNodeDetail from "./ReasoningNodeDetail";
 import ModeNodeDetail from "./ModeNodeDetail";
+import {
+  IconEye,
+  IconChat,
+  IconFolder,
+  IconLightbulb,
+  IconList,
+  IconUser,
+  IconSearch,
+  IconScorecard,
+  IconThread,
+} from "@/components/icons";
+import type { ComponentType, SVGProps } from "react";
 
 type Tab =
   | "inspector"
@@ -49,6 +62,75 @@ const TAB_LABELS: Record<Tab, string> = {
   interviews: "Interviews",
   investigations: "Investigations",
   eval: "Review",
+};
+
+type IconCmp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
+
+function RailTabButton({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: IconCmp;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [tipPos, setTipPos] = useState<{ top: number; right: number } | null>(null);
+
+  const showTip = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setTipPos({ top: r.top + r.height / 2, right: window.innerWidth - r.left + 8 });
+  };
+  const hideTip = () => setTipPos(null);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={onClick}
+        onMouseEnter={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+        aria-label={label}
+        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all relative ${
+          active
+            ? "text-white"
+            : "text-text-dim hover:text-text-secondary hover:bg-white/4"
+        }`}
+      >
+        <Icon size={18} />
+        {active && (
+          <span className="pointer-events-none absolute -right-2.5 top-1 bottom-1 w-0.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]" />
+        )}
+      </button>
+      {tipPos && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-9999 px-2 py-1 rounded-md bg-bg-overlay/95 border border-white/10 text-[11px] text-text-primary whitespace-nowrap shadow-lg backdrop-blur-sm"
+            style={{ top: tipPos.top, right: tipPos.right, transform: "translateY(-50%)" }}
+          >
+            {label}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+const TAB_ICONS: Record<Tab, IconCmp> = {
+  inspector: IconEye,
+  chat: IconChat,
+  threads: IconThread,
+  files: IconFolder,
+  knowledge: IconLightbulb,
+  surveys: IconList,
+  interviews: IconUser,
+  investigations: IconSearch,
+  eval: IconScorecard,
 };
 
 const TAB_ORDER: Tab[] = [
@@ -195,31 +277,6 @@ export default function SidePanel() {
 
   return (
     <aside className="h-full flex flex-row border-l border-border glass-panel">
-      {/* Vertical tab rail */}
-      <div className="shrink-0 flex flex-col items-center py-2 w-7 border-r border-border">
-        {TAB_ORDER.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`py-3 w-full flex items-center justify-center transition-colors relative ${
-              tab === t
-                ? "text-text-primary border-r border-accent"
-                : "text-text-dim hover:text-text-secondary"
-            }`}
-          >
-            <span
-              className="text-[10px] font-medium tracking-wider uppercase"
-              style={{
-                writingMode: "vertical-lr",
-                transform: "rotate(180deg)",
-              }}
-            >
-              {TAB_LABELS[t]}
-            </span>
-          </button>
-        ))}
-      </div>
-
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {tab === "inspector" && (
@@ -326,6 +383,19 @@ export default function SidePanel() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Icon tab rail — right edge */}
+      <div className="shrink-0 flex flex-col items-center py-2 gap-2 w-14 border-l border-border bg-bg-base/40">
+        {TAB_ORDER.map((t) => (
+          <RailTabButton
+            key={t}
+            icon={TAB_ICONS[t]}
+            label={TAB_LABELS[t]}
+            active={tab === t}
+            onClick={() => setTab(t)}
+          />
+        ))}
       </div>
     </aside>
   );

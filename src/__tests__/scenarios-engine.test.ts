@@ -3,7 +3,7 @@ import {
   buildDirectionFromScenario,
   buildVirtualState,
   stampScenarioVariables,
-} from '@/lib/experimentation-engine';
+} from '@/lib/scenarios-engine';
 import type {
   Arc,
   NarrativeState,
@@ -11,7 +11,7 @@ import type {
   Variable,
 } from '@/types/narrative';
 
-// The experimentation engine drives parallel scenario commits. The behaviour
+// The scenarios engine drives parallel scenario commits. The behaviour
 // pinned here is the per-scenario variable stamp: every new arc carries the
 // variables that produced it as `presentVariables`, with intensity-zero
 // entries filtered out so the surface reflects only what's firing. Both the

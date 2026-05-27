@@ -1,10 +1,10 @@
 /**
- * Experimentation — parallel Compass-driven branch generation.
+ * Scenarios — parallel Compass-driven branch generation.
  *
  * The user has a Compass cohort on the current arc — each direction a
  * complete coordination of variables at chosen intensities, weighted by
  * priorLogit (read as precision prediction in simulation, recommendation
- * otherwise). Experimentation takes the cohort and generates ONE arc
+ * otherwise). Scenarios takes the cohort and generates ONE arc
  * continuation per direction in parallel, with the direction's variable
  * coordination as primary generation guidance. Each result becomes a
  * candidate Branch in the work's graph; on commit, every direction attaches
@@ -44,6 +44,14 @@ export type ScenarioRun = {
   progress?: { current: number; total: number };
   /** Error message if status === 'failed'. */
   error?: string;
+  /** Raw LLM output captured when the failure was a JSON parse error.
+   *  Feeds the per-scenario "Repair" button so the user can ask the model
+   *  to fix the malformed output instead of paying for a full re-run. */
+  failedRaw?: string;
+  /** Diagnostic hint extracted from the error at fail-time. Threads to the
+   *  repair LLM so it focuses on the diagnosed failure mode (truncation /
+   *  unescaped quotes / etc.) rather than guessing what to fix. */
+  failedHint?: string;
 
   startedAt?: number;
   finishedAt?: number;
@@ -64,7 +72,7 @@ export type ScenarioRun = {
 
 // ── Run config ────────────────────────────────────────────────────────────
 
-export type ExperimentationConfig = {
+export type ScenariosConfig = {
   /** Optional override — by default we use every scenario on the focused
    *  arc. Setting this lets the panel run a subset (e.g. just the top 3). */
   selectedScenarioIds?: string[];
@@ -78,14 +86,14 @@ export type ExperimentationConfig = {
   worldBuildFocusId?: string;
 };
 
-export const DEFAULT_EXPERIMENTATION_CONFIG: ExperimentationConfig = {};
+export const DEFAULT_SCENARIOS_CONFIG: ScenariosConfig = {};
 
 // ── Overall run state ─────────────────────────────────────────────────────
 
-export type ExperimentationStatus = 'idle' | 'running' | 'complete' | 'cancelled';
+export type ScenariosStatus = 'idle' | 'running' | 'complete' | 'cancelled';
 
-export type ExperimentationRunState = {
-  status: ExperimentationStatus;
+export type ScenariosRunState = {
+  status: ScenariosStatus;
   /** The arc this batch was launched against — every scenario continues
    *  from this arc's end state. */
   arcId: string | null;
@@ -93,20 +101,20 @@ export type ExperimentationRunState = {
   runs: Record<string, ScenarioRun>;
   /** Ordering of scenarioIds for stable display. */
   scenarioOrder: string[];
-  config: ExperimentationConfig;
+  config: ScenariosConfig;
   startedAt: number | null;
   finishedAt: number | null;
   /** Top-level error if the batch as a whole failed to start. */
   error?: string;
 };
 
-export function makeEmptyRunState(): ExperimentationRunState {
+export function makeEmptyRunState(): ScenariosRunState {
   return {
     status: 'idle',
     arcId: null,
     runs: {},
     scenarioOrder: [],
-    config: { ...DEFAULT_EXPERIMENTATION_CONFIG },
+    config: { ...DEFAULT_SCENARIOS_CONFIG },
     startedAt: null,
     finishedAt: null,
   };
@@ -114,21 +122,21 @@ export function makeEmptyRunState(): ExperimentationRunState {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-export function runDoneCount(state: ExperimentationRunState): number {
+export function runDoneCount(state: ScenariosRunState): number {
   return state.scenarioOrder.reduce(
     (n, id) => n + (state.runs[id]?.status === 'done' ? 1 : 0),
     0,
   );
 }
 
-export function runFailedCount(state: ExperimentationRunState): number {
+export function runFailedCount(state: ScenariosRunState): number {
   return state.scenarioOrder.reduce(
     (n, id) => n + (state.runs[id]?.status === 'failed' ? 1 : 0),
     0,
   );
 }
 
-export function runRunningCount(state: ExperimentationRunState): number {
+export function runRunningCount(state: ScenariosRunState): number {
   return state.scenarioOrder.reduce(
     (n, id) => n + (state.runs[id]?.status === 'running' ? 1 : 0),
     0,

@@ -1,5 +1,5 @@
 /**
- * Experimentation engine — parallel scenario-driven batch generator.
+ * Scenarios engine — parallel scenario-driven batch generator.
  *
  * For each Compass direction in the cohort, generate ONE arc continuation
  * in parallel, with the scenario's variable coordination as the primary
@@ -15,7 +15,7 @@ import type {
   Arc,
 } from "@/types/narrative";
 import { VARIABLE_INTENSITY_LEVELS } from "@/lib/ai/variables";
-import { applySceneDeltas } from "@/lib/experimentation-state";
+import { applySceneDeltas } from "@/lib/scenarios-state";
 
 // ── Direction builder — scenario → generation guidance ────────────────────
 
@@ -97,7 +97,7 @@ export type VirtualState = {
  * the Compass-direction annotation becomes the new arc's Present annotation.
  *
  * Shared between the virtual preview (`buildVirtualState`) and the real
- * commit path (`useExperimentation.runScenario`) so both surfaces agree
+ * commit path (`useScenarios.runScenario`) so both surfaces agree
  * on what gets stamped onto the new arc.
  *
  * Accepts either the raw variables array or the full scenario for richer

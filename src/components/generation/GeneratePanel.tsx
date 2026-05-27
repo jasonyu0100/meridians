@@ -1,6 +1,8 @@
 "use client";
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
+import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
+import { diagnoseError } from "@/lib/ai/diagnose";
 import { IconChevronRight, IconDice } from "@/components/icons";
 import {
   DEFAULT_EXPANSION_FILTER,
@@ -173,6 +175,11 @@ export function GeneratePanel({
   const [streamText, setStreamText] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState("");
+  // Raw output captured on a JSON parse failure so the user can Repair
+  // (LLM-fix the malformed output) instead of paying for a full re-run.
+  // `kind` tells handleRepair which generation path to resume; `hint`
+  // carries the diagnosed failure mode for the repair LLM.
+  const [failedRaw, setFailedRaw] = useState<{ kind: 'scenes' | 'world'; raw: string; hint?: string } | null>(null);
 
   const narrative = state.activeNarrative;
   if (!narrative) return null;
@@ -310,7 +317,7 @@ export function GeneratePanel({
     [previewSequence],
   );
 
-  async function handleGenerateArc() {
+  async function handleGenerateArc(opts: { repairFromRaw?: string; repairHint?: string } = {}) {
     if (!narrative) return;
     if (!newArc && !currentArc) return;
     setLoading(true);
@@ -350,8 +357,11 @@ export function GeneratePanel({
           worldBuildFocus,
           coordinationPlanContext,
           onReasoning: (token) => setStreamText((prev) => prev + token),
+          repairFromRaw: opts.repairFromRaw,
+          repairHint: opts.repairHint,
         },
       );
+      setFailedRaw(null);
       dispatch({
         type: "BULK_ADD_SCENES",
         scenes,
@@ -374,6 +384,13 @@ export function GeneratePanel({
         },
       });
       setError(String(err));
+      const { diagnoseError } = await import('@/lib/ai/diagnose');
+      const diagnosis = diagnoseError(err, 'generateScenes');
+      if (err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string') {
+        setFailedRaw({ kind: 'scenes', raw: (err as { raw: string }).raw, hint: diagnosis.repairHint });
+      } else {
+        setFailedRaw(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -408,7 +425,7 @@ export function GeneratePanel({
 
 
   // Quick expand without reasoning (for exact size or when user skips planning)
-  async function handleExpandWorld() {
+  async function handleExpandWorld(opts: { repairFromRaw?: string; repairHint?: string } = {}) {
     if (!narrative) return;
     setLoading(true);
     setStreamText("");
@@ -423,8 +440,11 @@ export function GeneratePanel({
         {
           onReasoning: (token) => setStreamText((prev) => prev + token),
           entityFilter,
+          repairFromRaw: opts.repairFromRaw,
+          repairHint: opts.repairHint,
         },
       );
+      setFailedRaw(null);
       dispatch({
         type: "EXPAND_WORLD",
         worldBuildId: nextId("WB", Object.keys(narrative.worldBuilds)),
@@ -456,8 +476,34 @@ export function GeneratePanel({
         },
       });
       setError(String(err));
+      const { diagnoseError } = await import('@/lib/ai/diagnose');
+      const diagnosis = diagnoseError(err, 'expandWorld');
+      if (err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string') {
+        setFailedRaw({ kind: 'world', raw: (err as { raw: string }).raw, hint: diagnosis.repairHint });
+      } else {
+        setFailedRaw(null);
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleRepair() {
+    if (!failedRaw) return;
+    if (failedRaw.kind === 'scenes') {
+      handleGenerateArc({ repairFromRaw: failedRaw.raw, repairHint: failedRaw.hint });
+    } else {
+      handleExpandWorld({ repairFromRaw: failedRaw.raw, repairHint: failedRaw.hint });
+    }
+  }
+
+  function handleRetry() {
+    setFailedRaw(null);
+    // Re-run whichever path produced the failure.
+    if (failedRaw?.kind === 'world' || mode === 'world') {
+      handleExpandWorld();
+    } else {
+      handleGenerateArc();
     }
   }
 
@@ -646,7 +692,7 @@ export function GeneratePanel({
                 Reroll
               </button>
               <button
-                onClick={handleGenerateArc}
+                onClick={() => handleGenerateArc()}
                 disabled={animating}
                 className="h-9 px-5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold transition disabled:opacity-30 text-[12px]"
               >
@@ -856,7 +902,7 @@ export function GeneratePanel({
                 {/* Action buttons */}
                 <div className="flex gap-2">
                   <button
-                    onClick={handleGenerateArc}
+                    onClick={() => handleGenerateArc()}
                     disabled={loading || (!newArc && !currentArc)}
                     className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold transition disabled:opacity-30"
                   >
@@ -867,10 +913,10 @@ export function GeneratePanel({
                       onClick={handleSample}
                       disabled={!newArc && !currentArc}
                       className="py-2.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition disabled:opacity-30 flex items-center justify-center gap-2 text-[12px]"
-                      title="Experimentation multi-arc generation"
+                      title="Scenarios multi-arc generation"
                     >
                       <IconDice size={16} />
-                      Experimentation
+                      Scenarios
                     </button>
                   )}
                 </div>
@@ -1012,7 +1058,7 @@ export function GeneratePanel({
                     creative material (threads, system, entities). No CRG
                     review step: the directive IS the plan. */}
                 <button
-                  onClick={handleExpandWorld}
+                  onClick={() => handleExpandWorld()}
                   disabled={loading}
                   className="bg-white/10 hover:bg-white/16 text-text-primary font-semibold px-4 py-2.5 rounded-lg transition disabled:opacity-30"
                 >
@@ -1021,12 +1067,40 @@ export function GeneratePanel({
               </>
             )}
 
-            {error && (
-              <div className="bg-fate/10 border border-fate/30 rounded-lg px-3 py-2">
-                <p className="text-sm text-fate font-medium">Failed</p>
-                <p className="text-xs text-fate/80 mt-1">{error}</p>
-              </div>
-            )}
+            {error && (() => {
+              const errorCaller = failedRaw?.kind === 'world' ? 'expandWorld' : 'generateScenes';
+              const diagnosis = diagnoseError(error, errorCaller);
+              const trace = buildErrorTrace({ caller: errorCaller, error, diagnosis });
+              return (
+                <div className="bg-fate/10 border border-fate/30 rounded-lg px-3 py-3 flex flex-col gap-3">
+                  <ErrorDiagnosis error={error} caller={errorCaller} />
+                  <details className="text-[10px] text-text-dim">
+                    <summary className="cursor-pointer hover:text-text-secondary select-none">Raw error</summary>
+                    <pre className="mt-2 text-fate/80 whitespace-pre-wrap font-mono leading-relaxed max-h-32 overflow-y-auto">{error}</pre>
+                  </details>
+                  <div className="flex items-center gap-2">
+                    <CopyErrorButton trace={trace} />
+                    {failedRaw && (
+                      <button
+                        onClick={handleRepair}
+                        disabled={loading}
+                        title="Send the malformed output back to the model with the diagnosed issue — cheaper than a full re-run."
+                        className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold px-3 py-1.5 rounded-md transition disabled:opacity-40"
+                      >
+                        Repair
+                      </button>
+                    )}
+                    <button
+                      onClick={handleRetry}
+                      disabled={loading}
+                      className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-semibold px-3 py-1.5 rounded-md transition disabled:opacity-40"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </ModalBody>

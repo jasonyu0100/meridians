@@ -27,7 +27,7 @@ const WORLD_ARCHITECT_SHARED =
 /** Multipurpose fallback — preserves the legacy prompt verbatim for the rare
  *  call that supplies no paradigm. */
 const WORLD_ARCHITECT_FALLBACK =
-  'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, or chronicled entries. See the pattern blocks in the user prompt. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic); game → MULTI-ACTOR GAME (2+ actors take turns pursuing contested stakes under enforceable rules; system-graph IS the rule set, world tracks actors + resources + positions, threads are open stakes). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, chronicled entries, or game turns. See the pattern blocks in the user prompt. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 /** Build the world-architect SYSTEM prompt. Case-based on the wizard-declared
  *  paradigm. When paradigm is unset, falls back to the multipurpose preamble. */
@@ -52,14 +52,15 @@ export function buildDetectPatternsSystem(work?: WorkIdentity): string {
   return `${composeAnalystIdentity(work)} You diagnose THIS work's patterns and anti-patterns — concrete commandments that encourage variety and prevent stagnation within the operator-declared paradigm. Patterns are positive directives that unlock fresh territory within this paradigm's idiom; anti-patterns are negative directives that flag staleness specific to this paradigm. Return ONLY valid JSON matching the schema in the user prompt.`;
 }
 
-/** World-shape each paradigm maps to. Seven shapes:
+/** World-shape each paradigm maps to. Eight shapes:
  *  - populated-narrative — fiction OR non-fiction (events, agents, change)
  *  - rule-governed-narrative — simulation (events, but rules are load-bearing)
  *  - singular-thinker — essay (one author working an argument)
  *  - multi-thinker — panel (named cast, AI or human, contest-of-minds → synthesis)
  *  - reference-typology — atlas (entries / taxa, system-graph IS the work)
  *  - adversarial-contest — debate (2+ parties, zero-sum stakes, rules of engagement)
- *  - chronological-record — record (time-ordered log of events, variable velocity) */
+ *  - chronological-record — record (time-ordered log of events, variable velocity)
+ *  - multi-actor-game — game (2+ actors take turns under enforceable rules; stakes contested) */
 type ParadigmShape =
   | 'populated-narrative'
   | 'rule-governed-narrative'
@@ -67,7 +68,8 @@ type ParadigmShape =
   | 'multi-thinker'
   | 'reference-typology'
   | 'adversarial-contest'
-  | 'chronological-record';
+  | 'chronological-record'
+  | 'multi-actor-game';
 
 const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directive: string }> = {
   'fiction':      { shape: 'populated-narrative',      directive: 'REALITY POSTURE: invented. Populated scene-narrative — characters, places, and events are wholly authored; nothing needs to anchor to an external record. Fate (thread resolution) + World (character transformation) carry the weight; System provides the working rules of the imagined world. Match the register and setting the premise implies.' },
@@ -78,6 +80,7 @@ const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directiv
   'atlas':        { shape: 'reference-typology',       directive: 'REALITY POSTURE: either — a real-world reference (a flora, an encyclopedia of jurisdictions, a doctrine corpus) or an invented codex (the sects of a secondary world). Form: a typology of entries replacing scenes; the curator orchestrates and specimens / categories / entities populate the work. System is everything — the typological structure IS the work, with dense cross-references between entries. Fate minimal (no dramatic resolution); World minimal (specimens don\'t transform). Threads, when present, track classification questions, not events.' },
   'debate':       { shape: 'adversarial-contest',      directive: 'REALITY POSTURE: either — a documented contest (trial, election, championship, M&A negotiation) or a hypothetical one (scripted moot, invented negotiation). Rules of engagement are typically sourceable even when contestants are invented. Two or more named parties locked in zero-sum stakes under explicit rules; each scene is a MOVE in the contest. Fate (who wins each axis) + System (rules of engagement) carry the weight; threads are AXES OF CONTESTATION whose outcomes favour one party or the other.' },
   'record':       { shape: 'chronological-record',     directive: 'REALITY POSTURE: either — a documented chronicle (Tacitus\'s Annals, a CEO\'s monthly report, Pepys\'s diary, a pandemic timeline) or an invented one (annals of a fictional kingdom, an imagined ship\'s log). Form: a TIME-ORDERED LOG of events in a chronicler\'s documentary voice; the ordering of time IS the structure. Each entry covers a moment or period. Pick a TIME VELOCITY — daily, monthly, yearly, or dynamic (granular during important periods, coarser during quiet stretches) — and respect it; velocity shifts ARE editorial signal. World (entities evolving over time) + System (institutions, patterns chronicled) carry the weight; Fate minimal — events happen, they don\'t structurally resolve. Threads are long-running trajectories tracked across entries.' },
+  'game':         { shape: 'multi-actor-game',         directive: 'REALITY POSTURE: rule-governed contest — real (wargame, tabletop RPG, sport, market, campaign, trial framed as a game), designed (boardgame, simulation game), or hypothetical (an invented contest under sourceable rules). Form: 2+ actors take TURNS pursuing contested stakes under explicit, enforceable rules. The system-graph IS the rule set — legal action spaces, turn structure, victory conditions, resource accounting, information rules. World entities are the ACTORS (sides / players / factions) and the RESOURCES, POSITIONS, and ARTIFACTS they command. Threads are the OPEN STAKES the contest is deciding (objectives, win conditions, contested territories). Declare turn order, information rules (open / hidden / asymmetric), and victory conditions up front; they bind every downstream pass. POV is plural by default — each actor plays from its own information set; there is no single protagonist.' },
 };
 
 // ── Per-paradigm prompt blocks ───────────────────────────────────────────────
@@ -238,6 +241,30 @@ const PARADIGM_CHRONOLOGICAL_RECORD = `<chronological-record-shape critical="tru
   <example category="good" flavour="ship-log" velocity="daily">An invented exploration vessel's log across an 18-month expedition. Chronicler: the captain (anchor) + the ship's surgeon-naturalist (recurring co-chronicler). Subjects: the vessel (anchor), the crew (recurring), waypoints (recurring), specimens collected (transient). Threads: "the southern-passage attempt", "the crew's health", "the natural-history catalogue". Entries: daily, leading with date + coordinates + weather.</example>
 </chronological-record-shape>`;
 
+const PARADIGM_MULTI_ACTOR_GAME = `<multi-actor-game-shape critical="true" hint="Game shape — 2+ actors take turns pursuing contested stakes under enforceable rules. A wargame, tabletop RPG session, sports match, campaign, market round, trial framed as a game. The system-graph IS the rule set; world tracks the actors and what they command; threads are the open stakes. Forces: System (rules) + Fate (stake resolution) carry the weight; World tracks each actor's shifting position.">
+  <intent>The work models a CONTEST. Multiple actors pursue contested stakes under explicit, enforceable rules. Each scene is a TURN; each turn has an active actor, a move from their legal action set, a rule-check, an effect on game state, and information disclosed to other actors. The structure of the game (rules, turn order, information rules, victory conditions) is declared up front; everything downstream binds to it.</intent>
+
+  <required-roles>
+    <role kind="actor" mapping="anchor" critical="true">Each player / faction / side in the contest is an anchor — 2+ required. Each carries an objective (what they're playing for), an information set (what they know vs. don't know), a resource pool (what they command), a strategy posture (how they tend to move), and a vulnerability (where they can lose). Their world-graphs evolve as turns pass.</role>
+    <role kind="referee / GM / arbiter" mapping="anchor or recurring">When the game has a neutral rule-keeper (game master, referee, market clearinghouse, election commission, court), they are an anchor — distinct from actors, they enforce the rules and resolve disputes. Optional for pure-rule games (chess has no referee mid-game) but recommended when interpretation matters (RPG GM, trial judge).</role>
+    <role kind="support / unit" mapping="recurring or transient">Each actor's controlled units, advisors, or sub-agents. May be named or implied; in wargames these are battalions / fleets / commanders, in RPGs they are party members under one player, in markets they are positions / orders.</role>
+  </required-roles>
+
+  <discipline>
+    <rule name="rules-load-bearing" critical="true">The system-graph IS the rule set. Legal action spaces, turn order, victory conditions, resource accounting, information rules — all encoded as system-nodes with explicit triggering conditions. Illegal moves do not happen; if an actor cannot do X under the current state and rules, the work cannot describe them doing X.</rule>
+    <rule name="turn-structure">Declare the turn structure as a system-node: simultaneous (all actors move per round), sequential (fixed initiative order), reactive (active player + response window), continuous-tick (market / real-time games). Each scene's active actor and turn ordinal trace back to this rule.</rule>
+    <rule name="information-rules">Declare the information regime: open (perfect information, e.g. chess), hidden (some private state, e.g. poker hands), asymmetric (different actors see different things, e.g. fog-of-war wargame). Each actor's world-graph encodes their PRIVATE information set; what they observe of others is gated by the rules.</rule>
+    <rule name="stakes-are-threads">Threads are OPEN STAKES the contest is deciding — objectives, contested territories, victory conditions, resource ownership. They close on rule-driven resolution (win condition met, resource depleted, objective taken), NOT on authorial preference. Stakes have OUTCOMES the rules enumerate (which actor takes the objective, which side wins the territory).</rule>
+    <rule name="multi-actor-distinct">Actors are distinct. Each has its own goals, information, strategy posture; no monolithic cast voice. POV may move turn-by-turn; no single protagonist. Their alliances and oppositions are encoded as relationships, not collapsed into one cohesive party.</rule>
+  </discipline>
+
+  <example category="good" flavour="wargame">Cuban Missile Crisis as turn-based wargame, October 1962. Actors: Soviet Politburo (anchor — Khrushchev, Mikoyan, Malinovsky as controlled units), US ExComm (anchor — Kennedy, McNamara, Rusk as controlled units), Cuban Government (anchor — smaller resource base, narrower action set). Rules: 13 daily turns, simultaneous moves with reveal, asymmetric intel (SIGINT + U-2 vs. embassy reporting). Stakes: "are the missiles withdrawn?", "is Berlin held?", "does the quarantine hold without escalation?". Each turn an actor moves (DEFCON shift, communiqué, deployment); the rules check (escalation triggers, time pressure, ally response), state updates, the other actors observe what their intel allows.</example>
+
+  <example category="good" flavour="tabletop-rpg">Tomb-of-the-Stranded-Star RPG session. Actors: four player-characters (each anchor — a Cleric, a Rogue, a Wizard, a Ranger, with class abilities and inventories), the GM (anchor as referee — runs NPCs, narrates rule outcomes). Rules: 5e initiative order in combat, ability-check resolution by DC, hidden GM-side state (monster HP, trap triggers), partial information (PCs see what their characters see). Stakes: "do the PCs recover the stranded star?", "does the lich-priest's binding hold?", "does any PC fall?". Each turn the active PC declares an action from their character sheet; the GM rules on it under the rules; outcomes update HP / position / inventory; other PCs see what they would witness.</example>
+
+  <example category="good" flavour="market">A liquidity crunch in a sovereign-bond market across a five-session week. Actors: three primary dealers (anchors with size, inventory, balance-sheet constraints), the central bank (anchor as referee — sets the policy rate, opens repo facilities), institutional buyers (recurring). Rules: continuous-tick within sessions, end-of-session marks, repo-facility activation triggers, balance-sheet limits. Stakes: "does the auction clear?", "does the central bank intervene?", "which dealer takes losses?". Each turn an actor's order hits the book; the rules clear it (or don't) under the market microstructure; positions update; other actors see public prints.</example>
+</multi-actor-game-shape>`;
+
 /** Emits ONLY the matching paradigm block — the other paradigms are dropped at
  *  build time so the model gets a single, focused, deterministic standard. */
 function paradigmBlockFor(paradigm: NarrativeParadigm): string {
@@ -249,6 +276,7 @@ function paradigmBlockFor(paradigm: NarrativeParadigm): string {
     case 'reference-typology':      return PARADIGM_REFERENCE_TYPOLOGY;
     case 'adversarial-contest':     return PARADIGM_ADVERSARIAL_CONTEST;
     case 'chronological-record':    return PARADIGM_CHRONOLOGICAL_RECORD;
+    case 'multi-actor-game':        return PARADIGM_MULTI_ACTOR_GAME;
   }
 }
 
@@ -323,6 +351,17 @@ const MINIMUMS_CHRONOLOGICAL_RECORD = `<minimums>
   <count entity="time-velocity" target="1" critical="true">A single declared velocity field on the world — daily / monthly / yearly / dynamic. The chronicler's prose profile must respect this velocity; entries are time-stamped accordingly.</count>
 </minimums>`;
 
+const MINIMUMS_MULTI_ACTOR_GAME = `<minimums>
+  <count entity="actors" target="2-6 anchors" critical="true">Each player / faction / side in the contest is an anchor. 2 for head-to-head games (chess, head-to-head trial, dual-bidder auction); 3-6 for multi-actor games (Diplomacy, multi-party negotiation, RPG party + GM, multi-bidder market). Each carries an objective, an information set, a resource pool, and a strategy posture.</count>
+  <count entity="referee / GM / arbiter" target="0-2">The neutral rule-keeper when present — game master, referee, market clearinghouse, election commission, court. Optional for pure-rule games where rules are self-enforcing; required for interpretation-heavy games (RPG GM, trial judge, ambiguous-state arbiter).</count>
+  <count entity="support / units" target="≥3 recurring/transient">Each actor's controlled units, advisors, sub-agents, party members, deployed pieces. May be named (a wargame's named commanders, an RPG's named henchmen) or implied (anonymous units of a faction).</count>
+  <count entity="locations" target="≥3">The contest's playing field — board / map regions, theatres of operation, contested zones. When the game has positional state, locations track who occupies what.</count>
+  <count entity="threads" target="≥4" critical="true">EACH THREAD IS AN OPEN STAKE the contest is deciding. Objectives, contested territories, victory conditions, resource ownership. Outcomes enumerate which actor(s) can win each stake. Mix discrete-resolution (a single objective taken) with constant-tension (the macro question — does any side win?). ≥1 thread should be terminal — when it closes, the game ends.</count>
+  <count entity="relationships" target="≥6">Adversarial between opposing actors. Alliances within coalitions. Procedural between actors and referees. Relationships shift as the game state evolves; some are public (declared alliances), some hidden (secret agendas).</count>
+  <count entity="artifacts" target="≥2">Resources actors command (gold, troops, cards, balance-sheet capacity, action points), rule-bearing instruments (the rulebook, the board, the dice / RNG mechanism), and objective-bearing artifacts (the flag, the treasure, the contract).</count>
+  <count entity="system-nodes" target="≥18" critical="true">with ≥12 edges. THE RULE SET IS LOAD-BEARING. Encode: legal action spaces per actor / phase, turn structure (sequential / simultaneous / reactive / continuous-tick), victory conditions, resource accounting rules, information regime (open / hidden / asymmetric), conflict-resolution rules (combat math, bidding rules, dice mechanics), end-game triggers. Each system-node ties to the actions or stakes it constrains.</count>
+</minimums>`;
+
 function minimumsBlockFor(paradigm: NarrativeParadigm): string {
   switch (PARADIGM_SHAPE[paradigm].shape) {
     case 'populated-narrative':     return MINIMUMS_POPULATED;
@@ -332,6 +371,7 @@ function minimumsBlockFor(paradigm: NarrativeParadigm): string {
     case 'reference-typology':      return MINIMUMS_REFERENCE_TYPOLOGY;
     case 'adversarial-contest':     return MINIMUMS_ADVERSARIAL_CONTEST;
     case 'chronological-record':    return MINIMUMS_CHRONOLOGICAL_RECORD;
+    case 'multi-actor-game':        return MINIMUMS_MULTI_ACTOR_GAME;
   }
 }
 
@@ -354,6 +394,75 @@ export type GenerateNarrativeArgs = {
   systemTypicalBand: string;
   systemClimaxBand: string;
 };
+
+/** Output schema for generateNarrative — exact JSON shape the model must
+ *  emit. Exported so the LLM-assisted repair path can reuse the same
+ *  schema spec instead of a drift-prone hand-written copy. Single source
+ *  of truth for both generation and repair. */
+export function buildNarrativeOutputSchema(args: { worldOnly: boolean }): string {
+  const { worldOnly } = args;
+  return `{
+  "worldSummary": "2-3 sentence world description",
+  "worldBuildSummary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this initial world commit — what creative space it opens, what tension it primes, which load-bearing entities, factions, or rules it brings into play. Used downstream to steer arc generation when this commit is read as <world-build-focus>, so name the load-bearing additions, not counts.",
+  "genre": "Primary genre WITHIN the chosen paradigm — e.g. for fiction: fantasy, sci-fi, thriller, romance, horror, mystery, literary; for non-fiction: biography, history, memoir, reportage; for simulation: counterfactual, wargame, policy modelling, cultivation; for essay: empirical, theoretical, personal, critical, polemical; for panel: macro-strategy, investigation, multi-agent reasoning, advisory; for atlas: field guide, codex, doctrine, encyclopedia; for debate: trial, election, championship, M&A; for record: diary, annals, ship's log, board minutes, hospital chart, pandemic chronicle.",
+  "subgenre": "Specific sub-form within the genre.",
+  "imageStyle": "A concise visual style directive for all generated images.",
+  "characters": [
+    {"id": "C-1", "name": "Full name", "role": "anchor|recurring|transient", "threadIds": ["T-1"], "imagePrompt": "1-2 sentence LITERAL physical description.", "world": {"nodes": [{"id": "K-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense"}]}}
+  ],
+  "locations": [
+    {"id": "L-1", "name": "Location name", "prominence": "domain|place|margin", "parentId": null, "threadIds": [], "imagePrompt": "1-2 sentence LITERAL visual description.", "world": {"nodes": [{"id": "LK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense"}]}}
+  ],
+  "threads": [
+    {"id": "T-1", "participants": [{"id": "C-1", "type": "character|location|artifact"}], "description": "Frame as a QUESTION: 15-30 words", "outcomes": ["Named possibilities. Binary default: ['yes','no']. 2–6 distinct, mutually exclusive entries."], "horizon": "short | medium | long | epic", "openedAt": "S-1", "dependents": []}
+  ],
+  "relationshipDeltas": [
+    {"from": "C-1", "to": "C-2", "type": "short relation label", "valenceDelta": 0.5}
+  ],
+  "artifacts": [
+    {"id": "A-1", "name": "Artifact name", "significance": "key|notable|minor", "threadIds": [], "parentId": "character or location ID, or null", "world": {"nodes": [{"id": "AK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense"}]}, "imagePrompt": "1-2 sentence LITERAL visual description"}
+  ],${worldOnly ? `
+  "systemDeltas": {"addedNodes": [{"id": "SYS-1", "concept": "15-25 words, PRESENT tense", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-1", "to": "SYS-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
+  "attributions": ["C-1", "L-1", "T-1", "SYS-1"],
+  "attributionEdges": [{"from": "C-1", "to": "SYS-1", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}],` : `
+  "scenes": [
+    {
+      "id": "S-1",
+      "arcId": "ARC-1",
+      "locationId": "L-1 — existing location ID, OR null when no locations are populated",
+      "povId": "C-1 — viewpoint entity ID, OR null for omniscient / analytical / voice-of-nobody scenes",
+      "participantIds": ["C-1 — may be empty array for analysis / paper scenes"],
+      "summary": "REQUIRED. The spine of the scene; every delta below must trace back to something stated here. Prose in NAMES not IDs. Length adapts: 3-6 sentences for routine scenes; expand WITHOUT UPPER BOUND for cognition-dense scenes.",
+      "timeDelta": {"value": 1, "unit": "hour"},
+      "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did"}],
+      "events": ["event_tag"],
+      "threadDeltas": [{"threadId": "T-1", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional"], "rationale": "10-20 words, prose only"}],
+      "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, PRESENT tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
+      "relationshipDeltas": [],
+      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-GEN-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
+      "attributions": ["C-1", "L-1", "T-1", "SYS-1"],
+      "attributionEdges": [{"from": "C-1", "to": "SYS-1", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
+    }
+  ],
+  "arcs": [
+    {"id": "ARC-1", "name": "Arc name", "sceneIds": ["S-1"], "develops": ["T-1"], "locationIds": ["L-1"], "activeCharacterIds": ["C-1"], "directionVector": "Forward-looking intent", "worldState": "Backward-looking compact state snapshot as of END of arc"}
+  ],`}
+  "proseProfile": {
+    "register": "the tonal register (conversational/literary/raw/clinical/sardonic/lyrical/mythic/journalistic or other)",
+    "stance": "narrative stance (close_third/intimate_first_person/omniscient_ironic/detached_observer/unreliable_first or other)",
+    "tense": "past or present",
+    "sentenceRhythm": "terse/varied/flowing/staccato/periodic or other",
+    "interiority": "surface/moderate/deep/embedded; analytical/evidentiary for non-fiction; state-tracked for simulation",
+    "dialogueWeight": "sparse/moderate/heavy/almost_none",
+    "devices": ["2-4 literary devices"],
+    "rules": ["3-6 SPECIFIC prose rules as imperatives"],
+    "antiPatterns": ["3-5 SPECIFIC prose failures to avoid"]
+  },
+  "planGuidance": "2-4 sentences of specific guidance for scene beat plans.",
+  "patterns": ["3-5 positive thematic commandments derived from THIS narrative's REGISTER and GENRE."],
+  "antiPatterns": ["3-5 negative commandments — common pitfalls in THIS register/genre to avoid."]
+}`;
+}
 
 export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): string {
   const {
@@ -393,67 +502,7 @@ ${sourceMaterialBlock}</inputs>
 
 <output-format>
 Return JSON with this exact structure:
-{
-  "worldSummary": "2-3 sentence world description",
-  "worldBuildSummary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this initial world commit — what creative space it opens, what tension it primes, which load-bearing entities, factions, or rules it brings into play. Used downstream to steer arc generation when this commit is read as <world-build-focus>, so name the load-bearing additions, not counts.",
-  "genre": "Primary genre WITHIN the chosen paradigm — e.g. for fiction: fantasy, sci-fi, thriller, romance, horror, mystery, literary; for non-fiction: biography, history, memoir, reportage; for simulation: counterfactual, wargame, policy modelling, cultivation; for essay: empirical (research-finding), theoretical, personal, critical, polemical (manifesto); for panel: macro-strategy, investigation, multi-agent reasoning, advisory; for atlas: field guide, codex, doctrine, encyclopedia; for debate: trial, election, championship, M&A, structured debate; for record: diary, annals, ship's log, board minutes, hospital chart, pandemic chronicle.",
-  "subgenre": "Specific sub-form within the genre — e.g. progression fantasy, cozy mystery, autobiographical memoir, Mughal-succession counterfactual, monetary-policy wargame, geopolitical macro strategy, applied-econometrics essay, criminal trial, hostile acquisition, Pepys-style daily diary, dynastic annals. Pick the most identifying form.",
-  "imageStyle": "A concise visual style directive for all generated images (e.g. 'watercolour style with soft lighting'). Should capture the tone, medium, palette, and aesthetic that best fits this world.",
-  "characters": [
-    {"id": "C-1", "name": "Full name matching the world's naming register — rough, asymmetric, lived-in", "role": "anchor|recurring|transient", "threadIds": ["T-1"], "imagePrompt": "1-2 sentence LITERAL physical description — concrete traits (hair colour, build, clothing). No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "K-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]}}
-  ],
-  "locations": [
-    {"id": "L-1", "name": "Location name from geography, founders, or corrupted older words — concrete and specific", "prominence": "domain|place|margin", "parentId": null, "threadIds": [], "imagePrompt": "1-2 sentence LITERAL visual description — concrete architecture, landscape, lighting. No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "LK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this location — history, rules, dangers, atmosphere, or properties"}]}}
-  ],
-  "threads": [
-    {"id": "T-1", "participants": [{"id": "C-1", "type": "character|location|artifact"}], "description": "Frame as a QUESTION: 'Will X succeed?' 'Can Y be trusted?' 'What is the truth behind Z?' — 15-30 words, specific", "outcomes": ["Named possibilities the stance prices. Binary default: ['yes','no']. Multi-outcome when resolution is N-way. Must be distinct, mutually exclusive, 2–6 entries."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes, medium = within an arc, long = multi-arc, epic = work-spanning or open-ended. Drives evidence-magnitude attenuation downstream — pick honestly.", "openedAt": "S-1", "dependents": []}
-  ],
-  "relationshipDeltas": [
-    {"from": "C-1", "to": "C-2", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.5}
-  ],
-  "artifacts": [
-    {"id": "A-1", "name": "Artifact name — concrete and specific to its function or origin", "significance": "key|notable|minor", "threadIds": [], "parentId": "character or location ID, or null for world-owned", "world": {"nodes": [{"id": "AK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: what this artifact is, what it does, its history, powers, or limitations"}]}, "imagePrompt": "1-2 sentence LITERAL visual description — concrete physical details only, no metaphors or figurative language"}
-  ],${worldOnly ? `
-  "systemDeltas": {"addedNodes": [{"id": "SYS-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-1", "to": "SYS-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
-  "attributions": ["C-1", "L-1", "T-1", "SYS-1"],
-  "attributionEdges": [{"from": "C-1", "to": "SYS-1", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}],` : `
-  "scenes": [
-    {
-      "id": "S-1",
-      "arcId": "ARC-1",
-      "locationId": "L-1 — existing location ID, OR null when no locations are populated (analysis / paper)",
-      "povId": "C-1 — viewpoint entity ID, OR null for omniscient / analytical / voice-of-nobody scenes",
-      "participantIds": ["C-1 — may be empty array for analysis / paper scenes with no on-stage participants"],
-      "summary": "REQUIRED — WRITE THIS FIRST. The spine of the scene; every delta below must trace back to something stated here. Prose in NAMES not IDs. Length adapts to content — 3-6 sentences for routine scenes (physical action, dialogue, observable events, single-thread movements, scene-setting beats), expand WITHOUT UPPER BOUND for cognition-dense scenes (multi-step planning, scenario modelling, scheme construction, modelling other agents' reactions, complex world-rule reveals, layered argument). For dense scenes, capture the ACTUAL computation — name each scenario weighed, each tradeoff accepted, each conclusion reached, each agent modelled with their predicted reaction. Stand-in cognitive verbs ('considered the situation', 'planned carefully', 'weighed his options') are failures: name what was cognised. This is the prose writer's only brief and the only artifact other scenes can read — detail that lives only in prose evaporates at the scene boundary. Include context that shapes how the scene is written (time span, technique, tone). No sentences ending in emotions or realizations without a named, attributed referent.",
-      "timeDelta": {"value": 1, "unit": "hour"},
-      "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did — how it delivered utility"}],
-      "events": ["event_tag"],
-      "threadDeltas": [{"threadId": "T-1", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the stance"], "rationale": "thread-specific prose sentence (10-20 words) — what the scene does to this thread in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
-      "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-      "relationshipDeltas": [],
-      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-GEN-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
-      "attributions": ["C-1", "L-1", "T-1", "SYS-1"],
-      "attributionEdges": [{"from": "C-1", "to": "SYS-1", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
-    }
-  ],
-  "arcs": [
-    {"id": "ARC-1", "name": "Arc name — a short thematic label for this narrative segment", "sceneIds": ["S-1"], "develops": ["T-1"], "locationIds": ["L-1"], "activeCharacterIds": ["C-1"], "directionVector": "Forward-looking intent — see ARC METADATA guidance below.", "worldState": "Backward-looking compact state snapshot as of END of arc — see ARC METADATA guidance below for domain-adaptive form."}
-  ],`}
-  "proseProfile": {
-    "register": "the tonal register (conversational/literary/raw/clinical/sardonic/lyrical/mythic/journalistic or other)",
-    "stance": "narrative stance (close_third/intimate_first_person/omniscient_ironic/detached_observer/unreliable_first or other)",
-    "tense": "past or present",
-    "sentenceRhythm": "terse/varied/flowing/staccato/periodic or other",
-    "interiority": "surface/moderate/deep/embedded for character thought; analytical/evidentiary for non-fiction reasoning; state-tracked for simulation agents under the rule set; or another value the source actually fits",
-    "dialogueWeight": "sparse/moderate/heavy/almost_none",
-    "devices": ["2-4 literary devices that suit this world's tone"],
-    "rules": ["3-6 SPECIFIC prose rules as imperatives — these must be concrete enough to apply sentence-by-sentence. BAD: 'Write well'. GOOD: 'Show emotion through physical reaction, never name it' / 'No figurative language — just plain statements of fact' / 'Terse does not mean monotone — vary between clipped fragments and occasional longer compound sentences'"],
-    "antiPatterns": ["3-5 SPECIFIC prose failures to avoid — concrete patterns that break this voice. BAD: 'Don't be boring'. GOOD: 'NEVER use \"This was a [Name]\" to introduce a mechanic — show what it does, not what it is called' / 'No strategic summaries in internal monologue (\"He calculated that...\") — show calculation through action' / 'Do not follow a system reveal with a sentence restating its significance' / 'Do not write narrator summaries of what the character already achieved on-page'"]
-  },
-  "planGuidance": "2-4 sentences of specific guidance for scene beat plans. What mechanisms should dominate? How should exposition be handled? What should plans avoid? EXAMPLE: 'Prioritise demonstration and direct exchange over expository narration. System mechanics surface through use, not summary. Interior or authorial reflection should be tactical and clipped. Plans should never include a beat whose purpose is to explain a concept that was already demonstrated in a prior beat.'",
-  "patterns": ["3-5 positive thematic commandments derived from THIS narrative's REGISTER and GENRE. First identify the register/genre/subgenre — cozy mystery, literary realism, speculative, memoir, essay, reportage, research paper, ethnographic study, history, historical counterfactual, economic / policy modelling, political wargame, pandemic / climate scenario, agent-based study, LitRPG / cultivation / xianxia, or whatever the source actually is — then extract patterns that make narratives in this tradition succeed: register-specific moves to embrace, structural rhythms (e.g. 'Each arc ends with a finding and a cost', 'Every rule invoked must produce a downstream consequence the next arc carries'), entity dynamics typical of the form. EXAMPLES (across registers): 'Every cost paid must compound into later consequence', 'Argument advances through specific cases, not general claims', 'The investigator's blind spots must be staged before they are exposed', 'Every rule-driven outcome must trace back to a stated rule'"],
-  "antiPatterns": ["3-5 negative commandments — common pitfalls in THIS register/genre to avoid. Tropes or moves to subvert, common failures in the form, patterns that would break this work's tone. EXAMPLES (across registers): 'No convenient breakthroughs without earned setup', 'Anchor entities cannot be diminished just to let other anchors look strong', 'No info-dumps disguised as dialogue', 'No source paraphrased without attribution', 'No conclusion the evidence has not yet earned', 'No outcome that the stated rule set does not actually entail'"]
-}
+${buildNarrativeOutputSchema({ worldOnly })}
 </output-format>
 
 <rules name="opening-arc" hint="Establish a tight, focused world. Counts are minimums; exceed when warranted. Paradigm is fixed by the user's selection (or inferred when omitted) — see the paradigm block above.">

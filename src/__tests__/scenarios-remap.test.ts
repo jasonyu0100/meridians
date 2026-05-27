@@ -3,7 +3,7 @@ import {
   buildTakenFromNarrative,
   remapScenarioCommit,
   type TakenIds,
-} from '@/lib/experimentation-remap';
+} from '@/lib/scenarios-remap';
 import type {
   Arc,
   Scene,

@@ -25,13 +25,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type FloatingPaletteProps = {
   isBulkActive?: boolean;
   isBulkAudioActive?: boolean;
-  isExperimentationActive?: boolean;
+  isScenariosActive?: boolean;
 };
 
 export default function FloatingPalette({
   isBulkActive = false,
   isBulkAudioActive = false,
-  isExperimentationActive = false,
+  isScenariosActive = false,
 }: FloatingPaletteProps) {
   const { state, dispatch } = useStore();
   const access = useFeatureAccess();
@@ -97,7 +97,7 @@ export default function FloatingPalette({
 
   const isAutoActive = !!state.viewState.autoRunState?.isRunning;
   const isAnyModeActive =
-    isAutoActive || isBulkActive || isBulkAudioActive || isExperimentationActive;
+    isAutoActive || isBulkActive || isBulkAudioActive || isScenariosActive;
 
   const handleDeleteHead = useCallback(() => {
     if (!narrative || !state.viewState.activeBranchId || !isHead) return;
@@ -136,7 +136,7 @@ export default function FloatingPalette({
     graphViewMode === "plan" ||
     graphViewMode === "prose" ||
     graphViewMode === "audio" ||
-    graphViewMode === "game";
+    graphViewMode === "decision";
   const isPhaseMode = graphViewMode === "mode";
   const isReasoningMode = graphViewMode === "reasoning";
 
@@ -977,7 +977,7 @@ export default function FloatingPalette({
               <IconChevronRight size={14} />
             </button>
 
-            {/* Plan/Prose/Audio palette actions — hidden during auto/Experimentation/bulk */}
+            {/* Plan/Prose/Audio palette actions — hidden during auto/Scenarios/bulk */}
             {!isAnyModeActive && (
               <>
                 <div className="w-px h-4 bg-white/12 mx-1" />
@@ -1140,8 +1140,8 @@ export default function FloatingPalette({
                   </>
                 )}
 
-                {/* Game palette actions — Generate / Clear / Auto */}
-                {graphViewMode === "game" && (
+                {/* Decision palette actions — Generate / Clear / Auto */}
+                {graphViewMode === "decision" && (
                   <>
                     <button
                       type="button"
@@ -1303,7 +1303,7 @@ export default function FloatingPalette({
             <IconChevronRight size={14} />
           </button>
 
-          {/* Action buttons — hidden during auto/Experimentation/bulk */}
+          {/* Action buttons — hidden during auto/Scenarios/bulk */}
           {!isAnyModeActive && (
             <>
               {/* Divider */}
@@ -1324,7 +1324,7 @@ export default function FloatingPalette({
                 Generate
               </button>
 
-              {/* Experimentation is no longer exposed here — it now lives
+              {/* Scenarios is no longer exposed here — it now lives
                   in the Compass view's topbar, alongside the cohort that
                   feeds it. The bottom palette stays focused on view-level
                   generation actions (Generate, Auto). */}

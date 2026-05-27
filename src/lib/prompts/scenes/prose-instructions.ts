@@ -90,8 +90,14 @@ export function buildProseInstructionsWithPlan(args: { wordsPerBeat: number }): 
 
   <follow-plan>Each beat maps to a passage of output. The mechanism defines the delivery MODE (dialogue, thought, action, environment, narration, memory, document, comic); the propositions define FACTS TO TRANSMIT — in-world events, argued claims, observed evidence, rule-driven outcomes, modelled state transitions, agent decisions, recorded changes, classified attributes, contest moves; the paradigm-shape directive decides which of these the work actually carries. Weave both into the paradigm's voice.</follow-plan>
 
-  <beat-boundary-markers hint="Insert a marker line between beats; do NOT include a marker after the final beat. Markers are stripped from final output.">
-    Format: \`[BEAT_END:N]\` on its own line — N is the 0-indexed beat number. Example for a 3-beat scene: [Prose for beat 0...] / [BEAT_END:0] / [Prose for beat 1...] / [BEAT_END:1] / [Prose for beat 2...]
+  <beat-boundary-markers hint="Open every beat with a marker line. Markers are stripped from final output.">
+    Format: \`[BEAT:N]\` on its own line BEFORE the beat's prose — N is the 0-indexed beat number. Every beat opens with its marker, including beat 0. No closing marker; the next \`[BEAT:N+1]\` (or end of output) ends the previous beat. Example for a 3-beat scene:
+    [BEAT:0]
+    Prose for beat 0...
+    [BEAT:1]
+    Prose for beat 1...
+    [BEAT:2]
+    Prose for beat 2...
   </beat-boundary-markers>
 
   <reference name="mechanisms" hint="Delivery modes — what each beat's mechanism field tells the writer to do. Format-rules block above OVERRIDES this for non-prose formats.">

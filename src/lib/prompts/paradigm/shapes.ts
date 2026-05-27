@@ -67,6 +67,13 @@ export const PROSE_SHAPE_DIRECTIVE_BY_PARADIGM: Record<NarrativeParadigm, string
   Render: lead with the TIME-STAMP (a date for daily, month/year for monthly, year for yearly, explicit per-entry for dynamic). The chronicler's documentary voice records what happened in this time-step, what changed, what was observed.
   DO NOT use omniscient narrator voice with character interiority — the chronicler observes and logs; they do not enter minds. DO NOT fabricate dialogue, attributed quotes, or specific events the record does not contain; quote what is quoted, name what is named, mark gaps as gaps. Threads are long-running trajectories tracked across entries, not arcs that resolve dramatically within one entry.
 </paradigm-shape>`,
+
+  'game': `<paradigm-shape paradigm="game" critical="true" hint="A TURN in a multi-actor contest. Rules are enforceable; stakes are contested.">
+  This scene is a TURN — one actor's action in a multi-actor contest under explicit, enforceable rules. The game state is canonical; rules constrain what moves are legal; partial-information rules govern what each actor knows.
+  Render: which actor moved (attribution), what action they chose from their legal action set under the current state, what the rules permitted or forced as a result, what resources / position / leverage / information shifted, what the other actors observe (full or partial information per the rules).
+  DO NOT narrate from an omniscient narrator's emotional throughline — a game has no single protagonist; each actor is its own perspective with its own stakes, information, and constraints. DO NOT smooth illegal or extra-rule moves into the action — if an actor cannot do X under the rules, they cannot do X; rule violation is the game ending, not a beat. DO NOT collapse the cast into one monolithic voice; actors are distinct under the rules.
+  Rules are load-bearing and surface diegetically — when a rule fires (resource depleted, win condition met, action blocked, turn forfeit), deliver it as the game would. Stakes (open thread-questions the contest is deciding) close only when the rules resolve them, not when the narrative would prefer.
+</paradigm-shape>`,
 };
 
 /** Prose-shape directive lookup — empty when paradigm unset. */
@@ -87,6 +94,7 @@ export const WORLD_ARCHITECT_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'You are a world-view architect generating a REFERENCE TYPOLOGY — entries / taxa / categories. No scene flow; the system-graph IS the work. The curator\'s voice orchestrates; entries describe stable structure by attributes and cross-references, not by events.',
   'debate':      'You are a world-view architect generating an ADVERSARIAL CONTEST — two or more named parties locked in zero-sum stakes under explicit rules. Scenes are MOVES (attribution + intent + effect). Threads are AXES OF CONTESTATION whose outcomes favour one party or the other under the contest\'s own logic.',
   'record':      'You are a world-view architect generating a CHRONOLOGICAL RECORD — time-ordered log of events, real or imagined. Pick a time velocity (daily / monthly / yearly / dynamic). Entries replace scenes; the chronicler\'s documentary voice records what happened in each time-step. Threads are long-running trajectories tracked across entries.',
+  'game':        'You are a world-view architect generating a MULTI-ACTOR CONTEST — a game world where 2+ actors take turns pursuing contested stakes under enforceable rules. The system-graph IS the rule set (legal action sets, victory conditions, turn order, resource accounting, partial-information rules); world entities are the ACTORS (characters / factions / sides) and the RESOURCES, POSITIONS, and ARTIFACTS they command; threads are the OPEN STAKES the contest is deciding (objectives, contested territories, win conditions). Declare turn structure (turn / round / phase) and information rules (open / hidden / asymmetric) up front; they bind every downstream pass.',
 };
 
 /** Compact world-shape label used in chat context and outline rendering.
@@ -100,6 +108,7 @@ export const WORLD_SHAPE_LABEL_BY_PARADIGM: Record<NarrativeParadigm, string> = 
   'atlas':       'reference-typology — entries / taxa / doctrines; system-graph IS the work; no fate threads, no character transformation (REALITY POSTURE: real-world typology OR invented-world codex — pick one and stay consistent)',
   'debate':      'adversarial-contest — 2+ named parties locked in zero-sum stakes under explicit rules; each scene a MOVE; threads track axes of contestation (REALITY POSTURE: documented contest OR hypothetical, with sourceable rules)',
   'record':      'chronological-record — time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity (daily / monthly / yearly / dynamic) (REALITY POSTURE: documented chronicle OR invented annals)',
+  'game':        'multi-actor-contest — 2+ actors take turns pursuing contested stakes under enforceable rules; system-graph IS the rule set, world tracks actors + resources + positions + artifacts, threads are open stakes the contest is deciding (REALITY POSTURE: rule-governed contest, real-world game OR hypothetical / designed game)',
 };
 
 // ─── Scene generation / plan / edit ─────────────────────────────────────────
@@ -114,6 +123,7 @@ export const SCENE_GENERATOR_FRAMING_BY_PARADIGM: Record<NarrativeParadigm, stri
   'atlas':       'You generate ENTRIES in a typology — specimens, taxa, doctrines, concepts described by structural attributes and position in the system. NO arc, NO interiority, NO forward-time narration. Cross-references between entries are the substance.',
   'debate':      'You generate MOVES in an adversarial contest under explicit rules — each move attributed, intent-targeted (which axis it contests), and rule-scored (how the arbiter responded). NOT a fiction scene with throughline; the contest\'s rules are load-bearing.',
   'record':      'You generate dated CHRONICLE ENTRIES at the declared time velocity (daily / monthly / yearly / dynamic) — what happened and what changed in this time-step, in the chronicler\'s documentary voice. NOT omniscient narrator; entries log, they do not arc.',
+  'game':        'You generate TURNS in a multi-actor game — each turn names the active actor, the legal move they chose from their action set under the current state, the rule-checked effect on resources / position / information / stakes, and what other actors observe. Rules are enforceable; illegal moves do not happen; partial-information constraints are respected. NOT a fiction scene with a single protagonist; each actor plays their own game from their own information set.',
 };
 
 /** Per-paradigm framing for the scene-plan system prompt. */
@@ -126,6 +136,7 @@ export const PLAN_SHAPE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'You are planning a TYPOLOGY ENTRY — beats sequence the entry\'s structural facets (definition → characteristics → mechanism → scope → cross-references). NO chronology, NO arc, NO interiority.',
   'debate':      'You are planning a CONTEST MOVE — beats sequence the move\'s attribution, intent, deployment, and effect under the rules. Each beat anchors to a contestant + axis + rule.',
   'record':      'You are planning a CHRONICLE ENTRY — beats sequence the entry\'s time-stamped observations and changes at the declared velocity. Documentary voice; gaps named, not papered.',
+  'game':        'You are planning a TURN — beats sequence the active actor\'s deliberation (under their information set), the chosen move (from their legal action set), the rule-check (which rule fires, which constraint binds), the state change (resources / position / stakes shift), and the information disclosed to other actors. Each beat anchors to the active actor + a legal action + a rule-checked outcome. Illegal moves are not beats.',
 };
 
 /** Per-paradigm scene-shape label used by the plan-edit system prompt's
@@ -139,6 +150,7 @@ export const EDIT_SHAPE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'typology entry (structural attributes + position in the system; no arc, no interiority)',
   'debate':      'contest move (attribution + intent + effect under the contest\'s rules)',
   'record':      'chronicle entry (dated, documentary voice, at the declared time velocity)',
+  'game':        'game turn (active actor + legal move from their action set + rule-checked outcome + state change + information disclosure to other actors)',
 };
 
 // ─── Analyst surfaces ───────────────────────────────────────────────────────
@@ -170,6 +182,9 @@ export const ANALYST_DISCIPLINE_BY_PARADIGM: Record<NarrativeParadigm, string> =
 
   'record':
     'Read for trajectory accumulation across dated entries at the declared time velocity. Threads are long-running trajectories that ACCUMULATE evidence across many entries — they do not "close" with dramatic payoff. The chronicler observes and logs; do not impose omniscient interiority on entries that record what was observed.',
+
+  'game':
+    'Read for game mechanics: which actor moved, which action they chose from their legal set, which rule fired and what state changed, which stakes shifted, what each actor knew vs. didn\'t know going in. Threads are open STAKES the contest is deciding — they close when the rules resolve them, not when the analyst would prefer. Each actor is its own perspective with its own goals, information, and constraints; do not impose a single-protagonist throughline on a multi-actor game.',
 };
 
 /** Per-paradigm Compass lens — what the Compass cohort looks like in this
@@ -238,6 +253,14 @@ Native attractors: the chronicled trends, the institutional rhythms, the figures
 Natural cadence: paced by the declared velocity. Dynamic velocity allows zoom in/out — granular at important moments, coarser elsewhere.
 Tail vocabulary: chronicle rupture — a regime change recorded mid-period, a figure's death, an institution's dissolution, a trend reversal the chronicler must explicitly mark.
 Pool variables name TRAJECTORY FORCES — long-running trends, regime-shift pressures, figures whose state is shifting, institutional rhythms, chronicled patterns. Do not invent events the chronicler couldn't have witnessed at the declared velocity.`,
+
+  'game': `COMPASS LENS — game.
+"Continuations" are next moves available to the actors under the rules: legal actions in the current state, response patterns to others' last moves, alliance shifts, resource gambits, stake plays, rule-trigger setups.
+Forward-motion shape: turn-and-counter-turn — each actor's move constrains the others' legal options; the cohort surfaces the strategic postures each actor might adopt and the rule-driven consequences that follow.
+Native attractors: the rules' own attractors (win conditions, resource sinks, dominant strategies, terminal states), each actor's stated objectives, the contested stakes the game is deciding.
+Natural cadence: turn-paced by the rules — moves resolve when the rules permit, state updates on triggers. Subgenre adjusts pace (chess turns faster than treaty negotiation faster than a campaign season faster than a litigation phase).
+Tail vocabulary: rule-driven rupture — a win condition met, a new actor entering or exiting, a rule activating that voids prior leverage, an alliance collapsing, a resource sink draining, partial information becoming common knowledge.
+Pool variables name STRATEGIC FORCES under the rules — actors' current positions, resource stocks, information asymmetries, alliance vectors, rule-trigger proximities, stake-pressure on open threads. Score strategic state under the game's own rules; do not invent forces the rules cannot express.`,
 };
 
 // ─── Probe hints (survey / interview) ───────────────────────────────────────
@@ -253,6 +276,7 @@ export const SURVEY_PROBE_HINT_BY_PARADIGM: Record<NarrativeParadigm, string> = 
   'atlas':       'Probes that pay: classification edge-cases (where does entry X actually belong?), what makes each specimen MARGINAL within its category, what would force a re-classification, which cross-references the typology underweights.',
   'debate':      'Probes that pay: each contestant\'s read of the contest\'s rules, the axis each one believes is decisive, the vulnerability each one would exploit if they could, the move each one fears most. Arbiters reveal which axes they weight when forced to rank.',
   'record':      'Probes that pay: what each chronicled figure observed in this period vs. what was reported to them, where the chronicler\'s gaps are, which trajectories the figures see continuing vs. ending, what they expect the next entry to record.',
+  'game':        'Probes that pay: each actor\'s win condition (what they\'re actually playing for), their read of their own legal action set vs. opponents\', the move they most fear, the resource they\'d trade everything for, the rule they\'d exploit if they could, what they don\'t know that others do. Forced-rank questions surface priorities; estimate questions surface information asymmetries between actors.',
 };
 
 /** Per-paradigm interview-probe hint. */
@@ -265,6 +289,7 @@ export const INTERVIEW_PROBE_HINT_BY_PARADIGM: Record<NarrativeParadigm, string>
   'atlas':       'The subject is an entry / specimen / doctrine — interview surfaces its position in the system: what it extends, what it conflicts with, what makes it marginal vs. central, what would force a re-classification. The curator\'s voice answers, not a character\'s.',
   'debate':      'The subject is a contestant — interview surfaces their strategy, the axes they believe decisive, the move they fear most, their read of the arbiter\'s priors. Answers are positioned in the contest, not detached.',
   'record':      'The subject is a chronicled figure or institution — interview surfaces what they observed in their period, the trajectory they see, what they expect to be recorded next. The chronicler\'s documentary tone shapes the voice.',
+  'game':        'The subject is one actor in the contest — interview surfaces their strategy, their read of the rules and the current state, the leverage they hold, the moves they fear, the alliances they\'re calibrating, what they know vs. don\'t know. Answers are positioned in the game state; the actor responds from their own information set, never from a global view.',
 };
 
 // ─── Direction / expansion ──────────────────────────────────────────────────
@@ -279,6 +304,7 @@ export const DIRECTION_SHAPE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'The next "arc" is the next SECTION of the typology — entries to add, a sub-classification to articulate, a cross-reference layer to formalise. Vector at the classification level; no events, no character arcs.',
   'debate':      'The next "arc" is the next PHASE of the contest — the next axis to contest, the next witness / argument / move to deploy, the next rule-triggered juncture. Vector, not script. Resolution belongs to the arbiter, not the analyst.',
   'record':      'The next "arc" is the next PERIOD at the declared time velocity — what entries should cover, which trajectories need updates, which figures\' states have shifted enough to record. Vector, not script.',
+  'game':        'The next "arc" is the next ROUND or PHASE of the contest — which actor moves next, which stakes are pressing, which rules are about to fire, which resource / position / alliance shift opens new legal moves. Vector, not script — resolution belongs to the rules, not the analyst. Do not script which actor "should" win.',
 };
 
 /** Per-paradigm extension shape for world-expansion proposals + execution. */
@@ -291,6 +317,7 @@ export const EXPANSION_SHAPE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'Extend by adding ENTRIES (specimens / taxa / doctrines / concepts) — never characters with arcs. Cross-references and classification edges are the connective tissue; add them densely. System-graph carries the weight.',
   'debate':      'Extend the contest — add moves, axes of contestation, witnesses / surrogates as transient characters, rule-bearing artifacts. At scope shifts, new contestants may enter; otherwise the existing parties stay locked in. Do not add side-characters with their own dramatic interiority.',
   'record':      'Extend the chronicle — add chronicled figures, institutions, locations, and tracked subjects that the record needs to log. Threads accumulate trajectories across entries; do not invent forward-time events the chronicler couldn\'t have witnessed at the declared velocity.',
+  'game':        'Extend the contest — add ACTORS (characters / factions / sides), RESOURCES (artifacts the actors command, with quantity or capacity where it matters), POSITIONS (locations / territories under contest), and rule-bearing system nodes (new legal actions, new victory conditions, new constraints). New actors must enter with declared objectives, information sets, and constraints; new rules must say which moves they enable, forbid, or score. Do not add bystanders who don\'t play; everyone in the game state has stakes.',
 };
 
 // ─── Review criteria ────────────────────────────────────────────────────────
@@ -305,6 +332,7 @@ export const PROSE_REVIEW_CRITERIA_BY_PARADIGM: Record<NarrativeParadigm, string
   'atlas':       'PROSE CRITERIA — atlas. Typological rigour. Curator\'s voice consistent and authoritative. Entries describe stable structure, not events. Cross-references explicit. No interiority, no arc resolution, no dramatic action within entries. Repetition across entries (legitimate when typologically motivated; flag when filler). Profile compliance.',
   'debate':      'PROSE CRITERIA — debate. Every move carries attribution (which party), intent (which axis it targets), effect (how rules + arbiter scored it). NO smoothing of events into a character\'s emotional throughline. NO omniscient narrator voice summarising strategy from outside the contest. Rules of engagement surfaced when triggered. Repetition. Profile compliance.',
   'record':      'PROSE CRITERIA — record / chronicle. Time-velocity coherence (declared velocity respected; shifts marked as editorial signal). Documentary voice — no omniscient interiority. Time-stamps lead entries. Gap-marking discipline (gaps named honestly, not papered over). Quotes quoted, not invented. Repetition. Profile compliance.',
+  'game':        'PROSE CRITERIA — game. Rule fidelity — every move legal under the stated rules in the current state; illegal moves not smoothed into the action. Actor attribution — which actor moved, on which turn, under which constraint, with which information. State-change traceability — resources / positions / information / stakes shift only as the rules allow. Multi-actor distinctness — actors retain distinct goals, information, and voices; no monolithic cast register. Partial-information discipline — what each actor knows or guesses stays consistent with what the rules disclosed. Repetition. Profile compliance.',
 };
 
 /** Per-paradigm criteria for the branch-review system prompt. */
@@ -317,6 +345,7 @@ export const BRANCH_REVIEW_CRITERIA_BY_PARADIGM: Record<NarrativeParadigm, strin
   'atlas':       'BRANCH CRITERIA — atlas. Typological coverage, cross-references, classification rigour. Do NOT demand resolution. Pacing — structural density. Repetition (legitimate when typologically motivated). Entity development — entries described stably (not arcing). Threads (when present) — classification questions. Thematic question — what the typology illuminates about its domain.',
   'debate':      'BRANCH CRITERIA — debate. Are moves attributed, intent-targeted, and rule-scored? Flag emotional-throughline narration. Pacing — move-and-response rhythm. Repetition of contestant tactics. Entity development — each contestant\'s posture / capacity shifting. Threads — axes of contestation. Thematic question — the contest\'s underlying stakes.',
   'record':      'BRANCH CRITERIA — record / chronicle. Time-velocity coherence, documentary voice, gap-marking discipline. Do NOT demand arc resolution within a single entry. Pacing — velocity shifts as editorial signal. Repetition of chronicled patterns. Entity development — figures evolving across entries. Threads — long-running trajectories. Thematic question — what the chronicle illuminates about its period.',
+  'game':        'BRANCH CRITERIA — game. Rule-driven trajectory — do turns follow as the rules + actors\' legal options force? Authorial rescue is a verdict-edit flag. Pacing — turn cadence + phase shifts. Repetition (same actor making the same kind of move without state advancing, or rules firing the same way without stake movement). Actor development — each actor\'s position / resources / information evolving distinctly under the rules. Threads — open stakes the contest is deciding, closing only on rule-driven resolution. Thematic question — what the game under stress reveals about its actors or rules.',
 };
 
 /** Per-paradigm criteria for the plan-review system prompt. */
@@ -329,4 +358,5 @@ export const PLAN_REVIEW_CRITERIA_BY_PARADIGM: Record<NarrativeParadigm, string>
   'atlas':       'PLAN SHAPE — atlas. Beats sequence the entry\'s structural facets (definition → characteristics → mechanism → scope → cross-references). NO chronology, NO arc beats. Beat-to-delta alignment: system deltas record classification additions, not events.',
   'debate':      'PLAN SHAPE — debate. Beats sequence the move\'s attribution, intent, deployment, effect. Each move has a target axis. Beat-to-delta alignment: thread escalations are axis-of-contestation shifts; arbiter responses (rule activations, scoring) need beats.',
   'record':      'PLAN SHAPE — record. Beats sequence the entry\'s time-stamped observations and changes. Entries respect the declared time velocity. Beat-to-delta alignment: world deltas record state-shifts at the entry\'s time-stamp; gaps are named, not papered.',
+  'game':        'PLAN SHAPE — game. Beats sequence the active actor\'s deliberation (under their information set), the chosen move (from their legal action set), the rule-check, the state change, and the information disclosed. Beat-to-delta alignment is CRITICAL: a system delta declaring a rule fires must have a beat where the rule is actually applied; a thread (stake) delta declaring a stake shifts must have a beat where the game state changes the stake under the rules. Illegal moves are not beats.',
 };

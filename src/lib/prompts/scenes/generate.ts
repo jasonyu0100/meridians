@@ -105,6 +105,15 @@ const PARADIGM_SCENE_CHRONOLOGICAL_RECORD = `<paradigm-scene-discipline paradigm
   <rule name="names">Names match the chronicled setting — real for documented chronicles, in-world for invented ones. No AI-coded single-word names (those belong only in panel paradigm when the cast is AI agents).</rule>
 </paradigm-scene-discipline>`;
 
+const PARADIGM_SCENE_MULTI_ACTOR_GAME = `<paradigm-scene-discipline paradigm="multi-actor-game" critical="true" hint="Game. Each scene is a TURN in a multi-actor contest under enforceable rules — one actor moves from their legal action set, the rules check the move, state changes, the other actors observe per the information rules.">
+  <rule name="turn-is-the-unit" critical="true">Each scene is a TURN. A turn has FOUR ingredients: (a) the ACTIVE actor (which player / faction / side moved), (b) the MOVE they chose (a specific action from their legal action set under the current state), (c) the RULE-CHECK (which rule fires, which constraint binds, what the rules permit or score), (d) the EFFECT (how resources / position / stakes / information shifted). Each scene's summary must surface all four.</rule>
+  <rule name="rules-are-enforceable">The system-graph IS the rule set — legal action spaces, victory conditions, turn order, resource accounting, information rules. Illegal moves do not happen; if an actor cannot do X under the current state and rules, the scene cannot describe them doing X. Rule violations end the game, they are not beats.</rule>
+  <rule name="threads-are-open-stakes">Threads are the open stakes the contest is deciding — objectives, contested territories, victory conditions, resource ownership. They close on rule-driven resolution (a win condition met, a resource depleted, an objective taken), NOT on authorial preference. Payoff / twist logTypes are reserved for moves that genuinely resolve a stake under the rules.</rule>
+  <rule name="actors-have-distinct-information">Each actor plays from their own information set, not a global view. Partial-information rules (fog of war, hidden hands, sealed bids, private intel) are respected scene by scene — what one actor knows or guesses is not what another knows. Knowledge asymmetries are deliberate, not omissions.</rule>
+  <rule name="no-single-protagonist">A game has no single protagonist. POV may move between actors across turns; the cast is plural by default. Do not collapse actors into a monolithic voice or smooth multi-actor outcomes into one character's emotional throughline.</rule>
+  <rule name="names">Names match the contest's setting — historical figures, in-world factions, designed sides. No AI-coded single-word names (those belong only in panel paradigm when the cast is AI agents).</rule>
+</paradigm-scene-discipline>`;
+
 const PARADIGM_SHAPE_MAP: Record<NarrativeParadigm, string> = {
   'fiction':      PARADIGM_SCENE_POPULATED_NARRATIVE,
   'non-fiction':  PARADIGM_SCENE_POPULATED_NARRATIVE,
@@ -114,6 +123,7 @@ const PARADIGM_SHAPE_MAP: Record<NarrativeParadigm, string> = {
   'atlas':        PARADIGM_SCENE_REFERENCE_TYPOLOGY,
   'debate':       PARADIGM_SCENE_ADVERSARIAL_CONTEST,
   'record':       PARADIGM_SCENE_CHRONOLOGICAL_RECORD,
+  'game':         PARADIGM_SCENE_MULTI_ACTOR_GAME,
 };
 
 export type GenerateScenesPromptArgs = {
@@ -134,6 +144,44 @@ export type GenerateScenesPromptArgs = {
   genre?: string;
   subgenre?: string;
 };
+
+/** Output schema for generateScenes — the exact JSON shape the model must
+ *  emit. Exported so the LLM-assisted repair path can reuse the same
+ *  schema spec instead of a duplicated, drift-prone hand-written hint.
+ *  Single source of truth for both generation and repair. */
+export function buildScenesOutputSchema(args: { arcId: string; povRestrictedHint?: string }): string {
+  const { arcId, povRestrictedHint = '' } = args;
+  return `{
+  "arcName": "2-4 words drawn from the narrative's own register. Mood-coded ('Seeds of Distrust') or concrete-event ('Tier Tribulation', 'Ratification Vote') — both fine. Bad: generic ('Continuation') or a register that doesn't match the world the cast lives in.",
+  "directionVector": "1-2 sentences. Central pressure (what is closing, sharpening, tipping) and shape of consequence. Vector, not script.",
+  "worldState": "Compact state snapshot at END of arc — the chess-board position.",
+  "scenes": [
+    {
+      "id": "S-GEN-1",
+      "arcId": "${arcId}",
+      "locationId": "existing location ID, OR null for essay / paper / analysis sections with no scene-location (argument sections, theoretical exposition, voice-of-nobody passages)",
+      "povId": "viewpoint entity ID OR null. Set to a participant character (fiction) or named author entity (memoir/essay/first-person non-fiction) when the source narrates from that vantage. Set to null for omniscient simulation, impersonal analytical writing, polyphonic / dialogic sources — registers that have no viewpoint entity. Do not appoint a 'modelled agent' inside a simulation as POV. See pov-discipline for the full rule.${povRestrictedHint}",
+      "participantIds": ["existing character IDs — empty array is valid for essay / paper / analysis sections with no on-stage participants"],
+      "summary": "Prose in NAMES not IDs — and NEVER reference engine field names (threadDeltas / worldDeltas / systemDeltas / etc.) inside the summary; see summary-discipline above. Length adapts to content: 3-6 sentences for routine scenes (fiction / non-fiction-narrative / simulation default), cognition-dense expansion WITHOUT UPPER BOUND for multi-step planning, scenario modelling, complex reveals, layered argument. For essay / paper / analysis, cognition-dense IS the default — most sections weigh claims, present evidence, state a mechanism, engage a counter, or derive an implication. Name each scenario weighed, each tradeoff accepted, each conclusion reached. This is the prose writer's only brief and the only artifact other scenes can read.",
+      "timeDelta": {"value": 1, "unit": "minute|hour|day|week|month|year", "transition": "natural-language phrase — 'the next morning', 'years before', 'later that evening' — captures English-language flow"},
+      "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did"}],
+      "events": ["event_tag_1", "event_tag_2"],
+      "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — only when this scene structurally opens a possibility not previously in the stance"], "rationale": "the summary sentence that moved this stance"}],
+      "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
+      "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
+      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
+      "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX|L-XX|null", "toId": "C-YY|L-YY|null"}],
+      "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
+      "newCharacters": [{"id": "C-GEN-1", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
+      "newLocations": [{"id": "L-GEN-1", "name": "Name", "prominence": "domain|place|margin", "parentId": "L-XX|null", "tiedCharacterIds": [], "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history", "content": "key fact"}}, "edges": []}}],
+      "newArtifacts": [{"id": "A-GEN-1", "name": "Name", "significance": "key|notable|minor", "parentId": "C-XX|L-XX|null", "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|capability|history|state", "content": "one fact per node"}}, "edges": []}}],
+      "newThreads": [{"id": "T-GEN-1", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}],
+      "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
+      "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
+    }
+  ]
+}`;
+}
 
 export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): string {
   const {
@@ -204,36 +252,7 @@ ${priorities}
 <output-format>
 Return JSON with this exact structure.
 
-{
-  "arcName": "2-4 words drawn from the narrative's own register. Mood-coded ('Seeds of Distrust') or concrete-event ('Tier Tribulation', 'Ratification Vote') — both fine. Bad: generic ('Continuation') or a register that doesn't match the world the cast lives in.",
-  "directionVector": "1-2 sentences. Central pressure (what is closing, sharpening, tipping) and shape of consequence. Vector, not script.",
-  "worldState": "Compact state snapshot at END of arc — the chess-board position.",
-  "scenes": [
-    {
-      "id": "S-GEN-1",
-      "arcId": "${arcId}",
-      "locationId": "existing location ID, OR null for essay / paper / analysis sections with no scene-location (argument sections, theoretical exposition, voice-of-nobody passages)",
-      "povId": "viewpoint entity ID OR null. Set to a participant character (fiction) or named author entity (memoir/essay/first-person non-fiction) when the source narrates from that vantage. Set to null for omniscient simulation, impersonal analytical writing, polyphonic / dialogic sources — registers that have no viewpoint entity. Do not appoint a 'modelled agent' inside a simulation as POV. See pov-discipline for the full rule.${povRestrictedHint}",
-      "participantIds": ["existing character IDs — empty array is valid for essay / paper / analysis sections with no on-stage participants"],
-      "summary": "Prose in NAMES not IDs — and NEVER reference engine field names (threadDeltas / worldDeltas / systemDeltas / etc.) inside the summary; see summary-discipline above. Length adapts to content: 3-6 sentences for routine scenes (fiction / non-fiction-narrative / simulation default), cognition-dense expansion WITHOUT UPPER BOUND for multi-step planning, scenario modelling, complex reveals, layered argument. For essay / paper / analysis, cognition-dense IS the default — most sections weigh claims, present evidence, state a mechanism, engage a counter, or derive an implication. Name each scenario weighed, each tradeoff accepted, each conclusion reached. This is the prose writer's only brief and the only artifact other scenes can read.",
-      "timeDelta": {"value": 1, "unit": "minute|hour|day|week|month|year", "transition": "natural-language phrase — 'the next morning', 'years before', 'later that evening' — captures English-language flow"},
-      "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did"}],
-      "events": ["event_tag_1", "event_tag_2"],
-      "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — only when this scene structurally opens a possibility not previously in the stance"], "rationale": "the summary sentence that moved this stance"}],
-      "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-      "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
-      "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, general rule, no specific entities/events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-XX", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
-      "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX|L-XX|null", "toId": "C-YY|L-YY|null"}],
-      "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
-      "newCharacters": [{"id": "C-GEN-1", "name": "Full Name", "role": "anchor|recurring|transient", "threadIds": [], "imagePrompt": "literal physical description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history|capability|secret|goal", "content": "key fact"}}, "edges": []}}],
-      "newLocations": [{"id": "L-GEN-1", "name": "Name", "prominence": "domain|place|margin", "parentId": "L-XX|null", "tiedCharacterIds": [], "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|history", "content": "key fact"}}, "edges": []}}],
-      "newArtifacts": [{"id": "A-GEN-1", "name": "Name", "significance": "key|notable|minor", "parentId": "C-XX|L-XX|null", "threadIds": [], "imagePrompt": "literal visual description", "world": {"nodes": {"K-GEN-XXX": {"id": "K-GEN-XXX", "type": "trait|capability|history|state", "content": "one fact per node"}}, "edges": []}}],
-      "newThreads": [{"id": "T-GEN-1", "description": "thread question", "outcomes": ["yes", "no"], "participants": [{"id": "C-XX", "type": "character|location|artifact"}], "threadLog": {"nodes": {}, "edges": []}}],
-      "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
-      "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
-    }
-  ]
-}
+${buildScenesOutputSchema({ arcId, povRestrictedHint })}
 </output-format>
 
 <instructions>

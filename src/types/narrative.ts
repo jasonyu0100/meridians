@@ -1140,7 +1140,7 @@ export type Arc = {
   presentParadigm?: string;
   /** Short one-sentence gestalt of the Present coordination — what this
    *  configuration *is* as a recognisable shape. Generated alongside the
-   *  variables. When a Compass direction is committed via experimentation,
+   *  variables. When a Compass direction is committed via scenarios,
    *  the direction's own description is transferred onto the new arc's
    *  `presentDescription` so the lineage is preserved. */
   presentDescription?: string;
@@ -1148,11 +1148,11 @@ export type Arc = {
    *  WHY these variables are firing at these intensities given the arc's
    *  state: which mechanism feeds which, where the cascade runs, which symptom
    *  is the surface. Transferred from the parent scenario's `reasoning` on
-   *  experimentation commit. */
+   *  scenarios commit. */
   presentReasoning?: string;
   /** Log-prior plausibility score for this Present coordination, in the
    *  same STANCE_EVIDENCE_MIN/MAX range as Compass priorLogits ([-4, +4]).
-   *  When a Compass direction is committed via experimentation, the
+   *  When a Compass direction is committed via scenarios, the
    *  direction's `priorLogit` is transferred onto the new arc's
    *  `presentLogit` — preserving "how strongly was this pulled-toward when
    *  it was chosen" as a permanent record of the path's rarity. When
@@ -1162,7 +1162,7 @@ export type Arc = {
    *  fields on PlanningScenario (the Compass direction type) and node
    *  snapshots: option space, falsification handle, forward extension.
    *  Generated alongside the variables; transferred from the parent
-   *  Compass direction on experimentation commit so lineage of the
+   *  Compass direction on scenarios commit so lineage of the
    *  comparative + falsification reasoning is preserved across the branch
    *  fork. */
   presentConsidered?: string;
@@ -2352,7 +2352,7 @@ export type SystemLogEntry = {
   /** Where the event occurred */
   source:
     | "auto-play"
-    | "experimentation"
+    | "scenarios"
     | "manual-generation"
     | "analysis"
     | "world-expansion"
@@ -2498,7 +2498,7 @@ export type AnalysisMeta = {
   imageStyle?: string;
   proseProfile?: ProseProfile;
   planGuidance?: string;
-  /** One of the six canonical paradigms — drives the narrative's world-shape
+  /** One of the nine canonical paradigms — drives the narrative's world-shape
    *  and every downstream generation pass once committed. */
   paradigm?: NarrativeParadigm;
   genre?: string;
@@ -2628,7 +2628,7 @@ export type InspectorContext =
 
 export type WizardStep = "form" | "details" | "generate";
 
-/** The eight canonical paradigms the engine supports. Each is an iconic
+/** The nine canonical paradigms the engine supports. Each is an iconic
  *  text-form name; each maps to a distinct world-shape in the generation
  *  prompt:
  *  - fiction / non-fiction → populated-narrative (invented vs. observed)
@@ -2644,9 +2644,16 @@ export type WizardStep = "form" | "details" | "generate";
  *                            or imagined; variable velocity — daily / monthly /
  *                            yearly / dynamic — entries replace scenes, the ORDERING
  *                            of time IS the structure)
+ *  - game                  → multi-actor-contest (2+ actors take turns pursuing
+ *                            contested stakes under enforceable rules; system-graph
+ *                            IS the rule set, world tracks actors + resources +
+ *                            positions, threads are open stakes; covers wargames,
+ *                            tabletop RPGs, campaigns, market competition, trials,
+ *                            anything multi-actor + turn-based + contested + ruled)
  *  Distinct on three axes: form of text (scenes / argument / entries / moves /
- *  log), voice cardinality (single / multi / cast / chronicler), reality posture
- *  (invented / observed / rule-governed / typological / chronological).
+ *  log / turns), voice cardinality (single / multi / cast / chronicler /
+ *  multi-actor), reality posture (invented / observed / rule-governed /
+ *  typological / chronological / contested-under-rules).
  *  Defaults to 'fiction' in the wizard; the user can switch to any other paradigm. */
 export type NarrativeParadigm =
   | 'fiction'
@@ -2656,7 +2663,8 @@ export type NarrativeParadigm =
   | 'panel'
   | 'atlas'
   | 'debate'
-  | 'record';
+  | 'record'
+  | 'game';
 
 export type WizardData = {
   title: string;
@@ -2685,7 +2693,7 @@ export type GraphViewMode =
   | "prose"
   | "plan"
   | "audio"
-  | "game"
+  | "decision"
   | "spark"
   | "codex"
   | "pulse"

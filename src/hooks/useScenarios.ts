@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * useExperimentation — parallel Compass-driven branch generation.
+ * useScenarios — parallel Compass-driven branch generation.
  *
  * Given the current arc's Compass cohort, kick off N parallel arc
  * continuations (one per direction), each guided by that direction's
@@ -21,26 +21,26 @@ import {
   buildVirtualState,
   runWithPool,
   stampScenarioVariables,
-} from '@/lib/experimentation-engine';
+} from '@/lib/scenarios-engine';
 import {
   buildTakenFromNarrative,
   remapScenarioCommit,
-} from '@/lib/experimentation-remap';
+} from '@/lib/scenarios-remap';
 import { scenarioProbabilities } from '@/lib/ai/variables';
 import {
-  DEFAULT_EXPERIMENTATION_CONFIG,
+  DEFAULT_SCENARIOS_CONFIG,
   initScenarioRun,
   makeEmptyRunState,
-  type ExperimentationConfig,
-  type ExperimentationRunState,
+  type ScenariosConfig,
+  type ScenariosRunState,
   type ScenarioRun,
-} from '@/types/experimentation';
+} from '@/types/scenarios';
 import type { Arc, NarrativeState, PlanningScenario, Scene } from '@/types/narrative';
 
 /**
  * Resolve the "head arc" of the active branch — the arc containing the
  * last scene in the branch's entry order. Returns null if no arcs exist
- * yet (e.g., the narrative only has world commits). Experimentation always
+ * yet (e.g., the narrative only has world commits). Scenarios always
  * anchors on the head arc, not whatever the cursor is currently viewing.
  */
 export function findHeadArc(
@@ -57,9 +57,9 @@ export function findHeadArc(
   return null;
 }
 
-export type ExperimentationHook = ReturnType<typeof useExperimentation>;
+export type ScenariosHook = ReturnType<typeof useScenarios>;
 
-export function useExperimentation() {
+export function useScenarios() {
   const { state, dispatch } = useStore();
   const cancelledRef = useRef(false);
   const runningRef = useRef(false);
@@ -70,12 +70,12 @@ export function useExperimentation() {
   const scenarioCancelledRef = useRef<Map<string, boolean>>(new Map());
   // Mirror of runState so worker tasks can read fresh state without
   // re-rendering closures every time setRunState updates.
-  const runStateRef = useRef<ExperimentationRunState>(makeEmptyRunState());
+  const runStateRef = useRef<ScenariosRunState>(makeEmptyRunState());
 
-  const [runState, setRunStateInternal] = useState<ExperimentationRunState>(makeEmptyRunState());
+  const [runState, setRunStateInternal] = useState<ScenariosRunState>(makeEmptyRunState());
 
   const setRunState = useCallback(
-    (updater: (prev: ExperimentationRunState) => ExperimentationRunState) => {
+    (updater: (prev: ScenariosRunState) => ScenariosRunState) => {
       setRunStateInternal((prev) => {
         const next = updater(prev);
         runStateRef.current = next;
@@ -108,13 +108,13 @@ export function useExperimentation() {
    * immediately; the run progresses in the background.
    */
   const start = useCallback(
-    async (configOverride: Partial<ExperimentationConfig> = {}) => {
+    async (configOverride: Partial<ScenariosConfig> = {}) => {
       if (runningRef.current) return;
       const { activeNarrative, resolvedEntryKeys, viewState } = state;
       const { activeBranchId } = viewState;
       if (!activeNarrative || !activeBranchId) return;
 
-      // Anchor the batch at the HEAD of the current branch — Experimentation
+      // Anchor the batch at the HEAD of the current branch — Scenarios
       // always continues from the latest arc's tip, regardless of where the
       // user's cursor currently sits. The head arc's Compass cohort drives
       // the batch.
@@ -127,8 +127,8 @@ export function useExperimentation() {
       );
       if (scenarios.length === 0) return;
 
-      const config: ExperimentationConfig = {
-        ...DEFAULT_EXPERIMENTATION_CONFIG,
+      const config: ScenariosConfig = {
+        ...DEFAULT_SCENARIOS_CONFIG,
         ...configOverride,
       };
       const selected = config.selectedScenarioIds
@@ -238,10 +238,15 @@ export function useExperimentation() {
    * the CURRENT narrative head — useful when a previous attempt stalled or
    * produced an unsatisfactory result. Fire-and-forget.
    */
-  const retry = useCallback(
-    (scenarioId: string) => {
+  // mode: 'fresh' kicks a clean re-run; 'repair' reuses the prior failed
+  // raw output and asks the model to fix the JSON instead of regenerating.
+  const retryInternal = useCallback(
+    (scenarioId: string, mode: 'fresh' | 'repair') => {
       const run = runStateRef.current.runs[scenarioId];
       if (!run) return;
+      if (mode === 'repair' && !run.failedRaw) return;
+      const repairFromRaw = mode === 'repair' ? run.failedRaw : undefined;
+      const repairHint = mode === 'repair' ? run.failedHint : undefined;
       const { activeNarrative, resolvedEntryKeys, viewState } = state;
       const { activeBranchId } = viewState;
       if (!activeNarrative || !activeBranchId) return;
@@ -274,9 +279,12 @@ export function useExperimentation() {
               status: 'pending',
               streamText: '',
               error: undefined,
+              // Preserve failedRaw across a repair attempt so a follow-up
+              // retry can still fall back to it if the repair itself fails.
+              failedRaw: mode === 'repair' ? existing.failedRaw : undefined,
               result: undefined,
               progress: undefined,
-              phase: 'retrying',
+              phase: mode === 'repair' ? 'repairing' : 'retrying',
               startedAt: undefined,
               finishedAt: undefined,
             },
@@ -308,6 +316,8 @@ export function useExperimentation() {
             patchRun,
             isCancelled: () =>
               cancelledRef.current || !!scenarioCancelledRef.current.get(scenarioId),
+            repairFromRaw,
+            repairHint,
           });
         } finally {
           // If after this retry every scenario is non-running, mark the
@@ -327,6 +337,16 @@ export function useExperimentation() {
       })();
     },
     [state, patchRun, setRunState],
+  );
+
+  const retry = useCallback(
+    (scenarioId: string) => retryInternal(scenarioId, 'fresh'),
+    [retryInternal],
+  );
+
+  const repair = useCallback(
+    (scenarioId: string) => retryInternal(scenarioId, 'repair'),
+    [retryInternal],
   );
 
   // ── Stop / reset ───────────────────────────────────────────────────────
@@ -482,6 +502,7 @@ export function useExperimentation() {
     stop,
     reset,
     commit,
+    repair,
     retry,
     stopScenario,
   };
@@ -495,9 +516,15 @@ async function generateOneScenario(input: {
   rootResolvedKeys: string[];
   rootHeadIndex: number;
   activeBranchId: string;
-  config: ExperimentationConfig;
+  config: ScenariosConfig;
   patchRun: (id: string, patch: Partial<ScenarioRun>) => void;
   isCancelled: () => boolean;
+  /** When set, skip the main generation call and ask the model to fix the
+   *  prior malformed output instead. Used by the per-scenario Repair UI. */
+  repairFromRaw?: string;
+  /** Diagnostic hint for the repair LLM — names the specific failure mode
+   *  so the model can focus its cleanup. */
+  repairHint?: string;
 }): Promise<void> {
   const {
     scenario,
@@ -508,6 +535,8 @@ async function generateOneScenario(input: {
     config,
     patchRun,
     isCancelled,
+    repairFromRaw,
+    repairHint,
   } = input;
 
   if (!rootNarrative) return;
@@ -541,10 +570,15 @@ async function generateOneScenario(input: {
           stream += token;
           patchRun(scenario.id, { streamText: stream });
         },
+        repairFromRaw,
+        repairHint,
       },
     );
 
     if (isCancelled()) return;
+
+    // Successful run — clear any prior repair payload for this scenario.
+    patchRun(scenario.id, { failedRaw: undefined });
 
     const { scenes, arc: rawArc } = result;
     // Stamp the scenario's variable coordination onto the arc so the
@@ -576,15 +610,23 @@ async function generateOneScenario(input: {
       },
     });
   } catch (err) {
-    logError('Scenario experimentation failed', err, {
-      source: 'experimentation',
+    logError('Scenario scenarios failed', err, {
+      source: 'scenarios',
       operation: 'scenario-run',
       details: { scenarioId: scenario.id, name: scenario.name },
     });
+    const repairableRaw =
+      err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string'
+        ? (err as { raw: string }).raw
+        : undefined;
+    const { diagnoseError } = await import('@/lib/ai/diagnose');
+    const diagnosis = diagnoseError(err, 'generateScenes');
     patchRun(scenario.id, {
       status: 'failed',
       finishedAt: Date.now(),
       error: err instanceof Error ? err.message : String(err),
+      failedRaw: repairableRaw,
+      failedHint: repairableRaw ? diagnosis.repairHint : undefined,
     });
     if (err instanceof FatalApiError) throw err;
   }
@@ -593,11 +635,11 @@ async function generateOneScenario(input: {
 // Re-exports for callers that previously imported these from the hook
 // module. Kept here to avoid a churn of import paths in unrelated files.
 export type {
-  ExperimentationConfig,
-  ExperimentationRunState,
+  ScenariosConfig,
+  ScenariosRunState,
   ScenarioRun,
-} from '@/types/experimentation';
+} from '@/types/scenarios';
 // We previously exported a placeholder Scene-typed result; downstream
 // callers (panel, control bar) reference fields off ScenarioRun.result.
-export type ExperimentationResultScene = Scene;
-export type ExperimentationResultArc = Arc;
+export type ScenariosResultScene = Scene;
+export type ScenariosResultArc = Arc;

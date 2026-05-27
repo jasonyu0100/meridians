@@ -97,6 +97,15 @@ const PARADIGM: Record<NarrativeParadigm, ParadigmEntry> = {
     loadBearing: 'world',
     loadBearingNote: 'Records lean on World — the lived layer accumulates, entry by entry, into the work itself.',
   },
+  game: {
+    label: 'Game',
+    oneLiner: 'A multi-actor contest under enforceable rules. Actors take turns; stakes are contested.',
+    fate: 'The contested stakes — open objectives, victory conditions, the questions the rules will resolve.',
+    world: 'The actors and what they command — resources, positions, artifacts, information sets.',
+    system: 'The rule set — legal action spaces, turn structure, win conditions, information rules.',
+    loadBearing: 'system',
+    loadBearingNote: 'Games stand on System. The rules dictate what is possible; outcomes resolve only when the rules say so — authorial rescue is paradigm error.',
+  },
 };
 
 const LOAD_BEARING_COLOR: Record<ParadigmEntry['loadBearing'], string> = {
@@ -214,7 +223,7 @@ export function ParadigmLensSlide({ data }: { data: SlidesData }) {
       }
       subtitle={<span className="italic">&ldquo;{entry.oneLiner}&rdquo;</span>}
       contentWidth="wide"
-      footer="Same formulas measure all eight paradigms. The reading shifts; the math does not."
+      footer="Same formulas measure all nine paradigms. The reading shifts; the math does not."
     >
       <div className="grid grid-cols-[1.4fr_1fr] gap-8 flex-1 min-h-0">
         {/* Left: Paradigm reading of the three forces */}

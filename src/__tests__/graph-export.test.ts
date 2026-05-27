@@ -96,7 +96,7 @@ describe("isExportableGraphMode", () => {
   });
 
   it("rejects scene-editorial sub-views", () => {
-    for (const m of ["plan", "prose", "audio", "game", "search", "reasoning"] as const) {
+    for (const m of ["plan", "prose", "audio", "decision", "search", "reasoning"] as const) {
       expect(isExportableGraphMode(m)).toBe(false);
     }
   });

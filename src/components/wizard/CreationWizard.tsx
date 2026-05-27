@@ -10,6 +10,8 @@ import { suggestPremise } from "@/lib/ai/premise";
 import { useStore } from "@/lib/store";
 import { useWizard } from "@/lib/wizard-context";
 import { Modal } from "@/components/Modal";
+import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
+import { diagnoseError } from "@/lib/ai/diagnose";
 import {
   DEFAULT_STORY_SETTINGS,
   WEBSEARCH_MAX_RESULTS,
@@ -30,6 +32,7 @@ const PARADIGMS: { value: NarrativeParadigm; label: string; hint: string }[] = [
   { value: "atlas",       label: "Atlas",       hint: "Reference / typology — entries, taxa, doctrines" },
   { value: "debate",      label: "Debate",      hint: "Two or more parties in a zero-sum contest under rules" },
   { value: "record",      label: "Record",      hint: "Time-ordered chronicle — daily, monthly, yearly, or dynamic velocity" },
+  { value: "game",        label: "Game",        hint: "Multi-actor contest — actors take turns pursuing contested stakes under enforceable rules" },
 ];
 
 
@@ -94,6 +97,11 @@ export function CreationWizard() {
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [error, setError] = useState("");
+  // Raw output + diagnostic hint captured when the LLM returned unparseable
+  // JSON. The repair pass passes the hint to the model so it focuses on the
+  // diagnosed failure mode (truncation vs syntax) instead of guessing.
+  const [failedRaw, setFailedRaw] = useState<string | null>(null);
+  const [repairHint, setRepairHint] = useState<string | undefined>(undefined);
   const [suggesting, setSuggesting] = useState(false);
   const started = useRef(false);
 
@@ -136,8 +144,11 @@ export function CreationWizard() {
   }
 
   // ── Generate ─────────────────────────────────────────────────────────
-  async function handleGenerate() {
+  // mode: 'fresh' starts a new LLM call; 'repair' reuses the prior raw and
+  // asks the model to fix the JSON instead of regenerating from scratch.
+  async function handleGenerate(mode: 'fresh' | 'repair' = 'fresh') {
     if (loading) return;
+    if (mode === 'repair' && !failedRaw) return;
     setLoading(true);
     setStreamText("");
     setError("");
@@ -153,6 +164,8 @@ export function CreationWizard() {
         research
           ? { maxResults: WEBSEARCH_MAX_RESULTS.high, maxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL }
           : null,
+        mode === 'repair' ? failedRaw! : undefined,
+        mode === 'repair' ? repairHint : undefined,
       );
       // Persist the wizard-time choice onto the new narrative so subsequent
       // generations inherit the same effort by default.
@@ -164,12 +177,25 @@ export function CreationWizard() {
           websearchMaxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL,
         };
       }
+      setFailedRaw(null);
       dispatch({ type: "ADD_NARRATIVE", narrative });
       wizardDispatch({ type: "CLOSE" });
       wizardDispatch({ type: "SET_STEP", step: "form" });
       router.push(`/narrative/${narrative.id}`);
     } catch (err) {
       setError(String(err));
+      // JsonRepairableError carries the malformed raw output so the user
+      // can launch a targeted LLM-fix instead of paying for a full re-run.
+      // Diagnose the error to attach a focused repair instruction.
+      const { diagnoseError } = await import('@/lib/ai/diagnose');
+      const diagnosis = diagnoseError(err, 'generateNarrative');
+      if (err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string') {
+        setFailedRaw((err as { raw: string }).raw);
+        setRepairHint(diagnosis.repairHint);
+      } else {
+        setFailedRaw(null);
+        setRepairHint(undefined);
+      }
       setLoading(false);
     }
   }
@@ -411,7 +437,7 @@ export function CreationWizard() {
               Start blank
             </button>
             <button
-              onClick={handleGenerate}
+              onClick={() => handleGenerate('fresh')}
               disabled={!canGenerate || loading}
               className="relative bg-linear-to-r from-emerald-500/30 via-emerald-400/30 to-cyan-400/30 hover:from-emerald-500/40 hover:via-emerald-400/40 hover:to-cyan-400/40 border border-emerald-400/40 text-emerald-200 hover:text-emerald-100 text-xs font-semibold px-5 py-2 rounded-lg shadow-[0_0_16px_rgba(52,211,153,0.25)] hover:shadow-[0_0_24px_rgba(52,211,153,0.45)] transition disabled:opacity-30 disabled:pointer-events-none disabled:shadow-none"
             >
@@ -429,9 +455,12 @@ export function CreationWizard() {
             onCancel={() => {
               started.current = false;
               setError("");
+              setFailedRaw(null);
               wizardDispatch({ type: "SET_STEP", step: "form" });
             }}
-            onRetry={handleGenerate}
+            caller="generateNarrative"
+            onRetry={() => handleGenerate('fresh')}
+            onRepair={failedRaw ? () => handleGenerate('repair') : undefined}
           />
         )}
       </div>
@@ -448,12 +477,19 @@ function GenerationOverlay({
   streamText,
   onCancel,
   onRetry,
+  onRepair,
+  caller,
 }: {
   loading: boolean;
   error: string;
   streamText: string;
   onCancel: () => void;
   onRetry: () => void;
+  /** Optional — only present when the failure was a parseable-JSON error
+   *  and we still hold the malformed raw output to feed back to the LLM. */
+  onRepair?: () => void;
+  /** Caller id for the diagnostic — drives the per-caller summary noun. */
+  caller?: string;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const [showStream, setShowStream] = useState(false);
@@ -535,26 +571,46 @@ function GenerationOverlay({
             </div>
           </>
         ) : error ? (
-          <>
-            <h3 className="text-sm font-semibold text-fate">Generation failed</h3>
-            <div className="bg-fate/10 border border-fate/30 rounded-lg px-4 py-3 w-full">
-              <p className="text-xs text-fate/80">{error}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onCancel}
-                className="text-text-dim text-xs hover:text-text-secondary transition"
-              >
-                &larr; Back
-              </button>
-              <button
-                onClick={onRetry}
-                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition"
-              >
-                Retry
-              </button>
-            </div>
-          </>
+          (() => {
+            const diagnosis = diagnoseError(error, caller);
+            const trace = buildErrorTrace({ caller, error, diagnosis });
+            return (
+              <>
+                <h3 className="text-sm font-semibold text-fate">Generation failed</h3>
+                <div className="bg-fate/10 border border-fate/30 rounded-lg px-4 py-3 w-full flex flex-col gap-3">
+                  <ErrorDiagnosis error={error} caller={caller} />
+                  <details className="text-[10px] text-text-dim">
+                    <summary className="cursor-pointer hover:text-text-secondary select-none">Raw error</summary>
+                    <pre className="mt-2 text-fate/80 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">{error}</pre>
+                  </details>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onCancel}
+                    className="text-text-dim text-xs hover:text-text-secondary transition"
+                  >
+                    &larr; Back
+                  </button>
+                  <CopyErrorButton trace={trace} />
+                  {onRepair && (
+                    <button
+                      onClick={onRepair}
+                      title="Send the malformed output back to the model with the diagnosed issue — cheaper than a full re-run."
+                      className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold px-5 py-2 rounded-lg transition"
+                    >
+                      Repair
+                    </button>
+                  )}
+                  <button
+                    onClick={onRetry}
+                    className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold px-5 py-2 rounded-lg transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </>
+            );
+          })()
         ) : null}
       </div>
     </div>

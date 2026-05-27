@@ -3,11 +3,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { useStore } from '@/lib/store';
-import { findHeadArc, type ExperimentationHook } from '@/hooks/useExperimentation';
+import { findHeadArc, type ScenariosHook } from '@/hooks/useScenarios';
 import {
-  type ExperimentationConfig,
+  type ScenariosConfig,
   type ScenarioRun,
-} from '@/types/experimentation';
+} from '@/types/scenarios';
 import { VARIABLE_INTENSITY_LEVELS, categoryColor, scenarioProbabilities } from '@/lib/ai/variables';
 import type { PlanningScenario } from '@/types/narrative';
 import {
@@ -24,9 +24,11 @@ import {
   useScenarioMetrics,
 } from './ScenarioAnalytics';
 import { IconRefresh, IconStop } from '@/components/icons';
+import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from '@/components/apilogs/ErrorDiagnosis';
+import { diagnoseError } from '@/lib/ai/diagnose';
 
 /**
- * Experimentation panel — parallel scenario-driven branch generation.
+ * Scenarios panel — parallel scenario-driven branch generation.
  *
  * Three states the panel cycles through:
  *
@@ -44,20 +46,20 @@ import { IconRefresh, IconStop } from '@/components/icons';
  *      stream + generated arc summary. "Commit all" attaches every done
  *      run as a new branch (highest-probability one becomes active).
  */
-export function ExperimentationPanel({
+export function ScenariosPanel({
   isOpen,
   onClose,
-  experimentation,
+  scenarios,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  experimentation: ExperimentationHook;
+  scenarios: ScenariosHook;
 }) {
   const { state, dispatch } = useStore();
-  const { runState, start, stop, reset, commit, retry, stopScenario } = experimentation;
+  const { runState, start, stop, reset, commit, retry, repair, stopScenario } = scenarios;
 
   const narrative = state.activeNarrative;
-  // Experimentation always anchors on the HEAD arc — the latest arc in
+  // Scenarios always anchors on the HEAD arc — the latest arc in
   // the active branch — regardless of where the user is currently
   // viewing. The cohort that drives the batch is the head arc's Compass
   // directions.
@@ -80,7 +82,7 @@ export function ExperimentationPanel({
   if (!isOpen) return null;
 
   // ── Prerequisite-aware empty state ──────────────────────────────────
-  // Experimentation needs:
+  // Scenarios needs:
   //   1. At least one arc in the narrative (not just world commits)
   //   2. Compass cohort generated on the HEAD arc (the latest one)
   // The CTA explains the missing piece and routes the user there.
@@ -91,18 +93,18 @@ export function ExperimentationPanel({
       <Modal onClose={onClose} size="md">
         <ModalHeader onClose={onClose}>
           <div>
-            <h2 className="text-sm font-semibold text-text-primary">Experimentation</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Scenarios</h2>
             <p className="text-[10px] text-text-dim uppercase tracking-wider">Parallel scenario branches</p>
           </div>
         </ModalHeader>
         <ModalBody className="p-6 space-y-4">
           <p className="text-[12px] text-text-secondary leading-relaxed">
-            Experimentation always anchors on the <span className="text-text-primary font-medium">head arc</span> — the latest arc in the current branch. Each batch generates one continuation per Compass direction on that arc in parallel.
+            Scenarios always anchors on the <span className="text-text-primary font-medium">head arc</span> — the latest arc in the current branch. Each batch generates one continuation per Compass direction on that arc in parallel.
           </p>
           <div className="space-y-2 text-[11px] text-text-dim leading-relaxed">
             <div className="text-[10px] uppercase tracking-widest text-text-dim/80">Prerequisites</div>
             <Prereq satisfied={hasAnyArcs} label="At least one arc">
-              {noArcs ? "Your narrative only has world commits so far. Generate (or analyse) at least one arc before Experimentation has somewhere to continue from." : 'Found.'}
+              {noArcs ? "Your narrative only has world commits so far. Generate (or analyse) at least one arc before Scenarios has somewhere to continue from." : 'Found.'}
             </Prereq>
             <Prereq satisfied={!!headArc && !noHeadArc} label="A head arc to continue from">
               {noArcs
@@ -169,6 +171,7 @@ export function ExperimentationPanel({
         stop();
       }}
       onRetry={retry}
+      onRepair={repair}
       onStopScenario={stopScenario}
       onCommit={() => {
         commit();
@@ -197,7 +200,7 @@ function ConfigModal({
   probs: Record<string, number>;
   arcName: string;
   onClose: () => void;
-  onStart: (config: Partial<ExperimentationConfig>) => void;
+  onStart: (config: Partial<ScenariosConfig>) => void;
 }) {
   // The scenario's coordination IS the direction; no separate user-supplied
   // direction or constraints box. Each scenario's variables drive its own
@@ -227,7 +230,7 @@ function ConfigModal({
     <Modal onClose={onClose} size="lg" maxHeight="90vh">
       <ModalHeader onClose={onClose}>
         <div>
-          <h2 className="text-sm font-semibold text-text-primary">Experimentation</h2>
+          <h2 className="text-sm font-semibold text-text-primary">Scenarios</h2>
           <p className="text-[10px] text-text-dim uppercase tracking-wider">
             {arcName} · {scenarios.length} scenarios
           </p>
@@ -311,14 +314,15 @@ function ConfigModal({
 
 function RunView({
   runState, isRunning, isComplete, isCancelled,
-  onStop, onRetry, onStopScenario, onCommit, onClose,
+  onStop, onRetry, onRepair, onStopScenario, onCommit, onClose,
 }: {
-  runState: ExperimentationHook['runState'];
+  runState: ScenariosHook['runState'];
   isRunning: boolean;
   isComplete: boolean;
   isCancelled: boolean;
   onStop: () => void;
   onRetry: (scenarioId: string) => void;
+  onRepair: (scenarioId: string) => void;
   onStopScenario: (scenarioId: string) => void;
   onCommit: () => void;
   onClose: () => void;
@@ -372,7 +376,7 @@ function RunView({
       {/* Header */}
       <div className="h-12 shrink-0 flex items-center px-4 gap-3 border-b border-white/8 glass-panel">
         <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" style={{ boxShadow: '0 0 4px rgba(96,165,250,0.8)' }} />
-        <h2 className="text-sm font-semibold text-text-primary">Experimentation</h2>
+        <h2 className="text-sm font-semibold text-text-primary">Scenarios</h2>
         <span className="text-[10px] uppercase tracking-wider text-text-dim font-mono">
           {isRunning ? 'Running' : isComplete ? 'Complete' : isCancelled ? 'Cancelled' : 'Idle'}
         </span>
@@ -445,6 +449,7 @@ function RunView({
                 isActive={r.scenarioId === activeId}
                 onSelect={() => setUserSelectedId(r.scenarioId)}
                 onRetry={() => onRetry(r.scenarioId)}
+                onRepair={() => onRepair(r.scenarioId)}
                 onStopScenario={() => onStopScenario(r.scenarioId)}
               />
             ))}
@@ -453,7 +458,11 @@ function RunView({
 
         {/* Right pane */}
         <div className="flex-1 overflow-y-auto">
-          {active ? <ScenarioInspector run={active} /> : (
+          {active ? <ScenarioInspector
+            run={active}
+            onRetry={() => onRetry(active.scenarioId)}
+            onRepair={() => onRepair(active.scenarioId)}
+          /> : (
             <div className="h-full flex items-center justify-center text-[11px] text-text-dim italic">
               Select a scenario to inspect.
             </div>
@@ -471,12 +480,14 @@ function ScenarioRow({
   isActive,
   onSelect,
   onRetry,
+  onRepair,
   onStopScenario,
 }: {
   run: ScenarioRun;
   isActive: boolean;
   onSelect: () => void;
   onRetry: () => void;
+  onRepair: () => void;
   onStopScenario: () => void;
 }) {
   const statusLabel: Record<ScenarioRun['status'], string> = {
@@ -562,6 +573,16 @@ function ScenarioRow({
               <IconStop size={9} />
             </button>
           )}
+          {run.failedRaw && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRepair(); }}
+              className="px-1.5 h-5 flex items-center justify-center text-amber-300 hover:bg-white/6 rounded transition-colors text-[9px] font-medium"
+              title="Repair — ask the model to fix the malformed output (cheaper than a full re-run)"
+            >
+              fix
+            </button>
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onRetry(); }}
@@ -633,7 +654,15 @@ function StatusDot({ status }: { status: ScenarioRun['status'] }) {
 
 // ── Scenario inspector (right pane) ──────────────────────────────────────
 
-function ScenarioInspector({ run }: { run: ScenarioRun }) {
+function ScenarioInspector({
+  run,
+  onRetry,
+  onRepair,
+}: {
+  run: ScenarioRun;
+  onRetry: () => void;
+  onRepair: () => void;
+}) {
   const metrics = useScenarioMetrics(run);
   // Selected scene index for the drill-down. Reset to null when the
   // active scenario changes — no useEffect needed; the derivation just
@@ -782,14 +811,41 @@ function ScenarioInspector({ run }: { run: ScenarioRun }) {
       )}
 
       {/* Failure */}
-      {run.status === 'failed' && (
-        <section className="mb-5">
-          <div className="text-[10px] uppercase tracking-widest text-rose-300/80 mb-2">Failed</div>
-          <pre className="text-[11px] text-rose-200 font-mono whitespace-pre-wrap bg-rose-500/5 border border-rose-400/15 rounded-lg p-3">
-            {run.error ?? 'Unknown error'}
-          </pre>
-        </section>
-      )}
+      {run.status === 'failed' && (() => {
+        const errStr = run.error ?? 'Unknown error';
+        const diagnosis = diagnoseError({ name: 'Error', message: errStr, raw: run.failedRaw }, 'generateScenes');
+        const trace = buildErrorTrace({ caller: 'scenarios', error: errStr, diagnosis });
+        return (
+          <section className="mb-5">
+            <div className="text-[10px] uppercase tracking-widest text-rose-300/80 mb-2">Failed</div>
+            <div className="bg-rose-500/5 border border-rose-400/15 rounded-lg p-3 flex flex-col gap-3">
+              <ErrorDiagnosis error={errStr} rawError={{ name: 'Error', message: errStr, raw: run.failedRaw }} caller="generateScenes" />
+              <details className="text-[10px] text-text-dim">
+                <summary className="cursor-pointer hover:text-text-secondary select-none">Raw error</summary>
+                <pre className="mt-2 text-rose-200/80 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">{errStr}</pre>
+              </details>
+              <div className="flex items-center gap-2">
+                <CopyErrorButton trace={trace} />
+                {run.failedRaw && (
+                  <button
+                    onClick={onRepair}
+                    title="Repair — ask the model to fix the malformed output with the diagnosed issue. Cheaper than a full re-run; iterative if the first repair still fails."
+                    className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold px-3 py-1.5 rounded-md transition"
+                  >
+                    Repair
+                  </button>
+                )}
+                <button
+                  onClick={onRetry}
+                  className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-semibold px-3 py-1.5 rounded-md transition"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Scene list — clickable to drill into the per-scene detail view */}
       {metrics && metrics.scenes.length > 0 && run.result && (

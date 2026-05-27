@@ -1200,7 +1200,7 @@ export default function WorldGraph() {
             <p className="text-text-dim text-sm italic">No scene selected.</p>
           </div>
         )
-      ) : graphViewMode === 'game' ? (
+      ) : graphViewMode === 'decision' ? (
         currentScene ? (
           <SceneGameTheoryView narrative={narrative} scene={currentScene} />
         ) : (

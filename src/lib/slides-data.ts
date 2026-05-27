@@ -207,7 +207,7 @@ export type SlidesData = {
   // ── World-view-specific fields (paradigm-aware report + slides) ──────────
 
   /** The work's paradigm classification (fiction / non-fiction / simulation /
-   *  essay / panel / atlas / debate / record). Null when the narrative
+   *  essay / panel / atlas / debate / record / game). Null when the narrative
    *  predates paradigm tagging. */
   paradigm: NarrativeParadigm | null;
 

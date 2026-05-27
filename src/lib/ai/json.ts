@@ -149,6 +149,20 @@ export function repairUnquotedValues(s: string): string {
   );
 }
 
+/** Thrown when parseJson exhausts its deterministic repair strategies and
+ *  still can't parse the raw LLM output. Carries the original raw text so
+ *  upstream callers can offer an LLM-assisted repair (vs. a full retry). */
+export class JsonRepairableError extends Error {
+  raw: string;
+  context: string;
+  constructor(context: string, raw: string, message: string) {
+    super(message);
+    this.name = 'JsonRepairableError';
+    this.raw = raw;
+    this.context = context;
+  }
+}
+
 /** Parse JSON with detailed error context for debugging truncated LLM responses */
 export function parseJson(raw: string, context: string): unknown {
   if (!raw || !raw.trim()) {
@@ -170,7 +184,9 @@ export function parseJson(raw: string, context: string): unknown {
       ? `${cleaned.slice(0, 150)}…[${cleaned.length} chars total]…${cleaned.slice(-150)}`
       : cleaned;
     const truncated = cleaned.endsWith('}') || cleaned.endsWith(']') ? '' : ' (likely truncated — response hit max_tokens limit)';
-    throw new Error(
+    throw new JsonRepairableError(
+      context,
+      raw,
       `[${context}] Failed to parse JSON${truncated}\n` +
       `Original error: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}\n` +
       `Response preview: ${preview}`

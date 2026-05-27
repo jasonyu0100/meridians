@@ -1,8 +1,8 @@
 /**
- * Experimentation state helpers.
+ * Scenarios state helpers.
  *
  * The new scenario-batch model keeps run state inside the React hook
- * (`useExperimentation`). The only shared utility worth a module-level
+ * (`useScenarios`). The only shared utility worth a module-level
  * home is `applySceneDeltas` — it applies a list of scenes' deltas
  * (relationships, world graphs, threads, system graph) to a narrative
  * snapshot, used by the engine to compute virtual post-arc previews

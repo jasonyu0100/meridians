@@ -35,6 +35,73 @@ export type ExpandWorldArgs = {
   nextKId: string;
 };
 
+/** Output schema for expandWorld — exact JSON shape the model must emit.
+ *  Exported so the LLM-assisted repair path can reuse the same schema spec
+ *  instead of a drift-prone hand-written copy. Single source of truth for
+ *  both generation and repair. */
+export function buildExpandWorldOutputSchema(args: { nextCharId: string; nextLocId: string; nextThreadId: string; nextArtifactId: string; nextKId: string }): string {
+  const { nextCharId, nextLocId, nextThreadId, nextArtifactId, nextKId } = args;
+  return `{
+  "summary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this expansion — what creative space it opens, what tension it primes, what entities/factions/rules it brings into play.",
+  "characters": [
+    {
+      "id": "${nextCharId}",
+      "name": "Full name matching the world's naming register",
+      "role": "anchor|recurring|transient",
+      "threadIds": [],
+      "imagePrompt": "1-2 sentence LITERAL physical description: concrete traits like hair colour, build, clothing style.",
+      "world": {
+        "nodes": [{"id": "${nextKId}", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense"}]
+      }
+    }
+  ],
+  "locations": [
+    {
+      "id": "${nextLocId}",
+      "name": "Location name — concrete and specific",
+      "parentId": "REQUIRED: existing location ID, or null ONLY for top-level regions",
+      "tiedCharacterIds": ["character IDs with significant ties — residents, employees, faction members"],
+      "threadIds": [],
+      "imagePrompt": "1-2 sentence LITERAL visual description.",
+      "world": {
+        "nodes": [{"id": "K-next", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense"}]
+      }
+    }
+  ],
+  "threads": [
+    {
+      "id": "${nextThreadId}",
+      "participants": [{"id": "character or location ID", "type": "character|location|artifact"}],
+      "description": "Frame as a QUESTION — 15-30 words, specific conflict",
+      "outcomes": ["Named possibilities. Binary default ['yes','no']. 2–6 distinct, mutually-exclusive entries."],
+      "horizon": "short | medium | long | epic",
+      "dependents": ["T-XX existing thread IDs this thread connects to"]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "${nextArtifactId}",
+      "name": "Artifact name — concrete and specific",
+      "significance": "key|notable|minor",
+      "parentId": "owner — character or location ID, or null for world-owned",
+      "world": {"nodes": [{"id": "K-next", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense"}]},
+      "imagePrompt": "1-2 sentence LITERAL visual description"
+    }
+  ],
+  "systemDeltas": {
+    "addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}],
+    "addedEdges": [{"from": "SYS-GEN-1", "to": "existing-SYS-ID", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]
+  },
+  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional"], "rationale": "10-20 words, prose only"}],
+  "worldDeltas": [{"entityId": "existing C-XX, L-XX, or A-XX", "addedNodes": [{"id": "K-next", "content": "15-25 words, PRESENT tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
+  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label", "valenceDelta": 0.1}],
+  "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX or L-XX", "toId": "C-YY or L-YY"}],
+  "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
+  "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
+  "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
+}`;
+}
+
 export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
   const {
     context,
@@ -94,65 +161,7 @@ ${size === 'exact' ? `    <rule>EXACT expansion — create ONLY what the directi
 Use sequential IDs continuing from the existing ones.
 
 Return JSON with this exact structure:
-{
-  "summary": "1-2 sentences (≤ 40 words). Plain prose. State the INTENT of this expansion — what creative space it opens, what tension it primes, what entities/factions/rules it brings into play. Used downstream to steer arc generation, so name the load-bearing additions, not counts.",
-  "characters": [
-    {
-      "id": "${nextCharId}",
-      "name": "Full name matching the world's naming register — rough, asymmetric, lived-in",
-      "role": "anchor|recurring|transient",
-      "threadIds": [],
-      "imagePrompt": "1-2 sentence LITERAL physical description: concrete traits like hair colour, build, clothing style. Never use metaphors, similes, or figurative language — image generators interpret them literally.",
-      "world": {
-        "nodes": [{"id": "${nextKId}", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this character — trait, belief, capability, state, secret, goal, or weakness"}]
-      }
-    }
-  ],
-  "locations": [
-    {
-      "id": "${nextLocId}",
-      "name": "Location name from geography, founders, or corrupted older words — concrete and specific",
-      "parentId": "REQUIRED: existing location ID (e.g. L-1) to nest under, or null ONLY for top-level regions",
-      "tiedCharacterIds": ["character IDs with a significant tie to this location — residents, employees, faction members, students. Ties represent gravity and belonging, not just presence"],
-      "threadIds": [],
-      "imagePrompt": "1-2 sentence LITERAL visual description: architecture, landscape, lighting, weather. Use concrete physical details only — no metaphors, similes, or figurative language. Image generators interpret them literally.",
-      "world": {
-        "nodes": [{"id": "K-next", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this location — history, rules, dangers, atmosphere, or properties"}]
-      }
-    }
-  ],
-  "threads": [
-    {
-      "id": "${nextThreadId}",
-      "participants": [{"id": "character or location ID", "type": "character|location|artifact"}],
-      "description": "Frame as a QUESTION: 'Will X succeed?' 'Can Y be trusted?' 'What is the truth behind Z?' — 15-30 words, specific conflict",
-      "outcomes": ["Named possibilities the stance prices. Binary default: ['yes','no']. Multi-outcome when the resolution is N-way, e.g. 'Which claim survives the tribunal?' → outcomes naming each contender plus 'none'. Must be distinct and mutually exclusive; 2–6 entries."],
-      "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes (immediate trust, single confrontation, single piece of evidence). medium = within an arc, 4-8 scenes (institutional rivalry, contested artifact, mid-length inquiry). long = multi-arc, segment-spanning (sustained conflict, succession, extended investigation). epic = work-spanning or open-ended (foundational question the whole narrative is built around). Drives evidence-magnitude attenuation downstream — pick honestly, since over-marking a goal as short inflates every evidence emission against it.",
-      "dependents": ["T-XX (existing thread IDs this thread connects to, accelerates, or converges with — see THREAD CONVERGENCE below)"]
-    }
-  ],
-  "artifacts": [
-    {
-      "id": "${nextArtifactId}",
-      "name": "Artifact name — concrete and specific to its function or origin",
-      "significance": "key|notable|minor",
-      "parentId": "owner — a character or location ID, or null for world-owned (communally available to all)",
-      "world": {"nodes": [{"id": "K-next", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: what this artifact is, what it does, its history, powers, or limitations"}]},
-      "imagePrompt": "1-2 sentence LITERAL visual description — concrete physical details only, no metaphors or figurative language"
-    }
-  ],
-  "systemDeltas": {
-    "addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}],
-    "addedEdges": [{"from": "SYS-GEN-1", "to": "existing-SYS-ID", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]
-  },
-  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the stance"], "rationale": "10-20 words, prose only — what happens in the scene in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
-  "worldDeltas": [{"entityId": "existing C-XX, L-XX, or A-XX", "addedNodes": [{"id": "K-next", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
-  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
-  "ownershipDeltas": [{"artifactId": "A-XX", "fromId": "C-XX or L-XX", "toId": "C-YY or L-YY"}],
-  "tieDeltas": [{"locationId": "L-XX", "characterId": "C-XX", "action": "add|remove"}],
-  "attributions": ["C-XX", "L-XX", "T-XX", "SYS-XX"],
-  "attributionEdges": [{"from": "C-XX", "to": "SYS-XX", "relation": "requires|enables|constrains|risks|causes|reveals|develops|resolves|supersedes"}]
-}
+${buildExpandWorldOutputSchema({ nextCharId, nextLocId, nextThreadId, nextArtifactId, nextKId })}
 </output-format>
 
 <id-rules>

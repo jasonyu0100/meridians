@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanJson, repairUnescapedQuotes, parseJson } from '@/lib/ai/json';
+import { cleanJson, repairUnescapedQuotes, repairUnquotedValues, parseJson, JsonRepairableError } from '@/lib/ai/json';
 // ── cleanJson ────────────────────────────────────────────────────────────────
 describe('cleanJson', () => {
   it('returns empty string for empty input', () => {
@@ -192,5 +192,119 @@ describe('parseJson', () => {
     const input = '{"int": 42, "float": 3.14, "negative": -10}';
     const result = parseJson(input, 'test');
     expect(result).toEqual({ int: 42, float: 3.14, negative: -10 });
+  });
+
+  // parseJson now throws JsonRepairableError (not plain Error) on unrecoverable
+  // failures, carrying the original raw text so callers can offer an LLM repair
+  // pass instead of a full re-run. These tests pin that behaviour.
+  it('throws JsonRepairableError (not plain Error) when repair strategies are exhausted', () => {
+    try {
+      parseJson('{"broken', 'ctx');
+      expect.fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(JsonRepairableError);
+      expect(e).toBeInstanceOf(Error);
+    }
+  });
+
+  it('carries the raw input and the caller context on the thrown error', () => {
+    const raw = '{"broken: bad';
+    try {
+      parseJson(raw, 'myCaller');
+      expect.fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(JsonRepairableError);
+      const jre = e as JsonRepairableError;
+      expect(jre.raw).toBe(raw);
+      expect(jre.context).toBe('myCaller');
+    }
+  });
+
+  it('still throws a plain Error (not JsonRepairableError) for empty input', () => {
+    // Empty input is unrepairable — nothing for the model to fix. Callers
+    // discriminate on `instanceof JsonRepairableError` to decide whether to
+    // offer the Repair button; this case must NOT show it.
+    try {
+      parseJson('', 'ctx');
+      expect.fail('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(Error);
+      expect(e).not.toBeInstanceOf(JsonRepairableError);
+    }
+  });
+});
+
+// ── repairUnquotedValues ─────────────────────────────────────────────────────
+describe('repairUnquotedValues', () => {
+  it('quotes bare identifier values', () => {
+    expect(repairUnquotedValues('{"type": rule}')).toBe('{"type": "rule"}');
+  });
+
+  it('does not touch true / false / null literals', () => {
+    const input = '{"a": true, "b": false, "c": null}';
+    expect(repairUnquotedValues(input)).toBe(input);
+  });
+
+  it('does not touch numeric values', () => {
+    const input = '{"int": 42, "neg": -3, "float": 3.14}';
+    expect(repairUnquotedValues(input)).toBe(input);
+  });
+
+  it('handles hyphenated identifiers (e.g. enum-like values)', () => {
+    expect(repairUnquotedValues('{"mode": story-arc}')).toBe('{"mode": "story-arc"}');
+  });
+
+  it('handles underscored identifiers', () => {
+    expect(repairUnquotedValues('{"k": snake_case}')).toBe('{"k": "snake_case"}');
+  });
+
+  it('handles values terminated by comma, brace, or newline', () => {
+    expect(repairUnquotedValues('{"a": foo, "b": bar}')).toBe('{"a": "foo", "b": "bar"}');
+    expect(repairUnquotedValues('{"a": foo}')).toBe('{"a": "foo"}');
+    expect(repairUnquotedValues('{"a": foo\n}')).toBe('{"a": "foo"\n}');
+  });
+
+  it('only triggers on bareword values that follow a colon — bare array entries are left alone', () => {
+    // The regex anchors on `:` so unquoted tokens inside an array (no leading
+    // colon) are NOT a target. parseJson would still fail; that's fine — those
+    // are caught upstream by the other repair strategies or a full re-run.
+    expect(repairUnquotedValues('[a, b, c]')).toBe('[a, b, c]');
+  });
+
+  it('produces parseable JSON when the only problem is unquoted values', () => {
+    const input = '{"role": anchor, "depth": 3, "active": true}';
+    expect(JSON.parse(repairUnquotedValues(input))).toEqual({ role: 'anchor', depth: 3, active: true });
+  });
+
+  it('lets parseJson auto-recover from unquoted values via the repair cascade', () => {
+    const result = parseJson('{"role": anchor, "depth": 3}', 'test');
+    expect(result).toEqual({ role: 'anchor', depth: 3 });
+  });
+});
+
+// ── JsonRepairableError ──────────────────────────────────────────────────────
+describe('JsonRepairableError', () => {
+  it('is a proper Error subclass with name set', () => {
+    const err = new JsonRepairableError('ctx', '{broken', 'something');
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(JsonRepairableError);
+    expect(err.name).toBe('JsonRepairableError');
+  });
+
+  it('exposes raw and context for the repair pipeline', () => {
+    const err = new JsonRepairableError('generateScenes', '{"scenes":[', 'truncated');
+    expect(err.raw).toBe('{"scenes":[');
+    expect(err.context).toBe('generateScenes');
+    expect(err.message).toBe('truncated');
+  });
+
+  it('survives instanceof through a generic catch (loop discrimination relies on this)', () => {
+    let caught: unknown;
+    try {
+      throw new JsonRepairableError('c', 'r', 'm');
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught instanceof JsonRepairableError).toBe(true);
   });
 });

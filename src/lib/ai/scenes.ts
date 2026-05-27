@@ -206,6 +206,15 @@ export type GenerateScenesOptions = {
   onReasoning?: (token: string) => void;
   /** When true, skip extended reasoning even if story settings enable it */
   disableReasoning?: boolean;
+  /** Repair mode: skip the main generation call and instead pass `raw`
+   *  through the LLM-assisted JSON repair helper, then resume the normal
+   *  parse + post-processing path. Used by the UI's "Repair" button after
+   *  a primary call returns unparseable JSON. */
+  repairFromRaw?: string;
+  /** Optional diagnostic hint from the UI auto-diagnose pass — names the
+   *  specific failure mode (truncation / unescaped quotes / etc.) so the
+   *  repair LLM can focus its cleanup. Ignored when repairFromRaw is unset. */
+  repairHint?: string;
 };
 
 export async function generateScenes(
@@ -216,7 +225,7 @@ export async function generateScenes(
   direction: string,
   options: GenerateScenesOptions = {},
 ): Promise<{ scenes: Scene[]; arc: Arc }> {
-  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning } = options;
+  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, repairHint } = options;
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
   const arcId = existingArc?.id ?? nextId('ARC', Object.keys(narrative.arcs));
 
@@ -379,33 +388,24 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     subgenre: narrative.subgenre,
   });
 
-  // Retry on JSON parse failures (truncation, malformed output)
-  const MAX_RETRIES = 2;
-  let parsed: { arcName?: string; directionVector?: string; worldState?: string; scenes: Scene[] };
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const reasoningBudget = resolveReasoningBudget(narrative);
-      const websearch = resolveWebsearch(narrative);
-      const systemPrompt = buildGenerateScenesSystem(workIdentityFor(narrative));
-      const useStream = !!(onToken || onReasoning);
-      const raw = useStream
-        ? await callGenerateStream(prompt, systemPrompt, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
-        : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
-      parsed = parseJson(raw, 'generateScenes') as { arcName?: string; directionVector?: string; worldState?: string; scenes: Scene[] };
-      break;
-    } catch (err) {
-      lastErr = err;
-      if (attempt < MAX_RETRIES) {
-        logWarning(`Scene generation attempt ${attempt + 1} failed, retrying`, err, {
-          source: 'manual-generation',
-          operation: 'generate-scenes',
-          details: { attempt: attempt + 1, maxRetries: MAX_RETRIES }
-        });
-      }
-    }
+  // Single attempt — on failure the error bubbles to the caller so the UI
+  // can surface Retry / Repair to the user. parseJson throws
+  // JsonRepairableError carrying the raw output when only the JSON is bad;
+  // network/HTTP/empty-response errors throw plain Error (Retry only).
+  let raw: string;
+  if (repairFromRaw !== undefined) {
+    const { repairJsonOutput } = await import('./repair');
+    raw = await repairJsonOutput(repairFromRaw, 'generateScenes', repairHint);
+  } else {
+    const reasoningBudget = resolveReasoningBudget(narrative);
+    const websearch = resolveWebsearch(narrative);
+    const systemPrompt = buildGenerateScenesSystem(workIdentityFor(narrative));
+    const useStream = !!(onToken || onReasoning);
+    raw = useStream
+      ? await callGenerateStream(prompt, systemPrompt, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+      : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   }
-  if (!parsed!) throw lastErr;
+  const parsed = parseJson(raw, 'generateScenes') as { arcName?: string; directionVector?: string; worldState?: string; scenes: Scene[] };
   const arcName = existingArc?.name ?? parsed.arcName ?? 'Untitled Arc';
   const directionVector = parsed.directionVector;
   const worldState = parsed.worldState;
@@ -1526,7 +1526,7 @@ Scene-level "propositions" should capture the overall takeaways from the scene.`
 }
 
 /**
- * Parse beat-aligned prose from LLM output with [BEAT_END:N] markers.
+ * Parse beat-aligned prose from LLM output with [BEAT:N] start markers.
  * Returns clean prose + beatProseMap (prose strings) if markers are valid, otherwise prose only.
  *
  * @returns { prose, beatProseMap?, markersFailed } - markersFailed indicates if beat markers were missing/invalid
@@ -1535,56 +1535,65 @@ function parseBeatProseMap(
   rawProse: string,
   beatCount: number,
 ): { prose: string; beatProseMap?: BeatProseMap; markersFailed?: boolean } {
-  // If no markers, return prose as-is with failure flag
-  if (!rawProse.includes('[BEAT_END:')) {
-    logWarning('Beat markers not found in generated prose', 'LLM did not include BEAT_END markers', {
+  const stripMarkers = (s: string) => s.replace(/^\s*\[BEAT:\d+\]\s*$\n?/gm, '').trim();
+
+  if (!rawProse.includes('[BEAT:')) {
+    logWarning('Beat markers not found in generated prose', 'LLM did not include BEAT markers', {
       source: 'prose-generation',
       operation: 'parse-beat-markers'
     });
     return { prose: rawProse, markersFailed: true };
   }
 
-  // First pass: extract raw prose text per beat
-  const beatTexts: { beatIndex: number; text: string }[] = [];
   const lines = rawProse.split('\n');
-  let currentBeatIndex = 0;
+  const beatTexts: { beatIndex: number; text: string }[] = [];
+  const preambleLines: string[] = [];
+  let currentBeatIndex: number | null = null;
   let currentProse: string[] = [];
 
   for (const line of lines) {
-    const match = line.match(/^\s*\[BEAT_END:(\d+)\]\s*$/);
+    const match = line.match(/^\s*\[BEAT:(\d+)\]\s*$/);
     if (match) {
       const beatIndex = parseInt(match[1], 10);
-      if (!isNaN(beatIndex) && beatIndex === currentBeatIndex) {
-        const proseText = currentProse.join('\n').trim();
-        // Always add beat, even if empty (to maintain beat count)
-        beatTexts.push({ beatIndex, text: proseText });
-        currentProse = [];
-        currentBeatIndex++;
-      } else {
-        logWarning('Beat markers out of order', `Expected beat ${currentBeatIndex}, got ${beatIndex}`, {
+      // Flush previous beat
+      if (currentBeatIndex !== null) {
+        beatTexts.push({ beatIndex: currentBeatIndex, text: currentProse.join('\n').trim() });
+      }
+      // Validate index continuity (expected = current count of completed beats)
+      const expected = beatTexts.length;
+      if (beatIndex !== expected) {
+        logWarning('Beat markers out of order', `Expected beat ${expected}, got ${beatIndex}`, {
           source: 'prose-generation',
           operation: 'parse-beat-markers',
-          details: { expected: currentBeatIndex, got: beatIndex }
+          details: { expected, got: beatIndex }
         });
-        return { prose: rawProse.replace(/\[BEAT_END:\d+\]\n?/g, '').trim(), markersFailed: true };
+        return { prose: stripMarkers(rawProse), markersFailed: true };
       }
+      currentBeatIndex = beatIndex;
+      currentProse = [];
+    } else if (currentBeatIndex === null) {
+      preambleLines.push(line);
     } else {
       currentProse.push(line);
     }
   }
 
-  // Handle final beat: only add if there's prose after the last marker OR we're missing beats
-  const finalProse = currentProse.join('\n').trim();
-  const needsFinalBeat = finalProse.length > 0 || currentBeatIndex < beatCount;
-
-  if (needsFinalBeat) {
-    beatTexts.push({ beatIndex: currentBeatIndex, text: finalProse });
+  // Flush final beat
+  if (currentBeatIndex !== null) {
+    beatTexts.push({ beatIndex: currentBeatIndex, text: currentProse.join('\n').trim() });
   }
 
-  // Reconstruct clean prose (no markers)
-  const prose = beatTexts.map((b) => b.text).join('\n\n');
+  // Reject any non-whitespace text before the first [BEAT:0] marker
+  if (preambleLines.join('').trim().length > 0) {
+    logWarning('Text appeared before first beat marker', 'Prose emitted content before [BEAT:0]', {
+      source: 'prose-generation',
+      operation: 'parse-beat-markers',
+      details: { preambleLength: preambleLines.join('').trim().length }
+    });
+    return { prose: stripMarkers(rawProse), markersFailed: true };
+  }
 
-  // Validate we got expected number of beats with sequential indices
+  // Validate count and sequential indices
   if (beatTexts.length !== beatCount || !beatTexts.every((b, i) => b.beatIndex === i)) {
     logWarning('Beat count mismatch in generated prose', `Expected ${beatCount} beats, got ${beatTexts.length}`, {
       source: 'prose-generation',
@@ -1592,12 +1601,13 @@ function parseBeatProseMap(
       details: {
         expected: beatCount,
         actual: beatTexts.length,
-        finalProseLength: finalProse.length,
-        lastBeatIndex: currentBeatIndex - 1,
       }
     });
-    return { prose: rawProse.replace(/\[BEAT_END:\d+\]\n?/g, '').trim(), markersFailed: true };
+    return { prose: stripMarkers(rawProse), markersFailed: true };
   }
+
+  // Reconstruct clean prose (no markers)
+  const prose = beatTexts.map((b) => b.text).join('\n\n');
 
   // Success: create beat-to-prose mapping with prose strings
   const chunks: BeatProse[] = beatTexts.map((bt) => ({

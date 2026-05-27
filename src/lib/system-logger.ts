@@ -23,10 +23,10 @@ export function setSystemLoggerAnalysisId(id: string | null) {
 }
 
 export type LogContext = {
-  /** Where the error occurred (e.g., 'auto-play', 'experimentation', 'manual-generation', 'analysis') */
+  /** Where the error occurred (e.g., 'auto-play', 'scenarios', 'manual-generation', 'analysis') */
   source:
     | "auto-play"
-    | "experimentation"
+    | "scenarios"
     | "manual-generation"
     | "analysis"
     | "world-expansion"

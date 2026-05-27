@@ -4,7 +4,7 @@
  * Covers, in one focused file, the contracts established in the recent
  * paradigm / websearch / scene-normalisation / wizard / world-gen passes:
  *
- *   1. Type contract — NarrativeParadigm union has exactly six values;
+ *   1. Type contract — NarrativeParadigm union has exactly nine values;
  *      PARADIGM-aware constants map every value.
  *   2. Deterministic per-paradigm prompts — buildGenerateNarrativePrompt
  *      emits only the matching paradigm block (drops the others) and the
@@ -61,6 +61,7 @@ const ALL_PARADIGMS: NarrativeParadigm[] = [
   "atlas",
   "debate",
   "record",
+  "game",
 ];
 
 function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
@@ -82,9 +83,9 @@ function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
 // ── 1. Type contract ─────────────────────────────────────────────────────────
 
 describe("NarrativeParadigm type contract", () => {
-  it("exposes exactly eight canonical paradigms", () => {
-    expect(ALL_PARADIGMS).toHaveLength(8);
-    expect(new Set(ALL_PARADIGMS).size).toBe(8);
+  it("exposes exactly nine canonical paradigms", () => {
+    expect(ALL_PARADIGMS).toHaveLength(9);
+    expect(new Set(ALL_PARADIGMS).size).toBe(9);
   });
 
   it("WEBSEARCH_MAX_RESULTS covers all four levels", () => {
@@ -195,6 +196,27 @@ describe("World-gen prompt — deterministic per paradigm", () => {
     expect(lower).toContain("velocity-coherence");
   });
 
+  it("game gets ONLY the multi-actor-game shape", () => {
+    const prompt = buildPrompt("game");
+    expect(prompt).toContain("<multi-actor-game-shape");
+    expect(prompt).toContain("multi-actor-game");
+    expect(prompt).not.toContain("<populated-narrative-shape");
+    expect(prompt).not.toContain("<adversarial-contest-shape");
+    expect(prompt).not.toContain("<reference-typology-shape");
+    expect(prompt).not.toContain("<chronological-record-shape");
+  });
+
+  it("game requires rules-load-bearing + turn structure + info rules", () => {
+    const prompt = buildPrompt("game");
+    const lower = prompt.toLowerCase();
+    // The structural disciplines of Game — rules are enforceable, turn
+    // structure declared, information regime declared, threads are stakes.
+    expect(lower).toContain("rules-load-bearing");
+    expect(lower).toContain("turn-structure");
+    expect(lower).toContain("information-rules");
+    expect(lower).toContain("stakes-are-threads");
+  });
+
   it("populated-narrative paradigms forbid AI-coded single-word names", () => {
     const prompt = buildPrompt("fiction");
     // The block must explicitly call out the constraint so the model
@@ -233,7 +255,7 @@ describe("Panel paradigm — evidence discipline", () => {
   });
 
   it("does NOT include the evidence-discipline block in non-panel paradigms", () => {
-    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate", "record"] as const) {
+    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate", "record", "game"] as const) {
       const prompt = buildPrompt(p);
       expect(prompt).not.toContain("<evidence-discipline");
     }

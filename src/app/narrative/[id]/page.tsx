@@ -7,6 +7,7 @@ import { useWizard } from '@/lib/wizard-context';
 import { IconChevronDown } from '@/components/icons';
 import AppShell from '@/components/layout/AppShell';
 import Sidebar from '@/components/sidebar/Sidebar';
+import NarrativeRail from '@/components/sidebar/NarrativeRail';
 import SidePanel from '@/components/inspector/SidePanel';
 import WorldGraph from '@/components/canvas/WorldGraph';
 import FloatingPalette from '@/components/canvas/FloatingPalette';
@@ -27,9 +28,9 @@ import { type SceneRange } from '@/components/timeline/SceneRangeSelector';
 import { ForceAnalytics } from '@/components/analytics/ForceAnalytics';
 import { CastAnalytics } from '@/components/analytics/CastAnalytics';
 import ProseProfilePanel from '@/components/layout/ProseProfilePanel';
-import { ExperimentationPanel } from '@/components/experimentation/ExperimentationPanel';
+import { ScenariosPanel } from '@/components/scenarios/ScenariosPanel';
 import { ModeControlBar } from '@/components/generation/ModeControlBar';
-import { useExperimentation } from '@/hooks/useExperimentation';
+import { useScenarios } from '@/hooks/useScenarios';
 import { StorySettingsModal } from '@/components/settings/StorySettingsModal';
 import { CoordinationPlanIndicator } from '@/components/generation/CoordinationPlanIndicator';
 import { CoordinationPlanModal } from '@/components/generation/CoordinationPlanModal';
@@ -64,7 +65,7 @@ export default function SeriesPage() {
   const [forceAnalyticsOpen, setForceAnalyticsOpen] = useState(false);
   const [castAnalyticsOpen, setCastAnalyticsOpen] = useState(false);
   const [proseProfileOpen, setProseProfileOpen] = useState(false);
-  const [experimentationOpen, setExperimentationOpen] = useState(false);
+  const [scenariosOpen, setScenariosOpen] = useState(false);
   const [storySettingsOpen, setStorySettingsOpen] = useState(false);
   const [coordinationPlanOpen, setCoordinationPlanOpen] = useState(false);
   const [coordinationSetupOpen, setCoordinationSetupOpen] = useState(false);
@@ -78,7 +79,7 @@ export default function SeriesPage() {
     coordinationPlanRef.current = { branchId, hasPlan };
   }, [state.viewState.activeBranchId, state.activeNarrative]);
   const autoPlay = useAutoPlay();
-  const experimentation = useExperimentation();
+  const scenarios = useScenarios();
   const bulk = useBulkGenerate();
   const bulkAudio = useBulkAudioGenerate();
   const id = params.id as string;
@@ -121,7 +122,7 @@ export default function SeriesPage() {
     function handleOpenForceAnalytics() { setForceAnalyticsOpen(true); }
     function handleOpenCastAnalytics() { setCastAnalyticsOpen(true); }
     function handleOpenProseProfile() { setProseProfileOpen(true); }
-    function handleOpenExperimentation() { setExperimentationOpen(true); }
+    function handleOpenScenarios() { setScenariosOpen(true); }
     function handleOpenStorySettings() { setStorySettingsOpen(true); }
     function handleOpenCoordinationPlan() {
       // If plan exists, show it; otherwise open setup
@@ -138,7 +139,7 @@ export default function SeriesPage() {
     window.addEventListener('open-force-analytics', handleOpenForceAnalytics);
     window.addEventListener('open-cast-analytics', handleOpenCastAnalytics);
     window.addEventListener('open-prose-profile', handleOpenProseProfile);
-    window.addEventListener('open-experimentation-panel', handleOpenExperimentation);
+    window.addEventListener('open-scenarios-panel', handleOpenScenarios);
     window.addEventListener('open-world-view-settings', handleOpenStorySettings);
     window.addEventListener('open-coordination-plan', handleOpenCoordinationPlan);
     return () => {
@@ -148,7 +149,7 @@ export default function SeriesPage() {
       window.removeEventListener('open-force-analytics', handleOpenForceAnalytics);
       window.removeEventListener('open-cast-analytics', handleOpenCastAnalytics);
       window.removeEventListener('open-prose-profile', handleOpenProseProfile);
-      window.removeEventListener('open-experimentation-panel', handleOpenExperimentation);
+      window.removeEventListener('open-scenarios-panel', handleOpenScenarios);
       window.removeEventListener('open-world-view-settings', handleOpenStorySettings);
       window.removeEventListener('open-coordination-plan', handleOpenCoordinationPlan);
     };
@@ -184,7 +185,7 @@ export default function SeriesPage() {
   }
 
   const showAutoBar = !!state.viewState.autoRunState?.isRunning;
-  const showExperimentationBar = experimentation.runState.status !== 'idle';
+  const showScenariosBar = scenarios.runState.status !== 'idle';
   const showBulkBar = bulk.runState !== null;
   const showBulkAudioBar = bulkAudio.runState !== null;
 
@@ -203,6 +204,7 @@ export default function SeriesPage() {
     <AudioPlayerProvider>
     <>
       <AppShell
+        rail={<NarrativeRail />}
         sidebar={<Sidebar />}
         sidepanel={<SidePanel />}
       >
@@ -240,7 +242,7 @@ export default function SeriesPage() {
                 />
               </>
             )}
-            {/* Mode control bars - prioritize: bulk-audio > bulk > experimentation > auto */}
+            {/* Mode control bars - prioritize: bulk-audio > bulk > scenarios > auto */}
             {showBulkAudioBar && bulkAudio.runState && (
               <ModeControlBar
                 mode="bulk-audio"
@@ -269,20 +271,20 @@ export default function SeriesPage() {
                 onStop={bulk.stop}
               />
             )}
-            {!showBulkAudioBar && !showBulkBar && showExperimentationBar && (
+            {!showBulkAudioBar && !showBulkBar && showScenariosBar && (
               <ModeControlBar
-                mode="experimentation"
-                runState={experimentation.runState}
+                mode="scenarios"
+                runState={scenarios.runState}
                 // Stop on the floating pill kills the run AND clears the bar
-                // — the user is dismissing experimentation entirely from
+                // — the user is dismissing scenarios entirely from
                 // outside the panel. The panel's own stop button uses
-                // experimentation.stop so the modal can stay open to review
+                // scenarios.stop so the modal can stay open to review
                 // partial results before committing.
-                onStop={experimentation.reset}
-                onOpenPanel={() => setExperimentationOpen(true)}
+                onStop={scenarios.reset}
+                onOpenPanel={() => setScenariosOpen(true)}
               />
             )}
-            {!showBulkAudioBar && !showBulkBar && !showExperimentationBar && showAutoBar && (
+            {!showBulkAudioBar && !showBulkBar && !showScenariosBar && showAutoBar && (
               <ModeControlBar
                 mode="auto"
                 isRunning={autoPlay.isRunning}
@@ -299,13 +301,13 @@ export default function SeriesPage() {
               state.graphViewMode === 'plan' ||
               state.graphViewMode === 'prose' ||
               state.graphViewMode === 'audio' ||
-              state.graphViewMode === 'game' ||
+              state.graphViewMode === 'decision' ||
               state.graphViewMode === 'mode' ||
               state.graphViewMode === 'reasoning') && (
               <FloatingPalette
                 isBulkActive={!!(bulk.runState?.isRunning || bulk.runState?.isPaused)}
                 isBulkAudioActive={!!(bulkAudio.runState?.isRunning || bulkAudio.runState?.isPaused)}
-                isExperimentationActive={experimentation.runState.status === 'running'}
+                isScenariosActive={scenarios.runState.status === 'running'}
               />
             )}
             {/* Coordination Plan Indicator — only in graph-style canvas modes */}
@@ -395,7 +397,7 @@ export default function SeriesPage() {
           }}
         />
       )}
-      <ExperimentationPanel isOpen={experimentationOpen} onClose={() => setExperimentationOpen(false)} experimentation={experimentation} />
+      <ScenariosPanel isOpen={scenariosOpen} onClose={() => setScenariosOpen(false)} scenarios={scenarios} />
       {isMobile && (
         <div className="fixed inset-0 z-9999 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center">
           <p className="text-white/90 text-lg font-semibold mb-2">Desktop Only</p>

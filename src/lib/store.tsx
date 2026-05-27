@@ -773,7 +773,7 @@ export type Action =
       // Optional description + reasoning annotate the coordination's
       // gestalt and load-bearing logic; logit records "how likely was this
       // when it was chosen" in STANCE_EVIDENCE_MIN/MAX range. All three are
-      // transferred onto new arcs by the experimentation commit path so
+      // transferred onto new arcs by the scenarios commit path so
       // the path's rarity is a permanent record.
       type: "SET_ARC_PRESENT_VARIABLES";
       arcId: string;
