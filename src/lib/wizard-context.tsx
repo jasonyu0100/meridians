@@ -28,9 +28,6 @@ const initialWizardData: WizardData = {
   title: "",
   premise: "",
   paradigm: "fiction",
-  characters: [],
-  locations: [],
-  threads: [],
 };
 
 const initialState: WizardState = {

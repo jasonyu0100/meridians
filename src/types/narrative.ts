@@ -2628,22 +2628,6 @@ export type InspectorContext =
 
 export type WizardStep = "form" | "details" | "generate";
 
-export type CharacterSketch = {
-  name: string;
-  role: "anchor" | "recurring" | "transient";
-  description: string;
-};
-
-export type LocationSketch = {
-  name: string;
-  description: string;
-};
-
-export type ThreadSketch = {
-  description: string;
-  participantNames: string[];
-};
-
 /** The eight canonical paradigms the engine supports. Each is an iconic
  *  text-form name; each maps to a distinct world-shape in the generation
  *  prompt:
@@ -2690,9 +2674,6 @@ export type WizardData = {
    *  The new narrative is created with websearchLevel='high' and that same
    *  cap stored; Story Settings then lets the user dial level + cap down. */
   researchMode?: boolean;
-  characters: CharacterSketch[];
-  locations: LocationSketch[];
-  threads: ThreadSketch[];
   proseProfile?: ProseProfile;
   /** When true: generate world entities only — no introduction arc or scenes. Premise is treated as the full world plan document. */
   worldOnly?: boolean;
