@@ -1,8 +1,8 @@
 /**
  * Delta Guidelines Prompt — XML block injected into user prompts that emit
  * structural deltas. Field shapes + emission discipline. Force formulas and
- * floors live in forces.ts; market discipline (evidence scale, logtype table,
- * principles, closure, abandonment) lives in market-calibration.ts and
+ * floors live in forces.ts; stance discipline (evidence scale, logtype table,
+ * principles, closure, abandonment) lives in belief-calibration.ts and
  * thread-lifecycle.ts — this file doesn't restate them.
  */
 
@@ -26,7 +26,7 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
     <rule>Every new thread must declare ≥2 named outcomes and open with a threadDelta carrying evidence on at least one outcome (logType "setup").</rule>
   </initialization-floor>
 
-  <thread-deltas hint="Field shapes and multi-outcome update patterns. Market-discipline blocks (principles, evidence scale, logtype, closure, abandonment) carry the rest.">
+  <thread-deltas hint="Field shapes and multi-outcome update patterns. Stance-discipline blocks (principles, evidence scale, logtype, closure, abandonment) carry the rest.">
     <question-shape>
       A thread carries an arc when its question has stakes, uncertainty, and contested outcomes (binary or multi-outcome). Outcomes are concrete states the work can adjudicate.
       <example register="fiction" hint="multi-outcome with named factions">"Which faction claims the southern province?" → ["Tahir house", "Konoe clan", "merchant guilds", "nobody"].</example>
@@ -48,12 +48,12 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
       New outcomes join at neutral prior (logit=0); same-scene evidence then shifts the new outcome. Most arcs open 0 outcomes; opening 1 once or twice total is normal; opening 2+ in one scene signals overloading. Example: "A third cousin's claim to the throne surfaces" → addOutcomes: ["cousin"]; updates: [{outcome:"cousin", evidence:2}]. NOT for "the apprentice now suspects the elder of the theft" — that's evidence on an existing outcome.
     </outcome-expansion>
 
-    <multi-outcome-updates hint="When a market has 3+ outcomes, a single scene often moves several in different directions and magnitudes. Treat each outcome as a separate lever.">
+    <multi-outcome-updates hint="When a stance has 3+ outcomes, a single scene often moves several in different directions and magnitudes. Treat each outcome as a separate lever.">
       <pattern name="reveal-suppresses-rivals">A decisive reveal for one outcome usually SUPPRESSES its rivals. {Okonkwo, Nwoye, the colonial agent}: news of a hidden alliance with Okonkwo = updates: [{Okonkwo, +3}, {Nwoye, -1}, {the colonial agent, 0}]. Active rival gets squeezed; unrelated option barely moves.</pattern>
       <pattern name="lockstep-spectrum">Related outcomes on a spectrum can move LOCKSTEP at different magnitudes. {fails, partial, succeeds, triumphant}: central agent clears the test but reveals a weakness → [{partial, +2}, {succeeds, +1}, {triumphant, -1}, {fails, -1}].</pattern>
       <pattern name="absence-vs-evidence-against">Absence of evidence on an outcome is not evidence against it. If the scene doesn't touch an option, omit it from updates — pass-through preserves its relative standing when the rival moves.</pattern>
-      <pattern name="zero-sum-discipline">Treat evidence as zero-sum within the market only when the scene genuinely forces a trade-off. Otherwise let shifts be independent; softmax renormalises.</pattern>
-      <two-outcome-markets>Mirror evidence by default ({yes+2, no-1} for a clear but not decisive shift). One-sided nudges ({yes+1} alone) imply the rival is unchanged — legitimate for ambient reinforcement.</two-outcome-markets>
+      <pattern name="zero-sum-discipline">Treat evidence as zero-sum within the stance only when the scene genuinely forces a trade-off. Otherwise let shifts be independent; softmax renormalises.</pattern>
+      <two-outcome-stances>Mirror evidence by default ({yes+2, no-1} for a clear but not decisive shift). One-sided nudges ({yes+1} alone) imply the rival is unchanged — legitimate for ambient reinforcement.</two-outcome-stances>
     </multi-outcome-updates>
 
     <density>2–6 threads per scene; focus-window threads first. Don't emit zero-evidence zero-volume entries.</density>

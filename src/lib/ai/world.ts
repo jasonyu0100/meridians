@@ -5,7 +5,7 @@ import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS
 import { nextId, nextIds } from '@/lib/narrative-utils';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import type { ThreadLogNodeType } from '@/types/narrative';
-import { applyThreadDelta, newNarratorBelief } from '@/lib/thread-log';
+import { applyThreadDelta, newNarratorStance } from '@/lib/thread-log';
 import { applyWorldDelta } from '@/lib/world-graph';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/system-graph';
 import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/attribution';
@@ -328,7 +328,7 @@ export async function expandWorld(
       horizon: normaliseHorizon(t.horizon),
       dependents,
       openedAt: '', // Store reducer stamps worldBuildId at apply time
-      beliefs: { [NARRATOR_AGENT_ID]: newNarratorBelief(outcomes.length, 2) },
+      stances: { [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length, 2) },
       threadLog: { nodes: {}, edges: [] },
     } satisfies Thread;
   });
@@ -533,15 +533,15 @@ export async function generateNarrative(
           typeof v === 'number' ? v : NaN,
         )
       : undefined;
-    const beliefs = rest.beliefs && typeof rest.beliefs === 'object' && Object.keys(rest.beliefs).length > 0
-      ? rest.beliefs
-      : { [NARRATOR_AGENT_ID]: newNarratorBelief(outcomes.length, 2, rawPriorProbs) };
+    const stances = rest.stances && typeof rest.stances === 'object' && Object.keys(rest.stances).length > 0
+      ? rest.stances
+      : { [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length, 2, rawPriorProbs) };
     threads[t.id] = {
       ...rest,
       participants: rest.participants ?? anchors ?? [],
       outcomes,
       horizon: normaliseHorizon(rest.horizon),
-      beliefs,
+      stances,
       threadLog: { nodes: {}, edges: [] },
     };
   }

@@ -1,21 +1,21 @@
 'use client';
 
 /**
- * Market dashboard — a Polymarket-esque canvas view of the prediction-market
+ * Belief dashboard — the world view's belief, built from per-thread stances. A canvas view of the
  * portfolio. Replaces the old ThreadGraphModal. Reactive to the current scene
  * index: scrubbing replays every thread's belief up to that point and the
  * dashboard animates alongside it.
  *
  * Layout:
- *   1. Drill-down — featured market + scrollable market list sidebar (lead panel)
+ *   1. Drill-down — featured stance + scrollable stance list sidebar (lead panel)
  *   2. Overview — KPI sparkline cards (current value + trend up to now)
  *   3. Movers — top probability shifts + volatility leaders
  *   4. Composition — category mix, uncertainty histogram, resolution quality
- *   5. Screener — all-markets grid with category filter
+ *   5. Screener — all-stances grid with category filter
  *
  * We're passive observers right now — the dashboard reads the narrative but
  * never dispatches evidence. Future iterations will add controls for
- * operators to influence the markets directly.
+ * operators to influence stances directly.
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -41,7 +41,7 @@ import {
   outcomeColourHex,
   type ThreadCategory,
 } from '@/lib/thread-category';
-import { getMarketBelief, getMarketMargin, getMarketProbs, countScenes, sceneOrdinalAt } from '@/lib/narrative-utils';
+import { getThreadStance, getStanceMargin, getStanceProbs, countScenes, sceneOrdinalAt } from '@/lib/narrative-utils';
 
 // ── Category filter chips ──────────────────────────────────────────────────
 
@@ -138,7 +138,7 @@ function FeaturedTrajectory({
     // thread's initial-prior probabilities so the operator still sees
     // the distribution shape spatially, with a "not yet introduced"
     // annotation that makes the temporal status clear.
-    const priorProbs = getMarketProbs(thread);
+    const priorProbs = getStanceProbs(thread);
     return (
       <div ref={containerRef} className="w-full h-72">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none">
@@ -286,7 +286,7 @@ function FeaturedTrajectory({
       })}
       {/* X axis labels — first label flags the introduction scene
           explicitly so the chart's leftmost point reads as
-          "the market opens HERE", not as the timeline origin. Last
+          "the stance opens HERE", not as the timeline origin. Last
           label is the current scene cursor. Scene-only ordinals
           throughout — world commits don't count. */}
       <text x={PAD_L} y={H - 4} className="text-[9px]" fill="#7c7c8a">
@@ -300,9 +300,9 @@ function FeaturedTrajectory({
   );
 }
 
-// ── Featured market panel ──────────────────────────────────────────────────
+// ── Featured stance panel ──────────────────────────────────────────────────
 
-function FeaturedMarket({
+function FeaturedStance({
   thread,
   points,
   category,
@@ -316,12 +316,12 @@ function FeaturedMarket({
   // they're snapshotted together from the same softmax distribution, so the
   // displayed percentages always sum to 100% and match what the chart
   // plots. Fall back to the live thread only when no scenes have replayed
-  // for this market yet.
+  // for this stance yet.
   const tail = points.length > 0 ? points[points.length - 1] : null;
   const tailOutcomes = tail ? tail.outcomes : thread.outcomes;
-  const tailProbs = tail ? tail.probs : getMarketProbs(thread);
-  const belief = getMarketBelief(thread);
-  const { margin } = getMarketMargin(thread);
+  const tailProbs = tail ? tail.probs : getStanceProbs(thread);
+  const belief = getThreadStance(thread);
+  const { margin } = getStanceMargin(thread);
   // Colour-key off the live thread's outcome ordering — matches the
   // portfolio sidebar and the inspector so a given outcome paints the
   // same hue in every view.
@@ -425,9 +425,9 @@ function FeaturedMarket({
   );
 }
 
-// ── All-markets grid card ──────────────────────────────────────────────────
+// ── All-stances grid card ──────────────────────────────────────────────────
 
-function MarketCard({
+function StanceCard({
   row,
   inFocus,
   onSelect,
@@ -499,9 +499,9 @@ function MarketCard({
   );
 }
 
-// ── Market list sidebar (in-view switcher) ─────────────────────────────────
+// ── Stance list sidebar (in-view switcher) ─────────────────────────────────
 
-function MarketListSidebar({
+function StanceListSidebar({
   rows,
   focusIds,
   selectedId,
@@ -611,7 +611,7 @@ function MarketListSidebar({
         </div>
         {sectionRows.length === 0 ? (
           <p className="text-[10px] text-text-dim/70 italic px-2 pb-2">
-            No markets.
+            No stances.
           </p>
         ) : (
           <div className="flex flex-col gap-0.5">
@@ -628,7 +628,7 @@ function MarketListSidebar({
       <div className="absolute inset-0 flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-[11px] uppercase tracking-[0.18em] text-text-dim">
-            Markets
+            Stances
           </h3>
           <span className="text-[10px] text-text-dim font-mono tabular-nums">
             {filtered.length}
@@ -639,7 +639,7 @@ function MarketListSidebar({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search markets…"
+          placeholder="Search stances…"
           className="text-[11px] bg-transparent border-b border-white/8 px-2 py-1.5 text-text-primary placeholder:text-text-dim focus:outline-none focus:border-white/20 transition-colors"
         />
         <div className="flex-1 min-h-0 overflow-y-auto flex flex-col pr-1">
@@ -837,7 +837,7 @@ function CategoryBreakdown({ rows }: { rows: PortfolioRow[] }) {
           Category mix
         </h3>
         <span className="text-[10px] text-text-dim font-mono tabular-nums">
-          {total} markets
+          {total} stances
         </span>
       </div>
       {/* Stacked bar */}
@@ -904,7 +904,7 @@ function ResolutionQualityPanel({
       </div>
       {total === 0 ? (
         <p className="text-[11px] text-text-dim">
-          No markets have closed yet. Quality is scored at payoff.
+          No stances have closed yet. Quality is scored at payoff.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -1043,7 +1043,7 @@ function VolatilityLeaders({
         <span className="text-[10px] text-text-dim">top {leaders.length}</span>
       </div>
       {leaders.length === 0 ? (
-        <p className="text-[11px] text-text-dim">No live markets.</p>
+        <p className="text-[11px] text-text-dim">No live stances.</p>
       ) : (
         <div className="flex flex-col">
           {leaders.map((row, i) => {
@@ -1108,7 +1108,7 @@ function EntropyHistogram({ rows }: { rows: PortfolioRow[] }) {
         </span>
       </div>
       {live.length === 0 ? (
-        <p className="text-[11px] text-text-dim">No live markets.</p>
+        <p className="text-[11px] text-text-dim">No live stances.</p>
       ) : (
         <div className="flex items-end gap-1.5 h-20">
           {bins.map((count, i) => {
@@ -1117,7 +1117,7 @@ function EntropyHistogram({ rows }: { rows: PortfolioRow[] }) {
               <div
                 key={i}
                 className="flex-1 flex flex-col items-center gap-1 min-w-0"
-                title={`${labels[i]}% entropy · ${count} markets`}
+                title={`${labels[i]}% entropy · ${count} stances`}
               >
                 <span className="text-[9px] text-text-dim font-mono tabular-nums">
                   {count}
@@ -1164,7 +1164,7 @@ function PortfolioHeadline({
   );
   return (
     <div className="flex items-center gap-6 flex-wrap">
-      {item(String(snapshot.totalThreads), 'markets')}
+      {item(String(snapshot.totalThreads), 'stances')}
       <span className="text-text-dim/30">|</span>
       {item(String(snapshot.activeThreads), 'open')}
       <span className="text-text-dim/30">|</span>
@@ -1173,10 +1173,10 @@ function PortfolioHeadline({
       {item(
         `${uncertaintyPct}%`,
         'uncertain',
-        'Average entropy across open markets — higher = more contested.',
+        'Average entropy across open stances — higher = more contested.',
       )}
       <span className="text-text-dim/30">|</span>
-      {item(snapshot.marketCap.toFixed(0), 'attention', 'Total volume across open markets.')}
+      {item(snapshot.beliefCap.toFixed(0), 'attention', 'Total volume across open stances.')}
       {snapshot.closedThreads > 0 && (
         <>
           <span className="text-text-dim/30">|</span>
@@ -1189,7 +1189,7 @@ function PortfolioHeadline({
 
 // ── Main view ──────────────────────────────────────────────────────────────
 
-export default function MarketView() {
+export default function BeliefView() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const resolvedKeys = state.resolvedEntryKeys;
@@ -1222,7 +1222,7 @@ export default function MarketView() {
 
   // Featured thread — local to this view. Seeded once from the focus set; the
   // selection then sticks across scene changes (scrubber moves data, not the
-  // picked market). Re-seeds only when the prior selection becomes invalid.
+  // picked stance). Re-seeds only when the prior selection becomes invalid.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   useEffect(() => {
     if (selectedThreadId && scrubbedNarrative?.threads[selectedThreadId]) return;
@@ -1242,7 +1242,7 @@ export default function MarketView() {
     return buildThreadTrajectory(narrative, featuredId, resolvedKeys.slice(0, currentIndex + 1));
   }, [narrative, featuredId, resolvedKeys, currentIndex]);
 
-  // Category filter state — applied to the All Markets grid only.
+  // Category filter state — applied to the All Stances grid only.
   const [catFilter, setCatFilter] = useState<CategoryFilter>('all');
   const filterCounts: Record<CategoryFilter, number> = {
     all: rows.length,
@@ -1286,7 +1286,7 @@ export default function MarketView() {
   if (!narrative) {
     return (
       <div className="h-full w-full flex items-center justify-center text-[11px] text-text-dim">
-        Select a narrative to view markets.
+        Select a narrative to view its belief.
       </div>
     );
   }
@@ -1294,7 +1294,7 @@ export default function MarketView() {
   if (rows.length === 0) {
     return (
       <div className="h-full w-full flex items-center justify-center text-[11px] text-text-dim">
-        No markets open yet — threads appear once scenes begin producing evidence.
+        No stances open yet — threads will appear here once scenes begin producing evidence.
       </div>
     );
   }
@@ -1320,24 +1320,24 @@ export default function MarketView() {
           </div>
         )}
 
-        {/* 1. Drill-down — featured market + market list, up top per user preference. */}
+        {/* 1. Drill-down — featured stance + stance list, up top per user preference. */}
         <div className="flex flex-col gap-2">
           <h2 className="text-[11px] uppercase tracking-widest text-text-dim">
             Drill-down
           </h2>
           <div className="grid grid-cols-[minmax(0,1fr)_300px] gap-4 items-stretch">
             {featuredThread && featuredRow ? (
-              <FeaturedMarket
+              <FeaturedStance
                 thread={featuredThread}
                 points={featuredTrajectory}
                 category={featuredRow.category}
               />
             ) : (
               <div className="rounded-xl border border-white/8 p-6 text-[11px] text-text-dim">
-                Select a market to feature.
+                Select a stance to feature.
               </div>
             )}
-            <MarketListSidebar
+            <StanceListSidebar
               rows={rows}
               focusIds={focusIds}
               selectedId={featuredId}
@@ -1360,7 +1360,7 @@ export default function MarketView() {
                   formatValue={(v) => v.toFixed(0)}
                   formatDelta={(d) => d.toFixed(1)}
                   hint={
-                    "ATTENTION over time — cumulative volume across open markets, scene by scene.\n\nRising = the world view is loading more narrative weight onto active threads. Falling = attention is decaying faster than new evidence is coming in."
+                    "ATTENTION over time — cumulative volume across open stances, scene by scene.\n\nRising = the world view is loading more narrative weight onto active threads. Falling = attention is decaying faster than new evidence is coming in."
                   }
                   accent="#38bdf8"
                   deltaBetter="up"
@@ -1372,7 +1372,7 @@ export default function MarketView() {
                   formatValue={(v) => `${Math.round(v)}%`}
                   formatDelta={(d) => `${d.toFixed(1)}pp`}
                   hint={
-                    "UNCERTAINTY over time — average normalized entropy across open markets.\n\n100% = every outcome equally likely. A healthy arc usually trends down as markets commit; a flat-high line means the world view isn't paying off its questions."
+                    "UNCERTAINTY over time — average normalized entropy across open stances.\n\n100% = every outcome equally likely. A healthy arc usually trends down as stances commit; a flat-high line means the world view isn't paying off its questions."
                   }
                   accent="#fbbf24"
                   yMin={0}
@@ -1386,7 +1386,7 @@ export default function MarketView() {
                   formatValue={(v) => `σ ${v.toFixed(2)}`}
                   formatDelta={(d) => d.toFixed(2)}
                   hint={
-                    "VOLATILITY over time — average EWMA of recent evidence magnitude.\n\nSpikes mark scenes where multiple markets took large shocks. Flat = quiet stretch. Use this to spot when the world view entered a turbulent phase."
+                    "VOLATILITY over time — average EWMA of recent evidence magnitude.\n\nSpikes mark scenes where multiple stances took large shocks. Flat = quiet stretch. Use this to spot when the world view entered a turbulent phase."
                   }
                   accent="#a78bfa"
                   deltaBetter="neutral"
@@ -1398,7 +1398,7 @@ export default function MarketView() {
                   formatValue={(v) => `${Math.round(v)}%`}
                   formatDelta={(d) => `${d.toFixed(1)}pp`}
                   hint={
-                    "SATURATION over time — share of live markets within the near-closure band.\n\nRises before climactic stretches (many markets converging on a decision). Sudden drop = a wave of closures fired."
+                    "SATURATION over time — share of live stances within the near-closure band.\n\nRises before climactic stretches (many stances converging on a decision). Sudden drop = a wave of closures fired."
                   }
                   accent={THREAD_CATEGORY_HEX.saturating}
                   yMin={0}
@@ -1412,7 +1412,7 @@ export default function MarketView() {
                   formatValue={(v) => `${Math.round(v)}%`}
                   formatDelta={(d) => `${d.toFixed(1)}pp`}
                   hint={
-                    "CONTESTED over time — share of live markets with entropy ≥ 70%.\n\nHigh contested rate = the world view is keeping questions open. Falls as markets commit; a late climb usually signals fresh questions being opened."
+                    "CONTESTED over time — share of live stances with entropy ≥ 70%.\n\nHigh contested rate = the world view is keeping questions open. Falls as stances commit; a late climb usually signals fresh questions being opened."
                   }
                   accent={THREAD_CATEGORY_HEX.contested}
                   yMin={0}
@@ -1426,7 +1426,7 @@ export default function MarketView() {
                   formatValue={(v) => String(Math.round(v))}
                   formatDelta={(d) => `+${Math.round(d)}`}
                   hint={
-                    "RESOLVED over time — cumulative count of markets that have closed.\n\nMonotonically non-decreasing. Flat = no closures; steep step = a payoff beat just landed. Gives you the resolution rhythm of the world view."
+                    "RESOLVED over time — cumulative count of stances that have closed.\n\nMonotonically non-decreasing. Flat = no closures; steep step = a payoff beat just landed. Gives you the resolution rhythm of the world view."
                   }
                   accent={THREAD_CATEGORY_HEX.resolved}
                   deltaBetter="up"
@@ -1467,14 +1467,14 @@ export default function MarketView() {
           </div>
         )}
 
-        {/* 5. Screener — all markets, filterable by category. */}
+        {/* 5. Screener — all stances, filterable by category. */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-baseline gap-2">
               <h2 className="text-[11px] uppercase tracking-widest text-text-dim">
                 Screener
               </h2>
-              <span className="text-[10px] text-text-dim/70">all markets</span>
+              <span className="text-[10px] text-text-dim/70">all stances</span>
             </div>
             <span className="text-[10px] text-text-dim">
               {filteredRows.length} shown
@@ -1505,7 +1505,7 @@ export default function MarketView() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     {list.map((row) => (
-                      <MarketCard
+                      <StanceCard
                         key={row.thread.id}
                         row={row}
                         inFocus={focusIds.has(row.thread.id)}

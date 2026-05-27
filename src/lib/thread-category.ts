@@ -32,14 +32,14 @@
 
 import type { Thread } from '@/types/narrative';
 import {
-  MARKET_EVIDENCE_SENSITIVITY,
-  MARKET_NEAR_CLOSED_MIN,
-  MARKET_TAU_CLOSE,
+  STANCE_EVIDENCE_SENSITIVITY,
+  STANCE_NEAR_CLOSED_MIN,
+  STANCE_TAU_CLOSE,
 } from '@/lib/constants';
 import {
-  getMarketBelief,
-  getMarketMargin,
-  getMarketProbs,
+  getThreadStance,
+  getStanceMargin,
+  getStanceProbs,
   isThreadAbandoned,
   isThreadClosed,
   normalizedEntropy,
@@ -105,16 +105,16 @@ export const THREAD_CATEGORY_HEX: Record<ThreadCategory, string> = {
 };
 
 // ── Outcome palette ────────────────────────────────────────────────────────
-// Single source of truth for per-outcome colour across every market view —
-// portfolio rows, market chart, thread inspector. Outcomes are colour-indexed
+// Single source of truth for per-outcome colour across every belief surface —
+// portfolio rows, stance chart, thread inspector. Outcomes are colour-indexed
 // by their position in `thread.outcomes` (or trajectory snapshot), so a view
 // using a different palette would paint the same outcome a different hue.
-// Three views consume this: ThreadPortfolio (left sidebar), MarketView
+// Three views consume this: ThreadPortfolio (left sidebar), BeliefView
 // (centre chart), ThreadDetail (right inspector).
 //
-// Sizing: the analysis-time market schema caps at ~6 outcomes ("2 to ~6 named
+// Sizing: the analysis-time stance schema caps at ~6 outcomes ("2 to ~6 named
 // possibilities" — see scene-structure.ts), but mid-narrative `addOutcomes`
-// can grow a market further. The palette holds 12 distinct hues so any market
+// can grow a stance further. The palette holds 12 distinct hues so any stance
 // up to that size renders cleanly; beyond 12 the helpers below wrap (two
 // outcomes share a hue) — which is rare and acceptable, but `outcomeColour*`
 // gives callers a single chokepoint should we ever need to switch to a
@@ -202,7 +202,7 @@ export const CATEGORY_THRESHOLDS = {
   volatileMin: 0.5,
   /** Sum of |logit shifts| over the recent log window above which a thread
    *  reads as volatile even when the EWMA has smoothed out gradual drift.
-   *  Units: logit magnitude (evidence / MARKET_EVIDENCE_SENSITIVITY). */
+   *  Units: logit magnitude (evidence / STANCE_EVIDENCE_SENSITIVITY). */
   volatileRecentEnergy: 0.9,
   /** Number of most-recent log entries considered for recentLogitEnergy. */
   recentEnergyWindow: 3,
@@ -237,7 +237,7 @@ export function computeRecentLogitEnergy(
     const node = nodes[nodeId];
     for (const u of node?.updates ?? []) {
       const ev = typeof u.evidence === 'number' ? u.evidence : 0;
-      energy += Math.abs(ev) / MARKET_EVIDENCE_SENSITIVITY;
+      energy += Math.abs(ev) / STANCE_EVIDENCE_SENSITIVITY;
     }
   }
   return energy;
@@ -258,9 +258,9 @@ export function classifyThreadCategory(
   if (isThreadClosed(thread)) return 'resolved';
   if (isThreadAbandoned(thread)) return 'abandoned';
 
-  const belief = getMarketBelief(thread);
-  const probs = getMarketProbs(thread);
-  const { margin } = getMarketMargin(thread);
+  const belief = getThreadStance(thread);
+  const probs = getStanceProbs(thread);
+  const { margin } = getStanceMargin(thread);
   const volume = belief?.volume ?? 0;
   const volatility = belief?.volatility ?? 0;
   const entropy = normalizedEntropy(probs);
@@ -269,7 +269,7 @@ export function classifyThreadCategory(
 
   // Saturating wins over other signals — about to close is the most action-
   // relevant state for writers and readers.
-  if (margin >= MARKET_NEAR_CLOSED_MIN && margin < MARKET_TAU_CLOSE) {
+  if (margin >= STANCE_NEAR_CLOSED_MIN && margin < STANCE_TAU_CLOSE) {
     return 'saturating';
   }
 

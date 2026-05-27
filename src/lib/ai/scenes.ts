@@ -2,7 +2,7 @@ import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatP
 import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrative-utils';
 import { nextId, nextIds } from '@/lib/narrative-utils';
-import { newNarratorBelief } from '@/lib/thread-log';
+import { newNarratorStance } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { buildGenerateScenesSystem } from '@/lib/prompts/scenes/generate';
@@ -813,7 +813,7 @@ function buildParticipantGroundingBlock(narrative: NarrativeState, scene: Scene)
   // Stable display order — mirror the character-sheet logic readers carry around:
   // who they are → what they want → what they hide → what's true now → what they
   // can do → what they remember → who they're tied to → where they're vulnerable.
-  const TYPE_ORDER = ['trait', 'belief', 'goal', 'secret', 'state', 'capability', 'history', 'relation', 'weakness'];
+  const TYPE_ORDER = ['trait', 'opinion', 'goal', 'secret', 'state', 'capability', 'history', 'relation', 'weakness'];
 
   type WorldNode = { id: string; type: string; content: string };
   type WorldOwner = { world?: { nodes: Record<string, WorldNode> } };
@@ -2076,13 +2076,13 @@ export function sanitizeScenes(scenes: Scene[], narrative: NarrativeState, label
               typeof v === 'number' ? v : NaN,
             )
           : undefined;
-        const seedBelief = newNarratorBelief(outcomes.length, 2, rawPriorProbs);
+        const seedStance = newNarratorStance(outcomes.length, 2, rawPriorProbs);
         return {
           id: t.id,
           description: t.description,
           outcomes,
-          beliefs: {
-            [NARRATOR_AGENT_ID]: { ...seedBelief, lastTouchedScene: scene.id },
+          stances: {
+            [NARRATOR_AGENT_ID]: { ...seedStance, lastTouchedScene: scene.id },
           },
           participants: validParticipants,
           openedAt: t.openedAt ?? scene.id,

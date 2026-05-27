@@ -17,8 +17,8 @@
  *   vocabulary.ts — engine-primitive vocabulary per paradigm
  *   shapes.ts     — every other per-paradigm map (16 of them)
  *   analyst.ts    — surface builders for analytical surfaces (branch chat,
- *                   search synthesis, surveys, interviews, briefing,
- *                   direction, world expansion)
+ *                   search synthesis, surveys, interviews, direction,
+ *                   world expansion)
  *   compass.ts    — surface builders for forward-looking surfaces (Compass
  *                   cohort, Present, rescore)
  *   review.ts     — surface builders for review surfaces (prose, branch,
@@ -54,7 +54,6 @@ export {
 export {
   ANALYST_DISCIPLINE_BY_PARADIGM,
   BRANCH_REVIEW_CRITERIA_BY_PARADIGM,
-  BRIEFING_FOCUS_BY_PARADIGM,
   COMPASS_LENS_BY_PARADIGM,
   DIRECTION_SHAPE_BY_PARADIGM,
   EDIT_SHAPE_BY_PARADIGM,
@@ -79,7 +78,6 @@ export {
   buildExpandWorldSystem,
   buildExpansionSuggestSystem,
   buildInterviewGenSystem,
-  buildMarketBriefingSystem,
   buildNarrativeDirectionSystem,
   buildSearchSynthesisSystem,
   buildSurveyGenSystem,

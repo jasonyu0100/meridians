@@ -53,7 +53,7 @@ const mockNarrative: NarrativeState = {
       participants: [],
       description: 'The hero\'s journey',
       outcomes: ["yes", "no"],
-      beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+      stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
       openedAt: 'scene0',
       dependents: [],
       threadLog: { nodes: {}, edges: [] },

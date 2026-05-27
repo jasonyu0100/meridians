@@ -298,15 +298,20 @@ export default function ChatPanel() {
 
     // Persona mode — the user is talking TO an entity (character, location,
     // artifact) or one of the three force-entities (Fate / System / World).
+    // Every persona is enriched with the outline context: the three forces
+    // are coalescences of live state and the outline shapes what they
+    // currently express; entities live inside the timeline and use the
+    // outline as enrichment they still filter through their own continuity.
     if (activePersona) {
-      if (activePersona.kind === "fate") return buildFatePersonaPrompt(n);
-      if (activePersona.kind === "system") return buildSystemPersonaPrompt(n);
-      if (activePersona.kind === "world") return buildWorldPersonaPrompt(n);
+      const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
+      if (activePersona.kind === "fate") return buildFatePersonaPrompt(n, outline);
+      if (activePersona.kind === "system") return buildSystemPersonaPrompt(n, outline);
+      if (activePersona.kind === "world") return buildWorldPersonaPrompt(n, outline);
       if (activePersona.kind === "character")
-        return buildEntityPersonaPrompt(n, "character", activePersona.character);
+        return buildEntityPersonaPrompt(n, "character", activePersona.character, outline);
       if (activePersona.kind === "location")
-        return buildEntityPersonaPrompt(n, "location", activePersona.location);
-      return buildEntityPersonaPrompt(n, "artifact", activePersona.artifact);
+        return buildEntityPersonaPrompt(n, "location", activePersona.location, outline);
+      return buildEntityPersonaPrompt(n, "artifact", activePersona.artifact, outline);
     }
 
     const sceneAnchor = buildSceneAnchor(n, state.resolvedEntryKeys, contextSceneIndex);

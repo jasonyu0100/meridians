@@ -242,46 +242,52 @@ export const NEAR_RECENCY_ZONE = 5;
 /** Scenes after NEAR rendered with thread transitions and movements only. */
 export const MID_RECENCY_ZONE = 15;
 
-// ── Thread Prediction Market ────────────────────────────────────────────────
+// ── Thread Stance Math ──────────────────────────────────────────────────────
+//
+// The world view's belief is built from individual thread stances. The
+// constants below tune how a stance updates from evidence (sensitivity,
+// range), when it closes (τ_close, near-closed band), how attention decays
+// (volume), how movement is smoothed (volatility EWMA), and which stances
+// dominate generation focus.
 
-/** Log-odds sensitivity for evidence → logit updates.
- *  `logit[k] += evidence / MARKET_EVIDENCE_SENSITIVITY`.
+/** Log-odds sensitivity for evidence → logit updates on a stance.
+ *  `logit[k] += evidence / STANCE_EVIDENCE_SENSITIVITY`.
  *  With s=2: evidence=+4 at p=0.5 → p≈0.88; at p=0.9 → p≈0.988 (natural saturation).
  *  Decisive events (|evidence|=3–4 with logType payoff/twist) need to be able
- *  to resolve markets — the fix for overpricing is smart in-world priors at
+ *  to close stances — the fix for overpricing is smart in-world priors at
  *  thread creation, not a blanket dampening of evidence response. */
-export const MARKET_EVIDENCE_SENSITIVITY = 2;
+export const STANCE_EVIDENCE_SENSITIVITY = 2;
 
 /** Evidence range — integer on both sides. Matches game-theory stake deltas. */
-export const MARKET_EVIDENCE_MIN = -4;
-export const MARKET_EVIDENCE_MAX = 4;
+export const STANCE_EVIDENCE_MIN = -4;
+export const STANCE_EVIDENCE_MAX = 4;
 
 /** Close condition: `max_logit − second_max_logit` exceeds this threshold.
  *  At τ=3, the winning outcome has p ≥ 0.953 relative to the runner-up. */
-export const MARKET_TAU_CLOSE = 3;
+export const STANCE_TAU_CLOSE = 3;
 
 /** Near-closed band: |logit(p)| ∈ [NEAR_CLOSED_MIN, τ_close) — saturating
  *  but not committed. UI marks as "ready to settle". */
-export const MARKET_NEAR_CLOSED_MIN = 2;
+export const STANCE_NEAR_CLOSED_MIN = 2;
 
 /** Volume decay per scene untouched — geometric. α=0.9 → half-life ≈ 6.6 scenes. */
-export const MARKET_VOLUME_DECAY = 0.9;
+export const STANCE_VOLUME_DECAY = 0.9;
 
 /** Volume floor — below this, thread is marked abandoned (removed from focus). */
-export const MARKET_ABANDON_VOLUME = 0.5;
+export const STANCE_ABANDON_VOLUME = 0.5;
 
 /** Volatility EWMA decay. β=0.6 blends new |Δlogit| at 40% weight. */
-export const MARKET_VOLATILITY_BETA = 0.6;
+export const STANCE_VOLATILITY_BETA = 0.6;
 
 /** Focus-score recency decay — per scene untouched, score scales by this factor. */
-export const MARKET_RECENCY_DECAY = 0.95;
+export const STANCE_RECENCY_DECAY = 0.95;
 
-/** Initial volume for newly opened threads. */
-export const MARKET_OPENING_VOLUME = 2;
+/** Initial volume for newly opened stances. */
+export const STANCE_OPENING_VOLUME = 2;
 
-/** Opening-price guardrails — don't seed threads near saturation. */
-export const MARKET_OPENING_MIN_LOGIT = -1.2; // p ≈ 0.23
-export const MARKET_OPENING_MAX_LOGIT = 1.2; // p ≈ 0.77
+/** Opening-price guardrails — don't seed stances near saturation. */
+export const STANCE_OPENING_MIN_LOGIT = -1.2; // p ≈ 0.23
+export const STANCE_OPENING_MAX_LOGIT = 1.2; // p ≈ 0.77
 
-/** Focus window size — top-K threads by focus score feed generation. */
-export const MARKET_FOCUS_K = 6;
+/** Focus window size — top-K stances by focus score feed generation. */
+export const STANCE_FOCUS_K = 6;

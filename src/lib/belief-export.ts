@@ -1,7 +1,7 @@
 /**
  * Markdown exporter for the prediction-market dashboard. Snapshots the
  * portfolio *at the current scene index* (same point-in-time replay the
- * MarketView uses) so the export matches exactly what the user is looking
+ * BeliefView uses) so the export matches exactly what the user is looking
  * at when they hit Copy.
  *
  * Output layout — designed to read top-down as an analyst's brief:
@@ -30,7 +30,7 @@ import {
 } from "@/lib/thread-category";
 import { countScenes, sceneOrdinalAt } from "@/lib/narrative-utils";
 
-export type MarketExportContext = {
+export type BeliefExportContext = {
   narrative: NarrativeState;
   resolvedKeys: string[];
   currentSceneIndex: number;
@@ -38,7 +38,7 @@ export type MarketExportContext = {
   recentLookback?: number;
 };
 
-export function exportMarketSnapshot(ctx: MarketExportContext): string {
+export function exportBeliefSnapshot(ctx: BeliefExportContext): string {
   const { narrative, resolvedKeys, currentSceneIndex } = ctx;
   const lookback = ctx.recentLookback ?? 5;
 
@@ -66,7 +66,7 @@ export function exportMarketSnapshot(ctx: MarketExportContext): string {
   );
   lines.push(`  - Resolved: ${snapshot.closedThreads}`);
   lines.push(`  - Abandoned: ${snapshot.abandonedThreads}`);
-  lines.push(`- Attention (market cap): **${snapshot.marketCap.toFixed(1)}**`);
+  lines.push(`- Attention (belief weight): **${snapshot.beliefCap.toFixed(1)}**`);
   lines.push(
     `- Average uncertainty: **${Math.round(snapshot.averageEntropy * 100)}%** (entropy across open markets)`,
   );

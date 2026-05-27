@@ -5,7 +5,7 @@
  */
 
 import type { ThinkingResource } from "@/lib/ai/reasoning-graph/shared";
-import { PROMPT_PORTFOLIO_PRINCIPLES } from "../core/market-calibration";
+import { PROMPT_BELIEF_PRINCIPLES } from "../core/belief-calibration";
 
 // ── Plan Node Scaling ─────────────────────────────────────────────────────────
 // Coordination plans scale node counts based on arc budget to ensure proper
@@ -96,14 +96,14 @@ const MODEL_BLOCK = `
 
     <chaos-as-black-swan hint="Departure from what current state predicts. Two modes; either or both can drive a chaos node.">
       <mode name="creative">Spawns pieces the existing state wouldn't have generated — unforeseen rival, faction nobody modelled, disruptive artefact, location's hidden property.</mode>
-      <mode name="reversal">Flips a saturating/committed market via twist-grade event (|e| ≥ 3 on the lagging outcome).</mode>
+      <mode name="reversal">Flips a saturating/committed stance via twist-grade event (|e| ≥ 3 on the lagging outcome).</mode>
       <test>Could it have been in the rulebook before this moment? Yes → adversarial system node. No → chaos. Name what it creates OR flips concretely; "something surprising" without a target is vapour.</test>
       <ever-present>Required at minority level (1-2 nodes) in every mode, structural in chaos mode. Zero-chaos graphs read as narratively dead.</ever-present>
     </chaos-as-black-swan>
 
     <fate-as-portfolio hint="The CRG is where market quality is decided — by the time scenes are written, the hand is dealt.">
       Fate nodes ARE the arc's market portfolio. A defensive, all-distal, all-anchor-centric, or cost-missing portfolio produces an inert arc. Audit against the principles below; if it fails, the fix is new fate nodes (open markets, force opposition, retire zombies) — not better execution.
-      ${PROMPT_PORTFOLIO_PRINCIPLES}
+      ${PROMPT_BELIEF_PRINCIPLES}
     </fate-as-portfolio>
 
     <causal-patterns hint="Cross-direction edges encode which pattern is asserted.">
@@ -211,7 +211,7 @@ ${MODEL_BLOCK}
     <fate-roles>Downstream: threads chaos is re-pricing or newly opening. Upstream-subversion: agenda's overreach priming its own reversal (an anchor's overreach → engages an opposing position alone → reveal flips "evades detection" market). Highly productive.</fate-roles>
     <behaviour>
 ${scope === "plan"
-  ? `      Several chaos-dominant arcs across the plan (~25-40% of arcs anchored on chaos). Seed 5-10 chaos nodes mixing creative + reversal. Chaos-dominant arcs leave the portfolio MORE uncertain after resolving — new threads open, or saturating markets close decisively/flip.`
+  ? `      Several chaos-dominant arcs across the plan (~25-40% of arcs anchored on chaos). Seed 5-10 chaos nodes mixing creative + reversal. Chaos-dominant arcs leave the portfolio MORE uncertain after resolving — new threads open, or saturating stances close decisively/flip.`
   : `      Build around 3-5 chaos nodes (vs default 1-2). The arc's peak/valley may itself be chaos-anchored. Chaos nodes collectively add a new piece OR identify a saturating market ready for reversal — ideally both.`}
     </behaviour>
   </what-chaos-dominance-means>

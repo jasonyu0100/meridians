@@ -14,7 +14,7 @@ import type {
   NarrativeState,
 } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
-import { newNarratorBelief } from '@/lib/thread-log';
+import { newNarratorStance } from '@/lib/thread-log';
 import { EMPTY_THREAD_LOG } from '@/lib/thread-log';
 
 // Every parallel scenario worker mints IDs from the same root narrative, so
@@ -68,8 +68,8 @@ function makeThread(id: string, overrides: Partial<Thread> = {}): Thread {
     description: `${id} question`,
     participants: [],
     outcomes,
-    beliefs: {
-      [NARRATOR_AGENT_ID]: newNarratorBelief(outcomes.length),
+    stances: {
+      [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length),
     },
     openedAt: 'S-1',
     dependents: [],

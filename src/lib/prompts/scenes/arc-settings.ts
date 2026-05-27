@@ -43,10 +43,10 @@ ${lines.join("\n")}
 }
 
 const FORCE_PREFERENCE_LINE: Record<NonNullable<ArcSettings["thinkingResource"]>, string> = {
-  fate: `<force-preference name="fate">Scenes prioritise THREAD MOVEMENT — every scene advances, escalates, or closes a thread the CRG references. Climaxes are thread transitions; setup scenes seed new markets. Thread deltas should be the densest force channel.</force-preference>`,
+  fate: `<force-preference name="fate">Scenes prioritise THREAD MOVEMENT — every scene advances, escalates, or closes a thread the CRG references. Climaxes are thread transitions; setup scenes seed new stances. Thread deltas should be the densest force channel.</force-preference>`,
   world: `<force-preference name="world">Scenes prioritise ENTITY TRANSFORMATION — characters, locations, artifacts deepening or shifting. Inner change, accruing relationships, places gaining history. World deltas (especially POV-character) should be the densest force channel.</force-preference>`,
   system: `<force-preference name="system">Scenes prioritise RULE SURFACING — the world's mechanics asserting themselves, principles tested, constraints biting. System deltas should be the densest force channel; surface existing SYS nodes by edge wherever the scene touches a rule.</force-preference>`,
-  chaos: `<force-preference name="chaos">Scenes prioritise BLACK-SWAN MOVES — disclose new pieces the prior state wouldn't have predicted, or flip saturating markets via twist-grade evidence. Each chaos beat should either spawn a new entity (creative) or commit twist evidence (reversal).</force-preference>`,
+  chaos: `<force-preference name="chaos">Scenes prioritise BLACK-SWAN MOVES — disclose new pieces the prior state wouldn't have predicted, or flip saturating stances via twist-grade evidence. Each chaos beat should either spawn a new entity (creative) or commit twist evidence (reversal).</force-preference>`,
   freeform: `<force-preference name="freeform">No force bias — pick the densest channel the scene actually earns. Avoid letting one channel dominate every scene by default; vary across the arc.</force-preference>`,
 };
 

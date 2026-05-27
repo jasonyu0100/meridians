@@ -76,7 +76,7 @@ function makeThread(id: string, description: string): Thread {
     description,
     participants: [],
     outcomes: ['yes', 'no'],
-    beliefs: {},
+    stances: {},
     openedAt: 'S-EX-1',
     dependents: [],
     threadLog: { nodes: {}, edges: [] },
@@ -569,7 +569,7 @@ describe('commitPreparedApply', () => {
           // portfolio / market views treat the thread as orphaned.
           openedAt: 'S-EXT-1',
           dependents: ['T-EXT-other'],
-          beliefs: {
+          stances: {
             'C-EXT-1': { logits: [0, 0], volume: 1, volatility: 0, lastTouchedScene: 'S-EXT-1' },
             __narrator__: { logits: [0, 0], volume: 1, volatility: 0 },
           },
@@ -610,9 +610,9 @@ describe('commitPreparedApply', () => {
 
     const thread = apply.threads[0];
     // beliefs key C-EXT-1 → C-USP-1 (merged); sentinel __narrator__ stays.
-    expect(Object.keys(thread.beliefs)).toEqual(expect.arrayContaining(['C-USP-1', '__narrator__']));
+    expect(Object.keys(thread.stances)).toEqual(expect.arrayContaining(['C-USP-1', '__narrator__']));
     // lastTouchedScene sceneId on beliefs → the new scene id.
-    expect(thread.beliefs['C-USP-1'].lastTouchedScene).toBe('S-USP-2');
+    expect(thread.stances?.['C-USP-1'].lastTouchedScene).toBe('S-USP-2');
     // threadLog node.sceneId → new scene id.
     expect(thread.threadLog.nodes['L-1'].sceneId).toBe('S-USP-2');
     // Dependents id that wasn't in the maps stays verbatim (no slice

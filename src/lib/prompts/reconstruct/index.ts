@@ -39,7 +39,7 @@ const SCENE_OUTPUT_SCHEMA_FULL = `{
   "summary": "REQUIRED — WRITE THIS FIRST. This is the spine of the scene; every delta below must trace back to something stated here. Rich prose sentences using character NAMES and location NAMES (never raw IDs). Include specifics and context that shapes prose. No emotions/realizations as endings.",
   "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did"}],
   "events": ["event_tag"],
-  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names when this scene opens a possibility not previously in the market"], "rationale": "the summary sentence that moved this thread's market in this scene"}],
+  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names when this scene opens a possibility not previously in the stance"], "rationale": "the summary sentence that moved this thread's market in this scene"}],
   "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-NEW-1", "content": "complete sentence: what they experienced or became", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
   "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "systemDeltas": {"addedNodes": [], "addedEdges": []},
@@ -53,7 +53,7 @@ const SCENE_OUTPUT_SCHEMA_MERGE = `{
   "summary": "REQUIRED — WRITE THIS FIRST. This is the spine of the merged scene; every delta below must trace back to something stated here. Rich prose sentences using character NAMES (never IDs) combining the strongest elements from all merged scenes.",
   "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did"}],
   "events": ["event_tag"],
-  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names when this scene opens a possibility not previously in the market"], "rationale": "the summary sentence that moved this thread's market in this scene"}],
+  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names when this scene opens a possibility not previously in the stance"], "rationale": "the summary sentence that moved this thread's market in this scene"}],
   "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-NEW-1", "content": "complete sentence: what they experienced or became", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
   "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "systemDeltas": {"addedNodes": [], "addedEdges": []}

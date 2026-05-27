@@ -20,9 +20,9 @@ import {
   isThreadAbandoned,
   isThreadClosed,
   scenesSinceTouched,
-  getMarketBelief,
+  getThreadStance,
   normalizedEntropy,
-  getMarketProbs,
+  getStanceProbs,
 } from "@/lib/narrative-utils";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ function analyzeThreads(
   // Active = open market (not closed, not abandoned) with any attention.
   const activeThreads = threads.filter((t) => {
     if (isThreadClosed(t) || isThreadAbandoned(t)) return false;
-    const belief = getMarketBelief(t);
+    const belief = getThreadStance(t);
     return !!belief && belief.volume > 0;
   });
   // Primed = thread whose market margin is in the near-closed band —
@@ -439,7 +439,7 @@ function buildDirective(
     const primedList = pressure.threads.primed
       .slice(0, 3)
       .map((t) => {
-        const probs = getMarketProbs(t);
+        const probs = getStanceProbs(t);
         const topIdx = probs.indexOf(Math.max(...probs));
         return `- "${t.description}" [near-closed → ${t.outcomes[topIdx] ?? '?'}]`;
       })
@@ -450,7 +450,7 @@ function buildDirective(
     const staleList = pressure.threads.stale
       .slice(0, 3)
       .map((t) => {
-        const belief = getMarketBelief(t);
+        const belief = getThreadStance(t);
         return `- "${t.description}" [vol=${belief?.volume.toFixed(1) ?? '0'}]`;
       })
       .join("\n");
@@ -706,14 +706,14 @@ export function buildPlanDirective(
     for (const node of threadTargets) {
       const thread = narrative.threads[node.threadId!];
       const threadDesc = thread?.description ?? node.threadId;
-      const isResolution = node.marketIntent === "close";
+      const isResolution = node.stanceIntent === "close";
       const targetType =
         node.type === "peak" && isResolution ? "PEAK — MUST REACH"
         : node.type === "peak" ? "PEAK"
         : node.type === "valley" ? "VALLEY — PIVOT"
         : "MOMENT";
-      const intentLabel = node.marketIntent
-        ? `${node.marketIntent}${node.marketOutcome ? ` → ${node.marketOutcome}` : ""}`
+      const intentLabel = node.stanceIntent
+        ? `${node.stanceIntent}${node.stanceOutcome ? ` → ${node.stanceOutcome}` : ""}`
         : "progress";
       sections.push(`- [${intentLabel}] ${threadDesc} — ${targetType}: ${node.label}`);
     }

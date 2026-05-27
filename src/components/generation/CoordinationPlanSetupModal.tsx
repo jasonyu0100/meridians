@@ -17,7 +17,7 @@ import {
 
 // ── Thread Target Types ─────────────────────────────────────────────────────
 
-type TargetStatus = ThreadTarget["marketIntent"] | "auto";
+type TargetStatus = ThreadTarget["stanceIntent"] | "auto";
 type TargetTiming = ThreadTarget["timing"] | "any";
 
 type ThreadConfig = {
@@ -164,7 +164,7 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
       .filter(([, config]) => config.status !== "auto")
       .map(([threadId, config]) => ({
         threadId,
-        marketIntent: config.status as ThreadTarget["marketIntent"],
+        stanceIntent: config.status as ThreadTarget["stanceIntent"],
         timing: config.timing !== "any" ? config.timing as ThreadTarget["timing"] : undefined,
       }));
 

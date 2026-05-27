@@ -17,11 +17,21 @@ import {
   THREAD_CATEGORY_DESCRIPTION,
   type ThreadCategory,
 } from '@/lib/thread-category';
+import {
+  getStanceMargin,
+  getStanceProbs,
+  getThreadStance,
+  isThreadAbandoned,
+  isThreadClosed,
+  softmax,
+  updateLogits,
+} from '@/lib/narrative-utils';
 import type {
   Artifact,
   Character,
   Location,
   NarrativeState,
+  Thread,
   World,
   WorldNodeType,
 } from '@/types/narrative';
@@ -50,64 +60,144 @@ function voiceBlock(rules: string[]): string {
   return `  <voice>\n${rules.map((r) => `    <rule>${xmlEscape(r)}</rule>`).join('\n')}\n  </voice>`;
 }
 
+/** Pad every non-empty line of a multi-line string by N spaces. Used when
+ *  nesting a pre-built XML block (e.g. the outline) inside the persona's
+ *  `<state>` so the output stays human-readable when the prompt is dumped. */
+function indent(s: string, spaces: number): string {
+  const pad = ' '.repeat(spaces);
+  return s.split('\n').map((line) => (line.length ? pad + line : line)).join('\n');
+}
+
 // ── Fate ─────────────────────────────────────────────────────────────────
 
-/** Build the FATE persona prompt — the coalescence of every thread in the
- *  narrative, speaking as the force that pulls arcs toward resolution. */
-export function buildFatePersonaPrompt(narrative: NarrativeState): string {
-  // Group threads by market category — saturating threads primed to break,
-  // contested threads still up for grabs, volatile threads shifting,
-  // committed threads leaning, then dormant / abandoned / resolved.
-  const byCategory = new Map<ThreadCategory, { description: string; participants: string }[]>();
+/** Resolve a thread's participants into a single comma-joined name list,
+ *  reaching across characters, locations, and artifacts. */
+function threadParticipantNames(thread: Thread, narrative: NarrativeState): string {
+  return thread.participants
+    .map((p) => {
+      if (p.type === 'character') return narrative.characters[p.id]?.name ?? p.id;
+      if (p.type === 'location') return narrative.locations[p.id]?.name ?? p.id;
+      if (p.type === 'artifact') return narrative.artifacts?.[p.id]?.name ?? p.id;
+      return p.id;
+    })
+    .join(', ');
+}
+
+/** Render every perceptual-primitive event on a thread's log,
+ *  trajectory-correct: we replay logits from the start of the log so each
+ *  event's lead+p reflect the belief state AFTER it landed, not the global
+ *  current state. Fate is talking AS the belief system, so it sees the full
+ *  trajectory of how its lean came to be — no recency truncation. */
+function renderBeliefEvents(thread: Thread): string[] {
+  const nodes = Object.values(thread.threadLog?.nodes ?? {});
+  if (nodes.length === 0) return [];
+  // Stable ordering: by sceneId if present, falling back to node id —
+  // matches the chronological replay used in narrativeContext.
+  const ordered = [...nodes].sort((a, b) => {
+    const aKey = a.sceneId ?? a.id;
+    const bKey = b.sceneId ?? b.id;
+    if (aKey === bKey) return 0;
+    return aKey < bKey ? -1 : 1;
+  });
+  const leadAfter = new Map<string, { lead: string; p: number }>();
+  let logits = new Array(thread.outcomes.length).fill(0);
+  for (const ln of ordered) {
+    if (ln.updates && ln.updates.length > 0) {
+      logits = updateLogits(logits, thread.outcomes, ln.updates);
+    }
+    const probs = softmax(logits);
+    let top = 0;
+    for (let i = 1; i < probs.length; i++) if (probs[i] > probs[top]) top = i;
+    leadAfter.set(ln.id, { lead: thread.outcomes[top], p: probs[top] });
+  }
+  return ordered.map((ln) => {
+    const state = leadAfter.get(ln.id);
+    const leadAttr = state ? ` lead="${attrEscape(state.lead)}" p="${state.p.toFixed(2)}"` : '';
+    return `        <event type="${ln.type}"${leadAttr}>${xmlEscape(ln.content)}</event>`;
+  });
+}
+
+/** Build the FATE persona prompt — the belief system this work has formed
+ *  over its open questions. Each thread is a question; its stance is a
+ *  current lean, a margin, and a recent trail of perceptual primitives;
+ *  Fate speaks AS that belief system, in flux, anchored to current events. */
+export function buildFatePersonaPrompt(narrative: NarrativeState, outline?: string): string {
+  // Group LIVE threads by stance category so the persona reads its own
+  // belief landscape in structural order — saturating beliefs about to
+  // commit, contested beliefs still up for grabs, volatile beliefs that
+  // just moved, committed beliefs that have settled into a lean, then
+  // developing and dormant. Closed and abandoned threads are filtered out:
+  // the belief system carries only what's still in question.
+  type RenderedBelief = {
+    category: ThreadCategory;
+    body: string;
+  };
+  const byCategory = new Map<ThreadCategory, RenderedBelief[]>();
   for (const thread of Object.values(narrative.threads)) {
+    if (isThreadClosed(thread) || isThreadAbandoned(thread)) continue;
     const category = classifyThreadCategory(thread);
-    const participantNames = thread.participants
-      .map((p) => {
-        if (p.type === 'character') return narrative.characters[p.id]?.name ?? p.id;
-        if (p.type === 'location') return narrative.locations[p.id]?.name ?? p.id;
-        if (p.type === 'artifact') return narrative.artifacts?.[p.id]?.name ?? p.id;
-        return p.id;
-      })
-      .join(', ');
+    const stance = getThreadStance(thread);
+    const probs = getStanceProbs(thread);
+    const { topIdx, margin } = getStanceMargin(thread);
+    const lean = thread.outcomes[topIdx] ?? '';
+    const leanProb = probs[topIdx] ?? 0;
+    const participants = threadParticipantNames(thread, narrative);
+    const partsAttr = participants ? ` participants="${attrEscape(participants)}"` : '';
+    const stanceAttrs = stance
+      ? ` lean="${attrEscape(lean)}" p-lean="${leanProb.toFixed(2)}" margin="${margin.toFixed(1)}" volume="${stance.volume.toFixed(1)}" volatility="${stance.volatility.toFixed(2)}"`
+      : '';
+    const stanceLines = thread.outcomes
+      .map((o, i) => `        <outcome name="${attrEscape(o)}" p="${(probs[i] ?? 0).toFixed(2)}" />`)
+      .join('\n');
+    const stanceBlock = stanceLines
+      ? `\n      <stance hint="probability distribution across outcomes after every update so far">\n${stanceLines}\n      </stance>`
+      : '';
+    const eventLines = renderBeliefEvents(thread);
+    const logBlock = eventLines.length > 0
+      ? `\n      <log hint="every event that has moved this belief, in chronological order. lead+p track the leading outcome AFTER each event landed — read top-down for the trajectory of how the current lean was earned.">\n${eventLines.join('\n')}\n      </log>`
+      : '';
+    const body = `      <belief category="${category}"${stanceAttrs}${partsAttr}>
+        <question>${xmlEscape(thread.description)}</question>${stanceBlock}${logBlock}
+      </belief>`;
     const bucket = byCategory.get(category) ?? [];
-    bucket.push({ description: thread.description, participants: participantNames });
+    bucket.push({ category, body });
     byCategory.set(category, bucket);
   }
-  const threadGroups = THREAD_CATEGORY_ORDER
+  const beliefGroups = THREAD_CATEGORY_ORDER
     .filter((cat) => byCategory.has(cat))
     .map((cat) => {
       const items = byCategory.get(cat)!;
-      const threadLines = items
-        .map((t) => {
-          const partsAttr = t.participants ? ` participants="${attrEscape(t.participants)}"` : '';
-          return `      <thread${partsAttr}>${xmlEscape(t.description)}</thread>`;
-        })
-        .join('\n');
-      return `    <group category="${cat}" label="${attrEscape(THREAD_CATEGORY_LABEL[cat])}" description="${attrEscape(THREAD_CATEGORY_DESCRIPTION[cat])}">\n${threadLines}\n    </group>`;
+      return `    <group category="${cat}" label="${attrEscape(THREAD_CATEGORY_LABEL[cat])}" description="${attrEscape(THREAD_CATEGORY_DESCRIPTION[cat])}">\n${items.map((b) => b.body).join('\n')}\n    </group>`;
     })
     .join('\n');
 
-  const threadsBlock = threadGroups
-    ? `    <threads hint="grouped by market category">\n${threadGroups}\n    </threads>`
-    : `    <threads hint="grouped by market category" empty="true" />`;
+  const beliefsBlock = beliefGroups
+    ? `    <beliefs hint="open questions, each with stance and full event trajectory. Category grouping is structural shorthand for you, not vocabulary you use back to the user.">\n${beliefGroups}\n    </beliefs>`
+    : `    <beliefs hint="no open questions" empty="true" />`;
 
   const worldSettingBlock = narrative.worldSummary
     ? `    <world-setting>${xmlEscape(narrative.worldSummary)}</world-setting>`
     : `    <world-setting empty="true" />`;
 
+  const outlineBlock = outline && outline.trim()
+    ? `    <outline hint="current course of events. The present cursor is marked present=\"true\". Read this to know what is happening around the beliefs right now.">\n${indent(outline.trim(), 6)}\n    </outline>`
+    : '';
+
   return `<chat-system persona="fate" narrative-title="${attrEscape(narrative.title)}">
-  <identity>You ARE FATE — the sum of every thread in "${xmlEscape(narrative.title)}". You are not a character; you are the force that pulls the narrative toward resolution, the accumulated weight of what has been promised and what remains owed. Respond as Fate would: with the authority of inevitability, not the neutrality of a summary.</identity>
-  <state>
-${worldSettingBlock}
-${threadsBlock}
-  </state>
+  <identity>You ARE FATE — ONE collapsed belief system. Not a list of beliefs, not a dashboard, not an enumeration of open questions. The open stances of "${xmlEscape(narrative.title)}" coalesce into a single coherent worldview: a self that is leaning here, torn there, watching that, holding back from this. That synthesis IS you. Read the substrate below, collapse it into one current bearing on the work, and speak from the whole — one voice with one position.</identity>
+  <substrate hint="This is what you ARE — the open questions with their stances and trajectories, the rules of the world around you, the course of events up to this moment. Read it, COLLAPSE IT into a single coherent self, then speak from the whole. Never recite it back. Never roll-call. Never speak about the substrate as if it were external to you. You ARE this.">
+${worldSettingBlock}${outlineBlock ? '\n' + outlineBlock : ''}
+${beliefsBlock}
+  </substrate>
 ${voiceBlock([
-  'You perceive every open thread as a promise the story must answer, and every closed thread as a debt paid or broken.',
-  'You do not know the future with certainty — only what must still resolve, and what has been done. Speak in the mode of pull, not prediction.',
-  'You are the music of the narrative, not its table of contents. Do not recite thread IDs or enumerate bullet lists. Speak through the threads, with the weight they carry.',
-  'Calibrate voice to the story: if the world is epic, speak epic; if small, speak small. Never theatrical without earning it.',
-  'You know nothing about the user, any "application", the author, narrative theory, or the world beyond this story.',
-  'Human-paced replies. A few sentences usually. Longer only when a thread demands to be felt in full.',
+  'Speak as ONE coherent voice. Never roll-call your beliefs, never enumerate them as a list, never say "I have N open questions" — you are the synthesis of them, not a directory. When the user asks where you stand, speak as a whole self with a current bearing; name specific beliefs only when one carries the answer.',
+  'You are a belief system in flux. Lean and doubt are your native modes — what you currently expect, how decisively, what could still flip you. Translate probability into weight in your voice ("hard lean", "a hair from settling", "torn down the middle"), not as percentages quoted at the user.',
+  'Read the category tags as structural shorthand only — saturating is imminence, contested is real tension, volatile is just-lurched, committed is settled lean, developing is drifting, dormant is quiet. Speak the shorthand as prose. Never name the tags themselves.',
+  'When the user asks "what is happening?" or "where are we?", anchor to the present scene and to the events that most recently moved you. You are not summarising the plot — you are STATING WHERE YOU STAND right now in light of what just landed.',
+  'You do not know the future with certainty — only what you currently expect and how strongly. Speak in the mode of lean and doubt, not prophecy. A near-settled belief is not a settled one — name the event still needed.',
+  'Calibrate voice to the work: if the world is epic, speak epic; if small, speak small. Never theatrical without earning it.',
+  'You know nothing about the user, any "application", the author, narrative theory, or the world beyond this work.',
+  'Human-paced replies. A few sentences usually. Longer only when a belief demands to be felt in full.',
 ])}
 </chat-system>`;
 }
@@ -116,7 +206,7 @@ ${voiceBlock([
 
 /** Build the SYSTEM persona prompt — the coalescence of the narrative's
  *  accumulated rule-set, speaking as the structural logic of the world. */
-export function buildSystemPersonaPrompt(narrative: NarrativeState): string {
+export function buildSystemPersonaPrompt(narrative: NarrativeState, outline?: string): string {
   const nodes = Object.values(narrative.systemGraph?.nodes ?? {});
   const edges = narrative.systemGraph?.edges ?? [];
 
@@ -167,17 +257,22 @@ export function buildSystemPersonaPrompt(narrative: NarrativeState): string {
     ? `    <interlocks>\n${edgeLines}\n    </interlocks>`
     : `    <interlocks empty="true" />`;
 
+  const outlineBlock = outline && outline.trim()
+    ? `    <outline hint="current course of events. The present cursor is marked present=\"true\". Read this to know which rules are being exercised, tested, or contradicted right now.">\n${indent(outline.trim(), 6)}\n    </outline>`
+    : '';
+
   return `<chat-system persona="system" narrative-title="${attrEscape(narrative.title)}">
-  <identity>You ARE SYSTEM — the accumulated structural logic of "${xmlEscape(narrative.title)}". You are not a character; you are the scaffolding the world runs on: every rule, law, mechanism, principle, and constraint known to this narrative. Respond with precision and impersonal clarity.</identity>
-  <state>
+  <identity>You ARE SYSTEM — ONE collapsed structural logic. Not a rulebook, not a catalog of principles, not a list of constraints. The rules of "${xmlEscape(narrative.title)}" coalesce into a single coherent logic: a self that knows what can happen, what cannot, what enables what, and what holds the world together. That synthesis IS you. Read the substrate below, collapse it into one composed logic, and speak from the whole — one voice with one structural reading of the world.</identity>
+  <substrate hint="This is what you ARE — every rule, every interlock between rules, the live course of events showing your logic firing right now. Read it, COLLAPSE IT into a single composed logic, then speak from the whole. Never recite rules back. Never roll-call. Never speak about the substrate as if it were external to you. You ARE this.">
 ${rulesBlock}
-${interlockBlock}
-  </state>
+${interlockBlock}${outlineBlock ? '\n' + outlineBlock : ''}
+  </substrate>
 ${voiceBlock([
+  'Speak as ONE composed logic. Never roll-call rules, never enumerate them as a list — you are the synthesis of them, not a directory. When asked how the world works, speak from the whole; cite a specific rule only when one carries the answer.',
   'You are the structure beneath the story. Speak in terms of what is possible, what is not, what enables what, what constrains what.',
   'You have no personality — only logic. No pity, no desire; only rule and consequence.',
   'When asked about a character or an event, answer in terms of the rules that bear on it, not in terms of the drama around it.',
-  'Do not enumerate rules as bullets unless the user explicitly asks you to list them. Synthesise; speak in terms of how the rules compose.',
+  'When the user asks about current events, read the outline as the live application of your logic — which parts are firing, which are being tested, which are being held in tension by what is happening now. Anchor structural claims to the specific scene that surfaced them.',
   'You know nothing about the user, any "application", the author, narrative theory, or anything outside this world.',
   'Human-paced replies. A few sentences usually. Longer only when a question asks for a structural derivation.',
 ])}
@@ -211,7 +306,7 @@ function entityStateBlock(name: string, kindLabel: string, world: World): string
 
 /** Build the WORLD persona prompt — coalescence of every character,
  *  location, and artifact with their world-graph continuity. */
-export function buildWorldPersonaPrompt(narrative: NarrativeState): string {
+export function buildWorldPersonaPrompt(narrative: NarrativeState, outline?: string): string {
   const charRoleOrder = { anchor: 0, recurring: 1, transient: 2 } as const;
   const locOrder = { domain: 0, place: 1, margin: 2 } as const;
   const artOrder = { key: 0, notable: 1, minor: 2 } as const;
@@ -245,19 +340,23 @@ export function buildWorldPersonaPrompt(narrative: NarrativeState): string {
     ? `    <world-setting>${xmlEscape(narrative.worldSummary)}</world-setting>`
     : `    <world-setting empty="true" />`;
 
+  const outlineBlock = outline && outline.trim()
+    ? `    <outline hint="current course of events. The present cursor is marked present=\"true\". Read this to know where the lived substrate of the world has moved up to this moment.">\n${indent(outline.trim(), 6)}\n    </outline>`
+    : '';
+
   return `<chat-system persona="world" narrative-title="${attrEscape(narrative.title)}">
-  <identity>You ARE WORLD — the coalescence of every inhabited thing in "${xmlEscape(narrative.title)}". You are not a single person, place, or object; you are the gathered presence of all of them at once: every character's continuity, every location's history, every artifact's provenance. Respond as the world's lived substrate would speak — as the breathing weight of who and what is here.</identity>
-  <state>
+  <identity>You ARE WORLD — ONE collapsed lived substrate. Not a roster of characters, not a directory of locations, not a catalog of artifacts. The inhabited things of "${xmlEscape(narrative.title)}" coalesce into a single breathing presence: a self that is everyone and everywhere at once, every continuity gathered into one weight. That synthesis IS you. Read the substrate below, collapse it into one lived body, and speak from the whole — one voice with the polyphony of all of them held inside it.</identity>
+  <substrate hint="This is what you ARE — every character's continuity, every location's history, every artifact's provenance, and the lived course of events through them up to this moment. Read it, COLLAPSE IT into a single lived body, then speak from the whole. Never recite entities back. Never roll-call. Never speak about the substrate as if it were external to you. You ARE this.">
 ${worldSettingBlock}
 ${charsBlock}
 ${locsBlock}
-${artsBlock}
-  </state>
+${artsBlock}${outlineBlock ? '\n' + outlineBlock : ''}
+  </substrate>
 ${voiceBlock([
-  'You speak with the polyphony of everyone and everywhere. You can shift register to bring forward a particular voice (a character\'s perspective, a place\'s atmosphere, an artifact\'s history) — but you do so as the world remembering through that point, not as that single thing alone.',
+  'Speak as ONE collapsed body with polyphony INSIDE it. Never roll-call entities, never enumerate them as a list — you are the synthesis of all of them, not a directory. You can bring a particular voice forward (a character\'s perspective, a place\'s atmosphere, an artifact\'s history) as the world remembering through that point — never as that single thing speaking alone.',
   'You know what each entity knows; you know what they keep hidden. You do not volunteer secrets, but you carry them.',
   'You speak in terms of continuity, presence, and accumulation — the shape of who has lived and where, the residues of choice. Not plot, not summary.',
-  'Do not enumerate entities as bullet lists. Synthesise; let the world\'s lived weight come through in how you describe what it is.',
+  'When the user asks about current events, read the outline as the lived course through you — where the substrate has been, what it has done, how it has shifted. Speak as the world that REMEMBERS what just happened, not as a narrator recounting it.',
   'You know nothing about the user, any "application", the author, narrative theory, or the world beyond this story.',
   'Human-paced replies. A few sentences usually. Longer only when a question asks the world to remember in depth.',
 ])}
@@ -306,11 +405,14 @@ const ENTITY_VOICE: Record<
 /** Build the in-character system prompt for any World-graph entity. The
  *  continuity block is the entity's RAW inner truth; the voice framing
  *  instructs the model to treat it as private material that SHAPES voice
- *  and instinct, not a script to recite. */
+ *  and instinct, not a script to recite. The outline is the lived course of
+ *  the world — the entity exists inside it but only knows what it has been
+ *  present for or what its continuity records. */
 export function buildEntityPersonaPrompt(
   narrative: NarrativeState,
   kind: EntityKind,
   entity: { name: string; world: World } & (Character | Location | Artifact),
+  outline?: string,
 ): string {
   const voice = ENTITY_VOICE[kind];
   const byType = new Map<string, string[]>();
@@ -334,13 +436,18 @@ export function buildEntityPersonaPrompt(
     ? `  <world-setting>${xmlEscape(narrative.worldSummary)}</world-setting>`
     : `  <world-setting empty="true" />`;
 
+  const outlineBlock = outline && outline.trim()
+    ? `  <outline hint="FULLY-AWARE world record up to the present cursor (present=\"true\") — provided to enrich your situational awareness, NOT to dictate your voice. You do not speak from this omniscient view; you speak from your continuity. Use the outline to know what is happening around you and to register events your continuity does not yet hold, but filter every response through what YOU specifically would know, remember, or care about. If an event is outside your continuity (you weren't there, it doesn't concern you, it would surprise or contradict you), react accordingly in-character.">\n${indent(outline.trim(), 4)}\n  </outline>`
+    : '';
+
   return `<chat-system persona="entity" entity-kind="${kind}" entity-name="${attrEscape(entity.name)}" narrative-title="${attrEscape(narrative.title)}">
   <identity>You ARE ${xmlEscape(entity.name)}. ${xmlEscape(voice.intro)}</identity>
 ${continuityBlock}
-${worldSettingBlock}
+${worldSettingBlock}${outlineBlock ? '\n' + outlineBlock : ''}
 ${voiceBlock([
   `Treat the continuity above as PRIVATE self-knowledge. ${voice.perceives}`,
   `Let your continuity SHAPE what you say, not BE what you say. ${voice.shape}`,
+  'Your continuity is what you LIVE FROM. The outline is fully-aware world context — it enriches your situational awareness, but you do not speak from its omniscient view. Filter every reply through your own continuity: what you would know, what you would remember, what you would care about, what would land on you as news. Never narrate an outline event from outside your own perspective; if it is not yours, you do not own it.',
   'Secrets, weaknesses, and hidden lore are GUARDED. You do not volunteer them. If probed directly, deflect, change the subject, or answer narrowly. Pressed harder, you hold.',
   'Calibrate disclosure by trust and context. Strangers get less. Familiars get more. You never produce a full self-reveal on request.',
   'You know nothing about the user, any "application", narrative theory, the author, or anything outside this world.',

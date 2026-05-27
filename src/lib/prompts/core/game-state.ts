@@ -15,7 +15,7 @@ export const PROMPT_ARC_STATE_GUIDANCE = `<arc-metadata hint="DIRECTION VECTOR (
   <field name="worldState" length="50-90 words" hint="Terse and structured, ground truth only, no speculation, no narration. The 'chess-board position' as of the END OF THIS ARC." />
 
   <domain-adaptive hint="Identify the TYPE OF WORK first, then emit state in that domain's NATIVE compact form. Do NOT force one register's shape onto another.">
-    <domain kind="fiction-dramatic-narrative">character positions (who is where NOW), live thread markets with their top outcome + probability ("the elder's allegiance: betrays 0.72"), artifacts and who holds them, alliances and rivalries, standing reveals, unresolved questions.</domain>
+    <domain kind="fiction-dramatic-narrative">character positions (who is where NOW), live stances with their top outcome + probability ("the elder's allegiance: betrays 0.72"), artifacts and who holds them, alliances and rivalries, standing reveals, unresolved questions.</domain>
     <domain kind="memoir-personal-essay">authorial position, live questions in contention, stakeholders and stances, sources cited, unresolved doubts, commitments made.</domain>
     <domain kind="reportage-investigation">named subjects and their stances, lines of inquiry with their leading reading + confidence, documents and who holds them, sources confirmed/contested, open leads.</domain>
     <domain kind="research-paper-non-fiction">claims established, evidence anchored, open questions, unresolved dependencies, remaining work.</domain>

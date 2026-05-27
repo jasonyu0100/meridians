@@ -24,7 +24,7 @@ import { DriverCanvas } from '@/components/driver/DriverCanvas';
 import { ReasoningGraphView } from './ReasoningGraphView';
 import { ModeCanvas } from './ModeGraphView';
 import NetworkView from './NetworkView';
-import MarketView from './MarketView';
+import BeliefView from './BeliefView';
 import VariablesView from './VariablesView';
 import {
   type GraphNode,
@@ -1176,8 +1176,8 @@ export default function WorldGraph() {
         <DriverCanvas />
       ) : graphViewMode === 'network' ? (
         <NetworkView />
-      ) : graphViewMode === 'market' ? (
-        <MarketView />
+      ) : graphViewMode === 'belief' ? (
+        <BeliefView />
       ) : graphViewMode === 'present' ? (
         <VariablesView mode="present" />
       ) : graphViewMode === 'compass' ? (

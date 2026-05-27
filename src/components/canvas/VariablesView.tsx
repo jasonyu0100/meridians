@@ -990,7 +990,7 @@ function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => v
 
 // ── Logit badge ───────────────────────────────────────────────────────────
 //
-// Surfaces a coordination's log-prior plausibility (in MARKET_EVIDENCE
+// Surfaces a coordination's log-prior plausibility (in stance-evidence
 // units, [-4, +4]) as: the raw logit, a sigmoid-derived "how likely" %,
 // and a one-word rarity tag. Renders below the chart on Present/Compass
 // footers so the path's rarity becomes a permanent, glanceable record —
@@ -1072,7 +1072,7 @@ interface PresentBentoProps {
   breaks?: string;
   opens?: string;
   /** Log-prior plausibility for this Present coordination, in
-   *  MARKET_EVIDENCE_MIN/MAX range ([-4, +4]). When transferred from a
+   *  STANCE_EVIDENCE_MIN/MAX range ([-4, +4]). When transferred from a
    *  Compass direction via experimentation commit, this records "how
    *  likely was this coordination when it was chosen" — the rarity badge
    *  that gives the path its sense of specialness. */

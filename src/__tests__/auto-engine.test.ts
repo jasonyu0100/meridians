@@ -53,7 +53,7 @@ function createThread(id: string, overrides: Partial<Thread> = {}): Thread {
     id,
     description: `Thread ${id} description`,
     outcomes: ["yes", "no"],
-    beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+    stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
     participants: [],
     dependents: [],
     openedAt: "s1",
@@ -639,7 +639,7 @@ describe("evaluateNarrativeState", () => {
     for (let i = 1; i <= 8; i++) {
       narrative.threads[`T-${i}`] = createThread(`T-${i}`, {
         outcomes: ["yes", "no"],
-        beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+        stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
       });
     }
     const config = createAutoConfig({
@@ -1181,7 +1181,7 @@ describe("buildPlanDirective", () => {
           id: "T-1",
           description: "A thread",
           outcomes: ["yes", "no"],
-          beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+          stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
           kind: "external",
           participants: [],
           dependents: [],
@@ -1264,7 +1264,7 @@ describe("buildPlanDirective", () => {
           type: "peak",
           label: "Resolution peak",
           threadId: "T-1",
-          marketIntent: "close", marketOutcome: "yes",
+          stanceIntent: "close", stanceOutcome: "yes",
           arcIndex: 1,
           arcSlot: 1,
         }),
@@ -1283,7 +1283,7 @@ describe("buildPlanDirective", () => {
           type: "valley",
           label: "Pivot valley",
           threadId: "T-1",
-          marketIntent: "escalate",
+          stanceIntent: "escalate",
           arcIndex: 1,
           arcSlot: 1,
         }),
@@ -1303,7 +1303,7 @@ describe("buildPlanDirective", () => {
           type: "moment",
           label: "Intermediate reveal",
           threadId: "T-1",
-          marketIntent: "advance",
+          stanceIntent: "advance",
           arcSlot: 1,
         }),
       ],

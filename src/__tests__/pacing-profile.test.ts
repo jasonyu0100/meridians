@@ -117,11 +117,11 @@ describe("computeMatrixFromNarrative", () => {
         worldDeltas: [
           {
             entityId: "C-1",
-            addedNodes: [{ id: "K-2", content: "y", type: "belief" }],
+            addedNodes: [{ id: "K-2", content: "y", type: "opinion" }],
           },
           {
             entityId: "C-2",
-            addedNodes: [{ id: "K-3", content: "z", type: "belief" }],
+            addedNodes: [{ id: "K-3", content: "z", type: "opinion" }],
           },
         ],
         events: ["event2", "event3"],

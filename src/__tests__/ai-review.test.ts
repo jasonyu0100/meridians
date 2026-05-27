@@ -75,7 +75,7 @@ function createThread(id: string, overrides: Partial<Thread> = {}): Thread {
     id,
     description: `Thread ${id} description`,
     outcomes: ["yes", "no"],
-    beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+    stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
     participants: [],
     dependents: [],
     openedAt: 's1',

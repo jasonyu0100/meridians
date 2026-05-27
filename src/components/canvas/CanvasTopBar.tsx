@@ -7,11 +7,11 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconMarket, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch } from '@/components/icons';
+import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
-import { exportMarketSnapshot } from '@/lib/market-export';
+import { exportBeliefSnapshot } from '@/lib/belief-export';
 import { exportScenePlan, exportSceneProse } from '@/lib/scene-export';
 
 type GraphDomain = {
@@ -66,7 +66,7 @@ const SCOPE_PAIRS: Record<string, { local: GraphViewMode; global: GraphViewMode 
 
 export const GRAPH_MODES = new Set<GraphViewMode>(['spatial', 'overview', 'spark', 'codex', 'pulse', 'threads', 'network']);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'driver' | 'reasoning' | 'market' | 'present' | 'compass' | 'mode';
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'game' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode';
 type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'game';
 const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'game'];
 
@@ -318,7 +318,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'search') return 'search';
   if (graphViewMode === 'driver') return 'driver';
   if (graphViewMode === 'reasoning') return 'reasoning';
-  if (graphViewMode === 'market') return 'market';
+  if (graphViewMode === 'belief') return 'belief';
   if (graphViewMode === 'present') return 'present';
   if (graphViewMode === 'compass') return 'compass';
   if (graphViewMode === 'mode') return 'mode';
@@ -358,11 +358,11 @@ export function CanvasTopBar() {
 
   const inSceneMode = (SCENE_MODES as string[]).includes(graphViewMode);
   // "Control" supersedes the old "Market" top-level slot — it bundles
-  // Opinion (the reflecting-reality market view), Present (the realized
-  // variables disposition), Compass (the cohort of feasible next directions),
-  // and Phase (the working-machinery graph).
+  // Belief (the world view's aggregated belief, built from per-thread stances),
+  // Present (the realized variables disposition), Compass (the cohort of
+  // feasible next directions), and Phase (the working-machinery graph).
   const inControlMode = (
-    graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
+    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
   );
   // "Driver" bundles Entry (the daily-ingest queue + note workspace) and
   // Search (vector search over the narrative). Both render through
@@ -375,10 +375,10 @@ export function CanvasTopBar() {
     }
   }, [graphViewMode]);
 
-  const lastControlSubModeRef = useRef<'market' | 'present' | 'compass' | 'mode'>('market');
+  const lastControlSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode'>('belief');
   useEffect(() => {
     if (
-      graphViewMode === 'market' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
+      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
     ) {
       lastControlSubModeRef.current = graphViewMode;
     }
@@ -681,7 +681,7 @@ export function CanvasTopBar() {
         canvasMode === 'plan' ||
         canvasMode === 'audio' ||
         canvasMode === 'prose' ||
-        canvasMode === 'market' ||
+        canvasMode === 'belief' ||
         canvasMode === 'search' ||
         (canvasMode === 'reasoning' && (activeInvestigation || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
       ) && <TopBarDivider />}
@@ -838,13 +838,13 @@ export function CanvasTopBar() {
         </div>
       )}
 
-      {canvasMode === 'market' && narrative && (
+      {canvasMode === 'belief' && narrative && (
         <>
           <CopyButton
             label="Copy Market Snapshot"
             title="Copy prediction-market snapshot as Markdown"
             getText={() =>
-              exportMarketSnapshot({
+              exportBeliefSnapshot({
                 narrative,
                 resolvedKeys: state.resolvedEntryKeys,
                 currentSceneIndex: state.viewState.currentSceneIndex,
@@ -1035,16 +1035,17 @@ export function CanvasTopBar() {
           </>
         )}
 
-        {/* Control sub-mode toggle — Opinion · Present · Compass · Mode.
-            Opinion reflects reality (markets); Present is the realized
-            variables disposition; Compass is the cohort of feasible next
-            directions (precision prediction in simulation, recommendation
-            otherwise); Mode is the working-machinery graph — a graphical
-            context that permeates downstream planning. */}
+        {/* Control sub-mode toggle — Belief · Present · Compass · Mode.
+            Belief is the world view's aggregated belief, built from the
+            stances each thread carries; Present is the realized variables
+            disposition; Compass is the cohort of feasible next directions
+            (precision prediction in simulation, recommendation otherwise);
+            Mode is the working-machinery graph — a graphical context that
+            permeates downstream planning. */}
         {inControlMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'market' as const, label: 'Opinion' },
+              { mode: 'belief' as const, label: 'Belief' },
               { mode: 'present' as const, label: 'Present' },
               { mode: 'compass' as const, label: 'Compass' },
               { mode: 'mode' as const, label: 'Mode' },
@@ -1134,13 +1135,13 @@ export function CanvasTopBar() {
         )}
 
         {/* Main canvas mode selector. Plan/Prose/Audio collapse into "Scene";
-            Opinion/Variables/Phase collapse into "Control". The sub-mode
+            Belief/Variables/Phase collapse into "Control". The sub-mode
             toggles render to the left for each cluster. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
             { mode: 'driver' as const, Icon: IconList, label: 'Driver', condition: 'always' as const, activeWhen: inDriverMode },
             { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', condition: 'always' as const, activeWhen: canvasMode === 'graph' },
-            { mode: 'control' as const, Icon: IconMarket, label: 'Control', condition: 'always' as const, activeWhen: inControlMode },
+            { mode: 'control' as const, Icon: IconBelief, label: 'Control', condition: 'always' as const, activeWhen: inControlMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', condition: 'sceneOnly' as const, activeWhen: inSceneMode },
           ]
             .filter(({ condition }) => {

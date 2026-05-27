@@ -51,10 +51,10 @@ const SCENE_VERDICTS = ["ok", "edit", "merge", "cut", "insert", "move"] as const
 const PROSE_VERDICTS = ["ok", "edit"] as const;
 const PLAN_VERDICTS = ["ok", "edit"] as const;
 
-describe("Thread prediction-market vocabulary contract", () => {
-  // The delta prompt must advertise the market shape fields so the LLM
+describe("Thread stance / belief vocabulary contract", () => {
+  // The delta prompt must advertise the stance-update fields so the LLM
   // emits them correctly: logType, updates, evidence, outcomes, addOutcomes.
-  it("PROMPT_DELTAS advertises the market-delta fields", () => {
+  it("PROMPT_DELTAS advertises the stance-delta fields", () => {
     expect(PROMPT_DELTAS).toContain("logType");
     expect(PROMPT_DELTAS).toContain("updates");
     expect(PROMPT_DELTAS).toContain("evidence");
@@ -70,12 +70,12 @@ describe("Thread prediction-market vocabulary contract", () => {
     }
   });
 
-  it("promptThreadLifecycle describes markets, outcomes, and closure", () => {
+  it("promptThreadLifecycle describes stances, outcomes, and closure", () => {
     const doc = promptThreadLifecycle();
-    expect(doc.toLowerCase()).toMatch(/prediction market/);
+    expect(doc.toLowerCase()).toMatch(/stance|belief/);
     expect(doc.toLowerCase()).toMatch(/outcome/);
     expect(doc.toLowerCase()).toMatch(/closure|close/);
-    // Evidence scale is part of the market vocabulary.
+    // Evidence scale is part of the stance vocabulary.
     expect(doc).toMatch(/-4|\[-4/);
     expect(doc).toContain("+4");
   });

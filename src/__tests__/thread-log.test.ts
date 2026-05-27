@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { applyThreadDelta, decayUntouchedBelief, newNarratorBelief, EMPTY_THREAD_LOG } from '@/lib/thread-log';
+import { applyThreadDelta, decayUntouchedStance, newNarratorStance, EMPTY_THREAD_LOG } from '@/lib/thread-log';
 import type { Thread, ThreadDelta } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
-import { getMarketProbs } from '@/lib/narrative-utils';
+import { getStanceProbs } from '@/lib/narrative-utils';
 
-// Threads are prediction markets. Each scene's threadDelta shifts logits;
+// Each thread carries a stance — a probability distribution over named
+// outcomes — and each scene's threadDelta shifts the stance's logits;
 // softmax gives the probability distribution. These tests pin the invariants
 // the rest of the pipeline (sanitizer, store replay, world gen) depends on.
 
@@ -15,8 +16,8 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     description: 'Will Harry claim the Stone?',
     participants: [],
     outcomes,
-    beliefs: {
-      [NARRATOR_AGENT_ID]: newNarratorBelief(outcomes.length),
+    stances: {
+      [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length),
     },
     openedAt: 'S-1',
     dependents: [],
@@ -37,10 +38,10 @@ describe('applyThreadDelta — logit updates', () => {
     };
     const next = applyThreadDelta(thread, delta, 'S-2');
     // evidence +2 / sensitivity 2 = +1 logit on "yes".
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(1, 5);
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits[1]).toBeCloseTo(0, 5);
+    expect(next.stances[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(1, 5);
+    expect(next.stances[NARRATOR_AGENT_ID].logits[1]).toBeCloseTo(0, 5);
     // Volume grew by the delta.
-    expect(next.beliefs[NARRATOR_AGENT_ID].volume).toBeCloseTo(3, 5);
+    expect(next.stances[NARRATOR_AGENT_ID].volume).toBeCloseTo(3, 5);
     // A log node was appended with the prose rationale.
     const nodeId = 'T-1:S-2';
     expect(next.threadLog.nodes[nodeId]?.content).toBe('Harry learns where the Mirror is kept.');
@@ -60,10 +61,10 @@ describe('applyThreadDelta — logit updates', () => {
       rationale: 'Dumbledore confirms the Mirror yields only to one who wants the Stone without using it.',
     };
     const next = applyThreadDelta(thread, delta, 'S-3');
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(1, 5);
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits[1]).toBeCloseTo(-0.5, 5);
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits[2]).toBeCloseTo(0, 5);
-    const probs = getMarketProbs(next);
+    expect(next.stances[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(1, 5);
+    expect(next.stances[NARRATOR_AGENT_ID].logits[1]).toBeCloseTo(-0.5, 5);
+    expect(next.stances[NARRATOR_AGENT_ID].logits[2]).toBeCloseTo(0, 5);
+    const probs = getStanceProbs(next);
     const topIdx = probs.indexOf(Math.max(...probs));
     expect(next.outcomes[topIdx]).toBe('Harry');
   });
@@ -79,7 +80,7 @@ describe('applyThreadDelta — logit updates', () => {
     };
     const next = applyThreadDelta(thread, delta, 'S-2');
     // +4 / 2 = +2 logit shift.
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(2, 5);
+    expect(next.stances[NARRATOR_AGENT_ID].logits[0]).toBeCloseTo(2, 5);
   });
 });
 
@@ -100,7 +101,7 @@ describe('applyThreadDelta — outcome expansion', () => {
       rationale: 'Voldemort is revealed to be after the Stone.',
     }, 'S-3');
     expect(next.outcomes).toEqual(['yes', 'no', 'Voldemort']);
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits).toEqual([1, 0, 0]);
+    expect(next.stances[NARRATOR_AGENT_ID].logits).toEqual([1, 0, 0]);
     expect(next.threadLog.nodes['T-1:S-3']?.addedOutcomes).toEqual(['Voldemort']);
   });
 
@@ -114,7 +115,7 @@ describe('applyThreadDelta — outcome expansion', () => {
       rationale: 'Voldemort already has the Stone in hand.',
     }, 'S-3');
     expect(next.outcomes).toEqual(['yes', 'no', 'Voldemort']);
-    expect(next.beliefs[NARRATOR_AGENT_ID].logits).toEqual([0, 0, 1.5]);
+    expect(next.stances[NARRATOR_AGENT_ID].logits).toEqual([0, 0, 1.5]);
   });
 
   it('rejects duplicate outcomes (case-insensitive) during expansion', () => {
@@ -267,17 +268,17 @@ describe('applyThreadDelta — closure rules', () => {
   });
 });
 
-describe('decayUntouchedBelief — volume attrition', () => {
+describe('decayUntouchedStance — volume attrition', () => {
   it('scales volume by the decay factor', () => {
-    const b = newNarratorBelief(2, 10);
-    const decayed = decayUntouchedBelief(b);
+    const b = newNarratorStance(2, 10);
+    const decayed = decayUntouchedStance(b);
     expect(decayed.volume).toBeCloseTo(9, 5);
   });
 
   it('decays volatility toward zero', () => {
-    const b = newNarratorBelief(2, 5);
+    const b = newNarratorStance(2, 5);
     b.volatility = 1;
-    const decayed = decayUntouchedBelief(b);
+    const decayed = decayUntouchedStance(b);
     expect(decayed.volatility).toBeLessThan(1);
     expect(decayed.volatility).toBeGreaterThanOrEqual(0);
   });

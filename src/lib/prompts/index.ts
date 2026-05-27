@@ -46,7 +46,7 @@ export {
 
 // (Legacy schemas/ directory removed — the lifecycle-based fragments were
 // unused dead code that confused LLM output shape. Prompts now embed their
-// own schema snippets with the current market-based contract.)
+// own schema snippets with the current stance-based contract.)
 
 // ── Ingest Prompts ──────────────────────────────────────────────────────────
 export {
@@ -185,7 +185,6 @@ export {
   buildSearchSynthesisSystem,
   buildSurveyGenSystem,
   buildInterviewGenSystem,
-  buildMarketBriefingSystem,
   buildArcDirectionSystem,
   buildNarrativeDirectionSystem,
   buildExpandWorldSystem,

@@ -1,5 +1,3 @@
-import type { StoredBriefing } from './briefing';
-
 // ── Thread (Belief System Model) ────────────────────────────────────────────
 //
 // A world view's BELIEF SYSTEM is the structure of stances it holds across
@@ -1682,11 +1680,6 @@ export type NarrativeState = {
    * users can promote any other branch via the BranchModal.
    */
   canonBranchId?: string;
-  /** Last belief briefing the operator generated for this narrative — held
-   *  so the Brief tab can hydrate without re-calling the LLM, and so a
-   *  stale briefing flags itself when the head moves on or the active
-   *  branch changes. */
-  lastBriefing?: StoredBriefing;
   /** Source files that contributed to this narrative — the corpus that
    *  created it (`mode: 'create'`) plus any later extension files
    *  (`mode: 'extend'`). The raw source text lives in IndexedDB as a

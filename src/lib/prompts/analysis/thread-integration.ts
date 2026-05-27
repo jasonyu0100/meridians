@@ -6,7 +6,7 @@
  * / artifacts / system concepts) align cheaply by name or phrasing —
  * threads need real integration work because they're propositions, not
  * proper names, and a daily file is dominated by continuations of
- * existing markets rather than novel ones.
+ * existing stances rather than novel ones.
  *
  * This pass receives only slice threads that survived reconcileSemantic
  * as net-new (description-match merges already happened). It asks the
@@ -15,7 +15,7 @@
  * no continuity exists. Output augments the merge plan before commit;
  * downstream remap retargets the slice's threadDeltas onto the
  * existing thread ids so the daily file's evidence flows into the
- * established markets.
+ * established stances.
  *
  * Outcome and participant expansion happens mechanically after this
  * pass (Phase III.b) — when a slice thread is integrated into an
@@ -23,7 +23,7 @@
  * absorb the slice's contributions.
  */
 
-export const THREAD_INTEGRATION_SYSTEM = `You integrate newly-extracted thread propositions from a daily ingest into the existing narrative's open threads. The default stance is CONTINUATION-FIRST: daily intake is almost always advancing existing markets, not opening new questions. For each candidate slice thread, identify the existing thread it materially advances. Mark a slice thread NOVEL only when its central question, participants, and outcomes have no continuity to anything existing. Return only valid JSON using numeric ids.`;
+export const THREAD_INTEGRATION_SYSTEM = `You integrate newly-extracted thread propositions from a daily ingest into the existing narrative's open threads. The default stance is CONTINUATION-FIRST: daily intake is almost always advancing existing stances, not opening new questions. For each candidate slice thread, identify the existing thread it materially advances. Mark a slice thread NOVEL only when its central question, participants, and outcomes have no continuity to anything existing. Return only valid JSON using numeric ids.`;
 
 type AlignmentThread = {
   description: string;
@@ -63,7 +63,7 @@ export function buildThreadIntegrationPrompt(
     .join('\n');
 
   return `<inputs>
-  <slice-candidates count="${sliceCandidates.length}" note="Threads newly extracted from a daily ingest. Most are likely continuations of existing markets.">
+  <slice-candidates count="${sliceCandidates.length}" note="Threads newly extracted from a daily ingest. Most are likely continuations of existing stances.">
 ${sliceXml}
   </slice-candidates>
   <existing-open-threads count="${existingOpenThreads.length}" note="Open narrative threads the slice candidates may continue.">
@@ -74,7 +74,7 @@ ${existingXml}
 <instructions>
   <task>For each slice candidate, determine whether it materially advances one of the existing open threads (CONTINUES) or asks a question with no continuity to any existing thread (NOVEL).</task>
 
-  <guiding-principle>Default to CONTINUES. Daily ingest content overwhelmingly advances markets the narrative is already running. Mark NOVEL only when the slice thread's central question, participants, scope, AND outcomes share nothing materially with any existing thread.</guiding-principle>
+  <guiding-principle>Default to CONTINUES. Daily ingest content overwhelmingly advances stances the narrative is already running. Mark NOVEL only when the slice thread's central question, participants, scope, AND outcomes share nothing materially with any existing thread.</guiding-principle>
 
   <continues-when>
     <example>Slice thread asks the same central question as an existing thread, with the same participants — even if phrased differently.</example>
@@ -86,7 +86,7 @@ ${existingXml}
 
   <novel-when hint="All of these must hold for NOVEL.">
     <example>Different participants — no overlap of core actors with any existing thread.</example>
-    <example>Different domain — a market on capability is not a continuation of a market on intent.</example>
+    <example>Different domain — a stance on capability is not a continuation of a stance on intent.</example>
     <example>Different time horizon — a question about long-term institutional drift is not a continuation of a question about a single decision.</example>
     <example>Outcomes don't fit — the slice thread's possible resolutions cannot be mapped onto any existing thread's outcome set.</example>
   </novel-when>

@@ -19,7 +19,7 @@ function mkThread(overrides: Partial<Thread> = {}): Thread {
     description: 'Test thread',
     participants: [],
     outcomes,
-    beliefs: {
+    stances: {
       [NARRATOR_AGENT_ID]: {
         logits: new Array(outcomes.length).fill(0),
         volume: 2,
@@ -46,7 +46,7 @@ describe('classifyThreadCategory — terminal states', () => {
 
   it('returns abandoned when volume decayed below the floor', () => {
     const t = mkThread({
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: 0.05, volatility: 0 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: 0.05, volatility: 0 } },
     });
     expect(classifyThreadCategory(t)).toBe('abandoned');
   });
@@ -55,14 +55,14 @@ describe('classifyThreadCategory — terminal states', () => {
 describe('classifyThreadCategory — shape-based categories', () => {
   it('saturating fires when margin is in the near-closed band', () => {
     const t = mkThread({
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [1.25, -1.25], volume: 3, volatility: 0 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [1.25, -1.25], volume: 3, volatility: 0 } },
     });
     expect(classifyThreadCategory(t)).toBe('saturating');
   });
 
   it('committed fires when one outcome clearly leads but margin is below saturating', () => {
     const t = mkThread({
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [0.5, -0.5], volume: 2, volatility: 0 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [0.5, -0.5], volume: 2, volatility: 0 } },
     });
     expect(classifyThreadCategory(t)).toBe('committed');
   });
@@ -70,7 +70,7 @@ describe('classifyThreadCategory — shape-based categories', () => {
   it('contested fires when entropy is high and volume is present', () => {
     const t = mkThread({
       outcomes: ['a', 'b', 'c', 'd'],
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [0, 0, 0, 0], volume: 3, volatility: 0 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [0, 0, 0, 0], volume: 3, volatility: 0 } },
     });
     expect(classifyThreadCategory(t)).toBe('contested');
   });
@@ -79,7 +79,7 @@ describe('classifyThreadCategory — shape-based categories', () => {
 describe('classifyThreadCategory — volatile via EWMA spike', () => {
   it('fires when EWMA volatility crosses the threshold', () => {
     const t = mkThread({
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [0.3, -0.3], volume: 2, volatility: 0.6 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [0.3, -0.3], volume: 2, volatility: 0.6 } },
     });
     expect(classifyThreadCategory(t)).toBe('volatile');
   });
@@ -96,12 +96,12 @@ describe('classifyThreadCategory — volatile via windowed log energy', () => {
       'T-1:S-4': mkLogNode('T-1:S-4', [{ outcome: 'yes', evidence: 2 }]),
     };
     const t = mkThread({
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [3, -3], volume: 2, volatility: 0.15 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [3, -3], volume: 2, volatility: 0.15 } },
       threadLog: { nodes, edges: [] },
       closedAt: undefined,
     });
     // Sanity: volatility is below threshold on its own.
-    expect(t.beliefs[NARRATOR_AGENT_ID].volatility).toBeLessThan(CATEGORY_THRESHOLDS.volatileMin);
+    expect(t.stances[NARRATOR_AGENT_ID].volatility).toBeLessThan(CATEGORY_THRESHOLDS.volatileMin);
     // But windowed energy catches it.
     expect(computeRecentLogitEnergy(t)).toBeGreaterThanOrEqual(CATEGORY_THRESHOLDS.volatileRecentEnergy);
     // Margin here (= 6) is above TAU_CLOSE so the thread would normally close,
@@ -117,7 +117,7 @@ describe('classifyThreadCategory — volatile via windowed log energy', () => {
       'T-1:S-2': mkLogNode('T-1:S-2', [{ outcome: 'yes', evidence: 1 }]),
     };
     const t = mkThread({
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: [0.1, -0.1], volume: 2, volatility: 0.1 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: [0.1, -0.1], volume: 2, volatility: 0.1 } },
       threadLog: { nodes, edges: [] },
     });
     expect(classifyThreadCategory(t)).not.toBe('volatile');
@@ -133,7 +133,7 @@ describe('classifyThreadCategory — developing vs dormant', () => {
   it('developing when recently touched and no decisive shape (with scene context)', () => {
     const t = mkThread({
       outcomes: ['a', 'b', 'c'],
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
     });
     expect(classifyThreadCategory(t, { scenesSinceTouch: 1 })).toBe('developing');
   });
@@ -141,7 +141,7 @@ describe('classifyThreadCategory — developing vs dormant', () => {
   it('dormant when touch is older than the recency window (with scene context)', () => {
     const t = mkThread({
       outcomes: ['a', 'b', 'c'],
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
     });
     expect(classifyThreadCategory(t, { scenesSinceTouch: 10 })).toBe('dormant');
   });
@@ -149,7 +149,7 @@ describe('classifyThreadCategory — developing vs dormant', () => {
   it('dormant when never touched (scenesSinceTouch = Infinity)', () => {
     const t = mkThread({
       outcomes: ['a', 'b', 'c'],
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0 } },
     });
     expect(classifyThreadCategory(t, { scenesSinceTouch: Infinity })).toBe('dormant');
   });
@@ -160,7 +160,7 @@ describe('classifyThreadCategory — developing vs dormant', () => {
     };
     const t = mkThread({
       outcomes: ['a', 'b', 'c'],
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
       threadLog: { nodes, edges: [] },
     });
     expect(classifyThreadCategory(t)).toBe('developing');
@@ -169,7 +169,7 @@ describe('classifyThreadCategory — developing vs dormant', () => {
   it('without scene context: dormant when log is empty', () => {
     const t = mkThread({
       outcomes: ['a', 'b', 'c'],
-      beliefs: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
+      stances: { [NARRATOR_AGENT_ID]: { logits: MODERATE_LOGITS, volume: 2, volatility: 0.1 } },
     });
     expect(classifyThreadCategory(t)).toBe('dormant');
   });
@@ -191,7 +191,7 @@ describe('classifyThreadCategory — screenshot regression', () => {
       description: 'Can Alice navigate the absurdities of Wonderland?',
       participants: [],
       outcomes: ['trapped', 'loses identity', 'adapts', 'escapes'],
-      beliefs: {
+      stances: {
         [NARRATOR_AGENT_ID]: {
           // Logits roughly matching the 60/17/17/6 screenshot distribution.
           logits: [1.25, 0.0, 0.0, -1.0],

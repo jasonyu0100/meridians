@@ -14,7 +14,7 @@
  */
 
 import { getRelationshipsAtScene } from "@/lib/scene-filter";
-import { getEffectivePovId, getMarketProbs, isThreadAbandoned, isThreadClosed } from "@/lib/narrative-utils";
+import { getEffectivePovId, getStanceProbs, isThreadAbandoned, isThreadClosed } from "@/lib/narrative-utils";
 import { NARRATOR_AGENT_ID } from "@/types/narrative";
 import type {
   Artifact,
@@ -298,7 +298,7 @@ function exportFullThreads(narrative: NarrativeState): string {
 
   if (active.length > 0) {
     lines.push("", `## Active threads (${active.length})`);
-    for (const t of sortBy(active, (t) => -1 * (t.beliefs?.[NARRATOR_AGENT_ID]?.volume ?? 0))) {
+    for (const t of sortBy(active, (t) => -1 * (t.stances?.[NARRATOR_AGENT_ID]?.volume ?? 0))) {
       lines.push(threadLine(t));
     }
   }
@@ -316,7 +316,7 @@ function threadLine(t: Thread): string {
     : isThreadAbandoned(t)
       ? "abandoned"
       : (() => {
-          const probs = getMarketProbs(t);
+          const probs = getStanceProbs(t);
           const topIdx = probs.indexOf(Math.max(...probs));
           return `top=${t.outcomes[topIdx]} (${(probs[topIdx] ?? 0).toFixed(2)})`;
         })();

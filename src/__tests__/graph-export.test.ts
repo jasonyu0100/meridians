@@ -167,7 +167,7 @@ describe("exportGraphView", () => {
       id,
       description,
       outcomes: ["yes", "no"],
-      beliefs: {
+      stances: {
         narrator: { logits: [0, 0], volume: 2, volatility: 0, lastTouchedScene: "S-0" },
       },
       participants: [],
@@ -196,7 +196,7 @@ describe("exportGraphView", () => {
     const char = makeChar("C-1", "anchor", "Anchor");
     char.world = {
       nodes: {
-        n1: { id: "n1", type: "belief", content: "change is possible" },
+        n1: { id: "n1", type: "opinion", content: "change is possible" },
         n2: { id: "n2", type: "history", content: "raised in exile" },
       },
       edges: [],

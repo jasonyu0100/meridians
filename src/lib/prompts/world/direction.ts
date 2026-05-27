@@ -15,7 +15,7 @@ ${args.narrativeContext}
 <instructions>
   <step name="analyze">Based on the full scene history, suggest the direction for the NEXT arc that best moves what is already in motion.</step>
   <consider>
-    <factor>Unresolved thread markets, their probability distributions, and which outcomes are contested vs. saturating.</factor>
+    <factor>Unresolved stances, their probability distributions, and which outcomes are contested vs. saturating.</factor>
     <factor>Entity tensions and relationship dynamics — including, where the narrative is rule-driven, the modelled state of agents under the rule set and the trajectories the rules are forcing.</factor>
     <factor>Narrative momentum — what has been building (dramatic, evidentiary, argumentative, or rule-driven)?</factor>
     <factor>What would create the most significant development the source's own logic supports?</factor>

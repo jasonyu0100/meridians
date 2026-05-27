@@ -226,7 +226,7 @@ const PARADIGM_CHRONOLOGICAL_RECORD = `<chronological-record-shape critical="tru
 
   <discipline>
     <rule name="entries-are-time-stamped" critical="true">Every entry's summary leads with a TIME marker matching the chosen velocity (a date, a month-year, a year, or a range). The time IS structurally load-bearing — entries are not just ordered, they're DATED.</rule>
-    <rule name="what-changed-not-arc">An entry records WHAT HAPPENED and WHAT CHANGED in this time-step. World deltas track entity state evolution; system deltas track rule / institution / pattern changes. There is no scene-level "fate market" — events happen, the chronicler logs them.</rule>
+    <rule name="what-changed-not-arc">An entry records WHAT HAPPENED and WHAT CHANGED in this time-step. World deltas track entity state evolution; system deltas track rule / institution / pattern changes. There is no scene-level "fate stance" — events happen, the chronicler logs them.</rule>
     <rule name="threads-are-trajectories">Threads in Record are LONG-RUNNING TRAJECTORIES tracked across entries — a war's progression, a market's trend, a person's career arc, a doctrine's evolution. They accumulate evidence over many entries; they don't "close" with a payoff in the dramatic sense, though their state can reach a terminal point (war ends, person dies, doctrine is replaced).</rule>
     <rule name="chronicler-voice">The chronicler records — they do not editorialise heavily. The voice is documentary, not argumentative (if you want argument, pick ESSAY). Quotes are quoted, not invented; gaps in the record are named.</rule>
     <rule name="velocity-coherence">Once the velocity is chosen, entries respect it. A daily chronicle does not skip days silently (mark gaps); a yearly chronicle does not detour into a single afternoon's hour-by-hour (that's a flag to switch to dynamic velocity). When dynamic, the velocity shifts ARE the editorial signal — readers learn to read density as importance.</rule>
@@ -406,7 +406,7 @@ Return JSON with this exact structure:
     {"id": "L-1", "name": "Location name from geography, founders, or corrupted older words — concrete and specific", "prominence": "domain|place|margin", "parentId": null, "threadIds": [], "imagePrompt": "1-2 sentence LITERAL visual description — concrete architecture, landscape, lighting. No metaphors or figurative language; image generators interpret literally.", "world": {"nodes": [{"id": "LK-1", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness", "content": "15-25 words, PRESENT tense: a stable fact about this location — history, rules, dangers, atmosphere, or properties"}]}}
   ],
   "threads": [
-    {"id": "T-1", "participants": [{"id": "C-1", "type": "character|location|artifact"}], "description": "Frame as a QUESTION: 'Will X succeed?' 'Can Y be trusted?' 'What is the truth behind Z?' — 15-30 words, specific", "outcomes": ["Named possibilities the market prices. Binary default: ['yes','no']. Multi-outcome when resolution is N-way. Must be distinct, mutually exclusive, 2–6 entries."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes, medium = within an arc, long = multi-arc, epic = work-spanning or open-ended. Drives evidence-magnitude attenuation downstream — pick honestly.", "openedAt": "S-1", "dependents": []}
+    {"id": "T-1", "participants": [{"id": "C-1", "type": "character|location|artifact"}], "description": "Frame as a QUESTION: 'Will X succeed?' 'Can Y be trusted?' 'What is the truth behind Z?' — 15-30 words, specific", "outcomes": ["Named possibilities the stance prices. Binary default: ['yes','no']. Multi-outcome when resolution is N-way. Must be distinct, mutually exclusive, 2–6 entries."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes, medium = within an arc, long = multi-arc, epic = work-spanning or open-ended. Drives evidence-magnitude attenuation downstream — pick honestly.", "openedAt": "S-1", "dependents": []}
   ],
   "relationshipDeltas": [
     {"from": "C-1", "to": "C-2", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.5}
@@ -428,7 +428,7 @@ Return JSON with this exact structure:
       "timeDelta": {"value": 1, "unit": "hour"},
       "artifactUsages": [{"artifactId": "A-XX", "characterId": "C-XX", "usage": "what the artifact did — how it delivered utility"}],
       "events": ["event_tag"],
-      "threadDeltas": [{"threadId": "T-1", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the market"], "rationale": "thread-specific prose sentence (10-20 words) — what the scene does to this thread in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
+      "threadDeltas": [{"threadId": "T-1", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if this scene opens a possibility not previously in the stance"], "rationale": "thread-specific prose sentence (10-20 words) — what the scene does to this thread in natural language. Do NOT quote outcome identifiers, mention evidence numbers, or reference logType."}],
       "worldDeltas": [{"entityId": "C-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, PRESENT tense: a stable fact about the entity — what they experienced, became, or now possess", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
       "relationshipDeltas": [],
       "systemDeltas": {"addedNodes": [{"id": "SYS-GEN-1", "concept": "15-25 words, PRESENT tense: a general rule or structural fact about how the world works — no specific characters or events", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"from": "SYS-GEN-1", "to": "SYS-GEN-2", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]},
@@ -508,12 +508,12 @@ Return JSON with this exact structure:
     <shape id="discrete-resolution" seed="1-2">
       <intent>A concrete question with a clean answer. Resolves within 1-3 arcs when the evidence is in.</intent>
       <outcomes>Usually binary or small-N — "What grade aperture does X have?" → {A, B, C, D}.</outcomes>
-      <market-behaviour>Goes from high uncertainty to collapse in a single decisive scene; once answered, it closes and stays closed.</market-behaviour>
+      <stance-behaviour>Goes from high uncertainty to collapse in a single decisive scene; once answered, it closes and stays closed.</stance-behaviour>
       <placement>Early-arc hooks.</placement>
     </shape>
     <shape id="slow-burn" seed="1-2">
       <intent>Stays genuinely uncertain across many arcs.</intent>
-      <market-behaviour>Oscillates and re-prices but doesn't close until structural conditions align late in the work.</market-behaviour>
+      <stance-behaviour>Oscillates and re-prices but doesn't close until structural conditions align late in the work.</stance-behaviour>
       <example>Can the rebellion topple the regime?</example>
       <example>Does the theory survive the critical test case?</example>
       <placement>The narrative's middle spine.</placement>
@@ -524,7 +524,7 @@ Return JSON with this exact structure:
       <example>Can the anchor entity redeem their past?</example>
       <example>Will the anchor ever reconcile with the parent who shaped them?</example>
       <example>Is the field's foundational assumption defensible?</example>
-      <market-behaviour>May never close within the work's scope; probability drifts as events reshape the anchor's stance.</market-behaviour>
+      <stance-behaviour>May never close within the work's scope; probability drifts as events reshape the anchor's stance.</stance-behaviour>
       <maintenance>Need recurring small pulses to stay alive (volume decay is lethal); treat them as the narrative's weather, not its fate spine.</maintenance>
     </shape>
     <invariant>Within the same narrative, these shapes should read as distinctly different. A discrete-resolution thread that pulses through 20 scenes without resolving has been mis-shaped. A constant-tension thread that closes cleanly in arc 3 has been mis-shaped. Name the shape when you seed — match the question to the lifetime you intend.</invariant>

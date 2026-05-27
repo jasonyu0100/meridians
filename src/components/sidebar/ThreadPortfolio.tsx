@@ -4,7 +4,7 @@
  * ThreadPortfolio — sidebar pane mirroring SurveyPanel / InvestigationPanel
  * shape: top bar with a count, then a stream of thread cards.
  *
- * Top-level grouping matches MarketView's "In focus" / "Out of focus"
+ * Top-level grouping matches BeliefView's "In focus" / "Out of focus"
  * split: focused threads — the ones the engine identifies as carrying
  * the most narrative attention — surface above the rest. Each group is
  * collapsible so you can hide the half you don't care about. Within a
@@ -151,7 +151,7 @@ function ThreadCard({
 // ── Collapsible group ─────────────────────────────────────────────────────
 
 /** Header + collapsible body. The header is a hairline rule + label + count
- *  + chevron, modelled on MarketView's `renderSection` plus the toggle
+ *  + chevron, modelled on BeliefView's `renderSection` plus the toggle
  *  affordance the previous CollapsibleSection used. */
 function CollapsibleGroup({
   title,
@@ -213,12 +213,12 @@ export default function ThreadPortfolio() {
   const resolvedKeys = state.resolvedEntryKeys;
   const currentIndex = state.viewState.currentSceneIndex;
 
-  // Build a point-in-time narrative view where every thread's market state is
+  // Build a point-in-time narrative view where every thread's stance is
   // replayed scene-by-scene up to the user's current scene index. As the user
   // scrubs the timeline, probabilities, volume, and volatility visibly change
   // — the portfolio animates alongside the reader's position in the story.
   // Includes all threads in the narrative (not-yet-introduced ones appear at
-  // uniform prior) — matches the graph / market views.
+  // uniform prior) — matches the graph / belief views.
   const scrubbedNarrative = useMemo(() => {
     if (!narrative) return null;
     const threadsAtIndex = replayThreadsAtIndex(narrative, resolvedKeys, currentIndex);
@@ -264,9 +264,9 @@ export default function ThreadPortfolio() {
   }
 
   // Partition by focus / not-focus. Within each group, sort by lifecycle so
-  // open markets surface before dormant / resolved / abandoned ones — and
+  // open stances surface before dormant / resolved / abandoned ones — and
   // by remaining margin tightness within the same lifecycle bucket (tighter
-  // markets carry more uncertainty and read as more interesting).
+  // stances carry more uncertainty and read as more interesting).
   const focusRows: PortfolioRow[] = [];
   const otherRows: PortfolioRow[] = [];
   for (const r of rows) {

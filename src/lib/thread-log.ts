@@ -1,33 +1,33 @@
 /**
- * Thread prediction-market application.
+ * Thread stance application.
  *
  * `applyThreadDelta` takes a ThreadDelta (evidence + logType + volumeDelta +
  * rationale) and produces:
- *   1. An updated Belief for the narrator — new logits via log-odds update,
- *      decayed + incremented volume, EWMA-updated volatility.
+ *   1. An updated narrator Stance — new logits via log-odds update, decayed
+ *      + incremented volume, EWMA-updated volatility.
  *   2. A new ThreadLog node appended (the prose-grade event record).
- *   3. Optional closure side-effect if the updated market satisfies both the
+ *   3. Optional closure side-effect if the updated stance satisfies both the
  *      margin condition and a committal logType.
  *
- * `decayUntouchedBeliefs` applies per-scene volume decay to threads the
- * current scene did NOT touch — runs before delta application so "touched
- * this scene" means "survived this scene's decay pass with a delta."
+ * `decayUntouchedStancesForScene` applies per-scene volume decay to threads
+ * the current scene did NOT touch — runs before delta application so
+ * "touched this scene" means "survived this scene's decay pass with a delta."
  */
 
-import type { Belief, Thread, ThreadDelta, ThreadLog, ThreadLogNode } from '@/types/narrative';
+import type { Stance, Thread, ThreadDelta, ThreadLog, ThreadLogNode } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
 import {
-  MARKET_EVIDENCE_SENSITIVITY,
-  MARKET_OPENING_MAX_LOGIT,
-  MARKET_OPENING_MIN_LOGIT,
-  MARKET_VOLATILITY_BETA,
-  MARKET_VOLUME_DECAY,
-  MARKET_TAU_CLOSE,
-  MARKET_OPENING_VOLUME,
+  STANCE_EVIDENCE_SENSITIVITY,
+  STANCE_OPENING_MAX_LOGIT,
+  STANCE_OPENING_MIN_LOGIT,
+  STANCE_VOLATILITY_BETA,
+  STANCE_VOLUME_DECAY,
+  STANCE_TAU_CLOSE,
+  STANCE_OPENING_VOLUME,
 } from '@/lib/constants';
 import {
   clampEvidence,
-  getMarketMargin,
+  getStanceMargin,
   normalizedEntropy,
   softmax,
 } from '@/lib/narrative-utils';
@@ -40,7 +40,7 @@ export const EMPTY_THREAD_LOG: ThreadLog = { nodes: {}, edges: [] };
  *  Input: `priorProbs` is a probability-like vector over outcomes — the LLM's
  *  best estimate of base rates before any story evidence, from the perspective
  *  of a neutral in-world observer. Output: centered log-odds clamped to the
- *  `MARKET_OPENING_MIN_LOGIT..MAX_LOGIT` guardrail so no outcome opens near
+ *  `STANCE_OPENING_MIN_LOGIT..MAX_LOGIT` guardrail so no outcome opens near
  *  saturation.
  *
  *  Falls back to uniform (zeros) whenever priors are absent, the wrong length,
@@ -67,17 +67,17 @@ export function deriveInitialLogits(
   const mean = raw.reduce((s, v) => s + v, 0) / raw.length;
   const centered = raw.map((v) => v - mean);
   return centered.map((v) =>
-    Math.max(MARKET_OPENING_MIN_LOGIT, Math.min(MARKET_OPENING_MAX_LOGIT, v)),
+    Math.max(STANCE_OPENING_MIN_LOGIT, Math.min(STANCE_OPENING_MAX_LOGIT, v)),
   );
 }
 
-/** Create a fresh narrator belief. Defaults to uniform logits (max entropy)
+/** Create a fresh narrator stance. Defaults to uniform logits (max entropy)
  *  when no priors supplied — pass `priorProbs` for in-world base-rate seeding. */
-export function newNarratorBelief(
+export function newNarratorStance(
   numOutcomes: number,
   initialVolume = 2,
   priorProbs?: readonly number[] | null,
-): Belief {
+): Stance {
   return {
     logits: deriveInitialLogits(numOutcomes, priorProbs),
     volume: initialVolume,
@@ -120,19 +120,19 @@ export function applyThreadDelta(
     }
   }
 
-  // Narrator belief — extend logits to match the (possibly-expanded) outcomes.
-  const existingBelief: Belief = thread.beliefs[NARRATOR_AGENT_ID]
-    ?? newNarratorBelief(expandedOutcomes.length);
-  const belief: Belief = existingBelief.logits.length < expandedOutcomes.length
+  // Narrator stance — extend logits to match the (possibly-expanded) outcomes.
+  const existingStance: Stance = thread.stances?.[NARRATOR_AGENT_ID]
+    ?? newNarratorStance(expandedOutcomes.length);
+  const stance: Stance = existingStance.logits.length < expandedOutcomes.length
     ? {
-        ...existingBelief,
+        ...existingStance,
         logits: [
-          ...existingBelief.logits,
-          ...new Array(expandedOutcomes.length - existingBelief.logits.length).fill(0),
+          ...existingStance.logits,
+          ...new Array(expandedOutcomes.length - existingStance.logits.length).fill(0),
         ],
       }
-    : existingBelief;
-  const prevLogits = belief.logits.slice();
+    : existingStance;
+  const prevLogits = stance.logits.slice();
 
   // Clamp + apply evidence to logits (against the expanded outcome list).
   const outcomeIndex = new Map<string, number>();
@@ -143,20 +143,20 @@ export function applyThreadDelta(
     const idx = outcomeIndex.get(u.outcome);
     if (idx === undefined) continue;
     const e = clampEvidence(u.evidence);
-    const shift = e / MARKET_EVIDENCE_SENSITIVITY;
+    const shift = e / STANCE_EVIDENCE_SENSITIVITY;
     newLogits[idx] += shift;
     if (Math.abs(shift) > maxAbsShift) maxAbsShift = Math.abs(shift);
   }
 
   // Volume — incoming delta adds, floor at 0.
   const volumeDelta = typeof delta.volumeDelta === 'number' ? delta.volumeDelta : 0;
-  const newVolume = Math.max(0, belief.volume + volumeDelta);
+  const newVolume = Math.max(0, stance.volume + volumeDelta);
 
   // Volatility — EWMA on max-logit-shift this scene.
-  const newVolatility = MARKET_VOLATILITY_BETA * belief.volatility
-    + (1 - MARKET_VOLATILITY_BETA) * maxAbsShift;
+  const newVolatility = STANCE_VOLATILITY_BETA * stance.volatility
+    + (1 - STANCE_VOLATILITY_BETA) * maxAbsShift;
 
-  const updatedBelief: Belief = {
+  const updatedStance: Stance = {
     logits: newLogits,
     volume: newVolume,
     volatility: newVolatility,
@@ -167,7 +167,7 @@ export function applyThreadDelta(
   // The canonical information-theoretic gain from evidence is the
   // Kullback–Leibler divergence from prior to posterior,
   //   D_KL(p⁺ ‖ p⁻) = Σ_k p⁺(k) · log(p⁺(k) / p⁻(k))
-  // which measures how many nats the narrator's belief moved. It reduces
+  // which measures how many nats the narrator's stance moved. It reduces
   // to entropy change for small shifts and grows unboundedly as the
   // posterior approaches certainty — capturing closure, twists, and quiet
   // confirmations in a single quantity, with no tuning constants.
@@ -180,7 +180,7 @@ export function applyThreadDelta(
     if (q > 1e-12 && p > 1e-12) kl += q * Math.log(q / p);
   }
   const infoGain = Math.max(0, kl);
-  const preVolume = belief.volume;
+  const preVolume = stance.volume;
   // Buildup proxy: how many log entries preceded this one on the same
   // thread. No longer used by the elegant fate formula (closure is handled
   // by KL's natural unboundedness), but retained on the log node for
@@ -198,8 +198,8 @@ export function applyThreadDelta(
   );
   const sortedL = newLogits.slice().sort((a, b) => b - a);
   const marginEarly = sortedL.length >= 2 ? sortedL[0] - sortedL[1] : 0;
-  const volumeRatioEarly = Math.max(1, newVolume / MARKET_OPENING_VOLUME);
-  const tauEffectiveEarly = MARKET_TAU_CLOSE * (1 + Math.log(volumeRatioEarly) / 3);
+  const volumeRatioEarly = Math.max(1, newVolume / STANCE_OPENING_VOLUME);
+  const tauEffectiveEarly = STANCE_TAU_CLOSE * (1 + Math.log(volumeRatioEarly) / 3);
   const willClose =
     !thread.closedAt &&
     committalEarly &&
@@ -241,19 +241,19 @@ export function applyThreadDelta(
     nextLog.edges.push({ from: prevId, to: nodeId, relation: 'co_occurs' });
   }
 
-  // If outcomes expanded, also extend any *other* agents' beliefs so all
-  // belief vectors keep matching the canonical outcome list length. Phase 1
-  // only has narrator; Phase 5 per-character beliefs will already fit here.
-  const nextBeliefs: Thread['beliefs'] = { ...thread.beliefs, [NARRATOR_AGENT_ID]: updatedBelief };
+  // If outcomes expanded, also extend any *other* agents' stances so all
+  // stance vectors keep matching the canonical outcome list length. Phase 1
+  // only has narrator; Phase 5 per-character stances will already fit here.
+  const nextStances: Thread['stances'] = { ...thread.stances, [NARRATOR_AGENT_ID]: updatedStance };
   if (addedOutcomes.length > 0) {
-    for (const [agentId, agentBelief] of Object.entries(nextBeliefs)) {
+    for (const [agentId, agentStance] of Object.entries(nextStances)) {
       if (agentId === NARRATOR_AGENT_ID) continue;
-      if (agentBelief.logits.length < expandedOutcomes.length) {
-        nextBeliefs[agentId] = {
-          ...agentBelief,
+      if (agentStance.logits.length < expandedOutcomes.length) {
+        nextStances[agentId] = {
+          ...agentStance,
           logits: [
-            ...agentBelief.logits,
-            ...new Array(expandedOutcomes.length - agentBelief.logits.length).fill(0),
+            ...agentStance.logits,
+            ...new Array(expandedOutcomes.length - agentStance.logits.length).fill(0),
           ],
         };
       }
@@ -263,7 +263,7 @@ export function applyThreadDelta(
   const next: Thread = {
     ...thread,
     outcomes: expandedOutcomes,
-    beliefs: nextBeliefs,
+    stances: nextStances,
     threadLog: nextLog,
   };
 
@@ -273,15 +273,15 @@ export function applyThreadDelta(
   // with accumulated volume so high-attention threads need proportionally
   // more decisive finishes.
   if (willClose) {
-    const { topIdx } = getMarketMargin(next);
+    const { topIdx } = getStanceMargin(next);
     next.closedAt = sceneId;
     next.closeOutcome = topIdx;
     next.resolutionQuality = computeResolutionQuality({
       peakEvidence: peakEvidenceEarly,
       margin: marginEarly,
       tauEffective: tauEffectiveEarly,
-      volume: updatedBelief.volume,
-      logits: updatedBelief.logits,
+      volume: updatedStance.volume,
+      logits: updatedStance.logits,
     });
   }
 
@@ -309,7 +309,7 @@ function computeResolutionQuality(args: {
   const evidenceScore = Math.min(1, args.peakEvidence / 4);
   const marginExcess = Math.max(0, args.margin - args.tauEffective);
   const marginScore = Math.min(1, marginExcess / args.tauEffective + 0.5); // 0.5 at exact threshold, 1.0 at 1.5× threshold
-  const volumeScore = Math.min(1, args.volume / (MARKET_OPENING_VOLUME * 5));
+  const volumeScore = Math.min(1, args.volume / (STANCE_OPENING_VOLUME * 5));
   const probs = softmax(args.logits);
   const concentrationScore = 1 - normalizedEntropy(probs);
   const product = evidenceScore * marginScore * volumeScore * concentrationScore;
@@ -317,20 +317,20 @@ function computeResolutionQuality(args: {
   return Math.round(quality * 100) / 100;
 }
 
-/** Apply volume decay to a belief for a scene it did NOT receive evidence in.
+/** Apply volume decay to a stance for a scene it did NOT receive evidence in.
  *  Volatility also decays toward 0 naturally via the EWMA (incoming shift=0). */
-export function decayUntouchedBelief(belief: Belief): Belief {
+export function decayUntouchedStance(stance: Stance): Stance {
   return {
-    ...belief,
-    volume: belief.volume * MARKET_VOLUME_DECAY,
-    volatility: MARKET_VOLATILITY_BETA * belief.volatility,
+    ...stance,
+    volume: stance.volume * STANCE_VOLUME_DECAY,
+    volatility: STANCE_VOLATILITY_BETA * stance.volatility,
   };
 }
 
-/** Decay every narrator belief for a thread the scene didn't touch. Returns a
- *  modified threads map. Threads touched this scene are passed through
+/** Decay the narrator stance on every thread the scene didn't touch. Returns
+ *  a modified threads map. Threads touched this scene are passed through
  *  unchanged — applyThreadDelta handles their bookkeeping. */
-export function decayUntouchedBeliefsForScene(
+export function decayUntouchedStancesForScene(
   threads: Record<string, Thread>,
   touchedThreadIds: Set<string>,
 ): Record<string, Thread> {
@@ -340,14 +340,14 @@ export function decayUntouchedBeliefsForScene(
       out[id] = t;
       continue;
     }
-    const belief = t.beliefs[NARRATOR_AGENT_ID];
-    if (!belief) {
+    const stance = t.stances?.[NARRATOR_AGENT_ID];
+    if (!stance) {
       out[id] = t;
       continue;
     }
     out[id] = {
       ...t,
-      beliefs: { ...t.beliefs, [NARRATOR_AGENT_ID]: decayUntouchedBelief(belief) },
+      stances: { ...t.stances, [NARRATOR_AGENT_ID]: decayUntouchedStance(stance) },
     };
   }
   return out;

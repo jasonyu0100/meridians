@@ -302,7 +302,7 @@ export function buildGameTheoryChatPrompt(
       "ELO uses a continuous margin-of-victory score — a +4/−4 crush is a full win (margin ≈ 1.0), a +1/0 edge nudges (~0.56), a tie is 0.5. Quoted ELO deltas reflect that margin, not raw W/L",
       "axis classifies what the players are negotiating over (disclosure = will X tell Y? trust = does Y trust X?). Use axis to talk about a scene's strategic stakes without quoting the game-type taxonomy",
       "W / L / D in the rankings is from each player's own perspective — when a player is B, the score has been inverted, so 'wins' always means wins for that player",
-      "structural claims ('this market is contested', 'this character extracts from every coordination game') should be anchored in specific scene indices, specific matrix cells, and the rationale text; don't generalise beyond what the games actually show",
+      "structural claims ('this stance is contested', 'this character extracts from every coordination game') should be anchored in specific scene indices, specific matrix cells, and the rationale text; don't generalise beyond what the games actually show",
     ],
     {
       narrative,

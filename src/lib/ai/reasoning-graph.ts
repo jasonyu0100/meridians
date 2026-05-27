@@ -26,7 +26,7 @@ import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext, getStateAtIndex } from "./context";
 import { parseJson } from "./json";
-import { buildCumulativeSystemGraph, getMarketProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/narrative-utils";
+import { buildCumulativeSystemGraph, getStanceProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/narrative-utils";
 import { classifyThreadCategory, computeRecentLogitEnergy, THREAD_CATEGORY_GUIDANCE, formatThreadGuidance } from "@/lib/thread-category";
 import { applyDerivedForceModes } from "@/lib/auto-engine";
 import { logError, logWarning } from "@/lib/system-logger";
@@ -166,10 +166,10 @@ function renderActiveThreadsWithInfluence(
   return Object.values(narrative.threads)
     .filter((t) => !isThreadClosed(t) && !isThreadAbandoned(t))
     .map((t) => {
-      const probs = getMarketProbs(t);
+      const probs = getStanceProbs(t);
       const top = probs.indexOf(Math.max(...probs));
       const topProb = probs[top] ?? 0;
-      const belief = t.beliefs?.narrator;
+      const belief = t.stances?.narrator;
       const vol = belief?.volume ?? 0;
       const silent = resolvedKeys && currentIndex !== undefined
         ? scenesSinceTouched(t, resolvedKeys, currentIndex)
@@ -459,9 +459,9 @@ export const VALID_COORDINATION_NODE_TYPES = new Set<CoordinationNodeType>([
 export type ThreadTarget = {
   threadId: string;
   /** What the plan wants this thread's market to do. */
-  marketIntent: "advance" | "escalate" | "close" | "twist" | "maintain" | "abandon";
+  stanceIntent: "advance" | "escalate" | "close" | "twist" | "maintain" | "abandon";
   /** For advance/close/twist: which outcome label. */
-  marketOutcome?: string;
+  stanceOutcome?: string;
   /** When in the plan this should happen */
   timing?: "early" | "mid" | "late" | "final";
 };
@@ -530,7 +530,7 @@ export async function generateCoordinationPlan(
       const logNodes = Object.values(t.threadLog?.nodes ?? {});
       const recentLog = logNodes.slice(-3).map(n => n.content).join(" → ");
       const momentum = recentLog ? ` | momentum: ${recentLog}` : "";
-      const probs = getMarketProbs(t);
+      const probs = getStanceProbs(t);
       const topIdx = probs.indexOf(Math.max(...probs));
       const marketSummary = `top=${t.outcomes[topIdx]} (${(probs[topIdx] ?? 0).toFixed(2)})`;
       return `- [${t.id}] "${t.description}" — ${marketSummary}, participants: ${participantNames}${momentum}`;
@@ -652,8 +652,8 @@ export async function generateCoordinationPlan(
         const thread = narrative.threads[t.threadId];
         const desc = thread?.description ?? t.threadId;
         const timing = t.timing ? ` timing="${t.timing}"` : "";
-        const outcome = t.marketOutcome ? ` outcome="${t.marketOutcome.replace(/"/g, '&quot;')}"` : "";
-        return `      <thread-target thread-id="${t.threadId}" intent="${t.marketIntent}"${outcome}${timing}>${desc}</thread-target>`;
+        const outcome = t.stanceOutcome ? ` outcome="${t.stanceOutcome.replace(/"/g, '&quot;')}"` : "";
+        return `      <thread-target thread-id="${t.threadId}" intent="${t.stanceIntent}"${outcome}${timing}>${desc}</thread-target>`;
       }).join("\n")
     : "";
 
@@ -767,8 +767,8 @@ export async function generateCoordinationPlan(
         entityId: typeof n.entityId === "string" ? n.entityId : undefined,
         threadId: typeof n.threadId === "string" ? n.threadId : undefined,
         systemNodeId: typeof n.systemNodeId === "string" ? n.systemNodeId : undefined,
-        marketIntent: typeof n.marketIntent === "string" ? n.marketIntent : undefined,
-        marketOutcome: typeof n.marketOutcome === "string" ? n.marketOutcome : undefined,
+        stanceIntent: typeof n.stanceIntent === "string" ? n.stanceIntent : undefined,
+        stanceOutcome: typeof n.stanceOutcome === "string" ? n.stanceOutcome : undefined,
         arcIndex: typeof n.arcIndex === "number" ? n.arcIndex : undefined,
         sceneCount: typeof n.sceneCount === "number" ? n.sceneCount : undefined,
         forceMode: typeof n.forceMode === "string" ? n.forceMode : undefined,

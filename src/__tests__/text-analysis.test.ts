@@ -19,17 +19,17 @@ vi.mock('@/lib/constants', () => ({
   MAX_TOKENS_DEFAULT: 4096,
   ANALYSIS_TEMPERATURE: 0.7,
   // Market constants consumed by narrative-utils (isThreadAbandoned, etc.)
-  MARKET_ABANDON_VOLUME: 0.5,
-  MARKET_NEAR_CLOSED_MIN: 2,
-  MARKET_TAU_CLOSE: 3,
-  MARKET_VOLATILITY_BETA: 0.6,
-  MARKET_VOLUME_DECAY: 0.9,
-  MARKET_RECENCY_DECAY: 0.95,
-  MARKET_EVIDENCE_MIN: -4,
-  MARKET_EVIDENCE_MAX: 4,
-  MARKET_EVIDENCE_SENSITIVITY: 2,
-  MARKET_OPENING_VOLUME: 2,
-  MARKET_FOCUS_K: 6,
+  STANCE_ABANDON_VOLUME: 0.5,
+  STANCE_NEAR_CLOSED_MIN: 2,
+  STANCE_TAU_CLOSE: 3,
+  STANCE_VOLATILITY_BETA: 0.6,
+  STANCE_VOLUME_DECAY: 0.9,
+  STANCE_RECENCY_DECAY: 0.95,
+  STANCE_EVIDENCE_MIN: -4,
+  STANCE_EVIDENCE_MAX: 4,
+  STANCE_EVIDENCE_SENSITIVITY: 2,
+  STANCE_OPENING_VOLUME: 2,
+  STANCE_FOCUS_K: 6,
 }));
 // Mock api-logger
 vi.mock('@/lib/api-logger', () => ({
@@ -97,7 +97,7 @@ function createMockAnalysisResult(index: number, overrides: Partial<AnalysisChun
         worldDeltas: [
           {
             entityName: `Character${index}`,
-            addedNodes: [{ content: 'Learned something important', type: 'belief' }],
+            addedNodes: [{ content: 'Learned something important', type: 'opinion' }],
           },
         ],
         relationshipDeltas: [],

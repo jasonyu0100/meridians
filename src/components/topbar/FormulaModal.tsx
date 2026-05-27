@@ -47,14 +47,14 @@ function ForcesTab() {
       <S title="Fate — possibility" analogy="How much did this scene reshape the live space of what could still happen? Odds moving on open questions.">
         <Block tex={String.raw`F_i = \sum_{t \in \Delta_i} v_t \cdot D_{\text{KL}}\!\left(\mathbf{p}_t^{+} \,\Big\|\, \mathbf{p}_t^{-}\right)`} />
         <p className="text-[10px] text-text-dim">
-          Threads are prediction markets over named outcomes. <Tex>{String.raw`\mathbf{p}_t^{-}, \mathbf{p}_t^{+}`}</Tex> = narrator&apos;s prior and posterior distributions over thread <Tex>t</Tex>&apos;s outcomes (softmax of logits, before and after the scene). <Tex>v_t</Tex> = pre-scene volume (accumulated narrative attention). KL divergence scores how much the belief moved; attention weights which markets matter. Zero for pulses (<Tex>{String.raw`\mathbf{p}^{+} = \mathbf{p}^{-}`}</Tex>), large for twists and closures. Fate is a force of <em>possibility</em>, not probability &mdash; the market machinery is the accounting; reshaping the outcome space is the force.
+          Each thread is a QUESTION the world view is open on; its STANCE is the narrator&apos;s current bearing across the named outcomes. The world view&apos;s BELIEF is the aggregation of every open stance. <Tex>{String.raw`\mathbf{p}_t^{-}, \mathbf{p}_t^{+}`}</Tex> = the stance&apos;s prior and posterior distributions over thread <Tex>t</Tex>&apos;s outcomes (softmax of logits, before and after the scene). <Tex>v_t</Tex> = pre-scene volume (accumulated narrative attention on the thread). KL divergence scores how much the stance moved; attention weights which questions matter. Zero for pulses (<Tex>{String.raw`\mathbf{p}^{+} = \mathbf{p}^{-}`}</Tex>), large for twists and closures. Fate is a force of <em>possibility</em>, not probability &mdash; the stance machinery is the accounting; reshaping the outcome space is the force.
         </p>
       </S>
 
       <S title="World — physical" analogy="How much new was written onto the dossiers of specific people, places, and artifacts this scene?">
         <Block tex={String.raw`W = \Delta N_c + \sqrt{\Delta E_c}`} />
         <p className="text-[10px] text-text-dim">
-          Each entity (character, location, artifact) has its own dossier &mdash; a continuity graph of traits, beliefs, goals, secrets, capabilities, states. <Tex>{String.raw`\Delta N_c`}</Tex> = new entries across all dossiers this scene. <Tex>{String.raw`\Delta E_c`}</Tex> = new causal edges between entries. Nodes linear (each genuinely new ground); edges sqrt (first few connections matter most). Encyclopedic revelation about the people.
+          Each entity (character, location, artifact) has its own dossier &mdash; a continuity graph of traits, opinions, goals, secrets, capabilities, states. <Tex>{String.raw`\Delta N_c`}</Tex> = new entries across all dossiers this scene. <Tex>{String.raw`\Delta E_c`}</Tex> = new causal edges between entries. Nodes linear (each genuinely new ground); edges sqrt (first few connections matter most). Encyclopedic revelation about the people.
         </p>
       </S>
 

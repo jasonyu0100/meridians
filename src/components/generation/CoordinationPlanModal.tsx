@@ -728,11 +728,11 @@ export function CoordinationPlanModal({
                 )}
 
                 {/* Plan-specific fields */}
-                {(focusedNode.marketIntent || focusedNode.forceMode || focusedNode.sceneCount) && (
+                {(focusedNode.stanceIntent || focusedNode.forceMode || focusedNode.sceneCount) && (
                   <div className="space-y-1 pt-2 border-t border-border">
-                    {focusedNode.marketIntent && (
+                    {focusedNode.stanceIntent && (
                       <div className="text-xs text-text-dim">
-                        Intent: <span className="text-orange-400 font-medium">{focusedNode.marketIntent}{focusedNode.marketOutcome ? ` → ${focusedNode.marketOutcome}` : ''}</span>
+                        Intent: <span className="text-orange-400 font-medium">{focusedNode.stanceIntent}{focusedNode.stanceOutcome ? ` → ${focusedNode.stanceOutcome}` : ''}</span>
                       </div>
                     )}
                     {focusedNode.forceMode && (

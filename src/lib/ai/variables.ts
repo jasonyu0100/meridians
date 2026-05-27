@@ -181,16 +181,16 @@ function renderThreadsBlock(src: VariablesContextSource): string {
           p.id,
       )
       .join(", ");
-    const beliefs =
-      t.beliefs?.["__NARRATOR__"] ?? Object.values(t.beliefs ?? {})[0];
+    const stance =
+      t.stances?.["__NARRATOR__"] ?? Object.values(t.stances ?? {})[0];
     let priceLine = "";
     if (
-      beliefs &&
-      Array.isArray(beliefs.logits) &&
-      t.outcomes.length === beliefs.logits.length
+      stance &&
+      Array.isArray(stance.logits) &&
+      t.outcomes.length === stance.logits.length
     ) {
-      const max = Math.max(...beliefs.logits);
-      const exps = beliefs.logits.map((l) => Math.exp(l - max));
+      const max = Math.max(...stance.logits);
+      const exps = stance.logits.map((l) => Math.exp(l - max));
       const sum = exps.reduce((a, b) => a + b, 0) || 1;
       const probs = exps.map((e) => e / sum);
       const top = probs
@@ -373,7 +373,7 @@ export interface ExtractPresentResult {
   considered?: string;
   breaks?: string;
   opens?: string;
-  /** Self-estimated log-prior in MARKET_EVIDENCE_MIN/MAX range — a glimpse
+  /** Self-estimated log-prior in STANCE_EVIDENCE_MIN/MAX range — a glimpse
    *  into how plausible this coordination was at the time. */
   priorLogit?: number;
 }

@@ -15,7 +15,6 @@ import { composeAnalystIdentity, type WorkIdentity } from './identity';
 import { paradigmVocabularyLine } from './vocabulary';
 import {
   ANALYST_DISCIPLINE_BY_PARADIGM,
-  BRIEFING_FOCUS_BY_PARADIGM,
   DIRECTION_SHAPE_BY_PARADIGM,
   EXPANSION_SHAPE_BY_PARADIGM,
   INTERVIEW_PROBE_HINT_BY_PARADIGM,
@@ -88,7 +87,7 @@ export function buildSearchSynthesisSystem(work: WorkIdentity): string {
 
 export function buildThreadingSystem(work: WorkIdentity): string {
   const pre = paradigmPreamble(work);
-  const body = 'Identify causal dependencies between threads — the prediction markets the work carries. Refer to threads by numeric ID — do not repeat descriptions in the output. Return only valid JSON.';
+  const body = 'Identify causal dependencies between threads — the open questions whose stances the work carries. Refer to threads by numeric ID — do not repeat descriptions in the output. Return only valid JSON.';
   if (!pre) return `You are a world-view structure analyst. ${body}`;
   return `${pre}\n\n${body}`;
 }
@@ -111,25 +110,6 @@ export function buildInterviewGenSystem(work: WorkIdentity): string {
   if (!pre) return `You are a research assistant designing depth interviews for the author of a long-form work. ${body} Works span any register (fiction, non-fiction, simulation). In simulation register, subjects are often agents responding under their decision rules (so answers are rule-constrained), locations carrying their scenario role (terrain, jurisdiction, modelled region), or artifacts carrying their parameter values and modelled effects.`;
   const hint = work.paradigm ? `\n\n${INTERVIEW_PROBE_HINT_BY_PARADIGM[work.paradigm]}` : '';
   return `${pre}${hint}\n\nYou design a depth interview for ONE specific subject. ${body}`;
-}
-
-// ─── Market briefing ────────────────────────────────────────────────────────
-
-export function buildMarketBriefingSystem(work: WorkIdentity): string {
-  const pre = paradigmPreamble(work);
-  const framing = compassFramingFor(work.paradigm);
-  const core = `You report in two registers: situational (what shape the board is in right now) and editorial (a slate of concrete moves the operator can issue to influence the market, plus world-expansion needs they should manually address).
-
-CORE PRINCIPLE: you are NOT optimising for resolution. A market that closes cleanly is usually dead weight — no contested attention, no fate gain, no surprise. A market that runs long, attracts adversarial evidence, inverts twice, and closes on a twist against the committed leader is what you want. You are optimising for SPECULATIVE DENSITY and GENERATIVE TENSION.
-
-Each suggested MOVE you propose is a market manipulation — an intent to influence the portfolio in a specific direction (open, escalate, subvert, redirect, foreshadow, etc.), expressed as a direction the operator can commit to the work's north-star. The operator may select ONE move, or compose SEVERAL into a nuanced direction — write each move's direction as a self-contained sentence so they stack cleanly when concatenated.
-
-Each EXPANSION suggests a creative need for new world content — characters, locations, artifacts, threads, or system rules the world is starving for. The operator opens the world-expansion panel pre-populated with the direction and decides what to add. Expansions are for unmet creative needs the world has, distinct from moves which steer the existing portfolio.
-
-Use the OUTLINE (arcs and current phase) as ground for what the work is structurally doing right now — moves and expansions should respect or productively defy that structure, never ignore it.`;
-  if (!pre) return `You are a world-view analyst reading the prediction-market portfolio of a world view in progress. ${core}`;
-  const focus = work.paradigm ? `\n\n${BRIEFING_FOCUS_BY_PARADIGM[work.paradigm]}` : '';
-  return `${pre}\n\n${framing}${focus}\n\nYou read the prediction-market portfolio of this work in progress. ${core}`;
 }
 
 // ─── Arc direction ──────────────────────────────────────────────────────────

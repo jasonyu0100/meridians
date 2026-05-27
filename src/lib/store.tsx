@@ -45,7 +45,7 @@ import {
   sanitizeSystemDelta,
 } from "@/lib/system-graph";
 import { logError, logWarning } from "@/lib/system-logger";
-import { applyThreadDelta, decayUntouchedBeliefsForScene, newNarratorBelief } from "@/lib/thread-log";
+import { applyThreadDelta, decayUntouchedStancesForScene, newNarratorStance } from "@/lib/thread-log";
 import type {
   AnalysisJob,
   AppState,
@@ -326,8 +326,8 @@ function computeDerivedEntities(
       }
       for (const t of scene.newThreads ?? []) {
         if (!threads[t.id]) {
-          // Ensure a canonical market belief exists for the narrator. Thread
-          // objects arriving here should already carry priored beliefs from
+          // Ensure a canonical narrator stance exists for the thread. Thread
+          // objects arriving here should already carry priored stances from
           // the ai/scenes.ts pipeline; fall back to uniform only if the
           // upstream step skipped them.
           const outcomes = (t.outcomes && t.outcomes.length >= 2) ? t.outcomes : ["yes", "no"];
@@ -338,13 +338,13 @@ function computeDerivedEntities(
                 typeof v === 'number' ? v : NaN,
               )
             : undefined;
-          const beliefs = t.beliefs && Object.keys(t.beliefs).length > 0
-            ? t.beliefs
-            : { narrator: newNarratorBelief(outcomes.length, 2, rawPriorProbs) };
+          const stances = t.stances && Object.keys(t.stances).length > 0
+            ? t.stances
+            : { narrator: newNarratorStance(outcomes.length, 2, rawPriorProbs) };
           threads[t.id] = {
             ...t,
             outcomes,
-            beliefs,
+            stances,
             threadLog: t.threadLog ?? { nodes: {}, edges: [] },
           };
         }
@@ -374,7 +374,7 @@ function computeDerivedEntities(
       }
       // First, decay volume for threads this scene did NOT touch.
       const touchedIds = new Set((scene.threadDeltas ?? []).map((tm) => tm.threadId));
-      const decayed = decayUntouchedBeliefsForScene(threads as Record<string, Thread>, touchedIds);
+      const decayed = decayUntouchedStancesForScene(threads as Record<string, Thread>, touchedIds);
       for (const id of Object.keys(decayed)) threads[id] = decayed[id];
 
       // Then apply market updates for touched threads.
@@ -772,7 +772,7 @@ export type Action =
       // intensities baked into each Variable. Pass [] to clear.
       // Optional description + reasoning annotate the coordination's
       // gestalt and load-bearing logic; logit records "how likely was this
-      // when it was chosen" in MARKET_EVIDENCE_MIN/MAX range. All three are
+      // when it was chosen" in STANCE_EVIDENCE_MIN/MAX range. All three are
       // transferred onto new arcs by the experimentation commit path so
       // the path's rarity is a permanent record.
       type: "SET_ARC_PRESENT_VARIABLES";
@@ -945,7 +945,6 @@ export type Action =
   | { type: "SET_ARTIFACT_IMAGE_PROMPT"; artifactId: string; imagePrompt: string }
   | { type: "SET_IMAGE_STYLE"; style: string }
   | { type: "SET_STORY_SETTINGS"; settings: StorySettings }
-  | { type: "SET_BRIEFING"; briefing: import("@/types/briefing").StoredBriefing | undefined }
   | { type: "SET_PROSE_PROFILE"; profile: ProseProfile | undefined }
   | { type: "ADD_SAVED_PROSE_PROFILE"; saved: SavedProseProfile }
   | { type: "RENAME_SAVED_PROSE_PROFILE"; id: string; name: string }
@@ -2901,17 +2900,6 @@ function reducer(state: AppState, action: Action): AppState {
         ...n,
         storySettings: action.settings,
       }));
-
-    case "SET_BRIEFING":
-      return updateNarrative(state, (n) => {
-        const next = { ...n };
-        if (action.briefing === undefined) {
-          delete next.lastBriefing;
-        } else {
-          next.lastBriefing = action.briefing;
-        }
-        return next;
-      });
 
     case "SET_PROSE_PROFILE":
       return updateNarrative(state, (n) => ({

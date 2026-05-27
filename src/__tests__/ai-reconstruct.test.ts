@@ -32,7 +32,7 @@ function createMinimalNarrative(): NarrativeState {
       'L-2': { id: 'L-2', name: 'Forest', prominence: 'place' as const, parentId: null, tiedCharacterIds: [], world: { nodes: {}, edges: [] }, threadIds: [] },
     },
     threads: {
-      'T-1': { id: 'T-1', description: 'Main quest', outcomes: ["yes", "no"], beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-1', threadLog: { nodes: {}, edges: [] } },
+      'T-1': { id: 'T-1', description: 'Main quest', outcomes: ["yes", "no"], stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-1', threadLog: { nodes: {}, edges: [] } },
     },
     arcs: {
       'ARC-1': { id: 'ARC-1', name: 'Beginning', sceneIds: ['S-1', 'S-2', 'S-3'], develops: [], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },

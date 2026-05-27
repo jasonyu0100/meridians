@@ -2,7 +2,7 @@
  * PRIOR-LOGIT — the [-4, +4] log-odds scale.
  *
  * The same numeric scale underwrites every probability-shaped surface:
- * thread-market evidence, Compass scenario priors, Present coordination
+ * thread stance evidence, Compass scenario priors, Present coordination
  * self-estimates, scenario rescoring. Calibrated identically so the operator
  * reads "+3" the same way regardless of where it surfaces.
  *
@@ -16,12 +16,12 @@
  * `compassFramingFor` for the per-paradigm framing line.
  */
 
-import { MARKET_EVIDENCE_MAX, MARKET_EVIDENCE_MIN } from '@/lib/constants';
+import { STANCE_EVIDENCE_MAX, STANCE_EVIDENCE_MIN } from '@/lib/constants';
 
-/** Numeric range, anchored to the prediction-market evidence scale so all
+/** Numeric range, anchored to the stance evidence scale so all
  *  probability-shaped surfaces speak the same units. */
-export const PRIOR_LOGIT_MIN = MARKET_EVIDENCE_MIN; // -4
-export const PRIOR_LOGIT_MAX = MARKET_EVIDENCE_MAX; // +4
+export const PRIOR_LOGIT_MIN = STANCE_EVIDENCE_MIN; // -4
+export const PRIOR_LOGIT_MAX = STANCE_EVIDENCE_MAX; // +4
 
 /** Clamp a value into the prior-logit range. */
 export function clampPriorLogit(value: number): number {

@@ -896,13 +896,6 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
     unit: "on-demand  ·  operator-initiated  ·  separate from generation budget",
     rows: [
       {
-        call: "generateBeliefBriefing",
-        count: "per request",
-        model: "Gemini 2.5",
-        note: "Briefing tab — situation + suggested arc/world directions",
-        cost: "~$0.02",
-      },
-      {
         call: "executeSurvey",
         count: "per request",
         model: "DeepSeek v4",
@@ -1552,32 +1545,30 @@ export default function PaperPage() {
               a moment feels earned, a scientist agreeing an argument
               lands, a strategist agreeing a scenario hangs together
               &mdash; all respond to the same <B>legible skeleton</B>.
-              InkTide extracts and generates <B>World Views</B>:
-              causally coherent, highly mutable, queryable knowledge
-              structures over the three force fields. Any coherent
-              text describes a world view &mdash; <em>Harry Potter</em>
-              {" "}has one, a research paper has one, a wargame brief
-              has one. World view and narrative are interchangeable
-              here; narrative is the canonical case study, world view
-              is the underlying abstraction.{" "}
-              <em>Harry Potter and the Sorcerer&apos;s Stone</em>{" "}
-              calibrates the math; the framework generalizes.
+              InkTide extracts and generates <B>world views</B>:
+              causally coherent, mutable, queryable models of reality.
+              <em> Harry Potter</em> has one, a research paper has
+              one, a wargame brief has one. A reasoner can hold a
+              single world view deeply &mdash; the{" "}
+              <em>hedgehog</em> &mdash; or many at once, calibrating
+              between them as evidence comes in &mdash; the{" "}
+              <em>fox</em>. InkTide is the substrate for both; the
+              math is calibrated against{" "}
+              <em>Harry Potter and the Sorcerer&apos;s Stone</em> and
+              generalises from there.
             </P>
             <P>
-              The core abstraction is a <B>revelation machine</B>.
-              Each scene reveals two kinds of information:{" "}
-              <B>encyclopedic</B> (new facts &mdash; actors, places,
-              rules) and <B>possibility</B> (what could still happen).
-              <B>System</B> and <B>World</B> measure encyclopedic
-              growth; <B>Fate</B> measures possibility &mdash; the
-              world view&apos;s <B>belief system</B> updates as
-              evidence lands. LLMs extract
-              qualitative deltas at low temperature; deterministic
-              formulas turn deltas into scores. Same input, same score,
-              every time. Summed, the three forces give <B>Activity</B>{" "}
-              &mdash; how hard the world is working. Peaks fire across
-              all three channels; valleys seed pressure for what
-              follows.
+              A world view is a working model of reality, tracked
+              along three forces. <B>System</B> &mdash; the rules
+              that govern. <B>World</B> &mdash; the people, places,
+              and things that live inside them. <B>Fate</B> &mdash;
+              the <B>belief system</B> updating as reality lands.
+              LLMs extract qualitative deltas at low temperature;
+              deterministic formulas turn deltas into scores. Same
+              input, same score, every time. Summed, the three forces
+              give <B>Activity</B> &mdash; how hard the world is
+              working. Peaks fire across all three channels; valleys
+              seed pressure for what follows.
             </P>
             <P>
               <B>The skill ceiling is your priors.</B> Sparse data,
@@ -1669,57 +1660,50 @@ export default function PaperPage() {
                   <B>Thread deltas</B> &mdash; the{" "}
                   <em>possibility</em> kind. Every open question
                   (rivalry, secret, quest, unresolved claim) carries a{" "}
-                  <em>belief</em> &mdash; a live probability
-                  distribution over named outcomes. Together the
-                  threads form the world view&apos;s{" "}
-                  <B>belief system</B>: what it currently holds, with
-                  what confidence, on every open question. The stance
-                  isn&apos;t fixed; each scene is reality landing on
-                  the holding and asking it to revise. Deltas emit
-                  integer evidence in [−4, +4] plus a log-type from
-                  nine primitives; the math handles log-odds
-                  conversion, volume decay, volatility, closure, and
-                  abandonment. Fate falls out of the updates &mdash;
-                  the more reality re-shapes a high-attention belief,
-                  the more fate it earns.
+                  <em>belief</em> &mdash; a live distribution over
+                  outcomes. Together they form the world view&apos;s{" "}
+                  <B>belief system</B>: its current stance on
+                  everything undecided, always in flux. Each scene is
+                  reality landing, asking the stance to revise.
+                  Deltas emit integer evidence in [−4, +4] plus one of
+                  nine log-types; the math handles log-odds, decay,
+                  volatility, closure, and abandonment. Fate is what
+                  reality just exacted on a high-attention belief.
                 </span>
               </li>
             </ul>
             <P>
               Three forces follow, one per delta layer. Together they
-              measure how actively each scene is revealing things:
+              read how hard the world view is working this scene:
             </P>
             <ul className="space-y-2 text-[13px] text-white/60 leading-relaxed pl-4">
               <li>
-                <B>System</B> &mdash; encyclopedic revelation about the{" "}
-                <em>world itself</em>. Grows as new rules, concepts,
-                and structures accumulate.
+                <B>System</B> &mdash; the rules that govern. Grows as
+                new principles, structures, and constraints
+                accumulate.
               </li>
               <li>
-                <B>World</B> &mdash; encyclopedic revelation about the{" "}
-                <em>people and places</em>. Grows as characters,
-                locations, and artifacts reveal who they&apos;re
-                becoming.
+                <B>World</B> &mdash; the lived layer. Grows as
+                characters, locations, and artifacts reveal who
+                they&apos;re becoming.
               </li>
               <li>
-                <B>Fate</B> &mdash; possibility revelation about{" "}
-                <em>what could still happen</em>. Grows as the odds
-                move on open questions &mdash; rivalries, secrets,
-                quests, unresolved claims &mdash; narrowing or
-                widening the live outcome space.
+                <B>Fate</B> &mdash; reality landing on belief. Grows
+                as the odds move on open questions: rivalries,
+                secrets, quests, unresolved claims.
               </li>
             </ul>
             <P>
-              The composition of these three forces defines a work&apos;s{" "}
-              <B>signature</B> &mdash; a continuous point on the unit
-              3-simplex recovered from the dominant principal component
-              of <Tex>{String.raw`\;(F, W, S)`}</Tex>. Archetypes name
-              its neighbourhoods: <B>Paper</B> is system-dominant,{" "}
-              <B>Stage</B> world-dominant, <B>Classic</B> fate-dominant,{" "}
-              <B>Opus</B> balanced. Each force is first rank-transformed
-              to a standard normal &mdash; distribution-free and bounded
-              &mdash; so length, genre, and outlier scenes don&apos;t
-              bias the comparison across works.
+              The mix of these three forces is a work&apos;s{" "}
+              <B>signature</B> &mdash; a point on the unit 3-simplex
+              recovered from the dominant principal component of{" "}
+              <Tex>{String.raw`\;(F, W, S)`}</Tex>. Archetypes name
+              its neighbourhoods: <B>Paper</B> system-dominant,{" "}
+              <B>Stage</B> world-dominant, <B>Classic</B>{" "}
+              fate-dominant, <B>Opus</B> balanced. Each force is
+              rank-transformed to a standard normal first &mdash;
+              distribution-free and bounded &mdash; so length, genre,
+              and outliers don&apos;t bias the comparison.
             </P>
           </Section>
 
@@ -2160,24 +2144,23 @@ export default function PaperPage() {
           {/* ── The Three Forces ──────────────────────────────────────── */}
           <Section id="forces" label="The Three Forces">
             <p className="text-[15px] leading-relaxed text-white/50 italic mb-8">
-              A text resolves into three fields. <B>Abstract</B>
-              {" "}&mdash; the rules and structures that make events
-              possible. <B>Physical</B> &mdash; the entities
-              (characters, locations, artifacts, institutions) that
-              act under those rules. <B>Possibility</B> &mdash; the
-              live space of what could still happen, reshaped scene
-              by scene. <B>System</B> measures abstract growth,{" "}
-              <B>World</B> physical, <B>Fate</B> possibility. Fate
-              is <em>possibility</em>, not probability &mdash; what{" "}
-              <em>could</em> happen, not what <em>will</em>.
+              A world view resolves into three fields.{" "}
+              <B>Abstract</B> &mdash; the rules that make events
+              possible. <B>Physical</B> &mdash; the entities acting
+              under those rules. <B>Possibility</B> &mdash; what
+              could still happen, reshaped scene by scene.{" "}
+              <B>System</B>, <B>World</B>, and <B>Fate</B> measure
+              their growth. Fate is <em>possibility</em>, not
+              probability &mdash; what <em>could</em> happen, not
+              what <em>will</em>.
             </p>
             <p className="text-[14px] leading-relaxed text-white/45 mb-8">
-              The three modes weight the fields differently:{" "}
-              <B>papers</B> mostly grow System (stating and
-              connecting rules); <B>simulations</B> mostly observe
-              Fate (exploring what could happen under a ruleset);{" "}
-              <B>narratives</B> fire all three at once. Identical
-              formulas; different signatures.
+              Modes weight the fields differently:{" "}
+              <B>papers</B> grow mostly System (stating and connecting
+              rules); <B>simulations</B> mostly observe Fate
+              (exploring outcomes under a ruleset);{" "}
+              <B>narratives</B> fire all three. Same formulas;
+              different signatures.
             </p>
             <div className="mb-12">
               <h3 className="text-[15px] font-semibold text-white/80 mb-2">
@@ -2221,7 +2204,7 @@ export default function PaperPage() {
               <P>
                 Symmetric to System.{" "}
                 <Tex>{String.raw`\Delta N_c`}</Tex> counts continuity
-                nodes added to entity dossiers (traits, beliefs,
+                nodes added to entity dossiers (traits, opinions,
                 goals, secrets, capabilities); {" "}
                 <Tex>{String.raw`\Delta E_c`}</Tex> counts continuity
                 edges between them. System tracks entries about the{" "}
@@ -2248,9 +2231,9 @@ export default function PaperPage() {
               </P>
               <P>
                 Picture an election-night needle, or the live
-                win-probability line during a football game. A belief
-                distribution rendered as a bouncing line &mdash; flat
-                for stretches, nudged by small evidence, lurching on
+                win-probability line during a football game. A stance
+                rendered as a bouncing line &mdash; flat for
+                stretches, nudged by small evidence, lurching on
                 decisive plays, converging at the finish. Every
                 thread carries such a line, and the world view holds
                 them all at once. &ldquo;Will Frodo destroy the
@@ -2261,19 +2244,19 @@ export default function PaperPage() {
                 what the world view thought it knew.
               </P>
               <P>
-                Made rigorous, each thread carries a <B>belief</B>{" "}
+                Made rigorous, each thread carries a <B>stance</B>{" "}
                 &mdash; a probability distribution over named
                 outcomes &mdash; priced as softmax over a per-outcome
                 logit vector. Threads are the <em>questions</em>{" "}
-                through which reality reaches the world view; beliefs
-                are the <em>stances</em> it currently holds in answer.
-                Together they form the world view&apos;s{" "}
+                through which reality reaches the world view; stances
+                are the <em>bearings</em> it currently holds in
+                answer. Aggregated, they form the world view&apos;s{" "}
                 <B>belief system</B>: a working model of everything
                 still undecided, always in flux. Scenes shift each
-                belief by emitting bounded integer evidence on
+                stance by emitting bounded integer evidence on
                 affected outcomes. Fate is the{" "}
                 <B>attention-weighted information gain</B> across
-                every belief touched:
+                every stance touched:
               </P>
               <Eq
                 tex={String.raw`F_i \;=\; \sum_{t \,\in\, \Delta_i} v_t \cdot D_{\text{KL}}\!\left(\mathbf{p}_t^{+} \,\Big\|\, \mathbf{p}_t^{-}\right)`}
@@ -2295,7 +2278,7 @@ export default function PaperPage() {
                 leave{" "}
                 <Tex>{String.raw`\mathbf{p}^{+} = \mathbf{p}^{-}`}</Tex>
                 {" "}so KL is zero &mdash; a vivid scene earns no fate
-                if no belief moved. Confirmations of the favourite
+                if no stance moved. Confirmations of the favourite
                 keep KL small. <B>Twists</B> land mass on an outcome
                 the prior assigned little weight; the per-outcome
                 contribution{" "}
@@ -2307,7 +2290,7 @@ export default function PaperPage() {
                 distribution onto a single outcome; resolution scenes
                 dominate their arcs without explicit bonus.{" "}
                 <B>Attention</B> falls out of the{" "}
-                <Tex>{String.raw`v_t`}</Tex> multiplier: same belief
+                <Tex>{String.raw`v_t`}</Tex> multiplier: same stance
                 movement weighs more on a tracked thread than on a
                 forgotten side-thread.
               </P>
@@ -2389,15 +2372,15 @@ export default function PaperPage() {
           <Section id="fate-engine" label="Fate Engine">
             <P>
               A world view doesn&apos;t hold a fixed picture of
-              itself; it holds a <em>stance</em>, and the stance
-              shifts as reality tests it. Threads are the units of
-              that reckoning &mdash; each carries a <B>belief</B>{" "}
-              &mdash; a live probability distribution over named
-              outcomes. Each thread poses a question (&quot;Will
-              Harry claim the Stone?&quot;) and lists two or more
-              outcomes (binary default; multi-outcome enumerates).
-              Belief is priced as softmax over a per-outcome logit
-              vector:
+              itself; it holds a <B>belief system</B>, and that
+              belief shifts as reality tests it. Threads are the
+              units of that reckoning &mdash; each carries a{" "}
+              <B>stance</B>, a live probability distribution over
+              named outcomes. Each thread poses a question
+              (&quot;Will Harry claim the Stone?&quot;) and lists
+              two or more outcomes (binary default; multi-outcome
+              enumerates). The stance is priced as softmax over a
+              per-outcome logit vector:
             </P>
             <Eq
               tex={String.raw`p_k = \frac{\exp(\ell_k)}{\sum_j \exp(\ell_j)}, \quad k = 1 \dots K`}
@@ -2459,13 +2442,13 @@ export default function PaperPage() {
               Outcome expansion
             </h3>
             <P>
-              Beliefs can grow mid-story via{" "}
+              Stances can grow mid-story via{" "}
               <code className="text-white/70">addOutcomes</code>{" "}
               &mdash; when a scene opens a possibility that
               didn&apos;t exist before (new contender, unexpected
               option). New outcomes enter at{" "}
               <Tex>{String.raw`\ell = 0`}</Tex>; same-scene evidence
-              can shift them. Closed beliefs reject expansion. A
+              can shift them. Closed stances reject expansion. A
               delta that expands outcomes cannot also close.
             </P>
 
@@ -2494,7 +2477,7 @@ export default function PaperPage() {
               mean of four factors: peak evidence at close, margin
               over threshold, volume, and probability concentration.
               Bare-minimum evidence with low volume scores ~0.3;
-              heavy beliefs closed on saturating two-sided evidence
+              heavy stances closed on saturating two-sided evidence
               score above 0.75.
             </P>
 
@@ -2521,12 +2504,12 @@ export default function PaperPage() {
             </h3>
             <P>
               Beyond measurement, the belief system shapes generation.
-              Current beliefs surface to the generator as a soft
+              Current stances surface to the generator as a soft
               prior, not a constraint. Committed threads (
               <Tex>{String.raw`p \geq 0.75`}</Tex>) lean the next
               scene toward that outcome unless the logType is{" "}
               <code className="text-white/70">twist</code>; contested
-              beliefs (<Tex>{String.raw`H \geq 0.9`}</Tex>) signal a
+              stances (<Tex>{String.raw`H \geq 0.9`}</Tex>) signal a
               crossroads where either side is fair game; high
               volatility grants licence for a twist; low volatility +
               high probability is saturation, ripe for closure. Good

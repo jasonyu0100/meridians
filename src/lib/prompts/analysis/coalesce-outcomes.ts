@@ -3,14 +3,14 @@
  *
  * Phase 3c — per-thread outcome canonicalisation. Parallel extraction across
  * scenes often produces variant labels for the same underlying outcome that
- * fragment the market. The coalescing step collapses each thread's outcome
+ * fragment the stance. The coalescing step collapses each thread's outcome
  * list to a small, distinct set (typically 2–5), returning a canonical list
  * plus a merge map from every variant to its canonical form. Downstream the
  * merge map is applied to every threadDelta's updates[].outcome + addOutcomes
  * so all evidence stacks on the correct canonical label.
  */
 
-export const COALESCE_OUTCOMES_SYSTEM = `You coalesce fragmented prediction-market outcomes. Each thread has accumulated multiple outcome labels extracted independently from different scenes. Collapse each thread's outcome list to a small, mutually-exclusive set (2-5 canonical labels), then map every variant to its canonical form. Preserve genuine distinctions; merge only when two labels are the same future restated. Return only valid JSON.`;
+export const COALESCE_OUTCOMES_SYSTEM = `You coalesce fragmented stance outcomes. Each thread has accumulated multiple outcome labels extracted independently from different scenes. Collapse each thread's outcome list to a small, mutually-exclusive set (2-5 canonical labels), then map every variant to its canonical form. Preserve genuine distinctions; merge only when two labels are the same future restated. Return only valid JSON.`;
 
 export function buildCoalesceOutcomesPrompt(
   threads: { description: string; outcomes: string[] }[],
@@ -22,7 +22,7 @@ export function buildCoalesceOutcomesPrompt(
     .join('\n');
 
   return `<inputs>
-  <threads hint="Each thread is a prediction market with outcomes extracted independently from multiple scenes. The outcomes often fragment.">
+  <threads hint="Each thread is a question with a stance with outcomes extracted independently from multiple scenes. The outcomes often fragment.">
 ${threadsXml}
   </threads>
 </inputs>
@@ -40,7 +40,7 @@ ${threadsXml}
     <rule index="7">When two variants differ only in verbosity, pick the shorter as canonical and merge the longer into it.</rule>
     <rule index="8">When two variants describe the same outcome with different emphasis, merge all into a single canonical (the shortest accurate form usually wins).</rule>
     <rule index="9">If an input outcome is truly distinct (e.g. "pyrrhic victory" vs "succeeds" — same direction, materially different cost), keep it separate.</rule>
-    <rule index="10">Coalescing MUST NOT inflate the starting state. The canonical set is a projection of the existing outcome space, not a new market. When variants merge, downstream the evidence applied to each variant is combined using the STRONGEST single signal (max absolute magnitude) within any one scene — never summed — so overlapping ways of saying the same outcome don't compound into an inflated probability. Choose canonical labels that reflect this.</rule>
+    <rule index="10">Coalescing MUST NOT inflate the starting state. The canonical set is a projection of the existing outcome space, not a new stance. When variants merge, downstream the evidence applied to each variant is combined using the STRONGEST single signal (max absolute magnitude) within any one scene — never summed — so overlapping ways of saying the same outcome don't compound into an inflated probability. Choose canonical labels that reflect this.</rule>
     <rule index="11" name="MECE">Canonical set must be (a) DISJOINT (no two can both be true; ✗ "instability persists" + "new major conflict" co-occur → re-partition to "no conflict / one / multiple") and (b) EXHAUSTIVE (covers every live future). You MAY re-partition the axis during coalescing and pick canonical labels that don't match any input literally — every input variant still maps to exactly one canonical via merges.</rule>
     <rule index="12" name="neutral-labels">Canonicals name observable future-states, not slogans. ✓ "US settles into multipolar order"; ✗ "US reasserts pre-eminence" when the source argued the unipolar moment is over. A variant whose name encodes a position the source rejected does NOT survive as a canonical — map it into the nearest neutral canonical.</rule>
     <rule index="13" name="reject-trivial">Labels containing "complex", "significant", "meaningful", "important", "notable", "has effect", "matters", "turns out to be important" without concrete referent content are trivially-true. Re-partition into concrete alternatives where the inputs allow; otherwise prefer a specific "other" residual over a meta-canonical.</rule>

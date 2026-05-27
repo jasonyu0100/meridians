@@ -1,17 +1,17 @@
-import type { Branch, NarrativeState, Scene, Thread, Belief, OutcomeEvidence, ThreadDelta, ForceSnapshot, CubeCornerKey, CubeCorner, SystemGraph, SystemNode, SystemEdge, SystemDelta, WorldBuild, Character, Location, Artifact } from '@/types/narrative';
+import type { Branch, NarrativeState, Scene, Thread, Stance, OutcomeEvidence, ThreadDelta, ForceSnapshot, CubeCornerKey, CubeCorner, SystemGraph, SystemNode, SystemEdge, SystemDelta, WorldBuild, Character, Location, Artifact } from '@/types/narrative';
 import { getSceneSystemAttributions } from '@/lib/system-graph';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
 import {
-  MARKET_EVIDENCE_SENSITIVITY,
-  MARKET_EVIDENCE_MIN,
-  MARKET_EVIDENCE_MAX,
-  MARKET_TAU_CLOSE,
-  MARKET_NEAR_CLOSED_MIN,
-  MARKET_VOLUME_DECAY,
-  MARKET_ABANDON_VOLUME,
-  MARKET_VOLATILITY_BETA,
-  MARKET_RECENCY_DECAY,
-  MARKET_FOCUS_K,
+  STANCE_EVIDENCE_SENSITIVITY,
+  STANCE_EVIDENCE_MIN,
+  STANCE_EVIDENCE_MAX,
+  STANCE_TAU_CLOSE,
+  STANCE_NEAR_CLOSED_MIN,
+  STANCE_VOLUME_DECAY,
+  STANCE_ABANDON_VOLUME,
+  STANCE_VOLATILITY_BETA,
+  STANCE_RECENCY_DECAY,
+  STANCE_FOCUS_K,
 } from '@/lib/constants';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import {
@@ -509,7 +509,7 @@ export function normalizedEntropy(probs: number[]): number {
  *  on-disk value predictable without losing calibration headroom. */
 export function clampEvidence(e: number): number {
   if (!Number.isFinite(e)) return 0;
-  const clamped = Math.max(MARKET_EVIDENCE_MIN, Math.min(MARKET_EVIDENCE_MAX, e));
+  const clamped = Math.max(STANCE_EVIDENCE_MIN, Math.min(STANCE_EVIDENCE_MAX, e));
   return Math.round(clamped * 10) / 10;
 }
 
@@ -518,7 +518,7 @@ export function updateLogits(
   logits: number[],
   outcomes: string[],
   updates: OutcomeEvidence[],
-  sensitivity: number = MARKET_EVIDENCE_SENSITIVITY,
+  sensitivity: number = STANCE_EVIDENCE_SENSITIVITY,
 ): number[] {
   const out = logits.slice();
   for (const u of updates) {
@@ -529,23 +529,24 @@ export function updateLogits(
   return out;
 }
 
-/** The narrator's belief for a thread. Phase 1 uses this as the market price. */
-export function getMarketBelief(thread: Thread): Belief | undefined {
-  return thread.beliefs[NARRATOR_AGENT_ID];
+/** The narrator's stance on a thread. Phase 1 uses this as the canonical
+ *  bearing the world view's belief aggregates from. */
+export function getThreadStance(thread: Thread): Stance | undefined {
+  return thread.stances?.[NARRATOR_AGENT_ID];
 }
 
-/** Probability distribution over a thread's outcomes (narrator belief). */
-export function getMarketProbs(thread: Thread): number[] {
-  const belief = getMarketBelief(thread);
-  if (!belief) return new Array(thread.outcomes.length).fill(1 / thread.outcomes.length);
-  return softmax(belief.logits);
+/** Probability distribution over a thread's outcomes (narrator stance). */
+export function getStanceProbs(thread: Thread): number[] {
+  const stance = getThreadStance(thread);
+  if (!stance) return new Array(thread.outcomes.length).fill(1 / thread.outcomes.length);
+  return softmax(stance.logits);
 }
 
 /** Top-outcome probability and its runner-up margin in log-odds units.
- *  Margin above MARKET_TAU_CLOSE triggers closure. */
-export function getMarketMargin(thread: Thread): { topIdx: number; topLogit: number; secondLogit: number; margin: number } {
-  const belief = getMarketBelief(thread);
-  const logits = belief?.logits ?? new Array(thread.outcomes.length).fill(0);
+ *  Margin above STANCE_TAU_CLOSE triggers closure. */
+export function getStanceMargin(thread: Thread): { topIdx: number; topLogit: number; secondLogit: number; margin: number } {
+  const stance = getThreadStance(thread);
+  const logits = stance?.logits ?? new Array(thread.outcomes.length).fill(0);
   let topIdx = 0, topLogit = -Infinity, secondLogit = -Infinity;
   for (let i = 0; i < logits.length; i++) {
     if (logits[i] > topLogit) {
@@ -568,28 +569,28 @@ export function isThreadClosed(thread: Thread): boolean {
  *  yet committed by an explicit payoff/twist event. */
 export function isNearClosed(thread: Thread): boolean {
   if (isThreadClosed(thread)) return false;
-  const { margin } = getMarketMargin(thread);
-  return margin >= MARKET_NEAR_CLOSED_MIN && margin < MARKET_TAU_CLOSE;
+  const { margin } = getStanceMargin(thread);
+  return margin >= STANCE_NEAR_CLOSED_MIN && margin < STANCE_TAU_CLOSE;
 }
 
 /** Thread's volume has decayed below the abandonment floor. Not the same as
- *  closed — abandoned means "market lost interest" at any price. */
+ *  closed — abandoned means the stance lost attention at any price. */
 export function isThreadAbandoned(thread: Thread): boolean {
   if (isThreadClosed(thread)) return false;
-  const belief = getMarketBelief(thread);
-  return (belief?.volume ?? 0) < MARKET_ABANDON_VOLUME;
+  const stance = getThreadStance(thread);
+  return (stance?.volume ?? 0) < STANCE_ABANDON_VOLUME;
 }
 
-/** The number of scenes since this thread's belief was last updated.
- *  Returns Infinity if the belief has never been touched. */
+/** The number of scenes since this thread's stance was last updated.
+ *  Returns Infinity if the stance has never been touched. */
 export function scenesSinceTouched(
   thread: Thread,
   resolvedEntryKeys: string[],
   currentSceneIndex: number,
 ): number {
-  const belief = getMarketBelief(thread);
-  if (!belief?.lastTouchedScene) return Infinity;
-  const idx = resolvedEntryKeys.indexOf(belief.lastTouchedScene);
+  const stance = getThreadStance(thread);
+  if (!stance?.lastTouchedScene) return Infinity;
+  const idx = resolvedEntryKeys.indexOf(stance.lastTouchedScene);
   if (idx < 0) return Infinity;
   return currentSceneIndex - idx;
 }
@@ -606,12 +607,12 @@ export function focusScore(
   currentSceneIndex: number,
 ): number {
   if (isThreadClosed(thread) || isThreadAbandoned(thread)) return 0;
-  const belief = getMarketBelief(thread);
+  const belief = getThreadStance(thread);
   if (!belief) return 0;
   const probs = softmax(belief.logits);
   const uncertainty = normalizedEntropy(probs);
   const gap = scenesSinceTouched(thread, resolvedEntryKeys, currentSceneIndex);
-  const recency = Number.isFinite(gap) ? Math.pow(MARKET_RECENCY_DECAY, gap) : 0;
+  const recency = Number.isFinite(gap) ? Math.pow(STANCE_RECENCY_DECAY, gap) : 0;
   return belief.volume * uncertainty * (1 + belief.volatility) * recency;
 }
 
@@ -621,7 +622,7 @@ export function selectFocusWindow(
   narrative: NarrativeState,
   resolvedEntryKeys: string[],
   currentSceneIndex: number,
-  k: number = MARKET_FOCUS_K,
+  k: number = STANCE_FOCUS_K,
 ): Thread[] {
   const scored = Object.values(narrative.threads)
     .map((t) => ({ t, s: focusScore(t, resolvedEntryKeys, currentSceneIndex) }))
@@ -690,7 +691,7 @@ export function detectAbandonedThreads(
   const out: AbandonedThread[] = [];
   for (const t of Object.values(narrative.threads)) {
     if (!isThreadAbandoned(t)) continue;
-    const belief = getMarketBelief(t);
+    const belief = getThreadStance(t);
     out.push({
       threadId: t.id,
       volume: belief?.volume ?? 0,

@@ -100,7 +100,7 @@ export default function ThreadGraphView({
     const scrubbed = replayThreadsAtIndex(narrative, resolvedKeys, currentIndex);
     return Object.fromEntries(
       Object.entries(scrubbed).map(([id, t]) => {
-        const lastTouched = t.beliefs?.[NARRATOR_AGENT_ID]?.lastTouchedScene;
+        const lastTouched = t.stances?.[NARRATOR_AGENT_ID]?.lastTouchedScene;
         const touchedIdx = lastTouched ? resolvedKeys.indexOf(lastTouched) : -1;
         const scenesSinceTouch = touchedIdx < 0 ? Infinity : currentIndex - touchedIdx;
         return [id, classifyThreadCategory(t, { scenesSinceTouch })];

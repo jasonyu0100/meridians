@@ -19,7 +19,7 @@ import {
   detectCubeCorner,
   gradeForces,
   FORCE_REFERENCE_MEANS,
-  getMarketProbs,
+  getStanceProbs,
   isThreadAbandoned,
   isThreadClosed,
   type ActivityPoint,

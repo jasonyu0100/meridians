@@ -650,7 +650,7 @@ export function buildSequencePrompt(sequence: PacingSequence): string {
     "Mode determines delta profile. Formulas compute forces FROM deltas:",
   );
   lines.push(
-    "  F = Σ log(1+peak|e|)·(1+log(1+volΔ)) (fate market info gain) | W = ΔN_c + √ΔE_c (entity world) | S = ΔN + √ΔE (system knowledge)",
+    "  F = Σ log(1+peak|e|)·(1+log(1+volΔ)) (fate stance info gain) | W = ΔN_c + √ΔE_c (entity world) | S = ΔN + √ΔE (system knowledge)",
   );
   lines.push(
     `  Reference means: F≈${FORCE_REFERENCE_MEANS.fate}, W≈${FORCE_REFERENCE_MEANS.world}, S≈${FORCE_REFERENCE_MEANS.system}. Scenes should breathe above/below these — not hug the mean.`,

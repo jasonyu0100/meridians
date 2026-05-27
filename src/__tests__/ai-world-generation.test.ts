@@ -73,7 +73,7 @@ function createThread(id: string, overrides: Partial<Thread> = {}): Thread {
     id,
     description: `Thread ${id}`,
     outcomes: ["yes", "no"],
-    beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+    stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
     participants: [],
     dependents: [],
     openedAt: 's1',
@@ -235,7 +235,7 @@ describe('expandWorld — entity continuity', () => {
           world: {
             nodes: [
               { id: 'K-1', content: 'Former soldier', type: 'history' },
-              { id: 'K-2', content: 'Carries a grudge', type: 'belief' },
+              { id: 'K-2', content: 'Carries a grudge', type: 'opinion' },
               { id: 'K-3', content: 'Skilled swordsman', type: 'capability' },
             ],
           },
@@ -260,7 +260,7 @@ describe('expandWorld — entity continuity', () => {
           world: {
             nodes: [
               { id: 'K-1', content: 'Former soldier', type: 'history' },
-              { id: 'K-2', content: 'Carries a grudge', type: 'belief' },
+              { id: 'K-2', content: 'Carries a grudge', type: 'opinion' },
               { id: 'K-3', content: 'Skilled swordsman', type: 'capability' },
             ],
           },
@@ -337,7 +337,7 @@ describe('expandWorld — entity continuity', () => {
           world: {
             nodes: [
               { content: 'Former soldier', type: 'history' },
-              { content: 'Carries a grudge', type: 'belief' },
+              { content: 'Carries a grudge', type: 'opinion' },
             ],
           },
         },

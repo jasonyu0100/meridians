@@ -68,7 +68,7 @@ function createThread(id: string, description: string, participants: string[] = 
     id,
     description,
     outcomes: ["yes", "no"],
-    beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+    stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
     participants: participants.map((pid) => ({ id: pid, type: 'character' as const })),
     dependents: [],
     openedAt: 's1',
@@ -119,8 +119,8 @@ function createArc(id: string, name: string, sceneIds: string[]): Arc {
 }
 // ── THREAD_LIFECYCLE_DOC ─────────────────────────────────────────────────────
 describe('THREAD_LIFECYCLE_DOC', () => {
-  it('describes the prediction-market vocabulary', () => {
-    expect(THREAD_LIFECYCLE_DOC).toMatch(/prediction market/i);
+  it('describes the stance / belief vocabulary', () => {
+    expect(THREAD_LIFECYCLE_DOC).toMatch(/stance|belief/i);
     expect(THREAD_LIFECYCLE_DOC).toMatch(/outcome/i);
     expect(THREAD_LIFECYCLE_DOC).toMatch(/volume/i);
     expect(THREAD_LIFECYCLE_DOC).toMatch(/logit|probability|evidence/i);
@@ -144,12 +144,12 @@ describe('getStateAtIndex', () => {
       scenes: {
         's1': createScene('s1', {
           worldDeltas: [
-            { entityId: 'c1', addedNodes: [{ id: 'node-1', content: 'Knowledge 1', type: 'belief' }] },
+            { entityId: 'c1', addedNodes: [{ id: 'node-1', content: 'Knowledge 1', type: 'opinion' }] },
           ],
         }),
         's2': createScene('s2', {
           worldDeltas: [
-            { entityId: 'c1', addedNodes: [{ id: 'node-2', content: 'Knowledge 2', type: 'belief' }] },
+            { entityId: 'c1', addedNodes: [{ id: 'node-2', content: 'Knowledge 2', type: 'opinion' }] },
           ],
         }),
       },

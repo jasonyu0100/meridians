@@ -14,15 +14,15 @@
 
 import type { NarrativeState, Thread, Scene, WorldBuild } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
-import { MARKET_OPENING_VOLUME } from '@/lib/constants';
-import { MARKET_FOCUS_K } from '@/lib/constants';
+import { STANCE_OPENING_VOLUME } from '@/lib/constants';
+import { STANCE_FOCUS_K } from '@/lib/constants';
 import {
   isThreadClosed,
   isThreadAbandoned,
   isNearClosed,
-  getMarketBelief,
-  getMarketProbs,
-  getMarketMargin,
+  getThreadStance,
+  getStanceProbs,
+  getStanceMargin,
   normalizedEntropy,
   focusScore,
   selectFocusWindow,
@@ -31,7 +31,7 @@ import {
   classifyThreadCategory,
   type ThreadCategory,
 } from '@/lib/thread-category';
-import { applyThreadDelta, decayUntouchedBeliefsForScene, newNarratorBelief } from '@/lib/thread-log';
+import { applyThreadDelta, decayUntouchedStancesForScene, newNarratorStance } from '@/lib/thread-log';
 
 // ── Replay seed ────────────────────────────────────────────────────────────
 
@@ -53,10 +53,10 @@ function seedThreadCopy(t: Thread): Thread {
         typeof v === 'number' ? v : NaN,
       )
     : undefined;
-  const belief = newNarratorBelief(t.outcomes.length, MARKET_OPENING_VOLUME, rawPriorProbs);
+  const belief = newNarratorStance(t.outcomes.length, STANCE_OPENING_VOLUME, rawPriorProbs);
   return {
     ...t,
-    beliefs: { [NARRATOR_AGENT_ID]: belief },
+    stances: { [NARRATOR_AGENT_ID]: belief },
     threadLog: { nodes: {}, edges: [] },
     closedAt: undefined,
     closeOutcome: undefined,
@@ -100,8 +100,8 @@ export type PortfolioSnapshot = {
   nearClosedThreads: number;
   /** Open but volume below abandonment floor. */
   abandonedThreads: number;
-  /** Summed volume across all open threads — the "market cap". */
-  marketCap: number;
+  /** Summed volume across all open threads — the "belief weight". */
+  beliefCap: number;
   /** Average normalized entropy across open threads. 0 = all decided, 1 = uniform. */
   averageEntropy: number;
   /** Average resolutionQuality across closed threads; null if none closed yet. */
@@ -116,7 +116,7 @@ export function computePortfolioSnapshot(narrative: NarrativeState): PortfolioSn
   let closed = 0;
   let near = 0;
   let abandoned = 0;
-  let marketCap = 0;
+  let beliefCap = 0;
   let entropySum = 0;
   let entropyCount = 0;
   let qualitySum = 0;
@@ -140,9 +140,9 @@ export function computePortfolioSnapshot(narrative: NarrativeState): PortfolioSn
     }
     active++;
     if (isNearClosed(t)) near++;
-    const belief = getMarketBelief(t);
-    if (belief) marketCap += belief.volume;
-    entropySum += normalizedEntropy(getMarketProbs(t));
+    const belief = getThreadStance(t);
+    if (belief) beliefCap += belief.volume;
+    entropySum += normalizedEntropy(getStanceProbs(t));
     entropyCount++;
   }
   return {
@@ -151,7 +151,7 @@ export function computePortfolioSnapshot(narrative: NarrativeState): PortfolioSn
     closedThreads: closed,
     nearClosedThreads: near,
     abandonedThreads: abandoned,
-    marketCap,
+    beliefCap,
     averageEntropy: entropyCount > 0 ? entropySum / entropyCount : 0,
     averageResolutionQuality: qualityCount > 0 ? qualitySum / qualityCount : null,
     resolutionQualityBands: bands,
@@ -205,9 +205,9 @@ export function buildPortfolioRows(
 ): PortfolioRow[] {
   const rows: PortfolioRow[] = [];
   for (const t of Object.values(narrative.threads)) {
-    const belief = getMarketBelief(t);
-    const probs = getMarketProbs(t);
-    const { topIdx, margin } = getMarketMargin(t);
+    const belief = getThreadStance(t);
+    const probs = getStanceProbs(t);
+    const { topIdx, margin } = getStanceMargin(t);
     const entropy = normalizedEntropy(probs);
     const volume = belief?.volume ?? 0;
     const volatility = belief?.volatility ?? 0;
@@ -291,7 +291,7 @@ export function replayThreadsAtIndex(
       touched.add(tm.threadId);
       threads[tm.threadId] = applyThreadDelta(threads[tm.threadId], tm, scene.id);
     }
-    const decayed = decayUntouchedBeliefsForScene(threads, touched);
+    const decayed = decayUntouchedStancesForScene(threads, touched);
     for (const [id, t] of Object.entries(decayed)) {
       threads[id] = t;
     }
@@ -332,8 +332,8 @@ export function computeRecentMovements(
     const priorThread = prior[id];
     if (!nowThread || !priorThread) continue;
     if (isThreadAbandoned(nowThread)) continue;
-    const nowProbs = getMarketProbs(nowThread);
-    const priorProbs = getMarketProbs(priorThread);
+    const nowProbs = getStanceProbs(nowThread);
+    const priorProbs = getStanceProbs(priorThread);
     // Compare on the currently-leading outcome — the "headline" of the market.
     let topIdx = 0;
     for (let i = 1; i < nowProbs.length; i++) {
@@ -401,7 +401,7 @@ export function currentFocusIds(
   narrative: NarrativeState,
   resolvedEntryKeys: string[],
   currentSceneIndex: number,
-  k: number = MARKET_FOCUS_K,
+  k: number = STANCE_FOCUS_K,
 ): Set<string> {
   return new Set(selectFocusWindow(narrative, resolvedEntryKeys, currentSceneIndex, k).map((t) => t.id));
 }
@@ -516,14 +516,14 @@ export function buildThreadTrajectory(
     }
     if (!touched.has(threadId)) {
       // Decay volume for scenes that skipped the thread — mirrors store replay.
-      const decayed = decayUntouchedBeliefsForScene(threadsMap, touched);
+      const decayed = decayUntouchedStancesForScene(threadsMap, touched);
       cursor = decayed[threadId];
     } else {
       cursor = threadsMap[threadId];
     }
-    const probs = getMarketProbs(cursor);
-    const { margin } = getMarketMargin(cursor);
-    const belief = getMarketBelief(cursor);
+    const probs = getStanceProbs(cursor);
+    const { margin } = getStanceMargin(cursor);
+    const belief = getThreadStance(cursor);
     points.push({
       sceneIndex: i,
       sceneOrdinal,
@@ -552,7 +552,7 @@ export type PortfolioTrajectoryPoint = {
   sceneOrdinal: number;
   /** Scene id, for click-through and hover labels. */
   sceneId: string;
-  /** Total volume across open markets — "market cap" of narrative attention. */
+  /** Total volume across open markets — "belief weight" of narrative attention. */
   attention: number;
   /** Average normalized entropy across open markets, 0–1. */
   uncertainty: number;
@@ -622,7 +622,7 @@ export function buildPortfolioTrajectory(
       touched.add(tm.threadId);
       threads[tm.threadId] = applyThreadDelta(threads[tm.threadId], tm, scene.id);
     }
-    const decayed = decayUntouchedBeliefsForScene(threads, touched);
+    const decayed = decayUntouchedStancesForScene(threads, touched);
     for (const [id, t] of Object.entries(decayed)) threads[id] = t;
 
     // Aggregate across the current thread state.
@@ -642,13 +642,13 @@ export function buildPortfolioTrajectory(
       }
       if (isThreadAbandoned(t)) continue;
       active++;
-      const belief = getMarketBelief(t);
+      const belief = getThreadStance(t);
       if (belief) {
         attention += belief.volume;
         volatilitySum += belief.volatility;
         volatilityCount++;
       }
-      const h = normalizedEntropy(getMarketProbs(t));
+      const h = normalizedEntropy(getStanceProbs(t));
       entropySum += h;
       entropyCount++;
       if (isNearClosed(t)) saturating++;

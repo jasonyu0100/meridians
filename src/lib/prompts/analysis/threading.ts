@@ -6,11 +6,11 @@
  */
 
 export const THREADING_SYSTEM =
-  'You are a world-view structure analyst. Identify causal dependencies between threads — the prediction markets the world view carries. Refer to threads by numeric ID — do not repeat descriptions in the output. Return only valid JSON.';
+  'You are a world-view structure analyst. Identify causal dependencies between threads — the stances the world view carries. Refer to threads by numeric ID — do not repeat descriptions in the output. Return only valid JSON.';
 
 export function buildThreadingPrompt(canonicalThreads: string[]): string {
   return `<inputs>
-  <canonical-threads hint="Post-merge, deduplicated. Each prefixed with a numeric ID. Threads are prediction markets over named outcomes.">
+  <canonical-threads hint="Post-merge, deduplicated. Each prefixed with a numeric ID. Threads are stances over named outcomes.">
 ${canonicalThreads.map((d, i) => `    <thread id="${i + 1}">"${d}"</thread>`).join('\n')}
   </canonical-threads>
 </inputs>

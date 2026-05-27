@@ -54,7 +54,7 @@ import {
   THREAD_LOG_NODE_TYPES,
 } from "@/types/narrative";
 import { clampEvidence, isThreadAbandoned, isThreadClosed } from "@/lib/narrative-utils";
-import { newNarratorBelief } from "@/lib/thread-log";
+import { newNarratorStance } from "@/lib/thread-log";
 import {
   SCENE_STRUCTURE_SYSTEM,
   buildSceneStructurePrompt,
@@ -1937,8 +1937,8 @@ export async function assembleNarrative(
           description: t.description,
           outcomes,
           horizon,
-          beliefs: {
-            [NARRATOR_AGENT_ID]: newNarratorBelief(
+          stances: {
+            [NARRATOR_AGENT_ID]: newNarratorStance(
               outcomes.length,
               2,
               rawPriorProbs,
@@ -1962,7 +1962,7 @@ export async function assembleNarrative(
           }
         }
         if (addedOutcomes.length > 0) {
-          const b = threads[id].beliefs[NARRATOR_AGENT_ID];
+          const b = threads[id].stances[NARRATOR_AGENT_ID];
           if (b) {
             b.logits = [
               ...b.logits,

@@ -72,7 +72,7 @@ function makeThread(id: string, description = id): Thread {
     id,
     description,
     outcomes: ["yes", "no"],
-    beliefs: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
+    stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
     participants: [],
     openedAt: "",
     dependents: [],

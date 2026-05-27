@@ -16,10 +16,9 @@ interface Props {
 }
 
 /**
- * Dashboard-style top metric strip — replicates the visual pattern used by
- * MarketBriefingView's header: separated columns of `value` / `label` with
- * minimal chrome. Keeps Variables visually consistent with the rest of the
- * canvas surfaces.
+ * Dashboard-style top metric strip — separated columns of `value` / `label`
+ * with minimal chrome. Keeps Variables visually consistent with the rest of
+ * the canvas surfaces.
  */
 export default function MetricStrip({ metrics, tail }: Props) {
   return (

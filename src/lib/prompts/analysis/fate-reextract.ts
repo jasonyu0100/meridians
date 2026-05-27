@@ -4,9 +4,9 @@
  * Phase 5 (finalization) — second-pass, summary-based re-scoring of prediction-
  * market evidence. The first pass (Phase 1 Structure) extracts threadDeltas
  * from each scene IN PARALLEL, so each chunk sees only its local prose and has
- * no knowledge of which outcome actually wins the market across the full narrative.
+ * no knowledge of which outcome actually wins the stance across the full narrative.
  *
- * Symptom: once the market diverges late-arc, probabilities never reverse —
+ * Symptom: once the stance diverges late-arc, probabilities never reverse —
  * the monotonic local accumulation has no way of knowing a twist or payoff is
  * about to land. Scenes that seeded the eventual winner were priced as pulses
  * because, locally, nothing appeared decisive.
@@ -22,12 +22,12 @@
  */
 
 import {
-  PROMPT_MARKET_PRINCIPLES,
-  PROMPT_MARKET_EVIDENCE_SCALE,
-  PROMPT_MARKET_LOGTYPE_TABLE,
-} from '../core/market-calibration';
+  PROMPT_STANCE_PRINCIPLES,
+  PROMPT_STANCE_EVIDENCE_SCALE,
+  PROMPT_STANCE_LOGTYPE_TABLE,
+} from '../core/belief-calibration';
 
-export const FATE_REEXTRACT_SYSTEM = `You re-score prediction-market evidence for ONE scene with full knowledge of the narrative's actual arc — including which outcome each thread ultimately resolves to. The first pass scored each scene locally (blind to endings); your job is to refresh that scene's threadDeltas so the overall trajectory reflects the narrative's true shape. Return only valid JSON.`;
+export const FATE_REEXTRACT_SYSTEM = `You re-score stance evidence for ONE scene with full knowledge of the narrative's actual arc — including which outcome each thread ultimately resolves to. The first pass scored each scene locally (blind to endings); your job is to refresh that scene's threadDeltas so the overall trajectory reflects the narrative's true shape. Return only valid JSON.`;
 
 export type FateReextractThread = {
   description: string;
@@ -85,7 +85,7 @@ export function buildFateReextractPrompt(opts: {
     return 'resolution';
   })();
 
-  const marketBlock = canonicalThreads.length === 0
+  const stanceBlock = canonicalThreads.length === 0
     ? '(no canonical threads)'
     : canonicalThreads.map((t, i) => {
         const outcomesFmt = t.outcomes.map((o) => o === t.observedWinner ? `${o} [WINNER]` : o).join(', ');
@@ -111,24 +111,24 @@ export function buildFateReextractPrompt(opts: {
     <summary>${sceneSummary}</summary>
   </scene-context>
 
-  <canonical-markets hint="Full-narrative view — the resolutions the corpus actually lands on.">
-${marketBlock}
-  </canonical-markets>
+  <canonical-stances hint="Full-narrative view — the resolutions the corpus actually lands on.">
+${stanceBlock}
+  </canonical-stances>
 
   <first-pass-evidence hint="Local-only extraction; may be mispriced because each scene was scored blind to endings.">
 ${priorBlock}
   </first-pass-evidence>
 
-  <market-principles>
-${PROMPT_MARKET_PRINCIPLES}
-  </market-principles>
+  <stance-principles>
+${PROMPT_STANCE_PRINCIPLES}
+  </stance-principles>
 
   <evidence-scale>
-${PROMPT_MARKET_EVIDENCE_SCALE}
+${PROMPT_STANCE_EVIDENCE_SCALE}
   </evidence-scale>
 
   <logtype-table>
-${PROMPT_MARKET_LOGTYPE_TABLE}
+${PROMPT_STANCE_LOGTYPE_TABLE}
   </logtype-table>
 </inputs>
 
@@ -141,7 +141,7 @@ ${PROMPT_MARKET_LOGTYPE_TABLE}
     <rule index="3" name="resolution-scenes">If THIS scene is at or near the thread's resolution index, the resolving events deserve decisive evidence (|e| ≥ 3, logType payoff or twist). The first pass often under-prices these because the resolving event is structurally small but narratively decisive. For rule-driven threads the resolving event is the rule set forcing a state — a threshold breached, a gate triggered, an equilibrium reached; price it as the payoff it is.</rule>
     <rule index="4" name="twists-against-leaders">If the scene reverses what earlier evidence suggested, score it as a twist (|e| ≥ 3 on the newly-favoured outcome). Don't soften to preserve the local lead.</rule>
     <rule index="5" name="preserve-valid">If the first-pass delta was already lifecycle-consistent, keep it. Only rewrite where hindsight changes the read.</rule>
-    <rule index="6" name="canonical-outcomes">Every update.outcome must match an entry from canonical-markets verbatim.</rule>
+    <rule index="6" name="canonical-outcomes">Every update.outcome must match an entry from canonical-stances verbatim.</rule>
     <rule index="7" name="omit-untouched">If a scene doesn't meaningfully touch a thread, OMIT it — don't pad pulses.</rule>
   </hindsight-rules>
 </instructions>
@@ -152,11 +152,11 @@ Return JSON with this exact shape — and ONLY this object. Do not touch worldDe
 {
   "threadDeltas": [
     {
-      "threadDescription": "exact canonical description from canonical-markets",
+      "threadDescription": "exact canonical description from canonical-stances",
       "logType": "pulse|setup|escalation|payoff|twist|resistance|stall|callback|transition",
       "updates": [{"outcome": "exact canonical outcome", "evidence": 1.5}],
       "volumeDelta": 1,
-      "addOutcomes": ["optional — new outcome names if the scene structurally opens a possibility that's not in the market"],
+      "addOutcomes": ["optional — new outcome names if the scene structurally opens a possibility that's not in the stance"],
       "rationale": "15-25 words grounded in the scene summary — the specific event that moved this thread"
     }
   ]

@@ -157,13 +157,13 @@ export const ANALYST_DISCIPLINE_BY_PARADIGM: Record<NarrativeParadigm, string> =
     'Read for rule-driven trajectory: which agent acted under which constraint, which thread closed because the rules forced it (vs. authorial pull), which scenarios remain live under the modelled rule set. Recoveries must be earned through initial-condition shifts, rule changes, or new positions inside existing rules — not authorial rescue.',
 
   'essay':
-    'Read for argument structure: the central claim, the evidence weighed, counter-positions engaged, qualifications added, the conclusion reached (or honestly deferred). "Scenes" here are sections of cognition — interlocutors are positions engaged, not characters with arcs. Threads are argument-questions, not dramatic markets.',
+    'Read for argument structure: the central claim, the evidence weighed, counter-positions engaged, qualifications added, the conclusion reached (or honestly deferred). "Scenes" here are sections of cognition — interlocutors are positions engaged, not characters with arcs. Threads are argument-questions whose stances harden or invert; they do not dramatically pay off.',
 
   'panel':
     'Read for cognitive event quality: each thinker\'s contribution attributed, dissent surfaced, the session moving through productive disagreement toward synthesis (or honest stall). "Scenes" are deliberations over existing evidence — not invented forward-time events. Threads track the panel\'s shared question + per-member sub-investigations.',
 
   'atlas':
-    'Read for typological coherence: classification consistency, cross-reference density, position of each entry in the system. There are no arcs and no resolutions — entries describe stable structure, not history. Threads (when present) are classification questions, not dramatic markets.',
+    'Read for typological coherence: classification consistency, cross-reference density, position of each entry in the system. There are no arcs and no resolutions — entries describe stable structure, not history. Threads (when present) are classification questions whose stances refine over time; they do not dramatically pay off.',
 
   'debate':
     'Read for contest mechanics: each move\'s attribution, intent (which axis of contestation it targets), and effect under the rules. Threads are axes of contestation; outcomes favour one party or the other under the contest\'s own logic. Do not smooth events into a single character\'s throughline.',
@@ -267,19 +267,7 @@ export const INTERVIEW_PROBE_HINT_BY_PARADIGM: Record<NarrativeParadigm, string>
   'record':      'The subject is a chronicled figure or institution — interview surfaces what they observed in their period, the trajectory they see, what they expect to be recorded next. The chronicler\'s documentary tone shapes the voice.',
 };
 
-// ─── Briefing / direction / expansion ───────────────────────────────────────
-
-/** Per-paradigm focus for the market-briefing system prompt. */
-export const BRIEFING_FOCUS_BY_PARADIGM: Record<NarrativeParadigm, string> = {
-  'fiction':     'Moves should escalate, subvert, or redirect dramatic tension — not resolve it cleanly. Expansions should open unexplored regions, factions, or character relations that increase the work\'s speculative density.',
-  'non-fiction': 'Moves should surface unresolved documented questions, contested attributions, or under-explored relationships in the record. Expansions should add documented figures, places, or sources that deepen the evidentiary base without fabricating events.',
-  'simulation':  'Moves should escalate rule-driven trajectories — name the initial-condition shift, rule activation, or threshold crossing whose consequences would propagate. Expansions should add rule subsystems, decision-rule-bearing agents, or modelled-region locations that extend what the simulation can answer.',
-  'essay':       'Moves should sharpen the argument — the next claim to defend, the counter-position to engage, the qualification to add, the evidentiary gap to close. Expansions should add interlocutors, primary sources, or evidence relations that thicken the argument substrate.',
-  'panel':       'Moves should escalate the panel\'s cognitive event — the next claim the panel should evaluate, the dissent to surface, the scenario to model explicitly. Expansions should add specialists, evidence packets, or sub-investigations that thicken the panel\'s deliberation.',
-  'atlas':       'Moves should sharpen the typology — the next entry to add, the classification edge-case to resolve, the cross-reference to formalise. Expansions should add specimens, taxa, or doctrines that fill structural gaps in the system-graph.',
-  'debate':      'Moves should escalate the contest — the next move to make on each axis, the rule to invoke, the witness/argument/evidence to deploy. Expansions should add witnesses, surrogates, or rule-bearing artifacts that change what moves are available.',
-  'record':      'Moves should advance the chronicle\'s trajectories — the next period\'s entry, the long-running trend that needs an update, the figure whose state has shifted. Expansions should add chronicled figures, institutions, or rule-bearing artifacts that the record needs to track.',
-};
+// ─── Direction / expansion ──────────────────────────────────────────────────
 
 /** Per-paradigm direction shape for arc / narrative-direction proposals. */
 export const DIRECTION_SHAPE_BY_PARADIGM: Record<NarrativeParadigm, string> = {

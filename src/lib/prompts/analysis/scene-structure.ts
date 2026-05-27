@@ -10,7 +10,7 @@
 
 import type { BeatPlan } from '@/types/narrative';
 import { FORCE_REFERENCE_MEANS } from '@/lib/narrative-utils';
-import { PROMPT_MARKET_PRINCIPLES } from '../core/market-calibration';
+import { PROMPT_STANCE_PRINCIPLES } from '../core/belief-calibration';
 
 export const SCENE_STRUCTURE_SYSTEM = `You are a world-view structure extractor. Given a scene's exact prose and its beat plan, extract all entities, deltas, and structural data accurately. The scene may carry narrative events, argued claims, chronicled changes, classified attributes, contest moves, or rule-driven state transitions — extract whichever the paradigm presents. Dense content deserves rich extraction; sparse content deserves minimal extraction. Return only valid JSON.`;
 
@@ -49,7 +49,7 @@ Return JSON:
   "artifacts": [{"name": "Artifact Name", "significance": "key|notable|minor", "imagePrompt": "1-2 sentence LITERAL visual description — concrete physical details only, no metaphors or figurative language", "ownerName": "owner or null"}],
   "threads": [{"description": "A QUESTION with stakes, uncertainty, contested outcomes — 15-30 words. BAD: 'Will X succeed?' GOOD: 'Can Marcus protect his daughter from the cult that killed his wife?' / 'Does the proposed mechanism explain anomalies the prior model cannot?' / 'Does the modelled grid reach cascading failure under the declared load schedule?'", "participantNames": ["names"], "outcomes": ["named outcome 1", "named outcome 2", "..."], "horizon": "short | medium | long | epic — structural distance from any scene to this thread's resolution. short = 2-3 scenes (immediate question, local outcome). medium = within an arc, 4-8 scenes. long = multi-arc, segment-spanning. epic = work-spanning or open-ended (eternal life, dynastic ambition, civilisational trajectory, long-horizon equilibria). Drives evidence-magnitude attenuation in the fate-reextract pass.", "development": "15-25 words: how this question was advanced or answered in this scene"}],
   "relationships": [{"from": "Name", "to": "Name", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valence": 0.0}],
-  "threadDeltas": [{"threadDescription": "exact thread description", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if the scene opens possibilities not previously in the market"], "rationale": "15-25 words — the specific summary sentence that moved the market this scene"}],
+  "threadDeltas": [{"threadDescription": "exact thread description", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "outcome name from thread.outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — new outcome names if the scene opens possibilities not previously in the stance"], "rationale": "15-25 words — the specific summary sentence that moved the stance this scene"}],
   "worldDeltas": [{"entityName": "Name", "addedNodes": [{"content": "15-25 words, PRESENT tense: a stable fact about the entity — their unique perspective on reality, identity, or condition. Emit as many 15-25-word nodes per entity as the scene genuinely reveals — no count cap.", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
   "relationshipDeltas": [{"from": "Name", "to": "Name", "type": "short relation label — mentor, rival, ally, kin, debtor, peer, etc.", "valenceDelta": 0.1}],
   "artifactUsages": [{"artifactName": "Name", "characterName": "who or null", "usage": "what the artifact did"}],
@@ -88,8 +88,8 @@ Return JSON:
   <example category="good" reason="arc-central + multi-scene + irreversible">"Will the central pair's mutual attraction develop into a relationship despite an existing commitment?" / "Does the proposed architecture outperform prior baselines on long-range tasks?" / "Can the unipolar moment be sustained against multipolar economic gravity?" / "Does the modelled epidemic reach herd-threshold before mitigation policy lifts under the declared transmission parameters?"</example>
 </thread-creation>
 
-<threads-as-prediction-markets>
-  <model>A thread is a named question the work has committed to, with NAMED OUTCOMES. The market prices each outcome (via logits → softmax). Scenes emit evidence that shifts per-outcome logits; the audience's belief over "which outcome wins" evolves across the narrative.</model>
+<threads-as-stances>
+  <model>A thread is a named question the work has committed to, with NAMED OUTCOMES. The stance prices each outcome (via logits → softmax). The stance is the world view's current bearing on the question (via logits → softmax). Scenes emit evidence that shifts per-outcome logits; the audience's belief over "which outcome wins" evolves across the narrative.</model>
 
   <outcomes required="true">
     <range>2 to ~6 named possibilities covering the resolution space.</range>
@@ -126,10 +126,10 @@ Return JSON:
     <rule>Binary defaults [0.5, 0.5] only when truly symmetric. "Will X survive the gauntlet?" in a lethal gauntlet is NOT 50/50.</rule>
     <fallback>If genuinely indistinguishable, omit the field and the system uses uniform.</fallback>
   </prior-probs>
-</threads-as-prediction-markets>
+</threads-as-stances>
 
 <thread-deltas>
-  <intent>Per-scene evidence that moves the market.</intent>
+  <intent>Per-scene evidence that moves the stance.</intent>
   <field name="updates" shape="per-outcome { outcome: string, evidence: int in [-4, +4] }">
     <magnitude band="small">+1..+2 small shift</magnitude>
     <magnitude band="meaningful">+2..+3 meaningful</magnitude>
@@ -137,11 +137,11 @@ Return JSON:
     <rule>Negative evidence = the outcome became less likely.</rule>
     <rule>Multiple outcomes can move in a single scene (a reveal lifting one and suppressing another).</rule>
     <evidence-discipline>
-      <directive>Every threadDelta emission must trace to the market principles below.</directive>
+      <directive>Every threadDelta emission must trace to the stance principles below.</directive>
       <scope-note hint="This is a blind first-pass extraction; the chunk in front of you is all you see.">No live probability vector is available — Principle 4 (reprice-from-current-state) reduces to "price from concrete events in this chunk's prose, not from inferred trajectory." Principle 5 (saturation-resists-resolution) applies through the hedge-to-magnitude table below: closure-grade evidence (|e|≥3, logType payoff/twist) requires a named in-world transition in the prose, not assertion. The fate-reextract pass downstream re-prices each scene with full corpus knowledge.</scope-note>
-      <market-principles>
-${PROMPT_MARKET_PRINCIPLES}
-      </market-principles>
+      <stance-principles>
+${PROMPT_STANCE_PRINCIPLES}
+      </stance-principles>
       <lexical-calibration>
         <rule name="rhetoric-not-probability">Hedge words cap the magnitude; word-count does not inflate it.</rule>
         <table name="hedge-to-magnitude">
@@ -152,7 +152,7 @@ ${PROMPT_MARKET_PRINCIPLES}
           <row hedge="X is inevitable / decisive">|e| ≈ 3-4, closure</row>
         </table>
         <rule>A passage that asserts then walks back stays small-magnitude.</rule>
-        <rule name="distributional-vs-modal">Rare-event rhetoric ("tail risk has grown", "base rates no longer apply") shifts the TAIL outcome 5-15% up from prior base rates, NOT past 50%. A rare-event market at 5-10% becomes 15-25%, not 60-70%, on distributional claims. Only on-page events (detonation, declared test, announced succession) move the modal outcome — those come with |e| ≥ 3, logType payoff/twist. Rhetoric framing the tail as the headline lifts the tail; the modal stays modal.</rule>
+        <rule name="distributional-vs-modal">Rare-event rhetoric ("tail risk has grown", "base rates no longer apply") shifts the TAIL outcome 5-15% up from prior base rates, NOT past 50%. A rare-event stance at 5-10% becomes 15-25%, not 60-70%, on distributional claims. Only on-page events (detonation, declared test, announced succession) move the modal outcome — those come with |e| ≥ 3, logType payoff/twist. Rhetoric framing the tail as the headline lifts the tail; the modal stays modal.</rule>
         <rule name="text-volume-not-probability">Authors detail the interesting outcome, not the likeliest one. Price by hedges and events, not by word-share per outcome.</rule>
       </lexical-calibration>
     </evidence-discipline>
@@ -169,14 +169,14 @@ ${PROMPT_MARKET_PRINCIPLES}
     <value name="transition">volume > evidence</value>
   </field>
   <field name="volumeDelta">+0..+2 attention change (how much the scene spotlighted this thread).</field>
-  <field name="addOutcomes" frequency="rare">New outcome names when a scene structurally opens a possibility not previously in the market (a third contender arrives, an option no one had considered surfaces). Neutral prior (logit=0). Most scenes don't expand.</field>
+  <field name="addOutcomes" frequency="rare">New outcome names when a scene structurally opens a possibility not previously in the stance (a third contender arrives, an option no one had considered surfaces). Neutral prior (logit=0). Most scenes don't expand.</field>
   <field name="rationale">
     <shape>ONE prose sentence grounded in what happens in the scene. Natural language — describe the event in a marginal annotation voice that fits the source register. For simulation works where a payoff or twist fires because the established rule set forces it under the current conditions, cite the rule explicitly in the rationale (e.g. "the load on node 7 crosses 1.2× rated capacity for two consecutive ticks, tripping the cascade as the propagation rule dictates"); rule-driven closures should read distinguishably from authorially-asserted ones.</shape>
     <prohibition>DO NOT quote outcome identifiers (they're technical names).</prohibition>
     <prohibition>DO NOT mention evidence numbers or logType.</prohibition>
     <invariant>Two good rationales on the SAME delta should read like two descriptions of the same moment, not two schema dumps.</invariant>
   </field>
-  <coverage>Touch every thread the scene engages. Threads the scene NAMES, observes, or invokes without shifting take a pulse (volumeDelta=+1, evidence=0..0.5) — pulses keep markets alive and let minute motion accumulate. Threads with no on-page connection get no entry. Err toward emitting when uncertain. No count cap.</coverage>
+  <coverage>Touch every thread the scene engages. Threads the scene NAMES, observes, or invokes without shifting take a pulse (volumeDelta=+1, evidence=0..0.5) — pulses keep stances alive and let minute motion accumulate. Threads with no on-page connection get no entry. Err toward emitting when uncertain. No count cap.</coverage>
   <invariant>Evidence ≠ volume: does the scene change WHAT we believe (evidence) or ATTENTION on the thread (volumeDelta)?</invariant>
   <correlation>One event can legitimately move multiple threads; each rationale cites its driving sentence.</correlation>
 </thread-deltas>

@@ -736,8 +736,8 @@ function remapThread(t: Thread, targetId: string, ctx: Ctx): Thread {
     dependents: (t.dependents ?? []).map((id) => remap(id, ctx.maps.thread)),
     // beliefs is keyed by agent id (mostly character ids, plus sentinel
     // narrator keys like "__narrator__" we shouldn't touch).
-    beliefs: Object.fromEntries(
-      Object.entries(t.beliefs ?? {}).map(([agentId, belief]) => [
+    stances: Object.fromEntries(
+      Object.entries(t.stances ?? {}).map(([agentId, belief]) => [
         ctx.maps.char.get(agentId) ?? agentId,
         {
           ...belief,

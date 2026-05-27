@@ -4,9 +4,9 @@ import {
   classifyThreadKind,
   computeBranchArcCoverage,
   focusScore,
-  getMarketBelief,
-  getMarketMargin,
-  getMarketProbs,
+  getThreadStance,
+  getStanceMargin,
+  getStanceProbs,
   normalizedEntropy,
   scenesSinceTouched,
 } from "@/lib/narrative-utils";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/thread-category";
 import { buildThreadTrajectory } from "@/lib/portfolio-analytics";
 import { getThreadLogAtScene } from "@/lib/scene-filter";
-import { MARKET_TAU_CLOSE, MARKET_ABANDON_VOLUME } from "@/lib/constants";
+import { STANCE_TAU_CLOSE, STANCE_ABANDON_VOLUME } from "@/lib/constants";
 import type { NarrativeState, Thread, ThreadLogNodeType } from "@/types/narrative";
 import { useStore } from "@/lib/store";
 import { useMemo, useState } from "react";
@@ -74,34 +74,34 @@ const LOG_TYPE_GLOSS: Record<ThreadLogNodeType, string> = {
   transition: "Lifecycle state changed — the thread crossed a structural boundary.",
   setup: "A promise is being planted — future payoff telegraphed, odds nudge gently.",
   escalation: "Stakes rising — pressure mounts without yet resolving direction.",
-  payoff: "A promise paid off — strong evidence, often closes the market toward an outcome.",
+  payoff: "A promise paid off — strong evidence, often closes the stance toward an outcome.",
   twist: "The leader flipped — major shock, highest-information move you can see.",
   callback: "Past evidence re-activated — history being honored, modest probability shift.",
   resistance: "Something pushed back against the current direction — counter-evidence.",
   stall: "Nothing moved and it shows — thread is drifting, losing attention.",
 };
 
-// Rich, multi-line definitions for every market stat. These appear in the
+// Rich, multi-line definitions for every stance stat. These appear in the
 // hover tooltip on each stat tile so the analyst can learn what they mean
 // while reading the dashboard. Keep them self-contained — a reader new to
 // the system should be able to understand any stat from its tooltip alone.
 const STAT_GLOSS = {
   volume:
-    "VOLUME — the cumulative narrative attention this market has earned.\n\nGrows when scenes touch it (volumeDelta); decays 10% each scene it's ignored. High volume = the world view keeps coming back to this. Below " +
-    MARKET_ABANDON_VOLUME +
+    "VOLUME — the cumulative narrative attention this stance has earned.\n\nGrows when scenes touch it (volumeDelta); decays 10% each scene it's ignored. High volume = the world view keeps coming back to this. Below " +
+    STANCE_ABANDON_VOLUME +
     " triggers abandonment.",
   uncertainty:
-    "UNCERTAINTY — normalized entropy of the probability distribution, 0–100%.\n\n100% = every outcome equally likely (maximally contested). 0% = the market has decided. Read this as 'how much is still in play?'",
+    "UNCERTAINTY — normalized entropy of the probability distribution, 0–100%.\n\n100% = every outcome equally likely (maximally contested). 0% = the stance has decided. Read this as 'how much is still in play?'",
   volatility:
-    "VOLATILITY (σ) — EWMA of recent evidence magnitude.\n\nHow hard the market has been shaken lately. A sudden twist spikes σ; a long quiet stretch decays it. High σ = the market is hot, expect more movement.",
+    "VOLATILITY (σ) — EWMA of recent evidence magnitude.\n\nHow hard the stance has been shaken lately. A sudden twist spikes σ; a long quiet stretch decays it. High σ = the stance is hot, expect more movement.",
   margin:
     "MARGIN (Δ) — log-odds gap between the top two outcomes.\n\nReads in natural-log units. Δ≈0 = tie. Δ≥" +
-    MARKET_TAU_CLOSE +
+    STANCE_TAU_CLOSE +
     " with a payoff/twist of |evidence|≥3 triggers closure. Good shorthand for 'how decided is the leader?'",
   focus:
-    "FOCUS — composite importance × sway score.\n\nvolume × entropy × (1 + volatility) × recency^gap. The portfolio sidebar orders by this. High focus = a market the world view is currently investing in AND is contested enough to still move.",
+    "FOCUS — composite importance × sway score.\n\nvolume × entropy × (1 + volatility) × recency^gap. The portfolio sidebar orders by this. High focus = a stance the world view is currently investing in AND is contested enough to still move.",
   gap:
-    "GAP — scenes since the market last received evidence.\n\n∞ if never touched. Large gap + low volume → heading for abandonment. Large gap + high volume → dormant but potent; often a setup for a callback.",
+    "GAP — scenes since the stance last received evidence.\n\n∞ if never touched. Large gap + low volume → heading for abandonment. Large gap + high volume → dormant but potent; often a setup for a callback.",
 };
 
 // ── Horizon visibility ────────────────────────────────────────────────────
@@ -207,8 +207,8 @@ function LogTypeMixBar({
         <span
           className="text-[9px] uppercase tracking-wider text-text-dim cursor-help"
           title={
-            "EVIDENCE MIX — how this market has moved across its lifetime.\n\n" +
-            "Every scene emits a log type. The shape of this bar tells you the market's signature: payoff-heavy = decisive, twist-heavy = volatile, pulse-heavy = maintained but slow-moving."
+            "EVIDENCE MIX — how this stance has moved across its lifetime.\n\n" +
+            "Every scene emits a log type. The shape of this bar tells you the stance's signature: payoff-heavy = decisive, twist-heavy = volatile, pulse-heavy = maintained but slow-moving."
           }
         >
           Evidence mix
@@ -253,10 +253,10 @@ function LogTypeMixBar({
   );
 }
 
-// ── Closure-proximity gauge — how close to the τ threshold this market is ──
+// ── Closure-proximity gauge — how close to the τ threshold this stance is ──
 
 function SaturationGauge({ margin }: { margin: number }) {
-  const pct = Math.min(100, (Math.abs(margin) / MARKET_TAU_CLOSE) * 100);
+  const pct = Math.min(100, (Math.abs(margin) / STANCE_TAU_CLOSE) * 100);
   const near = pct >= 66;
   const ready = pct >= 100;
   const color = ready ? "#34d399" : near ? "#fbbf24" : "#64748b";
@@ -268,8 +268,8 @@ function SaturationGauge({ margin }: { margin: number }) {
           className="text-[9px] uppercase tracking-wider text-text-dim cursor-help"
           title={
             "CLOSURE PROXIMITY — how close |margin| is to the τ threshold (" +
-            MARKET_TAU_CLOSE +
-            ").\n\nAt 100%, the next payoff/twist with |evidence|≥3 can officially close the market. Under 66% = still in genuine play. Above 66% = the world view is committing — expect a payoff soon."
+            STANCE_TAU_CLOSE +
+            ").\n\nAt 100%, the next payoff/twist with |evidence|≥3 can officially close the stance. Under 66% = still in genuine play. Above 66% = the world view is committing — expect a payoff soon."
           }
         >
           Closure proximity
@@ -289,7 +289,7 @@ function SaturationGauge({ margin }: { margin: number }) {
       </div>
       <div
         className="h-1 w-full rounded-full bg-white/5 overflow-hidden cursor-help"
-        title={`|margin| ${Math.abs(margin).toFixed(2)} / τ ${MARKET_TAU_CLOSE} = ${pct.toFixed(0)}%`}
+        title={`|margin| ${Math.abs(margin).toFixed(2)} / τ ${STANCE_TAU_CLOSE} = ${pct.toFixed(0)}%`}
       >
         <div
           className="h-full rounded-full"
@@ -308,7 +308,7 @@ export default function ThreadDetail({ threadId }: Props) {
 
   const thread = narrative?.threads[threadId];
 
-  // Market-derived category per thread.
+  // Stance-derived category per thread.
   const currentCategory = useMemo(
     () => (thread ? classifyThreadCategory(thread) : 'dormant'),
     [thread],
@@ -373,7 +373,7 @@ export default function ThreadDetail({ threadId }: Props) {
       <div className="flex items-center gap-2">
         <span
           className={`text-[10px] uppercase tracking-widest cursor-help ${THREAD_CATEGORY_TEXT[currentCategory]}`}
-          title={`${THREAD_CATEGORY_LABEL[currentCategory].toUpperCase()} — ${THREAD_CATEGORY_DESCRIPTION[currentCategory]}\n\nCategory is derived from volume + entropy + volatility + gap. It's the single-word summary of the market's current state.`}
+          title={`${THREAD_CATEGORY_LABEL[currentCategory].toUpperCase()} — ${THREAD_CATEGORY_DESCRIPTION[currentCategory]}\n\nCategory is derived from volume + entropy + volatility + gap. It's the single-word summary of the stance's current state.`}
         >
           {THREAD_CATEGORY_LABEL[currentCategory]}
         </span>
@@ -409,11 +409,11 @@ export default function ThreadDetail({ threadId }: Props) {
         })()}
       </div>
 
-      {/* Market — up-to-scene probability distribution + trajectory */}
+      {/* Stance — up-to-scene probability distribution + trajectory */}
       {(() => {
         const tailPoint =
           trajectory.length > 0 ? trajectory[trajectory.length - 1] : null;
-        const tailProbs = tailPoint ? tailPoint.probs : getMarketProbs(thread);
+        const tailProbs = tailPoint ? tailPoint.probs : getStanceProbs(thread);
         const tailOutcomes = tailPoint ? tailPoint.outcomes : thread.outcomes;
         // Colour-key the outcomes off the LIVE narrative state's ordering
         // (`thread.outcomes`) so the inspector and the portfolio bar always
@@ -427,8 +427,8 @@ export default function ThreadDetail({ threadId }: Props) {
         // their tail index.
         const liveIdxByName = new Map<string, number>();
         thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
-        const belief = getMarketBelief(thread);
-        const { margin } = getMarketMargin(thread);
+        const belief = getThreadStance(thread);
+        const { margin } = getStanceMargin(thread);
         const currentEntropy = normalizedEntropy(tailProbs);
         const ranked = tailOutcomes
           .map((outcome, idx) => ({
@@ -450,7 +450,7 @@ export default function ThreadDetail({ threadId }: Props) {
           state.resolvedEntryKeys,
           state.viewState.currentSceneIndex,
         );
-        // Gap — scenes since the market last received evidence.
+        // Gap — scenes since the stance last received evidence.
         const gap = scenesSinceTouched(
           thread,
           state.resolvedEntryKeys,
@@ -534,7 +534,7 @@ export default function ThreadDetail({ threadId }: Props) {
               })}
             </ul>
 
-            {/* Primary market stats — six-tile grid with rich tooltips */}
+            {/* Primary stance stats — six-tile grid with rich tooltips */}
             <div className="grid grid-cols-3 gap-1.5">
               <StatTile
                 label="Volume"
@@ -590,7 +590,7 @@ export default function ThreadDetail({ threadId }: Props) {
             {trajectory.length > 1 && (
               <div
                 className="flex items-center gap-3 text-[10px] rounded-md bg-white/2 border border-white/5 px-2 py-1.5 cursor-help"
-                title={`MOVEMENT — change in the leading outcome vs. ${LOOKBACK} scenes ago.\n\n"${ranked[0]?.outcome}" moved from ${Math.round(priorTopProb * 100)}% to ${Math.round((tailPoint?.probs[topIdx] ?? 0) * 100)}%. Volume ${priorVolume.toFixed(1)} → ${(tailPoint?.volume ?? 0).toFixed(1)}.\n\nUse this to tell whether the market is actively moving or has stalled.`}
+                title={`MOVEMENT — change in the leading outcome vs. ${LOOKBACK} scenes ago.\n\n"${ranked[0]?.outcome}" moved from ${Math.round(priorTopProb * 100)}% to ${Math.round((tailPoint?.probs[topIdx] ?? 0) * 100)}%. Volume ${priorVolume.toFixed(1)} → ${(tailPoint?.volume ?? 0).toFixed(1)}.\n\nUse this to tell whether the stance is actively moving or has stalled.`}
               >
                 <span className="text-text-dim uppercase tracking-wider">
                   Last {Math.min(LOOKBACK, trajectory.length - 1)} scn

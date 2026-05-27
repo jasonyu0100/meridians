@@ -1,6 +1,6 @@
 import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
 import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS } from '@/types/narrative';
-import { buildCumulativeSystemGraph, getMarketBelief, getMarketMargin, getMarketProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
+import { buildCumulativeSystemGraph, getThreadStance, getStanceMargin, getStanceProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
 import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
 import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@/lib/constants';
@@ -277,7 +277,7 @@ export function getStateAtIndex(
 
   // Thread market state is read live from narrative.threads (the reducer
   // applies threadDeltas on dispatch, so `n.threads` already reflects beliefs
-  // as of the current head). No per-index replay needed for the market model.
+  // as of the current head). No per-index replay needed for the stance model.
 
   // Replay artifact ownership: start with initial parentIds from worldBuilds, then apply ownershipDeltas
   const artifactOwnership: Record<string, string | null> = {};
@@ -304,10 +304,13 @@ export function getStateAtIndex(
   };
 }
 
-// Thread prediction-market documentation — what the LLM needs to know about
-// how threads are tracked now. Binary and multi-outcome threads share the
-// same shape; binary just happens to have outcomes = ["yes", "no"].
-export const THREAD_LIFECYCLE_DOC = `Threads are prediction markets over named outcomes. State = (probability distribution via softmax(logits), volume, volatility). A market closes when one outcome's logit margin over the runner-up exceeds the closure threshold AND the closing scene emits a payoff or twist with |evidence| ≥ 3. A market is abandoned when volume decays below the floor (untouched threads lose volume each scene). Neither closed nor abandoned threads consume generation pressure.`;
+// Thread stance / belief documentation — what the LLM needs to know about
+// how threads are tracked now. Each thread is a QUESTION the world view is
+// open on; its STANCE is the current bearing across named outcomes; the
+// world view's BELIEF is the aggregation of every open stance. Binary and
+// multi-outcome threads share the same shape; binary just happens to have
+// outcomes = ["yes", "no"].
+export const THREAD_LIFECYCLE_DOC = `Each thread is a question the world view is open on. Its stance is the world view's current bearing across the named outcomes — state = (probability distribution via softmax(logits), volume, volatility). The world view's BELIEF is the aggregate of every open stance. A stance closes when one outcome's logit margin over the runner-up exceeds the closure threshold AND the closing scene emits a payoff or twist with |evidence| ≥ 3. A stance is abandoned when volume decays below the floor (untouched threads lose volume each scene). Neither closed nor abandoned threads consume generation pressure.`;
 
 /**
  * Build system knowledge block from SystemGraph.
@@ -736,9 +739,9 @@ export function narrativeContext(
       // Market state — read live from thread. Closed or abandoned threads
       // don't appear in generation context.
       if (isThreadClosed(t) || isThreadAbandoned(t)) return null;
-      const belief = getMarketBelief(t);
-      const probs = getMarketProbs(t);
-      const { topIdx, margin } = getMarketMargin(t);
+      const belief = getThreadStance(t);
+      const probs = getStanceProbs(t);
+      const { topIdx, margin } = getStanceMargin(t);
       const topProb = probs[topIdx] ?? 0;
       const silent = scenesSinceTouched(t, keysUpToCurrent, currentIndex);
       // Canonical category classification — same function the UI uses, so the
@@ -753,7 +756,7 @@ export function narrativeContext(
       // Market: one outcome per option.
       const marketBlock = `\n  <market>\n${t.outcomes
         .map((o, i) => `    <outcome name="${o.replace(/"/g, '&quot;')}" p="${(probs[i] ?? 0).toFixed(2)}" />`)
-        .join('\n')}\n  </market>`;
+        .join('\n')}\n  </stance>`;
       // Replay logits chronologically so each rendered event can report the
       // lead AFTER the update. Replay covers every node (even ones the
       // recency filter drops) so kept events still show correct trajectories.
@@ -965,7 +968,7 @@ ${characters}
 ${locations}
 </locations>
 
-<threads hint="Compelling questions priced as prediction markets over named outcomes. category: saturating (near closure), volatile (recent swings), contested (high entropy, real volume), committed (one outcome leads p&gt;=0.65), developing (touched, no shape yet), dormant (untouched, decaying). Attrs: lean (top outcome), p-lean (its prob), margin (logit gap to runner-up), vol (attention), volatility (EWMA of per-scene shifts), energy (recent logit motion), silent (scenes since last touched).">
+<threads hint="Compelling questions priced as stances over named outcomes. category: saturating (near closure), volatile (recent swings), contested (high entropy, real volume), committed (one outcome leads p&gt;=0.65), developing (touched, no shape yet), dormant (untouched, decaying). Attrs: lean (top outcome), p-lean (its prob), margin (logit gap to runner-up), vol (attention), volatility (EWMA of per-scene shifts), energy (recent logit motion), silent (scenes since last touched).">
 ${threads}
 </threads>
 
@@ -986,7 +989,7 @@ ${sceneHistory}
 
 /** Compact market category for per-scene shift lines. Same vocabulary the
  *  narrative-context <thread> tag emits, condensed to one token so delta
- *  readers see the market a shift is modifying without ceremony. */
+ *  readers see the stance a shift is modifying without ceremony. */
 function threadMarketSignal(t: import('@/types/narrative').Thread): string {
   return classifyThreadCategory(t);
 }
