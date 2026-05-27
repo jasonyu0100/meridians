@@ -77,7 +77,10 @@ export default function WorldGraph() {
   const selectedKnowledgeEntity = state.viewState.selectedKnowledgeEntity;
   const selectedThreadLog = state.viewState.selectedThreadLog;
   const graphViewMode = state.graphViewMode;
-  const [sceneFocus, setSceneFocus] = useState(true);
+  // arcFocus ON = widen to the whole active arc (every location + character it
+  // touched). OFF (default) = scene-focus: just scene.locationId + POV location
+  // and the characters positioned there. Vicinity expands further from there.
+  const [arcFocus, setArcFocus] = useState(false);
 
   const resolvedEntryKeys = state.resolvedEntryKeys;
 
@@ -284,7 +287,7 @@ export default function WorldGraph() {
       const currentKey = resolvedEntryKeys[state.viewState.currentSceneIndex];
       const currentWorldBuild = currentKey ? narrative.worldBuilds[currentKey] : null;
 
-      if (currentWorldBuild && sceneFocus) {
+      if (currentWorldBuild && !arcFocus) {
         // Expansion mode: show expansion elements + connected existing entities
         const manifest = currentWorldBuild.expansionManifest;
         const expandedCharIds = new Set(manifest.newCharacters.map((c: Character) => c.id));
@@ -353,7 +356,40 @@ export default function WorldGraph() {
           state.viewState.currentSceneIndex,
         );
 
-        if (sceneFocus && currentScene && activeArc) {
+        // Vicinity: expand a seed set of locationIds to every location
+        // reachable through the parent-child hierarchy in either direction.
+        // Used by both scene-focus (one seed cluster) and arc-focus (multiple
+        // seeds, one per arc location — each grows its own cluster).
+        const expandVicinity = (seedIds: Iterable<string>): Set<string> => {
+          const result = new Set(seedIds);
+          if (!showVicinity) return result;
+          const childrenByParent = new Map<string, string[]>();
+          for (const loc of Object.values(narrative.locations)) {
+            if (loc.parentId) {
+              const list = childrenByParent.get(loc.parentId) ?? [];
+              list.push(loc.id);
+              childrenByParent.set(loc.parentId, list);
+            }
+          }
+          const queue = [...result];
+          while (queue.length > 0) {
+            const id = queue.shift()!;
+            const loc = narrative.locations[id];
+            if (loc?.parentId && !result.has(loc.parentId)) {
+              result.add(loc.parentId);
+              queue.push(loc.parentId);
+            }
+            for (const childId of childrenByParent.get(id) ?? []) {
+              if (!result.has(childId)) {
+                result.add(childId);
+                queue.push(childId);
+              }
+            }
+          }
+          return result;
+        };
+
+        if (!arcFocus && currentScene && activeArc) {
           // Scene focus: show scene location + POV character's location (if different)
           // and all characters at either location
           const charPositions = computeCharacterPositions(activeArc, narrative.scenes, state.viewState.currentSceneIndex, resolvedEntryKeys);
@@ -363,35 +399,7 @@ export default function WorldGraph() {
           const povLocId = effectivePovId
             ? (charPositions[effectivePovId] ?? sceneLocId)
             : sceneLocId;
-          const focusLocIds = new Set([sceneLocId, povLocId]);
-          // Vicinity: expand to the full location cluster — every location
-          // reachable through the parent-child hierarchy in either direction
-          // from the seed. Off → tight view, scene + POV locations only.
-          if (showVicinity) {
-            const childrenByParent = new Map<string, string[]>();
-            for (const loc of Object.values(narrative.locations)) {
-              if (loc.parentId) {
-                const list = childrenByParent.get(loc.parentId) ?? [];
-                list.push(loc.id);
-                childrenByParent.set(loc.parentId, list);
-              }
-            }
-            const queue = [...focusLocIds];
-            while (queue.length > 0) {
-              const id = queue.shift()!;
-              const loc = narrative.locations[id];
-              if (loc?.parentId && !focusLocIds.has(loc.parentId)) {
-                focusLocIds.add(loc.parentId);
-                queue.push(loc.parentId);
-              }
-              for (const childId of childrenByParent.get(id) ?? []) {
-                if (!focusLocIds.has(childId)) {
-                  focusLocIds.add(childId);
-                  queue.push(childId);
-                }
-              }
-            }
-          }
+          const focusLocIds = expandVicinity([sceneLocId, povLocId]);
 
           // Characters: scene participants + anyone positioned at either location
           const focusCharIds = new Set(currentScene.participantIds);
@@ -410,8 +418,11 @@ export default function WorldGraph() {
             (r) => focusCharIds.has(r.from) && focusCharIds.has(r.to),
           );
         } else if (activeArc) {
+          // Arc focus: expand every location the arc touched into its full
+          // cluster — arcs can span multiple disconnected location clusters,
+          // each grows independently.
           const activeCharIds = new Set(activeArc.activeCharacterIds);
-          const activeLocIds = new Set(activeArc.locationIds);
+          const activeLocIds = expandVicinity(activeArc.locationIds);
 
           filteredCharacters = Object.fromEntries(
             Object.entries(narrative.characters).filter(([id]) => activeCharIds.has(id)),
@@ -889,7 +900,7 @@ export default function WorldGraph() {
       gRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, sceneFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial, showVicinity]);
+  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial, showVicinity]);
 
   // ── Lightweight: update selected node highlight + relationship edges ──
   useEffect(() => {
@@ -1103,7 +1114,7 @@ export default function WorldGraph() {
             { key: 'heat', label: 'Heat', checked: showHeatmap, toggle: () => setShowHeatmap((v) => !v) },
             { key: 'eval', label: 'Eval', checked: showEval, toggle: () => setShowEval((v) => !v) },
             ...(graphViewMode === 'spatial' ? [
-              { key: 'focus', label: 'Focus', checked: sceneFocus, toggle: () => setSceneFocus((v: boolean) => !v) },
+              { key: 'focus', label: 'Arc Focus', checked: arcFocus, toggle: () => setArcFocus((v) => !v) },
               { key: 'vicinity', label: 'Vicinity', checked: showVicinity, toggle: () => setShowVicinity((v) => !v) },
             ] : []),
           ] as { key: string; label: string; checked: boolean; toggle: () => void }[]).map(({ key, label, checked, toggle }) => (
