@@ -5,6 +5,7 @@
  * arc) or worldOnly (entities + system, no scenes).
  */
 
+import type { NarrativeParadigm } from '@/types/narrative';
 import {
   PROMPT_POV,
   PROMPT_FORCE_STANDARDS,
@@ -19,8 +20,42 @@ import {
   type WorkIdentity,
 } from '../paradigm-roles';
 
-export const GENERATE_NARRATIVE_SYSTEM =
+// ─── Per-paradigm world-architect framings ──────────────────────────────────
+//
+// The wizard always selects a paradigm — defaulting to fiction. The system
+// prompt dispatches at build time so the model receives ONLY this paradigm's
+// world-shape, not a switch over all seven.
+
+const WORLD_ARCHITECT_BY_PARADIGM: Record<NarrativeParadigm, string> = {
+  'fiction':     'You are a world-view architect generating a POPULATED NARRATIVE — invented characters, places, events. Fate (thread resolution) + World (character transformation) carry the weight; System provides the working rules of the imagined world. Do not default to fictional storytelling tropes; match the genre + subgenre the wizard declared.',
+  'non-fiction': 'You are a world-view architect generating a POPULATED NARRATIVE anchored to the documented record — every named person, place, event, and date traceable to actual fact. Same form as fiction; the discipline is sourcing. Where the record has gaps, name the gap rather than fabricate.',
+  'simulation':  'You are a world-view architect generating a RULE-GOVERNED NARRATIVE — in-world figures the rules ACT ON; the rule set is load-bearing. Threads close on rule-driven consequences, not authorial choice. Recoveries must be earned by initial-condition shifts, rule changes, or new positions inside the existing rules.',
+  'essay':       'You are a world-view architect generating a SINGULAR-THINKER work — one named author plus 1–3 cited interlocutors. The author\'s mind IS the world; the system-graph IS the argument substrate (propositions, mechanisms, evidence relations). Internal friction substitutes for inter-agent disagreement.',
+  'panel':       'You are a world-view architect generating a MULTI-THINKER work — a named cast of 2+ thinkers (AI agents OR human experts; pick ONE mode) cooperating with disagreement. The work IS the contest of minds reaching synthesis. ≥1 devil\'s-advocate role required; scenes are cognitive events over EXISTING evidence.',
+  'atlas':       'You are a world-view architect generating a REFERENCE TYPOLOGY — entries / taxa / categories. No scene flow; the system-graph IS the work. The curator\'s voice orchestrates; entries describe stable structure by attributes and cross-references, not by events.',
+  'debate':      'You are a world-view architect generating an ADVERSARIAL CONTEST — two or more named parties locked in zero-sum stakes under explicit rules. Scenes are MOVES (attribution + intent + effect). Threads are AXES OF CONTESTATION whose outcomes favour one party or the other under the contest\'s own logic.',
+  'record':      'You are a world-view architect generating a CHRONOLOGICAL RECORD — time-ordered log of events, real or imagined. Pick a time velocity (daily / monthly / yearly / dynamic). Entries replace scenes; the chronicler\'s documentary voice records what happened in each time-step. Threads are long-running trajectories tracked across entries.',
+};
+
+const WORLD_ARCHITECT_SHARED =
+  'A world view is a causally coherent, queryable knowledge structure — not by default a story. The paradigm decides the OUTPUT FORM. See the pattern blocks in the user prompt for the specific shape requirements. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+
+/** Multipurpose fallback — preserves the legacy prompt verbatim for the rare
+ *  call that supplies no paradigm. */
+const WORLD_ARCHITECT_FALLBACK =
   'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, or chronicled entries. See the pattern blocks in the user prompt. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+
+/** Build the world-architect SYSTEM prompt. Case-based on the wizard-declared
+ *  paradigm. When paradigm is unset, falls back to the multipurpose preamble. */
+export function buildGenerateNarrativeSystem(paradigm?: NarrativeParadigm): string {
+  if (!paradigm) return WORLD_ARCHITECT_FALLBACK;
+  return `${WORLD_ARCHITECT_BY_PARADIGM[paradigm]} ${WORLD_ARCHITECT_SHARED}`;
+}
+
+/** @deprecated Use `buildGenerateNarrativeSystem(paradigm)` instead. Kept
+ *  only because the export name is referenced from a few re-export indices;
+ *  this resolves to the legacy multipurpose preamble for back-compat. */
+export const GENERATE_NARRATIVE_SYSTEM = WORLD_ARCHITECT_FALLBACK;
 
 export const DETECT_PATTERNS_SYSTEM =
   'You are a world-view diagnostician. Read content, structure, and register; identify the world view\'s register, genre, and subgenre — these may be narrative, but may equally be argumentative, typological, chronicled, or adversarial. Derive concrete pattern / anti-pattern commandments that encourage variety and prevent stagnation within the world view\'s actual paradigm. Patterns are positive directives that unlock fresh territory; anti-patterns are negative directives that flag staleness. Return ONLY valid JSON matching the schema in the user prompt.';
@@ -32,8 +67,6 @@ export function buildDetectPatternsSystem(work?: WorkIdentity): string {
   if (!work?.paradigm) return DETECT_PATTERNS_SYSTEM;
   return `${composeAnalystIdentity(work)} You diagnose THIS work's patterns and anti-patterns — concrete commandments that encourage variety and prevent stagnation within the operator-declared paradigm. Patterns are positive directives that unlock fresh territory within this paradigm's idiom; anti-patterns are negative directives that flag staleness specific to this paradigm. Return ONLY valid JSON matching the schema in the user prompt.`;
 }
-
-import type { NarrativeParadigm } from '@/types/narrative';
 
 /** World-shape each paradigm maps to. Seven shapes:
  *  - populated-narrative — fiction OR non-fiction (events, agents, change)

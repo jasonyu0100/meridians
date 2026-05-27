@@ -5,7 +5,8 @@ import { nextId, nextIds } from '@/lib/narrative-utils';
 import { newNarratorBelief } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
-import { GENERATE_SCENES_SYSTEM } from '@/lib/prompts/scenes/generate';
+import { buildGenerateScenesSystem } from '@/lib/prompts/scenes/generate';
+import { workIdentityFor } from '@/lib/prompts/paradigm-analyst';
 import { proseShapeDirective } from '@/lib/prompts/paradigm-roles';
 import { WRITING_MODEL, GENERATE_MODEL, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { parseJson } from './json';
@@ -386,10 +387,11 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     try {
       const reasoningBudget = resolveReasoningBudget(narrative);
       const websearch = resolveWebsearch(narrative);
+      const systemPrompt = buildGenerateScenesSystem(workIdentityFor(narrative));
       const useStream = !!(onToken || onReasoning);
       const raw = useStream
-        ? await callGenerateStream(prompt, GENERATE_SCENES_SYSTEM, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
-        : await callGenerate(prompt, GENERATE_SCENES_SYSTEM, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+        ? await callGenerateStream(prompt, systemPrompt, onToken ?? (() => {}), MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+        : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'generateScenes', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
       parsed = parseJson(raw, 'generateScenes') as { arcName?: string; directionVector?: string; worldState?: string; scenes: Scene[] };
       break;
     } catch (err) {

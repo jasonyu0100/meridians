@@ -11,7 +11,7 @@ import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSyste
 import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/attribution';
 import { callGenerate, callGenerateStream } from './api';
 import {
-  GENERATE_NARRATIVE_SYSTEM,
+  buildGenerateNarrativeSystem,
   buildDetectPatternsSystem,
 } from '@/lib/prompts/world';
 import {
@@ -496,9 +496,10 @@ export async function generateNarrative(
   // is the slowest pass in the engine (huge JSON output); cutting reasoning
   // tokens here is the most user-visible perf win.
   const reasoningBudget = REASONING_BUDGETS['low'];
+  const systemPrompt = buildGenerateNarrativeSystem(paradigm);
   const raw = onReasoning
-    ? await callGenerateStream(prompt, GENERATE_NARRATIVE_SYSTEM, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
-    : await callGenerate(prompt, GENERATE_NARRATIVE_SYSTEM, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
+    ? await callGenerateStream(prompt, systemPrompt, () => {}, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(prompt, systemPrompt, MAX_TOKENS_LARGE, 'generateNarrative', GENERATE_MODEL, reasoningBudget, true, undefined, websearch);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = parseJson(raw, 'generateNarrative') as any;
 

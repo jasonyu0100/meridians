@@ -29,6 +29,7 @@ export type {
 export {
   buildGenerateNarrativePrompt,
   GENERATE_NARRATIVE_SYSTEM,
+  buildGenerateNarrativeSystem,
   DETECT_PATTERNS_SYSTEM,
   buildDetectPatternsSystem,
 } from './generate-narrative';
