@@ -16,8 +16,8 @@ import {
   compassFramingFor,
   composeAnalystIdentity,
   type WorkIdentity,
-} from '@/lib/prompts/paradigm-roles';
-import { workIdentityFor } from '@/lib/prompts/paradigm-analyst';
+} from '@/lib/prompts/paradigm';
+import { workIdentityFor } from '@/lib/prompts/paradigm';
 
 /** Render the work identity as a prelude sentence for the chat role. When
  *  paradigm is known, this carries paradigm + genre + subgenre + title into

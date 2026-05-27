@@ -25,7 +25,7 @@ import {
   buildPriorModeSection,
   type ModeScope,
 } from "@/lib/prompts/mode";
-import { workIdentityFor } from "@/lib/prompts/paradigm-analyst";
+import { workIdentityFor } from "@/lib/prompts/paradigm";
 import { VALID_EDGE_TYPES } from "./reasoning-graph/shared";
 import type { ReasoningEdgeType } from "./reasoning-graph/types";
 import { getActiveMode } from "@/lib/mode-graph";

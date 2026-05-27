@@ -21,7 +21,7 @@ import { GRAPH_THINKING_PRINCIPLE } from "./principles";
 import {
   composeAnalystIdentity,
   type WorkIdentity,
-} from "../paradigm-roles";
+} from "../paradigm";
 import { PRINCIPLE_PARADIGM_FIDELITY } from "../principles";
 
 function reasoningIdentity(work?: WorkIdentity): string {

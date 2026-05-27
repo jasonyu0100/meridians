@@ -20,7 +20,7 @@ import {
   buildSurveyUserPrompt,
   buildSurveyProposalUserPrompt,
 } from "@/lib/prompts/surveys";
-import { buildSurveyGenSystem, workIdentityFor } from "@/lib/prompts/paradigm-analyst";
+import { buildSurveyGenSystem, workIdentityFor } from "@/lib/prompts/paradigm";
 import type {
   Artifact,
   Character,

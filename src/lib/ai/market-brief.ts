@@ -37,7 +37,7 @@ import { getActiveMode } from '@/lib/mode-graph';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { buildMarketBriefingPrompt } from '@/lib/prompts/briefing';
-import { buildMarketBriefingSystem, workIdentityFor } from '@/lib/prompts/paradigm-analyst';
+import { buildMarketBriefingSystem, workIdentityFor } from '@/lib/prompts/paradigm';
 import {
   MOVE_PRIORITIES,
   MOVE_TYPES,

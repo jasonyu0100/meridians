@@ -78,7 +78,7 @@ import {
   buildArcReasoningGraphSystem,
   buildCoordinationPlanSystem,
 } from "@/lib/prompts/reasoning/arc-graph";
-import { workIdentityFor } from "@/lib/prompts/paradigm-analyst";
+import { workIdentityFor } from "@/lib/prompts/paradigm";
 
 // ── Public API re-exports ───────────────────────────────────────────────────
 // Keep existing import paths (`@/lib/ai/reasoning-graph`) working after the

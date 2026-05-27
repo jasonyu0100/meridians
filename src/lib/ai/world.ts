@@ -20,7 +20,7 @@ import {
   buildExpansionSuggestSystem,
   buildExpandWorldSystem,
   workIdentityFor,
-} from '@/lib/prompts/paradigm-analyst';
+} from '@/lib/prompts/paradigm';
 import { buildActiveModeSection } from './mode-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';

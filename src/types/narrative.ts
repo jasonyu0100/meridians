@@ -1,29 +1,35 @@
 import type { StoredBriefing } from './briefing';
 
-// ── Thread (Prediction-Market Model) ────────────────────────────────────────
+// ── Thread (Belief System Model) ────────────────────────────────────────────
 //
-// Threads are prediction markets over named outcomes. Each scene emits
-// evidence that updates logits; softmax(logits) gives the probability
-// distribution. Fate is information-gain (entropy change) weighted by volume.
+// A world view's BELIEF SYSTEM is the structure of stances it holds across
+// every open question. Each thread is one such question; the stance is the
+// world view's current bearing on it — a distribution over named outcomes,
+// driven by accumulated evidence from the scenes that touched it.
+//
+// Each scene emits evidence that updates per-outcome logits; softmax(logits)
+// yields the stance's probability distribution. Fate is information-gain
+// (entropy change in the stance) weighted by volume.
 //
 // Binary threads use outcomes: ["yes", "no"]; multi-outcome threads enumerate
 // their possibilities ("Harry wins" / "Voldemort wins" / "Destroyed" / ...).
 // Binary is just the N=2 case — the math parameterizes by |outcomes|.
 
-/** Canonical agent whose belief is the "market price" before per-character
- *  markets are populated. Phase 1: only the narrator holds a belief. */
+/** Canonical agent whose stance is the "narrator price" before per-character
+ *  stances are populated. Phase 1: only the narrator holds a stance. */
 export const NARRATOR_AGENT_ID = "narrator" as const;
 
-/** A belief held by a single agent (narrator or character) over a thread's
- *  outcomes. Logits live in R; softmax gives a probability distribution. */
-export type Belief = {
+/** A stance held by a single agent (narrator or character) over a thread's
+ *  outcomes — that agent's current bearing on the question the thread poses.
+ *  Logits live in R; softmax gives a probability distribution. */
+export type Stance = {
   /** Per-outcome logits (same length as thread.outcomes). */
   logits: number[];
   /** Cumulative narrative attention. Decays per untouched scene. */
   volume: number;
-  /** EWMA of recent |Δlogit| magnitudes — how much the thread is moving. */
+  /** EWMA of recent |Δlogit| magnitudes — how much the stance is moving. */
   volatility: number;
-  /** Last scene id that touched this belief. Used for decay and recency. */
+  /** Last scene id that touched this stance. Used for decay and recency. */
   lastTouchedScene?: string;
 };
 
@@ -36,7 +42,7 @@ export type ThreadParticipant = {
 
 /** Thread log node — a statement of something that occurred in a specific scene.
  *  Written in simple past tense. One fact, one sentence, no interpretation.
- *  Nine perceptual primitives — the thread's model of its own situation.
+ *  Nine perceptual primitives — the thread's model of how its stance moved.
  *  Whatever doesn't register as one of these doesn't exist for the thread.
  *
  *  Examples:
@@ -70,8 +76,9 @@ export const THREAD_LOG_NODE_TYPES: ThreadLogNodeType[] = [
 ];
 
 /** One evidence update for a single outcome. Evidence is integer in
- *  [-4, +4] applied as a log-odds shift: logit[k] += evidence / sensitivity.
- *  The LLM emits these; softmax renormalizes probabilities automatically. */
+ *  [-4, +4] applied as a log-odds shift on the stance's logit for that
+ *  outcome: logit[k] += evidence / sensitivity. The LLM emits these;
+ *  softmax renormalizes probabilities automatically. */
 export type OutcomeEvidence = {
   /** Outcome name — must match one of thread.outcomes. */
   outcome: string;
@@ -84,7 +91,7 @@ export type ThreadLogNode = {
   id: string;
   type: ThreadLogNodeType;
   /** Prose-grade description of what happened to the thread in this scene.
-   *  Doubles as the rationale that grounds the market update. */
+   *  Doubles as the rationale that grounds the stance update. */
   content: string;
   /** The scene where this event occurred. */
   sceneId?: string;
@@ -93,22 +100,22 @@ export type ThreadLogNode = {
   updates?: OutcomeEvidence[];
   /** Change to volume (narrative attention) contributed by this event. */
   volumeDelta?: number;
-  /** Outcomes added to the thread's market at this scene (if any).
-   *  Present only on scenes that structurally expanded the market. */
+  /** Outcomes added to the thread at this scene (if any). Present only on
+   *  scenes that structurally expanded the question's option set. */
   addedOutcomes?: string[];
   /** Normalized Shannon info-gain at this delta: |H(pre) − H(post)| / ln(N).
    *  Range [0, 1]. Populated by applyThreadDelta; read by the refined fate
    *  formula so we don't need a trajectory replay to score the scene. */
   infoGain?: number;
-  /** Market volume immediately before this delta was applied. Lets the fate
-   *  formula weight information gain by how much attention the market
-   *  was carrying at the moment of movement. */
+  /** Stance volume immediately before this delta was applied. Lets the fate
+   *  formula weight information gain by how much attention the stance was
+   *  carrying at the moment of movement. */
   preVolume?: number;
   /** Scenes elapsed since the thread opened, at the time of this delta.
    *  Only meaningful on closing deltas — drives the buildup bonus. */
   buildup?: number;
-  /** True if this delta triggered closure (margin ≥ τ, committal logType,
-   *  decisive evidence). Used by the fate closure bonus. */
+  /** True if this delta triggered closure of the stance (margin ≥ τ,
+   *  committal logType, decisive evidence). Used by the fate closure bonus. */
   closed?: boolean;
 };
 
@@ -137,7 +144,7 @@ export type ThreadKind = "storyline" | "incident";
  *              May never close cleanly; carries fractional evidence even
  *              at the upper end of the magnitude scale.
  *
- * Used by the market-calibration prompts (Principle 8: scope-distance
+ * Used by the belief-calibration prompts (Principle 8: scope-distance
  * attenuation) to scale evidence magnitude. A local win that resolves a
  * `short` thread at +3 contributes only +0.2..+0.5 to a coupled `epic`
  * thread on the same scene.
@@ -149,22 +156,23 @@ export type Thread = {
   participants: ThreadParticipant[];
   /** The question the thread poses. "Will Harry claim the Stone?" */
   description: string;
-  /** Named outcomes the market prices. Length ≥ 2. Binary: ["yes", "no"].
-   *  Multi-outcome enumerates possibilities. The softmax over per-outcome
-   *  logits gives the probability distribution. */
+  /** Named outcomes the stance distributes probability over. Length ≥ 2.
+   *  Binary: ["yes", "no"]. Multi-outcome enumerates possibilities. The
+   *  softmax over per-outcome logits gives the probability distribution. */
   outcomes: string[];
   /** Structural distance from any given scene to the thread's resolution.
    *  Set when the thread opens; static for the thread's lifetime. Drives
    *  evidence-magnitude attenuation via Principle 8 in the calibration
    *  prompts. Undefined treated as 'medium' for backwards compatibility. */
   horizon?: ThreadHorizon;
-  /** Per-agent beliefs over the outcomes. Phase 1: beliefs[NARRATOR_AGENT_ID]
-   *  is the only entry and serves as the "market price." Phase 5 adds
-   *  per-character beliefs; market price becomes an aggregate. */
-  beliefs: Record<string, Belief>;
+  /** Per-agent stances over the outcomes — each agent's current bearing on
+   *  the question. Phase 1: stances[NARRATOR_AGENT_ID] is the only entry
+   *  and serves as the canonical narrator price. Phase 5 adds per-character
+   *  stances; the canonical price becomes an aggregate over them. */
+  stances: Record<string, Stance>;
   openedAt: string;
   dependents: string[];
-  /** Terminal: set when the market commits to a winning outcome. */
+  /** Terminal: set when the stance commits to a winning outcome. */
   closedAt?: string;
   /** Index into `outcomes` of the committed winner; undefined until close. */
   closeOutcome?: number;
@@ -183,6 +191,8 @@ export type CharacterRole = "anchor" | "recurring" | "transient";
 
 /** World node — a statement of stable fact about an entity's nature, identity, or permanent condition.
  *  Written in simple present tense. No events, no causation. Works across characters, locations, and artifacts.
+ *  Distinct from a thread stance: world nodes record what an entity carries; stances record the world view's
+ *  bearing on open questions.
  *
  *  Examples:
  *  - "Harry Potter has a lightning-bolt scar on his forehead." (trait)
@@ -190,13 +200,14 @@ export type CharacterRole = "anchor" | "recurring" | "transient";
  *  - "The Dursley household is hostile to anything associated with magic." (trait)
  *  - "Gandalf carries the elven ring Narya, the Ring of Fire." (relation)
  *  - "The Iron Throne is forged from a thousand surrendered swords." (history)
+ *  - "Stannis holds that he is the rightful king of the Seven Kingdoms." (opinion)
  */
 export type WorldNodeType =
   | "trait" // Inherent characteristic — personality, atmosphere, physical property
   | "state" // Current condition — wounded, ruined, activated, contested
   | "history" // Past experience — memory, founding event, provenance
   | "capability" // What it can do — skill, strategic value, function
-  | "belief" // Subjective truth — opinion, legend, lore, contested claim
+  | "opinion" // Subjective truth held by the entity — legend, lore, contested claim, doctrinal position
   | "relation" // Connection to another entity — bond, sacred-to, bound-to
   | "secret" // Hidden information — hidden knowledge, concealed origin
   | "goal" // Orientation — ambition, purpose, intended use
@@ -207,7 +218,7 @@ export const WORLD_NODE_TYPES: WorldNodeType[] = [
   "state",
   "history",
   "capability",
-  "belief",
+  "opinion",
   "relation",
   "secret",
   "goal",
@@ -308,10 +319,11 @@ export type TieDelta = {
 };
 
 // ── Scene & Arc ─────────────────────────────────────────────────────────────
-/** A scene's effect on a thread's prediction market. The LLM emits one
- *  ThreadDelta per affected thread per scene. Math applies integer `evidence`
- *  values as log-odds shifts (logit[k] += evidence / sensitivity), renormalizes
- *  via softmax, and appends a ThreadLogNode to the thread's event log. */
+/** A scene's effect on a thread's stance. The LLM emits one ThreadDelta per
+ *  affected thread per scene. Math applies integer `evidence` values as
+ *  log-odds shifts on the stance's logits (logit[k] += evidence / sensitivity),
+ *  renormalizes via softmax, and appends a ThreadLogNode to the thread's
+ *  event log. */
 export type ThreadDelta = {
   threadId: string;
   /** Per-outcome evidence. Omit outcomes this scene didn't move. */
@@ -323,12 +335,13 @@ export type ThreadDelta = {
   /** Change to narrative attention on this thread. ≥0 in typical usage;
    *  explicit negative only when a thread is deliberately quieted. */
   volumeDelta: number;
-  /** New outcomes to add to the thread's market, mid-story. Rare — reserved
-   *  for scenes that genuinely open new possibilities (a reveal introduces a
+  /** New outcomes to add to the thread, mid-story. Rare — reserved for
+   *  scenes that genuinely open new possibilities (a reveal introduces a
    *  third contender, a character realises an option they hadn't considered).
-   *  Appended with logit=0, which gives them the prior of "equally likely as
-   *  the current best outcome" before any evidence is applied in this same
-   *  delta via `updates`. Duplicates of existing outcomes are ignored. */
+   *  Appended with logit=0 in every stance, which gives them the prior of
+   *  "equally likely as the current best outcome" before any evidence is
+   *  applied in this same delta via `updates`. Duplicates of existing
+   *  outcomes are ignored. */
   addOutcomes?: string[];
   /** Prose-grade sentence grounding the update in the scene summary.
    *  Required — every evidence emission must trace to a specific sentence. */
@@ -899,7 +912,7 @@ export type Scene = {
   newLocations?: Location[];
   /** New artifacts introduced in this scene */
   newArtifacts?: Artifact[];
-  /** New threads introduced in this scene — seeded as fresh markets at uniform prior over their outcomes. */
+  /** New threads introduced in this scene — seeded with fresh stances at uniform prior over their outcomes. */
   newThreads?: Thread[];
   /** Version history for prose — enables branch isolation. Resolution uses branch lineage + fork time. */
   proseVersions?: ProseVersion[];
@@ -1078,13 +1091,13 @@ export type PlanningScenario = {
    *  the arc's Present variables; each direction stands alone. */
   variables: Variable[];
   /** LLM-estimated log-prior reflecting how plausible this scenario is given
-   *  the narrative context. Range matches the prediction market's evidence
-   *  scale (MARKET_EVIDENCE_MIN/MAX = [-4, +4]) so scenario priors and
-   *  thread evidence speak the same units: +4 = decisive evidence in
-   *  favour, 0 = baseline plausibility, -4 = decisive against / rare tail.
-   *  Softmax across the cohort produces display probabilities. Intensity is
-   *  *not* used as a probability proxy — a high-intensity tail event gets a
-   *  low priorLogit, not a deflated likelihood. */
+   *  the narrative context. Range matches the stance evidence scale
+   *  (STANCE_EVIDENCE_MIN/MAX = [-4, +4]) so scenario priors and thread
+   *  evidence speak the same units: +4 = decisive evidence in favour, 0 =
+   *  baseline plausibility, -4 = decisive against / rare tail. Softmax
+   *  across the cohort produces display probabilities. Intensity is *not*
+   *  used as a probability proxy — a high-intensity tail event gets a low
+   *  priorLogit, not a deflated likelihood. */
   priorLogit?: number;
   /** Multi-sentence load-bearing logic for this coordination — which variables
    *  cascade into which, why these intensities, what makes the scenario
@@ -1101,11 +1114,11 @@ export type PlanningScenario = {
   /** What conditions would invalidate / falsify this scenario — the
    *  observation that would mean it didn't happen, the threshold whose
    *  non-crossing voids it, the load-bearing assumption whose breakage
-   *  rules it out. Forces genuine prediction-market work; if `breaks` is
-   *  empty the scenario can't be wrong, which means it isn't forecasting. */
+   *  rules it out. Forces genuine forecasting work; if `breaks` is empty
+   *  the scenario can't be wrong, which means it isn't forecasting. */
   breaks?: string;
   /** What becomes possible / cascades downstream if this direction holds —
-   *  the threads it opens for the next arc, the markets it perturbs, the
+   *  the threads it opens for the next arc, the stances it perturbs, the
    *  affordances it grants subsequent continuations. */
   opens?: string;
 };
@@ -1150,7 +1163,7 @@ export type Arc = {
    *  experimentation commit. */
   presentReasoning?: string;
   /** Log-prior plausibility score for this Present coordination, in the
-   *  same MARKET_EVIDENCE_MIN/MAX range as Compass priorLogits ([-4, +4]).
+   *  same STANCE_EVIDENCE_MIN/MAX range as Compass priorLogits ([-4, +4]).
    *  When a Compass direction is committed via experimentation, the
    *  direction's `priorLogit` is transferred onto the new arc's
    *  `presentLogit` — preserving "how strongly was this pulled-toward when
@@ -1437,15 +1450,15 @@ export type CoordinationNodeType =
   | "valley"       // Structural valley — turning point, tension seeded
   | "moment";      // Key beat worth flagging in the plan that isn't a peak or valley
 
-/** Thread market intent for spine nodes — what the arc should do to the thread's
- *  prediction market. Binary: should the price move? Should it close? Should
- *  a twist reverse the dominant outcome? */
-export type ThreadMarketIntent =
-  | "advance"    // move price toward `outcome` without committing
-  | "escalate"   // raise volume + move price, set up payoff
-  | "close"      // commit to `outcome` (price → 1 for that outcome)
+/** Thread stance intent for spine nodes — what the arc should do to the
+ *  thread's stance. Binary: should the bearing shift? Should it close?
+ *  Should a twist reverse the dominant outcome? */
+export type ThreadStanceIntent =
+  | "advance"    // move stance toward `outcome` without committing
+  | "escalate"   // raise volume + move stance, set up payoff
+  | "close"      // commit to `outcome` (stance → 1 for that outcome)
   | "twist"      // reverse prior direction (dominant outcome flips)
-  | "maintain"   // pulse — keep volume alive without price movement
+  | "maintain"   // pulse — keep volume alive without stance movement
   | "abandon";   // let volume decay, no evidence emitted
 
 /**
@@ -1467,7 +1480,7 @@ export type ArcForceMode =
  * Node in a coordination plan — extends reasoning nodes with plan-specific fields.
  *
  * Spine nodes (peak/valley/moment) may carry thread-progression metadata
- * (threadId + marketIntent + marketOutcome). The one peak or valley that anchors an arc also
+ * (threadId + stanceIntent + stanceOutcome). The one peak or valley that anchors an arc also
  * carries arcIndex, sceneCount, and forceMode.
  */
 export type CoordinationNode = {
@@ -1492,11 +1505,11 @@ export type CoordinationNode = {
   threadId?: string;
   /** Reference to a node in the system knowledge graph (for system nodes anchoring to an existing rule/principle/constraint/tension). */
   systemNodeId?: string;
-  /** Market intent for this thread (for spine nodes tracking thread progression) */
-  marketIntent?: ThreadMarketIntent;
+  /** Stance intent for this thread (for spine nodes tracking thread progression) */
+  stanceIntent?: ThreadStanceIntent;
   /** Target outcome name (for advance/close/twist intents — must match an
    *  entry in the thread's outcomes array). */
-  marketOutcome?: string;
+  stanceOutcome?: string;
   /** Arc index 1-N (set only on the peak or valley that anchors an arc) */
   arcIndex?: number;
   /** Suggested scene count (set only on the arc-anchoring peak/valley) */
@@ -1669,7 +1682,7 @@ export type NarrativeState = {
    * users can promote any other branch via the BranchModal.
    */
   canonBranchId?: string;
-  /** Last market briefing the operator generated for this narrative — held
+  /** Last belief briefing the operator generated for this narrative — held
    *  so the Brief tab can hydrate without re-calling the LLM, and so a
    *  stale briefing flags itself when the head moves on or the active
    *  branch changes. */
@@ -2420,7 +2433,7 @@ export type AnalysisChunkResult = {
   threads: {
     description: string;
     participantNames: string[];
-    /** Named outcomes the market prices. ≥2 entries. Default ["yes","no"]. */
+    /** Named outcomes the stance distributes probability over. ≥2 entries. Default ["yes","no"]. */
     outcomes: string[];
     /** Structural distance from any scene to resolution. Drives evidence
      *  attenuation downstream. Undefined treated as 'medium'. */
@@ -2725,7 +2738,7 @@ export type GraphViewMode =
   | "driver"
   | "reasoning"
   | "network"
-  | "market"
+  | "belief"
   | "present"
   | "compass"
   | "mode";

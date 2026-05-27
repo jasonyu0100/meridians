@@ -14,7 +14,7 @@
 
 import type { FormatInstructionSet } from "../prose/format-instructions";
 import type { NarrativeParadigm } from "@/types/narrative";
-import { composeWorkIdentity } from "../paradigm-roles";
+import { composeWorkIdentity } from "../paradigm";
 
 export type SceneProseSystemPromptArgs = {
   formatInstructions: FormatInstructionSet;

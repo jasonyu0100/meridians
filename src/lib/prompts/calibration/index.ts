@@ -43,8 +43,11 @@ export {
   type IntensityLevel,
 } from './intensity';
 
+// Paradigm vocabulary moved to `../paradigm/vocabulary.ts` as part of the
+// paradigm-centralisation refactor. Re-exported here for back-compat with
+// `import { PARADIGM_VOCABULARY } from '@/lib/prompts/calibration'` callers.
 export {
   PARADIGM_VOCABULARY,
   paradigmVocabularyLine,
   type ParadigmVocabulary,
-} from './paradigm-vocab';
+} from '../paradigm/vocabulary';

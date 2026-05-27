@@ -14,8 +14,8 @@ import {
   buildBranchReviewSystem,
   buildPlanReviewSystem,
   buildProseReviewSystem,
-} from '@/lib/prompts/paradigm-review';
-import { workIdentityFor } from '@/lib/prompts/paradigm-analyst';
+} from '@/lib/prompts/paradigm';
+import { workIdentityFor } from '@/lib/prompts/paradigm';
 
 /**
  * Review a branch by reading only scene summaries.

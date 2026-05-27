@@ -7,27 +7,12 @@
 
 import { modePriorityEntry } from "../mode/application";
 import type { NarrativeParadigm } from '@/types/narrative';
-import { composeWorkIdentity, type WorkIdentity } from "../paradigm-roles";
+import {
+  composeWorkIdentity,
+  SCENE_GENERATOR_FRAMING_BY_PARADIGM,
+  type WorkIdentity,
+} from "../paradigm";
 import { PRINCIPLE_PARADIGM_FIDELITY } from "../principles";
-
-// ─── Per-paradigm scene-generator framings ──────────────────────────────────
-//
-// Replaces the legacy multipurpose preamble ("the work may be X, Y, Z…") with
-// a focused, paradigm-specific framing. The user prompt's `<work-meta>` and
-// `<paradigm-scene-discipline>` blocks already declare and shape the paradigm;
-// the system prompt now reinforces in the same paradigm's voice instead of
-// asking the model to detect.
-
-const SCENE_GENERATOR_FRAMING_BY_PARADIGM: Record<NarrativeParadigm, string> = {
-  'fiction':     'You generate dramatic scenes that move characters, settle thread questions, and reshape the world through events. Forward-time event narration is the substrate.',
-  'non-fiction': 'You generate documented scenes anchored to the record — every named figure, place, event, and date traceable to actual fact. Same form as fiction; the discipline is sourcing, and gaps are named honestly rather than fabricated.',
-  'simulation':  'You generate rule-driven scenes — the modelled rules force what happens; agents act under the rule set, not above it. Authorial rescue is paradigm error; recoveries are earned by initial-condition shifts, rule changes, or new positions inside existing rules.',
-  'essay':       'You generate essay SECTIONS — one named author works through reasoning. Each section weighs a claim, engages a counter-position, arrives at a qualified conclusion. NOT dramatic events; cited interlocutors appear as positions engaged, not characters who act.',
-  'panel':       'You generate cognitive SESSIONS over EXISTING evidence — the named cast deliberates, dissents, and synthesises. NO invented forward-time events; time progresses through cognitive moves (next meeting, next model run, next re-reading).',
-  'atlas':       'You generate ENTRIES in a typology — specimens, taxa, doctrines, concepts described by structural attributes and position in the system. NO arc, NO interiority, NO forward-time narration. Cross-references between entries are the substance.',
-  'debate':      'You generate MOVES in an adversarial contest under explicit rules — each move attributed, intent-targeted (which axis it contests), and rule-scored (how the arbiter responded). NOT a fiction scene with throughline; the contest\'s rules are load-bearing.',
-  'record':      'You generate dated CHRONICLE ENTRIES at the declared time velocity (daily / monthly / yearly / dynamic) — what happened and what changed in this time-step, in the chronicler\'s documentary voice. NOT omniscient narrator; entries log, they do not arc.',
-};
 
 const SCENE_GENERATOR_SHARED_DISCIPLINE =
   'Honour the brief (reasoning graph / coordination plan / direction), the pacing sequence, and the active threads. Read the world-state across the three forces (fate / world / system); let the established work\'s profile decide which leads this arc — a Classic is fate-dominant, a Show is world-dominant, a Paper is system-dominant. Each scene should reshape future possibility-space (precedents, relationships, inner state, conceptual ground) rather than land without lasting effect. Different actors hold incompatible models — the same event gets divergent readings; emergence often arrives through actions taken on false, partial, or stale beliefs. Every scene pairs its summary with rich threadDeltas (rationale grounded in the scene), worldDeltas (15–25 word present-tense facts across 3+ entities), and ≥1 systemDelta. Match the work\'s naming style for any new entities. Return ONLY valid JSON matching the schema in the user prompt.';

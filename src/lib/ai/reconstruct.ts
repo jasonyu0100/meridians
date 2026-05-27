@@ -16,7 +16,7 @@ import {
   buildReconstructMergeSystem,
   buildReconstructInsertSystem,
 } from '@/lib/prompts/reconstruct';
-import { workIdentityFor } from '@/lib/prompts/paradigm-analyst';
+import { workIdentityFor } from '@/lib/prompts/paradigm';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

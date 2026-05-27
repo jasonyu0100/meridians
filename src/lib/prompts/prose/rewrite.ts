@@ -3,8 +3,8 @@
  * separate "changelog" pass that summarises what changed.
  */
 
-import type { WorkIdentity } from '../paradigm-roles';
-import { composeWorkIdentity } from '../paradigm-roles';
+import type { WorkIdentity } from '../paradigm';
+import { composeWorkIdentity } from '../paradigm';
 import { PRINCIPLE_PARADIGM_FIDELITY } from '../principles';
 
 export type RewriteSystemPromptArgs = {

@@ -19,7 +19,7 @@ import {
   INTERVIEW_FRAME_FALLBACK,
   buildInterviewUserPrompt,
 } from "@/lib/prompts/interviews";
-import { buildInterviewGenSystem, workIdentityFor } from "@/lib/prompts/paradigm-analyst";
+import { buildInterviewGenSystem, workIdentityFor } from "@/lib/prompts/paradigm";
 import {
   buildRespondentPersona,
   buildSurveyUserPrompt,

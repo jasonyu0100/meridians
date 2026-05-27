@@ -192,4 +192,4 @@ export {
   buildExpansionSuggestSystem,
   workIdentityFor,
   type WorkIdentity,
-} from './paradigm-analyst';
+} from './paradigm';

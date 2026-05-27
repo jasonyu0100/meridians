@@ -7,8 +7,8 @@
  * reads the chunks through the paradigm's native beat shape.
  */
 
-import type { WorkIdentity } from '../paradigm-roles';
-import { composeAnalystIdentity } from '../paradigm-roles';
+import type { WorkIdentity } from '../paradigm';
+import { composeAnalystIdentity } from '../paradigm';
 
 /** Build the beat-analyst system prompt. The chunk count is enforced via the
  *  user prompt's constraints block; the system prompt only carries the role. */

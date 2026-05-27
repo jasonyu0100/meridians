@@ -11,20 +11,7 @@
  */
 
 import type { NarrativeParadigm } from "@/types/narrative";
-import { composeWorkIdentity } from "../paradigm-roles";
-
-// Per-paradigm scene-shape name to preserve across the edit. Replaces the
-// multipurpose enumeration that listed all paradigms inline.
-const EDIT_SHAPE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
-  'fiction':     'dramatic event (forward-time, characters acting, world changing through events)',
-  'non-fiction': 'documented event (anchored to the record, sourcing discipline gates fabrication)',
-  'simulation':  'rule-driven event (the modelled rules force what happens; authorial rescue is paradigm error)',
-  'essay':       'essay section (one named author working an argument — claim, evidence, counter, qualification, conclusion)',
-  'panel':       'panel session (cognitive event over EXISTING evidence; no invented forward-time events)',
-  'atlas':       'typology entry (structural attributes + position in the system; no arc, no interiority)',
-  'debate':      'contest move (attribution + intent + effect under the contest\'s rules)',
-  'record':      'chronicle entry (dated, documentary voice, at the declared time velocity)',
-};
+import { composeWorkIdentity, EDIT_SHAPE_BY_PARADIGM } from "../paradigm";
 
 export type ScenePlanEditSystemPromptArgs = {
   narrativeTitle: string;

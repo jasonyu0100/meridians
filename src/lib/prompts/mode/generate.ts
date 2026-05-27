@@ -21,7 +21,7 @@ import { GRAPH_THINKING_PRINCIPLE } from "../reasoning/principles";
 import {
   composeAnalystIdentity,
   type WorkIdentity,
-} from "../paradigm-roles";
+} from "../paradigm";
 import { PRINCIPLE_PARADIGM_FIDELITY } from "../principles";
 
 export function buildPhaseGraphSystem(work?: WorkIdentity): string {

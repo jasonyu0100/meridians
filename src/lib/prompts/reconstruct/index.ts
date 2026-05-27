@@ -7,8 +7,8 @@
  * own discipline during reconstruction.
  */
 
-import type { WorkIdentity } from '../paradigm-roles';
-import { composeWorkIdentity } from '../paradigm-roles';
+import type { WorkIdentity } from '../paradigm';
+import { composeWorkIdentity } from '../paradigm';
 import { PRINCIPLE_PARADIGM_FIDELITY } from '../principles';
 
 function identityPrelude(work?: WorkIdentity): string {

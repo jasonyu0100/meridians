@@ -1,6 +1,7 @@
-import type { NarrativeState, NarrativeParadigm, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
+import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
 import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS } from '@/types/narrative';
 import { buildCumulativeSystemGraph, getMarketBelief, getMarketMargin, getMarketProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
+import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
 import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@/lib/constants';
 import { getIntroducedIds } from '@/lib/scene-filter';
@@ -471,18 +472,8 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
   // shape: populated-narrative vs rule-governed-narrative vs singular-thinker
   // vs multi-thinker vs reference-typology vs adversarial-contest.
   if (n.paradigm) {
-    const shapeMap: Record<NarrativeParadigm, string> = {
-      'fiction':      'populated-narrative — invented people in an invented world (REALITY POSTURE: invented)',
-      'non-fiction':  'populated-narrative — real people, documented events; the world IS the record (REALITY POSTURE: observed)',
-      'simulation':   'rule-governed-narrative — in-world figures the rules ACT ON; rules are load-bearing, threads close on rule-driven consequences (REALITY POSTURE: hybrid — real rules over real or invented agents)',
-      'essay':        'singular-thinker — one named author + 1-3 cited interlocutors; internal friction substitutes for multi-voice disagreement (REALITY POSTURE: observed evidence + named author)',
-      'panel':        'multi-thinker — a named cast of 2+ thinkers (AI agents OR human experts) pursuing a shared question over existing evidence; cooperative-with-disagreement, includes devil\'s-advocate role + ≥1 adversarial pair (REALITY POSTURE: observed evidence + named cast)',
-      'atlas':        'reference-typology — entries / taxa / doctrines; system-graph IS the work; no fate threads, no character transformation (REALITY POSTURE: real-world typology OR invented-world codex — pick one and stay consistent)',
-      'debate':       'adversarial-contest — 2+ named parties locked in zero-sum stakes under explicit rules; each scene a MOVE; threads track axes of contestation (REALITY POSTURE: documented contest OR hypothetical, with sourceable rules)',
-      'record':       'chronological-record — time-ordered log of events; entries replace scenes, each time-stamped (daily / monthly / yearly / dynamic velocity); ordering of time IS the structure; chronicler-voice records, doesn\'t narrate toward resolution (REALITY POSTURE: documented chronicle OR invented chronicle)',
-    };
     elements.push(
-      `<paradigm hint="The canonical world-shape this narrative was built under. All in-narrative generation (scene gen, world expansion, plan, prose) must honour it.">\n  <name>${n.paradigm}</name>\n  <shape>${shapeMap[n.paradigm]}</shape>\n</paradigm>`,
+      `<paradigm hint="The canonical world-shape this narrative was built under. All in-narrative generation (scene gen, world expansion, plan, prose) must honour it.">\n  <name>${n.paradigm}</name>\n  <shape>${WORLD_SHAPE_LABEL_BY_PARADIGM[n.paradigm]}</shape>\n</paradigm>`,
     );
   }
   // Patterns / anti-patterns

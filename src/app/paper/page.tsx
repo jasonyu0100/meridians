@@ -896,7 +896,7 @@ const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
     unit: "on-demand  ·  operator-initiated  ·  separate from generation budget",
     rows: [
       {
-        call: "generateMarketBriefing",
+        call: "generateBeliefBriefing",
         count: "per request",
         model: "Gemini 2.5",
         note: "Briefing tab — situation + suggested arc/world directions",
@@ -1569,8 +1569,9 @@ export default function PaperPage() {
               <B>encyclopedic</B> (new facts &mdash; actors, places,
               rules) and <B>possibility</B> (what could still happen).
               <B>System</B> and <B>World</B> measure encyclopedic
-              growth; <B>Fate</B> measures possibility &mdash; thread
-              markets reprice as evidence lands. LLMs extract
+              growth; <B>Fate</B> measures possibility &mdash; the
+              world view&apos;s <B>belief system</B> updates as
+              evidence lands. LLMs extract
               qualitative deltas at low temperature; deterministic
               formulas turn deltas into scores. Same input, same score,
               every time. Summed, the three forces give <B>Activity</B>{" "}
@@ -1667,14 +1668,20 @@ export default function PaperPage() {
                 <span>
                   <B>Thread deltas</B> &mdash; the{" "}
                   <em>possibility</em> kind. Every open question
-                  (rivalry, secret, quest, unresolved claim) opens a{" "}
-                  <em>prediction market</em> over named outcomes. Each
-                  scene emits integer evidence in [−4, +4] plus a
-                  log-type from nine primitives; the math handles
-                  log-odds conversion, volume decay, volatility,
-                  closure, and abandonment. Fate falls out of the
-                  re-pricing &mdash; the more a scene re-shapes a
-                  high-attention market, the more fate it earns.
+                  (rivalry, secret, quest, unresolved claim) carries a{" "}
+                  <em>belief</em> &mdash; a live probability
+                  distribution over named outcomes. Together the
+                  threads form the world view&apos;s{" "}
+                  <B>belief system</B>: what it currently holds, with
+                  what confidence, on every open question. The stance
+                  isn&apos;t fixed; each scene is reality landing on
+                  the holding and asking it to revise. Deltas emit
+                  integer evidence in [−4, +4] plus a log-type from
+                  nine primitives; the math handles log-odds
+                  conversion, volume decay, volatility, closure, and
+                  abandonment. Fate falls out of the updates &mdash;
+                  the more reality re-shapes a high-attention belief,
+                  the more fate it earns.
                 </span>
               </li>
             </ul>
@@ -2228,14 +2235,16 @@ export default function PaperPage() {
                 Fate
               </h3>
               <P>
-                Fate is the <B>possibility field</B> &mdash; the
-                live space of what could still happen, reshaped
-                scene by scene. Where System and World measure what
-                the work <em>is</em>, Fate measures what it{" "}
-                <em>could still be</em>. The unifying force across
-                the other two: without fate, the abstract has no
-                reason to deepen and the physical has no destiny to
-                bend toward.
+                Fate is the <B>possibility field</B> &mdash; reality
+                manifesting on the world view&apos;s belief system,
+                reshaping its stance scene by scene. Where System and
+                World measure what the world view has accumulated,
+                Fate measures what reality does to those holdings:
+                trials, reversals, resolutions. The unifying force
+                across the other two &mdash; without fate, the
+                abstract has no reason to deepen and the physical has
+                no destiny to bend toward; the world view would hold
+                a stance but never be answered for it.
               </P>
               <P>
                 Picture an election-night needle, or the live
@@ -2243,21 +2252,28 @@ export default function PaperPage() {
                 distribution rendered as a bouncing line &mdash; flat
                 for stretches, nudged by small evidence, lurching on
                 decisive plays, converging at the finish. Every
-                thread carries such a line. &ldquo;Will Frodo destroy
-                the ring?&rdquo; has one between yes and no;
-                &ldquo;Who claims the Iron Throne?&rdquo; has one per
-                contending house. Fate is the total movement on those
-                lines this scene.
+                thread carries such a line, and the world view holds
+                them all at once. &ldquo;Will Frodo destroy the
+                ring?&rdquo; has one between yes and no; &ldquo;Who
+                claims the Iron Throne?&rdquo; has one per contending
+                house. Fate is the total movement on those lines this
+                scene &mdash; the price reality has just exacted on
+                what the world view thought it knew.
               </P>
               <P>
-                Made rigorous, each thread is a{" "}
-                <B>prediction market</B> over named outcomes. The
-                narrator&apos;s belief is priced as softmax over a
-                per-outcome logit vector; scenes shift the vector by
-                emitting bounded integer evidence on affected
-                outcomes. Fate is the{" "}
+                Made rigorous, each thread carries a <B>belief</B>{" "}
+                &mdash; a probability distribution over named
+                outcomes &mdash; priced as softmax over a per-outcome
+                logit vector. Threads are the <em>questions</em>{" "}
+                through which reality reaches the world view; beliefs
+                are the <em>stances</em> it currently holds in answer.
+                Together they form the world view&apos;s{" "}
+                <B>belief system</B>: a working model of everything
+                still undecided, always in flux. Scenes shift each
+                belief by emitting bounded integer evidence on
+                affected outcomes. Fate is the{" "}
                 <B>attention-weighted information gain</B> across
-                every market touched:
+                every belief touched:
               </P>
               <Eq
                 tex={String.raw`F_i \;=\; \sum_{t \,\in\, \Delta_i} v_t \cdot D_{\text{KL}}\!\left(\mathbf{p}_t^{+} \,\Big\|\, \mathbf{p}_t^{-}\right)`}
@@ -2279,7 +2295,7 @@ export default function PaperPage() {
                 leave{" "}
                 <Tex>{String.raw`\mathbf{p}^{+} = \mathbf{p}^{-}`}</Tex>
                 {" "}so KL is zero &mdash; a vivid scene earns no fate
-                if no market moved. Confirmations of the favourite
+                if no belief moved. Confirmations of the favourite
                 keep KL small. <B>Twists</B> land mass on an outcome
                 the prior assigned little weight; the per-outcome
                 contribution{" "}
@@ -2299,7 +2315,8 @@ export default function PaperPage() {
                 In narratives, threads are rivalries, quests,
                 secrets. In papers, open questions, contested
                 claims. In simulations, the branching outcomes a
-                scenario is designed to observe. The market framing
+                scenario is designed to observe. Every world view
+                carries a belief system over its threads; the framing
                 works universally.
               </P>
               <P>
@@ -2307,12 +2324,16 @@ export default function PaperPage() {
                 System, Fate has no per-scene floor. Evidence in
                 [−4, +4] reads what a neutral observer would update
                 on given the scene&apos;s concrete events &mdash; not
-                a knob tuned toward a target. Routine scenes emit
-                pulses (<Tex>{String.raw`|e| = 0`}</Tex>) and earn
-                fate near zero; pivotal scenes emit committal
-                evidence (<Tex>{String.raw`|e| \geq 3`}</Tex>) and
-                earn it. The math recovers the work&apos;s shape
-                only when extraction is faithful to the page. The{" "}
+                a knob tuned toward a target. Reality lands as hard
+                as it lands. Routine scenes emit pulses{" "}
+                (<Tex>{String.raw`|e| = 0`}</Tex>) and earn fate near
+                zero &mdash; the stance survives untested; pivotal
+                scenes emit committal evidence{" "}
+                (<Tex>{String.raw`|e| \geq 3`}</Tex>) and earn it
+                &mdash; trials and tribulations the belief system has
+                to answer for. The math recovers the work&apos;s
+                shape only when extraction is faithful to the page.
+                The{" "}
                 <a href="#fate-engine" className="underline hover:text-white/80">Fate Engine</a>
                 {" "}covers how the inputs get priced.
               </P>
@@ -2367,12 +2388,16 @@ export default function PaperPage() {
           {/* ── Fate Engine ─────────────────────────────────────────── */}
           <Section id="fate-engine" label="Fate Engine">
             <P>
-              Threads aren&apos;t lifecycle states; they&apos;re{" "}
-              <B>prediction markets</B> over named outcomes. Each
-              carries a question (&quot;Will Harry claim the
-              Stone?&quot;) and two or more outcomes (binary default;
-              multi-outcome enumerates). Belief is priced as softmax
-              over a per-outcome logit vector:
+              A world view doesn&apos;t hold a fixed picture of
+              itself; it holds a <em>stance</em>, and the stance
+              shifts as reality tests it. Threads are the units of
+              that reckoning &mdash; each carries a <B>belief</B>{" "}
+              &mdash; a live probability distribution over named
+              outcomes. Each thread poses a question (&quot;Will
+              Harry claim the Stone?&quot;) and lists two or more
+              outcomes (binary default; multi-outcome enumerates).
+              Belief is priced as softmax over a per-outcome logit
+              vector:
             </P>
             <Eq
               tex={String.raw`p_k = \frac{\exp(\ell_k)}{\sum_j \exp(\ell_j)}, \quad k = 1 \dots K`}
@@ -2422,9 +2447,10 @@ export default function PaperPage() {
             />
             <P>
               Threads with <Tex>v &lt; 0.5</Tex> are <B>abandoned</B>{" "}
-              &mdash; out of the market without being closed. The
-              portfolio self-organises: stakes that matter accumulate
-              volume; ignored threads slide off. Resurrection costs{" "}
+              &mdash; out of the active belief system without being
+              closed. The belief system self-organises: threads that
+              matter accumulate volume; ignored threads slide off.
+              Resurrection costs{" "}
               <Tex>{String.raw`\Delta v \geq 2`}</Tex> &mdash;
               deliberate attention only.
             </P>
@@ -2433,13 +2459,13 @@ export default function PaperPage() {
               Outcome expansion
             </h3>
             <P>
-              Markets can grow mid-story via{" "}
+              Beliefs can grow mid-story via{" "}
               <code className="text-white/70">addOutcomes</code>{" "}
               &mdash; when a scene opens a possibility that
               didn&apos;t exist before (new contender, unexpected
               option). New outcomes enter at{" "}
               <Tex>{String.raw`\ell = 0`}</Tex>; same-scene evidence
-              can shift them. Closed markets reject expansion. A
+              can shift them. Closed beliefs reject expansion. A
               delta that expands outcomes cannot also close.
             </P>
 
@@ -2468,7 +2494,7 @@ export default function PaperPage() {
               mean of four factors: peak evidence at close, margin
               over threshold, volume, and probability concentration.
               Bare-minimum evidence with low volume scores ~0.3;
-              heavy markets closed on saturating two-sided evidence
+              heavy beliefs closed on saturating two-sided evidence
               score above 0.75.
             </P>
 
@@ -2491,16 +2517,16 @@ export default function PaperPage() {
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
-              Market as narrative prior
+              Belief system as narrative prior
             </h3>
             <P>
-              Beyond measurement, the portfolio shapes generation.
-              Current prices surface to the generator as a soft prior,
-              not a constraint. Committed threads (
+              Beyond measurement, the belief system shapes generation.
+              Current beliefs surface to the generator as a soft
+              prior, not a constraint. Committed threads (
               <Tex>{String.raw`p \geq 0.75`}</Tex>) lean the next
               scene toward that outcome unless the logType is{" "}
               <code className="text-white/70">twist</code>; contested
-              markets (<Tex>{String.raw`H \geq 0.9`}</Tex>) signal a
+              beliefs (<Tex>{String.raw`H \geq 0.9`}</Tex>) signal a
               crossroads where either side is fair game; high
               volatility grants licence for a twist; low volatility +
               high probability is saturation, ripe for closure. Good
@@ -2517,10 +2543,10 @@ export default function PaperPage() {
             <P>
               Fate is one of three forces. The{" "}
               <a href="#planning" className="underline hover:text-white/80">reasoning graph</a>
-              {" "}is where they converge &mdash; fate markets exert
-              pressure, world entities carry agency, system rules
-              impose constraints. Fate is a voice in the argument,
-              not the conductor.
+              {" "}is where they converge &mdash; the belief system
+              exerts pressure, world entities carry agency, system
+              rules impose constraints. Fate is a voice in the
+              argument, not the conductor.
             </P>
             <P>
               The reasoning graph does <em>not</em> force threads to
@@ -2533,14 +2559,17 @@ export default function PaperPage() {
               concludes, not what it was forced to serve.
             </P>
             <P>
-              The loop closes: scenes emit evidence → markets re-price →
-              the next arc&apos;s reasoning graph sees a new portfolio →
-              the graph lands what the updated state can honestly earn →
-              more evidence. Threads that matter accrue volume and close
-              with high resolution quality; threads that stop mattering
-              decay into abandonment. No explicit horizon primitive is
-              needed &mdash; natural selection through volume decay and
-              focus-window ranking handles the lifecycle.
+              The loop closes: scenes are reality landing → the
+              belief system revises → the next arc&apos;s reasoning
+              graph sees a new stance → the graph lands what the
+              updated stance can honestly earn → more reality.
+              Threads that matter accrue volume and close with high
+              resolution quality; threads that stop mattering decay
+              into abandonment. No explicit horizon primitive is
+              needed &mdash; natural selection through volume decay
+              and focus-window ranking handles the lifecycle. What
+              the world view <em>is</em> at any moment is just where
+              this loop has carried it.
             </P>
           </Section>
 

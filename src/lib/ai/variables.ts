@@ -47,7 +47,7 @@ import {
   buildCompassRescoreSystem,
   buildPresentExtractionSystem,
   workIdentityFor,
-} from "@/lib/prompts/paradigm-compass";
+} from "@/lib/prompts/paradigm";
 import {
   clampIntensity,
   clampPriorLogit,

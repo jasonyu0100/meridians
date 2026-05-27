@@ -1,5 +1,5 @@
 /**
- * PARADIGM-VOCABULARY — what to call the basic engine units in each paradigm.
+ * Paradigm vocabulary — what to call the basic engine units in each paradigm.
  *
  * The engine's structural vocabulary (scene, arc, resolution) is paradigm-
  * neutral at the type level — every paradigm builds on the same Scene / Arc
@@ -11,9 +11,9 @@
  *   • record        — entry / period / trajectory landmark
  *   • …
  *
- * This map gives prompts and renderers a single source of truth for the
- * native vocabulary, so the model speaks in the paradigm's own register
- * without the prompt having to teach it the mapping inline.
+ * Single source of truth for the native vocabulary, so the model speaks in
+ * the paradigm's own register without the prompt having to teach it the
+ * mapping inline.
  */
 
 import type { NarrativeParadigm } from '@/types/narrative';

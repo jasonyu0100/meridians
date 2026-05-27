@@ -18,7 +18,7 @@
 import { ANALYSIS_TEMPERATURE, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import type { NarrativeState } from '@/types/narrative';
 import { resolveEntrySequence } from '@/lib/narrative-utils';
-import { buildBranchChatSystem, workIdentityFor } from '@/lib/prompts/paradigm-analyst';
+import { buildBranchChatSystem, workIdentityFor } from '@/lib/prompts/paradigm';
 import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
