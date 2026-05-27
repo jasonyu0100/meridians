@@ -98,13 +98,11 @@ export {
   buildGenerateNarrativePrompt,
   buildDetectPatternsPrompt,
   EXPANSION_SIZE_CONFIG,
-  EXPANSION_STRATEGY_PROMPTS,
 } from './world';
 export type {
   ExpansionSizeConfig,
   SuggestWorldExpansionArgs,
   WorldExpansionSize,
-  WorldExpansionStrategy,
   ExpandWorldArgs,
   GenerateNarrativeArgs,
   DetectPatternsArgs,

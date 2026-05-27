@@ -21,11 +21,9 @@ export type {
 export {
   buildExpandWorldPrompt,
   EXPANSION_SIZE_CONFIG,
-  EXPANSION_STRATEGY_PROMPTS,
 } from './expand-world';
 export type {
   ExpandWorldArgs,
-  WorldExpansionStrategy,
 } from './expand-world';
 
 export {

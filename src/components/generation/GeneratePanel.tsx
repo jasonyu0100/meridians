@@ -10,7 +10,6 @@ import {
   type CoordinationPlanContext,
   type ExpansionEntityFilter,
   type WorldExpansionSize,
-  type WorldExpansionStrategy,
 } from "@/lib/ai";
 import {
   buildPlanDirective,
@@ -38,12 +37,6 @@ import {
   resolveEntry,
 } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
-import {
-  ThinkingSettings,
-  type ReasoningSize,
-  type NetworkBias,
-} from "./ThinkingPicker";
 import { GuidanceFields } from "./GuidanceFields";
 import { MarkovGraph } from "./MarkovGraph";
 import { CubeBadge, PacingStrip } from "./PacingStrip";
@@ -171,17 +164,9 @@ export function GeneratePanel({
       : state.activeNarrative?.storySettings?.worldDirection?.trim() ?? "",
   );
   const [worldSize, setWorldSize] = useState<WorldExpansionSize>("exact");
-  const [worldStrategy, setWorldStrategy] = useState<WorldExpansionStrategy>(
-    state.activeNarrative?.storySettings?.expansionStrategy ?? "dynamic",
-  );
   const [entityFilter, setEntityFilter] = useState<ExpansionEntityFilter>({
     ...DEFAULT_EXPANSION_FILTER,
   });
-
-  const [thinkingResource, setThinkingResource] = useState<ThinkingResource>("freeform");
-  const [reasoningSize, setReasoningSize] = useState<ReasoningSize>("medium");
-  const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>("abduction");
-  const [networkBias, setNetworkBias] = useState<NetworkBias>("neutral");
 
   // Shared
   const [loading, setLoading] = useState(false);
@@ -404,14 +389,13 @@ export function GeneratePanel({
         state.resolvedEntryKeys,
         headIndex,
         worldSize,
-        worldStrategy,
       );
       setWorldDirective(suggestion);
     } catch (err) {
       logError("World expansion suggestion failed", err, {
         source: "world-expansion",
         operation: "suggest-expansion",
-        details: { worldSize, worldStrategy },
+        details: { worldSize },
       });
       setError(String(err));
     } finally {
@@ -436,7 +420,6 @@ export function GeneratePanel({
         headIndex,
         worldDirective,
         worldSize,
-        worldStrategy,
         {
           onReasoning: (token) => setStreamText((prev) => prev + token),
           entityFilter,
@@ -469,7 +452,6 @@ export function GeneratePanel({
         operation: "expand-world",
         details: {
           worldSize,
-          worldStrategy,
           directiveLength: worldDirective.length,
         },
       });
@@ -975,58 +957,6 @@ export function GeneratePanel({
                     Advanced
                   </summary>
                   <div className="mt-2 space-y-3">
-                    <ThinkingSettings
-                      mode={thinkingStyle}
-                      onModeChange={setThinkingStyle}
-                      force={thinkingResource}
-                      onForceChange={setThinkingResource}
-                      size={reasoningSize}
-                      onSizeChange={setReasoningSize}
-                      networkBias={networkBias}
-                      onNetworkBiasChange={setNetworkBias}
-                    />
-                    <div>
-                      <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-2">
-                        Strategy
-                      </label>
-                      <div className="flex gap-1.5">
-                        {[
-                          {
-                            value: "depth" as WorldExpansionStrategy,
-                            label: "Depth",
-                            desc: "Deepen",
-                          },
-                          {
-                            value: "breadth" as WorldExpansionStrategy,
-                            label: "Breadth",
-                            desc: "Widen",
-                          },
-                          {
-                            value: "dynamic" as WorldExpansionStrategy,
-                            label: "Dynamic",
-                            desc: "Auto",
-                          },
-                        ].map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => setWorldStrategy(opt.value)}
-                            className={`flex-1 px-2 py-2 rounded-lg text-left transition-colors ${
-                              worldStrategy === opt.value
-                                ? "bg-white/10 ring-1 ring-white/20"
-                                : "bg-white/3 hover:bg-white/6"
-                            }`}
-                          >
-                            <div className="text-xs text-text-primary font-medium">
-                              {opt.label}
-                            </div>
-                            <div className="text-[9px] text-text-dim">
-                              {opt.desc}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <div>
                       <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-2">
                         Entity Types

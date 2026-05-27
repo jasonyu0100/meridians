@@ -1,5 +1,5 @@
 import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm, WebsearchConfig } from '@/types/narrative';
-import { resolveEntry, isScene, REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
+import { REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { resolveReasoningBudget, resolveWebsearch } from './api';
 import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/narrative-utils';
 import { nextId, nextIds } from '@/lib/narrative-utils';
@@ -34,9 +34,7 @@ import {
   buildGenerateNarrativePrompt,
   buildDetectPatternsPrompt,
   EXPANSION_SIZE_CONFIG,
-  EXPANSION_STRATEGY_PROMPTS,
   type WorldExpansionSize,
-  type WorldExpansionStrategy,
 } from '@/lib/prompts/world';
 // World expansion no longer uses a causal reasoning graph — creative
 // planning happens upstream in the directive (hand-written or AI health
@@ -177,171 +175,15 @@ export async function suggestAutoDirection(
 }
 
 
-// ── World Metrics ────────────────────────────────────────────────────────────
-
-export type WorldMetrics = {
-  totalScenes: number;
-  /** Characters */
-  totalCharacters: number;
-  usedCharacters: number;
-  avgScenesPerCharacter: number;
-  /** Characters not seen in >30% of recent scenes */
-  staleCharacters: number;
-  /** % of scenes the most-used character appears in */
-  castConcentration: number;
-  /** Average knowledge nodes per character */
-  avgKnowledgePerCharacter: number;
-  /** Locations */
-  totalLocations: number;
-  usedLocations: number;
-  /** % of scenes in the most-used location */
-  locationConcentration: number;
-  staleLocations: number;
-  /** Max depth of location nesting */
-  locationDepth: number;
-  /** Avg sub-locations per used location */
-  avgChildrenPerLocation: number;
-  /** Relationships */
-  relationshipsPerCharacter: number;
-  orphanedCharacters: number;
-  /** Recommendation */
-  recommendation: 'depth' | 'breadth' | 'balanced';
-  reasoning: string;
-};
-
-/**
- * Compute measurable world metrics from the narrative state to inform expansion strategy.
- * Returns concrete numbers + a recommendation (depth/breadth/balanced) with reasoning.
- */
-export function computeWorldMetrics(
-  narrative: NarrativeState,
-  resolvedKeys: string[],
-): WorldMetrics {
-  const allScenes: Scene[] = resolvedKeys
-    .map((k) => resolveEntry(narrative, k))
-    .filter((e): e is Scene => e !== null && isScene(e));
-
-  const totalScenes = allScenes.length;
-  const totalCharacters = Object.keys(narrative.characters).length;
-  const totalLocations = Object.keys(narrative.locations).length;
-
-  // ── Cast metrics ──────────────────────────────────────────────────
-  const charScenes = new Map<string, { count: number; last: number }>();
-  const locScenes = new Map<string, { count: number; last: number }>();
-
-  for (const [i, scene] of allScenes.entries()) {
-    for (const pid of scene.participantIds) {
-      const ex = charScenes.get(pid);
-      if (ex) { ex.count++; ex.last = i; }
-      else charScenes.set(pid, { count: 1, last: i });
-    }
-    const ex = locScenes.get(scene.locationId);
-    if (ex) { ex.count++; ex.last = i; }
-    else locScenes.set(scene.locationId, { count: 1, last: i });
-  }
-
-  const usedCharacters = charScenes.size;
-  const usedLocations = locScenes.size;
-
-  const charCounts = Array.from(charScenes.values()).map((c) => c.count);
-  const avgScenesPerCharacter = charCounts.length > 0 ? charCounts.reduce((a, b) => a + b, 0) / charCounts.length : 0;
-  const maxCharScenes = charCounts.length > 0 ? Math.max(...charCounts) : 0;
-  const castConcentration = totalScenes > 0 ? maxCharScenes / totalScenes : 0;
-
-  const staleThreshold = Math.max(5, totalScenes * 0.3);
-  const staleCharacters = Array.from(charScenes.values()).filter((c) => (totalScenes - 1 - c.last) > staleThreshold).length;
-
-  const avgKnowledgePerCharacter = totalCharacters > 0
-    ? Object.values(narrative.characters).reduce((sum, c) => sum + Object.keys(c.world?.nodes ?? {}).length, 0) / totalCharacters
-    : 0;
-
-  // ── Location metrics ──────────────────────────────────────────────
-  const locCounts = Array.from(locScenes.values()).map((l) => l.count);
-  const maxLocScenes = locCounts.length > 0 ? Math.max(...locCounts) : 0;
-  const locationConcentration = totalScenes > 0 ? maxLocScenes / totalScenes : 0;
-  const staleLocations = Array.from(locScenes.values()).filter((l) => (totalScenes - 1 - l.last) > staleThreshold).length;
-
-  // Location depth: max nesting level
-  function locDepth(locId: string, visited = new Set<string>()): number {
-    if (visited.has(locId)) return 0;
-    visited.add(locId);
-    const children = Object.values(narrative.locations).filter((l) => l.parentId === locId);
-    if (children.length === 0) return 1;
-    return 1 + Math.max(...children.map((c) => locDepth(c.id, visited)));
-  }
-  const rootLocs = Object.values(narrative.locations).filter((l) => !l.parentId);
-  const locationDepth = rootLocs.length > 0 ? Math.max(...rootLocs.map((l) => locDepth(l.id))) : 0;
-
-  const childCounts = Object.values(narrative.locations).map((l) =>
-    Object.values(narrative.locations).filter((c) => c.parentId === l.id).length
-  );
-  const avgChildrenPerLocation = childCounts.length > 0 ? childCounts.reduce((a, b) => a + b, 0) / childCounts.length : 0;
-
-  // ── Relationship metrics ──────────────────────────────────────────
-  const relCount = narrative.relationships.length;
-  const relationshipsPerCharacter = totalCharacters > 0 ? (relCount * 2) / totalCharacters : 0;
-  const connectedChars = new Set(narrative.relationships.flatMap((r) => [r.from, r.to]));
-  const orphanedCharacters = Object.keys(narrative.characters).filter((id) => !connectedChars.has(id)).length;
-
-  // ── Recommendation ────────────────────────────────────────────────
-  const depthSignals: string[] = [];
-  const breadthSignals: string[] = [];
-
-  // Low knowledge density = depth needed
-  if (avgKnowledgePerCharacter < 3) depthSignals.push(`low knowledge density (${avgKnowledgePerCharacter.toFixed(1)} nodes/char)`);
-  // Shallow location hierarchy = depth needed
-  if (locationDepth <= 2 && totalLocations > 3) depthSignals.push(`shallow location hierarchy (max depth ${locationDepth})`);
-  // High cast concentration = depth needed (same few characters overused)
-  if (castConcentration > 0.6) depthSignals.push(`cast concentration high (top char in ${(castConcentration * 100).toFixed(0)}% of scenes)`);
-  // Low relationships = depth needed
-  if (relationshipsPerCharacter < 2) depthSignals.push(`sparse relationships (${relationshipsPerCharacter.toFixed(1)}/char)`);
-  // Orphaned characters = depth needed
-  if (orphanedCharacters > 2) depthSignals.push(`${orphanedCharacters} orphaned characters`);
-
-  // High location concentration = breadth needed (stuck in one place)
-  if (locationConcentration > 0.5) breadthSignals.push(`scene concentration high (top location: ${(locationConcentration * 100).toFixed(0)}%)`);
-  // Many stale characters = breadth needed (cast exhausted)
-  if (staleCharacters > totalCharacters * 0.4) breadthSignals.push(`${staleCharacters}/${totalCharacters} characters are stale`);
-  // Many stale locations = breadth needed
-  if (staleLocations > totalLocations * 0.4) breadthSignals.push(`${staleLocations}/${totalLocations} locations are stale`);
-  // Few locations relative to cast = breadth needed
-  if (totalLocations < totalCharacters * 0.3) breadthSignals.push(`location count low relative to cast (${totalLocations} locs / ${totalCharacters} chars)`);
-
-  let recommendation: 'depth' | 'breadth' | 'balanced';
-  let reasoning: string;
-  // Simple majority — any imbalance triggers a recommendation
-  if (depthSignals.length > breadthSignals.length) {
-    recommendation = 'depth';
-    reasoning = `Depth recommended: ${depthSignals.join('; ')}`;
-  } else if (breadthSignals.length > depthSignals.length) {
-    recommendation = 'breadth';
-    reasoning = `Breadth recommended: ${breadthSignals.join('; ')}`;
-  } else {
-    recommendation = 'balanced';
-    reasoning = depthSignals.length + breadthSignals.length > 0
-      ? `Balanced: depth signals (${depthSignals.join('; ') || 'none'}), breadth signals (${breadthSignals.join('; ') || 'none'})`
-      : 'World is balanced — no strong signals in either direction';
-  }
-
-  return {
-    totalScenes, totalCharacters, usedCharacters, avgScenesPerCharacter,
-    staleCharacters, castConcentration, avgKnowledgePerCharacter,
-    totalLocations, usedLocations, locationConcentration, staleLocations,
-    locationDepth, avgChildrenPerLocation,
-    relationshipsPerCharacter, orphanedCharacters,
-    recommendation, reasoning,
-  };
-}
 
 // Re-export from prompts directory so existing call sites keep working.
-export type { WorldExpansionSize, WorldExpansionStrategy };
+export type { WorldExpansionSize };
 
 export async function suggestWorldExpansion(
   narrative: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
   size: WorldExpansionSize = 'medium',
-  strategy: WorldExpansionStrategy = 'dynamic',
 ): Promise<string> {
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
 
@@ -393,22 +235,8 @@ export async function expandWorld(
   currentIndex: number,
   directive: string,
   size: WorldExpansionSize = 'medium',
-  strategy: WorldExpansionStrategy = 'dynamic',
-  /** @deprecated Use options object instead */
-  sourceTextOrOptions?: string | ExpandWorldOptions,
-  /** @deprecated Use options object instead */
-  onReasoningLegacy?: (token: string) => void,
-  /** @deprecated Use options object instead */
-  entityFilterLegacy?: ExpansionEntityFilter,
+  options: ExpandWorldOptions = {},
 ): Promise<WorldExpansionResponse> {
-  // Support both legacy positional args and new options object
-  const options: ExpandWorldOptions = typeof sourceTextOrOptions === 'object' && sourceTextOrOptions !== null
-    ? sourceTextOrOptions
-    : {
-        sourceText: sourceTextOrOptions,
-        onReasoning: onReasoningLegacy,
-        entityFilter: entityFilterLegacy,
-      };
   const { sourceText, onReasoning, entityFilter } = options;
 
   logInfo('Starting world expansion', {
@@ -417,7 +245,6 @@ export async function expandWorld(
     details: {
       narrativeId: narrative.id,
       size,
-      strategy,
       hasDirective: !!directive,
       hasSourceText: !!sourceText,
     },
@@ -445,25 +272,6 @@ export async function expandWorld(
     return `${fromName}→${toName}: ${r.type}`;
   }).join(', ');
 
-  // Build strategy prompt — for dynamic, compute metrics and inject data-driven guidance
-  let strategyBlock: string;
-  if (strategy === 'dynamic') {
-    const m = computeWorldMetrics(narrative, resolvedKeys.slice(0, currentIndex + 1));
-    strategyBlock = `STRATEGY: DYNAMIC (data-driven)
-WORLD METRICS:
-- Cast: ${m.usedCharacters}/${m.totalCharacters} characters used, ${m.avgScenesPerCharacter.toFixed(1)} avg scenes/char, ${m.staleCharacters} stale, concentration ${(m.castConcentration * 100).toFixed(0)}%
-- Knowledge: ${m.avgKnowledgePerCharacter.toFixed(1)} avg nodes/char
-- Locations: ${m.usedLocations}/${m.totalLocations} used, concentration ${(m.locationConcentration * 100).toFixed(0)}%, depth ${m.locationDepth}, ${m.staleLocations} stale
-- Relationships: ${m.relationshipsPerCharacter.toFixed(1)}/char, ${m.orphanedCharacters} orphaned
-
-ANALYSIS: ${m.reasoning}
-RECOMMENDATION: ${m.recommendation.toUpperCase()}
-
-${m.recommendation === 'depth' ? EXPANSION_STRATEGY_PROMPTS.depth : m.recommendation === 'breadth' ? EXPANSION_STRATEGY_PROMPTS.breadth : `Follow the balanced approach: deepen the active sandbox (more sub-locations, embedded characters, knowledge density) while introducing 1-2 new external elements to prevent stagnation.`}`;
-  } else {
-    strategyBlock = EXPANSION_STRATEGY_PROMPTS[strategy];
-  }
-
   const entityFilterBlock = (() => {
     const f = entityFilter ?? DEFAULT_EXPANSION_FILTER;
     const disabled = Object.entries(f).filter(([, v]) => !v).map(([k]) => k);
@@ -477,7 +285,6 @@ ${m.recommendation === 'depth' ? EXPANSION_STRATEGY_PROMPTS.depth : m.recommenda
     directive,
     sourceText,
     size,
-    strategyBlock,
     entityFilterBlock,
     modeSection: buildActiveModeSection(narrative, "expand"),
     existingCharList,

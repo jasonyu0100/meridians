@@ -1,16 +1,13 @@
 /**
  * World expansion USER prompt — adds entities (characters, locations,
- * artifacts), threads, and system rules to an existing work. Heavily templated
- * with size, strategy, source-text, entity-filter, and computed metrics. The
- * matching SYSTEM prompt lives in `paradigm-analyst.ts` and dispatches on
- * paradigm.
+ * artifacts), threads, and system rules to an existing work. Templated with
+ * size, source-text, entity-filter. The matching SYSTEM prompt lives in
+ * `paradigm-analyst.ts` and dispatches on paradigm.
  */
 
 import { PROMPT_ENTITY_INTEGRATION } from '../entities/integration';
 import { modePriorityEntry } from '../mode/application';
 import type { ExpansionSizeConfig, WorldExpansionSize } from './expansion-suggestion';
-
-export type WorldExpansionStrategy = 'breadth' | 'depth' | 'dynamic';
 
 export const EXPANSION_SIZE_CONFIG: Record<WorldExpansionSize, ExpansionSizeConfig> = {
   small:  { total: '3-6',   characters: '1-2',   locations: '1-2',   threads: '1-2',   label: 'a focused expansion (~5 total entities)' },
@@ -19,28 +16,11 @@ export const EXPANSION_SIZE_CONFIG: Record<WorldExpansionSize, ExpansionSizeConf
   exact:  { total: 'as specified', characters: 'as specified', locations: 'as specified', threads: 'as specified', label: 'exactly what is described in the directive — nothing more, nothing less' },
 };
 
-export const EXPANSION_STRATEGY_PROMPTS: Record<WorldExpansionStrategy, string> = {
-  breadth: `STRATEGY: BREADTH — widen the world. Introduce new entities, threads, and system rules that open up unexplored regions of the narrative's reach — new settings, factions, sources, schools of thought, lines of inquiry, or rule subsystems that fit the narrative's register. Focus on variety. New locations should be INDEPENDENT zones (distant regions, rival territories, separate institutions, archives, field sites, or rule-relevant venues such as markets, borderlands, or test sites) rather than sub-locations of existing places. New entities should come from different backgrounds, traditions, or domains than existing ones. New threads should introduce entirely new tensions or open questions — including new rule-driven questions about whether the modelled system reaches further states under different conditions — not deepen existing ones.`,
-
-  depth: `STRATEGY: DEPTH — deepen the existing world. Do NOT add new top-level regions or distant factions. Instead:
-- Add sub-locations WITHIN existing locations (rooms inside buildings, districts inside cities, sub-archives inside an institution, hidden areas within known places)
-- Add entities who are ALREADY embedded in existing structures (subordinates, rivals, mentors, kin, collaborators, additional sources or witnesses tied to current ones)
-- Add threads that complicate EXISTING tensions rather than introducing new ones
-- Add rich knowledge per entity (3-4 per character, 2-3 per location) — secrets, hidden agendas, structural weaknesses, unexploited resources, deeper provenance
-- Add artifacts that are locally relevant — tools, keys, resources, documents, instruments, or rule-bearing components that matter in the current sandbox
-- Focus system knowledge on the mechanics, economics, conventions, power dynamics, gate conditions, and propagation laws of the CURRENT setting
-The goal is to make the existing world feel richer, not bigger. One constrained sandbox with more detail beats a sprawling map.`,
-
-  dynamic: `STRATEGY: DYNAMIC — analyse the current world state and choose the right balance. If the world is broad but shallow (many locations, few details), go deep. If the world is deep but narrow (rich detail in one area, nothing beyond), go broad. If balanced, lean toward deepening the active area where scenes are happening while seeding one or two distant elements for future arcs. State your reasoning in a brief comment before generating.`,
-};
-
 export type ExpandWorldArgs = {
   context: string;
   directive: string;
   sourceText?: string;
   size: WorldExpansionSize;
-  /** Pre-built strategy block (with computed metrics for dynamic strategy). */
-  strategyBlock: string;
   /** Pre-built entity-filter block (or empty when no types disabled). */
   entityFilterBlock: string;
   /** Active phase graph rendered as a `<mode>` block (or empty). */
@@ -61,7 +41,6 @@ export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
     directive,
     sourceText,
     size,
-    strategyBlock,
     entityFilterBlock,
     modeSection,
     existingCharList,
@@ -86,10 +65,6 @@ ${directive.trim() ? directive : 'EXPAND the world — analyse the current narra
   </directive>
 ${sourceText ? `  <source-material hint="Verbatim from plan document — use as the authoritative guide. If the source names specific characters, places, or objects, create them with those exact names and roles. Source takes priority over generic expansion.">\n${sourceText}\n  </source-material>` : ''}
 
-  <strategy>
-${strategyBlock}
-  </strategy>
-
 ${entityFilterBlock ? `  <entity-filter>\n${entityFilterBlock}\n  </entity-filter>` : ''}
 
   <size-mode kind="${size}" label="${sizeConfig.label}" total="${sizeConfig.total}">
@@ -109,7 +84,7 @@ ${size === 'exact' ? `    <rule>EXACT expansion — create ONLY what the directi
 
 <integration-hierarchy hint="When inputs conflict, this is the priority order for expansion decisions.">
   <priority rank="1">DIRECTIVE / SOURCE-MATERIAL — explicit creative brief; the expansion must serve these directly. Source-material (when present) is verbatim authority over names, roles, and specifics.</priority>
-  <priority rank="2">STRATEGY / SIZE-MODE — depth/breadth/dynamic intent and the entity-count budget; shapes WHAT the expansion adds.</priority>
+  <priority rank="2">SIZE-MODE — the entity-count budget; shapes how much the expansion adds.</priority>
   ${modePriorityEntry(3, "expand")}
   <priority rank="4">EXISTING-ENTITIES — the canon the expansion must integrate with; new content references these to avoid orphaning.</priority>
   <priority rank="5">ENTITY-FILTER — toggles for which delta types are emitted; structural, not creative.</priority>
