@@ -1154,6 +1154,21 @@ export function NarrativeReport({
 
   const reportContent = (
     <div className="fixed inset-0 z-100 bg-bg-base flex flex-col report-shell">
+      {/* ── Constellation background — same intensity as the SlidesPlayer
+          so the report carries the engine's themed look. Readability is
+          preserved by giving the prose column its own subtle vignette
+          (see .report-body in globals.css) — the nebulae paint the
+          margins, the document spine reads cleanly. Hidden when
+          printing so the PDF export stays clean and ink-friendly. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden report-cosmos">
+        <div className="cosmos-container absolute inset-0">
+          <div className="nebula nebula-1" />
+          <div className="nebula nebula-2" />
+          <div className="nebula nebula-3" />
+          <div className="cosmos-glow" />
+        </div>
+      </div>
+
       {/* ── Toolbar — matches SlidesPlayer for a consistent modal language ── */}
       <div className="report-toolbar flex items-center justify-between h-10 px-4 shrink-0 relative z-10">
         <div className="flex items-center gap-3">
@@ -1221,9 +1236,12 @@ export function NarrativeReport({
         </div>
       </div>
 
-      {/* ── Document ── */}
-      <div className="flex-1 overflow-y-auto report-scroll">
-        <div className="max-w-[680px] mx-auto px-6 py-14 report-body">
+      {/* ── Document — sits above the constellation via relative z-10.
+          The body column gets a translucent dark backdrop + blur so the
+          prose reads cleanly while the nebulae paint the margins of the
+          viewport. Reads as "a document on cosmic background." */}
+      <div className="flex-1 overflow-y-auto report-scroll relative z-10">
+        <div className="max-w-[680px] mx-auto my-8 px-8 py-14 report-body bg-bg-base/55 backdrop-blur-md rounded-2xl border border-white/[0.05] shadow-2xl shadow-black/40">
           {/* ── Cover — slide-hero pattern: large title, radial accent
               behind the score, vibrant force colours so the cover reads
               like a TitleSlide stamped into the head of the document. */}

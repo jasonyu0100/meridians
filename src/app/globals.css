@@ -411,6 +411,12 @@ button,
   .report-toolbar {
     display: none !important;
   }
+  /* Hide the constellation background in print — the dim nebulae render
+     as muddy gradient washes on paper and waste ink. The dark base
+     colour above is enough to preserve the dark-mode read. */
+  .report-cosmos {
+    display: none !important;
+  }
   .report-scroll {
     display: block !important;
     overflow: visible !important;
@@ -422,6 +428,14 @@ button,
     padding: 1.6cm 1.4cm !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
+    /* Strip the on-screen "panel on cosmos" styling: translucent
+       background, blur, rounded corners, drop shadow and border are
+       on-screen-only. In print, the page itself is the document. */
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 
   /* Page breaks */
