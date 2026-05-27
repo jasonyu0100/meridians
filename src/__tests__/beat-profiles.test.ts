@@ -78,7 +78,6 @@ function createSceneWithPlan(
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     planVersions: [{
       version: '1.0.0',
       branchId: 'main',

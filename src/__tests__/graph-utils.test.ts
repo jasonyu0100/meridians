@@ -81,7 +81,6 @@ function createScene(id: string, overrides: Partial<Scene> = {}): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     ...overrides,
   };
 }
@@ -93,7 +92,6 @@ function createArc(id: string, overrides: Partial<Arc> = {}): Arc {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
     ...overrides,
   };
 }
@@ -267,78 +265,56 @@ describe("heatColor", () => {
 });
 // ── computeCharacterPositions Tests ──────────────────────────────────────────
 describe("computeCharacterPositions", () => {
-  it("returns initial positions when no scenes", () => {
-    const arc = createArc("arc-1", {
-      sceneIds: [],
-      initialCharacterLocations: { "char-1": "loc-1", "char-2": "loc-2" },
-    });
+  it("returns empty map when no scenes", () => {
+    const arc = createArc("arc-1");
     const positions = computeCharacterPositions(arc, {}, 0, []);
-    expect(positions).toEqual({ "char-1": "loc-1", "char-2": "loc-2" });
+    expect(positions).toEqual({});
   });
-  it("updates positions based on scene movements", () => {
+  it("derives position from most recent participation", () => {
     const scenes: Record<string, Scene> = {
       "scene-1": createScene("scene-1", {
-        characterMovements: {
-          "char-1": { locationId: "loc-2", transition: "walks to" },
-        },
+        locationId: "loc-2",
+        participantIds: ["char-1"],
       }),
       "scene-2": createScene("scene-2", {
-        characterMovements: {
-          "char-1": { locationId: "loc-3", transition: "travels to" },
-        },
+        locationId: "loc-3",
+        participantIds: ["char-1"],
       }),
     };
-    const arc = createArc("arc-1", {
-      sceneIds: ["scene-1", "scene-2"],
-      initialCharacterLocations: { "char-1": "loc-1" },
-    });
+    const arc = createArc("arc-1", { sceneIds: ["scene-1", "scene-2"] });
     const resolvedKeys = ["scene-1", "scene-2"];
-    // At scene 0, char-1 moves to loc-2
-    const pos0 = computeCharacterPositions(arc, scenes, 0, resolvedKeys);
-    expect(pos0["char-1"]).toBe("loc-2");
-    // At scene 1, char-1 moves to loc-3
-    const pos1 = computeCharacterPositions(arc, scenes, 1, resolvedKeys);
-    expect(pos1["char-1"]).toBe("loc-3");
+    expect(computeCharacterPositions(arc, scenes, 0, resolvedKeys)["char-1"]).toBe("loc-2");
+    expect(computeCharacterPositions(arc, scenes, 1, resolvedKeys)["char-1"]).toBe("loc-3");
   });
-  it("stops at current scene index", () => {
+  it("respects currentSceneIndex — does not see future scenes", () => {
     const scenes: Record<string, Scene> = {
       "scene-1": createScene("scene-1", {
-        characterMovements: {
-          "char-1": { locationId: "loc-2", transition: "walks to" },
-        },
+        locationId: "loc-2",
+        participantIds: ["char-1"],
       }),
       "scene-2": createScene("scene-2", {
-        characterMovements: {
-          "char-1": { locationId: "loc-3", transition: "travels to" },
-        },
+        locationId: "loc-3",
+        participantIds: ["char-1"],
       }),
     };
-    const arc = createArc("arc-1", {
-      sceneIds: ["scene-1", "scene-2"],
-      initialCharacterLocations: { "char-1": "loc-1" },
-    });
+    const arc = createArc("arc-1", { sceneIds: ["scene-1", "scene-2"] });
     const resolvedKeys = ["scene-1", "scene-2"];
-    // Only process up to scene 0
-    const positions = computeCharacterPositions(arc, scenes, 0, resolvedKeys);
-    expect(positions["char-1"]).toBe("loc-2"); // Not loc-3
+    expect(computeCharacterPositions(arc, scenes, 0, resolvedKeys)["char-1"]).toBe("loc-2");
   });
-  it("handles arc starting after index 0 in resolved keys", () => {
+  it("position persists when character does not appear in later scenes", () => {
     const scenes: Record<string, Scene> = {
-      "scene-0": createScene("scene-0"),
       "scene-1": createScene("scene-1", {
-        characterMovements: {
-          "char-1": { locationId: "loc-2", transition: "walks to" },
-        },
+        locationId: "loc-1",
+        participantIds: ["char-1"],
+      }),
+      "scene-2": createScene("scene-2", {
+        locationId: "loc-9",
+        participantIds: [],
       }),
     };
-    const arc = createArc("arc-1", {
-      sceneIds: ["scene-1"],
-      initialCharacterLocations: { "char-1": "loc-1" },
-    });
-    const resolvedKeys = ["scene-0", "scene-1"];
-    // Scene-1 is at index 1 in resolved keys
-    const positions = computeCharacterPositions(arc, scenes, 1, resolvedKeys);
-    expect(positions["char-1"]).toBe("loc-2");
+    const arc = createArc("arc-1", { sceneIds: ["scene-1", "scene-2"] });
+    const resolvedKeys = ["scene-1", "scene-2"];
+    expect(computeCharacterPositions(arc, scenes, 1, resolvedKeys)["char-1"]).toBe("loc-1");
   });
 });
 // ── buildGraphData Tests ─────────────────────────────────────────────────────

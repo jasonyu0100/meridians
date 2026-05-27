@@ -68,9 +68,7 @@ export default function LocationDetail({ locationId }: Props) {
       sceneId: s.id,
       threadDeltas: s.threadDeltas.filter((tm) => locationThreadIds.has(tm.threadId)),
       worldDeltas: s.worldDeltas.filter((km) => km.entityId === locationId),
-      arrivals: Object.entries(s.characterMovements ?? {})
-        .filter(([, mv]) => mv.locationId === locationId)
-        .map(([charId]) => charId),
+      participantIds: s.participantIds,
     }));
 
   return (
@@ -283,7 +281,7 @@ export default function LocationDetail({ locationId }: Props) {
           <CollapsibleSection title="Scenes" count={lifecycle.length}>
             {pageItems.length > 0 && (
               <ul className="flex flex-col gap-2">
-                {pageItems.map(({ sceneId, threadDeltas, worldDeltas, arrivals }) => (
+                {pageItems.map(({ sceneId, threadDeltas, worldDeltas, participantIds }) => (
                   <li key={sceneId} className="flex flex-col gap-0.5">
                     <button
                       type="button"
@@ -308,11 +306,13 @@ export default function LocationDetail({ locationId }: Props) {
                         </div>
                       ))
                     )}
-                    {arrivals.map((charId, arrIdx) => (
-                      <span key={`${charId}-${arrIdx}`} className="text-xs text-text-secondary">
-                        &rarr; {narrative.characters[charId]?.name ?? charId} arrived
+                    {participantIds.length > 0 && (
+                      <span className="text-xs text-text-dim">
+                        {participantIds
+                          .map((id) => narrative.characters[id]?.name ?? id)
+                          .join(", ")}
                       </span>
-                    ))}
+                    )}
                   </li>
                 ))}
               </ul>

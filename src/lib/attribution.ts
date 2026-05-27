@@ -47,7 +47,6 @@ function mapSysRelation(rel: string): AttributionEdgeRelation {
  *   - artifactUsages → artifactId + characterId
  *   - ownershipDeltas → artifactId + fromId + toId
  *   - tieDeltas → locationId + characterId
- *   - characterMovements → characterId + locationId
  *
  * Newly-introduced ids (from newCharacters/newLocations/newArtifacts/newThreads
  * and systemDeltas.addedNodes) are NOT included here — they earn attribution
@@ -87,10 +86,6 @@ export function deriveSceneAttributions(scene: Scene): string[] {
     add(td.locationId);
     add(td.characterId);
   }
-  for (const [charId, mv] of Object.entries(scene.characterMovements ?? {})) {
-    add(charId);
-    add(mv.locationId);
-  }
 
   // Existing system rules the scene leans on through edges in its systemDeltas
   // (the addedNodes are new and credited at introduction; the edge endpoints
@@ -124,7 +119,6 @@ export function deriveSceneAttributions(scene: Scene): string[] {
  *   - ownershipDeltas (artifact transfer)    → causes (new owner) +
  *                                              supersedes (prior owner)
  *   - tieDeltas (char↔location)              → develops
- *   - characterMovements (char↔destination)  → develops
  *   - threadDeltas + povId / locationId      → develops
  *   - systemDeltas.addedEdges (sys↔sys)      → mapped via mapSysRelation
  *
@@ -152,9 +146,6 @@ export function deriveSceneAttributionEdges(scene: Scene): AttributionEdge[] {
   for (const td of scene.tieDeltas ?? []) {
     push(td.characterId, td.locationId, "develops");
   }
-  for (const [charId, mv] of Object.entries(scene.characterMovements ?? {})) {
-    push(charId, mv.locationId, "develops");
-  }
   // Threads engaged in this scene wire to its POV and to its location, so the
   // network surfaces "where is this thread playing out" and "who is carrying it".
   for (const tm of scene.threadDeltas ?? []) {
@@ -168,8 +159,7 @@ export function deriveSceneAttributionEdges(scene: Scene): AttributionEdge[] {
 }
 
 /** Edge version of deriveSceneAttributions for world expansions. World builds
- *  have no POV / locationId / artifactUsages / characterMovements, so the
- *  surface is narrower. */
+ *  have no POV / locationId / artifactUsages, so the surface is narrower. */
 export function deriveExpansionAttributionEdges(expansion: WorldExpansion): AttributionEdge[] {
   const out: AttributionEdge[] = [];
   const push = (from: string | null | undefined, to: string | null | undefined, relation: AttributionEdgeRelation) => {

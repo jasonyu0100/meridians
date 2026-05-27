@@ -153,7 +153,6 @@ function createScene(
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     ...rest,
     ...(plan
       ? {

@@ -83,7 +83,6 @@ const mockStructureResult = {
   artifactUsages: [],
   ownershipDeltas: [],
   tieDeltas: [],
-  characterMovements: [],
 };
 // Speed up tests: eliminate all setTimeout delays (retries, backoffs, afterEach cleanup)
 const origSetTimeout = globalThis.setTimeout;

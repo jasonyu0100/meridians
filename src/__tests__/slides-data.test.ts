@@ -105,7 +105,7 @@ describe('computeSlidesData', () => {
         }),
       },
       arcs: {
-        'arc-1': { id: 'arc-1', name: 'Act I', sceneIds: ['s1', 's2'], develops: ['t1'], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
+        'arc-1': { id: 'arc-1', name: 'Act I', sceneIds: ['s1', 's2'], develops: ['t1'], locationIds: [], activeCharacterIds: [] },
       },
     });
     const data = computeSlidesData(n, ['s1', 's2']);
@@ -245,7 +245,7 @@ describe('computeSlidesData', () => {
         t1: { id: 't1', description: 'Quest', outcomes: ["yes", "no"], stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 's1', threadLog: { nodes: {}, edges: [] } },
       },
       arcs: {
-        'arc-1': { id: 'arc-1', name: 'Act I', sceneIds: ['s1', 's2'], develops: ['t1'], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
+        'arc-1': { id: 'arc-1', name: 'Act I', sceneIds: ['s1', 's2'], develops: ['t1'], locationIds: [], activeCharacterIds: [] },
       },
     });
     const data = computeSlidesData(n, ['s1', 's2']);

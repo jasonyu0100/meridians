@@ -1,17 +1,13 @@
 import type { NarrativeState } from "@/types/narrative";
 
 /**
- * Walk every scene up to currentIndex in chronological order and replay
- * characterMovements deltas to compute each character's current location.
+ * Compute each character's current location by walking scenes up to
+ * currentIndex in chronological order. Position is the locationId of the
+ * most recent scene where the character is a participant — a character's
+ * position only changes when they appear somewhere new.
  *
- * Falls back to first-participation scene location as the implicit seed for
- * characters who have never been explicitly moved — preserves the legacy
- * "participation = presence" assumption for first introductions while
- * letting characterMovements be the source of truth for everything after.
- *
- * Cumulative across arc boundaries: this is the cross-arc counterpart to
- * graph-utils.computeCharacterPositions (which is scoped to a single arc and
- * reads arc.initialCharacterLocations).
+ * Participation is the only signal: no separate movement delta to maintain.
+ * Characters never seen in any scene up to currentIndex have no entry.
  */
 export function computeCumulativePositions(
   narrative: NarrativeState,
@@ -22,14 +18,9 @@ export function computeCumulativePositions(
   const lastIdx = Math.min(currentIndex, resolvedKeys.length - 1);
   for (let i = 0; i <= lastIdx; i++) {
     const scene = narrative.scenes[resolvedKeys[i]];
-    if (!scene) continue;
+    if (!scene || !scene.locationId) continue;
     for (const pid of scene.participantIds) {
-      if (!(pid in positions) && scene.locationId) positions[pid] = scene.locationId;
-    }
-    if (scene.characterMovements) {
-      for (const [charId, mv] of Object.entries(scene.characterMovements)) {
-        positions[charId] = mv.locationId;
-      }
+      positions[pid] = scene.locationId;
     }
   }
   return positions;

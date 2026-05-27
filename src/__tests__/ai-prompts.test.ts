@@ -228,7 +228,6 @@ describe("Scene-structure extraction schema contract", () => {
     "artifactUsages",
     "ownershipDeltas",
     "tieDeltas",
-    "characterMovements",
     "systemDeltas",
   ];
 

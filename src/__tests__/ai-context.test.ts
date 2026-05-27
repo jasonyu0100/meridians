@@ -88,7 +88,6 @@ function createScene(id: string, overrides: Partial<Scene> = {}): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     ...overrides,
   };
 }
@@ -114,7 +113,6 @@ function createArc(id: string, name: string, sceneIds: string[]): Arc {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
   };
 }
 // ── THREAD_LIFECYCLE_DOC ─────────────────────────────────────────────────────

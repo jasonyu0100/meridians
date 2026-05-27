@@ -124,7 +124,7 @@ src/
 - **Character** — `role: anchor|recurring|transient`, world graph (inner world), threadIds
 - **Location** — `prominence: domain|place|margin`, world graph (accumulated history), threadIds
 - **Artifact** — `significance: key|notable|minor`, world graph (provenance, properties), threadIds
-- **Scene** — povId, locationId, participantIds, events, threadDeltas, worldDeltas, relationshipDeltas, characterMovements, plan, prose, proseScore
+- **Scene** — povId, locationId, participantIds, events, threadDeltas, worldDeltas, relationshipDeltas, plan, prose, proseScore
 - **Thread** — participants can be `character|location|artifact`; lifecycle status; deltas record fate/world per scene
 - **Branch** — git-like branching for story timelines; entryIds interleave scenes + world commits
 - **StructureEvaluation** — per-scene verdicts (ok/edit/merge/insert/cut), overall critique, repetition patterns, thematic question

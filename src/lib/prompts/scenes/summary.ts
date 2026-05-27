@@ -56,7 +56,7 @@ export const PROMPT_SUMMARY_REQUIREMENT = `<summary-requirement length="adaptive
   </name-the-thing>
 
   <no-engine-metadata critical="true" hint="The summary is IN-WORLD content. Engine bookkeeping has its own structured fields — never narrate the bookkeeping inside the summary.">
-    <rule>NEVER reference engine field names — threadDeltas, worldDeltas, systemDeltas, relationshipDeltas, attributions, attributionEdges, ownershipDeltas, tieDeltas, characterMovements, artifactUsages, events — as bookkeeping inside summary prose. These fields exist SEPARATELY in the JSON. The cross-reference discipline (every delta traces to a summary sentence) lives in your reasoning, NOT in the summary text.</rule>
+    <rule>NEVER reference engine field names — threadDeltas, worldDeltas, systemDeltas, relationshipDeltas, attributions, attributionEdges, ownershipDeltas, tieDeltas, artifactUsages, events — as bookkeeping inside summary prose. These fields exist SEPARATELY in the JSON. The cross-reference discipline (every delta traces to a summary sentence) lives in your reasoning, NOT in the summary text.</rule>
     <wrong>"ThreadDeltas update T-1 and T-5 with strong positive evidence for decoupling acceleration."</wrong>
     <wrong>"SystemDeltas add a rule about Chinese policy leak dual purposes."</wrong>
     <wrong>"WorldDeltas capture Elena's skepticism and each expert's conviction."</wrong>

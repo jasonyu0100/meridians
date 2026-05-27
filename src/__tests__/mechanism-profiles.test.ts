@@ -61,7 +61,6 @@ function createSceneWithPlan(
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     summary: 'Test scene',
     planVersions: plan ? [{
       plan,

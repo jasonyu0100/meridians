@@ -49,7 +49,6 @@ export function getSceneCharacterIds(
     if (au.characterId) ids.add(au.characterId);
   }
   for (const td of scene.tieDeltas ?? []) ids.add(td.characterId);
-  Object.keys(scene.characterMovements ?? {}).forEach((id) => ids.add(id));
   if (characters) {
     for (const wd of scene.worldDeltas ?? []) {
       if (characters[wd.entityId]) ids.add(wd.entityId);
@@ -67,9 +66,6 @@ export function getSceneLocationIds(
   if (scene.locationId) ids.add(scene.locationId);
   for (const l of scene.newLocations ?? []) ids.add(l.id);
   for (const td of scene.tieDeltas ?? []) ids.add(td.locationId);
-  for (const mv of Object.values(scene.characterMovements ?? {})) {
-    if (mv.locationId) ids.add(mv.locationId);
-  }
   if (locations) {
     for (const wd of scene.worldDeltas ?? []) {
       if (locations[wd.entityId]) ids.add(wd.entityId);
@@ -110,7 +106,7 @@ export interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
     | "relationship"
     | "spatial"
     | "knowledge"
-    | "character-location"  // Current position (from characterMovements)
+    | "character-location"  // Current position (derived from participation)
     | "tie"                 // Permanent affiliation (employee, resident, faction)
     | "ownership";          // Artifact owned by character/location
   label?: string;
@@ -274,26 +270,23 @@ export const SYS_TYPE_GLOW: Record<string, string> = {
 
 // ── Helper: build graph data from narrative state ───────────────────────────
 
-/** Compute current character positions by replaying arc initial + scene deltas up to sceneIndex */
+/** Compute character positions within an arc up to sceneIndex.
+ *  Position = locationId of the most recent scene where the character is a
+ *  participant. Walks the full timeline up to currentSceneIndex so positions
+ *  established in prior arcs are inherited automatically. */
 export function computeCharacterPositions(
-  arc: Arc,
+  _arc: Arc,
   scenes: Record<string, Scene>,
   currentSceneIndex: number,
   resolvedEntryKeys: string[],
 ): Record<string, string> {
-  const positions = { ...arc.initialCharacterLocations };
-  const arcScenes = arc.sceneIds.map((sid) => scenes[sid]).filter(Boolean);
-  // Find the offset of this arc's first scene within the resolved scene order
-  const arcStartGlobal = resolvedEntryKeys.indexOf(arc.sceneIds[0]);
-
-  for (let i = 0; i < arcScenes.length; i++) {
-    const globalIdx = arcStartGlobal + i;
-    if (globalIdx < 0 || globalIdx > currentSceneIndex) break;
-    const scene = arcScenes[i];
-    if (scene.characterMovements) {
-      for (const [charId, mv] of Object.entries(scene.characterMovements)) {
-        positions[charId] = mv.locationId;
-      }
+  const positions: Record<string, string> = {};
+  const lastIdx = Math.min(currentSceneIndex, resolvedEntryKeys.length - 1);
+  for (let i = 0; i <= lastIdx; i++) {
+    const scene = scenes[resolvedEntryKeys[i]];
+    if (!scene || !scene.locationId) continue;
+    for (const pid of scene.participantIds) {
+      positions[pid] = scene.locationId;
     }
   }
   return positions;

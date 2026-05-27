@@ -40,7 +40,6 @@ function makeArc(id: string, overrides: Partial<Arc> = {}): Arc {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
     ...overrides,
   };
 }
@@ -110,7 +109,6 @@ describe('stampScenarioVariables', () => {
       develops: ['C-1'],
       locationIds: ['L-1'],
       activeCharacterIds: ['C-1', 'C-2'],
-      initialCharacterLocations: { 'C-1': 'L-1' },
     });
     const stamped = stampScenarioVariables(arc, [makeVariable('var-a', 2)]);
     expect(stamped.id).toBe('ARC-1');
@@ -120,7 +118,6 @@ describe('stampScenarioVariables', () => {
     expect(stamped.develops).toEqual(['C-1']);
     expect(stamped.locationIds).toEqual(['L-1']);
     expect(stamped.activeCharacterIds).toEqual(['C-1', 'C-2']);
-    expect(stamped.initialCharacterLocations).toEqual({ 'C-1': 'L-1' });
   });
 
   it('does not mutate the input arc', () => {

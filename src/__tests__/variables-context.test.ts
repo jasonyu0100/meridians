@@ -19,7 +19,6 @@ function makeArc(id: string, overrides: Partial<Arc> = {}): Arc {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
     ...overrides,
   };
 }
@@ -37,7 +36,6 @@ function makeScene(id: string, arcId: string): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
   };
 }
 

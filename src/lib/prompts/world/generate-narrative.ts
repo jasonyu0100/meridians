@@ -437,7 +437,7 @@ Return JSON with this exact structure:
     }
   ],
   "arcs": [
-    {"id": "ARC-1", "name": "Arc name — a short thematic label for this narrative segment", "sceneIds": ["S-1"], "develops": ["T-1"], "locationIds": ["L-1"], "activeCharacterIds": ["C-1"], "initialCharacterLocations": {"C-1": "L-1"}, "directionVector": "Forward-looking intent — see ARC METADATA guidance below.", "worldState": "Backward-looking compact state snapshot as of END of arc — see ARC METADATA guidance below for domain-adaptive form."}
+    {"id": "ARC-1", "name": "Arc name — a short thematic label for this narrative segment", "sceneIds": ["S-1"], "develops": ["T-1"], "locationIds": ["L-1"], "activeCharacterIds": ["C-1"], "directionVector": "Forward-looking intent — see ARC METADATA guidance below.", "worldState": "Backward-looking compact state snapshot as of END of arc — see ARC METADATA guidance below for domain-adaptive form."}
   ],`}
   "proseProfile": {
     "register": "the tonal register (conversational/literary/raw/clinical/sardonic/lyrical/mythic/journalistic or other)",

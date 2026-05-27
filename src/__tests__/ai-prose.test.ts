@@ -55,7 +55,7 @@ function createMinimalNarrative(): NarrativeState {
       'T-1': { id: 'T-1', description: 'Save the kingdom', outcomes: ["yes", "no"], stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } }, participants: [], dependents: [], openedAt: 'S-1', threadLog: { nodes: {}, edges: [] } },
     },
     arcs: {
-      'ARC-1': { id: 'ARC-1', name: 'Beginning', sceneIds: ['S-1', 'S-2', 'S-3'], develops: [], locationIds: [], activeCharacterIds: [], initialCharacterLocations: {} },
+      'ARC-1': { id: 'ARC-1', name: 'Beginning', sceneIds: ['S-1', 'S-2', 'S-3'], develops: [], locationIds: [], activeCharacterIds: [] },
     },
     scenes: {
       'S-1': {

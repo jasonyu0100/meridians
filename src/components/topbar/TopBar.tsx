@@ -131,12 +131,6 @@ function exportBranch(narrative: NarrativeState, branchId: string) {
         referencedCharIds.add(rm.from);
         referencedCharIds.add(rm.to);
       }
-      if (scene.characterMovements) {
-        for (const [cid, mv] of Object.entries(scene.characterMovements)) {
-          referencedCharIds.add(cid);
-          referencedLocIds.add(mv.locationId);
-        }
-      }
       for (const om of scene.ownershipDeltas ?? [])
         referencedArtifactIds.add(om.artifactId);
       // Find arc containing this scene
@@ -772,12 +766,6 @@ export default function TopBar() {
         for (const rm of scene.relationshipDeltas) {
           referencedCharIds.add(rm.from);
           referencedCharIds.add(rm.to);
-        }
-        if (scene.characterMovements) {
-          for (const [cid, mv] of Object.entries(scene.characterMovements)) {
-            referencedCharIds.add(cid);
-            referencedLocIds.add(mv.locationId);
-          }
         }
         for (const om of scene.ownershipDeltas ?? [])
           referencedArtifactIds.add(om.artifactId);

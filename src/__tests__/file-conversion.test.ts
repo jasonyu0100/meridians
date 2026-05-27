@@ -106,7 +106,6 @@ function makeArc(id: string, sceneIds: string[]): Arc {
     sceneIds,
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
     develops: [],
   } as Arc;
 }

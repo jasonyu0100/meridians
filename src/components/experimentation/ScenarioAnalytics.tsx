@@ -988,28 +988,6 @@ export function SceneDetail({
           </div>
         )}
 
-      {scene.characterMovements && Object.keys(scene.characterMovements).length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <h3 className="text-[10px] uppercase tracking-widest text-text-dim">Movements</h3>
-          {Object.entries(scene.characterMovements).map(([charId, mv]) => {
-            const charName = narrative.characters[charId]?.name ?? charId;
-            const locName = narrative.locations[mv.locationId]?.name ?? mv.locationId;
-            return (
-              <div key={charId} className="flex flex-col gap-0.5 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-text-primary">{charName}</span>
-                  <span className="text-text-dim">→</span>
-                  <span className="text-text-secondary">{locName}</span>
-                </div>
-                {mv.transition && (
-                  <span className="text-[10px] text-text-dim italic pl-2">{mv.transition}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {scene.artifactUsages && scene.artifactUsages.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <h3 className="text-[10px] uppercase tracking-widest text-text-dim">Artifact Usages</h3>

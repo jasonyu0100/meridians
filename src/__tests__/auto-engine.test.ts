@@ -44,7 +44,6 @@ function createScene(id: string, overrides: Partial<Scene> = {}): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     ...overrides,
   };
 }
@@ -189,7 +188,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-2": {
         id: "arc-2",
@@ -198,7 +196,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-3": {
         id: "arc-3",
@@ -207,7 +204,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({
@@ -226,7 +222,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-2": {
         id: "arc-2",
@@ -235,7 +230,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-3": {
         id: "arc-3",
@@ -244,7 +238,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({
@@ -264,7 +257,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({
@@ -294,7 +286,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       };
     }
     const config = createAutoConfig({
@@ -314,7 +305,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-2": {
         id: "arc-2",
@@ -323,7 +313,6 @@ describe("computeStoryProgress", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({
@@ -399,7 +388,6 @@ describe("checkEndConditions", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-2": {
         id: "arc-2",
@@ -408,7 +396,6 @@ describe("checkEndConditions", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({
@@ -427,7 +414,6 @@ describe("checkEndConditions", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
       "arc-2": {
         id: "arc-2",
@@ -436,7 +422,6 @@ describe("checkEndConditions", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({
@@ -782,7 +767,6 @@ describe("auto-engine edge cases", () => {
         develops: [],
         locationIds: [],
         activeCharacterIds: [],
-        initialCharacterLocations: {},
       },
     };
     const config = createAutoConfig({

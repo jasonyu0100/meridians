@@ -596,12 +596,6 @@ export function narrativeContext(
         const pairKey = rm.from < rm.to ? `${rm.from}|${rm.to}` : `${rm.to}|${rm.from}`;
         relationshipLatestDeltaScene.set(pairKey, i);
       }
-      if (entry.characterMovements) {
-        for (const [charId, mv] of Object.entries(entry.characterMovements)) {
-          referencedCharIds.add(charId);
-          referencedLocIds.add(mv.locationId);
-        }
-      }
     } else if (entry.kind === 'world_build') {
       for (const c of entry.expansionManifest.newCharacters) referencedCharIds.add(c.id);
       for (const l of entry.expansionManifest.newLocations) referencedLocIds.add(l.id);
@@ -934,10 +928,12 @@ export function narrativeContext(
     })
     .join('\n\n');
 
-  // ── Character positions (resolved chess-board) ────────────────────
-  // Replay characterMovements across all prior scenes so the model sees
-  // where each in-scope character is RIGHT NOW. Removes the implicit
-  // "walk every <movement> tag myself" reasoning step.
+  // ── Character positions (chess-board derived from participation) ──
+  // A character's current location = the locationId of the most recent
+  // scene where they appear as a participant. To move them, list them in
+  // a participantIds at a different scene.locationId — position updates
+  // implicitly. Surfaces the resolved snapshot so the model doesn't have
+  // to walk participation history itself.
   const resolvedPositions = computeCumulativePositions(n, resolvedKeys, currentIndex);
   const positionLines: string[] = [];
   for (const c of branchCharacters) {
@@ -948,7 +944,7 @@ export function narrativeContext(
     positionLines.push(`  <at character="${c.name}" location="${loc.name}" />`);
   }
   const characterPositionsBlock = positionLines.length > 0
-    ? `<character-positions hint="Resolved current locations after replaying characterMovements. Use as the chess-board for the next scene — emit characterMovements only when a character actually relocates.">
+    ? `<character-positions hint="Each character's current location — the locationId of the most recent scene where they participate. Move a character by listing them in a participantIds at a different scene.locationId; their position updates implicitly.">
 ${positionLines.join('\n')}
 </character-positions>`
     : '';
@@ -1069,14 +1065,6 @@ export function sceneContext(
     return `  <shift from="${fromName}" to="${toName}" delta="${rm.valenceDelta >= 0 ? '+' : ''}${Math.round(rm.valenceDelta * 100) / 100}">${rm.type}</shift>`;
   });
 
-  const movementLines = scene.characterMovements
-    ? Object.entries(scene.characterMovements).map(([charId, mv]) => {
-        const char = narrative.characters[charId];
-        const loc = narrative.locations[mv.locationId];
-        return `  <movement character="${char?.name ?? charId}" to="${loc?.name ?? mv.locationId}">${mv.transition}</movement>`;
-      })
-    : [];
-
   const artifactUsageLines = (scene.artifactUsages ?? []).map((au) => {
     const artName = narrative.artifacts?.[au.artifactId]?.name ?? au.artifactId;
     const usageAttr = au.usage ? ` what="${au.usage}"` : '';
@@ -1186,7 +1174,6 @@ ${scene.events.map((e) => `  <event>${e}</event>`).join('\n')}
 ${threadDeltaLines.length > 0 ? `\n<thread-shifts>\n${threadDeltaLines.join('\n')}\n</thread-shifts>` : ''}
 ${worldDeltaLines.length > 0 ? `\n<world-changes>\n${worldDeltaLines.join('\n')}\n</world-changes>` : ''}
 ${relationshipDeltaLines.length > 0 ? `\n<relationship-shifts>\n${relationshipDeltaLines.join('\n')}\n</relationship-shifts>` : ''}${wkmBlock}
-${movementLines.length > 0 ? `\n<movements>\n${movementLines.join('\n')}\n</movements>` : ''}
 ${artifactUsageLines.length > 0 ? `\n<artifact-usages>\n${artifactUsageLines.join('\n')}\n</artifact-usages>` : ''}
 ${ownershipDeltaLines.length > 0 ? `\n<artifact-transfers>\n${ownershipDeltaLines.join('\n')}\n</artifact-transfers>` : ''}
 ${tieDeltaLines.length > 0 ? `\n<tie-changes>\n${tieDeltaLines.join('\n')}\n</tie-changes>` : ''}
@@ -1445,27 +1432,24 @@ ${worldLines.join('\n')}
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CHARACTER MOVEMENTS
+  // ARRIVALS — derived from participation diff
+  // For each participant whose prior position differs from scene.locationId,
+  // emit an arrival hint so the prose writer can narrate the journey in.
   // ═══════════════════════════════════════════════════════════════════════════
-  if (scene.characterMovements && Object.keys(scene.characterMovements).length > 0) {
-    // Position before this scene's movements applied — drives the correct
-    // `from` attribute so the prose writer narrates the right origin.
-    const priorPositions = resolvedKeys && currentIndex !== undefined
-      ? computeCumulativePositions(narrative, resolvedKeys, currentIndex - 1)
-      : {};
-    const movementLines = Object.entries(scene.characterMovements).map(([charId, mv]) => {
-      const char = narrative.characters[charId];
-      const newLoc = narrative.locations[mv.locationId];
-      if (!char || !newLoc) return null;
-      const fromLocId = priorPositions[charId];
-      const fromLoc = fromLocId ? narrative.locations[fromLocId] : undefined;
-      const fromAttr = fromLoc ? ` from="${fromLoc.name}"` : '';
-      return `  <movement character="${char.name}"${fromAttr} to="${newLoc.name}" transition="${mv.transition}" />`;
+  if (resolvedKeys && currentIndex !== undefined && scene.locationId) {
+    const priorPositions = computeCumulativePositions(narrative, resolvedKeys, currentIndex - 1);
+    const arrivalLines = scene.participantIds.map((pid) => {
+      const fromLocId = priorPositions[pid];
+      if (!fromLocId || fromLocId === scene.locationId) return null;
+      const char = narrative.characters[pid];
+      const fromLoc = narrative.locations[fromLocId];
+      if (!char || !fromLoc) return null;
+      return `  <arrival character="${char.name}" from="${fromLoc.name}" />`;
     }).filter(Boolean);
-    if (movementLines.length > 0) {
-      sections.push(`<movements hint="Movements record the destination at end of scene. If a participant arrives from elsewhere to reach scene.locationId, narrate their arrival; if they depart mid-scene to another location, narrate the departure. The transition phrase carries the manner of travel.">
-${movementLines.join('\n')}
-</movements>`);
+    if (arrivalLines.length > 0) {
+      sections.push(`<arrivals hint="Participants whose prior position differs from this scene's location — they've arrived from elsewhere. Narrate the arrival or the journey if it fits the scene's beats.">
+${arrivalLines.join('\n')}
+</arrivals>`);
     }
   }
 

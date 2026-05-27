@@ -831,7 +831,6 @@ export type Action =
           | "worldDeltas"
           | "relationshipDeltas"
           | "systemDeltas"
-          | "characterMovements"
           | "arcId"
           | "proseEmbedding"
           | "summaryEmbedding"
@@ -1747,7 +1746,6 @@ function reducer(state: AppState, action: Action): AppState {
             "locationId",
             "povId",
             "participantIds",
-            "characterMovements",
           ].includes(k),
         );
         if (touchesDeltas) {

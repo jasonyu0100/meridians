@@ -67,7 +67,6 @@ const mockNarrative: NarrativeState = {
       develops: ['thread1'],
       locationIds: ['loc1'],
       activeCharacterIds: ['char1'],
-      initialCharacterLocations: { 'char1': 'loc1' },
     },
   },
   scenes: {},

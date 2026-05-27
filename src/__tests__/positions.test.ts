@@ -41,7 +41,7 @@ describe("computeCumulativePositions", () => {
     expect(computeCumulativePositions(narrative({}), [], 0)).toEqual({});
   });
 
-  it("seeds position from first scene participation when never moved", () => {
+  it("position equals scene.locationId when character first participates", () => {
     const s = narrative({
       "S-1": scene("S-1", { locationId: "L-1", participantIds: ["C-1", "C-2"] }),
     });
@@ -49,47 +49,27 @@ describe("computeCumulativePositions", () => {
     expect(positions).toEqual({ "C-1": "L-1", "C-2": "L-1" });
   });
 
-  it("applies characterMovements as overrides", () => {
+  it("position updates when character participates at a new locationId", () => {
     const s = narrative({
       "S-1": scene("S-1", { locationId: "L-1", participantIds: ["C-1"] }),
-      "S-2": scene("S-2", {
-        locationId: "L-1",
-        participantIds: ["C-1"],
-        characterMovements: { "C-1": { locationId: "L-2", transition: "walks east" } },
-      }),
+      "S-2": scene("S-2", { locationId: "L-2", participantIds: ["C-1"] }),
     });
     const positions = computeCumulativePositions(s, ["S-1", "S-2"], 1);
     expect(positions["C-1"]).toBe("L-2");
   });
 
-  it("carries position across arc boundaries via the cumulative walk", () => {
-    const s = narrative({
-      "S-1": scene("S-1", {
-        arcId: "ARC-1",
-        locationId: "L-1",
-        participantIds: ["C-1"],
-        characterMovements: { "C-1": { locationId: "L-2", transition: "rides north" } },
-      }),
-      "S-2": scene("S-2", {
-        arcId: "ARC-2",
-        locationId: "L-9",
-        participantIds: ["C-1"],
-      }),
-    });
-    // Before S-2 fires: position from prior arc's movement, not from S-2's locationId.
-    expect(computeCumulativePositions(s, ["S-1", "S-2"], 0)["C-1"]).toBe("L-2");
-    // After S-2 runs without movements: still L-2 (no override emitted).
-    expect(computeCumulativePositions(s, ["S-1", "S-2"], 1)["C-1"]).toBe("L-2");
-  });
-
-  it("respects currentIndex — does not see future movements", () => {
+  it("position persists when character does not appear in later scenes", () => {
     const s = narrative({
       "S-1": scene("S-1", { locationId: "L-1", participantIds: ["C-1"] }),
-      "S-2": scene("S-2", {
-        locationId: "L-1",
-        participantIds: ["C-1"],
-        characterMovements: { "C-1": { locationId: "L-9", transition: "leaves" } },
-      }),
+      "S-2": scene("S-2", { locationId: "L-9", participantIds: [] }),
+    });
+    expect(computeCumulativePositions(s, ["S-1", "S-2"], 1)["C-1"]).toBe("L-1");
+  });
+
+  it("respects currentIndex — does not see future scenes", () => {
+    const s = narrative({
+      "S-1": scene("S-1", { locationId: "L-1", participantIds: ["C-1"] }),
+      "S-2": scene("S-2", { locationId: "L-9", participantIds: ["C-1"] }),
     });
     expect(computeCumulativePositions(s, ["S-1", "S-2"], 0)["C-1"]).toBe("L-1");
   });
@@ -98,8 +78,24 @@ describe("computeCumulativePositions", () => {
     const s = narrative({
       "S-1": scene("S-1", { locationId: "L-1", participantIds: ["C-1"] }),
     });
-    // "WB-1" isn't in scenes — it's a worldBuild key. Should be skipped silently.
     const positions = computeCumulativePositions(s, ["WB-1", "S-1"], 1);
     expect(positions["C-1"]).toBe("L-1");
+  });
+
+  it("carries position across arc boundaries via participation", () => {
+    const s = narrative({
+      "S-1": scene("S-1", {
+        arcId: "ARC-1",
+        locationId: "L-1",
+        participantIds: ["C-1"],
+      }),
+      "S-2": scene("S-2", {
+        arcId: "ARC-2",
+        locationId: "L-9",
+        participantIds: [],
+      }),
+    });
+    // C-1's last participation was at L-1 — position persists into arc 2.
+    expect(computeCumulativePositions(s, ["S-1", "S-2"], 1)["C-1"]).toBe("L-1");
   });
 });

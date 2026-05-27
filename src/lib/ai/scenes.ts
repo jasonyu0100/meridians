@@ -2,7 +2,6 @@ import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatP
 import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrative-utils';
 import { nextId, nextIds } from '@/lib/narrative-utils';
-import { computeCumulativePositions } from '@/lib/positions';
 import { newNarratorStance } from '@/lib/thread-log';
 import { normalizeTimeDelta } from '@/lib/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
@@ -505,18 +504,6 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
       td.locationId = locIdMap[td.locationId] ?? td.locationId;
       td.characterId = charIdMap[td.characterId] ?? td.characterId;
     }
-    // Remap character movements
-    if (scene.characterMovements) {
-      const remapped: typeof scene.characterMovements = {};
-      for (const [charId, mv] of Object.entries(scene.characterMovements)) {
-        const newCharId = charIdMap[charId] ?? charId;
-        remapped[newCharId] = {
-          ...mv,
-          locationId: locIdMap[mv.locationId] ?? mv.locationId,
-        };
-      }
-      scene.characterMovements = remapped;
-    }
     // Remap tiedCharacterIds in new locations
     for (const l of scene.newLocations ?? []) {
       l.tiedCharacterIds = l.tiedCharacterIds.map((id) => charIdMap[id] ?? id);
@@ -713,7 +700,6 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
         develops: newDevelops,
         locationIds: newLocationIds,
         activeCharacterIds: newCharacterIds,
-        initialCharacterLocations: {},
         directionVector,
         worldState,
         // Stamp the active Phase Reasoning Graph (PRG) at arc-creation time
@@ -721,23 +707,6 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
         // even after the user later switches or clears the active PRG.
         modeId: narrative.currentModeId,
       };
-
-  if (!existingArc && scenes.length > 0) {
-    // Carry forward each character's last known position from prior scenes
-    // so positions persist across arc boundaries. Only fall back to the new
-    // arc's first-participation scene for characters with no prior history.
-    const priorPositions = computeCumulativePositions(narrative, resolvedKeys, currentIndex);
-    for (const cid of arc.activeCharacterIds) {
-      if (priorPositions[cid]) {
-        arc.initialCharacterLocations[cid] = priorPositions[cid];
-        continue;
-      }
-      const firstScene = scenes.find((s) => s.participantIds.includes(cid));
-      if (firstScene) {
-        arc.initialCharacterLocations[cid] = firstScene.locationId;
-      }
-    }
-  }
 
   logInfo('Completed scene generation', {
     source: 'manual-generation',
@@ -2365,16 +2334,6 @@ export function sanitizeScenes(scenes: Scene[], narrative: NarrativeState, label
       return ok;
     });
     if (scene.tieDeltas.length === 0) delete scene.tieDeltas;
-    if (scene.characterMovements) {
-      const sanitized: Record<string, { locationId: string; transition: string }> = {};
-      for (const [charId, mv] of Object.entries(scene.characterMovements)) {
-        const movement = typeof mv === 'string' ? { locationId: mv, transition: '' } : mv;
-        if (!validCharIds.has(charId)) { stripped.push(`characterMovement charId "${charId}" in scene ${scene.id}`); continue; }
-        if (!validLocIds.has(movement.locationId)) { stripped.push(`characterMovement locationId "${movement.locationId}" in scene ${scene.id}`); continue; }
-        sanitized[charId] = movement;
-      }
-      scene.characterMovements = Object.keys(sanitized).length > 0 ? sanitized : undefined;
-    }
 
     // (Introduced entities — newCharacters / newLocations / newArtifacts /
     // newThreads — were registered in the first pass above so reference

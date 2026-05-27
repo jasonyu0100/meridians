@@ -76,7 +76,6 @@ describe('searchNarrative', () => {
       threadDeltas: [],
       worldDeltas: [],
       relationshipDeltas: [],
-      characterMovements: {},
     };
     const scene2: Scene = {
       kind: 'scene',
@@ -115,7 +114,6 @@ describe('searchNarrative', () => {
       threadDeltas: [],
       worldDeltas: [],
       relationshipDeltas: [],
-      characterMovements: {},
     };
     mockNarrative = {
       id: 'test-narrative',
@@ -168,7 +166,6 @@ describe('searchNarrative', () => {
           develops: [],
           locationIds: ['loc1', 'loc2'],
           activeCharacterIds: ['char1', 'char2'],
-          initialCharacterLocations: { char1: 'loc1', char2: 'loc1' },
         },
       },
       scenes: {

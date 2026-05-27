@@ -33,7 +33,6 @@ function createScene(id: string, overrides: SceneOverrides = {}): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     ...rest,
   };
   // Shorthand: prose override auto-wraps into proseVersions
@@ -66,7 +65,6 @@ function createArc(id: string, overrides: Partial<Arc> = {}): Arc {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
     ...overrides,
   };
 }

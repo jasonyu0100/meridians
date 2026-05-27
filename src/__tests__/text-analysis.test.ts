@@ -162,7 +162,6 @@ function createRichAnalysisResult(index: number): AnalysisChunkResult {
         artifactUsages: [{ artifactName: 'Magic Sword', characterName: 'Alice', usage: 'cut through the ward barrier' }],
         ownershipDeltas: [],
         tieDeltas: [{ locationName: 'Castle', characterName: 'Alice', action: 'add' as const }],
-        characterMovements: [{ characterName: 'Bob', locationName: 'Forest', transition: 'walked into the forest' }],
         systemDeltas: {
           addedNodes: [{ concept: 'Ancient Magic', type: 'system' }, { concept: 'Royal Bloodline', type: 'concept' }],
           addedEdges: [{ fromConcept: 'Ancient Magic', toConcept: 'Royal Bloodline', relation: 'enables' }],
@@ -295,7 +294,6 @@ describe('extractSceneStructure', () => {
       artifactUsages: [{ artifactName: 'Pocket Watch', characterName: null, usage: 'ticked ominously marking the deadline' }],
       ownershipDeltas: [],
       tieDeltas: [],
-      characterMovements: [{ characterName: 'Alice', locationName: 'Wonderland', transition: 'fell through' }],
       systemDeltas: { addedNodes: [{ concept: 'Size-Altering', type: 'system' }] },
     };
     vi.mocked(fetch).mockResolvedValueOnce({
@@ -318,7 +316,6 @@ describe('extractSceneStructure', () => {
     expect(result.worldDeltas).toHaveLength(1);
     expect(result.relationshipDeltas).toHaveLength(1);
     expect(result.artifactUsages).toHaveLength(1);
-    expect(result.characterMovements).toHaveLength(1);
     expect(result.systemDeltas?.addedNodes).toHaveLength(1);
   });
   it('defaults missing fields to empty arrays/strings', async () => {
@@ -343,7 +340,6 @@ describe('extractSceneStructure', () => {
     expect(result.artifactUsages).toEqual([]);
     expect(result.ownershipDeltas).toEqual([]);
     expect(result.tieDeltas).toEqual([]);
-    expect(result.characterMovements).toEqual([]);
   });
   it('handles LLM response wrapped in markdown code fence', async () => {
     const jsonStr = JSON.stringify({
@@ -351,7 +347,7 @@ describe('extractSceneStructure', () => {
       events: ['reads_book'], summary: 'Bob reads', characters: [], locations: [],
       artifacts: [], threads: [], relationships: [],
       threadDeltas: [], worldDeltas: [], relationshipDeltas: [],
-      artifactUsages: [], ownershipDeltas: [], tieDeltas: [], characterMovements: [],
+      artifactUsages: [], ownershipDeltas: [], tieDeltas: [],
     });
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -1311,18 +1307,6 @@ describe('assembleNarrative', () => {
     expect(narrative.characters[rm.from]).toBeDefined();
     expect(narrative.characters[rm.to]).toBeDefined();
   });
-  it('handles character movements with location IDs', async () => {
-    const results = [createRichAnalysisResult(0)];
-    const narrative = await assembleNarrative('Rich Test', results, {});
-    const scene = Object.values(narrative.scenes)[0];
-    expect(scene.characterMovements).toBeDefined();
-    if (scene.characterMovements) {
-      for (const [charId, movement] of Object.entries(scene.characterMovements)) {
-        expect(narrative.characters[charId]).toBeDefined();
-        expect(narrative.locations[movement.locationId]).toBeDefined();
-      }
-    }
-  });
   it('handles artifact usages with IDs', async () => {
     const results = [createRichAnalysisResult(0)];
     const narrative = await assembleNarrative('Rich Test', results, {});
@@ -1607,8 +1591,6 @@ describe('assembleNarrative', () => {
     expect(arc.sceneIds.length).toBeGreaterThan(0);
     expect(arc.locationIds.length).toBeGreaterThan(0);
     expect(arc.activeCharacterIds.length).toBeGreaterThan(0);
-    // initialCharacterLocations should map character IDs to location IDs
-    expect(Object.keys(arc.initialCharacterLocations).length).toBeGreaterThan(0);
   });
   // ── Thread market extraction ──────────────────────────────────────────────
   // In the market model, threadDelta carries logType + updates (OutcomeEvidence[])

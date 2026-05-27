@@ -65,6 +65,7 @@ export default function WorldGraph() {
   const [showArtifacts, setShowArtifacts] = useState(true);
   const [showRelationships, setShowRelationships] = useState(false);
   const [showTies, setShowTies] = useState(false);
+  const [showSpatial, setShowSpatial] = useState(true);
   const [groups, setGroups] = useState<GraphNode[][]>([]);
   const [focusedGroupIndex, setFocusedGroupIndex] = useState<number | null>(null);
   const [nodeTooltip, setNodeTooltip] = useState<{ x: number; y: number; label: string; kind: string; imagePrompt: string } | null>(null);
@@ -443,10 +444,16 @@ export default function WorldGraph() {
       links = links.filter(l => !hiddenIds.has(l.source as string) && !hiddenIds.has(l.target as string));
     }
 
-    // Edge-kind visibility filters
+    // Edge-kind visibility filters. Spatial covers both location→parent
+    // (location-to-location) and character→location position edges — they
+    // belong to the same "where things sit in space" category.
     const hiddenLinkKinds = new Set<string>();
     if (!showRelationships) hiddenLinkKinds.add('relationship');
     if (!showTies) hiddenLinkKinds.add('tie');
+    if (!showSpatial) {
+      hiddenLinkKinds.add('spatial');
+      hiddenLinkKinds.add('character-location');
+    }
     if (hiddenLinkKinds.size > 0) {
       links = links.filter(l => !hiddenLinkKinds.has(l.linkKind));
     }
@@ -576,7 +583,8 @@ export default function WorldGraph() {
     const nonRelLinks = validLinksDeduped.filter((l) => l.linkKind !== 'relationship');
     const relLinks = validLinksDeduped.filter((l) => l.linkKind === 'relationship');
 
-    // Non-relationship links as straight lines
+    // Non-relationship links — solid, bright, thick. Node SHAPE carries the
+    // type signal; we only vary stroke colour by linkKind, not weight or dash.
     const linkSelection = g
       .append('g')
       .attr('class', 'links')
@@ -585,36 +593,16 @@ export default function WorldGraph() {
       .join('line')
       .attr('class', 'graph-edge')
       .attr('stroke', (d) => {
-        if (d.linkKind === 'character-location') return 'rgba(59, 130, 246, 0.8)';  // Blue - current position
-        if (d.linkKind === 'tie') return 'rgba(168, 85, 247, 0.8)';                 // Purple - permanent affiliation
-        if (d.linkKind === 'ownership') return 'rgba(251, 191, 36, 0.8)';           // Amber - artifact ownership
-        if (d.linkKind === 'knowledge') return 'rgba(255, 255, 255, 0.35)';
-        return 'rgba(255, 255, 255, 0.25)';
+        if (d.linkKind === 'character-location') return '#3B82F6';  // Blue - current position
+        if (d.linkKind === 'tie') return '#A855F7';                 // Purple - permanent affiliation
+        if (d.linkKind === 'ownership') return '#FBBF24';           // Amber - artifact ownership
+        if (d.linkKind === 'knowledge') return '#FFFFFF';
+        return '#FFFFFF';
       })
-      .attr('stroke-opacity', (d) => {
-        if (d.linkKind === 'character-location') return 0.8;
-        if (d.linkKind === 'tie') return 0.7;
-        if (d.linkKind === 'ownership') return 0.8;
-        if (d.linkKind === 'spatial') return 0.6;
-        return 0.5;
-      })
-      .attr('stroke-width', (d) => {
-        if (d.linkKind === 'character-location') return 2;
-        if (d.linkKind === 'tie') return 1.5;
-        if (d.linkKind === 'ownership') return 1.5;
-        if (d.linkKind === 'knowledge') return 1;
-        if (d.linkKind === 'spatial') return 1;
-        return 1.5;
-      })
-      .attr('stroke-dasharray', (d) => {
-        if (d.linkKind === 'spatial') return '4 4';
-        if (d.linkKind === 'character-location') return '2 3';
-        if (d.linkKind === 'tie') return '4 2';      // Different dash pattern for ties
-        if (d.linkKind === 'ownership') return null; // Solid line for ownership
-        return null;
-      });
+      .attr('stroke-opacity', 0.85)
+      .attr('stroke-width', 4.5);
 
-    // Relationship links as straight lines (hidden by default, shown on node select)
+    // Relationship links — solid, bright, thick. Valence sign drives colour.
     const relLinkSelection = g
       .select('g.links')
       .selectAll<SVGLineElement, GraphLink>('line.graph-rel-edge')
@@ -623,10 +611,10 @@ export default function WorldGraph() {
       .attr('class', 'graph-edge graph-rel-edge')
       .attr('stroke', (d) => {
         const v = d.valence ?? 0;
-        return v >= 0 ? 'rgba(74, 222, 128, 0.85)' : 'rgba(248, 113, 113, 0.85)';
+        return v >= 0 ? '#4ADE80' : '#F87171';
       })
-      .attr('stroke-opacity', (d) => Math.max(0.4, Math.abs(d.valence ?? 0)))
-      .attr('stroke-width', 1.5);
+      .attr('stroke-opacity', 0.85)
+      .attr('stroke-width', 4.5);
 
     // Relationship labels at midpoints
     const linkLabelSelection = g
@@ -874,7 +862,7 @@ export default function WorldGraph() {
       gRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, sceneFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies]);
+  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, sceneFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial]);
 
   // ── Lightweight: update selected node highlight + relationship edges ──
   useEffect(() => {
@@ -896,7 +884,7 @@ export default function WorldGraph() {
     g.select('g.links')
       .selectAll<SVGLineElement, GraphLink>('line.graph-rel-edge')
       .attr('stroke-opacity', (d) => {
-        if (!selectedNodeId) return Math.max(0.4, Math.abs(d.valence ?? 0));
+        if (!selectedNodeId) return 0.85;
         return isConnected(d) ? 1 : 0.15;
       });
 
@@ -934,6 +922,22 @@ export default function WorldGraph() {
     const activeArc = narrative.arcs[activeArcId];
     if (!activeArc) return;
 
+    const linksGroup = g.select<SVGGElement>('g.links');
+
+    // Always wipe stale character-location lines first; if the toggle is off
+    // we leave nothing in their place.
+    linksGroup.selectAll<SVGLineElement, GraphLink>('line')
+      .filter((d) => d.linkKind === 'character-location')
+      .remove();
+
+    if (!showSpatial) {
+      const currentLinks = (simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>).links();
+      const nonCharLocLinks = currentLinks.filter((l) => (l as GraphLink).linkKind !== 'character-location');
+      (simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>).links(nonCharLocLinks);
+      simulation.on('tick.charloc', null);
+      return;
+    }
+
     const positions = computeCharacterPositions(activeArc, narrative.scenes, state.viewState.currentSceneIndex, resolvedEntryKeys);
 
     // Resolve new links against existing simulation nodes
@@ -952,22 +956,14 @@ export default function WorldGraph() {
       }
     }
 
-    // Update character-location links in the DOM — bind resolved links so
-    // source/target are actual node objects with live x/y coordinates
-    const linksGroup = g.select<SVGGElement>('g.links');
-    linksGroup.selectAll<SVGLineElement, GraphLink>('line')
-      .filter((d) => d.linkKind === 'character-location')
-      .remove();
-
     const newLinkEls = linksGroup
       .selectAll<SVGLineElement, GraphLink>('line.charloc')
       .data(resolvedNewLinks, (d) => d.id)
       .join('line')
       .attr('class', 'graph-edge charloc')
-      .attr('stroke', 'rgba(59, 130, 246, 0.8)')
-      .attr('stroke-opacity', 0.8)
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '2 3');
+      .attr('stroke', '#3B82F6')
+      .attr('stroke-opacity', 0.85)
+      .attr('stroke-width', 4.5);
 
     // Swap char-loc links in the simulation force
     const currentLinks = (simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>).links();
@@ -988,7 +984,7 @@ export default function WorldGraph() {
         .attr('x2', (d) => ((d.target as GraphNode).x ?? 0))
         .attr('y2', (d) => ((d.target as GraphNode).y ?? 0));
     });
-  }, [narrative, activeArcId, state.viewState.currentSceneIndex]);
+  }, [narrative, activeArcId, state.viewState.currentSceneIndex, showSpatial]);
 
   // ── Zoom to focused group ──
   useEffect(() => {
@@ -1111,6 +1107,7 @@ export default function WorldGraph() {
           {([
             { key: 'rels', label: 'Relationships', checked: showRelationships, toggle: () => setShowRelationships((v) => !v) },
             { key: 'ties', label: 'Ties', checked: showTies, toggle: () => setShowTies((v) => !v) },
+            { key: 'spatial', label: 'Spatial', checked: showSpatial, toggle: () => setShowSpatial((v) => !v) },
           ] as { key: string; label: string; checked: boolean; toggle: () => void }[]).map(({ key, label, checked, toggle }) => (
             <button
               key={key}

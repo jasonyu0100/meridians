@@ -222,7 +222,6 @@ class AnalysisRunner {
             scene.artifactUsages = s.artifactUsages;
             scene.ownershipDeltas = s.ownershipDeltas;
             scene.tieDeltas = s.tieDeltas;
-            scene.characterMovements = s.characterMovements;
             scene.systemDeltas = s.systemDeltas;
             scene.timeDelta = s.timeDelta ?? null;
 

@@ -74,7 +74,6 @@ function createMinimalNarrative(): NarrativeState {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
   };
   return {
     id: 'test-narrative',
@@ -195,7 +194,6 @@ describe('exportEpub', () => {
       develops: [],
       locationIds: [],
       activeCharacterIds: [],
-      initialCharacterLocations: {},
     };
     narrative.scenes['S-3'] = {
       kind: 'scene',

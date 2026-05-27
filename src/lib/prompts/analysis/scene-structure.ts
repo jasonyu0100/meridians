@@ -55,7 +55,6 @@ Return JSON:
   "artifactUsages": [{"artifactName": "Name", "characterName": "who or null", "usage": "what the artifact did"}],
   "ownershipDeltas": [{"artifactName": "Name", "fromName": "prev", "toName": "new"}],
   "tieDeltas": [{"locationName": "Name", "characterName": "Name", "action": "add|remove"}],
-  "characterMovements": [{"characterName": "Name", "locationName": "destination", "transition": "15-25 words describing how they traveled — the journey, transport, or spatial transition"}],
   "timeDelta": {"value": 1, "unit": "hour", "transition": "an hour later"},
   "systemDeltas": {"addedNodes": [{"concept": "15-25 words, PRESENT tense: a general rule or structural fact — how the world works, no specific characters or events. Emit as many nodes as the scene genuinely reveals about how the world works — no count cap.", "type": "principle|system|concept|tension|event|structure|environment|convention|constraint"}], "addedEdges": [{"fromConcept": "name", "toConcept": "name", "relation": "enables|governs|opposes|extends|created_by|constrains|exist_within"}]}
 }`;
@@ -304,7 +303,6 @@ ${PROMPT_STANCE_PRINCIPLES}
   </field>
   <field name="ownershipDeltas">Only when artifacts change hands.</field>
   <field name="tieDeltas">Significant bond changes. NOT temporary visits.</field>
-  <field name="characterMovements">Only physical relocation. Vivid transitions.</field>
 </minor-fields>
 
 <time-delta required="true">

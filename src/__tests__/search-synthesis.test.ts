@@ -44,7 +44,6 @@ describe('synthesizeSearchResults', () => {
           develops: [],
           locationIds: [],
           activeCharacterIds: [],
-          initialCharacterLocations: {},
         },
       },
       scenes: {},

@@ -35,7 +35,6 @@ function arc(id: string, name: string, sceneIds: string[]): Arc {
     develops: [],
     locationIds: [],
     activeCharacterIds: [],
-    initialCharacterLocations: {},
   } as Arc;
 }
 

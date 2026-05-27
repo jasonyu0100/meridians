@@ -63,7 +63,6 @@ ${args.sceneXml}
     <source name="ownershipDeltas">The transfer ("the heirloom passes to the daughter").</source>
     <source name="tieDeltas">The tie established or severed, in plain language.</source>
     <source name="artifactUsages">What the artifact does in the scene, concretely.</source>
-    <source name="characterMovements">The arrival/departure as in-world action.</source>
     <source name="events">The underlying happening — translate the event label into prose. If the label is opaque, infer from the surrounding deltas/summary what the label points at.</source>
     <source name="new-entities">That this entity now exists, plus one proposition per meaningful world-node they carry in (each as a fact about that entity).</source>
   </coverage>

@@ -199,9 +199,6 @@ export type SceneStructureResult = {
     AnalysisChunkResult["scenes"][0]["ownershipDeltas"]
   >;
   tieDeltas: NonNullable<AnalysisChunkResult["scenes"][0]["tieDeltas"]>;
-  characterMovements: NonNullable<
-    AnalysisChunkResult["scenes"][0]["characterMovements"]
-  >;
   systemDeltas?: AnalysisChunkResult["scenes"][0]["systemDeltas"];
   timeDelta?: TimeDelta | null;
 };
@@ -237,7 +234,6 @@ export async function extractSceneStructure(
     artifactUsages: parsed.artifactUsages ?? [],
     ownershipDeltas: parsed.ownershipDeltas ?? [],
     tieDeltas: parsed.tieDeltas ?? [],
-    characterMovements: parsed.characterMovements ?? [],
     systemDeltas: parsed.systemDeltas,
     timeDelta: normalizeTimeDelta(parsed.timeDelta),
   };
@@ -1080,11 +1076,6 @@ export async function reconcileResults(
         ...tm,
         locationName: resolveEntity(tm.locationName),
         characterName: resolveEntity(tm.characterName),
-      })),
-      characterMovements: (s.characterMovements ?? []).map((cm) => ({
-        ...cm,
-        characterName: resolveEntity(cm.characterName),
-        locationName: resolveEntity(cm.locationName),
       })),
       systemDeltas: s.systemDeltas
         ? {
@@ -2081,25 +2072,6 @@ export async function assembleNarrative(
           type: rm.type,
           valenceDelta: rm.valenceDelta ?? 0,
         })),
-        characterMovements: (() => {
-          const mvs = s.characterMovements ?? [];
-          if (mvs.length === 0) return undefined;
-          const result: Record<
-            string,
-            { locationId: string; transition: string }
-          > = {};
-          for (const mv of mvs) {
-            const charId = getCharId(mv.characterName);
-            const locId = getLocId(mv.locationName);
-            if (charId && locId && locId !== locationId) {
-              result[charId] = {
-                locationId: locId,
-                transition: mv.transition ?? "",
-              };
-            }
-          }
-          return Object.keys(result).length > 0 ? result : undefined;
-        })(),
         artifactUsages:
           (() => {
             const aus = s.artifactUsages ?? [];
@@ -2355,11 +2327,6 @@ export async function assembleNarrative(
       const activeCharacterIds = [
         ...new Set(arcScenes.flatMap((s) => s.participantIds)),
       ];
-      const initialCharacterLocations: Record<string, string> = {};
-      for (const cid of activeCharacterIds) {
-        const first = arcScenes.find((s) => s.participantIds.includes(cid));
-        if (first) initialCharacterLocations[cid] = first.locationId;
-      }
 
       arcs[arcId] = {
         id: arcId,
@@ -2368,7 +2335,6 @@ export async function assembleNarrative(
         develops,
         locationIds,
         activeCharacterIds,
-        initialCharacterLocations,
         directionVector: group.directionVector,
         worldState: group.worldState,
       };
@@ -2390,11 +2356,6 @@ export async function assembleNarrative(
       const activeCharacterIds = [
         ...new Set(arcScenes.flatMap((s) => s.participantIds)),
       ];
-      const initialCharacterLocations: Record<string, string> = {};
-      for (const cid of activeCharacterIds) {
-        const first = arcScenes.find((s) => s.participantIds.includes(cid));
-        if (first) initialCharacterLocations[cid] = first.locationId;
-      }
       arcs[arcId] = {
         id: arcId,
         name: `Arc ${Math.floor(i / 4) + 1}`,
@@ -2402,7 +2363,6 @@ export async function assembleNarrative(
         develops,
         locationIds,
         activeCharacterIds,
-        initialCharacterLocations,
       };
       for (const scene of arcScenes) scene.arcId = arcId;
     }

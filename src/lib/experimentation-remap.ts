@@ -263,12 +263,6 @@ export function remapScenarioCommit(
     sceneIds: arc.sceneIds.map((sid) => remap(sid, maps.scene)),
     locationIds: arc.locationIds.map((lid) => remap(lid, maps.loc)),
     activeCharacterIds: arc.activeCharacterIds.map((cid) => remap(cid, maps.char)),
-    initialCharacterLocations: Object.fromEntries(
-      Object.entries(arc.initialCharacterLocations).map(([cid, lid]) => [
-        remap(cid, maps.char),
-        remap(lid, maps.loc),
-      ]),
-    ),
     develops: arc.develops.map((id) =>
       remapAny(id, maps.char, maps.loc, maps.art, maps.thread),
     ),
@@ -313,14 +307,6 @@ export function remapScenarioCommit(
         artifactId: remap(au.artifactId, maps.art),
         characterId: au.characterId ? remap(au.characterId, maps.char) : au.characterId,
       })),
-      characterMovements: s.characterMovements
-        ? Object.fromEntries(
-            Object.entries(s.characterMovements).map(([cid, mv]) => [
-              remap(cid, maps.char),
-              { ...mv, locationId: remap(mv.locationId, maps.loc) },
-            ]),
-          )
-        : s.characterMovements,
       relationshipDeltas: s.relationshipDeltas.map((rm) => ({
         ...rm,
         from: remap(rm.from, maps.char),

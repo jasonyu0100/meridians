@@ -97,13 +97,12 @@ describe("deriveSceneAttributions", () => {
     );
   });
 
-  it("includes character + location for tieDeltas and characterMovements", () => {
+  it("includes character + location for tieDeltas", () => {
     const scene = makeScene({
       tieDeltas: [{ characterId: "C-1", locationId: "L-2", action: "add" }],
-      characterMovements: { "C-2": { locationId: "L-3", transition: "walk" } },
     });
     expect(new Set(deriveSceneAttributions(scene))).toEqual(
-      new Set(["L-1", "C-1", "L-2", "C-2", "L-3"]),
+      new Set(["L-1", "C-1", "L-2"]),
     );
   });
 

@@ -63,7 +63,6 @@ function makeScene(overrides: Partial<Scene> = {}): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     systemDeltas: { addedNodes: [], addedEdges: [] },
     proseVersions: [],
     planVersions: [],

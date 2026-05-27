@@ -101,8 +101,6 @@ export default function CharacterDetail({ characterId }: Props) {
         ),
       )
     : [];
-  const recentMovement =
-    currentScene?.characterMovements?.[characterId] ?? null;
   const recentEvents =
     currentScene && currentScene.participantIds.includes(characterId)
       ? currentScene.events
@@ -111,7 +109,6 @@ export default function CharacterDetail({ characterId }: Props) {
     recentWorldDeltas.length > 0 ||
     recentRelationshipDeltas.length > 0 ||
     recentThreadDeltas.length > 0 ||
-    recentMovement !== null ||
     recentEvents.length > 0;
 
   // Scenes: all scenes up to current scene index where this character participates
@@ -131,7 +128,7 @@ export default function CharacterDetail({ characterId }: Props) {
           (a) => a.id === characterId,
         ),
       ),
-      movement: s.characterMovements?.[characterId] ?? null,
+      locationId: s.locationId,
     }));
 
   return (
@@ -177,8 +174,7 @@ export default function CharacterDetail({ characterId }: Props) {
           const totalCount =
             recentWorldDeltas.length +
             recentRelationshipDeltas.length +
-            recentThreadDeltas.length +
-            (recentMovement ? 1 : 0);
+            recentThreadDeltas.length;
           const groups: React.ReactNode[] = [];
 
           if (recentEvents.length > 0) {
@@ -270,22 +266,6 @@ export default function CharacterDetail({ characterId }: Props) {
               </ul>,
             );
           }
-          if (recentMovement) {
-            groups.push(
-              <span key="movement" className="text-xs text-text-secondary">
-                &rarr;{" "}
-                {narrative.locations[recentMovement.locationId]?.name ??
-                  recentMovement.locationId}
-                {recentMovement.transition && (
-                  <span className="text-text-dim italic">
-                    {" "}
-                    — {recentMovement.transition}
-                  </span>
-                )}
-              </span>,
-            );
-          }
-
           return (
             <CollapsibleSection title="Recent" count={totalCount}>
               <div className="flex flex-col gap-0.5">
@@ -596,7 +576,7 @@ export default function CharacterDetail({ characterId }: Props) {
                     worldDeltas,
                     relationshipDeltas,
                     threadDeltas,
-                    movement,
+                    locationId,
                   }) => (
                     <li key={sceneId} className="flex flex-col gap-0.5">
                       <button
@@ -659,17 +639,9 @@ export default function CharacterDetail({ characterId }: Props) {
                           </span>
                         );
                       })}
-                      {movement && (
-                        <span className="text-xs text-text-secondary">
-                          &rarr;{" "}
-                          {narrative.locations[movement.locationId]?.name ??
-                            movement.locationId}
-                          {movement.transition && (
-                            <span className="text-text-dim italic">
-                              {" "}
-                              — {movement.transition}
-                            </span>
-                          )}
+                      {locationId && (
+                        <span className="text-xs text-text-dim">
+                          at {narrative.locations[locationId]?.name ?? locationId}
                         </span>
                       )}
                     </li>

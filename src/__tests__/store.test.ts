@@ -31,7 +31,6 @@ describe('store reducer', () => {
       threadDeltas: [],
       worldDeltas: [],
       relationshipDeltas: [],
-      characterMovements: {},
       systemDeltas: { addedNodes: [], addedEdges: [] },
       proseVersions: [],
       planVersions: [],
@@ -555,7 +554,6 @@ describe('store reducer', () => {
             develops: [],
             locationIds: [],
             activeCharacterIds: [],
-            initialCharacterLocations: {},
           },
         },
       };

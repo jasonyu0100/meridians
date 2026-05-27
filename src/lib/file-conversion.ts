@@ -867,14 +867,6 @@ function remapScene(
       artifactId: remap(au.artifactId, ctx.maps.art),
       characterId: au.characterId ? remap(au.characterId, ctx.maps.char) : au.characterId,
     })),
-    characterMovements: s.characterMovements
-      ? Object.fromEntries(
-          Object.entries(s.characterMovements).map(([cid, mv]) => [
-            remap(cid, ctx.maps.char),
-            { ...mv, locationId: remap(mv.locationId, ctx.maps.loc) },
-          ]),
-        )
-      : s.characterMovements,
     // gameAnalysis players reference char/loc/art ids (action names are
     // strings, not ids — no remap needed for outcomes/realized cells).
     gameAnalysis: s.gameAnalysis
@@ -897,12 +889,6 @@ function remapArc(a: Arc, ctx: Ctx): Arc {
     sceneIds: a.sceneIds.map((id) => remap(id, ctx.maps.scene)),
     locationIds: a.locationIds.map((id) => remap(id, ctx.maps.loc)),
     activeCharacterIds: a.activeCharacterIds.map((id) => remap(id, ctx.maps.char)),
-    initialCharacterLocations: Object.fromEntries(
-      Object.entries(a.initialCharacterLocations ?? {}).map(([cid, lid]) => [
-        remap(cid, ctx.maps.char),
-        remap(lid, ctx.maps.loc),
-      ]),
-    ),
     develops: (a.develops ?? []).map((id) =>
       remapAny(id, ctx.maps.char, ctx.maps.loc, ctx.maps.art, ctx.maps.thread),
     ),

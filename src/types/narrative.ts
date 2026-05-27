@@ -778,12 +778,6 @@ export type AttributionEdge = {
   relation: AttributionEdgeRelation;
 };
 
-export type CharacterMovement = {
-  locationId: string;
-  /** Descriptive transition narrating how the character moved, e.g. "Rode horseback through the night to Bree" */
-  transition: string;
-};
-
 // ── Prose/Plan Versioning ────────────────────────────────────────────────────
 // Versions enable branch isolation: each branch can have its own prose/plan
 // without affecting other branches. Resolution uses branch lineage + fork time.
@@ -877,8 +871,6 @@ export type Scene = {
   /** Artifact usages — which character used which artifact in this scene.
    *  Location-owned artifacts can be used communally; character-owned only by owner. */
   artifactUsages?: ArtifactUsage[];
-  /** Characters who move in this scene — characterId → movement details. Only include deltas. */
-  characterMovements?: Record<string, CharacterMovement>;
   events: string[];
   threadDeltas: ThreadDelta[];
   worldDeltas: WorldDelta[];
@@ -1130,8 +1122,6 @@ export type Arc = {
   locationIds: string[];
   /** Characters active in this arc — determined by location + thread participants */
   activeCharacterIds: string[];
-  /** Starting positions — characterId → locationId. Established at arc start. */
-  initialCharacterLocations: Record<string, string>;
   /** Short sentence summarising the narrative direction of this arc */
   directionVector?: string;
   /** This arc's Present variables — the full definitions plus their realised
@@ -2474,11 +2464,6 @@ export type AnalysisChunkResult = {
       locationName: string;
       characterName: string;
       action: "add" | "remove";
-    }[];
-    characterMovements?: {
-      characterName: string;
-      locationName: string;
-      transition: string;
     }[];
     systemDeltas?: {
       addedNodes: { concept: string; type: string }[];

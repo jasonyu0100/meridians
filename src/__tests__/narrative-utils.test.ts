@@ -44,7 +44,6 @@ function createScene(overrides: Partial<Scene> = {}): Scene {
     threadDeltas: [],
     worldDeltas: [],
     relationshipDeltas: [],
-    characterMovements: {},
     summary: "Test scene",
     ...overrides,
   };
