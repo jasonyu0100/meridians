@@ -2185,8 +2185,6 @@ export type StorySettings = {
   worldFocus: WorldFocusMode;
   /** Specific WorldBuild ID when worldFocus is 'custom' */
   worldFocusId?: string;
-  /** Default world expansion strategy — depth deepens the existing sandbox, breadth widens the map, dynamic auto-selects based on metrics */
-  expansionStrategy: "depth" | "breadth" | "dynamic";
   /** Reasoning effort — how much thinking the model does before responding. Higher = better structural decisions, slower generation. */
   reasoningLevel: ReasoningLevel;
   /** Web search effort — controls OpenRouter web_search's per-call result
@@ -2240,7 +2238,6 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   planGuidance: "",
   coverPrompt: "",
   worldFocus: "none",
-  expansionStrategy: "dynamic",
   reasoningLevel: "low",
   websearchLevel: "none",
   websearchMaxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL,

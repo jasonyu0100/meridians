@@ -99,33 +99,6 @@ function AdvancedSection({ settings, update, narrative, resolvedEntryKeys }: {
             })()}
           </div>
 
-          {/* Prose Format */}
-          <div>
-            <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-              Output Format
-            </label>
-            <div className="space-y-1.5">
-              {([
-                { value: 'prose' as ProseFormat, label: 'Prose', desc: 'Standard narrative prose — register follows the work (fiction, memoir, essay, reportage, research).' },
-                { value: 'screenplay' as ProseFormat, label: 'Screenplay', desc: 'Industry-standard format — sluglines, action blocks, centred dialogue.' },
-                { value: 'markdown' as ProseFormat, label: 'Markdown', desc: 'Same prose, marked up with headings, emphasis, lists, blockquotes, inline code where they carry reading weight. Rendered as formatted markdown in the reader.' },
-              ]).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => update({ proseFormat: opt.value })}
-                  className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                    settings.proseFormat === opt.value
-                      ? 'border-blue-500/50 bg-blue-500/10'
-                      : 'border-white/5 bg-white/2 hover:bg-white/5'
-                  }`}
-                >
-                  <span className="text-[11px] font-semibold text-text-primary">{opt.label}</span>
-                  <span className="text-[10px] text-text-dim ml-2">{opt.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Plan Extraction Source */}
           <div>
             <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
@@ -863,6 +836,33 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
 
           {tab === 'other' && (
             <>
+              {/* Output Format */}
+              <div>
+                <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
+                  Output Format
+                </label>
+                <div className="space-y-1.5">
+                  {([
+                    { value: 'prose' as ProseFormat, label: 'Prose', desc: 'Standard narrative prose — register follows the work (fiction, memoir, essay, reportage, research).' },
+                    { value: 'screenplay' as ProseFormat, label: 'Screenplay', desc: 'Industry-standard format — sluglines, action blocks, centred dialogue.' },
+                    { value: 'markdown' as ProseFormat, label: 'Markdown', desc: 'Same prose, marked up with headings, emphasis, lists, blockquotes, inline code where they carry reading weight. Rendered as formatted markdown in the reader.' },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => update({ proseFormat: opt.value })}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                        settings.proseFormat === opt.value
+                          ? 'border-blue-500/50 bg-blue-500/10'
+                          : 'border-white/5 bg-white/2 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px] font-semibold text-text-primary">{opt.label}</span>
+                      <span className="text-[10px] text-text-dim ml-2">{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Target Arc Length */}
               <div>
                 <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
@@ -881,33 +881,6 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   <span className="text-[11px] text-text-primary font-mono w-16 text-right">
                     {settings.targetArcLength} scenes
                   </span>
-                </div>
-              </div>
-
-              {/* Expansion Strategy */}
-              <div>
-                <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-                  Expansion Strategy
-                </label>
-                <div className="space-y-1.5">
-                  {([
-                    { value: 'dynamic' as const, label: 'Dynamic', desc: 'Auto-selects based on cast staleness, location concentration, and knowledge density' },
-                    { value: 'depth' as const, label: 'Depth', desc: 'Deepen the existing sandbox — more detail, not more map' },
-                    { value: 'breadth' as const, label: 'Breadth', desc: 'Widen the world — new regions, factions, conflicts' },
-                  ]).map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => update({ expansionStrategy: opt.value })}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                        settings.expansionStrategy === opt.value
-                          ? 'border-blue-500/50 bg-blue-500/10'
-                          : 'border-white/5 bg-white/2 hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="text-[11px] font-semibold text-text-primary">{opt.label}</span>
-                      <span className="text-[10px] text-text-dim ml-2">{opt.desc}</span>
-                    </button>
-                  ))}
                 </div>
               </div>
 
