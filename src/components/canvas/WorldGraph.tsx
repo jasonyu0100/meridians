@@ -42,9 +42,7 @@ import {
   LOCATION_RX,
   LOCATION_FILL,
   WORLD_FILL,
-  KNOWLEDGE_OPACITY,
   DEFAULT_WORLD_FILL,
-  DEFAULT_KNOWLEDGE_OPACITY,
 } from './graph-utils';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
 import { edgeWidthFor, edgeOpacityFor } from '@/lib/graph-styling';
@@ -849,8 +847,7 @@ export default function WorldGraph() {
       .filter((d) => d.kind === 'knowledge')
       .append('circle')
       .attr('r', 8)
-      .attr('fill', (d) => WORLD_FILL[d.worldType ?? 'trait'] ?? DEFAULT_WORLD_FILL)
-      .attr('opacity', (d) => KNOWLEDGE_OPACITY[d.worldType ?? 'trait'] ?? DEFAULT_KNOWLEDGE_OPACITY);
+      .attr('fill', (d) => WORLD_FILL[d.worldType ?? 'trait'] ?? DEFAULT_WORLD_FILL);
 
     // Artifact diamonds — sized by significance (ARTIFACT_SIZES defined above).
     const ARTIFACT_FILLS: Record<string, string> = { key: '#F59E0B', notable: '#D97706', minor: '#92400E' };
@@ -863,8 +860,7 @@ export default function WorldGraph() {
       .attr('height', (d) => (ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10) * 2)
       .attr('rx', 2)
       .attr('transform', 'rotate(45)')
-      .attr('fill', (d) => showHeatmap ? heatColor(normArt(d)) : (ARTIFACT_FILLS[d.significance ?? 'notable'] ?? '#D97706'))
-      .attr('opacity', 0.85);
+      .attr('fill', (d) => showHeatmap ? heatColor(normArt(d)) : (ARTIFACT_FILLS[d.significance ?? 'notable'] ?? '#D97706'));
 
     // Artifact images — clipped to diamond shape
     // The diamond is a rect rotated 45°. To fill it fully the image must
