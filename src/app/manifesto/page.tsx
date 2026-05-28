@@ -603,6 +603,71 @@ function B({ children }: { children: React.ReactNode }) {
   return <strong className="text-white/70">{children}</strong>;
 }
 
+/* ── Inline citation ─────────────────────────────────────────────────────── */
+// Author-year style anchored to the Bibliography section. Subtle by default,
+// brightens on hover so the citations don't fight the prose for attention.
+function Cite({ id, label }: { id: string; label: string }) {
+  return (
+    <sup className="text-[9px] ml-0.5 leading-none">
+      <a
+        href={`#ref-${id}`}
+        className="text-white/35 hover:text-white/80 no-underline"
+      >
+        {label}
+      </a>
+    </sup>
+  );
+}
+
+/* ── Bibliography entry ──────────────────────────────────────────────────── */
+// One row per reference. Renders as APA-ish prose with structured links so
+// AI ingestion can chain through to the primary source via DOI / arXiv /
+// publisher / open-access URLs.
+function Ref({
+  id,
+  authors,
+  year,
+  title,
+  venue,
+  links,
+}: {
+  id: string;
+  authors: string;
+  year: string;
+  title: string;
+  venue: string;
+  links?: Array<{ label: string; href: string }>;
+}) {
+  return (
+    <p
+      id={`ref-${id}`}
+      className="text-[12px] text-white/45 leading-[1.7] scroll-mt-24"
+    >
+      <span className="text-white/65">{authors} ({year}).</span>{" "}
+      <em className="text-white/55">{title}</em>.{" "}
+      <span>{venue}.</span>
+      {links && links.length > 0 && (
+        <>
+          {" "}
+          {links.map((l, i) => (
+            <span key={l.href}>
+              {i > 0 && <span className="text-white/25"> · </span>}
+              <a
+                href={l.href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-white/40 hover:text-white/80 underline decoration-white/15 underline-offset-2"
+              >
+                {l.label}
+              </a>
+            </span>
+          ))}
+        </>
+      )}
+    </p>
+  );
+}
+
 /* ── Shape mini-curve ────────────────────────────────────────────────────── */
 
 function ShapeCurve({
@@ -1578,6 +1643,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
       { id: "integration", label: "Integration" },
       { id: "economics", label: "Economics" },
       { id: "coda", label: "Coda" },
+      { id: "bibliography", label: "Bibliography" },
     ],
   },
 ];
@@ -1761,34 +1827,33 @@ export default function PaperPage() {
           {/* ── Abstract ──────────────────────────────────────────────── */}
           <Section id="abstract" label="Abstract">
             <P>
-              Taste is subjective; structure is not. A reader agreeing
-              a moment feels earned, a scientist agreeing an argument
-              lands, a strategist agreeing a scenario hangs together
-              &mdash; all respond to the same <B>legible skeleton</B>.
-              InkTide extracts and generates <B>world views</B>:
-              causally coherent, mutable, queryable models of reality
-              that any coherent text already implies.{" "}
-              <em>Harry Potter</em> has one. A research paper has one.
-              A wargame brief has one. A quarterly strategy memo has
-              one. We make the skeleton operable &mdash; read it, fork
-              it, simulate forward off it, watch it update as reality
-              lands. <B>SAP for finance. Palantir for operations.
-              InkTide for strategic cognition itself.</B>
+              A novel. A research paper. A wargame brief. A strategy
+              memo. The surface differs &mdash; wizards, rational
+              actors, factions, markets &mdash; but the structure
+              underneath is the same. Every coherent long-form text
+              raises an <B>imagined society</B>: people, places,
+              rules, and unresolved questions, enacted scene by scene
+              as the prose moves forward. The author populates it;
+              the reader inhabits it; the text is the record of how
+              it moves. Taste is subjective; structure is not, and
+              the structure inside a text &mdash; what we call a{" "}
+              <B>world view</B> &mdash; is what InkTide reads. We
+              make it operable: extract it, query its inhabitants,
+              fork its futures, simulate forward, watch it update as
+              reality lands.
             </P>
             <P>
-              A world view is an <B>imagined society</B>, raised by an
-              author and expanded over time as new citizens, places, and
-              laws are introduced. <B>World</B> &mdash; its citizens:
-              characters, locations, artifacts, each carrying their own
-              private map of the polity around them. <B>System</B>{" "}
-              &mdash; its imposed law: the rules, conventions, and
-              constraints the author has legislated. <B>Threads</B>{" "}
-              &mdash; its open questions, each a live stance over named
-              outcomes that revises every time a citizen acts. The
-              author legislates; the society then exerts its own gravity
-              &mdash; the three forces measure the pressure an imposed
-              polity generates once it&apos;s heavy enough to push back
-              on its author.
+              Look inside one. <B>World</B> &mdash; its citizens:
+              characters, locations, artifacts, each carrying their
+              own private map of the polity around them.{" "}
+              <B>System</B> &mdash; its imposed law: the rules and
+              conventions the author has legislated.{" "}
+              <B>Threads</B> &mdash; its open questions, each a live
+              stance over named outcomes that updates every time a
+              citizen acts. The author legislates; the society then
+              exerts its own gravity &mdash; the three forces measure
+              the pressure an imposed polity generates once it&apos;s
+              heavy enough to push back on its author.
             </P>
             <P>
               LLMs extract qualitative deltas at low temperature;
@@ -1805,7 +1870,10 @@ export default function PaperPage() {
               fixed and cheap; the depth and freshness of what you
               feed it decides the result. Hold one world view deeply
               &mdash; the <em>hedgehog</em> &mdash; or many at once,
-              calibrating as evidence comes in &mdash; the <em>fox</em>.
+              calibrating as evidence comes in &mdash; the <em>fox</em>
+              <Cite id="berlin1953" label="Berlin 1953" />
+              <Cite id="tetlock2005" label="Tetlock 2005" />
+              <Cite id="tetlock-gardner2015" label="Tetlock &amp; Gardner 2015" />.
               The substrate is here for both. The longer the loop
               runs, the sharper the next forecast.
             </P>
@@ -1838,7 +1906,9 @@ export default function PaperPage() {
               </B>{" "}
               One where priors compound across sessions, scenarios
               branch off any commit, and reality grades the result.
-              Context windows grow linearly; the world keeps growing.
+              Context windows grow linearly; the world keeps growing,
+              and attention itself sags in the middle of long contexts
+              <Cite id="liu2024" label="Liu et al. 2024" />.
               Either you compress with intent &mdash; keep the
               load-bearing rules and the live questions, release the
               rest &mdash; or coherence collapses. We compress with
@@ -1851,7 +1921,8 @@ export default function PaperPage() {
             <P>
               We model every long-form work &mdash; novel, paper,
               scenario brief, alternate-history timeline &mdash; as a
-              knowledge graph that updates step by step: one page per
+              knowledge graph<Cite id="hogan2021" label="Hogan et al. 2021" /> that
+              updates step by step: one page per
               actor, location, rule, or open question, updated only
               when a scene reveals something new. An LLM writes down{" "}
               <em>what changed</em>; deterministic formulas compute{" "}
@@ -2499,11 +2570,13 @@ export default function PaperPage() {
                 <Tex>{String.raw`t`}</Tex>&apos;s outcomes;{" "}
                 <Tex>{String.raw`v_t`}</Tex> is pre-scene volume;{" "}
                 <Tex>{String.raw`D_{\text{KL}}`}</Tex> is
-                Kullback&ndash;Leibler divergence. No tunable
-                constants &mdash; no log-type multipliers, no closure
-                bonuses, no scene-level denominators. Fully specified
-                by the per-thread evidence vector and pre-scene
-                attention.
+                Kullback&ndash;Leibler divergence
+                <Cite id="kullback1951" label="Kullback &amp; Leibler 1951" />
+                <Cite id="cover2006" label="Cover &amp; Thomas 2006" />.
+                No tunable constants &mdash; no log-type multipliers,
+                no closure bonuses, no scene-level denominators.
+                Fully specified by the per-thread evidence vector and
+                pre-scene attention.
               </P>
               <P>
                 Every behaviour falls out of this one form. Pulses
@@ -3055,11 +3128,17 @@ export default function PaperPage() {
             <P>
               The implication runs past the proof of concept.
               Recovering <em>Harry Potter</em>&apos;s dramatic shape
-              from delta arithmetic alone is the first empirical
-              evidence that <B>story has measurable physics</B>. The
-              same math that reads a 73-scene novel reads a 73-turn
-              campaign, a 73-paragraph paper, a 73-step strategy plan
-              &mdash; not by analogy, by physics.
+              from delta arithmetic alone extends a small empirical
+              tradition &mdash; emotional-arc and narrative-shape
+              recovery from text
+              <Cite id="reagan2016" label="Reagan et al. 2016" />
+              <Cite id="boyd2020" label="Boyd et al. 2020" />{" "}
+              &mdash; by reading not just sentiment but the three
+              structural force-fields beneath it.{" "}
+              <B>Story has measurable physics.</B> The same math that
+              reads a 73-scene novel reads a 73-turn campaign, a
+              73-paragraph paper, a 73-step strategy plan &mdash; not
+              by analogy, by physics.
             </P>
           </Section>
 
@@ -3107,6 +3186,19 @@ export default function PaperPage() {
               <Tex>{"g(\\tilde{\\sigma})"}</Tex> is applied directly to the
               average swing magnitude.
             </P>
+            <P>
+              Forecast calibration is a separate ledger from narrative
+              grading. Probabilistic forecasts &mdash; thread-stance
+              probabilities over named outcomes, scenario softmax
+              cohorts &mdash; are scored against landed reality with a
+              strictly proper scoring rule
+              <Cite id="brier1950" label="Brier 1950" />
+              <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />.
+              Strict propriety is the technical reason it&apos;s the
+              right tool: the rule is uniquely minimised by reporting
+              the operator&apos;s true belief, so honest reporting is
+              the dominant strategy.
+            </P>
           </Section>
 
           {/* ── Embeddings & Proposition Classification ─────────────────── */}
@@ -3119,8 +3211,11 @@ export default function PaperPage() {
               wizard.&rdquo; Forces measure <B>what changes</B> in the
               knowledge graph; propositions measure <B>what is stated</B> in
               the prose. Every proposition is embedded as a 1536-dimensional
-              vector (OpenAI text-embedding-3-small), transforming prose into
-              a geometric space where similarity is distance.
+              vector (OpenAI text-embedding-3-small
+              <Cite id="openai-emb2024" label="OpenAI 2024" />),
+              transforming prose into a geometric space where
+              similarity is distance
+              <Cite id="reimers2019" label="Reimers &amp; Gurevych 2019" />.
             </P>
             <P>
               Coherent writing behaves <em>like</em> a <B>proof graph</B>:
@@ -3536,7 +3631,10 @@ export default function PaperPage() {
             <P>
               Every respondent answers in-character from its own world-
               graph continuity, grounded in what that specific entity
-              knows. ELO uses a continuous margin rather than binary W/L:
+              knows. ELO
+              <Cite id="elo1978" label="Elo 1978" />
+              <Cite id="glickman1999" label="Glickman 1999" />{" "}
+              uses a continuous margin rather than binary W/L:
             </P>
             <Eq
               label="Margin score from A's perspective"
@@ -3595,9 +3693,17 @@ export default function PaperPage() {
               what&rsquo;s in it. Four modes cover the 2&times;2 of{" "}
               <B>direction</B> (forward from a premise ↔ backward from an
               outcome) and <B>scope</B> (selective — commit to one ↔
-              expansive — keep many). Click through the animation below to
-              see each mode&rsquo;s distinct shape; the prose then unpacks
-              how each actually builds a graph.
+              expansive — keep many). The four map onto the classical
+              epistemological typology: <em>abduction</em>{" "}
+              <Cite id="peirce1903" label="Peirce 1903" /> as inference
+              to the best explanation, <em>deduction</em> and{" "}
+              <em>induction</em> in their textbook senses, and{" "}
+              <em>divergent</em> thinking as the named cognitive mode
+              for expansive ideation
+              <Cite id="guilford1967" label="Guilford 1967" />.
+              Click through the animation below to see each
+              mode&rsquo;s distinct shape; the prose then unpacks how
+              each actually builds a graph.
             </P>
 
             {/* ── Interactive thinking-mode animation ─────────────── */}
@@ -3865,13 +3971,16 @@ export default function PaperPage() {
           {/* ── Markov Chains ─────────────────────────────────────────── */}
           <Section id="markov" label="Markov Chains">
             <P>
-              InkTide uses two layers of Markov chains. Layer 1 operates at
-              the <strong>scene level</strong> — sampling force profiles from
-              an 8-state matrix to control pacing. Layer 2 operates at the{" "}
-              <strong>beat level</strong> — sampling sequences from a
-              10-state matrix over beat functions to control prose texture.
-              Both are derived the same way: classify each unit, count
-              consecutive transitions, normalise rows.
+              InkTide uses two layers of Markov chains
+              <Cite id="norris1998" label="Norris 1998" />. Layer 1
+              operates at the <strong>scene level</strong> &mdash;
+              sampling force profiles from an 8-state matrix to
+              control pacing. Layer 2 operates at the{" "}
+              <strong>beat level</strong> &mdash; sampling sequences
+              from a 10-state matrix over beat functions to control
+              prose texture. Both are derived the same way: classify
+              each unit, count consecutive transitions, normalise
+              rows.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-3">
@@ -4510,7 +4619,10 @@ export default function PaperPage() {
               destination. Same engine, same forces, same fork-and-
               commit math &mdash; the leap is operator depth, not
               engine change. The product shape is{" "}
-              <em>multiplayer wargaming</em>: the client team on one
+              <em>multiplayer wargaming</em>
+              <Cite id="perla1990" label="Perla 1990" />
+              <Cite id="schelling1960" label="Schelling 1960" />: the
+              client team on one
               side, InkTide adversarial operators driving competitors
               / regulators / customers on the other, every move
               committed against a shared substrate that arbitrates
@@ -4557,33 +4669,38 @@ export default function PaperPage() {
               overconfidence on competitor response, anchoring on
               first-mover assumptions, confirmation bias on the
               chosen path. Kahneman, Lovallo &amp; Sibony&apos;s{" "}
-              <em>deliberate ignorance</em> holds &mdash; executives
-              underweight competitor reaction because modelling it
-              is cognitively costly. Wargaming makes the reaction
-              structurally necessary.
+              <em>deliberate ignorance</em>
+              <Cite id="kahneman2011" label="Kahneman et al. 2011" />
+              <Cite id="lovallo2003" label="Lovallo &amp; Kahneman 2003" />{" "}
+              holds &mdash; executives underweight competitor reaction
+              because modelling it is cognitively costly. Wargaming
+              makes the reaction structurally necessary.
             </P>
             <P>
               Three limits, each answered by the substrate.{" "}
-              <B>Tacit knowledge</B> (Polanyi) resists formalisation
-              &mdash; but the engine is calibrated for foxes, and
-              tacit knowledge IS captured when it produces calibrated
-              forecasts that outperform.{" "}
+              <B>Tacit knowledge</B>
+              <Cite id="polanyi1966" label="Polanyi 1966" />{" "}
+              resists formalisation &mdash; but the engine is
+              calibrated for foxes, and tacit knowledge IS captured
+              when it produces calibrated forecasts that outperform.{" "}
               <B>Conceivability</B> &mdash; a simulation only explores
               what its designers conceive &mdash; is unresolvable by
               the engine alone; multiplayer is how human adversaries
-              surface what the model-builder cannot.{" "}
-              <B>Goodhart</B> &mdash; players gaming the simulation
-              rather than reality &mdash; is mitigated by
-              fork-and-commit: the substrate updates against reality,
-              not against itself. Reality is the referee.
+              surface what the model-builder cannot. <B>Goodhart</B>
+              <Cite id="goodhart1975" label="Goodhart 1975" />
+              <Cite id="strathern1997" label="Strathern 1997" />{" "}
+              &mdash; players gaming the simulation rather than
+              reality &mdash; is mitigated by fork-and-commit: the
+              substrate updates against reality, not against itself.
+              Reality is the referee.
             </P>
           </Section>
 
           {/* ── Integration ──────────────────────────────────────────── */}
           <Section id="integration" label="Integration">
             <P>
-              <B>The epistemic case justifies the unit; the moat
-              justifies the business.</B> After eighteen months a
+              <B>SAP for finance. Palantir for operations. InkTide for
+              strategic cognition itself.</B> After eighteen months a
               client isn&apos;t subscribing &mdash; they&apos;re
               operating on a digital twin of their strategic
               position: thousands of analyst-hours, hundreds of
@@ -4734,6 +4851,405 @@ export default function PaperPage() {
               doctrines, futures.{" "}
               <B>Pricing is the wedge. The wedge is not the bet.</B>
             </P>
+          </Section>
+
+          {/* ── Bibliography ────────────────────────────────────────────── */}
+          <Section id="bibliography" label="Bibliography">
+            <P>
+              Inline citations follow author-year style and link to the
+              entries below. Each entry carries the canonical
+              publisher / DOI link first and open-access alternates
+              (arXiv, author PDF, archive) where available, so AI
+              ingestion can chain through to the primary source.
+            </P>
+
+            <div className="space-y-4 mt-8">
+              <Ref
+                id="berlin1953"
+                authors="Berlin, I."
+                year="1953"
+                title="The Hedgehog and the Fox: An Essay on Tolstoy's View of History"
+                venue="Weidenfeld & Nicolson (Princeton reissue 2013)"
+                links={[
+                  {
+                    label: "Princeton",
+                    href: "https://press.princeton.edu/books/paperback/9780691156002/the-hedgehog-and-the-fox",
+                  },
+                ]}
+              />
+              <Ref
+                id="tetlock2005"
+                authors="Tetlock, P. E."
+                year="2005"
+                title="Expert Political Judgment: How Good Is It? How Can We Know?"
+                venue="Princeton University Press"
+                links={[
+                  {
+                    label: "Princeton",
+                    href: "https://press.princeton.edu/books/hardcover/9780691178288/expert-political-judgment",
+                  },
+                ]}
+              />
+              <Ref
+                id="tetlock-gardner2015"
+                authors="Tetlock, P. E., & Gardner, D."
+                year="2015"
+                title="Superforecasting: The Art and Science of Prediction"
+                venue="Crown"
+                links={[
+                  {
+                    label: "Penguin Random House",
+                    href: "https://www.penguinrandomhouse.com/books/227815/superforecasting-by-philip-e-tetlock-and-dan-gardner/",
+                  },
+                ]}
+              />
+              <Ref
+                id="kahneman2011"
+                authors="Kahneman, D., Lovallo, D., & Sibony, O."
+                year="2011"
+                title="Before you make that big decision"
+                venue="Harvard Business Review, 89(6), 50–60"
+                links={[
+                  {
+                    label: "HBR",
+                    href: "https://hbr.org/2011/06/the-big-idea-before-you-make-that-big-decision",
+                  },
+                ]}
+              />
+              <Ref
+                id="lovallo2003"
+                authors="Lovallo, D., & Kahneman, D."
+                year="2003"
+                title="Delusions of success: How optimism undermines executives' decisions"
+                venue="Harvard Business Review, 81(7), 56–63"
+                links={[
+                  {
+                    label: "HBR",
+                    href: "https://hbr.org/2003/07/delusions-of-success-how-optimism-undermines-executives-decisions",
+                  },
+                ]}
+              />
+              <Ref
+                id="polanyi1966"
+                authors="Polanyi, M."
+                year="1966"
+                title="The Tacit Dimension"
+                venue="University of Chicago Press (reissue 2009)"
+                links={[
+                  {
+                    label: "Chicago",
+                    href: "https://press.uchicago.edu/ucp/books/book/chicago/T/bo6035368.html",
+                  },
+                  {
+                    label: "Archive",
+                    href: "https://archive.org/details/tacitdimension0000pola",
+                  },
+                ]}
+              />
+              <Ref
+                id="goodhart1975"
+                authors="Goodhart, C. A. E."
+                year="1975"
+                title="Problems of monetary management: The U.K. experience"
+                venue="In Papers in Monetary Economics, Vol. I. Reserve Bank of Australia"
+                links={[
+                  {
+                    label: "Discussion (Chrystal & Mizen 2003)",
+                    href: "https://cyberlibris.typepad.com/blog/files/Goodharts_Law.pdf",
+                  },
+                ]}
+              />
+              <Ref
+                id="strathern1997"
+                authors="Strathern, M."
+                year="1997"
+                title="'Improving ratings': Audit in the British University system"
+                venue="European Review, 5(3), 305–321"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1017/S1062798700002660",
+                  },
+                  {
+                    label: "Cambridge",
+                    href: "https://www.cambridge.org/core/journals/european-review/article/abs/improving-ratings-audit-in-the-british-university-system/FC2EE640C0C44E3DB87C29FB666E9AAB",
+                  },
+                  {
+                    label: "PDF",
+                    href: "https://gwern.net/doc/statistics/decision/1997-strathern.pdf",
+                  },
+                ]}
+              />
+              <Ref
+                id="brier1950"
+                authors="Brier, G. W."
+                year="1950"
+                title="Verification of forecasts expressed in terms of probability"
+                venue="Monthly Weather Review, 78(1), 1–3"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2",
+                  },
+                  {
+                    label: "AMS",
+                    href: "https://journals.ametsoc.org/view/journals/mwre/78/1/1520-0493_1950_078_0001_vofeit_2_0_co_2.xml",
+                  },
+                ]}
+              />
+              <Ref
+                id="gneiting2007"
+                authors="Gneiting, T., & Raftery, A. E."
+                year="2007"
+                title="Strictly proper scoring rules, prediction, and estimation"
+                venue="Journal of the American Statistical Association, 102(477), 359–378"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1198/016214506000001437",
+                  },
+                  {
+                    label: "PDF",
+                    href: "https://sites.stat.washington.edu/raftery/Research/PDF/Gneiting2007jasa.pdf",
+                  },
+                ]}
+              />
+              <Ref
+                id="kullback1951"
+                authors="Kullback, S., & Leibler, R. A."
+                year="1951"
+                title="On information and sufficiency"
+                venue="The Annals of Mathematical Statistics, 22(1), 79–86"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1214/aoms/1177729694",
+                  },
+                  {
+                    label: "Project Euclid",
+                    href: "https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-22/issue-1/On-Information-and-Sufficiency/10.1214/aoms/1177729694.full",
+                  },
+                ]}
+              />
+              <Ref
+                id="cover2006"
+                authors="Cover, T. M., & Thomas, J. A."
+                year="2006"
+                title="Elements of Information Theory (2nd ed.)"
+                venue="Wiley"
+                links={[
+                  {
+                    label: "Wiley",
+                    href: "https://onlinelibrary.wiley.com/doi/book/10.1002/047174882X",
+                  },
+                ]}
+              />
+              <Ref
+                id="liu2024"
+                authors="Liu, N. F., Lin, K., Hewitt, J., Paranjape, A., Bevilacqua, M., Petroni, F., & Liang, P."
+                year="2024"
+                title="Lost in the middle: How language models use long contexts"
+                venue="Transactions of the Association for Computational Linguistics, 12, 157–173"
+                links={[
+                  {
+                    label: "ACL Anthology",
+                    href: "https://aclanthology.org/2024.tacl-1.9/",
+                  },
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1162/tacl_a_00638",
+                  },
+                  {
+                    label: "arXiv",
+                    href: "https://arxiv.org/abs/2307.03172",
+                  },
+                ]}
+              />
+              <Ref
+                id="openai-emb2024"
+                authors="OpenAI"
+                year="2024"
+                title="New embedding models and API updates"
+                venue="OpenAI Blog, January 25, 2024"
+                links={[
+                  {
+                    label: "openai.com",
+                    href: "https://openai.com/index/new-embedding-models-and-api-updates/",
+                  },
+                ]}
+              />
+              <Ref
+                id="reimers2019"
+                authors="Reimers, N., & Gurevych, I."
+                year="2019"
+                title="Sentence-BERT: Sentence embeddings using Siamese BERT-networks"
+                venue="Proceedings of EMNLP 2019"
+                links={[
+                  {
+                    label: "ACL Anthology",
+                    href: "https://aclanthology.org/D19-1410/",
+                  },
+                  {
+                    label: "arXiv",
+                    href: "https://arxiv.org/abs/1908.10084",
+                  },
+                ]}
+              />
+              <Ref
+                id="reagan2016"
+                authors="Reagan, A. J., Mitchell, L., Kiley, D., Danforth, C. M., & Dodds, P. S."
+                year="2016"
+                title="The emotional arcs of stories are dominated by six basic shapes"
+                venue="EPJ Data Science, 5(1), 31"
+                links={[
+                  {
+                    label: "Springer (open access)",
+                    href: "https://link.springer.com/article/10.1140/epjds/s13688-016-0093-1",
+                  },
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1140/epjds/s13688-016-0093-1",
+                  },
+                  {
+                    label: "arXiv",
+                    href: "https://arxiv.org/abs/1606.07772",
+                  },
+                  {
+                    label: "Author PDF",
+                    href: "https://cdanfort.w3.uvm.edu/research/2016-reagan-epj.pdf",
+                  },
+                ]}
+              />
+              <Ref
+                id="boyd2020"
+                authors="Boyd, R. L., Blackburn, K. G., & Pennebaker, J. W."
+                year="2020"
+                title="The narrative arc: Revealing core narrative structures through text analysis"
+                venue="Science Advances, 6(32), eaba2196"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1126/sciadv.aba2196",
+                  },
+                  {
+                    label: "Science Advances",
+                    href: "https://www.science.org/doi/10.1126/sciadv.aba2196",
+                  },
+                ]}
+              />
+              <Ref
+                id="peirce1903"
+                authors="Peirce, C. S."
+                year="1903 / 1998"
+                title="Pragmatism as the Logic of Abduction"
+                venue="In The Essential Peirce: Selected Philosophical Writings, Vol. 2 (1893–1913), ed. Peirce Edition Project. Indiana University Press"
+                links={[
+                  {
+                    label: "IU Press",
+                    href: "https://iupress.org/9780253333971/the-essential-peirce-volume-2/",
+                  },
+                ]}
+              />
+              <Ref
+                id="guilford1967"
+                authors="Guilford, J. P."
+                year="1967"
+                title="The Nature of Human Intelligence"
+                venue="McGraw-Hill"
+                links={[
+                  {
+                    label: "HathiTrust",
+                    href: "https://catalog.hathitrust.org/Record/000269325",
+                  },
+                ]}
+              />
+              <Ref
+                id="norris1998"
+                authors="Norris, J. R."
+                year="1998"
+                title="Markov Chains"
+                venue="Cambridge University Press"
+                links={[
+                  {
+                    label: "Cambridge",
+                    href: "https://www.cambridge.org/core/books/markov-chains/A3F966B10633A32C8F06F37B41008F18",
+                  },
+                ]}
+              />
+              <Ref
+                id="elo1978"
+                authors="Elo, A. E."
+                year="1978"
+                title="The Rating of Chessplayers, Past and Present"
+                venue="Arco Publishing"
+                links={[
+                  {
+                    label: "Archive",
+                    href: "https://archive.org/details/ratingofchesspla00aero",
+                  },
+                ]}
+              />
+              <Ref
+                id="glickman1999"
+                authors="Glickman, M. E."
+                year="1999"
+                title="Parameter estimation in large dynamic paired comparison experiments"
+                venue="Journal of the Royal Statistical Society: Series C (Applied Statistics), 48(3), 377–394"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1111/1467-9876.00159",
+                  },
+                  {
+                    label: "Author PDF",
+                    href: "http://www.glicko.net/research/glicko.pdf",
+                  },
+                ]}
+              />
+              <Ref
+                id="perla1990"
+                authors="Perla, P. P."
+                year="1990"
+                title="The Art of Wargaming: A Guide for Professionals and Hobbyists"
+                venue="Naval Institute Press (reissued 2012, History of Wargaming Project)"
+                links={[
+                  {
+                    label: "USNI",
+                    href: "https://www.usni.org/press/books/peter-perla-art-wargaming",
+                  },
+                ]}
+              />
+              <Ref
+                id="schelling1960"
+                authors="Schelling, T. C."
+                year="1960"
+                title="The Strategy of Conflict"
+                venue="Harvard University Press"
+                links={[
+                  {
+                    label: "Harvard",
+                    href: "https://www.hup.harvard.edu/file/feeds/PDF/9780674840317_sample.pdf",
+                  },
+                ]}
+              />
+              <Ref
+                id="hogan2021"
+                authors="Hogan, A., Blomqvist, E., Cochez, M., d'Amato, C., de Melo, G., Gutierrez, C., et al."
+                year="2021"
+                title="Knowledge graphs"
+                venue="ACM Computing Surveys, 54(4), 1–37"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1145/3447772",
+                  },
+                  {
+                    label: "arXiv",
+                    href: "https://arxiv.org/abs/2003.02320",
+                  },
+                ]}
+              />
+            </div>
           </Section>
         </div>
       </div>
