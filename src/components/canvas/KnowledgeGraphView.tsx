@@ -133,6 +133,9 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
 
     // Create link and node groups (order matters for layering)
     g.append('g').attr('class', 'wk-links');
+    // Halos render between links and nodes — bloom sits behind the node but
+    // above any link passing through.
+    g.append('g').attr('class', 'wk-halos');
     g.append('g').attr('class', 'wk-nodes');
     g.append('g').attr('class', 'wk-labels');
 
@@ -226,6 +229,23 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       })
       .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)));
 
+    // Halos for nodes the current scene introduced or touched. Replaces the
+    // earlier "dim non-scene nodes" approach so concept colours read true
+    // and the just-changed set pops via the bloom.
+    const isActive = (d: SysNode) => mode === 'codex' && sceneNodeIds.has(d.id);
+    const activeNodes = simNodes.filter(isActive);
+    const haloSel = g.select<SVGGElement>('g.wk-halos')
+      .selectAll<SVGCircleElement, SysNode>('circle')
+      .data(activeNodes, (d) => d.id);
+    haloSel.exit().remove();
+    const haloEnter = haloSel.enter().append('circle');
+    const haloAll = haloEnter.merge(haloSel);
+    haloAll
+      .attr('r', (d) => nodeRadius(d) + 10)
+      .attr('fill', (d) => showTypes ? (SYS_TYPE_COLORS[d.type] ?? '#888') : '#888')
+      .attr('opacity', 0.32)
+      .attr('pointer-events', 'none');
+
     // Update nodes
     const nodeSel = g.select<SVGGElement>('g.wk-nodes')
       .selectAll<SVGCircleElement, SysNode>('circle')
@@ -236,8 +256,8 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     nodeAll
       .attr('r', nodeRadius)
       .attr('fill', (d) => showTypes ? (SYS_TYPE_COLORS[d.type] ?? '#888') : '#888')
-      .attr('opacity', (d) => mode === 'codex' && sceneNodeIds.size > 0 ? (sceneNodeIds.has(d.id) ? 1 : 0.35) : 0.9)
-      .attr('stroke', (d) => mode === 'codex' && sceneNodeIds.has(d.id) ? '#fff' : 'transparent')
+      .attr('opacity', 1)
+      .attr('stroke', (d) => isActive(d) ? '#fff' : 'transparent')
       .attr('stroke-width', 2);
 
     // Tooltip + drag events
@@ -279,11 +299,7 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .attr('font-size', (d) => `${Math.max(9, 9 + (d.degree / maxDegree) * 4)}px`)
       .attr('font-weight', (d) => d.degree >= maxDegree * 0.5 ? '600' : '400')
       .attr('display', showLabels ? 'block' : 'none')
-      .attr('opacity', (d) => {
-        if (mode === 'spark') return 0.95;
-        if (mode === 'codex' && sceneNodeIds.size > 0) return sceneNodeIds.has(d.id) ? 1 : (d.degree >= 2 ? 0.6 : 0.25);
-        return d.degree >= 2 ? 0.85 : 0.45;
-      })
+      .attr('opacity', 1)
       .text((d) => {
         // Truncate at em dash or long descriptions for clean graph labels
         const concept = d.concept ?? '';
@@ -317,6 +333,9 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
         .attr('x2', (d) => (d.target as SysNode).x ?? 0)
         .attr('y2', (d) => (d.target as SysNode).y ?? 0);
       nodeAll
+        .attr('cx', (d) => d.x ?? 0)
+        .attr('cy', (d) => d.y ?? 0);
+      haloAll
         .attr('cx', (d) => d.x ?? 0)
         .attr('cy', (d) => d.y ?? 0);
       labelAll

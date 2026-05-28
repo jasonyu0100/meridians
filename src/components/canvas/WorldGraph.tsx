@@ -48,24 +48,6 @@ import {
 } from './graph-utils';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
 
-// Shared endpoint offset for arrowed edges: pull the target end back by the
-// target node's stamped radius (+ pad) so the arrowhead sits at the node
-// edge rather than the centre. Used by both the main tick handler and the
-// char-loc effect, which run in different closures.
-const ARROW_PAD = 4;
-function offsetArrowEndpoint(source: GraphNode, target: GraphNode): { x: number; y: number } {
-  const sx = source.x ?? 0;
-  const sy = source.y ?? 0;
-  const tx = target.x ?? 0;
-  const ty = target.y ?? 0;
-  const dx = tx - sx;
-  const dy = ty - sy;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist === 0) return { x: tx, y: ty };
-  const back = Math.min((target.radius ?? 18) + ARROW_PAD, dist);
-  return { x: tx - (dx / dist) * back, y: ty - (dy / dist) * back };
-}
-
 export default function WorldGraph() {
   const { state, dispatch } = useStore();
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -494,13 +476,18 @@ export default function WorldGraph() {
     if (graphViewMode !== 'overview') {
       const charUsage: Record<string, number> = {};
       const locUsage: Record<string, number> = {};
+      const artUsage: Record<string, number> = {};
       for (const scene of Object.values(narrative.scenes)) {
         for (const pid of scene.participantIds) charUsage[pid] = (charUsage[pid] ?? 0) + 1;
         if (scene.locationId) locUsage[scene.locationId] = (locUsage[scene.locationId] ?? 0) + 1;
+        for (const aid of getSceneArtifactIds(scene, narrative.artifacts)) {
+          artUsage[aid] = (artUsage[aid] ?? 0) + 1;
+        }
       }
       for (const n of nodes) {
         if (n.kind === 'character') n.usageCount = charUsage[n.id] ?? 1;
         if (n.kind === 'location') n.usageCount = locUsage[n.id] ?? 1;
+        if (n.kind === 'artifact') n.usageCount = artUsage[n.id] ?? 1;
       }
     }
 
@@ -623,40 +610,19 @@ export default function WorldGraph() {
     const locRange = Math.max(1, maxLocUsage - minLocUsage);
     const normChar = (d: GraphNode) => ((d.usageCount ?? 1) - minCharUsage) / charRange;
     const normLoc = (d: GraphNode) => ((d.usageCount ?? 1) - minLocUsage) / locRange;
+    const artNodes = nodes.filter((n) => n.kind === 'artifact');
+    const artUsages = artNodes.map((n) => n.usageCount ?? 1);
+    const minArtUsage = artUsages.length > 0 ? Math.min(...artUsages) : 1;
+    const maxArtUsage = artUsages.length > 0 ? Math.max(...artUsages) : 1;
+    const artRange = Math.max(1, maxArtUsage - minArtUsage);
+    const normArt = (d: GraphNode) => ((d.usageCount ?? 1) - minArtUsage) / artRange;
     const CHAR_MIN_R = 20;
     const CHAR_MAX_R = 44;
     const LOC_MIN_SCALE = 0.6;
     const LOC_MAX_SCALE = 1.4;
     const ARTIFACT_SIZES: Record<string, number> = { key: 22, notable: 16, minor: 11 };
 
-    // Effective visible radius — matches the per-kind sizing applied below so
-    // arrow-end offsets land at the node edge instead of buried in the centre.
-    const effectiveRadius = (n: GraphNode): number => {
-      if (n.kind === 'knowledge') return 8;
-      if (n.kind === 'artifact') return ARTIFACT_SIZES[n.significance ?? 'notable'] ?? 16;
-      if (n.kind === 'character') {
-        if (scaleByUsage) {
-          const t = charRange > 0 ? ((n.usageCount ?? 1) - minCharUsage) / charRange : 0;
-          return CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * t;
-        }
-        return ROLE_RADIUS[n.role ?? 'recurring'] ?? 18;
-      }
-      // location
-      if (scaleByUsage) {
-        const t = locRange > 0 ? ((n.usageCount ?? 1) - minLocUsage) / locRange : 0;
-        const s = LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * t;
-        return (LOCATION_SIZE * s) / 2;
-      }
-      return LOCATION_SIZE / 2;
-    };
-
-    // Stamp visible radius so tick handlers (including the separate char-loc
-    // effect, which has no access to local scaling state) can offset arrow
-    // endpoints to the node edge.
-    for (const n of nodes) n.radius = effectiveRadius(n);
-
-    // Endpoint shifted back from target centre to (target_edge + small pad),
-    // so the arrow head sits just outside the node shape regardless of size.
+    // Edges that should show a directional arrowhead at their midpoint.
     const arrowedKinds = new Set<GraphLink['linkKind']>(['character-location', 'spatial', 'ownership']);
     const isArrowed = (l: GraphLink) => arrowedKinds.has(l.linkKind);
 
@@ -701,13 +667,18 @@ export default function WorldGraph() {
 
     // Non-relationship links — solid, bright, thick. Node SHAPE carries the
     // type signal; we only vary stroke colour by linkKind, not weight or dash.
+    // Polylines so we can drop an arrowhead at the midpoint of arrowed kinds
+    // (charloc, spatial, ownership) without sacrificing the centre-to-centre
+    // straight-line geometry — the midpoint vertex is invisible, just an
+    // anchor for marker-mid.
     const linkSelection = g
       .append('g')
       .attr('class', 'links')
-      .selectAll<SVGLineElement, GraphLink>('line')
+      .selectAll<SVGPolylineElement, GraphLink>('polyline')
       .data(nonRelLinks)
-      .join('line')
+      .join('polyline')
       .attr('class', 'graph-edge')
+      .attr('fill', 'none')
       .attr('stroke', (d) => {
         if (d.linkKind === 'character-location') return '#3B82F6';  // Blue - current position
         if (d.linkKind === 'tie') return '#A855F7';                 // Purple - permanent affiliation
@@ -717,7 +688,7 @@ export default function WorldGraph() {
       })
       .attr('stroke-opacity', 0.85)
       .attr('stroke-width', 4.5)
-      .attr('marker-end', (d) => (isArrowed(d) ? 'url(#wg-arrow)' : null));
+      .attr('marker-mid', (d) => (isArrowed(d) ? 'url(#wg-arrow)' : null));
 
     // Relationship links — solid, bright, thick. Valence sign drives colour.
     const relLinkSelection = g
@@ -826,7 +797,7 @@ export default function WorldGraph() {
     // ── Node images (clip-masked portraits & location photos) ──────────
     // Use resolved blob URLs from the map (asset IDs like "img_abc123" → blob URLs)
     nodeGroup
-      .filter((d) => d.kind === 'character' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
+      .filter((d) => !showHeatmap && d.kind === 'character' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
       .each(function (d) {
         const sel = d3.select(this);
         const r = scaleByUsage
@@ -844,7 +815,7 @@ export default function WorldGraph() {
       });
 
     nodeGroup
-      .filter((d) => d.kind === 'location' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
+      .filter((d) => !showHeatmap && d.kind === 'location' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
       .each(function (d) {
         const sel = d3.select(this);
         const scale = scaleByUsage
@@ -884,7 +855,7 @@ export default function WorldGraph() {
       .attr('height', (d) => (ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10) * 2)
       .attr('rx', 2)
       .attr('transform', 'rotate(45)')
-      .attr('fill', (d) => ARTIFACT_FILLS[d.significance ?? 'notable'] ?? '#D97706')
+      .attr('fill', (d) => showHeatmap ? heatColor(normArt(d)) : (ARTIFACT_FILLS[d.significance ?? 'notable'] ?? '#D97706'))
       .attr('opacity', 0.85);
 
     // Artifact images — clipped to diamond shape
@@ -892,7 +863,7 @@ export default function WorldGraph() {
     // cover the diagonal, so we scale by √2 and counter-rotate it upright
     // inside the rotated clip region.
     nodeGroup
-      .filter((d) => d.kind === 'artifact' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
+      .filter((d) => !showHeatmap && d.kind === 'artifact' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
       .each(function (d) {
         const sel = d3.select(this);
         const sz = ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 16;
@@ -946,15 +917,12 @@ export default function WorldGraph() {
     // ── Tick ──────────────────────────────────────────────────────────────
     simulation.on('tick', () => {
       linkSelection
-        .attr('x1', (d) => ((d.source as GraphNode).x ?? 0))
-        .attr('y1', (d) => ((d.source as GraphNode).y ?? 0))
-        .attr('x2', (d) => {
-          if (!isArrowed(d)) return (d.target as GraphNode).x ?? 0;
-          return offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).x;
-        })
-        .attr('y2', (d) => {
-          if (!isArrowed(d)) return (d.target as GraphNode).y ?? 0;
-          return offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).y;
+        .attr('points', (d) => {
+          const sx = (d.source as GraphNode).x ?? 0;
+          const sy = (d.source as GraphNode).y ?? 0;
+          const tx = (d.target as GraphNode).x ?? 0;
+          const ty = (d.target as GraphNode).y ?? 0;
+          return `${sx},${sy} ${(sx + tx) / 2},${(sy + ty) / 2} ${tx},${ty}`;
         });
 
       relLinkSelection
@@ -1046,9 +1014,9 @@ export default function WorldGraph() {
 
     const linksGroup = g.select<SVGGElement>('g.links');
 
-    // Always wipe stale character-location lines first; if the toggle is off
-    // we leave nothing in their place.
-    linksGroup.selectAll<SVGLineElement, GraphLink>('line')
+    // Always wipe stale character-location polylines first; if the toggle is
+    // off we leave nothing in their place.
+    linksGroup.selectAll<SVGPolylineElement, GraphLink>('polyline')
       .filter((d) => d.linkKind === 'character-location')
       .remove();
 
@@ -1079,14 +1047,15 @@ export default function WorldGraph() {
     }
 
     const newLinkEls = linksGroup
-      .selectAll<SVGLineElement, GraphLink>('line.charloc')
+      .selectAll<SVGPolylineElement, GraphLink>('polyline.charloc')
       .data(resolvedNewLinks, (d) => d.id)
-      .join('line')
+      .join('polyline')
       .attr('class', 'graph-edge charloc')
+      .attr('fill', 'none')
       .attr('stroke', '#3B82F6')
       .attr('stroke-opacity', 0.85)
       .attr('stroke-width', 4.5)
-      .attr('marker-end', 'url(#wg-arrow)');
+      .attr('marker-mid', 'url(#wg-arrow)');
 
     // Swap char-loc links in the simulation force
     const currentLinks = (simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>).links();
@@ -1102,10 +1071,13 @@ export default function WorldGraph() {
     // Tick handler for new link elements
     simulation.on('tick.charloc', () => {
       newLinkEls
-        .attr('x1', (d) => ((d.source as GraphNode).x ?? 0))
-        .attr('y1', (d) => ((d.source as GraphNode).y ?? 0))
-        .attr('x2', (d) => offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).x)
-        .attr('y2', (d) => offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).y);
+        .attr('points', (d) => {
+          const sx = (d.source as GraphNode).x ?? 0;
+          const sy = (d.source as GraphNode).y ?? 0;
+          const tx = (d.target as GraphNode).x ?? 0;
+          const ty = (d.target as GraphNode).y ?? 0;
+          return `${sx},${sy} ${(sx + tx) / 2},${(sy + ty) / 2} ${tx},${ty}`;
+        });
     });
     // Mirror the main rebuild's deps so char-loc lines are re-attached after
     // every full graph rebuild (arcFocus, vicinity, entity-kind toggles all

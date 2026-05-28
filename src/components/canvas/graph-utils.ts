@@ -98,9 +98,6 @@ export interface GraphNode extends d3.SimulationNodeDatum {
   imagePrompt?: string;
   /** Only for artifact nodes */
   significance?: string;
-  /** Visible radius stamped during render; used by tick handlers to offset
-   *  directed edge endpoints to the node's edge instead of its centre. */
-  radius?: number;
 }
 
 export interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {

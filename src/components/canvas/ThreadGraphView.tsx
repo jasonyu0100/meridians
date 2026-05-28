@@ -11,7 +11,6 @@ import {
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
   THREAD_CATEGORY_ORDER,
-  THREAD_CATEGORY_TERMINAL,
   type ThreadCategory,
 } from '@/lib/thread-category';
 import { replayThreadsAtIndex } from '@/lib/portfolio-analytics';
@@ -19,8 +18,6 @@ import { computeGroups } from './graph-utils';
 import { IconChevronLeft, IconChevronRight, IconRefresh } from '@/components/icons';
 import EvalBar from '@/components/timeline/EvalBar';
 import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
-
-const TERMINAL = new Set<ThreadCategory>(THREAD_CATEGORY_TERMINAL);
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -199,8 +196,10 @@ export default function ThreadGraphView({
     const height = svgEl.clientHeight ?? 600;
     svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
 
-    // Layer groups
+    // Layer groups. Halos sit between links and nodes so the bloom renders
+    // behind the node circle but on top of any line passing through.
     g.append('g').attr('class', 't-links');
+    g.append('g').attr('class', 't-halos');
     g.append('g').attr('class', 't-nodes');
     g.append('g').attr('class', 't-labels');
     g.append('g').attr('class', 't-relations');
@@ -252,12 +251,14 @@ export default function ThreadGraphView({
         relation: l.relation,
       }));
 
-    // Links
+    // Links — polylines (source → midpoint → target) so dependent links can
+    // drop an arrowhead at the midpoint via marker-mid without breaking the
+    // straight centre-to-centre geometry.
     const linkSel = g.select<SVGGElement>('g.t-links')
-      .selectAll<SVGLineElement, TLink>('line')
+      .selectAll<SVGPolylineElement, TLink>('polyline')
       .data(simLinks, d => `${(d.source as TNode).id ?? d.source}-${(d.target as TNode).id ?? d.target}`);
     linkSel.exit().remove();
-    const linkEnter = linkSel.enter().append('line');
+    const linkEnter = linkSel.enter().append('polyline').attr('fill', 'none');
     const linkAll = linkEnter.merge(linkSel);
     // Edge intensity: opacity + width scale with relation kind. Dependent
     // links are structural (thread→thread convergence) and read prominent;
@@ -268,7 +269,24 @@ export default function ThreadGraphView({
       .attr('stroke-opacity', d => d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25))
       .attr('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
       .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none')
-      .attr('marker-end', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);
+      .attr('marker-mid', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);
+
+    // Halos — soft colour bloom behind any thread that took a delta in the
+    // current scene. Replaces the previous "dim the inactive ones" approach
+    // so node colours read true and the active set pops via the halo
+    // instead of via everyone else fading.
+    const activeNodes = simNodes.filter(d => d.hasDeltaAtScene);
+    const haloSel = g.select<SVGGElement>('g.t-halos')
+      .selectAll<SVGCircleElement, TNode>('circle')
+      .data(activeNodes, d => d.id);
+    haloSel.exit().remove();
+    const haloEnter = haloSel.enter().append('circle');
+    const haloAll = haloEnter.merge(haloSel);
+    haloAll
+      .attr('r', d => nodeRadius(d) + 10)
+      .attr('fill', d => showTypes ? THREAD_CATEGORY_HEX[d.category] : '#888')
+      .attr('opacity', 0.32)
+      .attr('pointer-events', 'none');
 
     // Nodes
     const nodeSel = g.select<SVGGElement>('g.t-nodes')
@@ -280,16 +298,8 @@ export default function ThreadGraphView({
     nodeAll
       .attr('r', nodeRadius)
       .attr('fill', d => showTypes ? THREAD_CATEGORY_HEX[d.category] : '#888')
-      .attr('opacity', d => {
-        if (mode === 'pulse') return 0.9;
-        if (d.hasDeltaAtScene) return 1;
-        if (TERMINAL.has(d.category)) return 0.2;
-        return 0.5;
-      })
-      .attr('stroke', d => {
-        if (mode === 'threads' && d.hasDeltaAtScene) return '#fff';
-        return 'transparent';
-      })
+      .attr('opacity', 1)
+      .attr('stroke', d => d.hasDeltaAtScene ? '#fff' : 'transparent')
       .attr('stroke-width', 2);
 
     // Drag
@@ -330,12 +340,7 @@ export default function ThreadGraphView({
       .attr('font-size', d => `${Math.min(12, 9 + d.activity * 0.3)}px`)
       .attr('font-weight', d => d.activity >= 5 ? '600' : '400')
       .attr('display', showLabels ? 'block' : 'none')
-      .attr('opacity', d => {
-        if (mode === 'pulse') return 0.95;
-        if (d.hasDeltaAtScene) return 1;
-        if (TERMINAL.has(d.category)) return 0.2;
-        return 0.5;
-      })
+      .attr('opacity', 1)
       .text(d => {
         const desc = d.description;
         return desc.length > 35 ? desc.slice(0, 33) + '…' : desc;
@@ -357,32 +362,19 @@ export default function ThreadGraphView({
     sim.nodes(simNodes);
     (sim.force('link') as d3.ForceLink<TNode, TLink>).links(simLinks);
     (sim.force('collide') as d3.ForceCollide<TNode>).radius(d => nodeRadius(d) + 30);
-    // Pull dependent-link endpoints back to the target's edge so the arrow
-    // sits just outside the node circle. Participant links keep the centre-
-    // to-centre geometry — they're dotted, no arrowhead.
-    const ARROW_PAD = 4;
-    const dependentEndpoint = (d: TLink): { x: number; y: number } => {
-      const src = d.source as TNode;
-      const tgt = d.target as TNode;
-      const sx = src.x ?? 0;
-      const sy = src.y ?? 0;
-      const tx = tgt.x ?? 0;
-      const ty = tgt.y ?? 0;
-      const dx = tx - sx;
-      const dy = ty - sy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist === 0) return { x: tx, y: ty };
-      const back = Math.min(nodeRadius(tgt) + ARROW_PAD, dist);
-      return { x: tx - (dx / dist) * back, y: ty - (dy / dist) * back };
-    };
-
     sim.on('tick', () => {
       linkAll
-        .attr('x1', d => (d.source as TNode).x ?? 0)
-        .attr('y1', d => (d.source as TNode).y ?? 0)
-        .attr('x2', d => d.relation === 'dependent' ? dependentEndpoint(d).x : (d.target as TNode).x ?? 0)
-        .attr('y2', d => d.relation === 'dependent' ? dependentEndpoint(d).y : (d.target as TNode).y ?? 0);
+        .attr('points', d => {
+          const sx = (d.source as TNode).x ?? 0;
+          const sy = (d.source as TNode).y ?? 0;
+          const tx = (d.target as TNode).x ?? 0;
+          const ty = (d.target as TNode).y ?? 0;
+          return `${sx},${sy} ${(sx + tx) / 2},${(sy + ty) / 2} ${tx},${ty}`;
+        });
       nodeAll
+        .attr('cx', d => d.x ?? 0)
+        .attr('cy', d => d.y ?? 0);
+      haloAll
         .attr('cx', d => d.x ?? 0)
         .attr('cy', d => d.y ?? 0);
       labelAll
