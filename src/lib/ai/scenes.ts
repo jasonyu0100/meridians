@@ -1,4 +1,4 @@
-import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence } from '@/types/narrative';
+import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence, TimeUnit } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrative-utils';
 import { nextId, nextIds } from '@/lib/narrative-utils';
@@ -215,6 +215,19 @@ export type GenerateScenesOptions = {
    *  specific failure mode (truncation / unescaped quotes / etc.) so the
    *  repair LLM can focus its cleanup. Ignored when repairFromRaw is unset. */
   repairHint?: string;
+  /** Locks the time SCALE of the gap into the first generated scene
+   *  (minute / hour / day / week / month / year). The model still picks the
+   *  numeric magnitude and the natural-language transition phrase; only the
+   *  unit is fixed. Omit (or pass undefined) to let the model pick the unit
+   *  too — the default. Useful when the operator knows the cadence the work
+   *  lives at (a real-time thriller in minutes, a biography in years). */
+  firstSceneTimeUnit?: TimeUnit;
+  /** Optional companion to `firstSceneTimeUnit` — locks the numeric MAGNITUDE
+   *  of the first scene's gap (e.g. value=3 + unit="day" → "3 days"). 0
+   *  collapses to a concurrent opener; negative opens with a flashback /
+   *  time-travel. Ignored when `firstSceneTimeUnit` is unset. Omit to let the
+   *  model pick the magnitude at the locked scale. */
+  firstSceneTimeValue?: number;
 };
 
 export async function generateScenes(
@@ -225,7 +238,7 @@ export async function generateScenes(
   direction: string,
   options: GenerateScenesOptions = {},
 ): Promise<{ scenes: Scene[]; arc: Arc }> {
-  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, repairHint } = options;
+  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, repairHint, firstSceneTimeUnit, firstSceneTimeValue } = options;
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
   const arcId = existingArc?.id ?? nextId('ARC', Object.keys(narrative.arcs));
 
@@ -351,6 +364,18 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   if (arcSettingsBlock) inputBlocks.push(`  ${arcSettingsBlock.replace(/\n/g, '\n  ')}`);
   if (worldBuildFocusBlock) inputBlocks.push(`  ${worldBuildFocusBlock.replace(/\n/g, '\n  ')}`);
   inputBlocks.push(`  <continuation-point hint="Scenes continue from this point in the narrative.">after scene index ${currentIndex + 1}</continuation-point>`);
+  if (firstSceneTimeUnit) {
+    const hasValue = typeof firstSceneTimeValue === 'number' && Number.isFinite(firstSceneTimeValue);
+    const lockedValue = hasValue ? Math.round(firstSceneTimeValue as number) : null;
+    const valueAttr = lockedValue !== null ? ` value="${lockedValue}"` : '';
+    const constraintBody = lockedValue !== null
+      ? `first-scene timeDelta.value = ${lockedValue}, timeDelta.unit = ${firstSceneTimeUnit}`
+      : `first-scene timeDelta.unit = ${firstSceneTimeUnit}`;
+    const hint = lockedValue !== null
+      ? `Operator-locked time gap for the FIRST scene of this generation batch. The first scene's timeDelta MUST be {value: ${lockedValue}, unit: "${firstSceneTimeUnit}"}; pick a natural-language transition phrase consistent with that gap. ${lockedValue === 0 ? 'value=0 marks a concurrent opener — same moment as the prior scene, different vantage. ' : lockedValue < 0 ? 'A negative value opens a flashback or time-travel jump — anchor the backward shift explicitly. ' : ''}Only the first scene is constrained — subsequent scenes pick their own deltas freely.`
+      : `Operator-locked time SCALE for the gap into the FIRST scene of this generation batch. The first scene's timeDelta.unit MUST be '${firstSceneTimeUnit}'; pick the numeric value (positive forward, 0 concurrent, negative for an intentional flashback / time-travel) and a natural-language transition phrase consistent with that unit. Only the first scene is constrained — subsequent scenes pick their own units freely.`;
+    inputBlocks.push(`  <first-scene-transition unit="${firstSceneTimeUnit}"${valueAttr} hint="${hint}">${constraintBody}</first-scene-transition>`);
+  }
   if (sequencePrompt) inputBlocks.push(`  <pacing-sequence>\n${sequencePrompt}\n  </pacing-sequence>`);
   const modeSection = buildActiveModeSection(narrative, 'scene-structure');
   if (modeSection) inputBlocks.push(`  ${modeSection.replace(/\n/g, '\n  ')}`);

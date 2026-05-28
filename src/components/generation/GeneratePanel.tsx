@@ -32,7 +32,7 @@ import {
 } from "@/lib/pacing-profile";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
-import type { CubeCornerKey, NarrativeState } from "@/types/narrative";
+import type { CubeCornerKey, NarrativeState, TimeUnit } from "@/types/narrative";
 import {
   DEFAULT_STORY_SETTINGS,
   NARRATIVE_CUBE,
@@ -149,6 +149,8 @@ export function GeneratePanel({
   );
   const [guidanceConstraints, setGuidanceConstraints] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [firstSceneTimeUnit, setFirstSceneTimeUnit] = useState<TimeUnit | "automatic">("automatic");
+  const [firstSceneTimeValue, setFirstSceneTimeValue] = useState<string>("");
 
   // Pacing preview
   const [previewSequence, setPreviewSequence] = useState<PacingSequence | null>(
@@ -359,6 +361,12 @@ export function GeneratePanel({
           onReasoning: (token) => setStreamText((prev) => prev + token),
           repairFromRaw: opts.repairFromRaw,
           repairHint: opts.repairHint,
+          firstSceneTimeUnit:
+            firstSceneTimeUnit === "automatic" ? undefined : firstSceneTimeUnit,
+          firstSceneTimeValue:
+            firstSceneTimeUnit !== "automatic" && firstSceneTimeValue.trim() !== ""
+              ? Number(firstSceneTimeValue)
+              : undefined,
         },
       );
       setFailedRaw(null);
@@ -805,6 +813,74 @@ export function GeneratePanel({
                   </button>
                   {advancedOpen && (
                     <div className="mt-3 flex flex-col gap-3">
+                      {/* First-scene time-gap unit + magnitude */}
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-1.5">
+                          First-Scene Transition
+                        </label>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {firstSceneTimeUnit !== "automatic" && (
+                            <input
+                              type="number"
+                              step={1}
+                              value={firstSceneTimeValue}
+                              onChange={(e) =>
+                                setFirstSceneTimeValue(e.target.value)
+                              }
+                              placeholder="auto"
+                              className="w-14 rounded-md px-2 py-1 text-[11px] bg-white/2 border border-white/6 text-text-primary placeholder:text-text-dim focus:bg-white/6 focus:border-white/16 outline-none"
+                            />
+                          )}
+                          {(
+                            [
+                              "automatic",
+                              "minute",
+                              "hour",
+                              "day",
+                              "week",
+                              "month",
+                              "year",
+                            ] as const
+                          ).map((unit) => {
+                            const isSelected = firstSceneTimeUnit === unit;
+                            return (
+                              <button
+                                key={unit}
+                                type="button"
+                                onClick={() => {
+                                  setFirstSceneTimeUnit(unit);
+                                  if (unit === "automatic") setFirstSceneTimeValue("");
+                                }}
+                                className={`rounded-md px-2.5 py-1 text-[11px] capitalize transition border ${
+                                  isSelected
+                                    ? "bg-white/10 border-white/20 text-text-primary"
+                                    : "bg-white/2 border-white/6 text-text-dim hover:bg-white/6 hover:text-text-secondary"
+                                }`}
+                              >
+                                {unit}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-text-dim mt-1.5">
+                          {firstSceneTimeUnit === "automatic"
+                            ? "Model picks the time scale for the first scene."
+                            : firstSceneTimeValue.trim() === ""
+                            ? `First scene opens on a ${firstSceneTimeUnit}-scale gap; the model picks the magnitude.`
+                            : (() => {
+                                const n = Number(firstSceneTimeValue);
+                                if (!Number.isFinite(n)) return null;
+                                const rounded = Math.round(n);
+                                if (rounded === 0) return "First scene is concurrent — same moment as the prior scene, different vantage.";
+                                const abs = Math.abs(rounded);
+                                const unitLabel = abs === 1 ? firstSceneTimeUnit : `${firstSceneTimeUnit}s`;
+                                return rounded < 0
+                                  ? `First scene opens with a flashback ${abs} ${unitLabel} earlier.`
+                                  : `First scene opens ${rounded} ${unitLabel} after the prior scene.`;
+                              })()}
+                        </p>
+                      </div>
+
                       {/* Pacing presets — only shown when Markov pacing is enabled */}
                       {narrative.storySettings?.usePacingChain && (
                         <div>

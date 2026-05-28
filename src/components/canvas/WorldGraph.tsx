@@ -1291,15 +1291,21 @@ export default function WorldGraph() {
       ) : (
         <div className="relative h-full w-full">
           {locationBackgroundUrl && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `url(${locationBackgroundUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            />
+            <>
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: `url(${locationBackgroundUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 pointer-events-none bg-black/60"
+              />
+            </>
           )}
           <svg
             ref={svgRef}
