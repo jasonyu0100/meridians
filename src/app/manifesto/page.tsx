@@ -178,7 +178,7 @@ function ReasoningGraphDiagram() {
   // Dagre layout — same library + options as the in-app ReasoningGraphView.
   const layout = useMemo(() => {
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "TB", nodesep: 50, ranksep: 80, marginx: 24, marginy: 24 });
+    g.setGraph({ rankdir: "TB", nodesep: 32, ranksep: 60, marginx: 16, marginy: 16 });
     g.setDefaultEdgeLabel(() => ({}));
     for (const n of RG_NODES) g.setNode(n.id, { width: RG_NODE_WIDTH, height: RG_NODE_HEIGHT });
     for (const e of RG_EDGES) g.setEdge(e.from, e.to);
@@ -214,10 +214,10 @@ function ReasoningGraphDiagram() {
   return (
     <div className="mt-6 mb-3 rounded-xl border border-white/8 bg-linear-to-b from-white/2 to-white/4 px-3 py-4 overflow-x-auto shadow-lg">
       <svg
-        width="100%"
-        height={height}
         viewBox={`0 0 ${width} ${height}`}
-        className="block mx-auto min-w-[820px]"
+        className="block mx-auto min-w-205 w-full h-auto"
+        style={{ aspectRatio: `${width} / ${height}` }}
+        preserveAspectRatio="xMidYMid meet"
       >
         <defs>
           {Object.entries(RG_EDGE_COLORS).map(([type, color]) => (
@@ -694,9 +694,9 @@ const PRICING_TIERS = [
     tier: "Scout",
     price: "$2K/mo",
     annual: "$24K",
-    fits: "Companies <$100M revenue currently buying no structured strategy",
+    fits: "Entry tier — converts to Analyst after Q1 (standalone self-service is the Phase 3 target, not the launch claim)",
     includes:
-      "Self-service · 1 active world view · quarterly fork-and-commit · async after-action reports",
+      "1 world view · quarterly fork-and-commit · async after-action reports · light onboarding",
   },
   {
     tier: "Analyst",
@@ -754,30 +754,22 @@ function PricingTiers() {
       </table>
 
       <p className="text-[9px] text-white/25 mt-3 leading-relaxed">
-        <span className="font-mono text-white/40">Industry anchor</span> · McKinsey
-        weekly team bundle{" "}
-        <span className="font-mono text-white/50">$168K–$265K</span> (public US gov
-        contracts) · single engagement{" "}
-        <span className="font-mono text-white/50">$500K–$2M+</span> · transformation{" "}
-        <span className="font-mono text-white/50">$2M–$20M+</span> · ~$55B strategy
-        consulting market inside ~$400B management consulting total, ~6% CAGR
-        through 2034. The mid-market (~$50M–$500M revenue · ~95% of US firms by
-        count) spends ~$45B/year on strategy-adjacent work from tier-2 firms and
-        Big Four consulting arms — replicating the project unit at lower price,
-        not changing it.
+        <span className="font-mono text-white/40">MBB anchor</span> · weekly
+        team bundle{" "}
+        <span className="font-mono text-white/50">$168K–$265K</span> · engagement{" "}
+        <span className="font-mono text-white/50">$500K–$2M+</span> ·
+        transformation{" "}
+        <span className="font-mono text-white/50">$2M–$20M+</span>. ~$55B
+        strategy consulting market inside ~$400B total, ~6% CAGR.
       </p>
 
       <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
-        At <span className="text-white/55 font-mono">$10K/month</span>, a client
-        spends <span className="text-white/55 font-mono">$120K/year</span> for
-        continuous access to a forkable world view of their landscape. A single
-        MBB engagement costs <span className="text-white/55">4×</span> that at
-        the entry point and <span className="text-white/55">40×</span> at the
-        transformation tier &mdash; and ends with a deck, not a substrate. The
-        substrate is what&apos;s reusable, defensible, and compounds across
-        quarters.
+        At <span className="text-white/55 font-mono">$10K/mo</span> a client
+        spends <span className="text-white/55 font-mono">$120K/yr</span> for a
+        forkable world view. Same money buys one MBB slide deck &mdash; or
+        1/40th of a transformation. The substrate compounds across quarters;
+        the deck doesn&apos;t.
       </p>
-
     </div>
   );
 }
@@ -795,13 +787,13 @@ type SimActivity = {
 
 const SIM_ACTIVITIES: SimActivity[] = [
   {
-    activity: "Corpus ingest",
+    activity: "Data integration",
     definition:
-      "Client briefs · market data · internal docs · regulatory filings → typed world graph (one-time per world view)",
-    perUnit: "~$0.021/scene-equiv + ~$0.033 once",
-    annualScout: "~$1.10 once",
-    annualAnalyst: "~$1.10 once",
-    annualStrategist: "~$3.30 (3 views)",
+      "Connect → CRM · market data · internal strategy docs · analyst feeds · regulatory filings · board materials. Continuous, not one-time — new sources land every quarter as the engagement deepens. Cheap in compute, load-bearing as the moat.",
+    perUnit: "~$0.021/section + ~$0.033 per source",
+    annualScout: "~$3 (3 sources)",
+    annualAnalyst: "~$8 (8+ sources)",
+    annualStrategist: "~$20 (15+ sources)",
   },
   {
     activity: "Wargame session",
@@ -900,63 +892,81 @@ function UnitEconomics() {
               Annual compute / client
             </td>
             <td className="pt-2 font-mono text-white/75 text-right font-semibold">
-              ~$3
+              ~$5
             </td>
             <td className="pt-2 font-mono text-white/75 text-right font-semibold">
-              ~$12
+              ~$19
             </td>
             <td className="pt-2 font-mono text-white/75 text-right font-semibold">
-              ~$35
-            </td>
-          </tr>
-          <tr>
-            <td
-              colSpan={3}
-              className="pt-1 text-white/35 font-mono text-[10px] uppercase tracking-wider"
-            >
-              vs. subscription revenue
-            </td>
-            <td className="pt-1 font-mono text-emerald-400/60 text-right text-[10px]">
-              0.01% of $24K
-            </td>
-            <td className="pt-1 font-mono text-emerald-400/60 text-right text-[10px]">
-              0.01% of $96K
-            </td>
-            <td className="pt-1 font-mono text-emerald-400/60 text-right text-[10px]">
-              0.02% of $216K
+              ~$52
             </td>
           </tr>
         </tbody>
       </table>
 
+      <p className="text-[9px] text-white/25 mt-3 leading-relaxed">
+        Per-client <em>compute</em> is what the table shows. Per-client{" "}
+        <em>engineering</em> is not. Salesforce-to-anything is 2&ndash;6 weeks
+        for a first instance; schema drift is permanent overhead;
+        cross-source entity reconciliation is genuinely hard. Compute is
+        trivial; engineering is what builds the moat &mdash; see{" "}
+        <a
+          href="#integration"
+          className="text-white/45 underline underline-offset-2 hover:text-white/70"
+        >
+          Integration
+        </a>
+        .
+      </p>
+
+      <p className="text-[10px] text-white/30 mt-4 leading-relaxed">
+        <B>Honest framing</B>: engine has SaaS-class compute, delivery has
+        consulting-class labor, blended sits between. Dominant COGS at the
+        operator-led tiers is the <em>facilitator</em> &mdash; former MBB
+        consultant, fully loaded{" "}
+        <span className="font-mono text-white/55">~$275K</span>, pooled across
+        a vertical pod:
+      </p>
+
+      <ul className="mt-2 space-y-1.5 text-[10px] text-white/35 leading-relaxed pl-4">
+        <li>
+          <span className="font-mono text-white/55">Analyst</span> &mdash;
+          ~6 × $96K = $576K ·{" "}
+          <span className="text-emerald-400/70 font-semibold">
+            ~52% gross margin
+          </span>
+        </li>
+        <li>
+          <span className="font-mono text-white/55">Strategist</span> &mdash;
+          ~3.5 × $216K = $756K ·{" "}
+          <span className="text-emerald-400/70 font-semibold">~64%</span>
+        </li>
+        <li>
+          <span className="font-mono text-white/55">Scout</span> &mdash; entry
+          tier, converts to Analyst once the buyer sees what the substrate
+          produces against their data ·{" "}
+          <span className="text-white/45">
+            standalone self-service is the Phase 3 target, not the launch claim
+          </span>
+        </li>
+      </ul>
+
       <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
-        Compute margin on the engine is functionally <B>100%</B>. The variable
-        cost at <span className="font-mono text-white/55">Analyst</span> and{" "}
-        <span className="font-mono text-white/55">Strategist</span> tiers is the{" "}
-        <em>facilitator</em> — a former consultant who frames scenarios and
-        leads wargame sessions. One facilitator pools across a vertical of
-        clients (estimate <span className="font-mono text-white/50">5–8</span>{" "}
-        Analyst-tier or <span className="font-mono text-white/50">3–4</span>{" "}
-        Strategist-tier clients per FTE), inverting MBB&apos;s pyramid: the
-        analytical work is done by the substrate, not by juniors billed at{" "}
-        $450/hour. Customer-acquisition cost amortises against the
-        subscription&apos;s lifetime value, not against episodic project
-        revenue — and each retained client compounds the priors that make the
-        next forecast sharper.
+        Good for services, okay for SaaS. Until the connector library matures,
+        the business runs at services margins on Analyst + Strategist with
+        Scout as a low-volume conversion path. After Phase 3 lands, Scout
+        becomes truly self-service and the blended business inflects toward
+        SaaS economics. <B>The path is 24&ndash;36 months; the connector
+        library is the milestone that determines it.</B>
       </p>
 
       <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
-        Each kind of work routes to the cheapest model that meets its bar.{" "}
-        <span className="text-emerald-500/40">DeepSeek v4 Flash</span> ($0.14/M in
-        · $0.28/M out) handles scene generation, prose, and interaction (chat /
-        surveys / interviews / wargame dispatch).{" "}
-        <span className="text-violet-400/60">Gemini 2.5 Flash</span> ($0.30/M in
-        · $2.50/M out) handles planning (CRG / PRG / scene plans), the analysis
-        pipeline that ingests client corpora, and the default fallback
-        (evaluation, briefings, decision-matrix decomposition). The richer the
-        priors fed into ingest, the more the simulation can reason — analysis
-        is the path where the client&apos;s domain corpus becomes queryable
-        structure.
+        Cheapest model per call.{" "}
+        <span className="text-emerald-500/40">DeepSeek v4 Flash</span> drives
+        generation / prose / interaction;{" "}
+        <span className="text-violet-400/60">Gemini 2.5 Flash</span> drives
+        planning / analysis / fallback. The richer the ingest, the deeper the
+        simulation can reason.
       </p>
 
       <button
@@ -1237,6 +1247,106 @@ function ModelPill({ model }: { model: "DeepSeek v4" | "Gemini 2.5" | "mixed" })
   );
 }
 
+/* ── Integration roadmap ─────────────────────────────────────────────────── */
+
+type IntegrationPhase = {
+  phase: string;
+  timeframe: string;
+  shape: string;
+  outcome: string;
+  connectors: string;
+};
+
+const INTEGRATION_PHASES: IntegrationPhase[] = [
+  {
+    phase: "Phase 1",
+    timeframe: "months 0–18",
+    shape: "Forward-deployed engineering per account · learning loop, not a fixed plan",
+    outcome:
+      "Clients 3–5 teach what the canonical connector set is · 5–7 test whether convergence holds · 8–15 calibrate the Phase 2 timeline",
+    connectors:
+      "Hand-built per-client: Salesforce or HubSpot · client data warehouse (Snowflake / Databricks / BigQuery) · SharePoint or Google Drive · whichever competitive-intel vendor the client already pays for",
+  },
+  {
+    phase: "Phase 2",
+    timeframe: "months 12–30",
+    shape: "Productize the most-used integrations · onboarding shifts from forward-deployed engineering to configuration",
+    outcome:
+      "Per-client integration labor drops materially · time-to-first-wargame compresses from months to weeks",
+    connectors:
+      "First-class connectors: Salesforce · Snowflake · SharePoint · Google Drive · AlphaSense · S&P Capital IQ · SEC EDGAR · PitchBook · public market data",
+  },
+  {
+    phase: "Phase 3",
+    timeframe: "months 24+",
+    shape: "Comprehensive coverage · the connector library is broad enough that net-new clients onboard in days",
+    outcome:
+      "Scout tier becomes truly self-service · blended margin moves toward SaaS · the library is the moat",
+    connectors:
+      "Stretch catalog: Bloomberg · Gartner / Forrester feeds · Confluence / Notion · Diligent / board portals · industry-specific data (FDA submissions, energy market reports, transaction registries) · client-side data lakes via reverse ETL",
+  },
+];
+
+function IntegrationRoadmap() {
+  return (
+    <div className="my-5 px-3 sm:px-5 py-4 rounded-lg bg-white/3 border border-white/6">
+      <span className="text-[10px] uppercase tracking-wider text-white/20 block mb-3 font-mono">
+        Connector Library Roadmap · the path from forward-deployed to
+        self-service
+      </span>
+
+      <table className="w-full text-[11px] table-fixed">
+        <colgroup>
+          <col className="w-[12%]" />
+          <col className="w-[14%]" />
+          <col className="w-[37%]" />
+          <col className="w-[37%]" />
+        </colgroup>
+        <thead>
+          <tr className="text-[9px] uppercase tracking-wider text-white/25 font-mono">
+            <th className="text-left pb-2">Phase</th>
+            <th className="text-left pb-2">Timeframe</th>
+            <th className="text-left pb-2">Shape · what we&apos;re doing</th>
+            <th className="text-left pb-2">Outcome · what changes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {INTEGRATION_PHASES.map((row, i) => (
+            <tr key={row.phase} className={i > 0 ? "border-t border-white/5" : ""}>
+              <td className="py-2 text-white/70 font-mono">{row.phase}</td>
+              <td className="py-2 text-white/45 font-mono text-[10px]">
+                {row.timeframe}
+              </td>
+              <td className="py-2 text-white/45 text-[10px] pr-3">{row.shape}</td>
+              <td className="py-2 text-white/45 text-[10px]">{row.outcome}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="mt-4 pt-3 border-t border-white/5 space-y-2.5">
+        {INTEGRATION_PHASES.map((row) => (
+          <div key={row.phase} className="text-[10px] leading-relaxed">
+            <span className="font-mono text-white/55 mr-2">{row.phase}</span>
+            <span className="text-white/35">{row.connectors}</span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-white/30 mt-4 leading-relaxed">
+        Phase 1 is a <em>learning loop</em>, not a fixed plan. The first
+        3&ndash;5 clients teach what the canonical connector set is; the next
+        5&ndash;7 test whether the convergence thesis holds; somewhere between
+        client 8&ndash;15 we have enough signal to commit to a Phase 2
+        timeline. Phase 3 is when the library outpaces the average
+        client&apos;s stack &mdash; onboarding becomes configuration, and
+        per-client integration cost approaches zero. That&apos;s the path to
+        scaling without scaling labor.
+      </p>
+    </div>
+  );
+}
+
 /* ── Data ────────────────────────────────────────────────────────────────── */
 
 const ARCHETYPES = [
@@ -1464,8 +1574,9 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
   {
     label: "Meta",
     items: [
-      { id: "economics", label: "Economics" },
       { id: "multiplayer-wargaming", label: "Multiplayer Wargaming" },
+      { id: "economics", label: "Economics" },
+      { id: "integration", label: "Integration" },
     ],
   },
 ];
@@ -4376,162 +4487,160 @@ export default function PaperPage() {
             </P>
           </Section>
 
+          {/* ── Multiplayer Wargaming ────────────────────────────────── */}
+          <Section id="multiplayer-wargaming" label="Multiplayer Wargaming">
+            <P>
+              Narrative is the validation substrate; strategy is the
+              destination. Same engine, same forces, same fork-and-
+              commit math &mdash; the leap is operator depth, not
+              engine change. The product shape is{" "}
+              <em>multiplayer wargaming</em>: the client team on one
+              side, InkTide adversarial operators driving competitors
+              / regulators / customers on the other, every move
+              committed against a shared substrate that arbitrates
+              the rules. Real and simulated actors share the board.
+              The engine already carries what a wargame needs
+              &mdash; system graph for the rules, threads pricing
+              live questions, decision matrix scoring every move,
+              ELO keeping the ledger. Turn structure, side-aware POV
+              gating, referee loop are the rest.
+            </P>
+            <P>
+              Unaided executive judgment loses to systematic biases:
+              overconfidence on competitor response, anchoring on
+              first-mover assumptions, confirmation bias on the
+              chosen path. Kahneman, Lovallo &amp; Sibony&apos;s{" "}
+              <em>deliberate ignorance</em> holds &mdash; executives
+              underweight competitor reaction because modelling it
+              is cognitively costly. Wargaming makes the reaction
+              structurally necessary.
+            </P>
+            <P>
+              Three limits, each answered by the substrate.{" "}
+              <B>Tacit knowledge</B> (Polanyi) resists formalisation
+              &mdash; but the engine is calibrated for foxes, and
+              tacit knowledge IS captured when it produces calibrated
+              forecasts that outperform.{" "}
+              <B>Conceivability</B> &mdash; a simulation only explores
+              what its designers conceive &mdash; is unresolvable by
+              the engine alone; multiplayer is how human adversaries
+              surface what the model-builder cannot.{" "}
+              <B>Goodhart</B> &mdash; players gaming the simulation
+              rather than reality &mdash; is mitigated by
+              fork-and-commit: the substrate updates against reality,
+              not against itself. Reality is the referee.
+            </P>
+          </Section>
+
           {/* ── Economics ──────────────────────────────────────────────── */}
           <Section id="economics" label="Economics">
             <P>
               Strategy consulting runs on a structural contradiction.
-              A junior analyst billed at <B>$450/hour</B> costs the
-              firm ~<B>$120/hour</B> in comp; the pyramid generates{" "}
-              ~<B>73% margin</B> per billable. AI that compresses{" "}
-              <B>70&ndash;85%</B> of junior work doesn&apos;t reduce
-              headcount &mdash; it collapses the pyramid&apos;s base,
-              dragging per-engagement margin from ~<B>66%</B> toward{" "}
-              ~<B>39%</B>. MBB&apos;s internal AI deployments
-              (McKinsey&apos;s Lilli, BCG&apos;s Gene, Bain&apos;s
-              OpenAI tie) are efficiency plays that cannibalise the
-              model they were built to defend. Outcome-based pricing
-              now covers <B>~25%</B> of McKinsey&apos;s global fees{" "}
-              &mdash; adaptation that accelerates the contradiction,
-              not a solution.
+              A junior billed at <B>$450/hr</B> costs ~<B>$120</B> in
+              comp &mdash; ~<B>73%</B> margin per billable. AI that
+              compresses <B>70&ndash;85%</B> of junior work
+              doesn&apos;t shrink the pyramid; it collapses its base.
+              Per-engagement margin falls from ~<B>66%</B> toward{" "}
+              ~<B>39%</B>. Lilli, Gene, Bain&apos;s OpenAI tie are
+              efficiency plays cannibalising their own revenue.
+              Outcome-based pricing (~<B>25%</B> of McKinsey global
+              fees) accelerates the contradiction, not the way out.
             </P>
             <P>
-              The mid-market is what&apos;s been ceded. Companies
-              between <B>$50M</B> and <B>$500M</B> revenue &mdash;
-              ~<B>95%</B> of US firms by count &mdash; spend ~<B>$45B</B>
-              /year on strategy-adjacent work from tier-2 firms
-              (Kearney, Roland Berger, Oliver Wyman) and the Big
-              Four&apos;s consulting arms. The alternatives replicate
-              MBB&apos;s project unit at lower price points. MBB
-              engagements themselves have migrated from{" "}
-              <B>$500K</B> two decades ago to <B>$2M&ndash;$20M+</B>{" "}
-              transformations today; the lower tier isn&apos;t served
-              at all. The opening is for a different unit altogether:{" "}
-              <B>simulation-as-subscription</B>. Christensen&apos;s
-              pattern applies; incumbents fight disruption with
-              cheaper versions of the same product, which destroys
-              margin without matching the disruptor&apos;s cost
-              structure.
+              The mid-market is what&apos;s been ceded.{" "}
+              ~<B>95%</B> of US firms (<B>$50M&ndash;$500M</B>{" "}
+              revenue) spend ~<B>$45B/yr</B> on strategy-adjacent
+              work from tier-2 firms and the Big Four &mdash; same
+              project unit, lower price. MBB itself has migrated
+              from <B>$500K</B> engagements to <B>$2M&ndash;$20M+</B>{" "}
+              transformations; the lower tier isn&apos;t served at
+              all. The opening is a different unit altogether:{" "}
+              <B>simulation-as-subscription</B>.
             </P>
 
             <PricingTiers />
 
             <P>
-              Underneath each tier, the engine itself runs in
-              pennies. Compute is not where the cost lives &mdash;
-              labor is, and we replace the pyramid with a thin layer
-              of senior facilitators against a substrate that does
-              the analytical work juniors used to bill for. The unit
-              economics, broken down per simulation activity:
+              Beneath each tier the engine runs in pennies. Labor is
+              where the cost lives &mdash; a thin layer of senior
+              facilitators replaces the pyramid; the substrate does
+              the analytical work juniors used to bill for. The math:
             </P>
 
             <UnitEconomics />
 
             <P>
-              The structural barrier MBB faces is not technology
-              &mdash; it&apos;s the partnership model. A McKinsey
-              partner selling a $10K/month subscription is
-              compensated less than selling a $2M transformation,
-              and partners are elected by their book of business.
-              The incentive structure actively resists the
-              subscription unit. Their response window is ~<B>18
-              months</B> from a credible commercial launch &mdash;
-              roughly the time it takes a partnership vote to
-              re-shape compensation around recurring fees, against
-              the gravity of every prior cycle.
+              MBB can&apos;t disrupt itself. A partner selling a
+              $10K/month subscription is compensated less than
+              selling a $2M transformation, and partnership votes
+              elect on book of business. Response window:{" "}
+              ~<B>18 months</B> from a credible commercial launch
+              &mdash; the gravity of every prior compensation cycle
+              works against the subscription unit.
             </P>
             <P>
-              The engine is not the moat. MBB could replicate it with
-              comparable LLM infrastructure. The moat is what
-              accumulates <em>on</em> the engine: calibrated priors
-              across verticals, fork histories that show what
-              scenarios were conceived and what reality scored,
-              facilitator relationships that embed the service in
-              client decision rhythms. Each engagement enriches the
-              priors; the engine becomes more calibrated for that
-              vertical the longer the client stays.{" "}
-              <B>Computation is fixed and cheap; data quality decides
-              the result.</B> The longer the loop runs, the sharper
-              the next forecast and the harder the substrate is to
-              fork away from.
+              The engine is not the moat &mdash; MBB could rebuild
+              it. The moat sits one layer up: the client&apos;s{" "}
+              <em>strategic operating system</em> running on the
+              substrate. The next section names how that gets deep
+              enough to matter.
             </P>
           </Section>
 
-          {/* ── Multiplayer Wargaming ────────────────────────────────── */}
-          <Section id="multiplayer-wargaming" label="Multiplayer Wargaming">
+          {/* ── Integration ──────────────────────────────────────────── */}
+          <Section id="integration" label="Integration">
             <P>
-              Narrative is the validation substrate; strategy is the
-              destination. The same engine that grades a Harry Potter
-              arc grades a market thesis &mdash; same forces, same
-              fork-and-commit paradigm, same priors-decide-the-result
-              math. The leap from one to the other is operator depth,
-              not engine change. The product shape is{" "}
-              <em>multiplayer wargaming</em>: the client team on one
-              side, InkTide-sourced adversarial operators driving
-              competitors, regulators, and customers on the other,
-              each commiting moves against a shared substrate that
-              arbitrates the rules. Real actors and simulated actors
-              share the board. The engine already carries what a
-              wargame needs &mdash; system graph for the rules,
-              threads pricing live questions, a decision matrix
-              scoring every move, ELO keeping the strategic ledger.
-              Turn structure, side-aware POV gating, and a referee
-              loop are the rest.
+              After eighteen months a client isn&apos;t subscribing
+              &mdash; they&apos;re operating on a digital twin of
+              their strategic position: thousands of analyst-hours,
+              hundreds of decisions, a calibrated record of how
+              their industry moved, all on one living model.
+              Replicating that on a competitor&apos;s stack costs
+              eighteen months plus the institutional memory that
+              lived in it. <B>SAP-grade switching cost, not
+              consulting-grade.</B>
             </P>
             <P>
-              The epistemic case is direct. Unaided executive judgment
-              suffers from systematic biases: overconfidence on
-              competitor response, anchoring on first-mover
-              assumptions, confirmation bias on the chosen path.
-              Kahneman, Lovallo, and Sibony&apos;s &lsquo;deliberate
-              ignorance&rsquo; finding holds &mdash; executives
-              underweight competitor reaction because modelling it is
-              cognitively costly. Structured adversarial play corrects
-              all three by forcing the decision-maker to inhabit the
-              adversary&apos;s payoff structure. Wargaming makes the
-              reaction structurally necessary.
+              Integrations are continuous, not one-time. A client
+              signs with three sources; they stay because new feeds
+              &mdash; CRM, competitive intel, strategy docs, analyst
+              subscriptions, board materials &mdash; land every
+              quarter and the model gets richer for each.{" "}
+              <B>The substrate is the client&apos;s world; integrations
+              are how it stays alive.</B>
+            </P>
+
+            <IntegrationRoadmap />
+
+            <P>
+              The Snowflake / Fivetran lesson: own the connector
+              library, own the market. Each connector is real
+              engineering &mdash; auth, schema drift, rate limits,
+              entity reconciliation &mdash; but the catalog compounds.
+              The library is the durable asset; the engine earns its
+              keep against it.
             </P>
             <P>
-              Three limits constrain the claim, and the substrate
-              answers each one. Tacit knowledge &mdash; Polanyi&apos;s{" "}
-              <em>we know more than we can tell</em> &mdash; resists
-              formalization; but the engine is calibrated for foxes
-              who track many views with scored predictions, not
-              hedgehogs with one big narrative. Tacit knowledge IS
-              captured when it produces calibrated forecasts that
-              outperform; the engine makes that measurable. The
-              conceivability constraint &mdash; a simulation can
-              only explore scenarios its designers conceive &mdash;
-              is real and unresolvable by the engine alone, which is
-              why multiplayer is essential: adversarial human
-              operators surface what the model-builder cannot. The
-              Goodhart effect &mdash; players learning to game the
-              simulation rather than think about reality &mdash; is
-              mitigated by fork-and-commit: the substrate updates
-              against reality, not against the simulation&apos;s
-              internal consistency. Reality is the referee.
+              <B>First vertical: mid-market PE portcos.</B> PE firms
+              standardise tools across portfolio &mdash; one
+              fund-level reference opens 10&ndash;20 accounts.
+              Their portcos converge on a narrow stack (Salesforce
+              + Snowflake + SharePoint + one of AlphaSense /
+              PitchBook / S&amp;P Capital IQ), collapsing Phase 1
+              to ~six load-bearing connectors. PE owners demand
+              value-creation discipline as fiduciary obligation
+              &mdash; buyer with both budget and incentive. Second
+              vertical falls out naturally: mid-market B2B SaaS,
+              same stack, same appetite.
             </P>
             <P>
-              For the class of problems the mid-market actually faces
-              &mdash; competitive positioning, market entry, product
-              launch, regulatory exposure, M&amp;A posture &mdash;
-              the uncertainty is resolvable through structured
-              adversarial exploration, and the simulation produces
-              decisions executives could not have reached alone. For
-              problems of radical uncertainty &mdash; new market
-              creation, paradigm shifts &mdash; the simulation is a
-              thinking tool, not a prediction engine, and that
-              cognitive role alone outperforms the alternative of no
-              structured strategy process at all. A go-to-market plan
-              is a world view. A competitive analysis is a world
-              view. A regulatory filing is a world view. Teams that
-              run them as one-shot decks today are about to run them
-              as continuously-updating models &mdash; calibrated
-              against signal, forked when the field shifts, scored by
-              where the prior landed and where it didn&apos;t. Red
-              team and blue team commit one compass cardinal at a
-              time; the engine resolves the collision under the
-              world&apos;s declared physics. Priors as inputs,
-              simulations as experiments, reality as referee.
+              <B>Computation is fixed and cheap; data quality
+              decides the result; the integration layer is the work.</B>{" "}
+              Ship the engine. Embed in ten PE portcos. Build the
+              connectors the tenth client validates. Let the catalog
+              compound. Everything else &mdash; Scout self-service,
+              blended SaaS margins, the moat &mdash; falls out of
+              that.
             </P>
           </Section>
         </div>
