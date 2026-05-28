@@ -92,9 +92,3 @@ Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3.js
 OpenRouter (DeepSeek v4 Flash) · OpenAI Embeddings · Replicate (Seedream 4.5)
 IndexedDB + localStorage — fully client-side persistence, no backend database
 ```
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE)

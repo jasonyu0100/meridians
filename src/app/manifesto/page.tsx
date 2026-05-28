@@ -9,7 +9,6 @@ import * as d3 from "d3";
 import dagre from "dagre";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 /* ── LaTeX helpers ───────────────────────────────────────────────────────── */
@@ -1356,7 +1355,6 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
     label: "Meta",
     items: [
       { id: "economics", label: "Economics" },
-      { id: "open-source", label: "Open Source" },
       { id: "multiplayer-wargaming", label: "Multiplayer Wargaming" },
     ],
   },
@@ -4299,56 +4297,6 @@ export default function PaperPage() {
               <B>Computation is fixed and cheap; data quality decides
               the result.</B>
             </P>
-          </Section>
-
-          {/* ── Open Source ───────────────────────────────────────────── */}
-          <Section id="open-source" label="Open Source">
-            <P>
-              InkTide is open source. Every formula here lives in the
-              codebase &mdash; readable, runnable, modifiable. Weights,
-              thresholds, and reference means are constants; the
-              formulas are tools, not doctrine. A genre needing a
-              fourth force can add one. A domain needing different
-              calibration can replace the defaults. We&apos;d rather
-              argue the substrate in the open than defend it as a
-              black box.
-            </P>
-            <P>
-              The{" "}
-              <Link
-                href="/analysis"
-                className="text-white/60 underline underline-offset-2 hover:text-white/80 transition-colors"
-              >
-                analysis pipeline
-              </Link>{" "}
-              takes any corpus &mdash; novels, screenplays, papers,
-              scenario briefs, wargame logs, quarterly reviews,
-              regulatory filings. The interesting cases are the ones
-              the framework was never tuned for. Operators who learn
-              to think in world views &mdash; forking the model when
-              the field shifts, grading priors against what reality
-              just landed &mdash; will out-decide the ones still
-              running on intuition and slide decks. The substrate is
-              here. The longer the loop runs, the further ahead it
-              sees.
-            </P>
-
-            <div className="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
-              <Link
-                href="/case-analysis"
-                className="text-[11px] px-4 py-2 rounded-full border border-amber-500/30 bg-amber-500/5 text-amber-400/80 hover:text-amber-300 hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors text-center"
-              >
-                See it in action: Harry Potter case analysis &rarr;
-              </Link>
-              <a
-                href="https://github.com/jasonyu0100/inktide"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] px-4 py-2 rounded-full border border-white/15 bg-white/3 text-white/50 hover:text-white/70 hover:border-white/25 hover:bg-white/5 transition-colors text-center"
-              >
-                View the repo on GitHub &rarr;
-              </a>
-            </div>
           </Section>
 
           {/* ── Multiplayer Wargaming ────────────────────────────────── */}
