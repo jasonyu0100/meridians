@@ -207,6 +207,8 @@ function ConfigModal({
   // generation, and the cohort as a whole already represents the user's
   // intent (refined via the Compass view).
   const [selected, setSelected] = useState<Set<string>>(() => new Set(scenarios.map((s) => s.id)));
+  // Same bounds + default as the wizard's opening-arc slider for symmetry.
+  const [sceneCount, setSceneCount] = useState<number>(4);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -223,8 +225,9 @@ function ConfigModal({
   const handleStart = useCallback(() => {
     onStart({
       selectedScenarioIds: selectedIds,
+      sceneCount,
     });
-  }, [selectedIds, onStart]);
+  }, [selectedIds, sceneCount, onStart]);
 
   return (
     <Modal onClose={onClose} size="lg" maxHeight="90vh">
@@ -243,6 +246,26 @@ function ConfigModal({
           primary guidance. When the batch completes, commit to attach every
           run as a branch — the highest-probability one becomes active.
         </p>
+
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-2">
+            Arc length
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={2}
+              max={8}
+              step={1}
+              value={sceneCount}
+              onChange={(e) => setSceneCount(Number(e.target.value))}
+              className="flex-1 accent-blue-500"
+            />
+            <span className="text-[11px] text-text-primary font-mono w-16 text-right">
+              {sceneCount} scenes
+            </span>
+          </div>
+        </div>
 
         <div>
           <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-2">

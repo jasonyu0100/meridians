@@ -2685,6 +2685,9 @@ export type WizardData = {
   proseProfile?: ProseProfile;
   /** When true: generate world entities only — no introduction arc or scenes. Premise is treated as the full world plan document. */
   worldOnly?: boolean;
+  /** Opening-arc scene count, set by the wizard slider. Bounded 2–8.
+   *  Default 4 when unset. Ignored when `worldOnly` is true. */
+  sceneCount?: number;
 };
 
 export type GraphViewMode =

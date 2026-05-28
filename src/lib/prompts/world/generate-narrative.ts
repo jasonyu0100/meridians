@@ -22,12 +22,12 @@ import {
 } from '../paradigm';
 
 const WORLD_ARCHITECT_SHARED =
-  'A world view is a causally coherent, queryable knowledge structure — not by default a story. The paradigm decides the OUTPUT FORM. See the pattern blocks in the user prompt for the specific shape requirements. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+  'A world view is a causally coherent, queryable knowledge structure — not by default a story. The paradigm decides the OUTPUT FORM. See the pattern blocks in the user prompt for the specific shape requirements. Full mode: also produce an opening arc (scene count is specified in the user prompt) + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 /** Multipurpose fallback — preserves the legacy prompt verbatim for the rare
  *  call that supplies no paradigm. */
 const WORLD_ARCHITECT_FALLBACK =
-  'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic); game → MULTI-ACTOR GAME (2+ actors take turns pursuing contested stakes under enforceable rules; system-graph IS the rule set, world tracks actors + resources + positions, threads are open stakes). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, chronicled entries, or game turns. See the pattern blocks in the user prompt. Full mode: also produce a 4-scene opening arc + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
+  'You are a world-view architect. A world view is a causally coherent, queryable knowledge structure — not by default a story. Detect the paradigm first and pick the matching world-shape: fiction / non-fiction → POPULATED NARRATIVE (invented vs. observed humans / in-world figures); simulation → RULE-GOVERNED NARRATIVE (in-world figures the rules ACT ON; the rule set is load-bearing); essay → SINGULAR THINKER (one named author plus 1-3 cited interlocutors); panel → MULTI-THINKER (a named cast of agents OR human experts, cooperative-with-disagreement, the work IS the contest of minds reaching synthesis); atlas → REFERENCE TYPOLOGY (entries / taxa / categories, no scene flow, system-graph IS the work); debate → ADVERSARIAL CONTEST (two or more named parties locked in zero-sum stakes under explicit rules); record → CHRONOLOGICAL RECORD (time-ordered log of events, real or imagined; entries replace scenes; pick a time velocity — daily / monthly / yearly / dynamic); game → MULTI-ACTOR GAME (2+ actors take turns pursuing contested stakes under enforceable rules; system-graph IS the rule set, world tracks actors + resources + positions, threads are open stakes). The paradigm decides the OUTPUT FORM — do not default to fictional storytelling shape when the paradigm calls for entries, moves, sections, chronicled entries, or game turns. See the pattern blocks in the user prompt. Full mode: also produce an opening arc (scene count is specified in the user prompt) + prose profile. World-only mode: entities + system + prose profile, no scenes. Initialize every entity you emit with seed nodes — never emit blank world graphs. Return ONLY valid JSON matching the schema in the user prompt.';
 
 /** Build the world-architect SYSTEM prompt. Case-based on the wizard-declared
  *  paradigm. When paradigm is unset, falls back to the multipurpose preamble. */
@@ -387,6 +387,9 @@ export type GenerateNarrativeArgs = {
   /** Compulsory paradigm — selects the world-shape (populated-narrative /
    *  agentic-ai-team / singular-thinker) and the per-paradigm prompt blocks. */
   paradigm: NarrativeParadigm;
+  /** Scenes in the opening arc. Set by the wizard slider; ignored when
+   *  `worldOnly` is true. Bounded 2–8 at the call site. */
+  sceneCount: number;
   forceReferenceMeansWorld: number;
   forceReferenceMeansSystem: number;
   worldTypicalBand: string;
@@ -471,6 +474,7 @@ export function buildGenerateNarrativePrompt(args: GenerateNarrativeArgs): strin
     sourceText,
     worldOnly,
     paradigm,
+    sceneCount,
     forceReferenceMeansWorld,
     forceReferenceMeansSystem,
     worldTypicalBand,
@@ -493,7 +497,7 @@ ${sourceText.trim()}
     : '';
 
   return `<inputs>
-${paradigmDirectiveBlock}  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : 'Full mode — entities + 4-scene opening arc + prose profile.'}">${worldOnly
+${paradigmDirectiveBlock}  <task hint="${worldOnly ? 'World-only mode — output entities, no scenes or arcs.' : `Full mode — entities + ${sceneCount}-scene opening arc + prose profile.`}">${worldOnly
     ? 'Extract and build a complete narrative world from the following plan. Do NOT generate scenes or arcs — output world entities only (characters, locations, threads, relationships, artifacts, rules, systems, prose profile).'
     : 'Create a complete narrative world.'}</task>
   <title>${title}</title>
@@ -516,7 +520,7 @@ ${buildNarrativeOutputSchema({ worldOnly })}
     <example category="good" register="fiction" flavour="sci-fi">A colony's memory-scent inheritance passes only along confirmed matrilineal lines registered at the genome archive; off-register children carry the chemistry but no inheritance rights, and the archive can be edited only by quorum.</example>
     <example category="good" register="simulation" flavour="wargame">A border raid escalates to open conflict only when the cumulative grievance ledger crosses the threshold set by the suzerain's tribute schedule, gating retaliation through a mandatory seven-day council convocation.</example>
     <example category="good" register="paper">A finding is admitted to the journal's record only after two reviewers, blind to author and institution, sign off on methods AND data within the 16-week revision cycle; managing-editor override requires written dissent.</example>${worldOnly ? '' : `
-    <count entity="scenes" target="4 in 1 arc">Averaging ~${forceReferenceMeansWorld} world nodes and ~${forceReferenceMeansSystem} system nodes per scene (the grading reference means). Some scenes quiet, some dense — but the MEAN across the arc must hit the reference or the whole opening grades in the 60s. Keep the opening arc focused: 4 scenes is the target so the engine can validate quickly; richer arcs follow at the operator's pace.</count>
+    <count entity="scenes" target="${sceneCount} in 1 arc">Averaging ~${forceReferenceMeansWorld} world nodes and ~${forceReferenceMeansSystem} system nodes per scene (the grading reference means). Some scenes quiet, some dense — but the MEAN across the arc must hit the reference or the whole opening grades in the 60s. Generate exactly ${sceneCount} scenes — operator-chosen length, not a default.</count>
     <density typical="touches 3-5 entities; ${worldTypicalBand} world nodes; ${systemTypicalBand} system concepts" climactic="${worldClimaxBand} world; ${systemClimaxBand} system" />`}
   </minimums>
 

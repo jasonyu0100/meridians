@@ -484,6 +484,9 @@ export async function generateNarrative(
   /** Diagnostic hint from the UI auto-diagnose pass — names the specific
    *  failure mode so the repair LLM can focus its cleanup. */
   repairHint?: string,
+  /** Scenes in the opening arc. Wizard-set, bounded 2–8. Ignored when
+   *  `worldOnly` is true. Defaults to 4 to preserve prior behaviour. */
+  sceneCount = 4,
 ): Promise<NarrativeState> {
   logInfo('Starting narrative generation', {
     source: 'manual-generation',
@@ -502,6 +505,7 @@ export async function generateNarrative(
     sourceText,
     worldOnly,
     paradigm,
+    sceneCount: Math.max(2, Math.min(8, sceneCount)),
     forceReferenceMeansWorld: FORCE_REFERENCE_MEANS.world,
     forceReferenceMeansSystem: FORCE_REFERENCE_MEANS.system,
     worldTypicalBand: fmtBand(FORCE_BANDS.world.typical),

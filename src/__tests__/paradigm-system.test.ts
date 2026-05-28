@@ -71,6 +71,7 @@ function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
     sourceText,
     worldOnly: false,
     paradigm,
+    sceneCount: 4,
     forceReferenceMeansWorld: 14,
     forceReferenceMeansSystem: 6,
     worldTypicalBand: "1-3",

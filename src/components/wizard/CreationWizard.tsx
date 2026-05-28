@@ -166,6 +166,7 @@ export function CreationWizard() {
           : null,
         mode === 'repair' ? failedRaw! : undefined,
         mode === 'repair' ? repairHint : undefined,
+        wd.sceneCount ?? 4,
       );
       // Persist the wizard-time choice onto the new narrative so subsequent
       // generations inherit the same effort by default.
@@ -397,9 +398,33 @@ export function CreationWizard() {
 
             {/* Options */}
             <section className="border-t border-white/8 pt-8">
-              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-2 block font-mono">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-text-dim mb-3 block font-mono">
                 Options
               </label>
+
+              {/* Scenes to generate — only meaningful when the opening arc is on */}
+              {!(wd.worldOnly ?? false) && (
+                <div className="mb-4">
+                  <label className="text-[10px] text-text-dim/80 uppercase tracking-wider block mb-2">
+                    Opening arc length
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={2}
+                      max={8}
+                      step={1}
+                      value={wd.sceneCount ?? 4}
+                      onChange={(e) => update({ sceneCount: Number(e.target.value) })}
+                      className="flex-1 accent-emerald-400"
+                    />
+                    <span className="text-[11px] text-text-primary font-mono w-16 text-right">
+                      {wd.sceneCount ?? 4} scenes
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"

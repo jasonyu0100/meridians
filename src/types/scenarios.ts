@@ -84,6 +84,9 @@ export type ScenariosConfig = {
   constraintsPrompt?: string;
   /** Optional world-build commit to seed all generations with. */
   worldBuildFocusId?: string;
+  /** Per-batch override for arc length. When unset, generateScenes falls
+   *  back to `storySettings.targetArcLength`. Bounded 2–8 at the call site. */
+  sceneCount?: number;
 };
 
 export const DEFAULT_SCENARIOS_CONFIG: ScenariosConfig = {};

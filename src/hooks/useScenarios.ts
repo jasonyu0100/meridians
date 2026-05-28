@@ -557,12 +557,19 @@ async function generateOneScenario(input: {
   // structurally (scenes, arc, deltas) once the call resolves.
   let stream = '';
 
+  // Panel-set scene count overrides the per-narrative targetArcLength
+  // default; 0 still falls back to the story setting when the slider was
+  // never touched (config.sceneCount unset).
+  const sceneCount = config.sceneCount && config.sceneCount > 0
+    ? Math.max(2, Math.min(8, config.sceneCount))
+    : 0;
+
   try {
     const result = await generateScenes(
       rootNarrative,
       rootResolvedKeys,
       rootHeadIndex,
-      0, // 0 = use targetArcLength from story settings
+      sceneCount,
       direction,
       {
         worldBuildFocus,
