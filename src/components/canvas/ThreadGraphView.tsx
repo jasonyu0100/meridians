@@ -258,7 +258,9 @@ export default function ThreadGraphView({
       .selectAll<SVGPolylineElement, TLink>('polyline')
       .data(simLinks, d => `${(d.source as TNode).id ?? d.source}-${(d.target as TNode).id ?? d.target}`);
     linkSel.exit().remove();
-    const linkEnter = linkSel.enter().append('polyline').attr('fill', 'none');
+    const linkEnter = linkSel.enter().append('polyline')
+      .attr('fill', 'none')
+      .attr('vector-effect', 'non-scaling-stroke');
     const linkAll = linkEnter.merge(linkSel);
     // Edge intensity: opacity + width scale with relation kind. Dependent
     // links are structural (thread→thread convergence) and read prominent;
@@ -266,8 +268,10 @@ export default function ThreadGraphView({
     // entities.
     linkAll
       .attr('stroke', '#ffffff')
-      .attr('stroke-opacity', d => d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25))
-      .attr('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
+      // .style() (inline) so the values can't be overridden by any cached
+      // or future CSS rule on parent classes.
+      .style('opacity', d => d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25))
+      .style('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
       .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none')
       .attr('marker-mid', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);
 

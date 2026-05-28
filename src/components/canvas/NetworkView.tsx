@@ -244,9 +244,7 @@ export default function NetworkView() {
     // cross-force edges (fate↔world, world↔system, fate↔system) read as
     // bridges between the three force fields rather than as anonymous white
     // lines. Same-force edges show as a tinted version of their force.
-    // Edges run a notch quieter than the shared helper's default so the
-    // mesh recedes behind the nodes instead of competing with them.
-    const opacityFor = (weight: number) => edgeOpacityFor(weight / maxWeight) * 0.7;
+    const opacityFor = (weight: number) => edgeOpacityFor(weight / maxWeight);
     const widthFor = (weight: number) => edgeWidthFor(weight / maxWeight);
     const linkColour = (d: NLink) => {
       const a = (d.source as NNode).kind;
@@ -260,9 +258,12 @@ export default function NetworkView() {
       .data(simLinks, (d) => `${(d.source as NNode).id}-${(d.target as NNode).id}`);
     linkSel.exit().remove();
     linkSel.enter().append('line').merge(linkSel)
+      .attr('vector-effect', 'non-scaling-stroke')
       .attr('stroke', (d) => linkColour(d))
-      .attr('stroke-opacity', (d) => opacityFor(d.weight))
-      .attr('stroke-width', (d) => widthFor(d.weight));
+      // .style() (inline) so the values can't be overridden by any cached
+      // or future CSS rule on parent classes.
+      .style('stroke-opacity', (d) => opacityFor(d.weight))
+      .style('stroke-width', (d) => widthFor(d.weight));
 
     // Edge labels (scene scope only) — render the relation token mid-line.
     // For scopes that hide labels, the data join below clears the layer.
@@ -335,7 +336,7 @@ export default function NetworkView() {
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
           .attr('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.12));
         g.select('g.n-links').selectAll<SVGLineElement, NLink>('line')
-          .attr('stroke-opacity', (l) => {
+          .style('stroke-opacity', (l) => {
             const sId = (l.source as NNode).id, tId = (l.target as NNode).id;
             const touches = sId === d.id || tId === d.id;
             // Touching the hovered node: lift toward full opacity scaled by
@@ -352,7 +353,7 @@ export default function NetworkView() {
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
           .attr('opacity', (o) => opacityForNode(o));
         g.select('g.n-links').selectAll<SVGLineElement, NLink>('line')
-          .attr('stroke-opacity', (l) => opacityFor(l.weight));
+          .style('stroke-opacity', (l) => opacityFor(l.weight));
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
           .attr('opacity', (o) => labelOpacity(o));
       })

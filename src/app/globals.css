@@ -92,10 +92,6 @@ button,
 .graph-node:hover {
   opacity: 0.85;
 }
-.graph-edge {
-  stroke: rgba(196, 181, 253, 0.18);
-  stroke-width: 1;
-}
 .graph-label {
   fill: #9ca0b0;
   font-size: 10px;

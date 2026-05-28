@@ -125,8 +125,8 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .attr('viewBox', '0 -5 10 10')
       .attr('refX', 9)
       .attr('refY', 0)
-      .attr('markerWidth', 5)
-      .attr('markerHeight', 5)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
@@ -225,7 +225,9 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .selectAll<SVGPolylineElement, SysLink>('polyline')
       .data(simLinks, (d) => `${(d.source as SysNode).id}-${(d.target as SysNode).id}`);
     linkSel.exit().remove();
-    const linkEnter = linkSel.enter().append('polyline').attr('fill', 'none');
+    const linkEnter = linkSel.enter().append('polyline')
+      .attr('fill', 'none')
+      .attr('vector-effect', 'non-scaling-stroke');
     const linkAll = linkEnter.merge(linkSel);
     // Edge intensity: opacity + width scale with mean endpoint degree via
     // the shared canvas-graph helper. Codex mode dims edges not touching a
@@ -234,7 +236,9 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       ((d.source as SysNode).degree + (d.target as SysNode).degree) / (maxDegree * 2);
     linkAll
       .attr('stroke', '#ffffff')
-      .attr('stroke-opacity', (d) => {
+      // .style() (inline) so the values can't be overridden by any cached
+      // or future CSS rule on parent classes.
+      .style('opacity', (d) => {
         const base = edgeOpacityFor(edgeT(d));
         if (mode === 'codex' && sceneNodeIds.size > 0) {
           const touches = sceneNodeIds.has((d.source as SysNode).id) ||
@@ -243,7 +247,7 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
         }
         return base;
       })
-      .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)))
+      .style('stroke-width', (d) => edgeWidthFor(edgeT(d)))
       .attr('marker-mid', 'url(#wk-arrow)');
 
     // Halos for nodes the current scene introduced or touched. Replaces the

@@ -47,6 +47,7 @@ import {
   DEFAULT_KNOWLEDGE_OPACITY,
 } from './graph-utils';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
+import { edgeWidthFor, edgeOpacityFor } from '@/lib/graph-styling';
 
 export default function WorldGraph() {
   const { state, dispatch } = useStore();
@@ -238,8 +239,8 @@ export default function WorldGraph() {
       .attr('viewBox', '0 -5 10 10')
       .attr('refX', 9)
       .attr('refY', 0)
-      .attr('markerWidth', 5)
-      .attr('markerHeight', 5)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
@@ -679,6 +680,7 @@ export default function WorldGraph() {
       .join('polyline')
       .attr('class', 'graph-edge')
       .attr('fill', 'none')
+      .attr('vector-effect', 'non-scaling-stroke')
       .attr('stroke', (d) => {
         if (d.linkKind === 'character-location') return '#3B82F6';  // Blue - current position
         if (d.linkKind === 'tie') return '#A855F7';                 // Purple - permanent affiliation
@@ -686,8 +688,13 @@ export default function WorldGraph() {
         if (d.linkKind === 'knowledge') return '#FFFFFF';
         return '#FFFFFF';
       })
-      .attr('stroke-opacity', 0.85)
-      .attr('stroke-width', 4.5)
+      // Group opacity (not stroke-opacity) so the arrowhead fades together
+      // with its line — context-stroke inherits colour only, not opacity.
+      // .style() (inline) instead of .attr() because the .graph-edge class
+      // historically had a CSS rule that pinned stroke-width to 1px;
+      // inline style wins over any cached CSS that may still be lingering.
+      .style('opacity', edgeOpacityFor(0.85))
+      .style('stroke-width', edgeWidthFor(0.85))
       .attr('marker-mid', (d) => (isArrowed(d) ? 'url(#wg-arrow)' : null));
 
     // Relationship links — solid, bright, thick. Valence sign drives colour.
@@ -697,12 +704,13 @@ export default function WorldGraph() {
       .data(relLinks)
       .join('line')
       .attr('class', 'graph-edge graph-rel-edge')
+      .attr('vector-effect', 'non-scaling-stroke')
       .attr('stroke', (d) => {
         const v = d.valence ?? 0;
         return v >= 0 ? '#4ADE80' : '#F87171';
       })
-      .attr('stroke-opacity', 0.85)
-      .attr('stroke-width', 4.5);
+      .style('stroke-opacity', edgeOpacityFor(0.85))
+      .style('stroke-width', edgeWidthFor(0.85));
 
     // Relationship labels at midpoints
     const linkLabelSelection = g
@@ -973,8 +981,8 @@ export default function WorldGraph() {
     // Highlight connected relationship edges
     g.select('g.links')
       .selectAll<SVGLineElement, GraphLink>('line.graph-rel-edge')
-      .attr('stroke-opacity', (d) => {
-        if (!selectedNodeId) return 0.85;
+      .style('stroke-opacity', (d) => {
+        if (!selectedNodeId) return edgeOpacityFor(0.85);
         return isConnected(d) ? 1 : 0.15;
       });
 
@@ -1052,9 +1060,10 @@ export default function WorldGraph() {
       .join('polyline')
       .attr('class', 'graph-edge charloc')
       .attr('fill', 'none')
+      .attr('vector-effect', 'non-scaling-stroke')
       .attr('stroke', '#3B82F6')
-      .attr('stroke-opacity', 0.85)
-      .attr('stroke-width', 4.5)
+      .style('opacity', edgeOpacityFor(0.85))
+      .style('stroke-width', edgeWidthFor(0.85))
       .attr('marker-mid', 'url(#wg-arrow)');
 
     // Swap char-loc links in the simulation force
