@@ -1575,8 +1575,8 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
     label: "Meta",
     items: [
       { id: "multiplayer-wargaming", label: "Multiplayer Wargaming" },
-      { id: "economics", label: "Economics" },
       { id: "integration", label: "Integration" },
+      { id: "economics", label: "Economics" },
     ],
   },
 ];
@@ -4532,73 +4532,19 @@ export default function PaperPage() {
             </P>
           </Section>
 
-          {/* ── Economics ──────────────────────────────────────────────── */}
-          <Section id="economics" label="Economics">
-            <P>
-              Strategy consulting runs on a structural contradiction.
-              A junior billed at <B>$450/hr</B> costs ~<B>$120</B> in
-              comp &mdash; ~<B>73%</B> margin per billable. AI that
-              compresses <B>70&ndash;85%</B> of junior work
-              doesn&apos;t shrink the pyramid; it collapses its base.
-              Per-engagement margin falls from ~<B>66%</B> toward{" "}
-              ~<B>39%</B>. Lilli, Gene, Bain&apos;s OpenAI tie are
-              efficiency plays cannibalising their own revenue.
-              Outcome-based pricing (~<B>25%</B> of McKinsey global
-              fees) accelerates the contradiction, not the way out.
-            </P>
-            <P>
-              The mid-market is what&apos;s been ceded.{" "}
-              ~<B>95%</B> of US firms (<B>$50M&ndash;$500M</B>{" "}
-              revenue) spend ~<B>$45B/yr</B> on strategy-adjacent
-              work from tier-2 firms and the Big Four &mdash; same
-              project unit, lower price. MBB itself has migrated
-              from <B>$500K</B> engagements to <B>$2M&ndash;$20M+</B>{" "}
-              transformations; the lower tier isn&apos;t served at
-              all. The opening is a different unit altogether:{" "}
-              <B>simulation-as-subscription</B>.
-            </P>
-
-            <PricingTiers />
-
-            <P>
-              Beneath each tier the engine runs in pennies. Labor is
-              where the cost lives &mdash; a thin layer of senior
-              facilitators replaces the pyramid; the substrate does
-              the analytical work juniors used to bill for. The math:
-            </P>
-
-            <UnitEconomics />
-
-            <P>
-              MBB can&apos;t disrupt itself. A partner selling a
-              $10K/month subscription is compensated less than
-              selling a $2M transformation, and partnership votes
-              elect on book of business. Response window:{" "}
-              ~<B>18 months</B> from a credible commercial launch
-              &mdash; the gravity of every prior compensation cycle
-              works against the subscription unit.
-            </P>
-            <P>
-              The engine is not the moat &mdash; MBB could rebuild
-              it. The moat sits one layer up: the client&apos;s{" "}
-              <em>strategic operating system</em> running on the
-              substrate. The next section names how that gets deep
-              enough to matter.
-            </P>
-          </Section>
-
           {/* ── Integration ──────────────────────────────────────────── */}
           <Section id="integration" label="Integration">
             <P>
-              After eighteen months a client isn&apos;t subscribing
-              &mdash; they&apos;re operating on a digital twin of
-              their strategic position: thousands of analyst-hours,
-              hundreds of decisions, a calibrated record of how
-              their industry moved, all on one living model.
-              Replicating that on a competitor&apos;s stack costs
-              eighteen months plus the institutional memory that
-              lived in it. <B>SAP-grade switching cost, not
-              consulting-grade.</B>
+              <B>The epistemic case justifies the unit; the moat
+              justifies the business.</B> After eighteen months a
+              client isn&apos;t subscribing &mdash; they&apos;re
+              operating on a digital twin of their strategic
+              position: thousands of analyst-hours, hundreds of
+              decisions, a calibrated record of how their industry
+              moved, all on one living model. Replicating that on a
+              competitor&apos;s stack costs eighteen months plus the
+              institutional memory that lived in it.{" "}
+              <B>SAP-grade switching cost, not consulting-grade.</B>
             </P>
             <P>
               Integrations are continuous, not one-time. A client
@@ -4629,10 +4575,67 @@ export default function PaperPage() {
               PitchBook / S&amp;P Capital IQ), collapsing Phase 1
               to ~six load-bearing connectors. PE owners demand
               value-creation discipline as fiduciary obligation
-              &mdash; buyer with both budget and incentive. Second
-              vertical falls out naturally: mid-market B2B SaaS,
-              same stack, same appetite.
+              &mdash; buyer with both budget and incentive. PE adds
+              its own dynamic: fund-level standardisation multiplies
+              access, but exit cycles introduce portco-level
+              turnover that the substrate has to survive &mdash;
+              calibrated priors carry through, the operator does
+              not. Second vertical falls out naturally: mid-market
+              B2B SaaS, same stack, same appetite.
             </P>
+            <P>
+              With the moat defined &mdash; what the client
+              accumulates over time &mdash; the commercial case
+              justifies the timing.
+            </P>
+          </Section>
+
+          {/* ── Economics ──────────────────────────────────────────────── */}
+          <Section id="economics" label="Economics">
+            <P>
+              Strategy consulting runs on a structural contradiction.
+              A junior billed at <B>$450/hr</B> costs ~<B>$120</B> in
+              comp &mdash; ~<B>73%</B> margin per billable. AI that
+              compresses <B>70&ndash;85%</B> of junior work
+              doesn&apos;t shrink the pyramid; it collapses its base.
+              Per-engagement margin falls from ~<B>66%</B> toward{" "}
+              ~<B>39%</B>. Lilli, Gene, Bain&apos;s OpenAI tie are
+              efficiency plays cannibalising their own revenue.
+              Outcome-based pricing (~<B>25%</B> of McKinsey global
+              fees) accelerates the contradiction, not the way out.
+            </P>
+            <P>
+              The mid-market is what&apos;s been ceded.{" "}
+              ~<B>95%</B> of US firms (<B>$50M&ndash;$500M</B>{" "}
+              revenue) spend ~<B>$45B/yr</B> on strategy-adjacent
+              work from tier-2 firms and the Big Four &mdash; same
+              project unit, lower price. MBB itself has migrated
+              from <B>$500K</B> engagements to <B>$2M&ndash;$20M+</B>{" "}
+              transformations; the lower tier isn&apos;t served at
+              all. The opening is a different unit altogether:{" "}
+              <B>simulation-as-subscription</B>.
+            </P>
+            <P>
+              MBB can&apos;t disrupt itself. A partner selling a
+              $10K/month subscription is compensated less than
+              selling a $2M transformation, and partnership votes
+              elect on book of business. Response window:{" "}
+              ~<B>18 months</B> from a credible commercial launch
+              &mdash; the gravity of every prior compensation cycle
+              works against the subscription unit.
+            </P>
+
+            <PricingTiers />
+
+            <P>
+              Beneath each tier the engine runs in pennies. Labor is
+              where the cost lives &mdash; a thin layer of senior
+              facilitators replaces the pyramid; the substrate does
+              the analytical work juniors used to bill for. The math:
+            </P>
+
+            <UnitEconomics />
+
             <P>
               <B>Computation is fixed and cheap; data quality
               decides the result; the integration layer is the work.</B>{" "}
