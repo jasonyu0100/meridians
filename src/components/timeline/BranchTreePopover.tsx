@@ -26,7 +26,9 @@ function stableBranchColor(id: string, all: Branch[]): string {
 }
 
 const ROW_H = 44;          // height per branch row
-const INDENT_W = 18;       // px per depth level
+const INDENT_W = 28;        // px per depth level — large enough that depth
+                            // reads as clear nesting rather than near-flat
+                            // when a 5+ level chain is stacked.
 const RAIL_X = 14;         // x of the leftmost rail line
 const DOT_R = 4;
 
@@ -53,14 +55,54 @@ type LayoutNode = {
   parentRow: number | null;
 };
 
-/** DFS pre-order from roots; siblings ordered by createdAt for stability.
- *  Same algorithm as BranchModal.buildGrid so the row order matches what
- *  the user already sees in the full graph view. */
+/** Each entry id is owned by exactly one branch — the one whose own
+ *  `entryIds` first contains it (its origin). For fork visualisation
+ *  we want the branch that ORIGINATED the forkEntry, not the abstract
+ *  `parentBranchId` chain — that matches BranchModal's graph, where
+ *  connectors run off the column of the entry's origin regardless of
+ *  what `parentBranchId` happens to claim. */
+function buildEntryOrigin(allBranches: Branch[]): Map<string, string> {
+  const origin = new Map<string, string>();
+  for (const b of allBranches) {
+    for (const eid of b.entryIds) {
+      if (!origin.has(eid)) origin.set(eid, b.id);
+    }
+  }
+  return origin;
+}
+
+/** Tree parent of each branch resolved from `forkEntryId` → originating
+ *  branch. Falls back to `parentBranchId` only when the fork entry can't
+ *  be located (data inconsistency); falls back to null otherwise. */
+function resolveTreeParents(allBranches: Branch[]): Map<string, string | null> {
+  const byId = new Map(allBranches.map((b) => [b.id, b]));
+  const entryOrigin = buildEntryOrigin(allBranches);
+  const parentOf = new Map<string, string | null>();
+  for (const b of allBranches) {
+    let parent: string | null = null;
+    if (b.forkEntryId) {
+      const origin = entryOrigin.get(b.forkEntryId);
+      if (origin && origin !== b.id) parent = origin;
+    }
+    // Fallback: parentBranchId if we couldn't resolve via fork origin
+    // and the parent actually exists in the set.
+    if (!parent && b.parentBranchId && byId.has(b.parentBranchId)) {
+      parent = b.parentBranchId;
+    }
+    parentOf.set(b.id, parent);
+  }
+  return parentOf;
+}
+
+/** DFS pre-order over the entry-origin-derived tree; siblings ordered
+ *  by createdAt for stability. Same primitive BranchModal's graph uses,
+ *  so the popover and the graph agree on hierarchy. */
 function layout(allBranches: Branch[]): LayoutNode[] {
   const byId = new Map(allBranches.map((b) => [b.id, b]));
+  const treeParent = resolveTreeParents(allBranches);
   const childrenOf = new Map<string | null, Branch[]>();
   for (const b of allBranches) {
-    const key = b.parentBranchId ?? null;
+    const key = treeParent.get(b.id) ?? null;
     const list = childrenOf.get(key) ?? [];
     list.push(b);
     childrenOf.set(key, list);
@@ -73,7 +115,8 @@ function layout(allBranches: Branch[]): LayoutNode[] {
   function dfs(id: string, depth: number) {
     const branch = byId.get(id);
     if (!branch) return;
-    const parentRow = branch.parentBranchId ? rowOf.get(branch.parentBranchId) ?? null : null;
+    const parentId = treeParent.get(id) ?? null;
+    const parentRow = parentId ? rowOf.get(parentId) ?? null : null;
     rowOf.set(id, rows.length);
     rows.push({ branch, depth, parentRow });
     const children = childrenOf.get(id) ?? [];
@@ -177,8 +220,8 @@ export function BranchTreePopover({
                   key={`conn-${node.branch.id}`}
                   d={`M ${parentX} ${parentY + DOT_R + 1} L ${parentX} ${childY} L ${childX - DOT_R - 1} ${childY}`}
                   stroke={c}
-                  strokeOpacity={0.28}
-                  strokeWidth={1.25}
+                  strokeOpacity={0.55}
+                  strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   fill="none"
