@@ -84,22 +84,16 @@ button,
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* D3 graph styles. Nodes across every canvas graph (WorldGraph,
- * ThreadGraphView, KnowledgeGraphView, NetworkView) share the same hover
- * affordance — solid by default, slightly dim on hover so the pointed-at
- * node reads as the active target. Only EDGES carry persistent
- * transparency; nodes stay opaque except for this hover state. */
-.graph-node,
-.t-nodes circle,
-.wk-nodes circle,
-.n-nodes circle {
+/* D3 graph styles. Every canvas graph (WorldGraph, ThreadGraphView,
+ * KnowledgeGraphView, NetworkView) tags its node elements with this
+ * class so a single rule controls the hover affordance: solid by
+ * default, slightly dim on hover so the pointed-at node reads as the
+ * active target. Only EDGES carry persistent transparency. */
+.graph-node {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-.graph-node:hover,
-.t-nodes circle:hover,
-.wk-nodes circle:hover,
-.n-nodes circle:hover {
+.graph-node:hover {
   opacity: 0.85;
 }
 .graph-label {

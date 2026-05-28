@@ -300,9 +300,9 @@ export default function ThreadGraphView({
     const nodeEnter = nodeSel.enter().append('circle').style('cursor', 'pointer');
     const nodeAll = nodeEnter.merge(nodeSel);
     nodeAll
+      .attr('class', 'graph-node')
       .attr('r', nodeRadius)
       .attr('fill', d => showTypes ? THREAD_CATEGORY_HEX[d.category] : '#888')
-      .attr('opacity', 1)
       .attr('stroke', d => d.hasDeltaAtScene ? '#fff' : 'transparent')
       .attr('stroke-width', 2);
 

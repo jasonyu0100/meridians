@@ -306,8 +306,8 @@ export default function NetworkView() {
     // Nodes read fine from fill + stroke alone; reserve the filter for
     // explicit emphasis (e.g. on hover) if we want it back.
     const nodeAll = nodeSel.enter().append('circle')
-      .style('cursor', 'pointer')
       .merge(nodeSel)
+      .attr('class', 'graph-node')
       .attr('r', (d) => radiusOf(d))
       .attr('fill', (d) => heatFillOf(d))
       .attr('opacity', (d) => opacityForNode(d))

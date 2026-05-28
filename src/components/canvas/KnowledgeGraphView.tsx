@@ -275,9 +275,9 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     const nodeEnter = nodeSel.enter().append('circle').style('cursor', 'pointer');
     const nodeAll = nodeEnter.merge(nodeSel);
     nodeAll
+      .attr('class', 'graph-node')
       .attr('r', nodeRadius)
       .attr('fill', (d) => showTypes ? (SYS_TYPE_COLORS[d.type] ?? '#888') : '#888')
-      .attr('opacity', 1)
       .attr('stroke', (d) => isActive(d) ? '#fff' : 'transparent')
       .attr('stroke-width', 2);
 
