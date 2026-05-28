@@ -98,6 +98,9 @@ export interface GraphNode extends d3.SimulationNodeDatum {
   imagePrompt?: string;
   /** Only for artifact nodes */
   significance?: string;
+  /** Visible radius stamped during render; used by tick handlers to offset
+   *  directed edge endpoints to the node's edge instead of its centre. */
+  radius?: number;
 }
 
 export interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
@@ -343,13 +346,14 @@ export function buildGraphData(
     });
   }
 
-  // Spatial edges (child -> parent location)
+  // Spatial edges (parent -> child location). Direction encodes containment
+  // so the arrow head reads as parent-points-to-child.
   for (const loc of Object.values(locations)) {
     if (loc.parentId && locations[loc.parentId]) {
       links.push({
-        id: `spatial-${loc.id}-${loc.parentId}`,
-        source: loc.id,
-        target: loc.parentId,
+        id: `spatial-${loc.parentId}-${loc.id}`,
+        source: loc.parentId,
+        target: loc.id,
         linkKind: "spatial",
       });
     }
@@ -513,7 +517,8 @@ export function buildOverviewGraphData(
     }
   }
 
-  // Spatial edges for active locations
+  // Spatial edges for active locations (parent -> child; arrow encodes
+  // containment).
   for (const loc of Object.values(locations)) {
     if (
       activeLocIds.has(loc.id) &&
@@ -521,9 +526,9 @@ export function buildOverviewGraphData(
       activeLocIds.has(loc.parentId)
     ) {
       links.push({
-        id: `spatial-${loc.id}-${loc.parentId}`,
-        source: loc.id,
-        target: loc.parentId,
+        id: `spatial-${loc.parentId}-${loc.id}`,
+        source: loc.parentId,
+        target: loc.id,
         linkKind: "spatial",
       });
     }

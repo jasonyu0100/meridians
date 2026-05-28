@@ -172,6 +172,20 @@ export default function ThreadGraphView({
     const svg = d3.select(svgEl);
     svg.selectAll('*').remove();
 
+    // Arrowhead for dependent (parent → child) thread links. context-stroke
+    // means the marker inherits the line's colour.
+    svg.append('defs').append('marker')
+      .attr('id', 'tg-arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 9)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'context-stroke');
+
     const g = svg.append('g');
     gRef.current = g;
 
@@ -253,7 +267,8 @@ export default function ThreadGraphView({
       .attr('stroke', '#ffffff')
       .attr('stroke-opacity', d => d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25))
       .attr('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
-      .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none');
+      .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none')
+      .attr('marker-end', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);
 
     // Nodes
     const nodeSel = g.select<SVGGElement>('g.t-nodes')
@@ -342,12 +357,31 @@ export default function ThreadGraphView({
     sim.nodes(simNodes);
     (sim.force('link') as d3.ForceLink<TNode, TLink>).links(simLinks);
     (sim.force('collide') as d3.ForceCollide<TNode>).radius(d => nodeRadius(d) + 30);
+    // Pull dependent-link endpoints back to the target's edge so the arrow
+    // sits just outside the node circle. Participant links keep the centre-
+    // to-centre geometry — they're dotted, no arrowhead.
+    const ARROW_PAD = 4;
+    const dependentEndpoint = (d: TLink): { x: number; y: number } => {
+      const src = d.source as TNode;
+      const tgt = d.target as TNode;
+      const sx = src.x ?? 0;
+      const sy = src.y ?? 0;
+      const tx = tgt.x ?? 0;
+      const ty = tgt.y ?? 0;
+      const dx = tx - sx;
+      const dy = ty - sy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist === 0) return { x: tx, y: ty };
+      const back = Math.min(nodeRadius(tgt) + ARROW_PAD, dist);
+      return { x: tx - (dx / dist) * back, y: ty - (dy / dist) * back };
+    };
+
     sim.on('tick', () => {
       linkAll
         .attr('x1', d => (d.source as TNode).x ?? 0)
         .attr('y1', d => (d.source as TNode).y ?? 0)
-        .attr('x2', d => (d.target as TNode).x ?? 0)
-        .attr('y2', d => (d.target as TNode).y ?? 0);
+        .attr('x2', d => d.relation === 'dependent' ? dependentEndpoint(d).x : (d.target as TNode).x ?? 0)
+        .attr('y2', d => d.relation === 'dependent' ? dependentEndpoint(d).y : (d.target as TNode).y ?? 0);
       nodeAll
         .attr('cx', d => d.x ?? 0)
         .attr('cy', d => d.y ?? 0);

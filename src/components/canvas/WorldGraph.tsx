@@ -48,6 +48,24 @@ import {
 } from './graph-utils';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
 
+// Shared endpoint offset for arrowed edges: pull the target end back by the
+// target node's stamped radius (+ pad) so the arrowhead sits at the node
+// edge rather than the centre. Used by both the main tick handler and the
+// char-loc effect, which run in different closures.
+const ARROW_PAD = 4;
+function offsetArrowEndpoint(source: GraphNode, target: GraphNode): { x: number; y: number } {
+  const sx = source.x ?? 0;
+  const sy = source.y ?? 0;
+  const tx = target.x ?? 0;
+  const ty = target.y ?? 0;
+  const dx = tx - sx;
+  const dy = ty - sy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist === 0) return { x: tx, y: ty };
+  const back = Math.min((target.radius ?? 18) + ARROW_PAD, dist);
+  return { x: tx - (dx / dist) * back, y: ty - (dy / dist) * back };
+}
+
 export default function WorldGraph() {
   const { state, dispatch } = useStore();
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -229,6 +247,21 @@ export default function WorldGraph() {
 
     // SVG defs for clip paths (used for node images)
     const defs = svg.append('defs');
+
+    // Shared arrowhead marker for directed edges (charloc, spatial, ownership).
+    // context-stroke makes the marker inherit each line's colour, so we keep
+    // a single marker definition instead of duplicating per link kind.
+    defs.append('marker')
+      .attr('id', 'wg-arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 9)
+      .attr('refY', 0)
+      .attr('markerWidth', 5)
+      .attr('markerHeight', 5)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'context-stroke');
 
     let nodes: GraphNode[];
     let links: GraphLink[];
@@ -594,6 +627,38 @@ export default function WorldGraph() {
     const CHAR_MAX_R = 44;
     const LOC_MIN_SCALE = 0.6;
     const LOC_MAX_SCALE = 1.4;
+    const ARTIFACT_SIZES: Record<string, number> = { key: 22, notable: 16, minor: 11 };
+
+    // Effective visible radius — matches the per-kind sizing applied below so
+    // arrow-end offsets land at the node edge instead of buried in the centre.
+    const effectiveRadius = (n: GraphNode): number => {
+      if (n.kind === 'knowledge') return 8;
+      if (n.kind === 'artifact') return ARTIFACT_SIZES[n.significance ?? 'notable'] ?? 16;
+      if (n.kind === 'character') {
+        if (scaleByUsage) {
+          const t = charRange > 0 ? ((n.usageCount ?? 1) - minCharUsage) / charRange : 0;
+          return CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * t;
+        }
+        return ROLE_RADIUS[n.role ?? 'recurring'] ?? 18;
+      }
+      // location
+      if (scaleByUsage) {
+        const t = locRange > 0 ? ((n.usageCount ?? 1) - minLocUsage) / locRange : 0;
+        const s = LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * t;
+        return (LOCATION_SIZE * s) / 2;
+      }
+      return LOCATION_SIZE / 2;
+    };
+
+    // Stamp visible radius so tick handlers (including the separate char-loc
+    // effect, which has no access to local scaling state) can offset arrow
+    // endpoints to the node edge.
+    for (const n of nodes) n.radius = effectiveRadius(n);
+
+    // Endpoint shifted back from target centre to (target_edge + small pad),
+    // so the arrow head sits just outside the node shape regardless of size.
+    const arrowedKinds = new Set<GraphLink['linkKind']>(['character-location', 'spatial', 'ownership']);
+    const isArrowed = (l: GraphLink) => arrowedKinds.has(l.linkKind);
 
     // Force simulation
     const simulation = d3
@@ -651,7 +716,8 @@ export default function WorldGraph() {
         return '#FFFFFF';
       })
       .attr('stroke-opacity', 0.85)
-      .attr('stroke-width', 4.5);
+      .attr('stroke-width', 4.5)
+      .attr('marker-end', (d) => (isArrowed(d) ? 'url(#wg-arrow)' : null));
 
     // Relationship links — solid, bright, thick. Valence sign drives colour.
     const relLinkSelection = g
@@ -807,8 +873,7 @@ export default function WorldGraph() {
       .attr('fill', (d) => WORLD_FILL[d.worldType ?? 'trait'] ?? DEFAULT_WORLD_FILL)
       .attr('opacity', (d) => KNOWLEDGE_OPACITY[d.worldType ?? 'trait'] ?? DEFAULT_KNOWLEDGE_OPACITY);
 
-    // Artifact diamonds — sized by significance
-    const ARTIFACT_SIZES: Record<string, number> = { key: 22, notable: 16, minor: 11 };
+    // Artifact diamonds — sized by significance (ARTIFACT_SIZES defined above).
     const ARTIFACT_FILLS: Record<string, string> = { key: '#F59E0B', notable: '#D97706', minor: '#92400E' };
     nodeGroup
       .filter((d) => d.kind === 'artifact')
@@ -883,8 +948,14 @@ export default function WorldGraph() {
       linkSelection
         .attr('x1', (d) => ((d.source as GraphNode).x ?? 0))
         .attr('y1', (d) => ((d.source as GraphNode).y ?? 0))
-        .attr('x2', (d) => ((d.target as GraphNode).x ?? 0))
-        .attr('y2', (d) => ((d.target as GraphNode).y ?? 0));
+        .attr('x2', (d) => {
+          if (!isArrowed(d)) return (d.target as GraphNode).x ?? 0;
+          return offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).x;
+        })
+        .attr('y2', (d) => {
+          if (!isArrowed(d)) return (d.target as GraphNode).y ?? 0;
+          return offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).y;
+        });
 
       relLinkSelection
         .attr('x1', (d) => ((d.source as GraphNode).x ?? 0))
@@ -1014,7 +1085,8 @@ export default function WorldGraph() {
       .attr('class', 'graph-edge charloc')
       .attr('stroke', '#3B82F6')
       .attr('stroke-opacity', 0.85)
-      .attr('stroke-width', 4.5);
+      .attr('stroke-width', 4.5)
+      .attr('marker-end', 'url(#wg-arrow)');
 
     // Swap char-loc links in the simulation force
     const currentLinks = (simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>).links();
@@ -1032,8 +1104,8 @@ export default function WorldGraph() {
       newLinkEls
         .attr('x1', (d) => ((d.source as GraphNode).x ?? 0))
         .attr('y1', (d) => ((d.source as GraphNode).y ?? 0))
-        .attr('x2', (d) => ((d.target as GraphNode).x ?? 0))
-        .attr('y2', (d) => ((d.target as GraphNode).y ?? 0));
+        .attr('x2', (d) => offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).x)
+        .attr('y2', (d) => offsetArrowEndpoint(d.source as GraphNode, d.target as GraphNode).y);
     });
     // Mirror the main rebuild's deps so char-loc lines are re-attached after
     // every full graph rebuild (arcFocus, vicinity, entity-kind toggles all
