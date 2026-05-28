@@ -1577,6 +1577,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
       { id: "multiplayer-wargaming", label: "Multiplayer Wargaming" },
       { id: "integration", label: "Integration" },
       { id: "economics", label: "Economics" },
+      { id: "coda", label: "Coda" },
     ],
   },
 ];
@@ -1771,17 +1772,23 @@ export default function PaperPage() {
               A wargame brief has one. A quarterly strategy memo has
               one. We make the skeleton operable &mdash; read it, fork
               it, simulate forward off it, watch it update as reality
-              lands.
+              lands. <B>SAP for finance. Palantir for operations.
+              InkTide for strategic cognition itself.</B>
             </P>
             <P>
-              A world view runs like an ant colony. <B>World</B>{" "}
-              &mdash; the workers: characters, locations, artifacts,
-              each carrying their own graph of beliefs and capabilities.{" "}
-              <B>System</B> &mdash; the charter: rules, conventions,
-              constraints. <B>Threads</B> &mdash; the open questions
-              the hive pursues, each a live stance over named outcomes
-              that revises every time a worker acts. No central
-              planner; coherence is emergent.
+              A world view is an <B>imagined society</B>, raised by an
+              author and expanded over time as new citizens, places, and
+              laws are introduced. <B>World</B> &mdash; its citizens:
+              characters, locations, artifacts, each carrying their own
+              private map of the polity around them. <B>System</B>{" "}
+              &mdash; its imposed law: the rules, conventions, and
+              constraints the author has legislated. <B>Threads</B>{" "}
+              &mdash; its open questions, each a live stance over named
+              outcomes that revises every time a citizen acts. The
+              author legislates; the society then exerts its own gravity
+              &mdash; the three forces measure the pressure an imposed
+              polity generates once it&apos;s heavy enough to push back
+              on its author.
             </P>
             <P>
               LLMs extract qualitative deltas at low temperature;
@@ -3044,6 +3051,15 @@ export default function PaperPage() {
               deterministic. Cross-run validation confirms stable
               rankings, and the same formulas drive generation &mdash;
               the measurement <em>is</em> the objective function.
+            </P>
+            <P>
+              The implication runs past the proof of concept.
+              Recovering <em>Harry Potter</em>&apos;s dramatic shape
+              from delta arithmetic alone is the first empirical
+              evidence that <B>story has measurable physics</B>. The
+              same math that reads a 73-scene novel reads a 73-turn
+              campaign, a 73-paragraph paper, a 73-step strategy plan
+              &mdash; not by analogy, by physics.
             </P>
           </Section>
 
@@ -4598,6 +4614,18 @@ export default function PaperPage() {
               keep against it.
             </P>
             <P>
+              That&apos;s the <B>commercial</B> moat. The{" "}
+              <B>epistemic</B> moat compounds faster: every committed
+              fork, graded against what reality returned, teaches the
+              substrate how worlds actually move. Eighteen months
+              across fifty PE portcos isn&apos;t integration depth
+              &mdash; it&apos;s a calibrated prior on how mid-market
+              B2B companies behave under competitive pressure.
+              Snowflake owns connectors; we own{" "}
+              <B>calibrated world views of how industries actually
+              behave</B>.
+            </P>
+            <P>
               <B>First vertical: mid-market PE portcos.</B> PE firms
               standardise tools across portfolio &mdash; one
               fund-level reference opens 10&ndash;20 accounts.
@@ -4675,6 +4703,36 @@ export default function PaperPage() {
               compound. Everything else &mdash; Scout self-service,
               blended SaaS margins, the moat &mdash; falls out of
               that.
+            </P>
+          </Section>
+
+          {/* ── Coda ──────────────────────────────────────────────────── */}
+          <Section id="coda" label="Coda">
+            <P>
+              Step back from pricing and pipelines. What InkTide does
+              is <B>let an author raise an imagined society and watch
+              it think</B>. The author legislates the citizens, the
+              rules, the open questions; the substrate simulates how
+              the society moves under its own gravity.
+            </P>
+            <P>
+              The relatable picture is a <em>bee hive</em> &mdash;
+              knowledge unevenly distributed, the queen never sees the
+              field, the colony moves as one body with no single bee
+              holding the map. But the hive evolved; the society
+              InkTide raises is <B>authored</B>. A history, a paper, a
+              novel, a wargame brief &mdash; every coherent text
+              authors a society. We make the implicit explicit:
+              extract it, simulate its futures, grade them against
+              what reality returned, sharpen the next iteration.
+            </P>
+            <P>
+              The math, the connectors, the unit economics are how we
+              keep the promise. The promise is the substrate
+              civilisation uses to reason about its own long-horizon
+              questions &mdash; markets, campaigns, alliances,
+              doctrines, futures.{" "}
+              <B>Pricing is the wedge. The wedge is not the bet.</B>
             </P>
           </Section>
         </div>
