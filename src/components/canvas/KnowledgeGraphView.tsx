@@ -118,6 +118,20 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     const svg = d3.select(svgEl);
     svg.selectAll('*').remove();
 
+    // Arrowhead marker (placed midway via marker-mid on polylines). context-
+    // stroke makes the head inherit each line's stroke colour.
+    svg.append('defs').append('marker')
+      .attr('id', 'wk-arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 9)
+      .attr('refY', 0)
+      .attr('markerWidth', 5)
+      .attr('markerHeight', 5)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'context-stroke');
+
     const g = svg.append('g');
     gRef.current = g;
 
@@ -204,12 +218,14 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to))
       .map((e) => ({ source: nodeMap.get(e.from)!, target: nodeMap.get(e.to)!, relation: e.relation }));
 
-    // Update links
+    // Update links — polylines (source → midpoint → target) so each edge
+    // shows direction via an arrowhead at its midpoint without breaking the
+    // straight centre-to-centre geometry.
     const linkSel = g.select<SVGGElement>('g.wk-links')
-      .selectAll<SVGLineElement, SysLink>('line')
+      .selectAll<SVGPolylineElement, SysLink>('polyline')
       .data(simLinks, (d) => `${(d.source as SysNode).id}-${(d.target as SysNode).id}`);
     linkSel.exit().remove();
-    const linkEnter = linkSel.enter().append('line');
+    const linkEnter = linkSel.enter().append('polyline').attr('fill', 'none');
     const linkAll = linkEnter.merge(linkSel);
     // Edge intensity: opacity + width scale with mean endpoint degree via
     // the shared canvas-graph helper. Codex mode dims edges not touching a
@@ -227,7 +243,8 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
         }
         return base;
       })
-      .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)));
+      .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)))
+      .attr('marker-mid', 'url(#wk-arrow)');
 
     // Halos for nodes the current scene introduced or touched. Replaces the
     // earlier "dim non-scene nodes" approach so concept colours read true
@@ -328,10 +345,13 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     (sim.force('collide') as d3.ForceCollide<SysNode>).radius((d) => nodeRadius(d) + 30);
     sim.on('tick', () => {
       linkAll
-        .attr('x1', (d) => (d.source as SysNode).x ?? 0)
-        .attr('y1', (d) => (d.source as SysNode).y ?? 0)
-        .attr('x2', (d) => (d.target as SysNode).x ?? 0)
-        .attr('y2', (d) => (d.target as SysNode).y ?? 0);
+        .attr('points', (d) => {
+          const sx = (d.source as SysNode).x ?? 0;
+          const sy = (d.source as SysNode).y ?? 0;
+          const tx = (d.target as SysNode).x ?? 0;
+          const ty = (d.target as SysNode).y ?? 0;
+          return `${sx},${sy} ${(sx + tx) / 2},${(sy + ty) / 2} ${tx},${ty}`;
+        });
       nodeAll
         .attr('cx', (d) => d.x ?? 0)
         .attr('cy', (d) => d.y ?? 0);
