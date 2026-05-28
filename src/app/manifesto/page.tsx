@@ -4506,6 +4506,37 @@ export default function PaperPage() {
               gating, referee loop are the rest.
             </P>
             <P>
+              <B>Play</B> &mdash; the wargame&apos;s concrete shape.
+              The <em>Compass</em> exposes the current decision space:
+              the load-bearing variables and the activations they
+              admit. Each operator is dealt a hand from their
+              actor&apos;s available moves, commits a card against
+              the space &mdash; <B>face-up</B> to commit publicly,{" "}
+              <B>face-down</B> to commit privately &mdash; and during
+              the commit-to-reveal window negotiates: disclosing
+              cards from the hand, trading information, proposing
+              deals, threatening defections, withholding. Empty
+              seats fill with AI agents from configurable profiles
+              (<em>compete</em> / <em>cooperate</em> / <em>extract</em>
+              {" "}/ <em>spoil</em>) playing the same hand against the
+              same Compass. Reveals resolve in declared order; the
+              decision matrix scores the round.
+            </P>
+            <P>
+              The engine then iterates the state one step forward.
+              The default narrator advances using the Compass
+              cohort; the operator can replace it with a custom
+              Compass &mdash; a scripted opponent, a market
+              simulator, a regulator&apos;s response model &mdash;
+              to shape the future state space deliberately. New
+              variables surface, old ones decay, hands redeal, the
+              next turn opens. Every commitment becomes a thread
+              delta, every reveal updates priors, every negotiated
+              agreement is a system rule the next move either honors
+              or breaks. <B>A deck dealt against a moving world, one
+              step at a time.</B>
+            </P>
+            <P>
               Unaided executive judgment loses to systematic biases:
               overconfidence on competitor response, anchoring on
               first-mover assumptions, confirmation bias on the
