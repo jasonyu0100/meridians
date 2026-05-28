@@ -5,16 +5,18 @@ import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { calculateApiCost, calculateTotalCost } from '@/lib/api-logger';
 import type { ApiLogEntry } from '@/types/narrative';
 
-/** Re-renders once per second while any entry is still pending, so the
- *  "running for Xs" indicator ticks live without spinning a timer when
- *  every call has already settled. */
-function useLiveClock(active: boolean): number {
+/** Re-renders on a regular interval while the viewer is open so both the
+ *  "running for Xs" pending indicator and the "X ago" relative timestamps
+ *  stay fresh. Ticks every second while any call is pending (need
+ *  sub-second precision for elapsed); falls back to every ten seconds
+ *  otherwise (relative timestamps don't need finer granularity). */
+function useLiveClock(hasPending: boolean): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!active) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    const interval = hasPending ? 1000 : 10_000;
+    const id = window.setInterval(() => setNow(Date.now()), interval);
     return () => window.clearInterval(id);
-  }, [active]);
+  }, [hasPending]);
   return now;
 }
 
@@ -167,7 +169,12 @@ function LogListRow({ entry, onSelect, now }: { entry: ApiLogEntry; onSelect: ()
             {formatCost(cost, 'row')}
           </span>
         </div>
-        <span className="text-[9px] text-text-dim/60 tabular-nums">{formatTime(entry.timestamp)}</span>
+        <span
+          className="text-[9px] text-text-dim/60 tabular-nums"
+          title={formatTime(entry.timestamp)}
+        >
+          {formatRelativeTime(entry.timestamp, now)}
+        </span>
       </div>
     </button>
   );
@@ -230,7 +237,12 @@ function LogDetail({ entry, onBack, now }: { entry: ApiLogEntry; onBack: () => v
           highlight={entry.status === 'pending'}
           tone="pending"
         />
-        <span className="ml-auto tabular-nums">{formatTime(entry.timestamp)}</span>
+        <span
+          className="ml-auto tabular-nums"
+          title={formatTime(entry.timestamp)}
+        >
+          {formatRelativeTime(entry.timestamp, now)}
+        </span>
       </div>
 
       {/* Tabs */}
@@ -441,4 +453,21 @@ function formatDuration(ms: number): string {
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+/** Compact relative-time label — "just now", "12s ago", "5m ago", "2h ago",
+ *  "3d ago". Falls back to a date string after a week, where "X ago" stops
+ *  being a useful unit. */
+function formatRelativeTime(ts: number, now: number): string {
+  const deltaMs = Math.max(0, now - ts);
+  const s = Math.floor(deltaMs / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(ts).toLocaleDateString();
 }
