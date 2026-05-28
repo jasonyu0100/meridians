@@ -232,9 +232,6 @@ export type ExpandWorldOptions = {
    *  parse + post-processing path. Used by the UI's "Repair" button after
    *  a primary call returns unparseable JSON. */
   repairFromRaw?: string;
-  /** Diagnostic hint from the UI auto-diagnose pass — names the specific
-   *  failure mode so the repair LLM can focus its cleanup. */
-  repairHint?: string;
 };
 
 export async function expandWorld(
@@ -245,7 +242,7 @@ export async function expandWorld(
   size: WorldExpansionSize = 'medium',
   options: ExpandWorldOptions = {},
 ): Promise<WorldExpansionResponse> {
-  const { sourceText, onReasoning, entityFilter, repairFromRaw, repairHint } = options;
+  const { sourceText, onReasoning, entityFilter, repairFromRaw } = options;
 
   logInfo('Starting world expansion', {
     source: 'world-expansion',
@@ -308,7 +305,7 @@ export async function expandWorld(
   let raw: string;
   if (repairFromRaw !== undefined) {
     const { repairJsonOutput } = await import('./repair');
-    raw = await repairJsonOutput(repairFromRaw, 'expandWorld', repairHint);
+    raw = await repairJsonOutput(repairFromRaw, 'expandWorld');
   } else {
     const reasoningBudget = resolveReasoningBudget(narrative);
     const websearch = resolveWebsearch(narrative);
@@ -481,9 +478,6 @@ export async function generateNarrative(
    *  parse + post-processing path. Used by the wizard's "Repair" button
    *  after a primary call returns unparseable JSON. */
   repairFromRaw?: string,
-  /** Diagnostic hint from the UI auto-diagnose pass — names the specific
-   *  failure mode so the repair LLM can focus its cleanup. */
-  repairHint?: string,
   /** Scenes in the opening arc. Wizard-set, bounded 2–8. Ignored when
    *  `worldOnly` is true. Defaults to 4 to preserve prior behaviour. */
   sceneCount = 4,
@@ -524,7 +518,7 @@ export async function generateNarrative(
   let raw: string;
   if (repairFromRaw !== undefined) {
     const { repairJsonOutput } = await import('./repair');
-    raw = await repairJsonOutput(repairFromRaw, 'generateNarrative', repairHint);
+    raw = await repairJsonOutput(repairFromRaw, 'generateNarrative');
   } else {
     const reasoningBudget = REASONING_BUDGETS['low'];
     const systemPrompt = buildGenerateNarrativeSystem(paradigm);

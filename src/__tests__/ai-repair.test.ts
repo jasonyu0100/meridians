@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { repairJsonOutput } from '@/lib/ai/repair';
+import { repairJsonOutput, type RepairPlan } from '@/lib/ai/repair';
 import { callGenerate } from '@/lib/ai/api';
 import { ANALYSIS_MODEL, MAX_TOKENS_LARGE } from '@/lib/constants';
 
 // `repairJsonOutput` only talks to the LLM through callGenerate, so we mock
 // just the api boundary. Everything we want to assert (system-prompt
-// assembly, registered-caller lookup, hint propagation, cleanJson on the
+// assembly, registered-caller lookup, plan propagation, cleanJson on the
 // response) sits inside the function and runs unmocked.
+//
+// The new two-stage flow calls planRepair first (when no plan is passed),
+// so tests that exercise the repair-stage prompt assembly pass an explicit
+// RepairPlan to skip the planning round-trip.
 vi.mock('@/lib/ai/api', () => ({
   callGenerate: vi.fn(),
 }));
@@ -22,26 +26,29 @@ function lastCallArgs() {
   return mockedCallGenerate.mock.calls[0];
 }
 
-describe('repairJsonOutput — system-prompt assembly', () => {
+const PLAN: RepairPlan = {
+  fixable: true,
+  issue: 'truncated mid-payload',
+  plan: 'Close the open array with ]. Preserve every id verbatim.',
+};
+
+describe('repairJsonOutput — system-prompt assembly (plan supplied)', () => {
   it('embeds the registered caller context (purpose + schema) for a known caller', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{"ok":true}');
-    await repairJsonOutput('{"truncated":', 'generateNarrative');
+    await repairJsonOutput('{"truncated":', 'generateNarrative', PLAN);
     const [, systemPrompt] = lastCallArgs();
     expect(systemPrompt).toContain('<original-caller>generateNarrative</original-caller>');
     expect(systemPrompt).toContain('<purpose>');
-    // <expected-shape …> carries a `hint=…` attribute, so match the opener loosely
     expect(systemPrompt).toMatch(/<expected-shape\b/);
     expect(systemPrompt).toContain('</expected-shape>');
     expect(systemPrompt).toContain('<priority>');
-    // The schema is built by the same generator-side builder — it must reach
-    // the repair model with the load-bearing top-level fields intact.
     expect(systemPrompt).toContain('characters');
     expect(systemPrompt).toContain('scenes');
   });
 
   it('omits the context block entirely for an unknown caller', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput('{"x":1}', 'somethingUnregistered');
+    await repairJsonOutput('{"x":1}', 'somethingUnregistered', PLAN);
     const [, systemPrompt] = lastCallArgs();
     expect(systemPrompt).not.toContain('<original-caller>');
     expect(systemPrompt).not.toMatch(/<expected-shape\b/);
@@ -51,30 +58,39 @@ describe('repairJsonOutput — system-prompt assembly', () => {
     expect(systemPrompt).toContain('CLOSE it with the minimum brackets');
   });
 
-  it('appends <diagnosed-issue> when a repair hint is provided, omits it otherwise', async () => {
+  it('embeds the diagnosis-stage plan as <repair-plan> and the issue as <diagnosed-issue>', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput('{"x":1}', 'generateScenes', 'truncated mid-payload');
-    let [, systemPrompt] = lastCallArgs();
+    await repairJsonOutput('{"x":1}', 'generateScenes', PLAN);
+    const [, systemPrompt] = lastCallArgs();
     expect(systemPrompt).toMatch(/<diagnosed-issue\b/);
-    expect(systemPrompt).toContain('truncated mid-payload');
+    expect(systemPrompt).toContain(PLAN.issue);
     expect(systemPrompt).toContain('</diagnosed-issue>');
-
-    mockedCallGenerate.mockReset();
-    mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput('{"x":1}', 'generateScenes');
-    [, systemPrompt] = lastCallArgs();
-    expect(systemPrompt).not.toMatch(/<diagnosed-issue\b/);
+    expect(systemPrompt).toMatch(/<repair-plan\b/);
+    expect(systemPrompt).toContain(PLAN.plan);
+    expect(systemPrompt).toContain('</repair-plan>');
   });
 
-  it('puts the registered context BEFORE the diagnostic hint so the hint reads as a focused override', async () => {
+  it('puts the registered context BEFORE the plan so the plan reads as a focused override', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput('{', 'expandWorld', 'unescaped quote in dialogue');
+    await repairJsonOutput('{', 'expandWorld', PLAN);
     const [, systemPrompt] = lastCallArgs();
     const ctxIdx = systemPrompt!.indexOf('<original-caller>');
-    const hintIdx = systemPrompt!.indexOf('<diagnosed-issue');
+    const planIdx = systemPrompt!.indexOf('<repair-plan');
     expect(ctxIdx).toBeGreaterThan(-1);
-    expect(hintIdx).toBeGreaterThan(-1);
-    expect(ctxIdx).toBeLessThan(hintIdx);
+    expect(planIdx).toBeGreaterThan(-1);
+    expect(ctxIdx).toBeLessThan(planIdx);
+  });
+
+  it('refuses to repair when the plan reports the output is not fixable', async () => {
+    const unfixable: RepairPlan = {
+      fixable: false,
+      issue: 'Output is preamble text, not JSON.',
+      plan: '',
+    };
+    await expect(
+      repairJsonOutput('Let me think about this...', 'generateScenes', unfixable),
+    ).rejects.toThrow(/not repairable/i);
+    expect(mockedCallGenerate).not.toHaveBeenCalled();
   });
 
   it('covers every registered caller', async () => {
@@ -84,7 +100,7 @@ describe('repairJsonOutput — system-prompt assembly', () => {
     for (const caller of ['generateNarrative', 'generateScenes', 'expandWorld']) {
       mockedCallGenerate.mockReset();
       mockedCallGenerate.mockResolvedValueOnce('{}');
-      await repairJsonOutput('{}', caller);
+      await repairJsonOutput('{}', caller, PLAN);
       const [, systemPrompt] = mockedCallGenerate.mock.calls[0];
       expect(systemPrompt, `caller=${caller}`).toContain(`<original-caller>${caller}</original-caller>`);
     }
@@ -95,7 +111,7 @@ describe('repairJsonOutput — request shape', () => {
   it('wraps the raw payload in <malformed> tags in the user prompt', async () => {
     const raw = '{"truncated":';
     mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput(raw, 'generateScenes');
+    await repairJsonOutput(raw, 'generateScenes', PLAN);
     const [userPrompt] = lastCallArgs();
     expect(userPrompt).toContain('<malformed>');
     expect(userPrompt).toContain(raw);
@@ -104,7 +120,7 @@ describe('repairJsonOutput — request shape', () => {
 
   it('uses MAX_TOKENS_LARGE, ANALYSIS_MODEL, caller-suffixed log name, no reasoning, JSON mode', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput('{"x":1}', 'generateScenes');
+    await repairJsonOutput('{"x":1}', 'generateScenes', PLAN);
     const args = lastCallArgs();
     // Signature: (userPrompt, systemPrompt, maxTokens, callerName, model, reasoning, jsonMode)
     expect(args[2]).toBe(MAX_TOKENS_LARGE);
@@ -116,8 +132,22 @@ describe('repairJsonOutput — request shape', () => {
 
   it('suffixes the log caller correctly for unknown callers too', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{}');
-    await repairJsonOutput('{}', 'unknownThing');
+    await repairJsonOutput('{}', 'unknownThing', PLAN);
     expect(lastCallArgs()[3]).toBe('unknownThing:repair');
+  });
+
+  it('without a plan, runs planRepair first then the repair stage (two callGenerate calls)', async () => {
+    // Stage 1: planning model returns a fixable plan as JSON.
+    mockedCallGenerate.mockResolvedValueOnce(
+      JSON.stringify({ fixable: true, issue: 'truncated', plan: 'Close the open array.' }),
+    );
+    // Stage 2: repair model returns valid JSON.
+    mockedCallGenerate.mockResolvedValueOnce('{"ok":true}');
+    await repairJsonOutput('{"truncated":[', 'generateScenes');
+    expect(mockedCallGenerate).toHaveBeenCalledTimes(2);
+    const [planArgs, repairArgs] = mockedCallGenerate.mock.calls;
+    expect(planArgs[3]).toBe('generateScenes:diagnose');
+    expect(repairArgs[3]).toBe('generateScenes:repair');
   });
 });
 

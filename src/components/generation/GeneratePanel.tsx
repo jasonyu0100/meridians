@@ -179,9 +179,10 @@ export function GeneratePanel({
   const [error, setError] = useState("");
   // Raw output captured on a JSON parse failure so the user can Repair
   // (LLM-fix the malformed output) instead of paying for a full re-run.
-  // `kind` tells handleRepair which generation path to resume; `hint`
-  // carries the diagnosed failure mode for the repair LLM.
-  const [failedRaw, setFailedRaw] = useState<{ kind: 'scenes' | 'world'; raw: string; hint?: string } | null>(null);
+  // `kind` tells handleRepair which generation path to resume. The repair
+  // flow runs its own LLM-based diagnosis on the raw, so no hint is
+  // tracked here.
+  const [failedRaw, setFailedRaw] = useState<{ kind: 'scenes' | 'world'; raw: string } | null>(null);
 
   const narrative = state.activeNarrative;
   if (!narrative) return null;
@@ -319,7 +320,7 @@ export function GeneratePanel({
     [previewSequence],
   );
 
-  async function handleGenerateArc(opts: { repairFromRaw?: string; repairHint?: string } = {}) {
+  async function handleGenerateArc(opts: { repairFromRaw?: string } = {}) {
     if (!narrative) return;
     if (!newArc && !currentArc) return;
     setLoading(true);
@@ -360,7 +361,6 @@ export function GeneratePanel({
           coordinationPlanContext,
           onReasoning: (token) => setStreamText((prev) => prev + token),
           repairFromRaw: opts.repairFromRaw,
-          repairHint: opts.repairHint,
           firstSceneTimeUnit:
             firstSceneTimeUnit === "automatic" ? undefined : firstSceneTimeUnit,
           firstSceneTimeValue:
@@ -392,10 +392,8 @@ export function GeneratePanel({
         },
       });
       setError(String(err));
-      const { diagnoseError } = await import('@/lib/ai/diagnose');
-      const diagnosis = diagnoseError(err, 'generateScenes');
       if (err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string') {
-        setFailedRaw({ kind: 'scenes', raw: (err as { raw: string }).raw, hint: diagnosis.repairHint });
+        setFailedRaw({ kind: 'scenes', raw: (err as { raw: string }).raw });
       } else {
         setFailedRaw(null);
       }
@@ -433,7 +431,7 @@ export function GeneratePanel({
 
 
   // Quick expand without reasoning (for exact size or when user skips planning)
-  async function handleExpandWorld(opts: { repairFromRaw?: string; repairHint?: string } = {}) {
+  async function handleExpandWorld(opts: { repairFromRaw?: string } = {}) {
     if (!narrative) return;
     setLoading(true);
     setStreamText("");
@@ -449,7 +447,6 @@ export function GeneratePanel({
           onReasoning: (token) => setStreamText((prev) => prev + token),
           entityFilter,
           repairFromRaw: opts.repairFromRaw,
-          repairHint: opts.repairHint,
         },
       );
       setFailedRaw(null);
@@ -484,10 +481,8 @@ export function GeneratePanel({
         },
       });
       setError(String(err));
-      const { diagnoseError } = await import('@/lib/ai/diagnose');
-      const diagnosis = diagnoseError(err, 'expandWorld');
       if (err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string') {
-        setFailedRaw({ kind: 'world', raw: (err as { raw: string }).raw, hint: diagnosis.repairHint });
+        setFailedRaw({ kind: 'world', raw: (err as { raw: string }).raw });
       } else {
         setFailedRaw(null);
       }
@@ -499,9 +494,9 @@ export function GeneratePanel({
   function handleRepair() {
     if (!failedRaw) return;
     if (failedRaw.kind === 'scenes') {
-      handleGenerateArc({ repairFromRaw: failedRaw.raw, repairHint: failedRaw.hint });
+      handleGenerateArc({ repairFromRaw: failedRaw.raw });
     } else {
-      handleExpandWorld({ repairFromRaw: failedRaw.raw, repairHint: failedRaw.hint });
+      handleExpandWorld({ repairFromRaw: failedRaw.raw });
     }
   }
 

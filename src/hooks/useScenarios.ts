@@ -246,7 +246,6 @@ export function useScenarios() {
       if (!run) return;
       if (mode === 'repair' && !run.failedRaw) return;
       const repairFromRaw = mode === 'repair' ? run.failedRaw : undefined;
-      const repairHint = mode === 'repair' ? run.failedHint : undefined;
       const { activeNarrative, resolvedEntryKeys, viewState } = state;
       const { activeBranchId } = viewState;
       if (!activeNarrative || !activeBranchId) return;
@@ -317,7 +316,6 @@ export function useScenarios() {
             isCancelled: () =>
               cancelledRef.current || !!scenarioCancelledRef.current.get(scenarioId),
             repairFromRaw,
-            repairHint,
           });
         } finally {
           // If after this retry every scenario is non-running, mark the
@@ -522,9 +520,6 @@ async function generateOneScenario(input: {
   /** When set, skip the main generation call and ask the model to fix the
    *  prior malformed output instead. Used by the per-scenario Repair UI. */
   repairFromRaw?: string;
-  /** Diagnostic hint for the repair LLM — names the specific failure mode
-   *  so the model can focus its cleanup. */
-  repairHint?: string;
 }): Promise<void> {
   const {
     scenario,
@@ -536,7 +531,6 @@ async function generateOneScenario(input: {
     patchRun,
     isCancelled,
     repairFromRaw,
-    repairHint,
   } = input;
 
   if (!rootNarrative) return;
@@ -578,7 +572,6 @@ async function generateOneScenario(input: {
           patchRun(scenario.id, { streamText: stream });
         },
         repairFromRaw,
-        repairHint,
       },
     );
 
@@ -626,14 +619,11 @@ async function generateOneScenario(input: {
       err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string'
         ? (err as { raw: string }).raw
         : undefined;
-    const { diagnoseError } = await import('@/lib/ai/diagnose');
-    const diagnosis = diagnoseError(err, 'generateScenes');
     patchRun(scenario.id, {
       status: 'failed',
       finishedAt: Date.now(),
       error: err instanceof Error ? err.message : String(err),
       failedRaw: repairableRaw,
-      failedHint: repairableRaw ? diagnosis.repairHint : undefined,
     });
     if (err instanceof FatalApiError) throw err;
   }

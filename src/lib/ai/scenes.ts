@@ -211,10 +211,6 @@ export type GenerateScenesOptions = {
    *  parse + post-processing path. Used by the UI's "Repair" button after
    *  a primary call returns unparseable JSON. */
   repairFromRaw?: string;
-  /** Optional diagnostic hint from the UI auto-diagnose pass — names the
-   *  specific failure mode (truncation / unescaped quotes / etc.) so the
-   *  repair LLM can focus its cleanup. Ignored when repairFromRaw is unset. */
-  repairHint?: string;
   /** Locks the time SCALE of the gap into the first generated scene
    *  (minute / hour / day / week / month / year). The model still picks the
    *  numeric magnitude and the natural-language transition phrase; only the
@@ -238,7 +234,7 @@ export async function generateScenes(
   direction: string,
   options: GenerateScenesOptions = {},
 ): Promise<{ scenes: Scene[]; arc: Arc }> {
-  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, repairHint, firstSceneTimeUnit, firstSceneTimeValue } = options;
+  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, firstSceneTimeUnit, firstSceneTimeValue } = options;
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
   const arcId = existingArc?.id ?? nextId('ARC', Object.keys(narrative.arcs));
 
@@ -420,7 +416,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   let raw: string;
   if (repairFromRaw !== undefined) {
     const { repairJsonOutput } = await import('./repair');
-    raw = await repairJsonOutput(repairFromRaw, 'generateScenes', repairHint);
+    raw = await repairJsonOutput(repairFromRaw, 'generateScenes');
   } else {
     const reasoningBudget = resolveReasoningBudget(narrative);
     const websearch = resolveWebsearch(narrative);

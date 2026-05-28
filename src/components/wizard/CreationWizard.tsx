@@ -97,11 +97,10 @@ export function CreationWizard() {
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [error, setError] = useState("");
-  // Raw output + diagnostic hint captured when the LLM returned unparseable
-  // JSON. The repair pass passes the hint to the model so it focuses on the
-  // diagnosed failure mode (truncation vs syntax) instead of guessing.
+  // Raw output captured when the LLM returned unparseable JSON. The repair
+  // pass runs its own LLM-based diagnosis on this raw before attempting the
+  // fix, so no separate hint needs to be tracked here.
   const [failedRaw, setFailedRaw] = useState<string | null>(null);
-  const [repairHint, setRepairHint] = useState<string | undefined>(undefined);
   const [suggesting, setSuggesting] = useState(false);
   const started = useRef(false);
 
@@ -165,7 +164,6 @@ export function CreationWizard() {
           ? { maxResults: WEBSEARCH_MAX_RESULTS.high, maxTotalResults: WEBSEARCH_DEFAULT_MAX_TOTAL }
           : null,
         mode === 'repair' ? failedRaw! : undefined,
-        mode === 'repair' ? repairHint : undefined,
         wd.sceneCount ?? 4,
       );
       // Persist the wizard-time choice onto the new narrative so subsequent
@@ -187,15 +185,12 @@ export function CreationWizard() {
       setError(String(err));
       // JsonRepairableError carries the malformed raw output so the user
       // can launch a targeted LLM-fix instead of paying for a full re-run.
-      // Diagnose the error to attach a focused repair instruction.
-      const { diagnoseError } = await import('@/lib/ai/diagnose');
-      const diagnosis = diagnoseError(err, 'generateNarrative');
+      // The repair flow runs its own LLM-based diagnosis on this raw, so
+      // we only need to capture the content here.
       if (err && typeof err === 'object' && 'raw' in err && typeof (err as { raw: unknown }).raw === 'string') {
         setFailedRaw((err as { raw: string }).raw);
-        setRepairHint(diagnosis.repairHint);
       } else {
         setFailedRaw(null);
-        setRepairHint(undefined);
       }
       setLoading(false);
     }

@@ -46,12 +46,9 @@ export type ScenarioRun = {
   error?: string;
   /** Raw LLM output captured when the failure was a JSON parse error.
    *  Feeds the per-scenario "Repair" button so the user can ask the model
-   *  to fix the malformed output instead of paying for a full re-run. */
+   *  to fix the malformed output instead of paying for a full re-run.
+   *  The repair flow does its own LLM-based diagnosis from this content. */
   failedRaw?: string;
-  /** Diagnostic hint extracted from the error at fail-time. Threads to the
-   *  repair LLM so it focuses on the diagnosed failure mode (truncation /
-   *  unescaped quotes / etc.) rather than guessing what to fix. */
-  failedHint?: string;
 
   startedAt?: number;
   finishedAt?: number;
