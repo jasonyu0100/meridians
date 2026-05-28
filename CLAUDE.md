@@ -34,7 +34,7 @@ A world view is modelled as a **knowledge graph** that mutates section by sectio
 - **Four thinking modes** — abduction (default, backward selective), divergent (forward expansive), deduction (forward narrow), induction (backward generalising)
 - **Arc settings sync** — force preference, reasoning mode, and network bias persist on the CRG snapshot so scene generation inherits the same engine tilt without callers re-threading settings
 - **Markov chain pacing** — transition matrices from analyzed narrative shape scene-by-scene rhythm
-- **Scenarios batch** — one parallel arc continuation per Future variable scenario; softmax-ranked cohort, top result becomes active branch, rest attach as sister divergences
+- **Scenarios batch** — one parallel arc continuation per Future variable scenario; softmax-ranked cohort, top result becomes active branch, rest attach as sister divergences. UI surface: **Branch Scenarios** button on the Compass / Variables view
 - **Planning with course correction** — direction vectors rewritten after each arc
 - **Iterative revision** — evaluate → verdict (ok/edit/merge/insert/cut) → reconstruct versioned branches
 - **Prose profiles** — beat plans with authorial Markov chains over a 10-function / 8-mechanism taxonomy
@@ -65,7 +65,7 @@ npm run lint     # ESLint
 src/
 ├── app/                    # Next.js routes & API endpoints
 │   ├── series/[id]/        # Main story editor workspace
-│   ├── paper/              # Whitepaper — theory, formulas, validation
+│   ├── manifesto/          # Vision + theory: forces, formulas, validation, GTM
 │   ├── analysis/           # Text-to-narrative extraction pipeline
 │   └── api/                # generate, chat, generate-image, generate-cover, random-idea, suggest-premise, analyze-chapter
 ├── components/             # React UI (organized by feature area)
@@ -77,7 +77,9 @@ src/
 │   ├── generation/         # GeneratePanel, BranchModal, PacingStrip, MarkovGraph
 │   ├── analytics/          # ForceTracker — stock-type force analysis
 │   ├── auto/               # AutoControlBar, AutoSettingsPanel
-│   ├── scenarios/    # ExperimentationPanel, ExperimentationControlBar
+│   ├── scenarios/          # ScenariosPanel, ScenariosControlBar, ScenarioAnalytics
+│   ├── apilogs/            # ApiLogsViewer, ErrorDiagnosis (shared diagnostic + Repair UI)
+│   ├── driver/             # DriverCanvas — daily-ingest workspace (Queue + Search)
 │   ├── slides/             # SlidesPlayer + individual slide components
 │   ├── sidebar/            # SeriesPicker, ThreadPortfolio, MediaDrive
 │   ├── layout/             # AppShell, RulesPanel
@@ -93,13 +95,16 @@ src/
 │   │   ├── review.ts       # reviewBranch, reviewProseQuality, reviewPlanQuality — branch evaluation with guided feedback
 │   │   ├── reconstruct.ts  # reconstructBranch — versioned branch reconstruction from verdicts
 │   │   ├── prompts.ts      # Modular prompt sections (force standards, pacing, deltas, POV, world)
-│   │   └── json.ts         # JSON parsing utilities
+│   │   ├── json.ts         # JSON parsing utilities + JsonRepairableError
+│   │   ├── repair.ts       # LLM-assisted JSON repair (shares output schemas with generators)
+│   │   └── diagnose.ts     # Pure error → {severity, summary, suggestion, repairHint}
 │   ├── beat-profiles.ts    # Beat Markov matrices, profile presets, sampleBeatSequence
 │   ├── narrative-utils.ts  # Force calculation formulas, cube logic, graph algorithms
 │   ├── pacing-profile.ts           # Markov chain pacing — transition matrices, sequence sampling, presets, prompt generation
 │   ├── store.tsx           # State management + reducer actions
 │   ├── text-analysis.ts    # Corpus → NarrativeState extraction (scene-first: plans → structure → arcs)
 │   ├── auto-engine.ts      # Automated story generation — phase-aware force management
+│   ├── positions.ts        # computeCumulativePositions — participation-derived entity locations
 │   ├── scenarios-engine.ts # Parallel scenario batch — direction builder + virtual state + pool
 │   ├── scenarios-state.ts  # Virtual narrative-state helpers for in-flight runs
 │   ├── scenarios-remap.ts  # Comprehensive ID remap for parallel commits
@@ -113,8 +118,8 @@ src/
 │   └── api-logger.ts       # API call logging & token tracking
 ├── types/
 │   ├── narrative.ts        # Domain types: Scene, Character, Location, Thread, Arc, StructureEvaluation, etc.
-│   └── scenarios.ts  # Scenario-batch run state types
-├── hooks/                  # useAutoPlay, useExperimentation, useFeatureAccess
+│   └── scenarios.ts        # Scenario-batch run state types
+├── hooks/                  # useAutoPlay, useScenarios, useFeatureAccess
 └── data/                   # Seed narratives (HP, LOTR, Star Wars, GoT, Reverend Insanity)
 ```
 
@@ -124,7 +129,7 @@ src/
 - **Character** — `role: anchor|recurring|transient`, world graph (inner world), threadIds
 - **Location** — `prominence: domain|place|margin`, world graph (accumulated history), threadIds
 - **Artifact** — `significance: key|notable|minor`, world graph (provenance, properties), threadIds
-- **Scene** — povId, locationId, participantIds, events, threadDeltas, worldDeltas, relationshipDeltas, plan, prose, proseScore
+- **Scene** — povId, locationId, participantIds, events, threadDeltas, worldDeltas, relationshipDeltas, plan, prose, proseScore. Character positions are derived from participation history (`positions.computeCumulativePositions`) — no `characterMovements` delta layer; a character's current location is the locationId of the most recent scene where they participate.
 - **Thread** — participants can be `character|location|artifact`; lifecycle status; deltas record fate/world per scene
 - **Branch** — git-like branching for story timelines; entryIds interleave scenes + world commits
 - **StructureEvaluation** — per-scene verdicts (ok/edit/merge/insert/cut), overall critique, repetition patterns, thematic question
@@ -255,14 +260,15 @@ PriorLogit ∈ [-4, +4] log-odds units, scored relative to siblings. Cohort prob
 `rescoreScenario` re-evaluates a single scenario's priorLogit after user edits, anchored against sibling scenarios. Applies the same disciplines.
 
 ### Pipeline integration
-Scenarios feed **Scenarios** (`src/lib/scenarios-engine.ts`, `src/hooks/useExperimentation.ts`): one parallel arc continuation per scenario, with the scenario's coordination as primary generation guidance (via `buildDirectionFromScenario`). On commit, every scenario attaches as a sister branch off the same fork; the softmax-top scenario's branch becomes active. The committed branch carries the variable fingerprint (`stampScenarioVariables` writes the scenario's variables onto the new arc's `presentVariables`).
+Scenarios feed the **Branch Scenarios** flow (`src/lib/scenarios-engine.ts`, `src/hooks/useScenarios.ts`): one parallel arc continuation per scenario, with the scenario's coordination as primary generation guidance (via `buildDirectionFromScenario`). On commit, every scenario attaches as a sister branch off the same fork; the softmax-top scenario's branch becomes active. The committed branch carries the variable fingerprint (`stampScenarioVariables` writes the scenario's variables onto the new arc's `presentVariables`). Per-scenario failures surface in the panel with Retry / Repair (LLM-assisted JSON fix) / Copy diagnostic — no auto-retry; each failed run is a manual decision point.
 
 ### Files
 - `src/lib/ai/variables.ts` — `extractArcPresent`, `generatePlanningScenarios`, `rescoreScenario`, `scenarioProbabilities`, `renderVariablesContextBlock`, `VARIABLE_INTENSITY_LEVELS`, `SCENARIO_COLORS`
-- `src/components/canvas/VariablesView.tsx` — Present + Future surface
+- `src/components/canvas/VariablesView.tsx` — Present + Future surface (Compass)
 - `src/components/canvas/variables/{DispositionEditor,VariableParallelCoords,BentoTile}.tsx` — editing rack, parallel-coords visualisation, layout primitives
-- `src/components/scenarios/ExperimentationPanel.tsx` — multi-scenario parallel branch generation UI
-- `src/lib/scenarios-engine.ts`, `src/hooks/useExperimentation.ts` — runs scenarios as parallel arc continuations
+- `src/components/scenarios/ScenariosPanel.tsx`, `ScenariosControlBar.tsx`, `ScenarioAnalytics.tsx` — multi-scenario parallel branch generation UI
+- `src/lib/scenarios-engine.ts`, `src/hooks/useScenarios.ts` — runs scenarios as parallel arc continuations
+- `src/types/scenarios.ts` — `ScenarioRun` (incl. `failedRaw` + `failedHint` for iterative repair)
 
 ## Semantic Search & Embeddings
 
@@ -430,6 +436,66 @@ Automated story generation guided by **narrative pressure analysis** across the 
 **Arc Length Selection**: Primed threads → shorter focused arcs. Too many active threads → medium arcs. Character development needed → longer arcs with breathing room.
 
 **Planning Queue Integration**: When a planning queue is active, auto mode respects phase allocations and yields to the planning layer for phase transitions. The planning queue defines objectives; auto mode executes with force-aware pacing.
+
+## UI / Code Vocabulary Map
+
+Some in-app concepts have shorter UI labels than their code identifiers — they refer to the same thing:
+
+| UI label | Code identifier | Where |
+| --- | --- | --- |
+| **Mode Graph** | Phase Reasoning Graph (PRG) | `lib/mode-graph.ts`, `lib/ai/phase-graph.ts`, `components/canvas/ModeGraphView.tsx` |
+| **Compass** | Variable Scenarios (the cohort) | `components/canvas/VariablesView.tsx` |
+| **Branch Scenarios** | Scenarios batch (formerly Experimentation) | `hooks/useScenarios.ts`, `components/scenarios/ScenariosPanel.tsx` |
+| **Decision Matrix** | Game-theory `scene.gameAnalysis` | `lib/ai/game-analysis.ts`, `components/canvas/SceneGameTheoryView.tsx` |
+| **Driver** / **Driver Queue** | DriverEntry queue + Search workspace | `components/driver/DriverCanvas.tsx`, `lib/ai/driver.ts` |
+| **Network** | Aggregate connection graph | `lib/network-graph.ts`, `components/canvas/NetworkView.tsx` |
+
+When writing prompts, comments, or copy that's user-facing, use the UI label. When referencing code, use the code identifier.
+
+## Repair / Diagnose Framework (src/lib/ai/json.ts, repair.ts, diagnose.ts)
+
+Generation failures (world-gen, scene-gen, expand-world, scenario branching) surface to the user as a manual decision point — no auto-retry, no silent loops. Every failure carries a structured diagnostic and (when possible) a Repair button that LLM-fixes the malformed output instead of paying for a full re-run.
+
+### JsonRepairableError
+`parseJson` throws `JsonRepairableError` when its deterministic repair strategies (unquoted values, unescaped quotes, cleanJson) all fail. Carries `raw` (the original malformed output) and `context` (the caller id). Upstream callers catch on `.raw` to decide whether Repair is available.
+
+### diagnoseError(err, caller)
+Pure function in `diagnose.ts`. Pattern-matches against the error name + message and returns `{ severity, summary, suggestion, retryable, repairable, repairHint? }`. Branches handled:
+- **auth / credit / 401 / 403** → high severity, neither retryable nor repairable (fix config)
+- **rate-limit / 429** → medium, retryable, not repairable (wait + retry)
+- **5xx / bad gateway** → medium, retryable
+- **network / timeout / abort** → medium, retryable
+- **empty response** → high, retryable, not repairable
+- **truncated / max_tokens** → low, repairable if raw present (close the open structure)
+- **JsonRepairableError / parse failure** → low, repairable if raw present (syntax cleanup)
+
+When repairable, `repairHint` carries a focused instruction the repair LLM uses on top of the schema spec.
+
+### repairJsonOutput(raw, caller, repairHint?)
+Cheap LLM call (`ANALYSIS_MODEL`, reasoning=0) in `repair.ts`. Seeded with three layers:
+1. baseline JSON-cleanup rules (preserve fields, no commentary)
+2. caller-specific schema spec **imported from the original generation prompt builder** (`buildScenesOutputSchema`, `buildNarrativeOutputSchema`, `buildExpandWorldOutputSchema`) — single source of truth, no drift
+3. the auto-diagnosed `repairHint`
+
+### Gen-fn wiring
+Each generation function accepts `repairFromRaw?: string` and `repairHint?: string`:
+- `generateNarrative(..., repairFromRaw?, repairHint?)`
+- `generateScenes(..., { repairFromRaw?, repairHint? })`
+- `expandWorld(..., { repairFromRaw?, repairHint? })`
+
+When set, the gen-fn skips the main LLM call and routes `repairFromRaw` through `repairJsonOutput`, then resumes the normal parse + post-processing path. Iterative: if a repair attempt itself fails, the new raw + new diagnosis feed the next attempt.
+
+### UI surfaces
+`ErrorDiagnosis` component (`src/components/apilogs/ErrorDiagnosis.tsx`) renders the diagnosis as a severity dot + summary + suggestion; `CopyErrorButton` produces a clean trace for bug reports. Wired into:
+- `components/wizard/CreationWizard.tsx` — world-gen failures
+- `components/generation/GeneratePanel.tsx` — scene + expand failures
+- `components/scenarios/ScenariosPanel.tsx` — per-scenario failures (Retry / Repair / Copy on the row + the right-pane inspector)
+
+### Files
+- `src/lib/ai/json.ts` — `parseJson`, `JsonRepairableError`, `cleanJson` + deterministic repair strategies
+- `src/lib/ai/diagnose.ts` — `diagnoseError`
+- `src/lib/ai/repair.ts` — `repairJsonOutput` + per-caller schema lookup
+- `src/components/apilogs/{ErrorDiagnosis,ApiLogsViewer}.tsx` — diagnostic UI + API log viewer with Narrative / Analysis / Misc scope selector
 
 ## AI Pipeline (src/lib/ai/)
 

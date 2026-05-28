@@ -1357,7 +1357,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
     items: [
       { id: "economics", label: "Economics" },
       { id: "open-source", label: "Open Source" },
-      { id: "coming-soon", label: "Coming Soon" },
+      { id: "multiplayer-wargaming", label: "Multiplayer Wargaming" },
     ],
   },
 ];
@@ -1523,13 +1523,13 @@ export default function PaperPage() {
         {/* Title */}
         <div className="mb-24 animate-fade-up">
           <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/25 mb-5">
-            White Paper
+            Manifesto
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold leading-[1.05] tracking-tight text-white/90 mb-6">
             Quantifying World Views
           </h1>
           <p className="text-[15px] text-white/45 leading-[1.7] max-w-xl">
-            A causal substrate for any coherent text &mdash; extract it,
+            Every coherent text carries a causal substrate. Extract it,
             query it, simulate where it goes next.
           </p>
           <div className="mt-8">
@@ -1546,72 +1546,77 @@ export default function PaperPage() {
               lands, a strategist agreeing a scenario hangs together
               &mdash; all respond to the same <B>legible skeleton</B>.
               InkTide extracts and generates <B>world views</B>:
-              causally coherent, mutable, queryable models of reality.
-              <em> Harry Potter</em> has one, a research paper has
-              one, a wargame brief has one. A reasoner can hold a
-              single world view deeply &mdash; the{" "}
-              <em>hedgehog</em> &mdash; or many at once, calibrating
-              between them as evidence comes in &mdash; the{" "}
-              <em>fox</em>. InkTide is the substrate for both; the
-              math is calibrated against{" "}
-              <em>Harry Potter and the Sorcerer&apos;s Stone</em> and
-              generalises from there.
+              causally coherent, mutable, queryable models of reality
+              that any coherent text already implies.{" "}
+              <em>Harry Potter</em> has one. A research paper has one.
+              A wargame brief has one. A quarterly strategy memo has
+              one. We make the skeleton operable &mdash; read it, fork
+              it, simulate forward off it, watch it update as reality
+              lands.
             </P>
             <P>
-              A world view is a working model of reality, tracked
-              along three forces. <B>System</B> &mdash; the rules
-              that govern. <B>World</B> &mdash; the people, places,
-              and things that live inside them. <B>Fate</B> &mdash;
-              the <B>belief system</B> updating as reality lands.
+              A world view runs like an ant colony. <B>World</B>{" "}
+              &mdash; the workers: characters, locations, artifacts,
+              each carrying their own graph of beliefs and capabilities.{" "}
+              <B>System</B> &mdash; the charter: rules, conventions,
+              constraints. <B>Threads</B> &mdash; the open questions
+              the hive pursues, each a live stance over named outcomes
+              that revises every time a worker acts. No central
+              planner; coherence is emergent.
+            </P>
+            <P>
               LLMs extract qualitative deltas at low temperature;
               deterministic formulas turn deltas into scores. Same
-              input, same score, every time. Summed, the three forces
-              give <B>Activity</B> &mdash; how hard the world is
-              working. Peaks fire across all three channels; valleys
-              seed pressure for what follows.
+              input, same score. The three forces sum to <B>Activity</B>{" "}
+              &mdash; how hard the world is working. Every entity carries
+              an inner world; every thread logs how its stance moved;
+              the system graph accumulates a compressed ledger of how
+              the world actually works. Extraction and generation are
+              the same operation in opposite directions.
             </P>
             <P>
-              <B>The skill ceiling is your priors.</B> Sparse data,
-              sparse simulation. Rich priors fed through causal
-              reasoning graphs and chain-of-thought scene execution
-              yield scenarios that hold up. The moat is the data; the
-              engine is the multiplier. World views extend via
-              simulation with <B>variable predictive modelling</B>{" "}
-              already shipped; next on the roadmap is <B>A/B tests
-              against reality</B>. The longer the loop runs, the
-              sharper the next forecast.
+              <B>The skill ceiling is your priors.</B> The math is
+              fixed and cheap; the depth and freshness of what you
+              feed it decides the result. Hold one world view deeply
+              &mdash; the <em>hedgehog</em> &mdash; or many at once,
+              calibrating as evidence comes in &mdash; the <em>fox</em>.
+              The substrate is here for both. The longer the loop
+              runs, the sharper the next forecast.
             </P>
           </Section>
 
           {/* ── The Problem ───────────────────────────────────────────── */}
           <Section id="problem" label="The Problem">
             <P>
-              Forecasting a complex world &mdash; a market, a campaign,
-              a research argument, a fictional one &mdash; is gated by{" "}
-              <B>priors</B> and <B>continuity of reasoning</B>.
-              Foundation models give scale and fluency but lose
-              continuity: they drift, hallucinate, forget what they
-              wrote three sections back. Specialized simulators give
-              continuity but silo us to one domain &mdash; climate
-              models can&apos;t model a market, market models
-              can&apos;t model a campaign. Neither lets you take a
-              text-describable world, branch alternative futures from
-              it, and grade them against reality.
+              Forecasting any complex world &mdash; a market, a
+              campaign, a research argument, a strategic posture,
+              a fictional one &mdash; is gated by <B>priors</B>{" "}
+              and <B>continuity of reasoning</B>. Foundation models
+              give scale and fluency and lose continuity: they drift,
+              hallucinate, forget what they wrote three sections back.
+              Specialised simulators give continuity and silo to one
+              domain &mdash; climate models can&apos;t model a market,
+              market models can&apos;t model a campaign. Neither lets
+              you take a text-describable world, branch alternative
+              futures from it, and grade them against what actually
+              happens.
             </P>
             <P>
-              The missing piece is a <B>general-purpose substrate</B>:
-              rich text priors meet structural continuity meet
-              branchable, testable forecasting. Strategic forecasts
-              read as opinions because they have no structural
-              commitment to point to. Research arguments collapse on
-              edge cases nobody simulated. Long-form fiction drifts
+              Strategy decks read as opinion because nothing in them
+              commits structurally. Research arguments collapse on
+              edge cases no one simulated. Long-form fiction drifts
               because the model forgot its own world.{" "}
               <B>
-                We don&apos;t lack models. We lack a shared substrate
-                for <em>building</em> them &mdash; one that lets priors
-                compound, scenarios branch, and reality itself become
-                the grader.
-              </B>
+                We don&apos;t lack models &mdash; we lack a shared
+                substrate for <em>building</em> them.
+              </B>{" "}
+              One where priors compound across sessions, scenarios
+              branch off any commit, and reality grades the result.
+              Context windows grow linearly; the world keeps growing.
+              Either you compress with intent &mdash; keep the
+              load-bearing rules and the live questions, release the
+              rest &mdash; or coherence collapses. We compress with
+              intent.
             </P>
           </Section>
 
@@ -1703,7 +1708,11 @@ export default function PaperPage() {
               fate-dominant, <B>Opus</B> balanced. Each force is
               rank-transformed to a standard normal first &mdash;
               distribution-free and bounded &mdash; so length, genre,
-              and outliers don&apos;t bias the comparison.
+              and outliers don&apos;t bias the comparison. The
+              cumulative <B>network</B> &mdash; every entity, thread,
+              and system node weighted by cross-graph attribution count
+              &mdash; surfaces the load-bearing hubs and bridges without
+              touching the deltas.
             </P>
           </Section>
 
@@ -2144,15 +2153,12 @@ export default function PaperPage() {
           {/* ── The Three Forces ──────────────────────────────────────── */}
           <Section id="forces" label="The Three Forces">
             <p className="text-[15px] leading-relaxed text-white/50 italic mb-8">
-              A world view resolves into three fields.{" "}
-              <B>Abstract</B> &mdash; the rules that make events
-              possible. <B>Physical</B> &mdash; the entities acting
-              under those rules. <B>Possibility</B> &mdash; what
-              could still happen, reshaped scene by scene.{" "}
-              <B>System</B>, <B>World</B>, and <B>Fate</B> measure
-              their growth. Fate is <em>possibility</em>, not
-              probability &mdash; what <em>could</em> happen, not
-              what <em>will</em>.
+              Three fields, one substrate. <B>Abstract</B> &mdash; the
+              rules. <B>Physical</B> &mdash; the entities acting under
+              them. <B>Possibility</B> &mdash; what could still happen.{" "}
+              <B>System</B>, <B>World</B>, and <B>Fate</B> score each
+              one. Fate is <em>possibility</em>, not probability:
+              what <em>could</em> happen, not what <em>will</em>.
             </p>
             <p className="text-[14px] leading-relaxed text-white/45 mb-8">
               Modes weight the fields differently:{" "}
@@ -2559,15 +2565,15 @@ export default function PaperPage() {
           {/* ── Validation ──────────────────────────────────────────── */}
           <Section id="validation" label="Validation">
             <P>
-              Do the formulas capture structural significance? Tested
-              against <em>Harry Potter and the Sorcerer&apos;s Stone</em>:
-              the activity curve below was computed entirely from
-              structural deltas extracted at analysis time.{" "}
-              <B>Orange regions</B> above the zero line are scenes of high
-              force activity in HP&apos;s own vocabulary (fate and world
-              moving together); <B>light-blue regions</B> below are
-              low-activity stretches — the quieter scenes that set up the
-              next peak.
+              The claim is testable. The activity curve below was
+              computed entirely from structural deltas extracted from{" "}
+              <em>Harry Potter and the Sorcerer&apos;s Stone</em> — no
+              prose scored, no scenes hand-ranked. The annotations
+              land where they do because the formulas read the book
+              the way a reader does, deterministically.{" "}
+              <B>Orange</B> above zero: scenes where fate and world
+              move together. <B>Light blue</B> below: the quieter
+              stretches that set up the next peak.
             </P>
 
             {/* Annotated Activity Curve — computed from the Sorcerer's Stone narrative via the same formulas used in the app */}
@@ -3271,8 +3277,8 @@ export default function PaperPage() {
                   color: "#FBBF24",
                 },
                 {
-                  name: "game theory",
-                  caption: "2\u00d72 decomposition per beat",
+                  name: "decision matrix",
+                  caption: "2\u00d72 game-theory decomposition per beat",
                   body: "strategic structure beneath the prose. Each game carries an axis (14 types \u2014 disclosure / trust / stakes\u2026) and a shape (19 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. Additive: written to scene.gameAnalysis, never mutates deltas.",
                   color: "#A855F7",
                 },
@@ -3329,10 +3335,17 @@ export default function PaperPage() {
               any scene of an arc is generated, a{" "}
               <B>causal reasoning graph</B> is built: a typed graph of
               what must happen and why. Scenes then execute the graph
-              rather than improvising local transitions. The node and
-              edge taxonomy &mdash; eight node types across pressure,
-              substrate, and bridge tiers, plus eight edge types &mdash;
-              is enumerated in the{" "}
+              rather than improvising local transitions. A longer-lived{" "}
+              <B>mode graph</B> sits beneath every arc &mdash; the
+              working model of the world&apos;s patterns, conventions,
+              attractors, agents, rules, pressures, and landmarks &mdash;
+              so each CRG reasons within the same world-physics rather
+              than re-deriving it. Loose observations and source
+              fragments queue in an editable <B>driver</B> surface until
+              they fold into one of these graphs and become canonical.
+              The node and edge taxonomy &mdash; eight node types across
+              pressure, substrate, and bridge tiers, plus eight edge
+              types &mdash; is enumerated in the{" "}
               <a href="#classification" className="text-accent hover:underline">
                 Classification
               </a>{" "}
@@ -3538,7 +3551,8 @@ export default function PaperPage() {
               pool: a pattern of intensities (0 off → 4 extreme). A{" "}
               <B>priorLogit ∈ [-4, +4]</B> scores each scenario relative to
               its siblings; softmax across the cohort produces the displayed
-              probability.
+              probability &mdash; the cohort reads as a <B>compass</B>{" "}
+              over possible continuations.
             </P>
 
             <VariableScenarioDiagram />
@@ -4274,13 +4288,14 @@ export default function PaperPage() {
             <CostEstimates />
 
             <P>
-              Analysing a 100K-word novel costs under twenty-five cents
-              (parallel chunk extraction, no reasoning); a 500K-word
-              series runs about a dollar; evaluating a branch costs five
-              cents. The same numbers apply to non-fiction and
-              simulation at comparable scale. The generate-evaluate-
-              revise loop is cheap to repeat; comparative datasets
-              across dozens of corpora are within reach.{" "}
+              Analysing a 100K-word novel costs under twenty-five
+              cents; a 500K-word series, about a dollar; evaluating
+              a branch, five cents. Non-fiction and simulation come
+              in at comparable scale. The generate-evaluate-revise
+              loop is cheap to repeat. A team running its strategy
+              through it pays in pennies what a consulting deck costs
+              in tens of thousands &mdash; and ends each quarter with
+              a world view it can fork, not a deck it has to redraw.{" "}
               <B>Computation is fixed and cheap; data quality decides
               the result.</B>
             </P>
@@ -4289,12 +4304,14 @@ export default function PaperPage() {
           {/* ── Open Source ───────────────────────────────────────────── */}
           <Section id="open-source" label="Open Source">
             <P>
-              InkTide is open source. Every formula in this paper lives
-              in the codebase &mdash; readable, runnable, modifiable.
-              Weights, thresholds, and reference means are constants in
-              the source; the formulas are tools, not doctrine. A genre
-              needing a fourth force can add one; a domain needing
-              different calibration can replace the defaults.
+              InkTide is open source. Every formula here lives in the
+              codebase &mdash; readable, runnable, modifiable. Weights,
+              thresholds, and reference means are constants; the
+              formulas are tools, not doctrine. A genre needing a
+              fourth force can add one. A domain needing different
+              calibration can replace the defaults. We&apos;d rather
+              argue the substrate in the open than defend it as a
+              black box.
             </P>
             <P>
               The{" "}
@@ -4304,10 +4321,16 @@ export default function PaperPage() {
               >
                 analysis pipeline
               </Link>{" "}
-              accepts any corpus &mdash; novels, screenplays, web
-              serials, research papers, scenario briefs, wargame logs.
-              The interesting cases are domains the framework was never
-              tuned for. Contributions welcome.
+              takes any corpus &mdash; novels, screenplays, papers,
+              scenario briefs, wargame logs, quarterly reviews,
+              regulatory filings. The interesting cases are the ones
+              the framework was never tuned for. Operators who learn
+              to think in world views &mdash; forking the model when
+              the field shifts, grading priors against what reality
+              just landed &mdash; will out-decide the ones still
+              running on intuition and slide decks. The substrate is
+              here. The longer the loop runs, the further ahead it
+              sees.
             </P>
 
             <div className="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
@@ -4328,19 +4351,34 @@ export default function PaperPage() {
             </div>
           </Section>
 
-          {/* ── Coming Soon ───────────────────────────────────────────── */}
-          <Section id="coming-soon" label="Coming Soon">
+          {/* ── Multiplayer Wargaming ────────────────────────────────── */}
+          <Section id="multiplayer-wargaming" label="Multiplayer Wargaming">
             <P>
-              <B>A/B tests against reality.</B> Backtest world-view
-              forecasts against actual outcomes as they unfold. The
-              operator sees where priors held and where reality
-              diverged, then refines the priors. Better priors, sharper
-              forecasts, compounding confidence &mdash; the source of
-              truth is reality itself, or any ground truth you trust.
-              Closes the loop from <em>simulator</em> to{" "}
-              <em>continuously-updating forecasting tool</em>: priors
-              are inputs, simulations are experiments, reality is the
-              validation.
+              The single-operator simulator is the floor. The natural
+              next shape is <em>multiplayer wargaming</em>: two or
+              more operators on opposite sides of the same world, each
+              driving their own actors against a shared substrate that
+              arbitrates the rules. The engine already carries what a
+              wargame needs &mdash; system graph for the rules,
+              threads pricing live questions, a decision matrix
+              scoring every move, ELO keeping the strategic ledger.
+              Turn structure, side-aware POV gating, and a referee
+              loop are the rest.
+            </P>
+            <P>
+              This is where the substrate earns its keep beyond
+              fiction. A go-to-market plan is a world view. A
+              competitive analysis is a world view. A regulatory
+              filing is a world view. Teams that run them as one-shot
+              decks today are about to run them as continuously-
+              updating models &mdash; calibrated against signal,
+              forked when the field shifts, scored by where the prior
+              landed and where it didn&apos;t. Red team and blue team
+              commit one compass cardinal at a time; the engine
+              resolves the collision under the world&apos;s declared
+              physics. Backtests against reality sit one rung above:
+              priors as inputs, simulations as experiments, reality as
+              referee.
             </P>
           </Section>
         </div>

@@ -6,7 +6,7 @@
 
 No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key, paste a corpus, brief, or dataset, and the engine extracts a typed knowledge graph that mutates section by section — actors, locations, artifacts, threads, system rules. Three forces (fate / world / system) are derived deterministically from the graph; no second LLM call required to grade structure. The world view is **queryable** (semantic search, propositional logic, surveys / interviews), **mutable** (every section commits new state the next builds on), and **extendable via simulation with variable predictive modelling** — branch alternative trajectories grounded in the same view, at fixed cost, reproducibly.
 
-**[Try it →](https://inktide-sourcenovel.vercel.app/)** · **[Read the paper →](https://inktide-sourcenovel.vercel.app/paper)** · **[Architecture reference →](CLAUDE.md)**
+**[Try it →](https://inktide-sourcenovel.vercel.app/)** · **[Read the manifesto →](https://inktide-sourcenovel.vercel.app/manifesto)** · **[Architecture reference →](CLAUDE.md)**
 
 ---
 
@@ -37,15 +37,15 @@ See `.env.example` for the full list.
 
 **Real-world scenario modeling.** Feed the engine a rich brief or dataset — a market state, a strategic timeline, an alternate-history premise, a domain corpus — and it builds the same typed graph. Branch alternative timelines from any decision point, evaluate them in **Branch Chat** (multi-branch analytical chat with controlled scope windows, register-agnostic prompts, persisted threads), and compare outcomes through the same force math that grades novels. The framework is genre-neutral; what it actually measures is how a world is moving and where pressure builds.
 
-**Variable scenario forecasting.** Probabilistic alternative to causal reasoning: instead of committing to one chain, the engine extracts a pool of load-bearing variables and produces a cohort of next-arc timelines as coordinations over that pool — each scored with a priorLogit, softmaxed to a relative probability. The cohort follows the power-law shape of real possibility space (most mass on modal continuation, a thin tail on rupture), works identically for fiction continuations, market scenarios, research counterfactuals, or strategic forecasts, and feeds **Experimentation** which generates one parallel branch per scenario for multi-timeline analysis.
+**Variable scenario forecasting.** Probabilistic alternative to causal reasoning: instead of committing to one chain, the engine extracts a pool of load-bearing variables and produces a cohort of next-arc timelines as coordinations over that pool — each scored with a priorLogit, softmaxed to a relative probability. The cohort follows the power-law shape of real possibility space (most mass on modal continuation, a thin tail on rupture), works identically for fiction continuations, market scenarios, research counterfactuals, or strategic forecasts, and feeds **Scenarios** (in-app: *Branch Scenarios*) which generates one parallel branch per scenario for multi-timeline analysis.
 
 **Text corpus analysis.** Paste any long-form work and the engine extracts its full structure: typed knowledge graph, force trajectories, pacing fingerprint (Markov transition matrices over scene-level cube modes), prose profile (authorial Markov chains over a 10-function / 8-mechanism beat taxonomy). Every analyzed work compounds the network — pacing patterns and prose signatures become reusable for cross-corpus comparison, scenario seeding, or generation.
 
-**Mind mapping at scale.** Entities, threads, knowledge nodes, and embeddings render as interactive D3 graphs: network view (cumulative activation tiers), world graph (per-entity inner knowledge), knowledge graph (system rules / concepts), phase graph (working model of reality), reasoning graph (per-arc causal chain). Click any node to inspect — characters, locations, artifacts, threads, system nodes, knowledge nodes all open in the side panel with their full continuity.
+**Mind mapping at scale.** Entities, threads, knowledge nodes, and embeddings render as interactive D3 graphs: world graph (entities + relationships + positions, derived from participation), network view (cumulative activation tiers across the timeline), mode graph (working model of reality: patterns / conventions / attractors / agents / rules / pressures / landmarks), reasoning graph (per-arc causal chain), per-entity inner knowledge graph. A driver surface upstream of these holds editable observations until they fold into a commit. Toggle relationship / tie / spatial edges, scope by Arc Focus, expand the location cluster via Vicinity — all without leaving the canvas.
 
 **Semantic retrieval.** Every proposition, beat, and scene is embedded as a 1536-dim vector via OpenAI's `text-embedding-3-small`. Cosine similarity surfaces meaning, not keywords — searching for "betrayal" returns scenes of broken trust even when the word never appears. AI-synthesized overviews cite back to source spans. Drives continuity validation, knowledge-asymmetry tracking, and intelligent RAG for generation.
 
-**Strategic interrogation.** Surveys (one question × N entities, each answering in-character from its own world-graph continuity), interviews (one entity × N questions), per-scene game-theoretic decomposition (14 axes × 19 game shapes), ELO rankings derived from per-scene stake deltas. Surfaces structural patterns the prose alone never summarises.
+**Strategic interrogation.** Surveys (one question × N entities, each answering in-character from its own world-graph continuity), interviews (one entity × N questions), per-scene **decision matrix** (game-theoretic decomposition along 14 axes × 19 game shapes), ELO rankings derived from per-scene stake deltas. Surfaces structural patterns the prose alone never summarises.
 
 ---
 
@@ -74,8 +74,8 @@ The engine is the spine; the LLM is one tool the engine drives.
 
 ## For developers digging in
 
-- **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference. Every major subsystem (forces, threads, phase graph, CRG, scenes, plans, prose, embeddings, surveys, game theory, auto-engine) documented with file pointers.
-- **[`/paper`](https://inktide-sourcenovel.vercel.app/paper)** — the theory: force formulas, Markov chain pacing, variable scenario modelling, beat taxonomy, calibration against published works.
+- **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference. Every major subsystem (forces, threads, mode graph, CRG, scenes, plans, prose, embeddings, surveys, game theory, auto-engine, scenarios, repair / diagnose) documented with file pointers.
+- **[`/manifesto`](https://inktide-sourcenovel.vercel.app/manifesto)** — the vision and the theory: ant-colony metaphor, force formulas, Markov chain pacing, variable scenario modelling, decision-matrix decomposition, calibration against published works.
 - **`src/types/narrative.ts`** — the domain model.
 - **`src/lib/ai/`** — the LLM call surface. All generation routes through `callGenerate` / `callGenerateStream`.
 - **`src/lib/prompts/`** — every prompt, modular and scoped. Phase-graph application, scene generation, beat planning, prose rendering, world expansion all live here.

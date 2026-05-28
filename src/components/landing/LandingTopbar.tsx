@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Home', mobileOnly: false },
-  { href: '/paper', label: 'Paper', mobileOnly: false },
+  { href: '/manifesto', label: 'Manifesto', mobileOnly: false },
   { href: '/case-analysis', label: 'Case Analysis', mobileOnly: true },
   { href: '/dashboard', label: 'Dashboard', mobileOnly: true },
 ];
