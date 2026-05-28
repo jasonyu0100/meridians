@@ -689,356 +689,273 @@ function ShapeCurve({
 //
 // World-only analysis skips reextract + grouping + threading: ~$0.013/scene + $0.020 once.
 
-type BreakdownRow = {
-  call: string;
-  count: string;
-  /** "DeepSeek v4" — scene generation, prose, interaction (chat / surveys / interviews).
-   *  "Gemini 2.5" — planning (CRG / PRG / scene plans), analysis pipeline, default
-   *  fallback (evaluation, briefings, game theory).
-   *  "mixed" — a combined step that spans both models. */
-  model: "DeepSeek v4" | "Gemini 2.5" | "mixed";
-  note: string;
-  cost: string;
-};
-type BreakdownCategory = {
-  label: string;
-  unit: string;
-  rows: BreakdownRow[];
-  subtotal: { calls: string; cost: string } | null;
-};
-
-const BREAKDOWN_CATEGORIES: BreakdownCategory[] = [
+const PRICING_TIERS = [
   {
-    label: "Creation",
-    unit: "one-time per narrative  ·  wizard / premise → seed world + intro arc",
-    rows: [
-      {
-        call: "generateNarrative",
-        count: "×1",
-        model: "DeepSeek v4",
-        note: "Initial entities, relationships, 8-scene intro arc structures",
-        cost: "~$0.01",
-      },
-      {
-        call: "generateScenePlan + generateSceneProse",
-        count: "×8",
-        model: "mixed",
-        note: "Plan (Gemini) + prose (DeepSeek) for the intro arc's scenes",
-        cost: "~$0.07",
-      },
-    ],
-    subtotal: { calls: "~17 calls", cost: "~$0.08 once" },
+    tier: "Scout",
+    price: "$2K/mo",
+    annual: "$24K",
+    fits: "Companies <$100M revenue currently buying no structured strategy",
+    includes:
+      "Self-service · 1 active world view · quarterly fork-and-commit · async after-action reports",
   },
   {
-    label: "Generation",
-    unit: "per arc  ·  ~4 scenes  ·  ~4800 words",
-    rows: [
-      {
-        call: "generateScenes",
-        count: "×1",
-        model: "DeepSeek v4",
-        note: "Scene structures, deltas, summaries",
-        cost: "~$0.01",
-      },
-      {
-        call: "generateReasoningGraph",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Causal reasoning graph (CRG) — per-arc",
-        cost: "~$0.04",
-      },
-      {
-        call: "generateScenePlan",
-        count: "×4",
-        model: "Gemini 2.5",
-        note: "Compulsory propositions + beat plan, single pass",
-        cost: "~$0.07",
-      },
-      {
-        call: "generateSceneProse",
-        count: "×4",
-        model: "DeepSeek v4",
-        note: "~1.2K words of prose per scene",
-        cost: "~$0.01",
-      },
-      {
-        call: "expandWorld",
-        count: "×~⅓",
-        model: "Gemini 2.5",
-        note: "New characters / locations / threads (amortised)",
-        cost: "~$0.01",
-      },
-      {
-        call: "generateMode",
-        count: "occasional",
-        model: "Gemini 2.5",
-        note: "Phase reasoning graph (PRG) — meta-machinery, on-demand",
-        cost: "~$0.03",
-      },
-    ],
-    subtotal: { calls: "~14 calls", cost: "~$0.13" },
+    tier: "Analyst",
+    price: "$8K/mo",
+    annual: "$96K",
+    fits: "$100M–$500M revenue, currently buying tier-2 episodic projects",
+    includes:
+      "+ dedicated facilitator (former consultant) · quarterly multiplayer wargames",
   },
   {
-    label: "Evaluation & Revision",
-    unit: "per arc  ·  ~4 scenes  ·  25% edit rate",
-    rows: [
-      {
-        call: "evaluateBranch",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Structure verdicts + thematic critique",
-        cost: "~$0.01",
-      },
-      {
-        call: "editScene / insertScene / mergeScenes",
-        count: "×~1",
-        model: "DeepSeek v4",
-        note: "Reconstruction edits (summary + deltas)",
-        cost: "~$0.00",
-      },
-      {
-        call: "evaluatePlanQuality",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Plan-level continuity verdicts",
-        cost: "~$0.01",
-      },
-      {
-        call: "evaluateProseQuality",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Prose quality edit verdicts + critique",
-        cost: "~$0.01",
-      },
-      {
-        call: "rewriteSceneProse",
-        count: "×~1",
-        model: "DeepSeek v4",
-        note: "~1K words rewritten (25% rate)",
-        cost: "~$0.00",
-      },
-    ],
-    subtotal: { calls: "~5 calls", cost: "~$0.03" },
-  },
-  {
-    label: "Analysis",
-    unit: "per corpus  ·  expert-priors pipeline  ·  ~$0.021/scene",
-    rows: [
-      {
-        call: "extractSceneStructure",
-        count: "×N",
-        model: "Gemini 2.5",
-        note: "Entities, deltas, summary from prose chunk",
-        cost: "~$0.008/scene",
-      },
-      {
-        call: "reverseEngineerScenePlan",
-        count: "×N",
-        model: "Gemini 2.5",
-        note: "Beat plan + propositions (when extractPlans=true)",
-        cost: "~$0.005/scene",
-      },
-      {
-        call: "reextractFateWithLifecycle",
-        count: "×N",
-        model: "Gemini 2.5",
-        note: "Lifecycle-aware fate re-scoring (skipped in world-only)",
-        cost: "~$0.004/scene",
-      },
-      {
-        call: "summariseWorldBuildBatch",
-        count: "×⌈N/12⌉",
-        model: "Gemini 2.5",
-        note: "Per-batch WorldBuild intent summary (parallel pool)",
-        cost: "~$0.001/scene",
-      },
-      {
-        call: "embeddings",
-        count: "×N",
-        model: "Gemini 2.5",
-        note: "Summaries, propositions, prose (OpenAI)",
-        cost: "~$0.003/scene",
-      },
-      {
-        call: "groupScenesIntoArcs",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Name arcs from scene summaries (skipped in world-only)",
-        cost: "~$0.002",
-      },
-      {
-        call: "reconcileResults",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Entity deduplication across chunks",
-        cost: "~$0.008",
-      },
-      {
-        call: "analyzeThreading",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Thread dependency analysis (skipped in world-only)",
-        cost: "~$0.003",
-      },
-      {
-        call: "meta-extraction (assembleNarrative)",
-        count: "×1",
-        model: "Gemini 2.5",
-        note: "Image style, prose profile, genre, patterns",
-        cost: "~$0.020",
-      },
-    ],
-    subtotal: { calls: "~5N + 5", cost: "~$1.38 for HP (64 scenes)" },
-  },
-  {
-    label: "Questioning",
-    unit: "on-demand  ·  operator-initiated  ·  separate from generation budget",
-    rows: [
-      {
-        call: "executeSurvey",
-        count: "per request",
-        model: "DeepSeek v4",
-        note: "1 question × N respondents (parallel) — ~$0.001 per respondent",
-        cost: "~$0.01 (10 respondents)",
-      },
-      {
-        call: "executeInterview",
-        count: "per request",
-        model: "DeepSeek v4",
-        note: "1 subject × ~6 AI-generated questions",
-        cost: "~$0.01",
-      },
-      {
-        call: "analyzeSceneGames",
-        count: "per scene",
-        model: "Gemini 2.5",
-        note: "Game-theory decomposition of a scene (additive, doesn't mutate deltas)",
-        cost: "~$0.015",
-      },
-      {
-        call: "chat",
-        count: "per turn",
-        model: "DeepSeek v4",
-        note: "Conversational turn over narrative state — entity persona / Q&A",
-        cost: "~$0.001",
-      },
-    ],
-    subtotal: { calls: "operator-paced", cost: "~$0.001–$0.02 each" },
+    tier: "Strategist",
+    price: "$18K/mo",
+    annual: "$216K",
+    fits: "$500M+ or competitive-pressure regimes that need continuous calibration",
+    includes:
+      "+ unlimited forks · full multiplayer (client + InkTide adversarial teams) · monthly calibration call vs. market reality",
   },
 ];
 
-function ModelPill({ model }: { model: "DeepSeek v4" | "Gemini 2.5" | "mixed" }) {
-  const tone =
-    model === "Gemini 2.5"
-      ? "bg-violet-500/10 text-violet-400/60"
-      : model === "mixed"
-        ? "bg-amber-500/10 text-amber-400/60"
-        : "bg-emerald-500/10 text-emerald-400/60";
+function PricingTiers() {
   return (
-    <span
-      className={`text-[9px] px-1.5 py-0.5 rounded font-mono whitespace-nowrap ${tone}`}
-    >
-      {model}
-    </span>
+    <div className="my-5 px-3 sm:px-5 py-4 rounded-lg bg-white/3 border border-white/6">
+      <span className="text-[10px] uppercase tracking-wider text-white/20 block mb-3 font-mono">
+        Subscription Tiers · same engine, different operator depth
+      </span>
+
+      <table className="w-full text-[11px] table-fixed">
+        <colgroup>
+          <col className="w-[16%]" />
+          <col className="w-[14%]" />
+          <col className="w-[12%]" />
+          <col className="w-[58%]" />
+        </colgroup>
+        <thead>
+          <tr className="text-[9px] uppercase tracking-wider text-white/25 font-mono">
+            <th className="text-left pb-2">Tier</th>
+            <th className="text-left pb-2">Monthly</th>
+            <th className="text-right pb-2">Annual</th>
+            <th className="text-left pb-2 pl-4">Fit &middot; what&apos;s included</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PRICING_TIERS.map((row, i) => (
+            <tr key={row.tier} className={i > 0 ? "border-t border-white/5" : ""}>
+              <td className="py-2 text-white/70 font-mono">{row.tier}</td>
+              <td className="py-2 font-mono text-white/60">{row.price}</td>
+              <td className="py-2 font-mono text-white/45 text-right">{row.annual}</td>
+              <td className="py-2 text-[10px] pl-4">
+                <div className="text-white/55">{row.fits}</div>
+                <div className="text-white/35 mt-0.5">{row.includes}</div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="text-[9px] text-white/25 mt-3 leading-relaxed">
+        <span className="font-mono text-white/40">Industry anchor</span> · McKinsey
+        weekly team bundle{" "}
+        <span className="font-mono text-white/50">$168K–$265K</span> (public US gov
+        contracts) · single engagement{" "}
+        <span className="font-mono text-white/50">$500K–$2M+</span> · transformation{" "}
+        <span className="font-mono text-white/50">$2M–$20M+</span> · ~$55B strategy
+        consulting market inside ~$400B management consulting total, ~6% CAGR
+        through 2034. The mid-market (~$50M–$500M revenue · ~95% of US firms by
+        count) spends ~$45B/year on strategy-adjacent work from tier-2 firms and
+        Big Four consulting arms — replicating the project unit at lower price,
+        not changing it.
+      </p>
+
+      <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
+        At <span className="text-white/55 font-mono">$10K/month</span>, a client
+        spends <span className="text-white/55 font-mono">$120K/year</span> for
+        continuous access to a forkable world view of their landscape. A single
+        MBB engagement costs <span className="text-white/55">4×</span> that at
+        the entry point and <span className="text-white/55">40×</span> at the
+        transformation tier &mdash; and ends with a deck, not a substrate. The
+        substrate is what&apos;s reusable, defensible, and compounds across
+        quarters.
+      </p>
+
+    </div>
   );
 }
 
-function CostEstimates() {
+/* ── Unit economics, reframed for strategic simulations ───────────────────── */
+
+type SimActivity = {
+  activity: string;
+  definition: string;
+  perUnit: string;
+  annualScout: string;
+  annualAnalyst: string;
+  annualStrategist: string;
+};
+
+const SIM_ACTIVITIES: SimActivity[] = [
+  {
+    activity: "Corpus ingest",
+    definition:
+      "Client briefs · market data · internal docs · regulatory filings → typed world graph (one-time per world view)",
+    perUnit: "~$0.021/scene-equiv + ~$0.033 once",
+    annualScout: "~$1.10 once",
+    annualAnalyst: "~$1.10 once",
+    annualStrategist: "~$3.30 (3 views)",
+  },
+  {
+    activity: "Wargame session",
+    definition:
+      "1 arc · 4–8 moves · adversary response · decision-matrix scoring · ELO update",
+    perUnit: "~$0.16/session",
+    annualScout: "~$0.64 (4/yr)",
+    annualAnalyst: "~$2.56 (16/yr)",
+    annualStrategist: "~$8.32 (52/yr)",
+  },
+  {
+    activity: "Branch cohort",
+    definition:
+      "Parallel scenarios from a fork point · softmax-ranked variables · multi-timeline comparison",
+    perUnit: "~$0.64/cohort (4 branches)",
+    annualScout: "~$0.64 (1/yr)",
+    annualAnalyst: "~$2.56 (4/yr)",
+    annualStrategist: "~$7.68 (12/yr)",
+  },
+  {
+    activity: "Calibration cycle",
+    definition:
+      "Score prior forecasts against landed reality · mark hits / misses · update Brier score",
+    perUnit: "~$0.05/cycle",
+    annualScout: "~$0.20 (quarterly)",
+    annualAnalyst: "~$0.60 (monthly)",
+    annualStrategist: "~$0.60 (monthly)",
+  },
+  {
+    activity: "Interrogation",
+    definition:
+      "Surveys · interviews · chat — operator queries actors and rules in-character",
+    perUnit: "~$0.001–$0.02 each",
+    annualScout: "~$1",
+    annualAnalyst: "~$5",
+    annualStrategist: "~$15",
+  },
+];
+
+function UnitEconomics() {
   const [showBreakdown, setShowBreakdown] = useState(false);
   return (
     <div className="my-5 px-3 sm:px-5 py-4 rounded-lg bg-white/3 border border-white/6">
       <span className="text-[10px] uppercase tracking-wider text-white/20 block mb-3 font-mono">
-        End-to-End Estimates · ~4 scenes/arc · ~1.2K words/scene
+        Unit Economics · per-client compute against the engine
       </span>
 
-      {/* Domain-routed model split — DeepSeek v4 Flash drives scene generation,
-          prose, and interaction (chat / surveys / interviews); Gemini 2.5 Flash
-          drives planning (CRG / PRG / scene plans), the analysis pipeline, and
-          everything else by default (evaluation, briefings, game theory).
-
-          Creation (one-time):     ~$0.08 wizard bootstrap (~8 scenes / ~2 arcs)
-          Generation per arc:      ~$0.13 (CRG + 4× scene plan/prose pass)
-          Evaluation per arc:      ~$0.03 (eval + ~25% edit/rewrite rate)
-          Per-arc total:           ~$0.16 (~$0.04/scene)
-          Analysis (ingest):       ~$0.021/scene + ~$0.033 once
-
-          "Create from premise" rows = wizard + (arcs - 2 from bootstrap) × $0.16
-          "Analyse + continue" rows  = ingest + continuation arcs × $0.16. */}
       <table className="w-full text-[11px] table-fixed">
         <colgroup>
           <col className="w-[18%]" />
           <col className="w-[34%]" />
-          <col className="w-[12%]" />
-          <col className="w-[12%]" />
-          <col className="w-[12%]" />
-          <col className="w-[12%]" />
+          <col className="w-[16%]" />
+          <col className="w-[10%]" />
+          <col className="w-[11%]" />
+          <col className="w-[11%]" />
         </colgroup>
         <thead>
           <tr className="text-[9px] uppercase tracking-wider text-white/25 font-mono">
-            <th className="text-left pb-2">Scale</th>
-            <th className="text-left pb-2">Words / scenes / arcs</th>
-            <th className="text-right pb-2">Create</th>
-            <th className="text-right pb-2">Analyse</th>
-            <th className="text-right pb-2">Continue</th>
-            <th className="text-right pb-2">Total</th>
+            <th className="text-left pb-2">Activity</th>
+            <th className="text-left pb-2">Definition</th>
+            <th className="text-right pb-2">Per unit</th>
+            <th className="text-right pb-2">Scout/yr</th>
+            <th className="text-right pb-2">Analyst/yr</th>
+            <th className="text-right pb-2">Strategist/yr</th>
           </tr>
         </thead>
         <tbody>
-          {[
-            { scale: "Short story", words: "~10K", scenes: 10, arcs: 3 },
-            { scale: "Novella", words: "~35K", scenes: 35, arcs: 9 },
-            { scale: "Novel", words: "~85K", scenes: 85, arcs: 21 },
-            { scale: "Epic", words: "~200K", scenes: 200, arcs: 50 },
-            { scale: "Serial", words: "~500K", scenes: 500, arcs: 125 },
-          ].map(({ scale, words, scenes, arcs }, i) => {
-            // Wizard creation — one-time bootstrap (~8 scenes / ~2 arcs).
-            const create = 0.08;
-            // Continuation = remaining arcs after the wizard's 2 bootstrap arcs × $0.16/arc.
-            const continueCost = Math.max(0, arcs - 2) * 0.16;
-            const totalCreate = create + continueCost;
-            // Analyse = ingest cost for the same scene count.
-            const analyse = scenes * 0.021 + 0.033;
-            return (
-              <tr key={scale} className={i > 0 ? "border-t border-white/5" : ""}>
-                <td className="py-2 text-white/50">{scale}</td>
-                <td className="py-2 text-white/30 text-[10px]">
-                  {words} · {scenes} sc · {arcs} arc{arcs === 1 ? "" : "s"}
-                </td>
-                <td className="py-2 font-mono text-white/45 text-right">
-                  ${create.toFixed(2)}
-                </td>
-                <td className="py-2 font-mono text-white/45 text-right">
-                  ${analyse.toFixed(2)}
-                </td>
-                <td className="py-2 font-mono text-white/45 text-right">
-                  ${continueCost.toFixed(2)}
-                </td>
-                <td className="py-2 font-mono text-white/70 text-right font-semibold">
-                  ${totalCreate.toFixed(2)}
-                </td>
-              </tr>
-            );
-          })}
+          {SIM_ACTIVITIES.map((row, i) => (
+            <tr
+              key={row.activity}
+              className={i > 0 ? "border-t border-white/5" : ""}
+            >
+              <td className="py-2 text-white/55 font-mono text-[10px]">
+                {row.activity}
+              </td>
+              <td className="py-2 text-white/35 text-[10px]">{row.definition}</td>
+              <td className="py-2 font-mono text-white/45 text-right text-[10px]">
+                {row.perUnit}
+              </td>
+              <td className="py-2 font-mono text-white/55 text-right">
+                {row.annualScout}
+              </td>
+              <td className="py-2 font-mono text-white/55 text-right">
+                {row.annualAnalyst}
+              </td>
+              <td className="py-2 font-mono text-white/55 text-right">
+                {row.annualStrategist}
+              </td>
+            </tr>
+          ))}
+          <tr className="border-t border-white/15">
+            <td
+              colSpan={3}
+              className="pt-2 text-white/45 font-mono text-[10px] uppercase tracking-wider"
+            >
+              Annual compute / client
+            </td>
+            <td className="pt-2 font-mono text-white/75 text-right font-semibold">
+              ~$3
+            </td>
+            <td className="pt-2 font-mono text-white/75 text-right font-semibold">
+              ~$12
+            </td>
+            <td className="pt-2 font-mono text-white/75 text-right font-semibold">
+              ~$35
+            </td>
+          </tr>
+          <tr>
+            <td
+              colSpan={3}
+              className="pt-1 text-white/35 font-mono text-[10px] uppercase tracking-wider"
+            >
+              vs. subscription revenue
+            </td>
+            <td className="pt-1 font-mono text-emerald-400/60 text-right text-[10px]">
+              0.01% of $24K
+            </td>
+            <td className="pt-1 font-mono text-emerald-400/60 text-right text-[10px]">
+              0.01% of $96K
+            </td>
+            <td className="pt-1 font-mono text-emerald-400/60 text-right text-[10px]">
+              0.02% of $216K
+            </td>
+          </tr>
         </tbody>
       </table>
 
-      <p className="text-[9px] text-white/25 mt-2">
-        <span className="font-mono text-white/40">Create</span> = wizard one-time bootstrap (~$0.08 for entities + intro arc).{" "}
-        <span className="font-mono text-white/40">Continue</span> = remaining arcs × ~$0.16/arc (CRG + 4 scenes' plan/prose + per-arc eval).{" "}
-        <span className="font-mono text-white/40">Analyse</span> = ingest an existing corpus into NarrativeState (separate flow — pay this OR Create, not both).{" "}
-        <span className="font-mono text-white/40">Total</span> sums Create + Continue for the from-scratch flow.
+      <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
+        Compute margin on the engine is functionally <B>100%</B>. The variable
+        cost at <span className="font-mono text-white/55">Analyst</span> and{" "}
+        <span className="font-mono text-white/55">Strategist</span> tiers is the{" "}
+        <em>facilitator</em> — a former consultant who frames scenarios and
+        leads wargame sessions. One facilitator pools across a vertical of
+        clients (estimate <span className="font-mono text-white/50">5–8</span>{" "}
+        Analyst-tier or <span className="font-mono text-white/50">3–4</span>{" "}
+        Strategist-tier clients per FTE), inverting MBB&apos;s pyramid: the
+        analytical work is done by the substrate, not by juniors billed at{" "}
+        $450/hour. Customer-acquisition cost amortises against the
+        subscription&apos;s lifetime value, not against episodic project
+        revenue — and each retained client compounds the priors that make the
+        next forecast sharper.
       </p>
 
-      <p className="text-[10px] text-white/25 mt-3">
-        Each kind of work runs on the cheapest model that meets its bar.{" "}
+      <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
+        Each kind of work routes to the cheapest model that meets its bar.{" "}
         <span className="text-emerald-500/40">DeepSeek v4 Flash</span> ($0.14/M in
-        · $0.28/M out) handles scene generation, prose, and interaction
-        (chat / surveys / interviews).{" "}
-        <span className="text-violet-400/60">Gemini 2.5 Flash</span> ($0.30/M in ·
-        $2.50/M out) handles planning (CRG / PRG / scene plans), the analysis
-        pipeline, and the default fallback (evaluation, briefings, game theory).
-        The richer the priors fed into analysis, the more the simulation can
-        reason — analysis is the path where domain corpus becomes queryable
+        · $0.28/M out) handles scene generation, prose, and interaction (chat /
+        surveys / interviews / wargame dispatch).{" "}
+        <span className="text-violet-400/60">Gemini 2.5 Flash</span> ($0.30/M in
+        · $2.50/M out) handles planning (CRG / PRG / scene plans), the analysis
+        pipeline that ingests client corpora, and the default fallback
+        (evaluation, briefings, decision-matrix decomposition). The richer the
+        priors fed into ingest, the more the simulation can reason — analysis
+        is the path where the client&apos;s domain corpus becomes queryable
         structure.
       </p>
 
@@ -1061,14 +978,13 @@ function CostEstimates() {
             strokeLinejoin="round"
           />
         </svg>
-        <span>Cost breakdown by scope</span>
+        <span>Cost breakdown by call category</span>
       </button>
 
       {showBreakdown && (
-        <div className="mt-3 pt-3 border-t border-white/5 space-y-5">
-          {BREAKDOWN_CATEGORIES.map((cat) => (
+        <div className="mt-3 pt-3 border-t border-white/5 space-y-4">
+          {SIM_BREAKDOWN.map((cat) => (
             <div key={cat.label}>
-              {/* Category header */}
               <div className="flex items-baseline gap-2 mb-1.5">
                 <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider">
                   {cat.label}
@@ -1077,10 +993,10 @@ function CostEstimates() {
               </div>
               <table className="w-full text-[11px] table-fixed">
                 <colgroup>
-                  <col className="w-[28%]" />
-                  <col className="w-[6%]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[8%]" />
                   <col className="w-[14%]" />
-                  <col className="w-[38%]" />
+                  <col className="w-[34%]" />
                   <col className="w-[14%]" />
                 </colgroup>
                 <tbody>
@@ -1124,6 +1040,200 @@ function CostEstimates() {
         </div>
       )}
     </div>
+  );
+}
+
+type SimBreakdownRow = {
+  call: string;
+  count: string;
+  /** "DeepSeek v4" — scene gen, prose, interaction (chat / surveys / wargame
+   *  dispatch). "Gemini 2.5" — planning (CRG / PRG / scene plans), corpus
+   *  analysis, default fallback (evaluation, briefings, decision matrix).
+   *  "mixed" — a step spanning both. */
+  model: "DeepSeek v4" | "Gemini 2.5" | "mixed";
+  note: string;
+  cost: string;
+};
+type SimBreakdownCategory = {
+  label: string;
+  unit: string;
+  rows: SimBreakdownRow[];
+  subtotal: { calls: string; cost: string } | null;
+};
+
+const SIM_BREAKDOWN: SimBreakdownCategory[] = [
+  {
+    label: "Ingest",
+    unit: "one-time per world view  ·  client corpus → typed knowledge graph",
+    rows: [
+      {
+        call: "extractSceneStructure",
+        count: "×N",
+        model: "Gemini 2.5",
+        note: "Per-section structural extraction — entities, relationships, events, threads",
+        cost: "~$0.008/section",
+      },
+      {
+        call: "reextractFateWithLifecycle",
+        count: "×N",
+        model: "Gemini 2.5",
+        note: "Stance & evidence per open question over the corpus timeline",
+        cost: "~$0.004/section",
+      },
+      {
+        call: "summariseWorldBuildBatch",
+        count: "⌈N/12⌉×",
+        model: "Gemini 2.5",
+        note: "Batched encyclopedic deltas for actors, locations, instruments",
+        cost: "~$0.001/section",
+      },
+      {
+        call: "embeddings (OpenAI)",
+        count: "×N",
+        model: "Gemini 2.5",
+        note: "Per-proposition vectors for semantic retrieval across the corpus",
+        cost: "~$0.003/section",
+      },
+      {
+        call: "reconcile / threading / meta",
+        count: "×1",
+        model: "Gemini 2.5",
+        note: "Cross-section reconciliation, thread topology, meta-extraction once",
+        cost: "~$0.033 once",
+      },
+    ],
+    subtotal: {
+      calls: "~50K-word corpus (~40 sections)",
+      cost: "~$0.87 once",
+    },
+  },
+  {
+    label: "Wargame Session",
+    unit: "per session  ·  1 arc  ·  4–8 moves with adversary response",
+    rows: [
+      {
+        call: "generateReasoningGraph",
+        count: "×1",
+        model: "Gemini 2.5",
+        note: "Per-session CRG — actors, commitments, contingencies, warnings",
+        cost: "~$0.04",
+      },
+      {
+        call: "generateScenePlan",
+        count: "×4",
+        model: "Gemini 2.5",
+        note: "Move-by-move plan — function · mechanism · projected stake shifts",
+        cost: "~$0.07",
+      },
+      {
+        call: "generateScenes / Prose",
+        count: "×4",
+        model: "DeepSeek v4",
+        note: "Move dispatch — adversary actions, scoring, decision-matrix decomposition",
+        cost: "~$0.02",
+      },
+      {
+        call: "evaluateBranch / Prose / Plan",
+        count: "×1",
+        model: "Gemini 2.5",
+        note: "Per-session evaluation — stake deltas, force trajectories, calibration delta",
+        cost: "~$0.03",
+      },
+    ],
+    subtotal: { calls: "~10 calls / session", cost: "~$0.16/session" },
+  },
+  {
+    label: "Branch Cohort",
+    unit: "per fork point  ·  4 parallel scenarios scored by priorLogit",
+    rows: [
+      {
+        call: "extractArcPresent",
+        count: "×1",
+        model: "Gemini 2.5",
+        note: "Load-bearing variables at the fork point — forces, not symptoms",
+        cost: "~$0.04",
+      },
+      {
+        call: "generatePlanningScenarios",
+        count: "×1",
+        model: "Gemini 2.5",
+        note: "Cohort generation — coordinations over variables, softmax-ranked",
+        cost: "~$0.04",
+      },
+      {
+        call: "generateReasoningGraph + Scenes",
+        count: "×4",
+        model: "mixed",
+        note: "One full simulation per scenario — CRG + scene structures + prose",
+        cost: "~$0.56",
+      },
+    ],
+    subtotal: { calls: "~6 calls / cohort", cost: "~$0.64/cohort" },
+  },
+  {
+    label: "Calibration",
+    unit: "per cycle  ·  score priors against landed reality",
+    rows: [
+      {
+        call: "evaluateBranch",
+        count: "×1",
+        model: "Gemini 2.5",
+        note: "Reality-vs-prior diff — which scenarios landed, which missed, why",
+        cost: "~$0.01",
+      },
+      {
+        call: "rescoreScenario",
+        count: "×N",
+        model: "Gemini 2.5",
+        note: "Re-score active scenarios against the new evidence baseline",
+        cost: "~$0.04",
+      },
+    ],
+    subtotal: { calls: "~3 calls / cycle", cost: "~$0.05/cycle" },
+  },
+  {
+    label: "Interrogation",
+    unit: "operator-paced  ·  surveys · interviews · chat",
+    rows: [
+      {
+        call: "runSurvey",
+        count: "per question × N",
+        model: "DeepSeek v4",
+        note: "Cast-wide poll on a research question — actors answer in-character",
+        cost: "~$0.005/respondent",
+      },
+      {
+        call: "runInterview",
+        count: "×1",
+        model: "DeepSeek v4",
+        note: "Multi-question depth on one actor — grounded in their continuity",
+        cost: "~$0.02 each",
+      },
+      {
+        call: "chat (entity persona)",
+        count: "per turn",
+        model: "DeepSeek v4",
+        note: "Conversational turn against an actor or the world rules",
+        cost: "~$0.001",
+      },
+    ],
+    subtotal: { calls: "operator-paced", cost: "~$0.001–$0.02 each" },
+  },
+];
+
+function ModelPill({ model }: { model: "DeepSeek v4" | "Gemini 2.5" | "mixed" }) {
+  const tone =
+    model === "Gemini 2.5"
+      ? "bg-violet-500/10 text-violet-400/60"
+      : model === "mixed"
+        ? "bg-amber-500/10 text-amber-400/60"
+        : "bg-emerald-500/10 text-emerald-400/60";
+  return (
+    <span
+      className={`text-[9px] px-1.5 py-0.5 rounded font-mono whitespace-nowrap ${tone}`}
+    >
+      {model}
+    </span>
   );
 }
 
@@ -4269,44 +4379,98 @@ export default function PaperPage() {
           {/* ── Economics ──────────────────────────────────────────────── */}
           <Section id="economics" label="Economics">
             <P>
-              A short story costs under a dollar; a full novel under
-              seven; an open-ended serial under forty. The whole
-              pipeline &mdash; structure, analysis, evaluation, beat
-              plans, and prose &mdash; runs on{" "}
-              <B>DeepSeek v4 Flash</B> (<B>$0.14/M input</B>,{" "}
-              <B>$0.28/M output</B>). Input tokens dominate because
-              every call sends the full context, but context is
-              capped by the branch time horizon (~50 scenes), so cost
-              per arc is constant &mdash; arc 10 costs the same as arc
-              100. Reasoning is configurable per work from none
-              (analysis) through low (~2K tokens/call, default) to
-              high (~24K).
+              Strategy consulting runs on a structural contradiction.
+              A junior analyst billed at <B>$450/hour</B> costs the
+              firm ~<B>$120/hour</B> in comp; the pyramid generates{" "}
+              ~<B>73% margin</B> per billable. AI that compresses{" "}
+              <B>70&ndash;85%</B> of junior work doesn&apos;t reduce
+              headcount &mdash; it collapses the pyramid&apos;s base,
+              dragging per-engagement margin from ~<B>66%</B> toward{" "}
+              ~<B>39%</B>. MBB&apos;s internal AI deployments
+              (McKinsey&apos;s Lilli, BCG&apos;s Gene, Bain&apos;s
+              OpenAI tie) are efficiency plays that cannibalise the
+              model they were built to defend. Outcome-based pricing
+              now covers <B>~25%</B> of McKinsey&apos;s global fees{" "}
+              &mdash; adaptation that accelerates the contradiction,
+              not a solution.
+            </P>
+            <P>
+              The mid-market is what&apos;s been ceded. Companies
+              between <B>$50M</B> and <B>$500M</B> revenue &mdash;
+              ~<B>95%</B> of US firms by count &mdash; spend ~<B>$45B</B>
+              /year on strategy-adjacent work from tier-2 firms
+              (Kearney, Roland Berger, Oliver Wyman) and the Big
+              Four&apos;s consulting arms. The alternatives replicate
+              MBB&apos;s project unit at lower price points. MBB
+              engagements themselves have migrated from{" "}
+              <B>$500K</B> two decades ago to <B>$2M&ndash;$20M+</B>{" "}
+              transformations today; the lower tier isn&apos;t served
+              at all. The opening is for a different unit altogether:{" "}
+              <B>simulation-as-subscription</B>. Christensen&apos;s
+              pattern applies; incumbents fight disruption with
+              cheaper versions of the same product, which destroys
+              margin without matching the disruptor&apos;s cost
+              structure.
             </P>
 
-            <CostEstimates />
+            <PricingTiers />
 
             <P>
-              Analysing a 100K-word novel costs under twenty-five
-              cents; a 500K-word series, about a dollar; evaluating
-              a branch, five cents. Non-fiction and simulation come
-              in at comparable scale. The generate-evaluate-revise
-              loop is cheap to repeat. A team running its strategy
-              through it pays in pennies what a consulting deck costs
-              in tens of thousands &mdash; and ends each quarter with
-              a world view it can fork, not a deck it has to redraw.{" "}
+              Underneath each tier, the engine itself runs in
+              pennies. Compute is not where the cost lives &mdash;
+              labor is, and we replace the pyramid with a thin layer
+              of senior facilitators against a substrate that does
+              the analytical work juniors used to bill for. The unit
+              economics, broken down per simulation activity:
+            </P>
+
+            <UnitEconomics />
+
+            <P>
+              The structural barrier MBB faces is not technology
+              &mdash; it&apos;s the partnership model. A McKinsey
+              partner selling a $10K/month subscription is
+              compensated less than selling a $2M transformation,
+              and partners are elected by their book of business.
+              The incentive structure actively resists the
+              subscription unit. Their response window is ~<B>18
+              months</B> from a credible commercial launch &mdash;
+              roughly the time it takes a partnership vote to
+              re-shape compensation around recurring fees, against
+              the gravity of every prior cycle.
+            </P>
+            <P>
+              The engine is not the moat. MBB could replicate it with
+              comparable LLM infrastructure. The moat is what
+              accumulates <em>on</em> the engine: calibrated priors
+              across verticals, fork histories that show what
+              scenarios were conceived and what reality scored,
+              facilitator relationships that embed the service in
+              client decision rhythms. Each engagement enriches the
+              priors; the engine becomes more calibrated for that
+              vertical the longer the client stays.{" "}
               <B>Computation is fixed and cheap; data quality decides
-              the result.</B>
+              the result.</B> The longer the loop runs, the sharper
+              the next forecast and the harder the substrate is to
+              fork away from.
             </P>
           </Section>
 
           {/* ── Multiplayer Wargaming ────────────────────────────────── */}
           <Section id="multiplayer-wargaming" label="Multiplayer Wargaming">
             <P>
-              The single-operator simulator is the floor. The natural
-              next shape is <em>multiplayer wargaming</em>: two or
-              more operators on opposite sides of the same world, each
-              driving their own actors against a shared substrate that
-              arbitrates the rules. The engine already carries what a
+              Narrative is the validation substrate; strategy is the
+              destination. The same engine that grades a Harry Potter
+              arc grades a market thesis &mdash; same forces, same
+              fork-and-commit paradigm, same priors-decide-the-result
+              math. The leap from one to the other is operator depth,
+              not engine change. The product shape is{" "}
+              <em>multiplayer wargaming</em>: the client team on one
+              side, InkTide-sourced adversarial operators driving
+              competitors, regulators, and customers on the other,
+              each commiting moves against a shared substrate that
+              arbitrates the rules. Real actors and simulated actors
+              share the board. The engine already carries what a
               wargame needs &mdash; system graph for the rules,
               threads pricing live questions, a decision matrix
               scoring every move, ELO keeping the strategic ledger.
@@ -4314,19 +4478,60 @@ export default function PaperPage() {
               loop are the rest.
             </P>
             <P>
-              This is where the substrate earns its keep beyond
-              fiction. A go-to-market plan is a world view. A
-              competitive analysis is a world view. A regulatory
-              filing is a world view. Teams that run them as one-shot
-              decks today are about to run them as continuously-
-              updating models &mdash; calibrated against signal,
-              forked when the field shifts, scored by where the prior
-              landed and where it didn&apos;t. Red team and blue team
-              commit one compass cardinal at a time; the engine
-              resolves the collision under the world&apos;s declared
-              physics. Backtests against reality sit one rung above:
-              priors as inputs, simulations as experiments, reality as
-              referee.
+              The epistemic case is direct. Unaided executive judgment
+              suffers from systematic biases: overconfidence on
+              competitor response, anchoring on first-mover
+              assumptions, confirmation bias on the chosen path.
+              Kahneman, Lovallo, and Sibony&apos;s &lsquo;deliberate
+              ignorance&rsquo; finding holds &mdash; executives
+              underweight competitor reaction because modelling it is
+              cognitively costly. Structured adversarial play corrects
+              all three by forcing the decision-maker to inhabit the
+              adversary&apos;s payoff structure. Wargaming makes the
+              reaction structurally necessary.
+            </P>
+            <P>
+              Three limits constrain the claim, and the substrate
+              answers each one. Tacit knowledge &mdash; Polanyi&apos;s{" "}
+              <em>we know more than we can tell</em> &mdash; resists
+              formalization; but the engine is calibrated for foxes
+              who track many views with scored predictions, not
+              hedgehogs with one big narrative. Tacit knowledge IS
+              captured when it produces calibrated forecasts that
+              outperform; the engine makes that measurable. The
+              conceivability constraint &mdash; a simulation can
+              only explore scenarios its designers conceive &mdash;
+              is real and unresolvable by the engine alone, which is
+              why multiplayer is essential: adversarial human
+              operators surface what the model-builder cannot. The
+              Goodhart effect &mdash; players learning to game the
+              simulation rather than think about reality &mdash; is
+              mitigated by fork-and-commit: the substrate updates
+              against reality, not against the simulation&apos;s
+              internal consistency. Reality is the referee.
+            </P>
+            <P>
+              For the class of problems the mid-market actually faces
+              &mdash; competitive positioning, market entry, product
+              launch, regulatory exposure, M&amp;A posture &mdash;
+              the uncertainty is resolvable through structured
+              adversarial exploration, and the simulation produces
+              decisions executives could not have reached alone. For
+              problems of radical uncertainty &mdash; new market
+              creation, paradigm shifts &mdash; the simulation is a
+              thinking tool, not a prediction engine, and that
+              cognitive role alone outperforms the alternative of no
+              structured strategy process at all. A go-to-market plan
+              is a world view. A competitive analysis is a world
+              view. A regulatory filing is a world view. Teams that
+              run them as one-shot decks today are about to run them
+              as continuously-updating models &mdash; calibrated
+              against signal, forked when the field shifts, scored by
+              where the prior landed and where it didn&apos;t. Red
+              team and blue team commit one compass cardinal at a
+              time; the engine resolves the collision under the
+              world&apos;s declared physics. Priors as inputs,
+              simulations as experiments, reality as referee.
             </P>
           </Section>
         </div>
