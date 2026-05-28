@@ -496,6 +496,19 @@ export default function WorldGraph() {
       links = links.filter(l => !hiddenLinkKinds.has(l.linkKind));
     }
 
+    // Preserve positions across rebuilds so toggles like arcFocus, vicinity,
+    // and entity-kind filters don't restart the layout from scratch. Any new
+    // node that wasn't in the previous build starts unpositioned and the
+    // simulation settles it around the existing layout.
+    const prevPositions = new Map(nodesRef.current.map((n) => [n.id, { x: n.x, y: n.y }]));
+    for (const n of nodes) {
+      const prev = prevPositions.get(n.id);
+      if (prev?.x != null && prev?.y != null) {
+        n.x = prev.x;
+        n.y = prev.y;
+      }
+    }
+
     // Store nodes ref for intra-arc updates
     nodesRef.current = nodes;
 
@@ -1022,7 +1035,10 @@ export default function WorldGraph() {
         .attr('x2', (d) => ((d.target as GraphNode).x ?? 0))
         .attr('y2', (d) => ((d.target as GraphNode).y ?? 0));
     });
-  }, [narrative, activeArcId, state.viewState.currentSceneIndex, showSpatial]);
+    // Mirror the main rebuild's deps so char-loc lines are re-attached after
+    // every full graph rebuild (arcFocus, vicinity, entity-kind toggles all
+    // wipe the SVG; the char-loc layer has to follow).
+  }, [narrative, activeArcId, state.viewState.currentSceneIndex, showSpatial, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showVicinity, resolvedEntryKeys]);
 
   // ── Zoom to focused group ──
   useEffect(() => {
