@@ -17,7 +17,7 @@ import { replayThreadsAtIndex } from '@/lib/portfolio-analytics';
 import { computeGroups } from './graph-utils';
 import { IconChevronLeft, IconChevronRight, IconRefresh } from '@/components/icons';
 import EvalBar from '@/components/timeline/EvalBar';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -186,15 +186,15 @@ export default function ThreadGraphView({
     const g = svg.append('g');
     gRef.current = g;
 
-    // Zoom
+    // Zoom — shared config across all canvas graph views.
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 4])
+      .scaleExtent(GRAPH_ZOOM_EXTENT)
       .on('zoom', (event) => g.attr('transform', event.transform));
     svg.call(zoom);
     zoomRef.current = zoom;
     const width = svgEl.clientWidth ?? 800;
     const height = svgEl.clientHeight ?? 600;
-    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
+    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(GRAPH_INITIAL_SCALE));
 
     // Layer groups. Halos sit between links and nodes so the bloom renders
     // behind the node circle but on top of any line passing through.
@@ -437,7 +437,7 @@ export default function ThreadGraphView({
           const w = svgEl.clientWidth ?? 800, h = svgEl.clientHeight ?? 600;
           d3.select(svgEl).transition().duration(500).call(
             zoom.transform as unknown as (t: d3.Transition<SVGSVGElement, unknown, null, undefined>) => void,
-            d3.zoomIdentity.translate(w / 2, h / 2).scale(0.9),
+            d3.zoomIdentity.translate(w / 2, h / 2).scale(GRAPH_INITIAL_SCALE),
           );
         }
         return;

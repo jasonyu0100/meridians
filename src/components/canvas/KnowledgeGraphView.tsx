@@ -7,7 +7,7 @@ import { buildCumulativeSystemGraph } from '@/lib/narrative-utils';
 import type { NarrativeState, SystemNode } from '@/types/narrative';
 import EvalBar from '@/components/timeline/EvalBar';
 import { computeGroups, SYS_TYPE_COLORS, type SysNode, type SysLink } from './graph-utils';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
 
 // ── Fullscreen button ────────────────────────────────────────────────────────
 
@@ -135,15 +135,15 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     const g = svg.append('g');
     gRef.current = g;
 
-    // Zoom
+    // Zoom — shared config across all canvas graph views.
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 4])
+      .scaleExtent(GRAPH_ZOOM_EXTENT)
       .on('zoom', (event) => g.attr('transform', event.transform));
     svg.call(zoom);
     zoomRef.current = zoom;
     const width = svgEl.clientWidth ?? 800;
     const height = svgEl.clientHeight ?? 600;
-    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
+    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(GRAPH_INITIAL_SCALE));
 
     // Create link and node groups (order matters for layering)
     g.append('g').attr('class', 'wk-links');
@@ -429,7 +429,7 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
           d3.select(svgEl)
             .transition()
             .duration(500)
-            .call(zoom.transform as unknown as (t: d3.Transition<SVGSVGElement, unknown, null, undefined>) => void, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
+            .call(zoom.transform as unknown as (t: d3.Transition<SVGSVGElement, unknown, null, undefined>) => void, d3.zoomIdentity.translate(width / 2, height / 2).scale(GRAPH_INITIAL_SCALE));
         }
         return;
       }

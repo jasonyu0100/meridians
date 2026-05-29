@@ -28,3 +28,16 @@ export function edgeWidthFor(t: number): number {
  *  settles in ~1s instead of multi-second drift on every data change. */
 export const SIM_ALPHA_START = 0.3;
 export const SIM_ALPHA_DECAY = 0.04;
+
+// ── Zoom config (shared across all canvas graph views) ───────────────────
+
+/** Pan/zoom scale bounds for every canvas graph view. Lower bound is
+ *  generous enough to fit WorldGraph's wider canvases; upper bound is
+ *  the d3 ceiling. Unifying the extent across views means the same
+ *  gesture produces the same effect on every graph. */
+export const GRAPH_ZOOM_EXTENT: [number, number] = [0.2, 4];
+
+/** Initial scale on first build of a graph. Slightly zoomed-out so the
+ *  layout has room to breathe before the user starts panning. Pair with
+ *  a centring translate of (width/2, height/2). */
+export const GRAPH_INITIAL_SCALE = 0.9;

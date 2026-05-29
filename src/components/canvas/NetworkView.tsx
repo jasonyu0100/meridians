@@ -4,7 +4,7 @@ import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/store';
 import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/network-graph';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
 import type { AttributionEdgeRelation } from '@/types/narrative';
 
 type NNode = d3.SimulationNodeDatum & NetworkNode & { degree: number };
@@ -147,13 +147,14 @@ export default function NetworkView() {
     const g = svg.append('g');
     gRef.current = g;
 
+    // Zoom — shared config across all canvas graph views.
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 4])
+      .scaleExtent(GRAPH_ZOOM_EXTENT)
       .on('zoom', (event) => g.attr('transform', event.transform));
     svg.call(zoom);
     const width = svgEl.clientWidth ?? 800;
     const height = svgEl.clientHeight ?? 600;
-    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
+    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(GRAPH_INITIAL_SCALE));
 
     g.append('g').attr('class', 'n-links');
     g.append('g').attr('class', 'n-edge-labels');

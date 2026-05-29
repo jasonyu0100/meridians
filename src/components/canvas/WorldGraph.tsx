@@ -45,7 +45,7 @@ import {
   DEFAULT_WORLD_FILL,
 } from './graph-utils';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
-import { edgeWidthFor, edgeOpacityFor } from '@/lib/graph-styling';
+import { edgeWidthFor, edgeOpacityFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
 
 export default function WorldGraph() {
   const { state, dispatch } = useStore();
@@ -585,7 +585,7 @@ export default function WorldGraph() {
     // Zoom behavior
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.2, 4])
+      .scaleExtent(GRAPH_ZOOM_EXTENT)
       .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
         g.attr('transform', event.transform.toString());
       });
@@ -597,7 +597,7 @@ export default function WorldGraph() {
     // centred 0.9 scale on the very first build (no prior transform).
     const initialTransform = hadPreviousTransform
       ? previousTransform!
-      : d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9);
+      : d3.zoomIdentity.translate(width / 2, height / 2).scale(GRAPH_INITIAL_SCALE);
     svg.call(zoom.transform, initialTransform);
 
     // Click on empty canvas → revert inspector to current scene
