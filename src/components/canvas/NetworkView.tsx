@@ -271,17 +271,23 @@ export default function NetworkView() {
       const colB = FORCE_FILL[b];
       return colA === colB ? colA : blendHex(colA, colB, 0.5);
     };
+    // Edges are polylines (source → midpoint → target) so each one can
+    // drop an arrowhead at the midpoint via marker-mid — same primitive
+    // the other three canvas graphs use to encode direction.
     const linkSel = g.select<SVGGElement>('g.n-links')
-      .selectAll<SVGLineElement, NLink>('line')
+      .selectAll<SVGPolylineElement, NLink>('polyline')
       .data(simLinks, (d) => `${(d.source as NNode).id}-${(d.target as NNode).id}`);
     linkSel.exit().remove();
-    linkSel.enter().append('line').merge(linkSel)
+    linkSel.enter().append('polyline')
+      .attr('fill', 'none')
       .attr('vector-effect', 'non-scaling-stroke')
+      .merge(linkSel)
       .attr('stroke', (d) => linkColour(d))
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
       .style('stroke-opacity', (d) => opacityFor(d.weight))
-      .style('stroke-width', (d) => widthFor(d.weight));
+      .style('stroke-width', (d) => widthFor(d.weight))
+      .attr('marker-mid', 'url(#n-arrow)');
 
     // Edge labels (scene scope only) — render the relation token mid-line.
     // For scopes that hide labels, the data join below clears the layer.
@@ -353,7 +359,7 @@ export default function NetworkView() {
         const neighbors = adjacency.get(d.id) ?? new Set();
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
           .attr('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.12));
-        g.select('g.n-links').selectAll<SVGLineElement, NLink>('line')
+        g.select('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline')
           .style('stroke-opacity', (l) => {
             const sId = (l.source as NNode).id, tId = (l.target as NNode).id;
             const touches = sId === d.id || tId === d.id;
@@ -370,7 +376,7 @@ export default function NetworkView() {
         setTooltip(null);
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
           .attr('opacity', (o) => opacityForNode(o));
-        g.select('g.n-links').selectAll<SVGLineElement, NLink>('line')
+        g.select('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline')
           .style('stroke-opacity', (l) => opacityFor(l.weight));
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
           .attr('opacity', (o) => labelOpacity(o));
@@ -409,17 +415,20 @@ export default function NetworkView() {
 
     // Cache the tick-frequency selections OUTSIDE the tick callback so we
     // don't re-query the DOM at 60Hz. This is the dominant per-frame cost.
-    const linkLines = g.select<SVGGElement>('g.n-links').selectAll<SVGLineElement, NLink>('line');
+    const linkPolys = g.select<SVGGElement>('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline');
     const edgeLabelTexts = g.select<SVGGElement>('g.n-edge-labels').selectAll<SVGTextElement, NLink>('text');
     const nodeCircles = g.select<SVGGElement>('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle');
     const labelTexts = g.select<SVGGElement>('g.n-labels').selectAll<SVGTextElement, NNode>('text');
 
     sim.on('tick', () => {
-      linkLines
-        .attr('x1', (d) => (d.source as NNode).x ?? 0)
-        .attr('y1', (d) => (d.source as NNode).y ?? 0)
-        .attr('x2', (d) => (d.target as NNode).x ?? 0)
-        .attr('y2', (d) => (d.target as NNode).y ?? 0);
+      linkPolys
+        .attr('points', (d) => {
+          const sx = (d.source as NNode).x ?? 0;
+          const sy = (d.source as NNode).y ?? 0;
+          const tx = (d.target as NNode).x ?? 0;
+          const ty = (d.target as NNode).y ?? 0;
+          return `${sx},${sy} ${(sx + tx) / 2},${(sy + ty) / 2} ${tx},${ty}`;
+        });
       if (showEdgeLabels) {
         edgeLabelTexts
           .attr('x', (d) => (((d.source as NNode).x ?? 0) + ((d.target as NNode).x ?? 0)) / 2)
