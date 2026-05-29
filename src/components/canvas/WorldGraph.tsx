@@ -45,7 +45,7 @@ import {
   DEFAULT_WORLD_FILL,
 } from './graph-utils';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
-import { edgeWidthFor, edgeOpacityFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
+import { edgeWidthFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM } from '@/lib/graph-styling';
 
 export default function WorldGraph() {
   const { state, dispatch } = useStore();
@@ -151,6 +151,24 @@ export default function WorldGraph() {
 
   // Resolve all image refs to blob URLs
   const resolvedImageUrls = useImageUrlMap(allImageRefs);
+
+  // Node ids touched by the current scene — POV + participants + scene
+  // location + scene-touched artifacts. Edges connected to any of these
+  // render at full opacity; others dim. Same focus primitive KGV and TGV
+  // apply in their scene-focused modes. Computed at component level so
+  // both the main rebuild and the selection-highlight effect can read
+  // the same set without duplicating the calculation.
+  const activeSceneNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!narrative || !currentScene) return ids;
+    if (currentScene.povId) ids.add(currentScene.povId);
+    for (const pid of currentScene.participantIds) ids.add(pid);
+    if (currentScene.locationId) ids.add(currentScene.locationId);
+    for (const aid of getSceneArtifactIds(currentScene, narrative.artifacts)) {
+      ids.add(aid);
+    }
+    return ids;
+  }, [narrative, currentScene]);
 
   // Background image for the graph canvas — the current scene's location
   // image if one is available. Rendered as a faded layer behind the SVG so
@@ -681,6 +699,39 @@ export default function WorldGraph() {
     const nonRelLinks = validLinksDeduped.filter((l) => l.linkKind !== 'relationship');
     const relLinks = validLinksDeduped.filter((l) => l.linkKind === 'relationship');
 
+    // Focus effect: edges that touch a current-scene node read at the
+    // shared active opacity; everything else stays at the dim baseline.
+    // When there's no scene context at all (world-build view, no current
+    // scene), edges remain at the dim baseline rather than reverting to
+    // bright — "no activations at this step" should read as quiet, not
+    // loud. Same primitive KGV / TGV / NetworkView use.
+    // Per-kind activation semantics — each edge kind encodes a different
+    // relationship, so what counts as "active" differs. The general
+    // principle: an edge lights up only when the entity DOING something
+    // this scene is the source. A character-location edge shows where
+    // the character is RIGHT NOW; if the character isn't in the scene,
+    // that position fact isn't part of this scene's action — dim.
+    //
+    //   character-location: source (character) must be scene-active
+    //   tie:               source (character) must be scene-active
+    //   knowledge:         source (character) must be scene-active
+    //   ownership:         source (artifact)  must be scene-active
+    //   relationship:      BOTH characters scene-active (joint action)
+    //   spatial:           BOTH locations scene-active (joint structure)
+    const isEdgeActive = (l: GraphLink): boolean => {
+      const srcId = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const tgtId = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      const srcActive = activeSceneNodeIds.has(srcId);
+      const tgtActive = activeSceneNodeIds.has(tgtId);
+      if (l.linkKind === 'spatial' || l.linkKind === 'relationship') {
+        return srcActive && tgtActive;
+      }
+      // character-location, tie, knowledge, ownership all key off source.
+      return srcActive;
+    };
+    const scopedEdgeOpacity = (l: GraphLink): number =>
+      isEdgeActive(l) ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
+
     // Non-relationship links — solid, bright, thick. Node SHAPE carries the
     // type signal; we only vary stroke colour by linkKind, not weight or dash.
     // Polylines so we can drop an arrowhead at the midpoint of arrowed kinds
@@ -708,8 +759,13 @@ export default function WorldGraph() {
       // .style() (inline) instead of .attr() because the .graph-edge class
       // historically had a CSS rule that pinned stroke-width to 1px;
       // inline style wins over any cached CSS that may still be lingering.
-      .style('opacity', edgeOpacityFor(0.85))
-      .style('stroke-width', edgeWidthFor(0.85))
+      // Per-edge: bright when touching a current-scene node, dim otherwise
+      // (matches the focus effect in KGV/TGV).
+      .style('opacity', (d) => scopedEdgeOpacity(d))
+      .style('stroke-width', (d) => {
+        const base = edgeWidthFor(0.85);
+        return isEdgeActive(d) ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+      })
       .attr('marker-mid', (d) => (isArrowed(d) ? 'url(#wg-arrow)' : null));
 
     // Relationship links — solid, bright, thick. Valence sign drives colour.
@@ -724,8 +780,11 @@ export default function WorldGraph() {
         const v = d.valence ?? 0;
         return v >= 0 ? '#4ADE80' : '#F87171';
       })
-      .style('stroke-opacity', edgeOpacityFor(0.85))
-      .style('stroke-width', edgeWidthFor(0.85));
+      .style('stroke-opacity', (d) => scopedEdgeOpacity(d))
+      .style('stroke-width', (d) => {
+        const base = edgeWidthFor(0.85);
+        return isEdgeActive(d) ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+      });
 
     // Relationship labels at midpoints
     const linkLabelSelection = g
@@ -743,6 +802,12 @@ export default function WorldGraph() {
       .text((d) => d.label ?? '');
 
     // ── Node groups ───────────────────────────────────────────────────────
+    // Node opacity follows the same focus primitive as edges: characters,
+    // locations, and artifacts in the current scene's active set read at
+    // full opacity; everything else dims to FOCUS_NODE_OPACITY_DIM so
+    // the activity-over-time cue is visible as the user navigates.
+    // Knowledge nodes are left at full opacity because they only appear
+    // in a different (entity-inspector) context.
     const nodeGroup = g
       .append('g')
       .attr('class', 'nodes')
@@ -750,6 +815,12 @@ export default function WorldGraph() {
       .data(nodes, (d) => d.id)
       .join('g')
       .attr('class', 'graph-node')
+      .style('opacity', (d) => {
+        if (d.kind === 'knowledge') return FOCUS_NODE_OPACITY_ACTIVE;
+        return activeSceneNodeIds.has(d.id)
+          ? FOCUS_NODE_OPACITY_ACTIVE
+          : FOCUS_NODE_OPACITY_DIM;
+      })
       .on('click', (_event, d) => {
         _event.stopPropagation();
         if (d.kind === 'character') handleCharacterClickRef.current(d.id);
@@ -991,11 +1062,19 @@ export default function WorldGraph() {
       return srcId === selectedNodeId || tgtId === selectedNodeId;
     };
 
-    // Highlight connected relationship edges
+    // Highlight connected relationship edges. When nothing is selected,
+    // restore the per-edge scoped opacity (current-scene focus) rather
+    // than a flat bright value.
     g.select('g.links')
       .selectAll<SVGLineElement, GraphLink>('line.graph-rel-edge')
       .style('stroke-opacity', (d) => {
-        if (!selectedNodeId) return edgeOpacityFor(0.85);
+        if (!selectedNodeId) {
+          const srcId = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id;
+          const tgtId = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id;
+          return activeSceneNodeIds.has(srcId) || activeSceneNodeIds.has(tgtId)
+            ? FOCUS_OPACITY_ACTIVE
+            : FOCUS_OPACITY_DIM;
+        }
         return isConnected(d) ? 1 : 0.15;
       });
 
@@ -1010,7 +1089,7 @@ export default function WorldGraph() {
         if (!selectedNodeId || !d.directedLabels) return d.label ?? '';
         return d.directedLabels[selectedNodeId] ?? d.label ?? '';
       });
-  }, [selectedNodeId]);
+  }, [selectedNodeId, activeSceneNodeIds]);
 
   // ── Toggle edge label visibility ──
   useEffect(() => {
@@ -1067,6 +1146,15 @@ export default function WorldGraph() {
       }
     }
 
+    // Active scene-node set for the focus effect — same primitive the
+    // main rebuild uses. Recomputed here because this effect runs on a
+    // narrower dep set than the rebuild.
+    const activeIds = new Set<string>();
+    if (narrative && currentScene) {
+      if (currentScene.povId) activeIds.add(currentScene.povId);
+      for (const pid of currentScene.participantIds) activeIds.add(pid);
+      if (currentScene.locationId) activeIds.add(currentScene.locationId);
+    }
     const newLinkEls = linksGroup
       .selectAll<SVGPolylineElement, GraphLink>('polyline.charloc')
       .data(resolvedNewLinks, (d) => d.id)
@@ -1075,8 +1163,21 @@ export default function WorldGraph() {
       .attr('fill', 'none')
       .attr('vector-effect', 'non-scaling-stroke')
       .attr('stroke', '#3B82F6')
-      .style('opacity', edgeOpacityFor(0.85))
-      .style('stroke-width', edgeWidthFor(0.85))
+      // Charloc edges (character → current location) activate only when
+      // the CHARACTER (source) is in the scene's active set — same
+      // primitive as the main rebuild's source-keyed activation. A
+      // character not in the scene shouldn't light their position edge
+      // just because the destination location happens to be the scene
+      // location.
+      .style('opacity', (d) => {
+        const srcId = (d.source as GraphNode).id;
+        return activeIds.has(srcId) ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
+      })
+      .style('stroke-width', (d) => {
+        const srcId = (d.source as GraphNode).id;
+        const base = edgeWidthFor(0.85);
+        return activeIds.has(srcId) ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+      })
       .attr('marker-mid', 'url(#wg-arrow)');
 
     // Swap char-loc links in the simulation force

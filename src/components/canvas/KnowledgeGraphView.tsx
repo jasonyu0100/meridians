@@ -7,7 +7,7 @@ import { buildCumulativeSystemGraph } from '@/lib/narrative-utils';
 import type { NarrativeState, SystemNode } from '@/types/narrative';
 import EvalBar from '@/components/timeline/EvalBar';
 import { computeGroups, SYS_TYPE_COLORS, type SysNode, type SysLink } from './graph-utils';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
+import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph-styling';
 
 // ── Fullscreen button ────────────────────────────────────────────────────────
 
@@ -225,13 +225,21 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .selectAll<SVGPolylineElement, SysLink>('polyline')
       .data(simLinks, (d) => `${(d.source as SysNode).id}-${(d.target as SysNode).id}`);
     linkSel.exit().remove();
-    const linkEnter = linkSel.enter().append('polyline')
+    const linkEnter = linkSel.enter().append('polyline');
+    const linkAll = linkEnter.merge(linkSel)
+      // Apply fill='none' AND vector-effect to the merged selection so
+      // persisting polylines can't render as solid triangles (3-point
+      // polyline + default fill).
       .attr('fill', 'none')
       .attr('vector-effect', 'non-scaling-stroke');
-    const linkAll = linkEnter.merge(linkSel);
-    // Edge intensity: opacity + width scale with mean endpoint degree via
-    // the shared canvas-graph helper. Codex mode dims edges not touching a
-    // scene node so the highlighted set stays focal.
+    // Edge intensity: opacity uses the shared focus pattern (active /
+    // dim). In codex mode, edges touching a scene-attributed node read
+    // at FOCUS_OPACITY_ACTIVE; everything else — including the case
+    // where no system nodes were activated at this scene — stays at
+    // FOCUS_OPACITY_DIM so structure is visible without competing with
+    // the focal set. Spark mode (no scene focus) just uses the active
+    // opacity uniformly. Width still tracks endpoint degree so the
+    // global topology is legible.
     const edgeT = (d: SysLink) =>
       ((d.source as SysNode).degree + (d.target as SysNode).degree) / (maxDegree * 2);
     linkAll
@@ -239,15 +247,18 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
       .style('opacity', (d) => {
-        const base = edgeOpacityFor(edgeT(d));
-        if (mode === 'codex' && sceneNodeIds.size > 0) {
-          const touches = sceneNodeIds.has((d.source as SysNode).id) ||
-            sceneNodeIds.has((d.target as SysNode).id);
-          return touches ? base : Math.max(0.04, base * 0.25);
-        }
-        return base;
+        if (mode !== 'codex') return FOCUS_OPACITY_ACTIVE;
+        const touches = sceneNodeIds.has((d.source as SysNode).id) ||
+          sceneNodeIds.has((d.target as SysNode).id);
+        return touches ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
       })
-      .style('stroke-width', (d) => edgeWidthFor(edgeT(d)))
+      .style('stroke-width', (d) => {
+        const base = edgeWidthFor(edgeT(d));
+        if (mode !== 'codex') return base;
+        const touches = sceneNodeIds.has((d.source as SysNode).id) ||
+          sceneNodeIds.has((d.target as SysNode).id);
+        return touches ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+      })
       .attr('marker-mid', 'url(#wk-arrow)');
 
     // Halos for nodes the current scene introduced or touched. Replaces the
@@ -279,7 +290,14 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .attr('r', nodeRadius)
       .attr('fill', (d) => showTypes ? (SYS_TYPE_COLORS[d.type] ?? '#888') : '#888')
       .attr('stroke', (d) => isActive(d) ? '#fff' : 'transparent')
-      .attr('stroke-width', 2);
+      .attr('stroke-width', 2)
+      // Node focus: in codex mode, active scene-attributed nodes read
+      // at full opacity; others dim. Spark mode (no scene focus) keeps
+      // everything at active opacity. Same primitive WG / TGV / Network.
+      .style('opacity', (d) => {
+        if (mode !== 'codex') return FOCUS_NODE_OPACITY_ACTIVE;
+        return isActive(d) ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
+      });
 
     // Tooltip + drag events
     const drag = d3.drag<SVGCircleElement, SysNode>()

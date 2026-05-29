@@ -4,7 +4,8 @@ import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/store';
 import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/network-graph';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
+import { heatColor } from './graph-utils';
+import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph-styling';
 import type { AttributionEdgeRelation } from '@/types/narrative';
 
 type NNode = d3.SimulationNodeDatum & NetworkNode & { degree: number };
@@ -36,29 +37,10 @@ const FORCE_FILL: Record<NetworkNode['kind'], string> = {
   system: FORCE_COLOR.system,
 };
 
-// Fresh accent — distinct cyan for very-recently-introduced nodes so the
-// "just seeded" signal stays legible against the warm heat ramp.
-const FRESH_FILL = '#22D3EE';
-
-// Continuous heat interpolator — cold slate sweeps through ember and
-// amber into a vivid orange-red at the top. Wider chromatic range so heat
-// reads dynamically across the network without losing the gradient feel.
-// Force identity is conveyed by the halo / label colour instead, removing
-// the need for a heat-vs-force toggle.
-const HEAT_RAMP = d3.interpolateRgbBasis([
-  '#3F3F46', // cold slate
-  '#7C5A28', // ember undertow
-  '#C77B1A', // burnt amber
-  '#F59E0B', // vivid amber
-  '#F97316', // hot orange
-  '#EF4444', // searing red
-]);
-
-// Mid-blend two hex colours in RGB space. Used to colour cross-force edges
-// so a fate↔world link reads as a gradient between the two forces.
-function blendHex(a: string, b: string, t = 0.5): string {
-  return d3.interpolateRgb(a, b)(t);
-}
+// Note: the previous bespoke HEAT_RAMP (slate→ember→amber→red) and the
+// FRESH_FILL cyan accent were dropped — node heat now uses the shared
+// `heatColor` from graph-utils for parity with WorldGraph, and edges
+// render as plain white (also matching WG) instead of force-blended.
 
 export default function NetworkView() {
   const { state, dispatch } = useStore();
@@ -70,6 +52,15 @@ export default function NetworkView() {
 
   const [showLabels, setShowLabels] = useState(true);
   const [scope, setScope] = useState<Scope>('narrative');
+  // Heat is off by default — node fill defaults to the force colour
+  // (fate/world/system) so the categorical signal reads cleanly.
+  // Toggle on to swap the fill to the attribution-heat ramp.
+  const [heatOn, setHeatOn] = useState(false);
+  // Periphery off (default) hides nodes with zero attributions in the
+  // current scope — entities that exist in the world but haven't been
+  // touched in this scene / arc / narrative window. Toggle on to bring
+  // them back in as the surrounding "rest of the world" context.
+  const [showPeriphery, setShowPeriphery] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; node: NetworkNode } | null>(null);
 
   // Scope-aware aggregation:
@@ -120,20 +111,21 @@ export default function NetworkView() {
     return counts;
   }, [network.nodes]);
 
-  // Two visual channels, no toggle:
-  //   - HEAT (continuous, drives node fill) = attribution intensity
-  //   - FORCE (categorical, drives halo + label) = which of the three forces
+  // Two visual channels:
+  //   - HEAT (continuous, drives node fill when the Heat toggle is on) =
+  //     attribution intensity, using the same blue→green→red ramp
+  //     WorldGraph uses so the colour reading is consistent across
+  //     graphs.
+  //   - FORCE (categorical, drives halo + label, and fill when Heat is
+  //     off) = which of the three forces a node belongs to.
   // maxAttribution is recomputed every data refresh; this ref keeps the
   // helper callable from any callback without a re-render.
   const heatCacheRef = useRef({ maxAttribution: 1 });
   const heatFillOf = (n: NetworkNode): string => {
-    if (n.tier === 'fresh') return FRESH_FILL;
     const t = heatCacheRef.current.maxAttribution > 0
       ? Math.min(1, n.attributions / heatCacheRef.current.maxAttribution)
       : 0;
-    // Floor non-zero attribution at 0.15 along the ramp so a single
-    // attribution still registers as warm rather than slate.
-    return HEAT_RAMP(n.attributions > 0 ? 0.15 + t * 0.85 : 0);
+    return heatColor(t);
   };
   const forceColorOf = (n: NetworkNode): string => FORCE_FILL[n.kind];
 
@@ -175,6 +167,9 @@ export default function NetworkView() {
 
     g.append('g').attr('class', 'n-links');
     g.append('g').attr('class', 'n-edge-labels');
+    // Halos sit between edges and nodes so the soft glow reads beneath
+    // each active circle. Same layering pattern as TGV / KGV.
+    g.append('g').attr('class', 'n-halos');
     g.append('g').attr('class', 'n-nodes');
     g.append('g').attr('class', 'n-labels');
 
@@ -205,14 +200,26 @@ export default function NetworkView() {
     if (!sim || !g) return;
     setTooltip(null);
 
+    // Apply the periphery filter BEFORE we compute degree /
+    // max-attribution / sim layout — when periphery is off, nodes
+    // with zero attributions in scope are dropped cleanly so the
+    // remaining metrics scale against what's actually shown.
+    const visibleNodes = showPeriphery
+      ? network.nodes
+      : network.nodes.filter((n) => n.attributions > 0);
+    const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
+    const visibleEdges = showPeriphery
+      ? network.edges
+      : network.edges.filter((e) => visibleNodeIds.has(e.from) && visibleNodeIds.has(e.to));
+
     // Degree from network edges (used for label sizing/opacity, matching system).
     const degreeMap = new Map<string, number>();
-    for (const e of network.edges) {
+    for (const e of visibleEdges) {
       degreeMap.set(e.from, (degreeMap.get(e.from) ?? 0) + 1);
       degreeMap.set(e.to, (degreeMap.get(e.to) ?? 0) + 1);
     }
-    const maxDegree = Math.max(...network.nodes.map((n) => degreeMap.get(n.id) ?? 0), 1);
-    const maxAttribution = Math.max(...network.nodes.map((n) => n.attributions), 1);
+    const maxDegree = Math.max(...visibleNodes.map((n) => degreeMap.get(n.id) ?? 0), 1);
+    const maxAttribution = Math.max(...visibleNodes.map((n) => n.attributions), 1);
     heatCacheRef.current.maxAttribution = maxAttribution;
 
     // Node radius — combine attribution AND degree so unreferenced nodes still
@@ -224,7 +231,7 @@ export default function NetworkView() {
     };
 
     const prevPos = new Map(nodesRef.current.map((n) => [n.id, { x: n.x, y: n.y, fx: n.fx, fy: n.fy }]));
-    const simNodes: NNode[] = network.nodes.map((n) => {
+    const simNodes: NNode[] = visibleNodes.map((n) => {
       const prev = prevPos.get(n.id);
       return {
         ...n,
@@ -234,7 +241,7 @@ export default function NetworkView() {
     });
     nodesRef.current = simNodes;
     const nodeMap = new Map(simNodes.map((n) => [n.id, n]));
-    const simLinks: NLink[] = network.edges
+    const simLinks: NLink[] = visibleEdges
       .filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to))
       .map((e) => ({
         source: nodeMap.get(e.from)!,
@@ -242,8 +249,6 @@ export default function NetworkView() {
         weight: e.weight,
         relations: e.relations,
       }));
-
-    const maxWeight = Math.max(...simLinks.map((l) => l.weight), 1);
 
     // Adjacency for hover highlighting
     const adjacency = new Map<string, Set<string>>();
@@ -256,21 +261,54 @@ export default function NetworkView() {
       adjacency.get(b)!.add(a);
     }
 
-    // Links — opacity AND width scale with edge weight via shared helper so
-    // every canvas graph view speaks the same visual language. Stroke colour
-    // is the mid-blend of the endpoints' force colours, which makes
-    // cross-force edges (fate↔world, world↔system, fate↔system) read as
-    // bridges between the three force fields rather than as anonymous white
-    // lines. Same-force edges show as a tinted version of their force.
-    const opacityFor = (weight: number) => edgeOpacityFor(weight / maxWeight);
-    const widthFor = (weight: number) => edgeWidthFor(weight / maxWeight);
-    const linkColour = (d: NLink) => {
-      const a = (d.source as NNode).kind;
-      const b = (d.target as NNode).kind;
-      const colA = FORCE_FILL[a];
-      const colB = FORCE_FILL[b];
-      return colA === colB ? colA : blendHex(colA, colB, 0.5);
+    // Active set for the focus effect: nodes attributed AT the current
+    // Active set comes directly from what the current scene attributed:
+    //   nodes  ← scene.attributions      (the node ids referenced)
+    //   edges  ← scene.attributionEdges  (the specific from→to pairs
+    //                                     that actually occurred this
+    //                                     scene)
+    // Reading attributionEdges directly gives us exact per-scene edge
+    // activation regardless of scope (works the same in narrative /
+    // arc / scene mode) and covers world-build steps too. Falls back
+    // to "both endpoints attributed" only when a scene has
+    // attributions but no explicit attributionEdges (older data).
+    const currentKey = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
+    const currentEntry = currentKey && narrative
+      ? (narrative.scenes[currentKey] ?? narrative.worldBuilds[currentKey])
+      : null;
+    const activeNodeIds = new Set<string>(currentEntry?.attributions ?? []);
+    const activeEdgeKey = new Set<string>();
+    for (const ae of currentEntry?.attributionEdges ?? []) {
+      // Edges are undirected for activation purposes; store both directions.
+      activeEdgeKey.add(`${ae.from}|${ae.to}`);
+      activeEdgeKey.add(`${ae.to}|${ae.from}`);
+    }
+    const isEdgeActive = (l: NLink): boolean => {
+      const srcId = (l.source as NNode).id;
+      const tgtId = (l.target as NNode).id;
+      // Primary signal: scene's recorded attribution edges. In world
+      // scope this surfaces the scene's declared subgraph as a
+      // recognisable bright cluster inside the broader aggregate
+      // network — the same shape that scene scope renders on its own.
+      if (activeEdgeKey.size > 0) return activeEdgeKey.has(`${srcId}|${tgtId}`);
+      // Fallback only when the scene attributed nodes but didn't
+      // record explicit edges (older data) — require BOTH endpoints
+      // active so we don't bleed activation across the whole network
+      // via any one attributed hub.
+      return activeNodeIds.has(srcId) && activeNodeIds.has(tgtId);
     };
+    const scopedOpacity = (l: NLink): number =>
+      isEdgeActive(l) ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
+    // Use the same uniform width base (edgeWidthFor(0.85)) as WG / TGV
+    // so dim edges keep a visible stroke and active edges read as
+    // emphatic. Per-edge weight scaling pushed low-weight Network
+    // edges sub-pixel at the dim multiplier, which made their
+    // arrowhead markers (filled triangles, naturally chunkier than
+    // a hair-thin line) appear to float without their connecting
+    // line — the triangles-without-edges bug.
+    const ACTIVE_WIDTH = edgeWidthFor(0.85);
+    const scopedWidth = (l: NLink): number =>
+      isEdgeActive(l) ? ACTIVE_WIDTH : ACTIVE_WIDTH * FOCUS_WIDTH_FACTOR_DIM;
     // Edges are polylines (source → midpoint → target) so each one can
     // drop an arrowhead at the midpoint via marker-mid — same primitive
     // the other three canvas graphs use to encode direction.
@@ -279,14 +317,25 @@ export default function NetworkView() {
       .data(simLinks, (d) => `${(d.source as NNode).id}-${(d.target as NNode).id}`);
     linkSel.exit().remove();
     linkSel.enter().append('polyline')
+      .merge(linkSel)
+      // Apply fill='none' AND vector-effect on the merged selection,
+      // not just enter — otherwise polylines that persist across data
+      // updates retain their previous (or default-black) fill and
+      // render as solid triangles (3-point polyline with implicit
+      // closure). Same pattern WG / KGV / TGV use.
       .attr('fill', 'none')
       .attr('vector-effect', 'non-scaling-stroke')
-      .merge(linkSel)
-      .attr('stroke', (d) => linkColour(d))
-      // .style() (inline) so the values can't be overridden by any cached
-      // or future CSS rule on parent classes.
-      .style('stroke-opacity', (d) => opacityFor(d.weight))
-      .style('stroke-width', (d) => widthFor(d.weight))
+      // Plain white stroke — matches WorldGraph. The categorical
+      // force-blend colouring read as noise here; nodes carry the
+      // category, edges just carry topology.
+      .attr('stroke', '#ffffff')
+      // Group `opacity` (not stroke-opacity) so the arrowhead fades with
+      // its line — context-stroke inherits colour only, not opacity, so
+      // a faded line would otherwise render with a fully-opaque marker
+      // and read louder than the line itself. Same pattern WG / KGV /
+      // TGV use. .style() (inline) so values can't be overridden by CSS.
+      .style('opacity', (d) => scopedOpacity(d))
+      .style('stroke-width', (d) => scopedWidth(d))
       .attr('marker-mid', 'url(#n-arrow)');
 
     // Edge labels (scene scope only) — render the relation token mid-line.
@@ -307,6 +356,25 @@ export default function NetworkView() {
       .attr('opacity', 0.75)
       .text((d) => (d.relations ?? []).join(' · '));
 
+    // Halos — soft glow around scene-active nodes, matching the
+    // TGV / KGV pattern. Sized larger than the node radius so the
+    // bloom sits *around* the circle; semi-transparent so adjacent
+    // halos blend rather than stamp. Colour follows the same fill
+    // policy as the node itself (heat ramp when Heat is on, force
+    // colour otherwise).
+    const haloNodes = simNodes.filter((d) => activeNodeIds.has(d.id));
+    const haloSel = g.select<SVGGElement>('g.n-halos')
+      .selectAll<SVGCircleElement, NNode>('circle')
+      .data(haloNodes, (d) => d.id);
+    haloSel.exit().remove();
+    haloSel.enter().append('circle')
+      .attr('pointer-events', 'none')
+      .merge(haloSel)
+      .attr('r', (d) => radiusOf(d) + 10)
+      .attr('fill', (d) => (heatOn ? heatFillOf(d) : forceColorOf(d)))
+      .attr('stroke', 'none')
+      .style('opacity', 0.32);
+
     // Nodes
     const nodeSel = g.select<SVGGElement>('g.n-nodes')
       .selectAll<SVGCircleElement, NNode>('circle')
@@ -314,17 +382,13 @@ export default function NetworkView() {
     nodeSel.exit().remove();
     // Recency-modulated opacity: in narrative scope a long-untouched entity
     // should read as faded so the eye can find what's *currently active*.
-    // In scoped views (scene / arc) recency over the scope window is too
-    // narrow to be meaningful, so we keep the simpler attribution gate there.
-    const totalSteps = Math.max(network.graphCount, 1);
-    const opacityForNode = (d: NNode) => {
-      if (d.attributions === 0) return 0.32;
-      if (scope !== 'narrative') return 0.9;
-      const lastSeen = d.lastSeenIndex >= 0 ? d.lastSeenIndex : 0;
-      const recency = lastSeen / Math.max(totalSteps - 1, 1); // 0..1
-      // Floor at 0.45 so stale-but-real nodes still register; ceiling at 0.95.
-      return 0.45 + recency * 0.5;
-    };
+    // Node focus opacity: nodes attributed at the current step are
+    // active; everything else dims. Same primitive as WG / KGV / TGV.
+    // Replaces the previous recency-ramp baseline so the scene-by-scene
+    // activation signal reads consistently across the four canvas
+    // graphs.
+    const opacityForNode = (d: NNode): number =>
+      activeNodeIds.has(d.id) ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
     // Glow filter dropped from the per-node attr — SVG Gaussian blur runs
     // every frame and was the dominant render cost on larger networks.
     // Nodes read fine from fill + stroke alone; reserve the filter for
@@ -333,8 +397,8 @@ export default function NetworkView() {
       .merge(nodeSel)
       .attr('class', 'graph-node')
       .attr('r', (d) => radiusOf(d))
-      .attr('fill', (d) => heatFillOf(d))
-      .attr('opacity', (d) => opacityForNode(d))
+      .attr('fill', (d) => (heatOn ? heatFillOf(d) : forceColorOf(d)))
+      .style('opacity', (d) => opacityForNode(d))
       .attr('stroke', 'transparent')
       .attr('stroke-width', 2);
 
@@ -358,16 +422,18 @@ export default function NetworkView() {
         setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, node: d });
         const neighbors = adjacency.get(d.id) ?? new Set();
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
-          .attr('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.12));
+          .style('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.12));
         g.select('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline')
-          .style('stroke-opacity', (l) => {
+          // Group `opacity` (not stroke-opacity) so the arrowhead fades
+          // with its line — context-stroke inherits colour only, not
+          // opacity, so stroke-opacity here would leave the triangle
+          // markers fully visible while the lines disappeared (the
+          // "triangles without edges" bug). Matches the base-state and
+          // mouseleave handlers, which both use `.style('opacity', ...)`.
+          .style('opacity', (l) => {
             const sId = (l.source as NNode).id, tId = (l.target as NNode).id;
             const touches = sId === d.id || tId === d.id;
-            // Touching the hovered node: lift toward full opacity scaled by
-            // weight so dominant adjacent edges stay dominant. Non-touching:
-            // collapse to a near-invisible field that lets the focal cluster
-            // breathe.
-            return touches ? Math.max(0.35, opacityFor(l.weight) + 0.15) : 0.03;
+            return touches ? Math.max(0.5, FOCUS_OPACITY_ACTIVE + 0.15) : 0.03;
           });
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
           .attr('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.15));
@@ -375,11 +441,11 @@ export default function NetworkView() {
       .on('mouseleave', () => {
         setTooltip(null);
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
-          .attr('opacity', (o) => opacityForNode(o));
+          .style('opacity', (o) => opacityForNode(o));
         g.select('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline')
-          .style('stroke-opacity', (l) => opacityFor(l.weight));
+          .style('opacity', (l) => scopedOpacity(l));
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
-          .attr('opacity', (o) => labelOpacity(o));
+          .style('opacity', (o) => labelOpacity(o));
       })
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -417,6 +483,7 @@ export default function NetworkView() {
     // don't re-query the DOM at 60Hz. This is the dominant per-frame cost.
     const linkPolys = g.select<SVGGElement>('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline');
     const edgeLabelTexts = g.select<SVGGElement>('g.n-edge-labels').selectAll<SVGTextElement, NLink>('text');
+    const haloCircles = g.select<SVGGElement>('g.n-halos').selectAll<SVGCircleElement, NNode>('circle');
     const nodeCircles = g.select<SVGGElement>('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle');
     const labelTexts = g.select<SVGGElement>('g.n-labels').selectAll<SVGTextElement, NNode>('text');
 
@@ -434,6 +501,9 @@ export default function NetworkView() {
           .attr('x', (d) => (((d.source as NNode).x ?? 0) + ((d.target as NNode).x ?? 0)) / 2)
           .attr('y', (d) => (((d.source as NNode).y ?? 0) + ((d.target as NNode).y ?? 0)) / 2 - 4);
       }
+      haloCircles
+        .attr('cx', (d) => d.x ?? 0)
+        .attr('cy', (d) => d.y ?? 0);
       nodeCircles
         .attr('cx', (d) => d.x ?? 0)
         .attr('cy', (d) => d.y ?? 0);
@@ -441,7 +511,7 @@ export default function NetworkView() {
         .attr('x', (d) => d.x ?? 0)
         .attr('y', (d) => (d.y ?? 0) + radiusOf(d) + 12);
     });
-  }, [network, dispatch, showEdgeLabels]);
+  }, [network, dispatch, showEdgeLabels, heatOn, showPeriphery]);
 
   if (!narrative) {
     return (
@@ -467,6 +537,20 @@ export default function NetworkView() {
         >
           Labels
         </button>
+        <button
+          onClick={() => setHeatOn((v) => !v)}
+          title="Swap node fill between force colour (default) and attribution heat"
+          className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${heatOn ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
+        >
+          Heat
+        </button>
+        <button
+          onClick={() => setShowPeriphery((v) => !v)}
+          title="Show the periphery — nodes with zero attributions in the current scope, drawn in as surrounding context around the touched subgraph"
+          className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${showPeriphery ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
+        >
+          Periphery
+        </button>
 
         <div className="w-px h-3 bg-border mx-1" />
 
@@ -479,10 +563,15 @@ export default function NetworkView() {
         />
         <ForceSwatch color={FORCE_FILL.system} label={`System ${kindCounts.system}`} />
 
-        <div className="w-px h-3 bg-border mx-1" />
-
-        {/* Heat ramp legend — node fill encodes attribution intensity. */}
-        <HeatLegend />
+        {/* Heat ramp legend — only meaningful when Heat is on; node
+            fill defaults to force colour, so showing the gradient
+            when nothing uses it would just confuse the reading. */}
+        {heatOn && (
+          <>
+            <div className="w-px h-3 bg-border mx-1" />
+            <HeatLegend />
+          </>
+        )}
 
         <div className="w-px h-3 bg-border mx-1" />
 
@@ -551,18 +640,16 @@ function ForceSwatch({ color, label }: { color: string; label: string }) {
   );
 }
 
-/** Continuous heat ramp legend — a small gradient bar with the
- *  cold→hot anchors labelled so the operator can decode node fills. */
+/** Continuous heat ramp legend — same blue → green → red gradient
+ *  WorldGraph uses, since `heatColor` from graph-utils is the
+ *  shared source of truth for node fills when Heat is on. */
 function HeatLegend() {
   return (
     <span className="flex items-center gap-1.5 px-1">
       <span className="text-[8px] text-text-dim/50">cold</span>
       <span
         className="block h-1.5 w-12 rounded-full"
-        style={{
-          background:
-            'linear-gradient(to right, #3F3F46 0%, #7C5A28 20%, #C77B1A 40%, #F59E0B 60%, #F97316 80%, #EF4444 100%)',
-        }}
+        style={{ background: 'linear-gradient(to right, #3B82F6, #22C55E, #EF4444)' }}
       />
       <span className="text-[8px] text-text-dim/50">hot</span>
     </span>

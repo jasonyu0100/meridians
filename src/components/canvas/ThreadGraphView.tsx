@@ -17,7 +17,7 @@ import { replayThreadsAtIndex } from '@/lib/portfolio-analytics';
 import { computeGroups } from './graph-utils';
 import { IconChevronLeft, IconChevronRight, IconRefresh } from '@/components/icons';
 import EvalBar from '@/components/timeline/EvalBar';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE } from '@/lib/graph-styling';
+import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph-styling';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -267,22 +267,49 @@ export default function ThreadGraphView({
     // participant links are softer dotted lines connecting threads to their
     // entities.
     // Mirrors KnowledgeGraphView's activation focus: in the scene-
-    // focused mode ('threads' here, 'codex' there) edges touching a
-    // thread that took a delta at the current scene keep their base
-    // intensity; everything else dims to 25% (floor 0.04) so the
-    // active set reads as the focal cluster.
-    const hasActiveSet = simNodes.some((n) => n.hasDeltaAtScene);
+    // Focus opacity: in scene-focused mode ('threads'), edges touching a
+    // thread that took a delta at the current scene read at
+    // FOCUS_OPACITY_ACTIVE; everything else — including the case where
+    // no thread took a delta at this scene — stays at FOCUS_OPACITY_DIM
+    // so structure is visible without competing with the focal cluster.
+    // Pulse mode (no scene focus) just uses the active opacity
+    // uniformly. Width keeps the relation-based hierarchy so dependent
+    // links read as structural and participant links as connective.
     linkAll
       .attr('stroke', '#ffffff')
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
+      // Thread edges encode COORDINATION — an edge between two threads
+      // is only "active" when BOTH threads took a delta at the current
+      // scene (they moved together). One-sided activity isn't
+      // coordination, so the edge stays dim. This is the key semantic
+      // difference from KGV/WG/Network, where a single endpoint in the
+      // active set is enough to light the edge.
+      //
+      // Important: d.source / d.target are still STRINGS when this
+      // style callback first runs — d3.forceLink only resolves them to
+      // node references after `sim.force('link').links(simLinks)` is
+      // applied below. Look up via nodeMap so the AND check actually
+      // sees `hasDeltaAtScene` and doesn't silently return undefined.
       .style('opacity', (d) => {
-        const base = d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25);
-        if (mode !== 'threads' || !hasActiveSet) return base;
-        const touches = (d.source as TNode).hasDeltaAtScene || (d.target as TNode).hasDeltaAtScene;
-        return touches ? base : Math.max(0.04, base * 0.25);
+        if (mode !== 'threads') return FOCUS_OPACITY_ACTIVE;
+        const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
+        const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
+        const srcNode = nodeMap.get(srcId);
+        const tgtNode = nodeMap.get(tgtId);
+        const both = !!srcNode?.hasDeltaAtScene && !!tgtNode?.hasDeltaAtScene;
+        return both ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
       })
-      .style('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
+      .style('stroke-width', (d) => {
+        const base = d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2);
+        if (mode !== 'threads') return base;
+        const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
+        const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
+        const srcNode = nodeMap.get(srcId);
+        const tgtNode = nodeMap.get(tgtId);
+        const both = !!srcNode?.hasDeltaAtScene && !!tgtNode?.hasDeltaAtScene;
+        return both ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+      })
       .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none')
       .attr('marker-mid', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);
 
@@ -315,7 +342,14 @@ export default function ThreadGraphView({
       .attr('r', nodeRadius)
       .attr('fill', d => showTypes ? THREAD_CATEGORY_HEX[d.category] : '#888')
       .attr('stroke', d => d.hasDeltaAtScene ? '#fff' : 'transparent')
-      .attr('stroke-width', 2);
+      .attr('stroke-width', 2)
+      // Node focus: in threads mode, threads that took a delta at this
+      // scene are active; others dim. Pulse mode (no scene focus) keeps
+      // everything at active opacity. Same primitive WG / KGV / Network.
+      .style('opacity', (d) => {
+        if (mode !== 'threads') return FOCUS_NODE_OPACITY_ACTIVE;
+        return d.hasDeltaAtScene ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
+      });
 
     // Drag
     const drag = d3.drag<SVGCircleElement, TNode>()
