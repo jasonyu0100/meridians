@@ -9,7 +9,7 @@ type Props = { entityId: string; nodeId: string };
 
 const TYPE_TEXT: Record<string, string> = {
   trait: 'text-violet-400', state: 'text-emerald-400', history: 'text-amber-400',
-  capability: 'text-blue-400', belief: 'text-pink-300', relation: 'text-purple-400',
+  capability: 'text-blue-400', opinion: 'text-pink-300', relation: 'text-purple-400',
   secret: 'text-amber-500', goal: 'text-sky-400', weakness: 'text-red-400',
 };
 

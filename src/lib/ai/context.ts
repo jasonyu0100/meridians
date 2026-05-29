@@ -1,5 +1,5 @@
 import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
-import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS } from '@/types/narrative';
+import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import { buildCumulativeSystemGraph, getThreadStance, getStanceMargin, getStanceProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
 import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
@@ -555,17 +555,15 @@ export function narrativeContext(
   const network = aggregateNetworkGraph(n, resolvedKeys, currentIndex);
   const tierLookup = buildTierLookup(network);
 
-  // Collect entity IDs, knowledge node IDs, and per-scene metadata on one pass.
-  // sceneImportance / knowledgeOriginScene / threadLogOriginScene drive the
-  // tiered continuity pruning below — knowledge and thread-log nodes are
-  // rendered only if the scene they came from is still in near/mid tier
-  // (important scenes get promoted, so load-bearing history survives).
+  // Collect entity IDs and per-scene metadata on one pass.
+  // threadLogOriginScene drives the thread-log recency pruning below
+  // (thread logs can balloon scene-by-scene; entity continuity is now
+  // rendered in full, so knowledgeOriginScene is no longer needed).
   const referencedCharIds = new Set<string>();
   const referencedLocIds = new Set<string>();
   const referencedThreadIds = new Set<string>();
   const horizonContinuityNodeIds = new Set<string>();
   const totalEntries = keysUpToCurrent.length;
-  const knowledgeOriginScene = new Map<string, number>();
   const threadLogOriginScene = new Map<string, number>();
   const relationshipLatestDeltaScene = new Map<string, number>();
   keysUpToCurrent.forEach((k, i) => {
@@ -585,7 +583,6 @@ export function narrativeContext(
         referencedCharIds.add(km.entityId);
         for (const node of km.addedNodes ?? []) {
           horizonContinuityNodeIds.add(node.id);
-          if (!knowledgeOriginScene.has(node.id)) knowledgeOriginScene.set(node.id, i);
         }
       }
       for (const rm of entry.relationshipDeltas) {
@@ -603,13 +600,12 @@ export function narrativeContext(
     }
   });
 
-  // A knowledge/log node survives pruning if its origin scene is in near/mid tier.
-  // Seed nodes (no recorded origin — typically introduced by a world build) always survive.
+  // A thread-log node survives pruning if its origin scene is in near/mid
+  // tier. Seed nodes (no recorded origin) always survive.
   const keepByRecency = (originMap: Map<string, number>) => (id: string): boolean => {
     const tier = tierOfOrigin(originMap.get(id), totalEntries, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE);
     return tier !== 'far';
   };
-  const keepKnowledgeNode = keepByRecency(knowledgeOriginScene);
   const keepThreadLogNode = keepByRecency(threadLogOriginScene);
   // Also include threads that anchor to referenced characters/locations
   for (const t of Object.values(n.threads)) {
@@ -668,14 +664,24 @@ export function narrativeContext(
   const renderContinuityXml = (nodes: { id: string; type: string; content: string }[], indent: string) =>
     nodes.map((kn) => `${indent}<${kn.type} id="${kn.id}">${kn.content}</${kn.type}>`);
 
-  // Recency-tiered continuity: keep nodes that are alive at the current index
-  // AND whose origin scene is still in near/mid tier. Slicing by
-  // ENTITY_LOG_CONTEXT_LIMIT guards against runaway early-story world dumps
-  // on entities with many seed nodes.
+  // Core-only entity continuity — render every alive node whose type
+  // belongs to the "core" category (trait, capability, goal, secret,
+  // weakness) and drop the "context" types (state, history, opinion,
+  // relation). The split is defined in WORLD_NODE_CATEGORY.
+  //
+  // Rationale: core facts define what the entity IS at every step —
+  // they stay true regardless of which scene we're in, so the LLM
+  // benefits from seeing the full set without recency-tier pruning.
+  // Context facts (state shifts, past events, held opinions, ties)
+  // are noisier and tend to recap what's already in the scene log,
+  // so we exclude them from the entity block here; downstream context
+  // builders that need state / relations / history pull from their
+  // dedicated sections (relationships block, scene log, etc).
   const tieredContinuity = (nodes: Record<string, { id: string; type: string; content: string }>) =>
-    Object.values(nodes)
-      .filter((kn) => timelineState.liveNodeIds.has(kn.id) && keepKnowledgeNode(kn.id))
-      .slice(-ENTITY_LOG_CONTEXT_LIMIT);
+    Object.values(nodes).filter((kn) =>
+      timelineState.liveNodeIds.has(kn.id) &&
+      WORLD_NODE_CATEGORY[kn.type as keyof typeof WORLD_NODE_CATEGORY] === 'core'
+    );
 
   const characters = branchCharacters
     .map((c) => {

@@ -1,5 +1,6 @@
 import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence, TimeUnit } from '@/types/narrative';
-import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID } from '@/types/narrative';
+import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID, WORLD_NODE_CATEGORY } from '@/types/narrative';
+import type { WorldNodeType } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrative-utils';
 import { nextId, nextIds } from '@/lib/narrative-utils';
 import { newNarratorStance } from '@/lib/thread-log';
@@ -808,7 +809,6 @@ async function extractCompulsoryPropositions(
  * remain non-negotiable.
  */
 function buildParticipantGroundingBlock(narrative: NarrativeState, scene: Scene): string {
-  const NODE_CAP_PER_ENTITY = 10;
   // Stable display order — mirror the character-sheet logic readers carry around:
   // who they are → what they want → what they hide → what's true now → what they
   // can do → what they remember → who they're tied to → where they're vulnerable.
@@ -817,11 +817,22 @@ function buildParticipantGroundingBlock(narrative: NarrativeState, scene: Scene)
   type WorldNode = { id: string; type: string; content: string };
   type WorldOwner = { world?: { nodes: Record<string, WorldNode> } };
 
-  const recentNodes = (entity: WorldOwner): WorldNode[] =>
-    Object.values(entity.world?.nodes ?? {}).slice(-NODE_CAP_PER_ENTITY);
+  // Core-only continuity per entity — keep the slow-changing identity
+  // facts (trait, capability, goal, secret, weakness) and drop the
+  // context facts (state, history, opinion, relation) from the planner's
+  // grounding pool. Context facts are useful for chat-style probing of
+  // an entity but they're noise here: they tend to recap what's already
+  // in the scene log or relationships block, and they push generation
+  // toward "remind us what happened" instead of "build the next beat".
+  // The prompt still instructs the model to pick the few facts that
+  // naturally surface, so self-selection stays the planner's job.
+  const entityNodes = (entity: WorldOwner): WorldNode[] =>
+    Object.values(entity.world?.nodes ?? {}).filter(
+      (n) => WORLD_NODE_CATEGORY[n.type as WorldNodeType] === 'core',
+    );
 
   const renderContinuity = (entity: WorldOwner, indent: string): string => {
-    const nodes = recentNodes(entity);
+    const nodes = entityNodes(entity);
     if (nodes.length === 0) return '';
     const grouped = new Map<string, string[]>();
     for (const n of nodes) {
@@ -892,7 +903,7 @@ function buildParticipantGroundingBlock(narrative: NarrativeState, scene: Scene)
   return `
 GROUNDING POOL — optional glue facts for THIS scene's cast. Each entity carries:
   • <visual> — appearance / look. Pull when the mechanism is environment, action, or first-presence so the prose stays embodied (a tall figure / a scarred hand / a moss-eaten doorframe — never generic).
-  • <continuity> — last ${NODE_CAP_PER_ENTITY} accumulated knowledge nodes, grouped by type (trait, belief, goal, secret, state, capability, history, relation, weakness). These are what the participant already KNOWS / WANTS / HIDES / IS coming into the scene.
+  • <continuity> — every accumulated CORE fact about this entity, grouped by type (trait, capability, goal, secret, weakness). These describe what the participant IS / WANTS / CAN DO / HIDES / IS VULNERABLE TO coming into the scene. Context-category facts (state, history, opinion, relation) are intentionally excluded here — they live in the scene log / relationships block where they read in context.
 
 USAGE — these are OPTIONAL glue, NOT compulsory. The compulsory-propositions block below is non-negotiable; grounding is what you reach for to enrich beats:
   • Mechanism = thought / dialogue → reach for beliefs, goals, secrets, history.

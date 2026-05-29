@@ -207,7 +207,7 @@ export const WORLD_FILL: Record<string, string> = {
   state: "#34D399", // emerald
   history: "#FBBF24", // amber
   capability: "#60A5FA", // blue
-  belief: "#F9A8D4", // pink
+  opinion: "#F9A8D4", // pink — subjective truth held by the entity
   relation: "#C084FC", // purple
   secret: "#F59E0B", // orange-amber
   goal: "#38BDF8", // sky
@@ -219,7 +219,7 @@ export const KNOWLEDGE_OPACITY: Record<string, number> = {
   state: 1,
   history: 0.9,
   capability: 1,
-  belief: 0.7,
+  opinion: 0.7,
   relation: 0.9,
   secret: 1,
   goal: 1,

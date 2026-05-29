@@ -23,7 +23,7 @@ const continuityDotColors: Record<string, string> = {
   state: 'bg-emerald-400',
   history: 'bg-amber-400',
   capability: 'bg-blue-400',
-  belief: 'bg-pink-300',
+  opinion: 'bg-pink-300',
   relation: 'bg-purple-400',
   secret: 'bg-amber-500',
   goal: 'bg-sky-400',

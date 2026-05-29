@@ -223,6 +223,46 @@ export const WORLD_NODE_TYPES: WorldNodeType[] = [
   "weakness",
 ];
 
+/**
+ * Two-category split over the nine WorldNodeTypes — used by the entity
+ * world graph (coarse colouring / grouping) and by narrative-context
+ * pruning (Core-only continuity).
+ *
+ * - "core"    — what the entity IS at its core: slow-changing, intrinsic
+ *               facts that define identity and define what stays true
+ *               regardless of which scene we're in.
+ * - "context" — what surrounds or evolves around the entity: faster-
+ *               moving circumstantial facts that track engagement with
+ *               the world (state changes, past events, opinions held,
+ *               ties to others). These exist on the entity but read as
+ *               "currently happening" rather than "is".
+ */
+export type WorldNodeCategory = "core" | "context";
+
+export const WORLD_NODE_CATEGORY: Record<WorldNodeType, WorldNodeCategory> = {
+  trait: "core",
+  capability: "core",
+  goal: "core",
+  secret: "core",
+  weakness: "core",
+  state: "context",
+  history: "context",
+  opinion: "context",
+  relation: "context",
+};
+
+/** Core types — what the entity IS. Pulled out as a const-tuple so
+ *  context-builders and UI legends can iterate the canonical list
+ *  without re-deriving it from WORLD_NODE_CATEGORY each time. */
+export const CORE_WORLD_NODE_TYPES: WorldNodeType[] = WORLD_NODE_TYPES.filter(
+  (t) => WORLD_NODE_CATEGORY[t] === "core",
+);
+
+/** Context types — what surrounds the entity. */
+export const CONTEXT_WORLD_NODE_TYPES: WorldNodeType[] = WORLD_NODE_TYPES.filter(
+  (t) => WORLD_NODE_CATEGORY[t] === "context",
+);
+
 export type WorldNode = {
   id: string;
   type: WorldNodeType;

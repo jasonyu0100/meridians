@@ -30,7 +30,7 @@ const continuityDotColors: Record<string, string> = {
   state: "bg-emerald-400",
   history: "bg-amber-400",
   capability: "bg-blue-400",
-  belief: "bg-pink-300",
+  opinion: "bg-pink-300",
   relation: "bg-purple-400",
   secret: "bg-amber-500",
   goal: "bg-sky-400",
@@ -101,15 +101,28 @@ export default function CharacterDetail({ characterId }: Props) {
         ),
       )
     : [];
-  const recentEvents =
-    currentScene && currentScene.participantIds.includes(characterId)
-      ? currentScene.events
-      : [];
+  // Artifact signals tied specifically to this character:
+  //  - usages they performed                         (this character WIELDED the artifact)
+  //  - ownership transfers where they're either side (gained / lost an artifact)
+  // Scene-wide events (currentScene.events) are intentionally dropped here
+  // — they describe what HAPPENED in the scene globally, not what this
+  // character did, which is the question this panel is supposed to answer.
+  const recentArtifactUsages = currentScene
+    ? (currentScene.artifactUsages ?? []).filter((au) => au.characterId === characterId)
+    : [];
+  const recentOwnershipDeltas = currentScene
+    ? (currentScene.ownershipDeltas ?? []).filter((od) => od.fromId === characterId || od.toId === characterId)
+    : [];
+  const isPov = !!currentScene && currentScene.povId === characterId;
+  const isPresent = !!currentScene && currentScene.participantIds.includes(characterId);
   const hasRecentActivity =
+    isPov ||
+    isPresent ||
     recentWorldDeltas.length > 0 ||
     recentRelationshipDeltas.length > 0 ||
     recentThreadDeltas.length > 0 ||
-    recentEvents.length > 0;
+    recentArtifactUsages.length > 0 ||
+    recentOwnershipDeltas.length > 0;
 
   // Scenes: all scenes up to current scene index where this character participates
   const lifecycle = sceneKeysUpToCurrent
@@ -167,24 +180,97 @@ export default function CharacterDetail({ characterId }: Props) {
       />
 
 
-      {/* Recent — current scene deltas, open by default */}
+      {/* Recent — current scene activity tied to THIS character only */}
       {hasRecentActivity &&
         currentScene &&
         (() => {
           const totalCount =
             recentWorldDeltas.length +
             recentRelationshipDeltas.length +
-            recentThreadDeltas.length;
+            recentThreadDeltas.length +
+            recentArtifactUsages.length +
+            recentOwnershipDeltas.length;
           const groups: React.ReactNode[] = [];
 
-          if (recentEvents.length > 0) {
+          // Role in the scene — POV when this character is the POV;
+          // "present" when they participate without being POV. Surfaced
+          // first so the rest of the deltas read in the right frame.
+          if (isPov || isPresent) {
+            const locName = narrative.locations[currentScene.locationId]?.name;
             groups.push(
-              <ul key="events" className="flex flex-col gap-0.5">
-                {recentEvents.map((ev, i) => (
-                  <li key={i} className="text-xs text-text-dim italic">
-                    {ev}
-                  </li>
-                ))}
+              <div key="role" className="flex items-center gap-1.5 text-[10px]">
+                <span className={`uppercase tracking-widest ${isPov ? 'text-pov' : 'text-text-dim'}`}>
+                  {isPov ? 'POV' : 'Present'}
+                </span>
+                {locName && (
+                  <span className="text-text-dim/70">at {locName}</span>
+                )}
+              </div>,
+            );
+          }
+          // Artifact usages performed by this character.
+          if (recentArtifactUsages.length > 0) {
+            groups.push(
+              <ul key="artifact-usages" className="flex flex-col gap-0.5">
+                {recentArtifactUsages.map((au, i) => {
+                  const art = narrative.artifacts[au.artifactId];
+                  return (
+                    <li key={`${au.artifactId}-${i}`} className="text-xs text-text-secondary flex items-start gap-1">
+                      <span className="shrink-0 text-amber-400">◆</span>
+                      <span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_INSPECTOR",
+                              context: { type: "artifact", artifactId: au.artifactId },
+                            })
+                          }
+                          className="font-mono text-[10px] text-text-dim hover:text-text-secondary transition-colors"
+                        >
+                          {art?.name ?? au.artifactId}
+                        </button>
+                        {au.usage && <span className="text-text-secondary"> — {au.usage}</span>}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>,
+            );
+          }
+          // Ownership shifts touching this character — gained / lost an artifact.
+          if (recentOwnershipDeltas.length > 0) {
+            groups.push(
+              <ul key="ownership" className="flex flex-col gap-0.5">
+                {recentOwnershipDeltas.map((od, i) => {
+                  const art = narrative.artifacts[od.artifactId];
+                  const gained = od.toId === characterId;
+                  const otherId = gained ? od.fromId : od.toId;
+                  const otherName = narrative.characters[otherId]?.name ?? narrative.locations[otherId]?.name ?? otherId;
+                  return (
+                    <li key={`${od.artifactId}-${i}`} className="text-xs text-text-secondary flex items-start gap-1">
+                      <span className={`shrink-0 ${gained ? 'text-world' : 'text-drive'}`}>{gained ? '↘' : '↗'}</span>
+                      <span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_INSPECTOR",
+                              context: { type: "artifact", artifactId: od.artifactId },
+                            })
+                          }
+                          className="font-mono text-[10px] text-text-dim hover:text-text-secondary transition-colors"
+                        >
+                          {art?.name ?? od.artifactId}
+                        </button>
+                        <span className="text-text-dim/70">
+                          {gained ? ' from ' : ' to '}
+                          {otherName}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>,
             );
           }

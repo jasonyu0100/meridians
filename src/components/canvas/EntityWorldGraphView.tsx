@@ -5,8 +5,8 @@ import * as d3 from 'd3';
 import { useStore } from '@/lib/store';
 import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/scene-filter';
 import { WORLD_FILL } from './graph-utils';
-import type { WorldNode, WorldEdge, World } from '@/types/narrative';
-import { WORLD_NODE_TYPES } from '@/types/narrative';
+import type { WorldNode, WorldEdge, World, WorldNodeType } from '@/types/narrative';
+import { WORLD_NODE_TYPES, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
 
 type CNode = d3.SimulationNodeDatum & { id: string; content: string; type: string; degree: number };
@@ -29,13 +29,31 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
   const [showLabels, setShowLabels] = useState(true);
   const [showRelations, setShowRelations] = useState(false);
   const [showTypes, setShowTypes] = useState(true);
+  // Two-category filters — Core (trait/capability/goal/secret/weakness)
+  // and Context (state/history/opinion/relation). Both default on.
+  // Toggling either off drops every node in that category, along with
+  // edges whose endpoint disappears.
+  const [showCore, setShowCore] = useState(true);
+  const [showContext, setShowContext] = useState(true);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string; type: string; degree: number } | null>(null);
 
   const graphData = useMemo(() => {
-    const nodes = getWorldNodesAtScene(world.nodes, entityId, scenes, resolvedKeys, currentIndex);
-    const edges = getWorldEdgesAtScene(world.edges, entityId, scenes, resolvedKeys, currentIndex, world.nodes);
+    const rawNodes = getWorldNodesAtScene(world.nodes, entityId, scenes, resolvedKeys, currentIndex);
+    const rawEdges = getWorldEdgesAtScene(world.edges, entityId, scenes, resolvedKeys, currentIndex, world.nodes);
+    // Category filter — drop nodes whose category is currently hidden,
+    // then drop any edge whose endpoint disappeared with them.
+    const allowed = (t: string): boolean => {
+      const cat = WORLD_NODE_CATEGORY[t as WorldNodeType];
+      if (cat === 'core') return showCore;
+      if (cat === 'context') return showContext;
+      // Unknown / un-categorised types stay visible — defensive default.
+      return true;
+    };
+    const nodes = rawNodes.filter((n) => allowed(n.type));
+    const visibleIds = new Set(nodes.map((n) => n.id));
+    const edges = rawEdges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to));
     return { nodes, edges };
-  }, [world, entityId, scenes, resolvedKeys, currentIndex]);
+  }, [world, entityId, scenes, resolvedKeys, currentIndex, showCore, showContext]);
 
   // Initial setup
   useEffect(() => {
@@ -194,6 +212,13 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
     { key: 'relations', label: 'Relations', checked: showRelations, toggle: () => setShowRelations((v) => !v) },
     { key: 'types', label: 'Types', checked: showTypes, toggle: () => setShowTypes((v) => !v) },
   ];
+  // Category filters live in their own group so they read as a SCOPE
+  // control (what's visible) rather than a STYLE control (Labels /
+  // Relations / Types).
+  const categoryItems = [
+    { key: 'core', label: 'Core', checked: showCore, toggle: () => setShowCore((v) => !v) },
+    { key: 'context', label: 'Context', checked: showContext, toggle: () => setShowContext((v) => !v) },
+  ];
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col">
@@ -210,6 +235,13 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
         <span className="text-[10px] text-text-secondary font-medium mr-3">{entityName}</span>
         <div className="w-px h-3 bg-border mr-1" />
         {legendItems.map(({ key, label, checked, toggle }) => (
+          <button key={key} onClick={toggle}
+            className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${checked ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}>
+            {label}
+          </button>
+        ))}
+        <div className="w-px h-3 bg-border mx-1" />
+        {categoryItems.map(({ key, label, checked, toggle }) => (
           <button key={key} onClick={toggle}
             className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${checked ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}>
             {label}

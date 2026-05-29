@@ -231,7 +231,47 @@ export function aggregateNetworkGraph(
     if (scopeKeys && !scopeKeys.has(item.id)) continue;
     if (item.kind === "scene") {
       const scene = narrative.scenes[item.id];
-      if (scene) visitStep(scene.attributions, scene.attributionEdges);
+      if (scene) {
+        // Fold scene participation into the attribution list AND synthesize
+        // participation edges so topology classification has something to
+        // work with. Without the edges, every participant ends up isolated
+        // → `describeNodeUsage` returns "incidental" for the entire cast.
+        // Synthesized edges:
+        //   - every participant (incl. POV) ↔ scene location  (presence)
+        //   - POV ↔ each other participant                     (scene focus)
+        //   - each thread with a delta ↔ POV / participants    (coordination)
+        // Explicit attributionEdges (causal/structural, LLM-emitted) merge
+        // on top so a scene that DID declare edges keeps its relation
+        // labels for the within-step dedup.
+        const participation = new Set<string>(scene.attributions ?? []);
+        if (scene.povId) participation.add(scene.povId);
+        for (const pid of scene.participantIds ?? []) participation.add(pid);
+        if (scene.locationId) participation.add(scene.locationId);
+        for (const tm of scene.threadDeltas ?? []) participation.add(tm.threadId);
+
+        const participationEdges: { from: string; to: string }[] = [];
+        const castIds = new Set<string>();
+        if (scene.povId) castIds.add(scene.povId);
+        for (const pid of scene.participantIds ?? []) castIds.add(pid);
+        if (scene.locationId) {
+          for (const id of castIds) {
+            if (id !== scene.locationId) participationEdges.push({ from: id, to: scene.locationId });
+          }
+        }
+        if (scene.povId) {
+          for (const pid of scene.participantIds ?? []) {
+            if (pid !== scene.povId) participationEdges.push({ from: scene.povId, to: pid });
+          }
+        }
+        for (const tm of scene.threadDeltas ?? []) {
+          for (const id of castIds) {
+            if (id !== tm.threadId) participationEdges.push({ from: id, to: tm.threadId });
+          }
+        }
+
+        const mergedEdges = [...(scene.attributionEdges ?? []), ...participationEdges];
+        visitStep([...participation], mergedEdges);
+      }
     } else {
       const wb = narrative.worldBuilds[item.id];
       if (wb) visitStep(
