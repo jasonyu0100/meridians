@@ -266,11 +266,22 @@ export default function ThreadGraphView({
     // links are structural (thread→thread convergence) and read prominent;
     // participant links are softer dotted lines connecting threads to their
     // entities.
+    // Mirrors KnowledgeGraphView's activation focus: in the scene-
+    // focused mode ('threads' here, 'codex' there) edges touching a
+    // thread that took a delta at the current scene keep their base
+    // intensity; everything else dims to 25% (floor 0.04) so the
+    // active set reads as the focal cluster.
+    const hasActiveSet = simNodes.some((n) => n.hasDeltaAtScene);
     linkAll
       .attr('stroke', '#ffffff')
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
-      .style('opacity', d => d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25))
+      .style('opacity', (d) => {
+        const base = d.relation === 'dependent' ? edgeOpacityFor(0.85) : edgeOpacityFor(0.25);
+        if (mode !== 'threads' || !hasActiveSet) return base;
+        const touches = (d.source as TNode).hasDeltaAtScene || (d.target as TNode).hasDeltaAtScene;
+        return touches ? base : Math.max(0.04, base * 0.25);
+      })
       .style('stroke-width', d => d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2))
       .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none')
       .attr('marker-mid', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);

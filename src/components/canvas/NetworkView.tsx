@@ -144,6 +144,23 @@ export default function NetworkView() {
     const svg = d3.select(svgEl);
     svg.selectAll('*').remove();
 
+    // Arrowhead marker placed at the polyline midpoint via marker-mid.
+    // Matches the pattern used in WorldGraph / KnowledgeGraphView /
+    // ThreadGraphView so every canvas graph encodes edge direction the
+    // same way. context-stroke makes the head inherit each line's
+    // stroke colour, including the blended force-field hues here.
+    svg.append('defs').append('marker')
+      .attr('id', 'n-arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 9)
+      .attr('refY', 0)
+      .attr('markerWidth', 5)
+      .attr('markerHeight', 5)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'context-stroke');
+
     const g = svg.append('g');
     gRef.current = g;
 
