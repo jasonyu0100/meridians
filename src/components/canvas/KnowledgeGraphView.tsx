@@ -266,28 +266,45 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     // global topology is legible.
     const edgeT = (d: SysLink) =>
       ((d.source as SysNode).degree + (d.target as SysNode).degree) / (maxDegree * 2);
+    // Base edge styles — pulled out as named callbacks so the mouseleave
+    // handler can restore them without duplicating the focus logic.
+    // Spark renders only the scene's own delta — every visible edge IS
+    // active, no focus needed. Codex (full) and system-arc (arc) render
+    // broader sets where the current-scene focus needs to pop above a
+    // dim baseline.
+    const baseEdgeOpacity = (d: SysLink): number => {
+      if (mode === 'system-scene') return FOCUS_OPACITY_ACTIVE;
+      const touches = sceneNodeIds.has((d.source as SysNode).id) ||
+        sceneNodeIds.has((d.target as SysNode).id);
+      return touches ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
+    };
+    const baseEdgeWidth = (d: SysLink): number => {
+      const base = edgeWidthFor(edgeT(d));
+      if (mode === 'system-scene') return base;
+      const touches = sceneNodeIds.has((d.source as SysNode).id) ||
+        sceneNodeIds.has((d.target as SysNode).id);
+      return touches ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+    };
     linkAll
       .attr('stroke', '#ffffff')
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
-      // Spark renders only the scene's own delta — every visible edge IS
-      // active, no focus needed. Codex (full) and spark-arc (arc) render
-      // broader sets where the current-scene focus needs to pop above a
-      // dim baseline.
-      .style('opacity', (d) => {
-        if (mode === 'system-scene') return FOCUS_OPACITY_ACTIVE;
-        const touches = sceneNodeIds.has((d.source as SysNode).id) ||
-          sceneNodeIds.has((d.target as SysNode).id);
-        return touches ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
-      })
-      .style('stroke-width', (d) => {
-        const base = edgeWidthFor(edgeT(d));
-        if (mode === 'system-scene') return base;
-        const touches = sceneNodeIds.has((d.source as SysNode).id) ||
-          sceneNodeIds.has((d.target as SysNode).id);
-        return touches ? base : base * FOCUS_WIDTH_FACTOR_DIM;
-      })
+      .style('opacity', baseEdgeOpacity)
+      .style('stroke-width', baseEdgeWidth)
       .attr('marker-mid', 'url(#wk-arrow)');
+
+    // Adjacency for hover highlighting — built from simLinks so edges that
+    // share endpoints with the hovered node can be lit independently of
+    // the scene-focus baseline.
+    const adjacency = new Map<string, Set<string>>();
+    for (const l of simLinks) {
+      const a = (l.source as SysNode).id;
+      const b = (l.target as SysNode).id;
+      if (!adjacency.has(a)) adjacency.set(a, new Set());
+      if (!adjacency.has(b)) adjacency.set(b, new Set());
+      adjacency.get(a)!.add(b);
+      adjacency.get(b)!.add(a);
+    }
 
     // Halos for nodes the current scene introduced or touched. Replaces the
     // earlier "dim non-scene nodes" approach so concept colours read true
@@ -345,10 +362,42 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     nodeAll
       .on('mouseenter', (event, d) => {
         const rect = svgRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, concept: d.concept, type: d.type, degree: d.degree });
+        if (rect) {
+          setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, concept: d.concept, type: d.type, degree: d.degree });
+        }
+        // Activate edges incident to the hovered node; collapse the rest
+        // below the dim baseline so the focal star reads as the only
+        // structure on screen. Matches the same primitive WG / TGV /
+        // Network use.
+        const incident = (l: SysLink) => {
+          const sId = (l.source as SysNode).id;
+          const tId = (l.target as SysNode).id;
+          return sId === d.id || tId === d.id;
+        };
+        g.select<SVGGElement>('g.wk-links')
+          .selectAll<SVGPolylineElement, SysLink>('polyline')
+          .style('opacity', (l) => incident(l) ? Math.max(FOCUS_OPACITY_ACTIVE + 0.15, 0.65) : 0.03)
+          .style('stroke-width', (l) => incident(l) ? edgeWidthFor(edgeT(l)) : edgeWidthFor(edgeT(l)) * FOCUS_WIDTH_FACTOR_DIM);
+        // Also fade non-adjacent nodes so the cluster pops.
+        const neighbors = adjacency.get(d.id) ?? new Set<string>();
+        g.select<SVGGElement>('g.wk-nodes')
+          .selectAll<SVGCircleElement, SysNode>('circle')
+          .style('opacity', (o) => (o.id === d.id || neighbors.has(o.id)) ? FOCUS_NODE_OPACITY_ACTIVE : 0.18);
       })
-      .on('mouseleave', () => setTooltip(null))
+      .on('mouseleave', () => {
+        setTooltip(null);
+        // Restore base scoped styles (edges by focus rule, nodes by isActive).
+        g.select<SVGGElement>('g.wk-links')
+          .selectAll<SVGPolylineElement, SysLink>('polyline')
+          .style('opacity', baseEdgeOpacity)
+          .style('stroke-width', baseEdgeWidth);
+        g.select<SVGGElement>('g.wk-nodes')
+          .selectAll<SVGCircleElement, SysNode>('circle')
+          .style('opacity', (o) => {
+            if (mode === 'system-scene') return FOCUS_NODE_OPACITY_ACTIVE;
+            return isActive(o) ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
+          });
+      })
       .on('click', (_event, d) => {
         _event.stopPropagation();
         dispatch({ type: 'SET_INSPECTOR', context: { type: 'knowledge', nodeId: d.id } });

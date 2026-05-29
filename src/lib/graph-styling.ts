@@ -61,7 +61,7 @@ export const FOCUS_OPACITY_ACTIVE = 0.5;
  *  case where the set is empty (no activations at this step). Visible
  *  enough to read the network's general structure, dim enough that
  *  the active set is clearly the focal layer above it. */
-export const FOCUS_OPACITY_DIM = 0.08;
+export const FOCUS_OPACITY_DIM = 0.10;
 
 /** Opacity for NODES in the currently activated set. Full opacity —
  *  the focal layer reads as the canonical surface. */

@@ -292,48 +292,64 @@ export default function ThreadGraphView({
     // Pulse mode (no scene focus) just uses the active opacity
     // uniformly. Width keeps the relation-based hierarchy so dependent
     // links read as structural and participant links as connective.
+    // Base edge styles — extracted so mouseleave can restore them without
+    // duplicating the focus logic.
+    //
+    // Thread edges encode COORDINATION — an edge between two threads is
+    // only "active" when BOTH threads took a delta at the current scene
+    // (they moved together). One-sided activity isn't coordination, so
+    // the edge stays dim. This is the key semantic difference from
+    // KGV/WG/Network, where a single endpoint in the active set is
+    // enough to light the edge.
+    //
+    // Important: d.source / d.target are still STRINGS when this style
+    // callback first runs — d3.forceLink only resolves them to node
+    // references after `sim.force('link').links(simLinks)` is applied
+    // below. Look up via nodeMap so the AND check actually sees
+    // `hasDeltaAtScene` and doesn't silently return undefined.
+    const edgeBaseWidth = (d: TLink): number =>
+      d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2);
+    const baseEdgeOpacity = (d: TLink): number => {
+      if (mode === 'threads-scene') return FOCUS_OPACITY_ACTIVE;
+      const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
+      const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
+      const both = !!nodeMap.get(srcId)?.hasDeltaAtScene && !!nodeMap.get(tgtId)?.hasDeltaAtScene;
+      return both ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
+    };
+    const baseEdgeWidth = (d: TLink): number => {
+      const base = edgeBaseWidth(d);
+      if (mode === 'threads-scene') return base;
+      const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
+      const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
+      const both = !!nodeMap.get(srcId)?.hasDeltaAtScene && !!nodeMap.get(tgtId)?.hasDeltaAtScene;
+      return both ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+    };
     linkAll
       .attr('stroke', '#ffffff')
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
-      // Thread edges encode COORDINATION — an edge between two threads
-      // is only "active" when BOTH threads took a delta at the current
-      // scene (they moved together). One-sided activity isn't
-      // coordination, so the edge stays dim. This is the key semantic
-      // difference from KGV/WG/Network, where a single endpoint in the
-      // active set is enough to light the edge.
-      //
-      // Important: d.source / d.target are still STRINGS when this
-      // style callback first runs — d3.forceLink only resolves them to
-      // node references after `sim.force('link').links(simLinks)` is
-      // applied below. Look up via nodeMap so the AND check actually
-      // sees `hasDeltaAtScene` and doesn't silently return undefined.
       // 'threads-scene' renders only threads touched at the current scene,
       // so there's no dim baseline to draw against — everything reads
       // active. 'threads-arc' and 'threads-full' both render a broader
       // set where the current-scene focus needs to pop above the dim
       // baseline.
-      .style('opacity', (d) => {
-        if (mode === 'threads-scene') return FOCUS_OPACITY_ACTIVE;
-        const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
-        const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
-        const srcNode = nodeMap.get(srcId);
-        const tgtNode = nodeMap.get(tgtId);
-        const both = !!srcNode?.hasDeltaAtScene && !!tgtNode?.hasDeltaAtScene;
-        return both ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
-      })
-      .style('stroke-width', (d) => {
-        const base = d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2);
-        if (mode === 'threads-scene') return base;
-        const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
-        const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
-        const srcNode = nodeMap.get(srcId);
-        const tgtNode = nodeMap.get(tgtId);
-        const both = !!srcNode?.hasDeltaAtScene && !!tgtNode?.hasDeltaAtScene;
-        return both ? base : base * FOCUS_WIDTH_FACTOR_DIM;
-      })
+      .style('opacity', baseEdgeOpacity)
+      .style('stroke-width', baseEdgeWidth)
       .attr('stroke-dasharray', d => d.relation === 'participant' ? '3,3' : 'none')
       .attr('marker-mid', d => d.relation === 'dependent' ? 'url(#tg-arrow)' : null);
+
+    // Adjacency for hover highlighting — built from simLinks. Lets hover
+    // light up every edge incident to the hovered node, regardless of the
+    // scene-focus baseline.
+    const adjacency = new Map<string, Set<string>>();
+    for (const l of simLinks) {
+      const a = typeof l.source === 'string' ? l.source : (l.source as TNode).id;
+      const b = typeof l.target === 'string' ? l.target : (l.target as TNode).id;
+      if (!adjacency.has(a)) adjacency.set(a, new Set());
+      if (!adjacency.has(b)) adjacency.set(b, new Set());
+      adjacency.get(a)!.add(b);
+      adjacency.get(b)!.add(a);
+    }
 
     // Halos — soft colour bloom behind any thread that took a delta in the
     // current scene. Replaces the previous "dim the inactive ones" approach
@@ -391,10 +407,43 @@ export default function ThreadGraphView({
     nodeAll
       .on('mouseenter', (event, d) => {
         const rect = svgRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, description: d.description, category: d.category, participants: d.participantNames, activity: d.activity });
+        if (rect) {
+          setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, description: d.description, category: d.category, participants: d.participantNames, activity: d.activity });
+        }
+        // Activate edges incident to the hovered node; collapse the rest
+        // below the dim baseline so the focal star reads as the only
+        // structure on screen. Same primitive WG / KGV / Network use.
+        // Edge-active is OR-based here (touching the hovered node),
+        // NOT the AND-coordination rule used for scene-focus — for hover
+        // the user wants to see WHO this thread connects to, not which
+        // pairs co-moved.
+        const incident = (l: TLink) => {
+          const sId = typeof l.source === 'string' ? l.source : (l.source as TNode).id;
+          const tId = typeof l.target === 'string' ? l.target : (l.target as TNode).id;
+          return sId === d.id || tId === d.id;
+        };
+        g.select<SVGGElement>('g.t-links')
+          .selectAll<SVGPolylineElement, TLink>('polyline')
+          .style('opacity', (l) => incident(l) ? Math.max(FOCUS_OPACITY_ACTIVE + 0.15, 0.65) : 0.03)
+          .style('stroke-width', (l) => incident(l) ? edgeBaseWidth(l) : edgeBaseWidth(l) * FOCUS_WIDTH_FACTOR_DIM);
+        const neighbors = adjacency.get(d.id) ?? new Set<string>();
+        g.select<SVGGElement>('g.t-nodes')
+          .selectAll<SVGCircleElement, TNode>('circle')
+          .style('opacity', (o) => (o.id === d.id || neighbors.has(o.id)) ? FOCUS_NODE_OPACITY_ACTIVE : 0.18);
       })
-      .on('mouseleave', () => setTooltip(null))
+      .on('mouseleave', () => {
+        setTooltip(null);
+        g.select<SVGGElement>('g.t-links')
+          .selectAll<SVGPolylineElement, TLink>('polyline')
+          .style('opacity', baseEdgeOpacity)
+          .style('stroke-width', baseEdgeWidth);
+        g.select<SVGGElement>('g.t-nodes')
+          .selectAll<SVGCircleElement, TNode>('circle')
+          .style('opacity', (o) => {
+            if (mode === 'threads-scene') return FOCUS_NODE_OPACITY_ACTIVE;
+            return o.hasDeltaAtScene ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
+          });
+      })
       .on('click', (_event, d) => {
         _event.stopPropagation();
         onSelectThread(d.id);

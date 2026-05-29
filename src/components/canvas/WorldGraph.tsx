@@ -737,6 +737,29 @@ export default function WorldGraph() {
     };
     const scopedEdgeOpacity = (l: GraphLink): number =>
       isEdgeActive(l) ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
+    const scopedEdgeWidth = (l: GraphLink): number => {
+      const base = edgeWidthFor(0.85);
+      return isEdgeActive(l) ? base : base * FOCUS_WIDTH_FACTOR_DIM;
+    };
+
+    // Adjacency for hover highlighting — built from the (deduped) link
+    // set so every edge incident to the hovered node can be lit
+    // independently of the scene-focus baseline. Same primitive
+    // KGV / TGV / Network use for hover.
+    const adjacency = new Map<string, Set<string>>();
+    for (const l of validLinksDeduped) {
+      const a = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const b = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      if (!adjacency.has(a)) adjacency.set(a, new Set());
+      if (!adjacency.has(b)) adjacency.set(b, new Set());
+      adjacency.get(a)!.add(b);
+      adjacency.get(b)!.add(a);
+    }
+    const incidentTo = (id: string) => (l: GraphLink): boolean => {
+      const s = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const t = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      return s === id || t === id;
+    };
 
     // Non-relationship links — solid, bright, thick. Node SHAPE carries the
     // type signal; we only vary stroke colour by linkKind, not weight or dash.
@@ -768,10 +791,7 @@ export default function WorldGraph() {
       // Per-edge: bright when touching a current-scene node, dim otherwise
       // (matches the focus effect in KGV/TGV).
       .style('opacity', (d) => scopedEdgeOpacity(d))
-      .style('stroke-width', (d) => {
-        const base = edgeWidthFor(0.85);
-        return isEdgeActive(d) ? base : base * FOCUS_WIDTH_FACTOR_DIM;
-      })
+      .style('stroke-width', (d) => scopedEdgeWidth(d))
       .attr('marker-mid', (d) => (isArrowed(d) ? 'url(#wg-arrow)' : null));
 
     // Relationship links — solid, bright, thick. Valence sign drives colour.
@@ -787,10 +807,7 @@ export default function WorldGraph() {
         return v >= 0 ? '#4ADE80' : '#F87171';
       })
       .style('stroke-opacity', (d) => scopedEdgeOpacity(d))
-      .style('stroke-width', (d) => {
-        const base = edgeWidthFor(0.85);
-        return isEdgeActive(d) ? base : base * FOCUS_WIDTH_FACTOR_DIM;
-      });
+      .style('stroke-width', (d) => scopedEdgeWidth(d));
 
     // Relationship labels at midpoints
     const linkLabelSelection = g
@@ -840,11 +857,48 @@ export default function WorldGraph() {
       .on('mouseenter', (event, d) => {
         if ((d.kind === 'character' || d.kind === 'location' || d.kind === 'artifact') && d.imagePrompt) {
           const rect = svgRef.current?.getBoundingClientRect();
-          if (!rect) return;
-          setNodeTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, label: d.label, kind: d.kind, imagePrompt: d.imagePrompt });
+          if (rect) {
+            setNodeTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, label: d.label, kind: d.kind, imagePrompt: d.imagePrompt });
+          }
         }
+        // Hover focus — activate edges incident to the hovered node and
+        // collapse the rest below the dim baseline so the focal star
+        // reads as the only structure on screen. Same primitive
+        // KGV / TGV / Network use.
+        const touches = incidentTo(d.id);
+        g.select<SVGGElement>('g.links')
+          .selectAll<SVGPolylineElement, GraphLink>('polyline.graph-edge')
+          .style('opacity', (l) => touches(l) ? Math.max(FOCUS_OPACITY_ACTIVE + 0.15, 0.65) : 0.03)
+          .style('stroke-width', (l) => touches(l) ? edgeWidthFor(0.85) : edgeWidthFor(0.85) * FOCUS_WIDTH_FACTOR_DIM);
+        g.select<SVGGElement>('g.links')
+          .selectAll<SVGLineElement, GraphLink>('line.graph-rel-edge')
+          .style('stroke-opacity', (l) => touches(l) ? Math.max(FOCUS_OPACITY_ACTIVE + 0.15, 0.65) : 0.03)
+          .style('stroke-width', (l) => touches(l) ? edgeWidthFor(0.85) : edgeWidthFor(0.85) * FOCUS_WIDTH_FACTOR_DIM);
+        const neighbors = adjacency.get(d.id) ?? new Set<string>();
+        g.select<SVGGElement>('g.nodes')
+          .selectAll<SVGGElement, GraphNode>('g.graph-node')
+          .style('opacity', (o) => {
+            if (o.kind === 'knowledge') return FOCUS_NODE_OPACITY_ACTIVE;
+            return (o.id === d.id || neighbors.has(o.id)) ? FOCUS_NODE_OPACITY_ACTIVE : 0.18;
+          });
       })
-      .on('mouseleave', () => setNodeTooltip(null))
+      .on('mouseleave', () => {
+        setNodeTooltip(null);
+        g.select<SVGGElement>('g.links')
+          .selectAll<SVGPolylineElement, GraphLink>('polyline.graph-edge')
+          .style('opacity', (l) => scopedEdgeOpacity(l))
+          .style('stroke-width', (l) => scopedEdgeWidth(l));
+        g.select<SVGGElement>('g.links')
+          .selectAll<SVGLineElement, GraphLink>('line.graph-rel-edge')
+          .style('stroke-opacity', (l) => scopedEdgeOpacity(l))
+          .style('stroke-width', (l) => scopedEdgeWidth(l));
+        g.select<SVGGElement>('g.nodes')
+          .selectAll<SVGGElement, GraphNode>('g.graph-node')
+          .style('opacity', (o) => {
+            if (o.kind === 'knowledge') return FOCUS_NODE_OPACITY_ACTIVE;
+            return activeSceneNodeIds.has(o.id) ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
+          });
+      })
       .call(
         d3
           .drag<SVGGElement, GraphNode>()
