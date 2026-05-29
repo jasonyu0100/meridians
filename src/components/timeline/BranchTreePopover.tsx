@@ -18,6 +18,7 @@
 
 import { useMemo, useRef, useEffect } from 'react';
 import type { Branch } from '@/types/narrative';
+import { layoutBranchTree } from '@/lib/branch-tree';
 
 const BRANCH_COLORS = ['#60A5FA', '#A78BFA', '#34D399', '#F97316', '#F472B6', '#FBBF24'];
 function stableBranchColor(id: string, all: Branch[]): string {
@@ -49,83 +50,8 @@ type Props = {
   formatSubtitle?: (branch: Branch) => string;
 };
 
-type LayoutNode = {
-  branch: Branch;
-  depth: number;
-  parentRow: number | null;
-};
-
-/** Each entry id is owned by exactly one branch — the one whose own
- *  `entryIds` first contains it (its origin). For fork visualisation
- *  we want the branch that ORIGINATED the forkEntry, not the abstract
- *  `parentBranchId` chain — that matches BranchModal's graph, where
- *  connectors run off the column of the entry's origin regardless of
- *  what `parentBranchId` happens to claim. */
-function buildEntryOrigin(allBranches: Branch[]): Map<string, string> {
-  const origin = new Map<string, string>();
-  for (const b of allBranches) {
-    for (const eid of b.entryIds) {
-      if (!origin.has(eid)) origin.set(eid, b.id);
-    }
-  }
-  return origin;
-}
-
-/** Tree parent of each branch resolved from `forkEntryId` → originating
- *  branch. Falls back to `parentBranchId` only when the fork entry can't
- *  be located (data inconsistency); falls back to null otherwise. */
-function resolveTreeParents(allBranches: Branch[]): Map<string, string | null> {
-  const byId = new Map(allBranches.map((b) => [b.id, b]));
-  const entryOrigin = buildEntryOrigin(allBranches);
-  const parentOf = new Map<string, string | null>();
-  for (const b of allBranches) {
-    let parent: string | null = null;
-    if (b.forkEntryId) {
-      const origin = entryOrigin.get(b.forkEntryId);
-      if (origin && origin !== b.id) parent = origin;
-    }
-    // Fallback: parentBranchId if we couldn't resolve via fork origin
-    // and the parent actually exists in the set.
-    if (!parent && b.parentBranchId && byId.has(b.parentBranchId)) {
-      parent = b.parentBranchId;
-    }
-    parentOf.set(b.id, parent);
-  }
-  return parentOf;
-}
-
-/** DFS pre-order over the entry-origin-derived tree; siblings ordered
- *  by createdAt for stability. Same primitive BranchModal's graph uses,
- *  so the popover and the graph agree on hierarchy. */
-function layout(allBranches: Branch[]): LayoutNode[] {
-  const byId = new Map(allBranches.map((b) => [b.id, b]));
-  const treeParent = resolveTreeParents(allBranches);
-  const childrenOf = new Map<string | null, Branch[]>();
-  for (const b of allBranches) {
-    const key = treeParent.get(b.id) ?? null;
-    const list = childrenOf.get(key) ?? [];
-    list.push(b);
-    childrenOf.set(key, list);
-  }
-  for (const list of childrenOf.values()) {
-    list.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-  }
-  const rows: LayoutNode[] = [];
-  const rowOf = new Map<string, number>();
-  function dfs(id: string, depth: number) {
-    const branch = byId.get(id);
-    if (!branch) return;
-    const parentId = treeParent.get(id) ?? null;
-    const parentRow = parentId ? rowOf.get(parentId) ?? null : null;
-    rowOf.set(id, rows.length);
-    rows.push({ branch, depth, parentRow });
-    const children = childrenOf.get(id) ?? [];
-    for (const child of children) dfs(child.id, depth + 1);
-  }
-  const roots = childrenOf.get(null) ?? [];
-  for (const root of roots) dfs(root.id, 0);
-  return rows;
-}
+// Tree shape comes from `layoutBranchTree` (see src/lib/branch-tree.ts)
+// so the popover and the graph view agree on hierarchy.
 
 export function BranchTreePopover({
   branches,
@@ -136,7 +62,7 @@ export function BranchTreePopover({
   onOpenFullView,
   formatSubtitle,
 }: Props) {
-  const rows = useMemo(() => layout(branches), [branches]);
+  const rows = useMemo(() => layoutBranchTree(branches), [branches]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Click-outside + Esc to close. The popover is meant to feel like a

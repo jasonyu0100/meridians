@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { resolveEntrySequence, resolveCanonBranchId } from '@/lib/narrative-utils';
+import { buildEntryOrigin } from '@/lib/branch-tree';
 import { Modal } from '@/components/Modal';
 import { BranchChat } from './BranchChat';
 import type { Branch, NarrativeState } from '@/types/narrative';
@@ -50,12 +51,9 @@ export function buildGrid(
   // other branches that contain the entry inherited it via the parent
   // chain. Fork attribution is based on origin so connectors always run
   // from the column that actually drew the entry, never from empty space.
-  const entryOrigin = new Map<string, string>();
-  for (const b of allBranches) {
-    for (const eid of b.entryIds) {
-      if (!entryOrigin.has(eid)) entryOrigin.set(eid, b.id);
-    }
-  }
+  // Shared with BranchTreePopover via src/lib/branch-tree.ts so both
+  // surfaces compute origin identically.
+  const entryOrigin = buildEntryOrigin(allBranches);
 
   // Column ordering: explicit DFS pre-order from roots, with siblings sorted
   // by createdAt for stability. Each branch's full subtree is contiguous —
