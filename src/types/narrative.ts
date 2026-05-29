@@ -2690,21 +2690,43 @@ export type WizardData = {
   sceneCount?: number;
 };
 
+/**
+ * Canvas view mode. Encodes BOTH the active domain (world / system /
+ * threads / network) AND, for the four graph domains, the scope window
+ * (scene / arc / full). The two axes are flattened into one union so a
+ * single `state.graphViewMode` drives the topbar's domain tabs + scope
+ * toggle and every graph view's rendering branch.
+ *
+ * Graph modes follow `{domain}-{scope}`:
+ *   world-scene   / world-arc   / world-full   — WorldGraph
+ *   system-scene  / system-arc  / system-full  — KnowledgeGraphView
+ *   threads-scene / threads-arc / threads-full — ThreadGraphView
+ *   network-scene / network-arc / network-full — NetworkView
+ *
+ * Non-graph canvas modes (plan / prose / audio / decision / search /
+ * driver / reasoning / belief / present / compass / mode) keep their
+ * existing names — they have no scope dimension to encode.
+ */
 export type GraphViewMode =
-  | "spatial"
-  | "overview"
+  | "world-scene"
+  | "world-arc"
+  | "world-full"
   | "prose"
   | "plan"
   | "audio"
   | "decision"
-  | "spark"
-  | "codex"
-  | "pulse"
-  | "threads"
+  | "system-scene"
+  | "system-arc"
+  | "system-full"
+  | "threads-scene"
+  | "threads-arc"
+  | "threads-full"
   | "search"
   | "driver"
   | "reasoning"
-  | "network"
+  | "network-scene"
+  | "network-arc"
+  | "network-full"
   | "belief"
   | "present"
   | "compass"

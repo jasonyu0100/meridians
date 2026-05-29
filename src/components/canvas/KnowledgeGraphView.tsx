@@ -60,7 +60,12 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
   narrative: NarrativeState;
   resolvedKeys: string[];
   currentIndex: number;
-  mode: 'spark' | 'codex';
+  // 'system-arc' renders the cumulative system graph restricted to deltas
+  // from scenes in the CURRENT ARC (scenes sharing currentScene.arcId, up
+  // to currentIndex). Scene-attributed node highlighting still keys off
+  // the current scene — the arc scope is purely a visibility filter on
+  // the cumulative graph.
+  mode: 'system-scene' | 'system-arc' | 'system-full';
   hideControls?: boolean;
   hideLegend?: boolean;
 }) {
@@ -79,7 +84,7 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
   const [sysFocusedGroupIndex, setSysFocusedGroupIndex] = useState<number | null>(null);
 
   const graphData = useMemo(() => {
-    if (mode === 'spark') {
+    if (mode === 'system-scene') {
       const key = resolvedKeys[currentIndex];
       const scene = narrative.scenes[key];
       const wb = narrative.worldBuilds[key];
@@ -95,13 +100,32 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       }
       return { nodes, edges: wkm.addedEdges ?? [] };
     }
+    if (mode === 'system-arc') {
+      // Restrict the cumulative replay to scenes belonging to the current
+      // arc, up to currentIndex. Includes world-build commits at those
+      // positions (they ride alongside the scene at the same index).
+      const currentKey = resolvedKeys[currentIndex];
+      const currentScene = currentKey ? narrative.scenes[currentKey] : undefined;
+      const currentArcId = currentScene?.arcId;
+      if (!currentArcId) return { nodes: {}, edges: [] };
+      const arcKeys = resolvedKeys.slice(0, currentIndex + 1).filter((k) => {
+        const s = narrative.scenes[k];
+        if (s) return s.arcId === currentArcId;
+        // World-build commits don't carry arcId — include them if they
+        // sit on the same timeline window as the arc.
+        return !!narrative.worldBuilds[k];
+      });
+      return buildCumulativeSystemGraph(narrative.scenes, arcKeys, arcKeys.length - 1, narrative.worldBuilds);
+    }
     return buildCumulativeSystemGraph(narrative.scenes, resolvedKeys, currentIndex, narrative.worldBuilds);
   }, [narrative, resolvedKeys, currentIndex, mode]);
 
-  // Scene-added node IDs for highlight in nexus mode
+  // Scene-added node IDs for highlight in the broader scopes (codex /
+  // spark-arc). Spark renders only the scene's own delta so the highlight
+  // wouldn't add information there.
   const sceneNodeIds = useMemo(() => {
     const ids = new Set<string>();
-    if (mode === 'codex') {
+    if (mode === 'system-full' || mode === 'system-arc') {
       const key = resolvedKeys[currentIndex];
       const scene = narrative.scenes[key];
       const wb = narrative.worldBuilds[key];
@@ -246,15 +270,19 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .attr('stroke', '#ffffff')
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
+      // Spark renders only the scene's own delta — every visible edge IS
+      // active, no focus needed. Codex (full) and spark-arc (arc) render
+      // broader sets where the current-scene focus needs to pop above a
+      // dim baseline.
       .style('opacity', (d) => {
-        if (mode !== 'codex') return FOCUS_OPACITY_ACTIVE;
+        if (mode === 'system-scene') return FOCUS_OPACITY_ACTIVE;
         const touches = sceneNodeIds.has((d.source as SysNode).id) ||
           sceneNodeIds.has((d.target as SysNode).id);
         return touches ? FOCUS_OPACITY_ACTIVE : FOCUS_OPACITY_DIM;
       })
       .style('stroke-width', (d) => {
         const base = edgeWidthFor(edgeT(d));
-        if (mode !== 'codex') return base;
+        if (mode === 'system-scene') return base;
         const touches = sceneNodeIds.has((d.source as SysNode).id) ||
           sceneNodeIds.has((d.target as SysNode).id);
         return touches ? base : base * FOCUS_WIDTH_FACTOR_DIM;
@@ -264,7 +292,7 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
     // Halos for nodes the current scene introduced or touched. Replaces the
     // earlier "dim non-scene nodes" approach so concept colours read true
     // and the just-changed set pops via the bloom.
-    const isActive = (d: SysNode) => mode === 'codex' && sceneNodeIds.has(d.id);
+    const isActive = (d: SysNode) => (mode === 'system-full' || mode === 'system-arc') && sceneNodeIds.has(d.id);
     const activeNodes = simNodes.filter(isActive);
     const haloSel = g.select<SVGGElement>('g.wk-halos')
       .selectAll<SVGCircleElement, SysNode>('circle')
@@ -291,11 +319,12 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       .attr('fill', (d) => showTypes ? (SYS_TYPE_COLORS[d.type] ?? '#888') : '#888')
       .attr('stroke', (d) => isActive(d) ? '#fff' : 'transparent')
       .attr('stroke-width', 2)
-      // Node focus: in codex mode, active scene-attributed nodes read
-      // at full opacity; others dim. Spark mode (no scene focus) keeps
-      // everything at active opacity. Same primitive WG / TGV / Network.
+      // Node focus: in codex / spark-arc, scene-attributed nodes read at
+      // full opacity; others dim. Spark renders only the scene's own delta
+      // so every node IS active — uniform full opacity. Same primitive
+      // WG / TGV / Network.
       .style('opacity', (d) => {
-        if (mode !== 'codex') return FOCUS_NODE_OPACITY_ACTIVE;
+        if (mode === 'system-scene') return FOCUS_NODE_OPACITY_ACTIVE;
         return isActive(d) ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
       });
 

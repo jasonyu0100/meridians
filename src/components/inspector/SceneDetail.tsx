@@ -238,7 +238,7 @@ export default function SceneDetail({ sceneId }: Props) {
                     key={node.id}
                     type="button"
                     onClick={() =>
-                      dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "codex" })
+                      dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "system-full" })
                     }
                     className="rounded bg-white/6 px-1.5 py-0.5 text-[10px] text-text-primary transition-colors hover:bg-white/12"
                   >

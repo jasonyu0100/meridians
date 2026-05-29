@@ -37,13 +37,20 @@ export type GraphViewLabel = {
   domain: "World" | "System" | "Threads" | "Inner World";
 };
 
+// Note: the GraphViewLabel.scope union is Scene / Full / Entity — arc
+// scope re-uses "Scene" since the export currently focuses on the current
+// scene's snapshot regardless of the wider visibility window. The label's
+// `full` string distinguishes them ("Arc · World" vs "Scene · World").
 const LABELS: Partial<Record<GraphViewMode, GraphViewLabel>> = {
-  spatial:  { full: "Scene · World",   scope: "Scene", domain: "World" },
-  overview: { full: "Full · World",    scope: "Full",  domain: "World" },
-  spark:    { full: "Scene · System",  scope: "Scene", domain: "System" },
-  codex:    { full: "Full · System",   scope: "Full",  domain: "System" },
-  pulse:    { full: "Scene · Threads", scope: "Scene", domain: "Threads" },
-  threads:  { full: "Full · Threads",  scope: "Full",  domain: "Threads" },
+  "world-scene":   { full: "Scene · World",   scope: "Scene", domain: "World"   },
+  "world-arc":     { full: "Arc · World",     scope: "Scene", domain: "World"   },
+  "world-full":    { full: "Full · World",    scope: "Full",  domain: "World"   },
+  "system-scene":  { full: "Scene · System",  scope: "Scene", domain: "System"  },
+  "system-arc":    { full: "Arc · System",    scope: "Scene", domain: "System"  },
+  "system-full":   { full: "Full · System",   scope: "Full",  domain: "System"  },
+  "threads-scene": { full: "Scene · Threads", scope: "Scene", domain: "Threads" },
+  "threads-arc":   { full: "Arc · Threads",   scope: "Scene", domain: "Threads" },
+  "threads-full":  { full: "Full · Threads",  scope: "Full",  domain: "Threads" },
 };
 
 export function graphViewLabel(
@@ -60,9 +67,14 @@ export function graphViewLabel(
   return LABELS[mode] ?? { full: String(mode), scope: "Scene", domain: "World" };
 }
 
-/** Which graph modes are exportable — everything but scene-editorial sub-views. */
+/** Which graph modes are exportable — everything but scene-editorial sub-views.
+ *  Arc-scope variants currently route through the same exporters as their
+ *  scene-scope siblings; broadening exporters to honour the arc window is a
+ *  follow-up. */
 const EXPORTABLE_MODES = new Set<GraphViewMode>([
-  "spatial", "overview", "spark", "codex", "pulse", "threads",
+  "world-scene", "world-arc", "world-full",
+  "system-scene", "system-arc", "system-full",
+  "threads-scene", "threads-arc", "threads-full",
 ]);
 
 export function isExportableGraphMode(mode: GraphViewMode): boolean {
@@ -88,12 +100,15 @@ export function exportGraphView(ctx: GraphExportContext): string {
   }
 
   switch (mode) {
-    case "spatial":  return exportSceneWorld(ctx);
-    case "overview": return exportFullWorld(narrative);
-    case "spark":    return exportSceneSystem(ctx);
-    case "codex":    return exportFullSystem(narrative);
-    case "pulse":    return exportSceneThreads(ctx);
-    case "threads":  return exportFullThreads(narrative);
+    case "world-scene":
+    case "world-arc":    return exportSceneWorld(ctx);
+    case "world-full":   return exportFullWorld(narrative);
+    case "system-scene":
+    case "system-arc":   return exportSceneSystem(ctx);
+    case "system-full":  return exportFullSystem(narrative);
+    case "threads-scene":
+    case "threads-arc":  return exportSceneThreads(ctx);
+    case "threads-full": return exportFullThreads(narrative);
     default:
       return `# ${narrative.title}\n\n*No export defined for mode \`${mode}\`.*`;
   }
@@ -103,7 +118,7 @@ export function exportGraphView(ctx: GraphExportContext): string {
 
 function exportSceneWorld(ctx: GraphExportContext): string {
   const { narrative, resolvedKeys, currentSceneIndex } = ctx;
-  const label = graphViewLabel("spatial").full;
+  const label = graphViewLabel("world-scene").full;
   const scene = sceneAt(narrative, resolvedKeys, currentSceneIndex);
   const lines: string[] = [header(narrative, label)];
 
@@ -153,7 +168,7 @@ function exportSceneWorld(ctx: GraphExportContext): string {
 }
 
 function exportFullWorld(narrative: NarrativeState): string {
-  const lines: string[] = [header(narrative, graphViewLabel("overview").full)];
+  const lines: string[] = [header(narrative, graphViewLabel("world-full").full)];
 
   const characters = Object.values(narrative.characters);
   const locations = Object.values(narrative.locations);
@@ -190,7 +205,7 @@ function exportFullWorld(narrative: NarrativeState): string {
 
 function exportSceneSystem(ctx: GraphExportContext): string {
   const { narrative, resolvedKeys, currentSceneIndex } = ctx;
-  const label = graphViewLabel("spark").full;
+  const label = graphViewLabel("system-scene").full;
   const scene = sceneAt(narrative, resolvedKeys, currentSceneIndex);
   const lines: string[] = [header(narrative, label)];
 
@@ -229,7 +244,7 @@ function exportSceneSystem(ctx: GraphExportContext): string {
 }
 
 function exportFullSystem(narrative: NarrativeState): string {
-  const label = graphViewLabel("codex").full;
+  const label = graphViewLabel("system-full").full;
   const lines: string[] = [header(narrative, label)];
   const nodes = Object.values(narrative.systemGraph?.nodes ?? {});
   const edges = narrative.systemGraph?.edges ?? [];
@@ -261,7 +276,7 @@ function exportFullSystem(narrative: NarrativeState): string {
 
 function exportSceneThreads(ctx: GraphExportContext): string {
   const { narrative, resolvedKeys, currentSceneIndex } = ctx;
-  const label = graphViewLabel("pulse").full;
+  const label = graphViewLabel("threads-scene").full;
   const scene = sceneAt(narrative, resolvedKeys, currentSceneIndex);
   const lines: string[] = [header(narrative, label)];
 
@@ -284,7 +299,7 @@ function exportSceneThreads(ctx: GraphExportContext): string {
 }
 
 function exportFullThreads(narrative: NarrativeState): string {
-  const label = graphViewLabel("threads").full;
+  const label = graphViewLabel("threads-full").full;
   const lines: string[] = [header(narrative, label)];
   const threads = Object.values(narrative.threads);
 

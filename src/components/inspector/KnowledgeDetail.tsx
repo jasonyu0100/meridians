@@ -133,10 +133,10 @@ export default function KnowledgeDetail({ nodeId }: Props) {
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
 
   // Navigate to a knowledge node:
-  // - Spark mode: jump to the nearest scene that mentions it, then zoom in
-  // - Codex mode: just zoom in on the node
+  // - system-scene: jump to the nearest scene that mentions it, then zoom in
+  // - system-arc / system-full: just zoom in on the node
   const navigateToNode = useCallback((targetId: string) => {
-    if (state.graphViewMode === 'spark') {
+    if (state.graphViewMode === 'system-scene') {
       // Find nearest scene that mentions this node
       const sceneIndices = nodeSceneIndex.get(targetId) ?? [];
       if (sceneIndices.length > 0) {
@@ -266,7 +266,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
                       {other.type}
                     </span>
                   )}
-                  {state.graphViewMode === 'spark' && (() => {
+                  {state.graphViewMode === 'system-scene' && (() => {
                     const indices = nodeSceneIndex.get(otherId);
                     if (!indices || indices.length === 0) return null;
                     const current = state.viewState.currentSceneIndex;

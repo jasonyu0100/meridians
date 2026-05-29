@@ -14,10 +14,19 @@ import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/gr
 import { exportBeliefSnapshot } from '@/lib/belief-export';
 import { exportScenePlan, exportSceneProse } from '@/lib/scene-export';
 
+type Scope = 'scene' | 'arc' | 'full';
+
+type ScopeTriple = {
+  scene: GraphViewMode;
+  arc: GraphViewMode;
+  full: GraphViewMode;
+};
+
 type GraphDomain = {
   label: string;
-  local: GraphViewMode;
-  global: GraphViewMode;
+  // Each scoped domain carries three modes — one per scope window.
+  // Scopeless domains (Network) use the same mode for all three slots.
+  scopes: ScopeTriple;
   Icon: typeof IconGlobe;
   description: string;
   scopeless?: boolean;
@@ -26,45 +35,63 @@ type GraphDomain = {
 const GRAPH_DOMAINS: GraphDomain[] = [
   {
     label: 'World',
-    local: 'spatial',
-    global: 'overview',
+    scopes: { scene: 'world-scene', arc: 'world-arc', full: 'world-full' },
     Icon: IconGlobe,
     description: 'Characters & locations',
   },
   {
     label: 'System',
-    local: 'spark',
-    global: 'codex',
+    scopes: { scene: 'system-scene', arc: 'system-arc', full: 'system-full' },
     Icon: IconLightbulb,
     description: 'System knowledge & rules',
   },
   {
     label: 'Threads',
-    local: 'pulse',
-    global: 'threads',
+    scopes: { scene: 'threads-scene', arc: 'threads-arc', full: 'threads-full' },
     Icon: IconThread,
     description: 'Narrative threads & tensions',
   },
   {
     label: 'Network',
-    local: 'network',
-    global: 'network',
+    scopes: { scene: 'network-scene', arc: 'network-arc', full: 'network-full' },
     Icon: IconNetwork,
     description: 'Aggregate connection graph',
-    scopeless: true,
   },
 ];
 
-const SCOPE_PAIRS: Record<string, { local: GraphViewMode; global: GraphViewMode }> = {
-  spatial:  { local: 'spatial', global: 'overview' },
-  overview: { local: 'spatial', global: 'overview' },
-  spark:    { local: 'spark',   global: 'codex'    },
-  codex:    { local: 'spark',   global: 'codex'    },
-  pulse:    { local: 'pulse',   global: 'threads'  },
-  threads:  { local: 'pulse',   global: 'threads'  },
+// Lookup from any graph mode value back to its triple — used to render the
+// Scene/Arc/Full toggle for whichever domain is currently active. Every
+// mode in a triple maps back to the same triple so the topbar can resolve
+// the active scope from any starting position.
+const SCOPE_TRIPLES: Record<string, ScopeTriple> = {
+  'world-scene':   { scene: 'world-scene',   arc: 'world-arc',   full: 'world-full'   },
+  'world-arc':     { scene: 'world-scene',   arc: 'world-arc',   full: 'world-full'   },
+  'world-full':    { scene: 'world-scene',   arc: 'world-arc',   full: 'world-full'   },
+  'system-scene':  { scene: 'system-scene',  arc: 'system-arc',  full: 'system-full'  },
+  'system-arc':    { scene: 'system-scene',  arc: 'system-arc',  full: 'system-full'  },
+  'system-full':   { scene: 'system-scene',  arc: 'system-arc',  full: 'system-full'  },
+  'threads-scene': { scene: 'threads-scene', arc: 'threads-arc', full: 'threads-full' },
+  'threads-arc':   { scene: 'threads-scene', arc: 'threads-arc', full: 'threads-full' },
+  'threads-full':  { scene: 'threads-scene', arc: 'threads-arc', full: 'threads-full' },
+  'network-scene': { scene: 'network-scene', arc: 'network-arc', full: 'network-full' },
+  'network-arc':   { scene: 'network-scene', arc: 'network-arc', full: 'network-full' },
+  'network-full':  { scene: 'network-scene', arc: 'network-arc', full: 'network-full' },
 };
 
-export const GRAPH_MODES = new Set<GraphViewMode>(['spatial', 'overview', 'spark', 'codex', 'pulse', 'threads', 'network']);
+function scopeOf(mode: GraphViewMode): Scope | null {
+  const triple = SCOPE_TRIPLES[mode];
+  if (!triple) return null;
+  if (mode === triple.scene) return 'scene';
+  if (mode === triple.arc) return 'arc';
+  return 'full';
+}
+
+export const GRAPH_MODES = new Set<GraphViewMode>([
+  'world-scene', 'world-arc', 'world-full',
+  'system-scene', 'system-arc', 'system-full',
+  'threads-scene', 'threads-arc', 'threads-full',
+  'network-scene', 'network-arc', 'network-full',
+]);
 
 type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode';
 type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'decision';
@@ -332,21 +359,21 @@ export function CanvasTopBar() {
   const canvasMode = resolveCanvasMode(graphViewMode);
 
   const isGraphMode = GRAPH_MODES.has(graphViewMode);
-  const scopePair = isGraphMode ? SCOPE_PAIRS[graphViewMode] : null;
-  const isLocal = scopePair ? graphViewMode === scopePair.local : false;
+  const scopeTriple = isGraphMode ? SCOPE_TRIPLES[graphViewMode] : null;
+  const currentScope: Scope | null = scopeTriple ? scopeOf(graphViewMode) : null;
 
   // Remember last graph mode so we can return to it
-  const lastGraphModeRef = useRef<GraphViewMode>('spatial');
+  const lastGraphModeRef = useRef<GraphViewMode>('world-scene');
   useEffect(() => {
     if (GRAPH_MODES.has(graphViewMode)) lastGraphModeRef.current = graphViewMode;
   }, [graphViewMode]);
 
   // Remember last scope choice so switching from Network back to a scoped
-  // domain preserves the user's Scene/Full preference.
-  const lastIsLocalRef = useRef<boolean>(true);
+  // domain (or hopping between scoped domains) preserves Scene / Arc / Full.
+  const lastScopeRef = useRef<Scope>('scene');
   useEffect(() => {
-    if (scopePair) lastIsLocalRef.current = isLocal;
-  }, [scopePair, isLocal]);
+    if (currentScope) lastScopeRef.current = currentScope;
+  }, [currentScope]);
 
   // Remember last scene sub-mode so "Scene" returns to the user's choice
   const lastSceneModeRef = useRef<ScenePrimaryMode>('plan');
@@ -978,38 +1005,44 @@ export function CanvasTopBar() {
         {/* Graph sub-controls: scope + domain */}
         {canvasMode === 'graph' && (
           <>
-            {/* Scope toggle — only for scoped domains (World/System/Threads). */}
-            {scopePair && (
+            {/* Scope toggle — Scene / Arc / Full, only for scoped domains
+                (World / System / Threads). Each segment dispatches the mode
+                for its scope from the active domain's triple. */}
+            {scopeTriple && (
               <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-                <button
-                  className={`px-2 py-1 text-[10px] font-medium transition-colors ${
-                    isLocal
-                      ? 'bg-white/10 text-text-primary'
-                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
-                  }`}
-                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: scopePair.local })}
-                >
-                  Scene
-                </button>
-                <div className="w-px h-4 bg-white/10" />
-                <button
-                  className={`px-2 py-1 text-[10px] font-medium transition-colors ${
-                    !isLocal
-                      ? 'bg-white/10 text-text-primary'
-                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
-                  }`}
-                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: scopePair.global })}
-                >
-                  Full
-                </button>
+                {(['scene', 'arc', 'full'] as const).map((scope, idx) => {
+                  const isActive = currentScope === scope;
+                  const label = scope === 'scene' ? 'Scene' : scope === 'arc' ? 'Arc' : 'Full';
+                  return (
+                    <div key={scope} className="flex items-center">
+                      {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                      <button
+                        className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                          isActive
+                            ? 'bg-white/10 text-text-primary'
+                            : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                        }`}
+                        onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: scopeTriple[scope] })}
+                      >
+                        {label}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {/* Domain tabs */}
             <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-              {GRAPH_DOMAINS.map(({ label, local, global: globalMode, Icon, scopeless }, idx) => {
-                const isActive = graphViewMode === local || graphViewMode === globalMode;
-                const useLocal = scopePair ? isLocal : lastIsLocalRef.current;
+              {GRAPH_DOMAINS.map(({ label, scopes, Icon, scopeless }, idx) => {
+                const isActive = graphViewMode === scopes.scene
+                  || graphViewMode === scopes.arc
+                  || graphViewMode === scopes.full;
+                // Preserve the user's current scope when hopping between
+                // scoped domains; default to last-used scope when coming in
+                // from a scopeless context. Scopeless domains always use
+                // their (identical) scene slot.
+                const preferredScope: Scope = currentScope ?? lastScopeRef.current;
                 return (
                   <div key={label} className="flex items-center">
                     {idx > 0 && <div className="w-px h-4 bg-white/10" />}
@@ -1021,7 +1054,7 @@ export function CanvasTopBar() {
                       }`}
                       onClick={() => dispatch({
                         type: 'SET_GRAPH_VIEW_MODE',
-                        mode: scopeless ? local : (useLocal ? local : globalMode),
+                        mode: scopeless ? scopes.scene : scopes[preferredScope],
                       })}
                     >
                       <Icon size={12} />

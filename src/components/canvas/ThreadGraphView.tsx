@@ -70,7 +70,12 @@ export default function ThreadGraphView({
   narrative: NarrativeState;
   resolvedKeys: string[];
   currentIndex: number;
-  mode: 'pulse' | 'threads';
+  // 'threads-arc' renders the same full-threads layout as 'threads-full'
+  // but filters the visible set to threads with a delta anywhere in the
+  // CURRENT ARC (scenes sharing currentScene.arcId, up to currentIndex).
+  // Coordination highlighting / hasDeltaAtScene focus still keys off the
+  // current scene — the arc scope is purely a visibility filter.
+  mode: 'threads-scene' | 'threads-arc' | 'threads-full';
   onSelectThread: (threadId: string) => void;
   hideControls?: boolean;
   hideLegend?: boolean;
@@ -106,18 +111,28 @@ export default function ThreadGraphView({
   }, [narrative, resolvedKeys, currentIndex]);
 
   // ── Compute delta counts per thread and scene-specific deltas ──
-  const { deltaCounts, sceneDeltaThreads } = useMemo(() => {
+  // `arcDeltaThreads` collects threads with deltas anywhere in the
+  // current scene's arc (scenes sharing currentScene.arcId, up to
+  // currentIndex). Used by `pulse-arc` mode to scope the visible set
+  // to arc-relevant threads.
+  const { deltaCounts, sceneDeltaThreads, arcDeltaThreads } = useMemo(() => {
     const counts = new Map<string, number>();
     const sceneDelts = new Set<string>();
+    const arcDelts = new Set<string>();
+    const currentKey = resolvedKeys[currentIndex];
+    const currentScene = currentKey ? narrative.scenes[currentKey] : undefined;
+    const currentArcId = currentScene?.arcId;
 
     for (let i = 0; i <= currentIndex && i < resolvedKeys.length; i++) {
       const key = resolvedKeys[i];
       const entry = resolveEntry(narrative, key);
       if (!entry) continue;
+      const inCurrentArc = entry.kind === 'scene' && entry.arcId === currentArcId;
       if (entry.kind === 'scene') {
         for (const tm of entry.threadDeltas) {
           counts.set(tm.threadId, (counts.get(tm.threadId) ?? 0) + 1);
           if (i === currentIndex) sceneDelts.add(tm.threadId);
+          if (inCurrentArc) arcDelts.add(tm.threadId);
         }
       } else if (entry.kind === 'world_build') {
         for (const t of entry.expansionManifest.newThreads) {
@@ -126,7 +141,7 @@ export default function ThreadGraphView({
         }
       }
     }
-    return { deltaCounts: counts, sceneDeltaThreads: sceneDelts };
+    return { deltaCounts: counts, sceneDeltaThreads: sceneDelts, arcDeltaThreads: arcDelts };
   }, [narrative, resolvedKeys, currentIndex]);
 
   // ── Build graph data ──
@@ -136,11 +151,13 @@ export default function ThreadGraphView({
     // Only show threads that have been introduced by the current scene index
     const visibleKeys = new Set(resolvedKeys.slice(0, currentIndex + 1));
 
-    const visibleThreads = mode === 'pulse'
+    const visibleThreads = mode === 'threads-scene'
       ? allThreads.filter(t => sceneDeltaThreads.has(t.id))
-      : allThreads.filter(t =>
-          deltaCounts.has(t.id) || visibleKeys.has(t.openedAt)
-        );
+      : mode === 'threads-arc'
+        ? allThreads.filter(t => arcDeltaThreads.has(t.id))
+        : allThreads.filter(t =>
+            deltaCounts.has(t.id) || visibleKeys.has(t.openedAt)
+          );
 
     const nodeIds = new Set(visibleThreads.map(t => t.id));
 
@@ -160,7 +177,7 @@ export default function ThreadGraphView({
     const links = buildLinks(narrative, nodeIds);
 
     return { nodes, links };
-  }, [narrative, resolvedKeys, currentIndex, mode, categories, deltaCounts, sceneDeltaThreads]);
+  }, [narrative, resolvedKeys, currentIndex, mode, categories, deltaCounts, sceneDeltaThreads, arcDeltaThreads]);
 
   // ── Initial SVG setup (once) ──
   useEffect(() => {
@@ -291,8 +308,13 @@ export default function ThreadGraphView({
       // node references after `sim.force('link').links(simLinks)` is
       // applied below. Look up via nodeMap so the AND check actually
       // sees `hasDeltaAtScene` and doesn't silently return undefined.
+      // 'threads-scene' renders only threads touched at the current scene,
+      // so there's no dim baseline to draw against — everything reads
+      // active. 'threads-arc' and 'threads-full' both render a broader
+      // set where the current-scene focus needs to pop above the dim
+      // baseline.
       .style('opacity', (d) => {
-        if (mode !== 'threads') return FOCUS_OPACITY_ACTIVE;
+        if (mode === 'threads-scene') return FOCUS_OPACITY_ACTIVE;
         const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
         const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
         const srcNode = nodeMap.get(srcId);
@@ -302,7 +324,7 @@ export default function ThreadGraphView({
       })
       .style('stroke-width', (d) => {
         const base = d.relation === 'dependent' ? edgeWidthFor(0.7) : edgeWidthFor(0.2);
-        if (mode !== 'threads') return base;
+        if (mode === 'threads-scene') return base;
         const srcId = typeof d.source === 'string' ? d.source : (d.source as TNode).id;
         const tgtId = typeof d.target === 'string' ? d.target : (d.target as TNode).id;
         const srcNode = nodeMap.get(srcId);
@@ -343,11 +365,12 @@ export default function ThreadGraphView({
       .attr('fill', d => showTypes ? THREAD_CATEGORY_HEX[d.category] : '#888')
       .attr('stroke', d => d.hasDeltaAtScene ? '#fff' : 'transparent')
       .attr('stroke-width', 2)
-      // Node focus: in threads mode, threads that took a delta at this
-      // scene are active; others dim. Pulse mode (no scene focus) keeps
-      // everything at active opacity. Same primitive WG / KGV / Network.
+      // Node focus: in arc / full modes, threads that took a delta at this
+      // scene are active; others dim. Scene mode (only scene-touched
+      // threads visible) keeps everything at active opacity since the
+      // visible set IS the active set. Same primitive WG / KGV / Network.
       .style('opacity', (d) => {
-        if (mode !== 'threads') return FOCUS_NODE_OPACITY_ACTIVE;
+        if (mode === 'threads-scene') return FOCUS_NODE_OPACITY_ACTIVE;
         return d.hasDeltaAtScene ? FOCUS_NODE_OPACITY_ACTIVE : FOCUS_NODE_OPACITY_DIM;
       });
 

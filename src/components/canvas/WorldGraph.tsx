@@ -76,10 +76,16 @@ export default function WorldGraph() {
   const selectedKnowledgeEntity = state.viewState.selectedKnowledgeEntity;
   const selectedThreadLog = state.viewState.selectedThreadLog;
   const graphViewMode = state.graphViewMode;
-  // arcFocus ON = widen to the whole active arc (every location + character it
-  // touched). OFF (default) = scene-focus: just scene.locationId + POV location
-  // and the characters positioned there. Vicinity expands further from there.
-  const [arcFocus, setArcFocus] = useState(false);
+  // arcFocus is driven by the topbar's Scene/Arc/Full scope: when the
+  // active mode is `world-arc`, widen to the whole active arc (every
+  // location + character it touched); otherwise scene-focus (scene.locationId
+  // + POV location, characters positioned there). The local Arc Focus
+  // checkbox dispatches a mode swap (world-scene ↔ world-arc) so the two
+  // controls stay in sync.
+  const arcFocus = graphViewMode === 'world-arc';
+  const setArcFocus = (next: boolean) => {
+    dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: next ? 'world-arc' : 'world-scene' });
+  };
 
   const resolvedEntryKeys = state.resolvedEntryKeys;
 
@@ -305,7 +311,7 @@ export default function WorldGraph() {
     const sceneOwnership = getOwnershipAtScene(narrative, resolvedEntryKeys, currentSceneIndex);
     const sceneTies = getTiesAtScene(narrative, resolvedEntryKeys, currentSceneIndex);
 
-    if (graphViewMode === 'overview') {
+    if (graphViewMode === 'world-full') {
       // Overview mode: all characters/locations/artifacts sized by usage across the timeline
       // For overview, use ownership/ties at the current viewing position (not end of timeline)
       const result = buildOverviewGraphData(
@@ -500,8 +506,8 @@ export default function WorldGraph() {
       }
     }
 
-    // Backfill usageCount for scene mode (overview already sets it)
-    if (graphViewMode !== 'overview') {
+    // Backfill usageCount for scene / arc modes (world-full already sets it)
+    if (graphViewMode !== 'world-full') {
       const charUsage: Record<string, number> = {};
       const locUsage: Record<string, number> = {};
       const artUsage: Record<string, number> = {};
@@ -1289,15 +1295,16 @@ export default function WorldGraph() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
-      {/* Legend strip — only for spatial/overview when NOT viewing an entity's inner graph */}
-      {(graphViewMode === 'spatial' || graphViewMode === 'overview') && !selectedKnowledgeEntity && (
+      {/* Legend strip — only for the World domain (any scope) when NOT viewing
+          an entity's inner graph */}
+      {(graphViewMode === 'world-scene' || graphViewMode === 'world-arc' || graphViewMode === 'world-full') && !selectedKnowledgeEntity && (
         <div className="shrink-0 flex items-center gap-0 px-2 h-7 border-b border-border glass-panel">
           {([
             { key: 'labels', label: 'Labels', checked: showEdgeLabels, toggle: () => setShowEdgeLabels((v) => !v) },
             { key: 'heat', label: 'Heat', checked: showHeatmap, toggle: () => setShowHeatmap((v) => !v) },
             { key: 'eval', label: 'Eval', checked: showEval, toggle: () => setShowEval((v) => !v) },
-            ...(graphViewMode === 'spatial' ? [
-              { key: 'focus', label: 'Arc Focus', checked: arcFocus, toggle: () => setArcFocus((v) => !v) },
+            ...(graphViewMode === 'world-scene' || graphViewMode === 'world-arc' ? [
+              { key: 'focus', label: 'Arc Focus', checked: arcFocus, toggle: () => setArcFocus(!arcFocus) },
               { key: 'vicinity', label: 'Vicinity', checked: showVicinity, toggle: () => setShowVicinity((v) => !v) },
             ] : []),
           ] as { key: string; label: string; checked: boolean; toggle: () => void }[]).map(({ key, label, checked, toggle }) => (
@@ -1358,7 +1365,7 @@ export default function WorldGraph() {
 
       {/* Canvas area */}
       <div className="relative flex-1 overflow-hidden">
-      {showEval && (graphViewMode === 'spatial' || graphViewMode === 'overview') && <EvalBar />}
+      {showEval && (graphViewMode === 'world-scene' || graphViewMode === 'world-arc' || graphViewMode === 'world-full') && <EvalBar />}
       {graphViewMode === 'plan' ? (
         currentScene ? (
           <ScenePlanView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
@@ -1391,7 +1398,7 @@ export default function WorldGraph() {
             <p className="text-text-dim text-sm italic">No scene selected.</p>
           </div>
         )
-      ) : graphViewMode === 'pulse' || graphViewMode === 'threads' ? (
+      ) : graphViewMode === 'threads-scene' || graphViewMode === 'threads-arc' || graphViewMode === 'threads-full' ? (
         selectedThreadLog && narrative.threads[selectedThreadLog] ? (
           <ThreadLogGraphView
             threadId={selectedThreadLog}
@@ -1406,7 +1413,7 @@ export default function WorldGraph() {
             narrative={narrative!}
             resolvedKeys={state.resolvedEntryKeys}
             currentIndex={state.viewState.currentSceneIndex}
-            mode={graphViewMode as 'pulse' | 'threads'}
+            mode={graphViewMode}
             onSelectThread={(id) => {
               dispatch({ type: 'SELECT_THREAD_LOG', threadId: id });
               dispatch({ type: 'SET_INSPECTOR', context: { type: 'thread', threadId: id } });
@@ -1420,7 +1427,7 @@ export default function WorldGraph() {
         // DriverCanvas means external "go to search" callers land in
         // Driver/Search tab cleanly.
         <DriverCanvas />
-      ) : graphViewMode === 'network' ? (
+      ) : graphViewMode === 'network-scene' || graphViewMode === 'network-arc' || graphViewMode === 'network-full' ? (
         <NetworkView />
       ) : graphViewMode === 'belief' ? (
         <BeliefView />
@@ -1454,7 +1461,7 @@ export default function WorldGraph() {
             <p className="text-text-dim text-sm italic">No investigation on this scene. Create one from the Investigations sidebar.</p>
           </div>
         )
-      ) : graphViewMode === 'spark' || graphViewMode === 'codex' ? (
+      ) : graphViewMode === 'system-scene' || graphViewMode === 'system-arc' || graphViewMode === 'system-full' ? (
         <KnowledgeGraphView
           narrative={narrative!}
           resolvedKeys={state.resolvedEntryKeys}
@@ -1498,7 +1505,7 @@ export default function WorldGraph() {
         </div>
       )}
       {/* Group navigation (bottom-left) */}
-      {(graphViewMode === 'spatial' || graphViewMode === 'overview') && groups.length > 1 && (
+      {(graphViewMode === 'world-scene' || graphViewMode === 'world-arc' || graphViewMode === 'world-full') && groups.length > 1 && (
         <div className="absolute bottom-4 left-2 z-10">
         <div className="flex items-center gap-1 rounded bg-bg-surface text-[11px] leading-none">
           <button

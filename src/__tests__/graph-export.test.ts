@@ -72,16 +72,16 @@ function makeScene(overrides: Partial<Scene> = {}): Scene {
 
 describe("graphViewLabel", () => {
   it("maps each graph mode to a canonical 'Scope · Domain' string", () => {
-    expect(graphViewLabel("spatial").full).toBe("Scene · World");
-    expect(graphViewLabel("overview").full).toBe("Full · World");
-    expect(graphViewLabel("spark").full).toBe("Scene · System");
-    expect(graphViewLabel("codex").full).toBe("Full · System");
-    expect(graphViewLabel("pulse").full).toBe("Scene · Threads");
-    expect(graphViewLabel("threads").full).toBe("Full · Threads");
+    expect(graphViewLabel("world-scene").full).toBe("Scene · World");
+    expect(graphViewLabel("world-full").full).toBe("Full · World");
+    expect(graphViewLabel("system-scene").full).toBe("Scene · System");
+    expect(graphViewLabel("system-full").full).toBe("Full · System");
+    expect(graphViewLabel("threads-scene").full).toBe("Scene · Threads");
+    expect(graphViewLabel("threads-full").full).toBe("Full · Threads");
   });
 
   it("overrides with the entity name when drilled into an inner-world view", () => {
-    const label = graphViewLabel("spatial", "Harry Potter");
+    const label = graphViewLabel("world-scene", "Harry Potter");
     expect(label.full).toBe("Harry Potter · Inner World");
     expect(label.scope).toBe("Entity");
     expect(label.domain).toBe("Inner World");
@@ -89,8 +89,12 @@ describe("graphViewLabel", () => {
 });
 
 describe("isExportableGraphMode", () => {
-  it("accepts the six graph-domain modes", () => {
-    for (const m of ["spatial", "overview", "spark", "codex", "pulse", "threads"] as const) {
+  it("accepts every domain × scope graph mode", () => {
+    for (const m of [
+      "world-scene", "world-arc", "world-full",
+      "system-scene", "system-arc", "system-full",
+      "threads-scene", "threads-arc", "threads-full",
+    ] as const) {
       expect(isExportableGraphMode(m)).toBe(true);
     }
   });
@@ -106,7 +110,7 @@ describe("exportGraphView", () => {
   it("prefixes every export with the narrative title and scope label", () => {
     const out = exportGraphView({
       narrative: baseNarrative(),
-      mode: "overview",
+      mode: "world-full",
       resolvedKeys: [],
       currentSceneIndex: 0,
     });
@@ -124,7 +128,7 @@ describe("exportGraphView", () => {
     });
     const out = exportGraphView({
       narrative,
-      mode: "spatial",
+      mode: "world-scene",
       resolvedKeys: ["S-1"],
       currentSceneIndex: 0,
     });
@@ -149,7 +153,7 @@ describe("exportGraphView", () => {
     });
     const out = exportGraphView({
       narrative,
-      mode: "overview",
+      mode: "world-full",
       resolvedKeys: [],
       currentSceneIndex: 0,
     });
@@ -181,7 +185,7 @@ describe("exportGraphView", () => {
     };
     const out = exportGraphView({
       narrative: baseNarrative({ threads }),
-      mode: "threads",
+      mode: "threads-full",
       resolvedKeys: [],
       currentSceneIndex: 0,
     });
@@ -202,7 +206,7 @@ describe("exportGraphView", () => {
     };
     const out = exportGraphView({
       narrative: baseNarrative({ characters: { "C-1": char } }),
-      mode: "spatial",
+      mode: "world-scene",
       resolvedKeys: [],
       currentSceneIndex: 0,
       selectedEntityId: "C-1",

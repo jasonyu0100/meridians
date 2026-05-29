@@ -290,7 +290,7 @@ export default function ThreadPortfolio() {
         row={row}
         maxVolume={maxVolume}
         onClick={() => {
-          dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'threads' });
+          dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'threads-full' });
           dispatch({ type: 'SELECT_THREAD_LOG', threadId: row.thread.id });
           dispatch({
             type: 'SET_INSPECTOR',

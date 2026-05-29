@@ -51,7 +51,13 @@ export default function NetworkView() {
   const nodesRef = useRef<NNode[]>([]);
 
   const [showLabels, setShowLabels] = useState(true);
-  const [scope, setScope] = useState<Scope>('narrative');
+  // Scope is driven by the topbar's Scene / Arc / Full toggle via
+  // `graphViewMode`. We map the three network modes onto the existing
+  // Scope union so the aggregation code below doesn't change.
+  const scope: Scope =
+    state.graphViewMode === 'network-scene' ? 'scene'
+    : state.graphViewMode === 'network-arc' ? 'arc'
+    : 'narrative';
   // Heat is off by default — node fill defaults to the force colour
   // (fate/world/system) so the categorical signal reads cleanly.
   // Toggle on to swap the fill to the attribution-heat ramp.
@@ -523,14 +529,10 @@ export default function NetworkView() {
 
   return (
     <div className="flex flex-col absolute inset-0 z-20">
-      {/* Top legend strip — scope tabs on the left, then color / label toggles, swatches, scope footer */}
+      {/* Top legend strip — color / label toggles, swatches, scope footer.
+          Scene / Arc / Full scope lives in the canvas topbar (drives this
+          view via graphViewMode), not here. */}
       <div className="shrink-0 flex items-center gap-0 px-2 h-7 border-b border-border glass-panel z-30 overflow-x-auto">
-        <ScopeTab active={scope === 'scene'} onClick={() => setScope('scene')} label="Scene" />
-        <ScopeTab active={scope === 'arc'} onClick={() => setScope('arc')} label="Arc" />
-        <ScopeTab active={scope === 'narrative'} onClick={() => setScope('narrative')} label="World View" />
-
-        <div className="w-px h-3 bg-border mx-1" />
-
         <button
           onClick={() => setShowLabels((v) => !v)}
           className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${showLabels ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}
@@ -653,17 +655,6 @@ function HeatLegend() {
       />
       <span className="text-[8px] text-text-dim/50">hot</span>
     </span>
-  );
-}
-
-function ScopeTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-[10px] font-medium px-2 py-1 rounded transition-colors select-none ${active ? 'text-text-primary' : 'text-text-dim/50 hover:text-text-dim'}`}
-    >
-      {label}
-    </button>
   );
 }
 
