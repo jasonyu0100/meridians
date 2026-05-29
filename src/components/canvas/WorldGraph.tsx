@@ -4,6 +4,7 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/store';
 import { getEffectivePovId } from '@/lib/narrative-utils';
+import { computeCumulativePositions } from '@/lib/positions';
 import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/scene-filter';
 import type {
   Character,
@@ -472,6 +473,18 @@ export default function WorldGraph() {
           // each grows independently.
           const activeCharIds = new Set(activeArc.activeCharacterIds);
           const activeLocIds = expandVicinity(activeArc.locationIds);
+
+          // Also include any character whose cumulative position (the
+          // last scene that placed them anywhere, regardless of arc)
+          // lands in the arc's location cluster. Without this, residents
+          // of an arc location who didn't actively participate in the
+          // arc's scenes disappear from view — the arc reads as empty of
+          // its supporting cast. Position-only members render without
+          // their own edges, just sitting at their location.
+          const allPositions = computeCumulativePositions(narrative, resolvedEntryKeys, state.viewState.currentSceneIndex);
+          for (const [charId, locId] of Object.entries(allPositions)) {
+            if (activeLocIds.has(locId)) activeCharIds.add(charId);
+          }
 
           filteredCharacters = Object.fromEntries(
             Object.entries(narrative.characters).filter(([id]) => activeCharIds.has(id)),

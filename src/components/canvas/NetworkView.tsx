@@ -152,8 +152,8 @@ export default function NetworkView() {
       .attr('viewBox', '0 -5 10 10')
       .attr('refX', 9)
       .attr('refY', 0)
-      .attr('markerWidth', 5)
-      .attr('markerHeight', 5)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
@@ -427,29 +427,34 @@ export default function NetworkView() {
         const rect = svgRef.current!.getBoundingClientRect();
         setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, node: d });
         const neighbors = adjacency.get(d.id) ?? new Set();
+        // Non-adjacent node dim on hover matches WG / KGV / TGV (0.18).
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
-          .style('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.12));
+          .style('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.18));
+        const touchesHovered = (l: NLink) => {
+          const sId = (l.source as NNode).id, tId = (l.target as NNode).id;
+          return sId === d.id || tId === d.id;
+        };
+        // Group `opacity` (not stroke-opacity) so the arrowhead fades
+        // with its line — context-stroke inherits colour only, not
+        // opacity. ALSO modulate stroke-width on hover to match the
+        // primitive WG / KGV / TGV use — incident edges thicken,
+        // non-incident edges thin below the dim baseline.
         g.select('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline')
-          // Group `opacity` (not stroke-opacity) so the arrowhead fades
-          // with its line — context-stroke inherits colour only, not
-          // opacity, so stroke-opacity here would leave the triangle
-          // markers fully visible while the lines disappeared (the
-          // "triangles without edges" bug). Matches the base-state and
-          // mouseleave handlers, which both use `.style('opacity', ...)`.
-          .style('opacity', (l) => {
-            const sId = (l.source as NNode).id, tId = (l.target as NNode).id;
-            const touches = sId === d.id || tId === d.id;
-            return touches ? Math.max(0.5, FOCUS_OPACITY_ACTIVE + 0.15) : 0.03;
-          });
+          .style('opacity', (l) => touchesHovered(l) ? Math.max(0.5, FOCUS_OPACITY_ACTIVE + 0.15) : 0.03)
+          .style('stroke-width', (l) => touchesHovered(l) ? ACTIVE_WIDTH : ACTIVE_WIDTH * FOCUS_WIDTH_FACTOR_DIM);
+        // Labels use `.style('opacity', ...)` so the mouseleave restore
+        // (also `.style`) overrides cleanly. The earlier `.attr` here
+        // left the inline-style untouched, so labels stayed stuck.
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
-          .attr('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.15));
+          .style('opacity', (o) => (o.id === d.id || neighbors.has(o.id) ? 1 : 0.15));
       })
       .on('mouseleave', () => {
         setTooltip(null);
         g.select('g.n-nodes').selectAll<SVGCircleElement, NNode>('circle')
           .style('opacity', (o) => opacityForNode(o));
         g.select('g.n-links').selectAll<SVGPolylineElement, NLink>('polyline')
-          .style('opacity', (l) => scopedOpacity(l));
+          .style('opacity', (l) => scopedOpacity(l))
+          .style('stroke-width', (l) => scopedWidth(l));
         g.select('g.n-labels').selectAll<SVGTextElement, NNode>('text')
           .style('opacity', (o) => labelOpacity(o));
       })
