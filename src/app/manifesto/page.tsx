@@ -3,8 +3,8 @@
 import { ARCHETYPE_COLORS, ArchetypeIcon } from "@/components/ArchetypeIcon";
 import { StarField } from "@/components/effects/StarField";
 import { ThinkingAnimation } from "@/components/generation/ThinkingAnimation";
-import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
 import type { ThinkingStyle } from "@/lib/ai/reasoning-graph/types";
+import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
 import * as d3 from "d3";
 import dagre from "dagre";
 import katex from "katex";
@@ -117,58 +117,63 @@ const RG_EDGE_COLORS: Record<RGEdgeType, string> = {
   supersedes: "#ec4899",
 };
 
-const RG_NODES: Array<{ id: string; idx: number; type: RGNodeType; label: string }> = [
-  { id: "F1",  idx: 0,  type: "fate",      label: "Stone must be claimed" },
-  { id: "F2",  idx: 1,  type: "fate",      label: "Betrayal must resolve" },
-  { id: "R1",  idx: 2,  type: "reasoning", label: "Solve the chamber trials" },
-  { id: "A1",  idx: 3,  type: "artifact",  label: "Mirror of Erised" },
-  { id: "F3",  idx: 4,  type: "fate",      label: "Harry's agency tested" },
-  { id: "R4",  idx: 5,  type: "reasoning", label: "Unmask Quirrell late" },
-  { id: "L1",  idx: 6,  type: "location",  label: "Third-floor chamber" },
-  { id: "S1",  idx: 7,  type: "system",    label: "Protections test virtue" },
-  { id: "PT1", idx: 8,  type: "pattern",   label: "Mirror reads desire" },
-  { id: "R3",  idx: 9,  type: "reasoning", label: "Pass the guardian trio" },
-  { id: "C2",  idx: 10, type: "character", label: "Hermione — logic" },
-  { id: "C3",  idx: 11, type: "character", label: "Ron — sacrifice" },
-  { id: "C1",  idx: 12, type: "character", label: "Harry — desire-pure" },
-  { id: "C4",  idx: 13, type: "character", label: "Quirrell — concealed host" },
-  { id: "WN1", idx: 14, type: "warning",   label: "No adult shortcut" },
-  { id: "WN2", idx: 15, type: "warning",   label: "Avoid obvious Snape" },
-  { id: "PT2", idx: 16, type: "pattern",   label: "Sacrifice earns passage" },
-  { id: "R5",  idx: 17, type: "reasoning", label: "Trials test a trait each" },
+const RG_NODES: Array<{
+  id: string;
+  idx: number;
+  type: RGNodeType;
+  label: string;
+}> = [
+  { id: "F1", idx: 0, type: "fate", label: "Stone must be claimed" },
+  { id: "F2", idx: 1, type: "fate", label: "Betrayal must resolve" },
+  { id: "R1", idx: 2, type: "reasoning", label: "Solve the chamber trials" },
+  { id: "A1", idx: 3, type: "artifact", label: "Mirror of Erised" },
+  { id: "F3", idx: 4, type: "fate", label: "Harry's agency tested" },
+  { id: "R4", idx: 5, type: "reasoning", label: "Unmask Quirrell late" },
+  { id: "L1", idx: 6, type: "location", label: "Third-floor chamber" },
+  { id: "S1", idx: 7, type: "system", label: "Protections test virtue" },
+  { id: "PT1", idx: 8, type: "pattern", label: "Mirror reads desire" },
+  { id: "R3", idx: 9, type: "reasoning", label: "Pass the guardian trio" },
+  { id: "C2", idx: 10, type: "character", label: "Hermione — logic" },
+  { id: "C3", idx: 11, type: "character", label: "Ron — sacrifice" },
+  { id: "C1", idx: 12, type: "character", label: "Harry — desire-pure" },
+  { id: "C4", idx: 13, type: "character", label: "Quirrell — concealed host" },
+  { id: "WN1", idx: 14, type: "warning", label: "No adult shortcut" },
+  { id: "WN2", idx: 15, type: "warning", label: "Avoid obvious Snape" },
+  { id: "PT2", idx: 16, type: "pattern", label: "Sacrifice earns passage" },
+  { id: "R5", idx: 17, type: "reasoning", label: "Trials test a trait each" },
 ];
 
 const RG_EDGES: Array<{ from: string; to: string; type: RGEdgeType }> = [
-  { from: "F1",  to: "F2",  type: "risks"      },
-  { from: "F1",  to: "R1",  type: "requires"   },
-  { from: "F1",  to: "L1",  type: "causes"     },
-  { from: "F1",  to: "R3",  type: "requires"   },
-  { from: "F2",  to: "R4",  type: "requires"   },
-  { from: "F2",  to: "C4",  type: "reveals"    },
-  { from: "R1",  to: "A1",  type: "requires"   },
-  { from: "R1",  to: "R5",  type: "enables"    },
-  { from: "A1",  to: "F1",  type: "resolves"   },
-  { from: "A1",  to: "C1",  type: "develops"   },
-  { from: "S1",  to: "A1",  type: "constrains" },
-  { from: "S1",  to: "R1",  type: "constrains" },
-  { from: "PT1", to: "A1",  type: "reveals"    },
-  { from: "F3",  to: "C1",  type: "develops"   },
-  { from: "F3",  to: "R3",  type: "requires"   },
-  { from: "R4",  to: "C4",  type: "requires"   },
-  { from: "R4",  to: "F2",  type: "resolves"   },
-  { from: "C4",  to: "F3",  type: "risks"      },
-  { from: "R3",  to: "C1",  type: "requires"   },
-  { from: "R3",  to: "C2",  type: "requires"   },
-  { from: "R3",  to: "C3",  type: "requires"   },
-  { from: "R5",  to: "R3",  type: "causes"     },
-  { from: "R5",  to: "C2",  type: "enables"    },
-  { from: "WN1", to: "R1",  type: "constrains" },
-  { from: "WN1", to: "C1",  type: "risks"      },
-  { from: "WN2", to: "R4",  type: "constrains" },
-  { from: "WN2", to: "F2",  type: "risks"      },
-  { from: "PT2", to: "C3",  type: "reveals"    },
-  { from: "PT2", to: "R3",  type: "develops"   },
-  { from: "C1",  to: "F3",  type: "develops"   },
+  { from: "F1", to: "F2", type: "risks" },
+  { from: "F1", to: "R1", type: "requires" },
+  { from: "F1", to: "L1", type: "causes" },
+  { from: "F1", to: "R3", type: "requires" },
+  { from: "F2", to: "R4", type: "requires" },
+  { from: "F2", to: "C4", type: "reveals" },
+  { from: "R1", to: "A1", type: "requires" },
+  { from: "R1", to: "R5", type: "enables" },
+  { from: "A1", to: "F1", type: "resolves" },
+  { from: "A1", to: "C1", type: "develops" },
+  { from: "S1", to: "A1", type: "constrains" },
+  { from: "S1", to: "R1", type: "constrains" },
+  { from: "PT1", to: "A1", type: "reveals" },
+  { from: "F3", to: "C1", type: "develops" },
+  { from: "F3", to: "R3", type: "requires" },
+  { from: "R4", to: "C4", type: "requires" },
+  { from: "R4", to: "F2", type: "resolves" },
+  { from: "C4", to: "F3", type: "risks" },
+  { from: "R3", to: "C1", type: "requires" },
+  { from: "R3", to: "C2", type: "requires" },
+  { from: "R3", to: "C3", type: "requires" },
+  { from: "R5", to: "R3", type: "causes" },
+  { from: "R5", to: "C2", type: "enables" },
+  { from: "WN1", to: "R1", type: "constrains" },
+  { from: "WN1", to: "C1", type: "risks" },
+  { from: "WN2", to: "R4", type: "constrains" },
+  { from: "WN2", to: "F2", type: "risks" },
+  { from: "PT2", to: "C3", type: "reveals" },
+  { from: "PT2", to: "R3", type: "develops" },
+  { from: "C1", to: "F3", type: "develops" },
 ];
 
 const RG_NODE_WIDTH = 200;
@@ -178,9 +183,16 @@ function ReasoningGraphDiagram() {
   // Dagre layout — same library + options as the in-app ReasoningGraphView.
   const layout = useMemo(() => {
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "TB", nodesep: 32, ranksep: 60, marginx: 16, marginy: 16 });
+    g.setGraph({
+      rankdir: "TB",
+      nodesep: 32,
+      ranksep: 60,
+      marginx: 16,
+      marginy: 16,
+    });
     g.setDefaultEdgeLabel(() => ({}));
-    for (const n of RG_NODES) g.setNode(n.id, { width: RG_NODE_WIDTH, height: RG_NODE_HEIGHT });
+    for (const n of RG_NODES)
+      g.setNode(n.id, { width: RG_NODE_WIDTH, height: RG_NODE_HEIGHT });
     for (const e of RG_EDGES) g.setEdge(e.from, e.to);
     dagre.layout(g);
 
@@ -292,7 +304,14 @@ function ReasoningGraphDiagram() {
                 strokeWidth={2}
               />
               {/* Index badge (top-left) */}
-              <circle cx={x} cy={y} r={12} fill="#0f172a" stroke="#475569" strokeWidth={1} />
+              <circle
+                cx={x}
+                cy={y}
+                r={12}
+                fill="#0f172a"
+                stroke="#475569"
+                strokeWidth={1}
+              />
               <text
                 x={x}
                 y={y + 1}
@@ -365,10 +384,34 @@ const VAR_SCENARIOS: {
   priorLogit: number;
   intensities: number[];
 }[] = [
-  { name: "Modal continuation",  color: "#22d3ee", prob: 0.46, priorLogit:  1.6, intensities: [2, 1, 0, 1, 2] },
-  { name: "Slow consolidation",  color: "#a78bfa", prob: 0.28, priorLogit:  1.1, intensities: [3, 1, 0, 0, 2] },
-  { name: "External disruption", color: "#f59e0b", prob: 0.18, priorLogit:  0.7, intensities: [1, 2, 3, 1, 2] },
-  { name: "Mechanism rupture",   color: "#ef4444", prob: 0.08, priorLogit: -0.1, intensities: [1, 3, 1, 4, 3] },
+  {
+    name: "Modal continuation",
+    color: "#22d3ee",
+    prob: 0.46,
+    priorLogit: 1.6,
+    intensities: [2, 1, 0, 1, 2],
+  },
+  {
+    name: "Slow consolidation",
+    color: "#a78bfa",
+    prob: 0.28,
+    priorLogit: 1.1,
+    intensities: [3, 1, 0, 0, 2],
+  },
+  {
+    name: "External disruption",
+    color: "#f59e0b",
+    prob: 0.18,
+    priorLogit: 0.7,
+    intensities: [1, 2, 3, 1, 2],
+  },
+  {
+    name: "Mechanism rupture",
+    color: "#ef4444",
+    prob: 0.08,
+    priorLogit: -0.1,
+    intensities: [1, 3, 1, 4, 3],
+  },
 ];
 
 function VariableScenarioDiagram() {
@@ -643,9 +686,10 @@ function Ref({
       id={`ref-${id}`}
       className="text-[12px] text-white/45 leading-[1.7] scroll-mt-24"
     >
-      <span className="text-white/65">{authors} ({year}).</span>{" "}
-      <em className="text-white/55">{title}</em>.{" "}
-      <span>{venue}.</span>
+      <span className="text-white/65">
+        {authors} ({year}).
+      </span>{" "}
+      <em className="text-white/55">{title}</em>. <span>{venue}.</span>
       {links && links.length > 0 && (
         <>
           {" "}
@@ -800,15 +844,22 @@ function PricingTiers() {
             <th className="text-left pb-2">Tier</th>
             <th className="text-left pb-2">Monthly</th>
             <th className="text-right pb-2">Annual</th>
-            <th className="text-left pb-2 pl-4">Fit &middot; what&apos;s included</th>
+            <th className="text-left pb-2 pl-4">
+              Fit &middot; what&apos;s included
+            </th>
           </tr>
         </thead>
         <tbody>
           {PRICING_TIERS.map((row, i) => (
-            <tr key={row.tier} className={i > 0 ? "border-t border-white/5" : ""}>
+            <tr
+              key={row.tier}
+              className={i > 0 ? "border-t border-white/5" : ""}
+            >
               <td className="py-2 text-white/70 font-mono">{row.tier}</td>
               <td className="py-2 font-mono text-white/60">{row.price}</td>
-              <td className="py-2 font-mono text-white/45 text-right">{row.annual}</td>
+              <td className="py-2 font-mono text-white/45 text-right">
+                {row.annual}
+              </td>
               <td className="py-2 text-[10px] pl-4">
                 <div className="text-white/55">{row.fits}</div>
                 <div className="text-white/35 mt-0.5">{row.includes}</div>
@@ -820,10 +871,9 @@ function PricingTiers() {
 
       <p className="text-[9px] text-white/25 mt-3 leading-relaxed">
         <span className="font-mono text-white/40">MBB anchor</span> · weekly
-        team bundle{" "}
-        <span className="font-mono text-white/50">$168K–$265K</span> · engagement{" "}
-        <span className="font-mono text-white/50">$500K–$2M+</span> ·
-        transformation{" "}
+        team bundle <span className="font-mono text-white/50">$168K–$265K</span>{" "}
+        · engagement <span className="font-mono text-white/50">$500K–$2M+</span>{" "}
+        · transformation{" "}
         <span className="font-mono text-white/50">$2M–$20M+</span>. ~$55B
         strategy consulting market inside ~$400B total, ~6% CAGR.
       </p>
@@ -832,8 +882,8 @@ function PricingTiers() {
         At <span className="text-white/55 font-mono">$10K/mo</span> a client
         spends <span className="text-white/55 font-mono">$120K/yr</span> for a
         forkable world view. Same money buys one MBB slide deck &mdash; or
-        1/40th of a transformation. The substrate compounds across quarters;
-        the deck doesn&apos;t.
+        1/40th of a transformation. The substrate compounds across quarters; the
+        deck doesn&apos;t.
       </p>
     </div>
   );
@@ -934,7 +984,9 @@ function UnitEconomics() {
               <td className="py-2 text-white/55 font-mono text-[10px]">
                 {row.activity}
               </td>
-              <td className="py-2 text-white/35 text-[10px]">{row.definition}</td>
+              <td className="py-2 text-white/35 text-[10px]">
+                {row.definition}
+              </td>
               <td className="py-2 font-mono text-white/45 text-right text-[10px]">
                 {row.perUnit}
               </td>
@@ -972,9 +1024,9 @@ function UnitEconomics() {
       <p className="text-[9px] text-white/25 mt-3 leading-relaxed">
         Per-client <em>compute</em> is what the table shows. Per-client{" "}
         <em>engineering</em> is not. Salesforce-to-anything is 2&ndash;6 weeks
-        for a first instance; schema drift is permanent overhead;
-        cross-source entity reconciliation is genuinely hard. Compute is
-        trivial; engineering is what builds the moat &mdash; see{" "}
+        for a first instance; schema drift is permanent overhead; cross-source
+        entity reconciliation is genuinely hard. Compute is trivial; engineering
+        is what builds the moat &mdash; see{" "}
         <a
           href="#integration"
           className="text-white/45 underline underline-offset-2 hover:text-white/70"
@@ -989,14 +1041,14 @@ function UnitEconomics() {
         consulting-class labor, blended sits between. Dominant COGS at the
         operator-led tiers is the <em>facilitator</em> &mdash; former MBB
         consultant, fully loaded{" "}
-        <span className="font-mono text-white/55">~$275K</span>, pooled across
-        a vertical pod:
+        <span className="font-mono text-white/55">~$275K</span>, pooled across a
+        vertical pod:
       </p>
 
       <ul className="mt-2 space-y-1.5 text-[10px] text-white/35 leading-relaxed pl-4">
         <li>
-          <span className="font-mono text-white/55">Analyst</span> &mdash;
-          ~6 × $96K = $576K ·{" "}
+          <span className="font-mono text-white/55">Analyst</span> &mdash; ~6 ×
+          $96K = $576K ·{" "}
           <span className="text-emerald-400/70 font-semibold">
             ~52% gross margin
           </span>
@@ -1018,11 +1070,14 @@ function UnitEconomics() {
 
       <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
         Good for services, okay for SaaS. Until the connector library matures,
-        the business runs at services margins on Analyst + Strategist with
-        Scout as a low-volume conversion path. After Phase 3 lands, Scout
-        becomes truly self-service and the blended business inflects toward
-        SaaS economics. <B>The path is 24&ndash;36 months; the connector
-        library is the milestone that determines it.</B>
+        the business runs at services margins on Analyst + Strategist with Scout
+        as a low-volume conversion path. After Phase 3 lands, Scout becomes
+        truly self-service and the blended business inflects toward SaaS
+        economics.{" "}
+        <B>
+          The path is 24&ndash;36 months; the connector library is the milestone
+          that determines it.
+        </B>
       </p>
 
       <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
@@ -1296,7 +1351,11 @@ const SIM_BREAKDOWN: SimBreakdownCategory[] = [
   },
 ];
 
-function ModelPill({ model }: { model: "DeepSeek v4" | "Gemini 2.5" | "mixed" }) {
+function ModelPill({
+  model,
+}: {
+  model: "DeepSeek v4" | "Gemini 2.5" | "mixed";
+}) {
   const tone =
     model === "Gemini 2.5"
       ? "bg-violet-500/10 text-violet-400/60"
@@ -1326,7 +1385,8 @@ const INTEGRATION_PHASES: IntegrationPhase[] = [
   {
     phase: "Phase 1",
     timeframe: "months 0–18",
-    shape: "Forward-deployed engineering per account · learning loop, not a fixed plan",
+    shape:
+      "Forward-deployed engineering per account · learning loop, not a fixed plan",
     outcome:
       "Clients 3–5 teach what the canonical connector set is · 5–7 test whether convergence holds · 8–15 calibrate the Phase 2 timeline",
     connectors:
@@ -1335,7 +1395,8 @@ const INTEGRATION_PHASES: IntegrationPhase[] = [
   {
     phase: "Phase 2",
     timeframe: "months 12–30",
-    shape: "Productize the most-used integrations · onboarding shifts from forward-deployed engineering to configuration",
+    shape:
+      "Productize the most-used integrations · onboarding shifts from forward-deployed engineering to configuration",
     outcome:
       "Per-client integration labor drops materially · time-to-first-wargame compresses from months to weeks",
     connectors:
@@ -1344,7 +1405,8 @@ const INTEGRATION_PHASES: IntegrationPhase[] = [
   {
     phase: "Phase 3",
     timeframe: "months 24+",
-    shape: "Comprehensive coverage · the connector library is broad enough that net-new clients onboard in days",
+    shape:
+      "Comprehensive coverage · the connector library is broad enough that net-new clients onboard in days",
     outcome:
       "Scout tier becomes truly self-service · blended margin moves toward SaaS · the library is the moat",
     connectors:
@@ -1377,12 +1439,17 @@ function IntegrationRoadmap() {
         </thead>
         <tbody>
           {INTEGRATION_PHASES.map((row, i) => (
-            <tr key={row.phase} className={i > 0 ? "border-t border-white/5" : ""}>
+            <tr
+              key={row.phase}
+              className={i > 0 ? "border-t border-white/5" : ""}
+            >
               <td className="py-2 text-white/70 font-mono">{row.phase}</td>
               <td className="py-2 text-white/45 font-mono text-[10px]">
                 {row.timeframe}
               </td>
-              <td className="py-2 text-white/45 text-[10px] pr-3">{row.shape}</td>
+              <td className="py-2 text-white/45 text-[10px] pr-3">
+                {row.shape}
+              </td>
               <td className="py-2 text-white/45 text-[10px]">{row.outcome}</td>
             </tr>
           ))}
@@ -1402,11 +1469,11 @@ function IntegrationRoadmap() {
         Phase 1 is a <em>learning loop</em>, not a fixed plan. The first
         3&ndash;5 clients teach what the canonical connector set is; the next
         5&ndash;7 test whether the convergence thesis holds; somewhere between
-        client 8&ndash;15 we have enough signal to commit to a Phase 2
-        timeline. Phase 3 is when the library outpaces the average
-        client&apos;s stack &mdash; onboarding becomes configuration, and
-        per-client integration cost approaches zero. That&apos;s the path to
-        scaling without scaling labor.
+        client 8&ndash;15 we have enough signal to commit to a Phase 2 timeline.
+        Phase 3 is when the library outpaces the average client&apos;s stack
+        &mdash; onboarding becomes configuration, and per-client integration
+        cost approaches zero. That&apos;s the path to scaling without scaling
+        labor.
       </p>
     </div>
   );
@@ -1586,7 +1653,10 @@ const DENSITY_TIERS = [
 
 /* ── Navigation items ────────────────────────────────────────────────────── */
 
-const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: string }> }> = [
+const NAV_GROUPS: Array<{
+  label: string;
+  items: Array<{ id: string; label: string }>;
+}> = [
   {
     label: "Frame",
     items: [
@@ -1691,7 +1761,10 @@ function TimelineNav({ activeId }: { activeId: string }) {
             <button
               type="button"
               onClick={() =>
-                setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))
+                setOpenGroups((prev) => ({
+                  ...prev,
+                  [group.label]: !prev[group.label],
+                }))
               }
               className="group flex items-center gap-3 py-2.5 select-none"
             >
@@ -1815,8 +1888,8 @@ export default function PaperPage() {
             Quantifying World Views
           </h1>
           <p className="text-[15px] text-white/45 leading-[1.7] max-w-xl">
-            Every coherent text carries a causal substrate. Extract it,
-            query it, simulate where it goes next.
+            Every coherent text carries a causal substrate. Extract it, query
+            it, simulate where it goes next.
           </p>
           <div className="mt-8">
             <PaperMeta />
@@ -1827,200 +1900,178 @@ export default function PaperPage() {
           {/* ── Abstract ──────────────────────────────────────────────── */}
           <Section id="abstract" label="Abstract">
             <P>
-              A novel. A research paper. A wargame brief. A strategy
-              memo. The surface differs &mdash; wizards, rational
-              actors, factions, markets &mdash; but the structure
-              underneath is the same. Every coherent long-form text
-              raises an <B>imagined society</B>: people, places,
-              rules, and unresolved questions, enacted scene by scene
-              as the prose moves forward. The author populates it;
-              the reader inhabits it; the text is the record of how
-              it moves. Taste is subjective; structure is not, and
-              the structure inside a text &mdash; what we call a{" "}
-              <B>world view</B> &mdash; is what InkTide reads. We
-              make it operable: extract it, query its inhabitants,
-              fork its futures, simulate forward, watch it update as
-              reality lands.
+              Long-form texts are world models. A novel, a strategy memo, a
+              research argument, a wargame brief: the surface differs &mdash;
+              wizards, rational actors, factions, markets &mdash; but each
+              raises the same underlying structure: citizens with private
+              beliefs, rules that govern their behavior, and open questions
+              whose resolution the prose enacts scene by scene. Taste is
+              subjective; structure is not.
             </P>
             <P>
-              Look inside one. <B>World</B> &mdash; its citizens:
-              characters, locations, artifacts, each carrying their
-              own private map of the polity around them.{" "}
-              <B>System</B> &mdash; its imposed law: the rules and
-              conventions the author has legislated.{" "}
-              <B>Threads</B> &mdash; its open questions, each a live
-              stance over named outcomes that updates every time a
-              citizen acts. The author legislates; the society then
-              exerts its own gravity &mdash; the three forces measure
-              the pressure an imposed polity generates once it&apos;s
-              heavy enough to push back on its author.
+              InkTide reads that structure. We extract it into a living
+              knowledge graph &mdash; <B>World</B>, its citizens; <B>System</B>,
+              its laws; <B>Threads</B>, its open questions &mdash; and make it
+              operable: query its inhabitants, fork its futures, simulate
+              forward, watch it update as reality lands. The three forces
+              measure how hard the world is working at any moment. The longer
+              the loop runs, the sharper the next forecast.
             </P>
             <P>
-              LLMs extract qualitative deltas at low temperature;
-              deterministic formulas turn deltas into scores. Same
-              input, same score. The three forces sum to <B>Activity</B>{" "}
-              &mdash; how hard the world is working. Every entity carries
-              an inner world; every thread logs how its stance moved;
-              the system graph accumulates a compressed ledger of how
-              the world actually works. Extraction and generation are
-              the same operation in opposite directions.
+              LLMs extract qualitative deltas at low temperature; deterministic
+              formulas turn deltas into scores. Same input, same score. The
+              three forces sum to <B>Activity</B> &mdash; how hard the world is
+              working. Every entity carries an inner world; every thread logs
+              how its stance moved; the system graph accumulates a compressed
+              ledger of how the world actually works. Extraction and generation
+              are the same operation in opposite directions.
             </P>
             <P>
-              <B>The skill ceiling is your priors.</B> The math is
-              fixed and cheap; the depth and freshness of what you
-              feed it decides the result. Hold one world view deeply
-              &mdash; the <em>hedgehog</em> &mdash; or many at once,
-              calibrating as evidence comes in &mdash; the <em>fox</em>
+              <B>The skill ceiling is your priors.</B> The math is fixed and
+              cheap; the depth and freshness of what you feed it decides the
+              result. Hold one world view deeply &mdash; the <em>hedgehog</em>{" "}
+              &mdash; or many at once, calibrating as evidence comes in &mdash;
+              the <em>fox</em>
               <Cite id="berlin1953" label="Berlin 1953" />
               <Cite id="tetlock2005" label="Tetlock 2005" />
-              <Cite id="tetlock-gardner2015" label="Tetlock &amp; Gardner 2015" />.
-              The substrate is here for both. The longer the loop
-              runs, the sharper the next forecast.
+              <Cite
+                id="tetlock-gardner2015"
+                label="Tetlock &amp; Gardner 2015"
+              />
+              . The substrate is here for both. The longer the loop runs, the
+              sharper the next forecast.
             </P>
           </Section>
 
           {/* ── The Problem ───────────────────────────────────────────── */}
           <Section id="problem" label="The Problem">
             <P>
-              Forecasting any complex world &mdash; a market, a
-              campaign, a research argument, a strategic posture,
-              a fictional one &mdash; is gated by <B>priors</B>{" "}
-              and <B>continuity of reasoning</B>. Foundation models
-              give scale and fluency and lose continuity: they drift,
-              hallucinate, forget what they wrote three sections back.
-              Specialised simulators give continuity and silo to one
-              domain &mdash; climate models can&apos;t model a market,
-              market models can&apos;t model a campaign. Neither lets
-              you take a text-describable world, branch alternative
-              futures from it, and grade them against what actually
-              happens.
+              Forecasting any complex world &mdash; a market, a campaign, a
+              research argument, a strategic posture, a fictional one &mdash; is
+              gated by <B>priors</B> and <B>continuity of reasoning</B>.
+              Foundation models give scale and fluency and lose continuity: they
+              drift, hallucinate, forget what they wrote three sections back.
+              Specialised simulators give continuity and silo to one domain
+              &mdash; climate models can&apos;t model a market, market models
+              can&apos;t model a campaign. Neither lets you take a
+              text-describable world, branch alternative futures from it, and
+              grade them against what actually happens.
             </P>
             <P>
-              Strategy decks read as opinion because nothing in them
-              commits structurally. Research arguments collapse on
-              edge cases no one simulated. Long-form fiction drifts
-              because the model forgot its own world.{" "}
+              Strategy decks read as opinion because nothing in them commits
+              structurally. Research arguments collapse on edge cases no one
+              simulated. Long-form fiction drifts because the model forgot its
+              own world.{" "}
               <B>
-                We don&apos;t lack models &mdash; we lack a shared
-                substrate for <em>building</em> them.
+                We don&apos;t lack models &mdash; we lack a shared substrate for{" "}
+                <em>building</em> them.
               </B>{" "}
-              One where priors compound across sessions, scenarios
-              branch off any commit, and reality grades the result.
-              Context windows grow linearly; the world keeps growing,
-              and attention itself sags in the middle of long contexts
-              <Cite id="liu2024" label="Liu et al. 2024" />.
-              Either you compress with intent &mdash; keep the
-              load-bearing rules and the live questions, release the
-              rest &mdash; or coherence collapses. We compress with
-              intent.
+              One where priors compound across sessions, scenarios branch off
+              any commit, and reality grades the result. Context windows grow
+              linearly; the world keeps growing, and attention itself sags in
+              the middle of long contexts
+              <Cite id="liu2024" label="Liu et al. 2024" />. Either you compress
+              with intent &mdash; keep the load-bearing rules and the live
+              questions, release the rest &mdash; or coherence collapses. We
+              compress with intent.
             </P>
           </Section>
 
           {/* ── Approach ──────────────────────────────────────────────── */}
           <Section id="approach" label="Approach">
             <P>
-              We model every long-form work &mdash; novel, paper,
-              scenario brief, alternate-history timeline &mdash; as a
-              knowledge graph<Cite id="hogan2021" label="Hogan et al. 2021" /> that
-              updates step by step: one page per
-              actor, location, rule, or open question, updated only
-              when a scene reveals something new. An LLM writes down{" "}
-              <em>what changed</em>; deterministic formulas compute{" "}
+              We model every long-form work &mdash; novel, paper, scenario
+              brief, alternate-history timeline &mdash; as a knowledge graph
+              <Cite id="hogan2021" label="Hogan et al. 2021" /> that updates
+              step by step: one page per actor, location, rule, or open
+              question, updated only when a scene reveals something new. An LLM
+              writes down <em>what changed</em>; deterministic formulas compute{" "}
               <em>how much</em> was revealed. Comprehension splits from
-              measurement; the scoring stays reproducible. Changes come
-              in two kinds &mdash; encyclopedic (new facts) and
-              possibility (outcomes becoming alive or dying) &mdash;
-              captured by three delta layers:
+              measurement; the scoring stays reproducible. Changes come in two
+              kinds &mdash; encyclopedic (new facts) and possibility (outcomes
+              becoming alive or dying) &mdash; captured by three delta layers:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/50 leading-[1.85]">
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">1.</span>
                 <span>
-                  <B>System graph deltas</B> &mdash; the{" "}
-                  <em>encyclopedic</em> kind. New entries in the
-                  world&apos;s rulebook: principles, systems, concepts,
-                  tensions, events, structures, conventions, constraints.
-                  Each entry is a node; connections between them are
-                  typed edges. Depth emerges from connectivity, not
-                  lexical volume.
+                  <B>System graph deltas</B> &mdash; the <em>encyclopedic</em>{" "}
+                  kind. New entries in the world&apos;s rulebook: principles,
+                  systems, concepts, tensions, events, structures, conventions,
+                  constraints. Each entry is a node; connections between them
+                  are typed edges. Depth emerges from connectivity, not lexical
+                  volume.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">2.</span>
                 <span>
-                  <B>World deltas</B> &mdash; also encyclopedic, but
-                  about the people. New entries on the pages of specific
-                  characters, locations, and artifacts: learns, loses,
-                  becomes, realises, plus relationship valence shifts.
-                  These accumulate as persistent state attached to the
-                  entity whose page was written on.
+                  <B>World deltas</B> &mdash; also encyclopedic, but about the
+                  people. New entries on the pages of specific characters,
+                  locations, and artifacts: learns, loses, becomes, realises,
+                  plus relationship valence shifts. These accumulate as
+                  persistent state attached to the entity whose page was written
+                  on.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">3.</span>
                 <span>
-                  <B>Thread deltas</B> &mdash; the{" "}
-                  <em>possibility</em> kind. Every open question
-                  (rivalry, secret, quest, unresolved claim) carries a{" "}
-                  <em>belief</em> &mdash; a live distribution over
+                  <B>Thread deltas</B> &mdash; the <em>possibility</em> kind.
+                  Every open question (rivalry, secret, quest, unresolved claim)
+                  carries a <em>belief</em> &mdash; a live distribution over
                   outcomes. Together they form the world view&apos;s{" "}
-                  <B>belief system</B>: its current stance on
-                  everything undecided, always in flux. Each scene is
-                  reality landing, asking the stance to revise.
-                  Deltas emit integer evidence in [−4, +4] plus one of
-                  nine log-types; the math handles log-odds, decay,
-                  volatility, closure, and abandonment. Fate is what
-                  reality just exacted on a high-attention belief.
+                  <B>belief system</B>: its current stance on everything
+                  undecided, always in flux. Each scene is reality landing,
+                  asking the stance to revise. Deltas emit integer evidence in
+                  [−4, +4] plus one of nine log-types; the math handles
+                  log-odds, decay, volatility, closure, and abandonment. Fate is
+                  what reality just exacted on a high-attention belief.
                 </span>
               </li>
             </ul>
             <P>
-              Three forces follow, one per delta layer. Together they
-              read how hard the world view is working this scene:
+              Three forces follow, one per delta layer. Together they read how
+              hard the world view is working this scene:
             </P>
             <ul className="space-y-2 text-[13px] text-white/60 leading-relaxed pl-4">
               <li>
-                <B>System</B> &mdash; the rules that govern. Grows as
-                new principles, structures, and constraints
-                accumulate.
+                <B>System</B> &mdash; the rules that govern. Grows as new
+                principles, structures, and constraints accumulate.
               </li>
               <li>
-                <B>World</B> &mdash; the lived layer. Grows as
-                characters, locations, and artifacts reveal who
-                they&apos;re becoming.
+                <B>World</B> &mdash; the lived layer. Grows as characters,
+                locations, and artifacts reveal who they&apos;re becoming.
               </li>
               <li>
-                <B>Fate</B> &mdash; reality landing on belief. Grows
-                as the odds move on open questions: rivalries,
-                secrets, quests, unresolved claims.
+                <B>Fate</B> &mdash; reality landing on belief. Grows as the odds
+                move on open questions: rivalries, secrets, quests, unresolved
+                claims.
               </li>
             </ul>
             <P>
-              The mix of these three forces is a work&apos;s{" "}
-              <B>signature</B> &mdash; a point on the unit 3-simplex
-              recovered from the dominant principal component of{" "}
-              <Tex>{String.raw`\;(F, W, S)`}</Tex>. Archetypes name
-              its neighbourhoods: <B>Paper</B> system-dominant,{" "}
-              <B>Stage</B> world-dominant, <B>Classic</B>{" "}
-              fate-dominant, <B>Opus</B> balanced. Each force is
-              rank-transformed to a standard normal first &mdash;
-              distribution-free and bounded &mdash; so length, genre,
-              and outliers don&apos;t bias the comparison. The
-              cumulative <B>network</B> &mdash; every entity, thread,
-              and system node weighted by cross-graph attribution count
-              &mdash; surfaces the load-bearing hubs and bridges without
-              touching the deltas.
+              The mix of these three forces is a work&apos;s <B>signature</B>{" "}
+              &mdash; a point on the unit 3-simplex recovered from the dominant
+              principal component of <Tex>{String.raw`\;(F, W, S)`}</Tex>.
+              Archetypes name its neighbourhoods: <B>Paper</B> system-dominant,{" "}
+              <B>Stage</B> world-dominant, <B>Classic</B> fate-dominant,{" "}
+              <B>Opus</B> balanced. Each force is rank-transformed to a standard
+              normal first &mdash; distribution-free and bounded &mdash; so
+              length, genre, and outliers don&apos;t bias the comparison. The
+              cumulative <B>network</B> &mdash; every entity, thread, and system
+              node weighted by cross-graph attribution count &mdash; surfaces
+              the load-bearing hubs and bridges without touching the deltas.
             </P>
           </Section>
 
           {/* ── Computational Hierarchy ───────────────────────────────── */}
           <Section id="hierarchy" label="Computational Hierarchy">
             <P>
-              Long-form works &mdash; narratives, papers, simulations
-              &mdash; decompose into five nested layers. Structure
-              generation (scenes with deltas) runs independently of
-              prose generation (beats and propositions), enabling
-              parallel processing and precise attribution.
+              Long-form works &mdash; narratives, papers, simulations &mdash;
+              decompose into five nested layers. Structure generation (scenes
+              with deltas) runs independently of prose generation (beats and
+              propositions), enabling parallel processing and precise
+              attribution.
             </P>
 
             {/* Visual hierarchy diagram - clean and compact */}
@@ -2389,8 +2440,8 @@ export default function PaperPage() {
             <div className="mt-4 space-y-4">
               <P>
                 <B>Narrative</B> — The full knowledge graph: all characters,
-                locations, threads, relationships, and system knowledge. Persists
-                and grows across the entire timeline.
+                locations, threads, relationships, and system knowledge.
+                Persists and grows across the entire timeline.
                 <span className="block text-white/25 text-[11px] mt-1 italic">
                   HP: Harry, Hogwarts, the Philosopher&apos;s Stone quest,
                   Snape&apos;s ambiguous loyalty, the rules of wand magic — all
@@ -2409,9 +2460,8 @@ export default function PaperPage() {
               </P>
               <P>
                 <B>Scenes</B> — Atomic units of structural delta. Each scene
-                records thread transitions, world deltas, and knowledge
-                graph additions. Forces derive from these deltas, not from
-                prose.
+                records thread transitions, world deltas, and knowledge graph
+                additions. Forces derive from these deltas, not from prose.
                 <span className="block text-white/25 text-[11px] mt-1 italic">
                   HP: The troll fight — &ldquo;friendship with Hermione&rdquo;
                   thread jumps latent → seeded, relationship delta between
@@ -2441,52 +2491,49 @@ export default function PaperPage() {
             </div>
 
             <P>
-              Forces are computed from deltas without examining prose.
-              Revision edits beats without modifying scene structure. Every
-              layer is independently auditable.
+              Forces are computed from deltas without examining prose. Revision
+              edits beats without modifying scene structure. Every layer is
+              independently auditable.
             </P>
           </Section>
 
           {/* ── The Three Forces ──────────────────────────────────────── */}
           <Section id="forces" label="The Three Forces">
             <p className="text-[15px] leading-relaxed text-white/50 italic mb-8">
-              Three fields, one substrate. <B>Abstract</B> &mdash; the
-              rules. <B>Physical</B> &mdash; the entities acting under
-              them. <B>Possibility</B> &mdash; what could still happen.{" "}
-              <B>System</B>, <B>World</B>, and <B>Fate</B> score each
-              one. Fate is <em>possibility</em>, not probability:
-              what <em>could</em> happen, not what <em>will</em>.
+              Three fields, one substrate. <B>Abstract</B> &mdash; the rules.{" "}
+              <B>Physical</B> &mdash; the entities acting under them.{" "}
+              <B>Possibility</B> &mdash; what could still happen. <B>System</B>,{" "}
+              <B>World</B>, and <B>Fate</B> score each one. Fate is{" "}
+              <em>possibility</em>, not probability: what <em>could</em> happen,
+              not what <em>will</em>.
             </p>
             <p className="text-[14px] leading-relaxed text-white/45 mb-8">
-              Modes weight the fields differently:{" "}
-              <B>papers</B> grow mostly System (stating and connecting
-              rules); <B>simulations</B> mostly observe Fate
-              (exploring outcomes under a ruleset);{" "}
-              <B>narratives</B> fire all three. Same formulas;
-              different signatures.
+              Modes weight the fields differently: <B>papers</B> grow mostly
+              System (stating and connecting rules); <B>simulations</B> mostly
+              observe Fate (exploring outcomes under a ruleset);{" "}
+              <B>narratives</B> fire all three. Same formulas; different
+              signatures.
             </p>
             <div className="mb-12">
               <h3 className="text-[15px] font-semibold text-white/80 mb-2">
                 System
               </h3>
               <P>
-                System is the <B>abstract field</B> &mdash; the
-                rules, structures, and concepts that form the
-                substrate. Every scene can add a new entry (a
-                magical law, a political system, a social convention)
-                or a new cross-reference between entries. The
-                world&apos;s physics &mdash; what&apos;s possible,
-                what costs what &mdash; grows by accumulation.
+                System is the <B>abstract field</B> &mdash; the rules,
+                structures, and concepts that form the substrate. Every scene
+                can add a new entry (a magical law, a political system, a social
+                convention) or a new cross-reference between entries. The
+                world&apos;s physics &mdash; what&apos;s possible, what costs
+                what &mdash; grows by accumulation.
               </P>
               <Eq tex={String.raw`S = \Delta N + \sqrt{\Delta E}`} />
               <P>
-                <Tex>{"\\Delta N"}</Tex> counts new nodes
-                (principles, concepts, structures);{" "}
-                <Tex>{"\\Delta E"}</Tex> counts new typed edges.
-                Nodes scale linearly &mdash; each is genuinely new
-                ground. Edges scale sub-linearly &mdash; the first
-                connections into an entry do most of the interpretive
-                work; bulk additions shouldn&apos;t dominate.
+                <Tex>{"\\Delta N"}</Tex> counts new nodes (principles, concepts,
+                structures); <Tex>{"\\Delta E"}</Tex> counts new typed edges.
+                Nodes scale linearly &mdash; each is genuinely new ground. Edges
+                scale sub-linearly &mdash; the first connections into an entry
+                do most of the interpretive work; bulk additions shouldn&apos;t
+                dominate.
               </P>
             </div>
 
@@ -2495,24 +2542,21 @@ export default function PaperPage() {
                 World
               </h3>
               <P>
-                World is the <B>physical field</B> &mdash; the
-                entities who act within the world&apos;s rules. If
-                System is the encyclopedia of how the world works,
-                World is the <em>dossier on each entity</em>: a
-                separate page for every character, location, and
-                artifact, updated whenever a scene reveals something
-                about them.
+                World is the <B>physical field</B> &mdash; the entities who act
+                within the world&apos;s rules. If System is the encyclopedia of
+                how the world works, World is the{" "}
+                <em>dossier on each entity</em>: a separate page for every
+                character, location, and artifact, updated whenever a scene
+                reveals something about them.
               </P>
               <Eq tex={String.raw`W = \Delta N_c + \sqrt{\Delta E_c}`} />
               <P>
-                Symmetric to System.{" "}
-                <Tex>{String.raw`\Delta N_c`}</Tex> counts continuity
-                nodes added to entity dossiers (traits, opinions,
-                goals, secrets, capabilities); {" "}
-                <Tex>{String.raw`\Delta E_c`}</Tex> counts continuity
-                edges between them. System tracks entries about the{" "}
-                <em>world</em>; World tracks entries about{" "}
-                <em>specific entities</em>.
+                Symmetric to System. <Tex>{String.raw`\Delta N_c`}</Tex> counts
+                continuity nodes added to entity dossiers (traits, opinions,
+                goals, secrets, capabilities);{" "}
+                <Tex>{String.raw`\Delta E_c`}</Tex> counts continuity edges
+                between them. System tracks entries about the <em>world</em>;
+                World tracks entries about <em>specific entities</em>.
               </P>
             </div>
 
@@ -2521,109 +2565,98 @@ export default function PaperPage() {
                 Fate
               </h3>
               <P>
-                Fate is the <B>possibility field</B> &mdash; reality
-                manifesting on the world view&apos;s belief system,
-                reshaping its stance scene by scene. Where System and
-                World measure what the world view has accumulated,
-                Fate measures what reality does to those holdings:
-                trials, reversals, resolutions. The unifying force
-                across the other two &mdash; without fate, the
-                abstract has no reason to deepen and the physical has
-                no destiny to bend toward; the world view would hold
-                a stance but never be answered for it.
+                Fate is the <B>possibility field</B> &mdash; reality manifesting
+                on the world view&apos;s belief system, reshaping its stance
+                scene by scene. Where System and World measure what the world
+                view has accumulated, Fate measures what reality does to those
+                holdings: trials, reversals, resolutions. The unifying force
+                across the other two &mdash; without fate, the abstract has no
+                reason to deepen and the physical has no destiny to bend toward;
+                the world view would hold a stance but never be answered for it.
               </P>
               <P>
-                Picture an election-night needle, or the live
-                win-probability line during a football game. A stance
-                rendered as a bouncing line &mdash; flat for
-                stretches, nudged by small evidence, lurching on
-                decisive plays, converging at the finish. Every
-                thread carries such a line, and the world view holds
-                them all at once. &ldquo;Will Frodo destroy the
-                ring?&rdquo; has one between yes and no; &ldquo;Who
-                claims the Iron Throne?&rdquo; has one per contending
-                house. Fate is the total movement on those lines this
-                scene &mdash; the price reality has just exacted on
-                what the world view thought it knew.
+                Picture an election-night needle, or the live win-probability
+                line during a football game. A stance rendered as a bouncing
+                line &mdash; flat for stretches, nudged by small evidence,
+                lurching on decisive plays, converging at the finish. Every
+                thread carries such a line, and the world view holds them all at
+                once. &ldquo;Will Frodo destroy the ring?&rdquo; has one between
+                yes and no; &ldquo;Who claims the Iron Throne?&rdquo; has one
+                per contending house. Fate is the total movement on those lines
+                this scene &mdash; the price reality has just exacted on what
+                the world view thought it knew.
               </P>
               <P>
-                Made rigorous, each thread carries a <B>stance</B>{" "}
-                &mdash; a probability distribution over named
-                outcomes &mdash; priced as softmax over a per-outcome
-                logit vector. Threads are the <em>questions</em>{" "}
-                through which reality reaches the world view; stances
-                are the <em>bearings</em> it currently holds in
-                answer. Aggregated, they form the world view&apos;s{" "}
-                <B>belief system</B>: a working model of everything
-                still undecided, always in flux. Scenes shift each
-                stance by emitting bounded integer evidence on
+                Made rigorous, each thread carries a <B>stance</B> &mdash; a
+                probability distribution over named outcomes &mdash; priced as
+                softmax over a per-outcome logit vector. Threads are the{" "}
+                <em>questions</em> through which reality reaches the world view;
+                stances are the <em>bearings</em> it currently holds in answer.
+                Aggregated, they form the world view&apos;s <B>belief system</B>
+                : a working model of everything still undecided, always in flux.
+                Scenes shift each stance by emitting bounded integer evidence on
                 affected outcomes. Fate is the{" "}
-                <B>attention-weighted information gain</B> across
-                every stance touched:
+                <B>attention-weighted information gain</B> across every stance
+                touched:
               </P>
               <Eq
                 tex={String.raw`F_i \;=\; \sum_{t \,\in\, \Delta_i} v_t \cdot D_{\text{KL}}\!\left(\mathbf{p}_t^{+} \,\Big\|\, \mathbf{p}_t^{-}\right)`}
               />
               <P>
-                <Tex>{String.raw`\mathbf{p}_t^{-}, \mathbf{p}_t^{+}`}</Tex>{" "}
-                are pre/post distributions over thread{" "}
-                <Tex>{String.raw`t`}</Tex>&apos;s outcomes;{" "}
-                <Tex>{String.raw`v_t`}</Tex> is pre-scene volume;{" "}
-                <Tex>{String.raw`D_{\text{KL}}`}</Tex> is
+                <Tex>{String.raw`\mathbf{p}_t^{-}, \mathbf{p}_t^{+}`}</Tex> are
+                pre/post distributions over thread <Tex>{String.raw`t`}</Tex>
+                &apos;s outcomes; <Tex>{String.raw`v_t`}</Tex> is pre-scene
+                volume; <Tex>{String.raw`D_{\text{KL}}`}</Tex> is
                 Kullback&ndash;Leibler divergence
                 <Cite id="kullback1951" label="Kullback &amp; Leibler 1951" />
-                <Cite id="cover2006" label="Cover &amp; Thomas 2006" />.
-                No tunable constants &mdash; no log-type multipliers,
-                no closure bonuses, no scene-level denominators.
-                Fully specified by the per-thread evidence vector and
-                pre-scene attention.
+                <Cite id="cover2006" label="Cover &amp; Thomas 2006" />. No
+                tunable constants &mdash; no log-type multipliers, no closure
+                bonuses, no scene-level denominators. Fully specified by the
+                per-thread evidence vector and pre-scene attention.
               </P>
               <P>
-                Every behaviour falls out of this one form. Pulses
-                leave{" "}
-                <Tex>{String.raw`\mathbf{p}^{+} = \mathbf{p}^{-}`}</Tex>
-                {" "}so KL is zero &mdash; a vivid scene earns no fate
-                if no stance moved. Confirmations of the favourite
-                keep KL small. <B>Twists</B> land mass on an outcome
-                the prior assigned little weight; the per-outcome
-                contribution{" "}
-                <Tex>{String.raw`p^{+}_k \log(p^{+}_k / p^{-}_k)`}</Tex>
-                {" "}spikes exactly where the prior was small &mdash;
-                a swerve onto an unlikely outcome scores
-                disproportionately higher than a symmetric step toward
-                the favourite. <B>Closures</B> concentrate the
-                distribution onto a single outcome; resolution scenes
-                dominate their arcs without explicit bonus.{" "}
-                <B>Attention</B> falls out of the{" "}
-                <Tex>{String.raw`v_t`}</Tex> multiplier: same stance
-                movement weighs more on a tracked thread than on a
+                Every behaviour falls out of this one form. Pulses leave{" "}
+                <Tex>{String.raw`\mathbf{p}^{+} = \mathbf{p}^{-}`}</Tex> so KL
+                is zero &mdash; a vivid scene earns no fate if no stance moved.
+                Confirmations of the favourite keep KL small. <B>Twists</B> land
+                mass on an outcome the prior assigned little weight; the
+                per-outcome contribution{" "}
+                <Tex>{String.raw`p^{+}_k \log(p^{+}_k / p^{-}_k)`}</Tex> spikes
+                exactly where the prior was small &mdash; a swerve onto an
+                unlikely outcome scores disproportionately higher than a
+                symmetric step toward the favourite. <B>Closures</B> concentrate
+                the distribution onto a single outcome; resolution scenes
+                dominate their arcs without explicit bonus. <B>Attention</B>{" "}
+                falls out of the <Tex>{String.raw`v_t`}</Tex> multiplier: same
+                stance movement weighs more on a tracked thread than on a
                 forgotten side-thread.
               </P>
               <P>
-                In narratives, threads are rivalries, quests,
-                secrets. In papers, open questions, contested
-                claims. In simulations, the branching outcomes a
-                scenario is designed to observe. Every world view
-                carries a belief system over its threads; the framing
+                In narratives, threads are rivalries, quests, secrets. In
+                papers, open questions, contested claims. In simulations, the
+                branching outcomes a scenario is designed to observe. Every
+                world view carries a belief system over its threads; the framing
                 works universally.
               </P>
               <P>
-                <B>Measurement, not target.</B> Unlike World and
-                System, Fate has no per-scene floor. Evidence in
-                [−4, +4] reads what a neutral observer would update
-                on given the scene&apos;s concrete events &mdash; not
-                a knob tuned toward a target. Reality lands as hard
-                as it lands. Routine scenes emit pulses{" "}
-                (<Tex>{String.raw`|e| = 0`}</Tex>) and earn fate near
-                zero &mdash; the stance survives untested; pivotal
-                scenes emit committal evidence{" "}
-                (<Tex>{String.raw`|e| \geq 3`}</Tex>) and earn it
-                &mdash; trials and tribulations the belief system has
-                to answer for. The math recovers the work&apos;s
-                shape only when extraction is faithful to the page.
-                The{" "}
-                <a href="#fate-engine" className="underline hover:text-white/80">Fate Engine</a>
-                {" "}covers how the inputs get priced.
+                <B>Measurement, not target.</B> Unlike World and System, Fate
+                has no per-scene floor. Evidence in [−4, +4] reads what a
+                neutral observer would update on given the scene&apos;s concrete
+                events &mdash; not a knob tuned toward a target. Reality lands
+                as hard as it lands. Routine scenes emit pulses (
+                <Tex>{String.raw`|e| = 0`}</Tex>) and earn fate near zero
+                &mdash; the stance survives untested; pivotal scenes emit
+                committal evidence (<Tex>{String.raw`|e| \geq 3`}</Tex>) and
+                earn it &mdash; trials and tribulations the belief system has to
+                answer for. The math recovers the work&apos;s shape only when
+                extraction is faithful to the page. The{" "}
+                <a
+                  href="#fate-engine"
+                  className="underline hover:text-white/80"
+                >
+                  Fate Engine
+                </a>{" "}
+                covers how the inputs get priced.
               </P>
             </div>
 
@@ -2632,12 +2665,11 @@ export default function PaperPage() {
                 Activity
               </h3>
               <P>
-                A work reveals in two kinds &mdash; encyclopedic
-                (World, System) and possibility (Fate) &mdash; summed
-                on a common scale they give a single per-scene
-                reading. The <B>activity curve</B>{" "}
-                <Tex>{String.raw`A_i`}</Tex> records the total rate
-                at which the revelation machine is working.
+                A work reveals in two kinds &mdash; encyclopedic (World, System)
+                and possibility (Fate) &mdash; summed on a common scale they
+                give a single per-scene reading. The <B>activity curve</B>{" "}
+                <Tex>{String.raw`A_i`}</Tex> records the total rate at which the
+                revelation machine is working.
               </P>
               <Eq
                 tex={String.raw`A_i \;=\; w_F\,F_i \,+\, w_W\,W_i \,+\, w_S\,S_i, \quad w_F + w_W + w_S = 1`}
@@ -2645,30 +2677,25 @@ export default function PaperPage() {
               <P>
                 Each force is first rank&rarr;Gaussian normalised,{" "}
                 <Tex>{String.raw`z_i = \Phi^{-1}(\text{rank}_i / (N{+}1))`}</Tex>
-                , placing all three on a common axis independent of
-                natural units. The weighted sum expresses{" "}
-                <em>activity level</em> in units of standard deviation
-                from the work&apos;s own mean.
+                , placing all three on a common axis independent of natural
+                units. The weighted sum expresses <em>activity level</em> in
+                units of standard deviation from the work&apos;s own mean.
               </P>
               <P>
-                <B>The weights are the work&apos;s signature.</B>{" "}
-                Recovered by <B>principal-component analysis</B> on
-                the three normalised force curves: PC1 &mdash; the
-                direction of maximum variance in{" "}
-                <Tex>{String.raw`(F, W, S)`}</Tex> space &mdash;
-                identifies the axis the work moves along most; its
-                absolute loadings, renormalised to the unit simplex,
-                give the weights. Signature is a property of the
-                text, recovered from its variance.
+                <B>The weights are the work&apos;s signature.</B> Recovered by{" "}
+                <B>principal-component analysis</B> on the three normalised
+                force curves: PC1 &mdash; the direction of maximum variance in{" "}
+                <Tex>{String.raw`(F, W, S)`}</Tex> space &mdash; identifies the
+                axis the work moves along most; its absolute loadings,
+                renormalised to the unit simplex, give the weights. Signature is
+                a property of the text, recovered from its variance.
               </P>
               <P>
-                <B>Reading the curve.</B> A peak{" "}
-                (<Tex>{String.raw`A_i \gg 0`}</Tex>) is a moment
-                where the forces fire together in the work&apos;s
-                own vocabulary. A valley{" "}
-                (<Tex>{String.raw`A_i \ll 0`}</Tex>) is a quiet
-                stretch setting up what follows. Peaks and valleys
-                map rhythm, not merit.
+                <B>Reading the curve.</B> A peak (
+                <Tex>{String.raw`A_i \gg 0`}</Tex>) is a moment where the forces
+                fire together in the work&apos;s own vocabulary. A valley (
+                <Tex>{String.raw`A_i \ll 0`}</Tex>) is a quiet stretch setting
+                up what follows. Peaks and valleys map rhythm, not merit.
               </P>
             </div>
           </Section>
@@ -2676,15 +2703,13 @@ export default function PaperPage() {
           {/* ── Fate Engine ─────────────────────────────────────────── */}
           <Section id="fate-engine" label="Fate Engine">
             <P>
-              A world view doesn&apos;t hold a fixed picture of
-              itself; it holds a <B>belief system</B>, and that
-              belief shifts as reality tests it. Threads are the
-              units of that reckoning &mdash; each carries a{" "}
-              <B>stance</B>, a live probability distribution over
-              named outcomes. Each thread poses a question
-              (&quot;Will Harry claim the Stone?&quot;) and lists
-              two or more outcomes (binary default; multi-outcome
-              enumerates). The stance is priced as softmax over a
+              A world view doesn&apos;t hold a fixed picture of itself; it holds
+              a <B>belief system</B>, and that belief shifts as reality tests
+              it. Threads are the units of that reckoning &mdash; each carries a{" "}
+              <B>stance</B>, a live probability distribution over named
+              outcomes. Each thread poses a question (&quot;Will Harry claim the
+              Stone?&quot;) and lists two or more outcomes (binary default;
+              multi-outcome enumerates). The stance is priced as softmax over a
               per-outcome logit vector:
             </P>
             <Eq
@@ -2693,11 +2718,10 @@ export default function PaperPage() {
             <P>
               Three state variables: <B>logits</B>{" "}
               <Tex>{String.raw`\ell \in \mathbb{R}^K`}</Tex> price the
-              distribution; <B>volume</B>{" "}
-              <Tex>{String.raw`v \geq 0`}</Tex> tracks accumulated
-              attention; <B>volatility</B>{" "}
-              <Tex>{String.raw`\sigma`}</Tex> (EWMA of recent logit
-              shifts) flags recent movement.
+              distribution; <B>volume</B> <Tex>{String.raw`v \geq 0`}</Tex>{" "}
+              tracks accumulated attention; <B>volatility</B>{" "}
+              <Tex>{String.raw`\sigma`}</Tex> (EWMA of recent logit shifts)
+              flags recent movement.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
@@ -2705,42 +2729,35 @@ export default function PaperPage() {
             </h3>
             <P>
               The LLM emits bounded integer <B>evidence</B>{" "}
-              <Tex>{String.raw`e \in [-4, +4]`}</Tex> per affected
-              outcome plus a <B>logType</B> from nine primitives
-              (pulse, transition, setup, escalation, payoff, twist,
-              callback, resistance, stall). Evidence shifts logits
-              via log-odds arithmetic:
+              <Tex>{String.raw`e \in [-4, +4]`}</Tex> per affected outcome plus
+              a <B>logType</B> from nine primitives (pulse, transition, setup,
+              escalation, payoff, twist, callback, resistance, stall). Evidence
+              shifts logits via log-odds arithmetic:
             </P>
-            <Eq
-              tex={String.raw`\ell_k \mathrel{+}= e_k / s, \quad s = 2`}
-            />
+            <Eq tex={String.raw`\ell_k \mathrel{+}= e_k / s, \quad s = 2`} />
             <P>
-              Sensitivity <Tex>{String.raw`s = 2`}</Tex> means a
-              saturating +4/−4 split shifts the margin by 4
-              logit-units &mdash; exactly enough for base closure. The
-              grammar matches the game-theory stake-delta scale used
-              elsewhere; one mental model spans both. logType must
-              agree with magnitude (setup +0..+1, escalation +2..+3,
-              payoff +3..+4, twist ±3 against prior trend).
+              Sensitivity <Tex>{String.raw`s = 2`}</Tex> means a saturating
+              +4/−4 split shifts the margin by 4 logit-units &mdash; exactly
+              enough for base closure. The grammar matches the game-theory
+              stake-delta scale used elsewhere; one mental model spans both.
+              logType must agree with magnitude (setup +0..+1, escalation
+              +2..+3, payoff +3..+4, twist ±3 against prior trend).
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
               Volume decay — natural selection
             </h3>
-            <P>
-              Threads not touched by a delta lose volume geometrically:
-            </P>
+            <P>Threads not touched by a delta lose volume geometrically:</P>
             <Eq
               tex={String.raw`v \leftarrow \alpha \cdot v, \qquad \alpha = 0.9`}
             />
             <P>
-              Threads with <Tex>v &lt; 0.5</Tex> are <B>abandoned</B>{" "}
-              &mdash; out of the active belief system without being
-              closed. The belief system self-organises: threads that
-              matter accumulate volume; ignored threads slide off.
-              Resurrection costs{" "}
-              <Tex>{String.raw`\Delta v \geq 2`}</Tex> &mdash;
-              deliberate attention only.
+              Threads with <Tex>v &lt; 0.5</Tex> are <B>abandoned</B> &mdash;
+              out of the active belief system without being closed. The belief
+              system self-organises: threads that matter accumulate volume;
+              ignored threads slide off. Resurrection costs{" "}
+              <Tex>{String.raw`\Delta v \geq 2`}</Tex> &mdash; deliberate
+              attention only.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
@@ -2748,13 +2765,12 @@ export default function PaperPage() {
             </h3>
             <P>
               Stances can grow mid-story via{" "}
-              <code className="text-white/70">addOutcomes</code>{" "}
-              &mdash; when a scene opens a possibility that
-              didn&apos;t exist before (new contender, unexpected
-              option). New outcomes enter at{" "}
-              <Tex>{String.raw`\ell = 0`}</Tex>; same-scene evidence
-              can shift them. Closed stances reject expansion. A
-              delta that expands outcomes cannot also close.
+              <code className="text-white/70">addOutcomes</code> &mdash; when a
+              scene opens a possibility that didn&apos;t exist before (new
+              contender, unexpected option). New outcomes enter at{" "}
+              <Tex>{String.raw`\ell = 0`}</Tex>; same-scene evidence can shift
+              them. Closed stances reject expansion. A delta that expands
+              outcomes cannot also close.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
@@ -2762,67 +2778,65 @@ export default function PaperPage() {
             </h3>
             <P>
               A thread closes when the top-outcome margin exceeds a
-              volume-scaled threshold AND the closing scene emits a
-              committal logType (payoff or twist) with{" "}
-              <Tex>{String.raw`|e| \geq 3`}</Tex>:
+              volume-scaled threshold AND the closing scene emits a committal
+              logType (payoff or twist) with <Tex>{String.raw`|e| \geq 3`}</Tex>
+              :
             </P>
             <Eq
               tex={String.raw`\tau_{\text{eff}} = \tau_{\text{base}} \cdot \left(1 + \tfrac{1}{3} \ln\tfrac{v}{v_0}\right), \quad \tau_{\text{base}} = 3`}
             />
             <P>
-              <Tex>{String.raw`v_0`}</Tex> is opening volume (default
-              2). Heavy-attention threads need proportionally more
-              decisive finishes; side threads close on the base
-              threshold. Saturation alone doesn&apos;t trigger
-              closure &mdash; pseudoclose is explicitly prevented.
+              <Tex>{String.raw`v_0`}</Tex> is opening volume (default 2).
+              Heavy-attention threads need proportionally more decisive
+              finishes; side threads close on the base threshold. Saturation
+              alone doesn&apos;t trigger closure &mdash; pseudoclose is
+              explicitly prevented.
             </P>
             <P>
               On close, <B>resolution quality</B>{" "}
-              <Tex>{String.raw`q \in [0, 1]`}</Tex> is the geometric
-              mean of four factors: peak evidence at close, margin
-              over threshold, volume, and probability concentration.
-              Bare-minimum evidence with low volume scores ~0.3;
-              heavy stances closed on saturating two-sided evidence
-              score above 0.75.
+              <Tex>{String.raw`q \in [0, 1]`}</Tex> is the geometric mean of
+              four factors: peak evidence at close, margin over threshold,
+              volume, and probability concentration. Bare-minimum evidence with
+              low volume scores ~0.3; heavy stances closed on saturating
+              two-sided evidence score above 0.75.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
               Focus window — what generation sees
             </h3>
             <P>
-              Each scene, the top-K threads by <B>focus score</B>{" "}
-              surface to the generator:
+              Each scene, the top-K threads by <B>focus score</B> surface to the
+              generator:
             </P>
             <Eq
               tex={String.raw`\text{focus}(t) = v_t \cdot H(p_t) \cdot (1 + \sigma_t) \cdot \gamma^{\text{gap}_t}, \quad \gamma = 0.95`}
             />
             <P>
               <Tex>{String.raw`H(p_t)`}</Tex> is normalised entropy;{" "}
-              <Tex>{String.raw`\text{gap}_t`}</Tex> is scenes since
-              last touched. High focus = high volume + genuinely
-              contested + recently moved. Saturating, closed, and
-              abandoned threads score zero. <Tex>K = 6</Tex>.
+              <Tex>{String.raw`\text{gap}_t`}</Tex> is scenes since last
+              touched. High focus = high volume + genuinely contested + recently
+              moved. Saturating, closed, and abandoned threads score zero.{" "}
+              <Tex>K = 6</Tex>.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
               Belief system as narrative prior
             </h3>
             <P>
-              Beyond measurement, the belief system shapes generation.
-              Current stances surface to the generator as a soft
-              prior, not a constraint. Committed threads (
-              <Tex>{String.raw`p \geq 0.75`}</Tex>) lean the next
-              scene toward that outcome unless the logType is{" "}
-              <code className="text-white/70">twist</code>; contested
-              stances (<Tex>{String.raw`H \geq 0.9`}</Tex>) signal a
-              crossroads where either side is fair game; high
-              volatility grants licence for a twist; low volatility +
-              high probability is saturation, ripe for closure. Good
-              works briefly spike uncertainty at key pivots: twists
-              and reversals raise aggregate entropy and the reader
-              re-engages. Flat entropy is mid-work drag; compounding
-              entropy spikes followed by clean collapses are the
-              rhythm of a gripping work.
+              Beyond measurement, the belief system shapes generation. Current
+              stances surface to the generator as a soft prior, not a
+              constraint. Committed threads (
+              <Tex>{String.raw`p \geq 0.75`}</Tex>) lean the next scene toward
+              that outcome unless the logType is{" "}
+              <code className="text-white/70">twist</code>; contested stances (
+              <Tex>{String.raw`H \geq 0.9`}</Tex>) signal a crossroads where
+              either side is fair game; high volatility grants licence for a
+              twist; low volatility + high probability is saturation, ripe for
+              closure. Good works briefly spike uncertainty at key pivots:
+              twists and reversals raise aggregate entropy and the reader
+              re-engages. Flat entropy is mid-work drag; compounding entropy
+              spikes followed by clean collapses are the rhythm of a gripping
+              work.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
@@ -2830,48 +2844,45 @@ export default function PaperPage() {
             </h3>
             <P>
               Fate is one of three forces. The{" "}
-              <a href="#planning" className="underline hover:text-white/80">reasoning graph</a>
-              {" "}is where they converge &mdash; the belief system
-              exerts pressure, world entities carry agency, system
-              rules impose constraints. Fate is a voice in the
-              argument, not the conductor.
+              <a href="#planning" className="underline hover:text-white/80">
+                reasoning graph
+              </a>{" "}
+              is where they converge &mdash; the belief system exerts pressure,
+              world entities carry agency, system rules impose constraints. Fate
+              is a voice in the argument, not the conductor.
             </P>
             <P>
-              The reasoning graph does <em>not</em> force threads to
-              resolve. It receives each active thread tagged
-              &mdash; LEANS, ACTIVE, CONTESTED, VOLATILE, FADING &mdash;
-              and treats it as pressure. Strong-LEANS threads with
-              volume earn fate nodes that land; CONTESTED threads often
-              earn nothing (a legitimate pivot-arc shape); FADING
-              threads decay. Fate nodes are what the reasoning
+              The reasoning graph does <em>not</em> force threads to resolve. It
+              receives each active thread tagged &mdash; LEANS, ACTIVE,
+              CONTESTED, VOLATILE, FADING &mdash; and treats it as pressure.
+              Strong-LEANS threads with volume earn fate nodes that land;
+              CONTESTED threads often earn nothing (a legitimate pivot-arc
+              shape); FADING threads decay. Fate nodes are what the reasoning
               concludes, not what it was forced to serve.
             </P>
             <P>
-              The loop closes: scenes are reality landing → the
-              belief system revises → the next arc&apos;s reasoning
-              graph sees a new stance → the graph lands what the
-              updated stance can honestly earn → more reality.
-              Threads that matter accrue volume and close with high
-              resolution quality; threads that stop mattering decay
-              into abandonment. No explicit horizon primitive is
-              needed &mdash; natural selection through volume decay
-              and focus-window ranking handles the lifecycle. What
-              the world view <em>is</em> at any moment is just where
-              this loop has carried it.
+              The loop closes: scenes are reality landing → the belief system
+              revises → the next arc&apos;s reasoning graph sees a new stance →
+              the graph lands what the updated stance can honestly earn → more
+              reality. Threads that matter accrue volume and close with high
+              resolution quality; threads that stop mattering decay into
+              abandonment. No explicit horizon primitive is needed &mdash;
+              natural selection through volume decay and focus-window ranking
+              handles the lifecycle. What the world view <em>is</em> at any
+              moment is just where this loop has carried it.
             </P>
           </Section>
 
           {/* ── Validation ──────────────────────────────────────────── */}
           <Section id="validation" label="Validation">
             <P>
-              The claim is testable. The activity curve below was
-              computed entirely from structural deltas extracted from{" "}
-              <em>Harry Potter and the Sorcerer&apos;s Stone</em> — no
-              prose scored, no scenes hand-ranked. The annotations
-              land where they do because the formulas read the book
-              the way a reader does, deterministically.{" "}
-              <B>Orange</B> above zero: scenes where fate and world
-              move together. <B>Light blue</B> below: the quieter
+              The claim is testable. The activity curve below was computed
+              entirely from structural deltas extracted from{" "}
+              <em>Harry Potter and the Sorcerer&apos;s Stone</em> — no prose
+              scored, no scenes hand-ranked. The annotations land where they do
+              because the formulas read the book the way a reader does,
+              deterministically. <B>Orange</B> above zero: scenes where fate and
+              world move together. <B>Light blue</B> below: the quieter
               stretches that set up the next peak.
             </P>
 
@@ -2881,16 +2892,15 @@ export default function PaperPage() {
               // analysis: raw forces → rank→Gaussian normalise →
               // A = w_F·F + w_W·W + w_S·S (PCA weights) → Gaussian smooth (σ=1.5)
               const activity = [
-                -0.204, -0.113, -0.092, -0.191, -0.325, -0.366, -0.309,
-                -0.255, -0.261, -0.272, -0.180, 0.016, 0.156, 0.141,
-                0.096, 0.164, 0.317, 0.475, 0.565, 0.499, 0.302, 0.117,
-                0.041, 0.047, 0.031, -0.055, -0.087, 0.032, 0.172, 0.234,
-                0.298, 0.376, 0.338, 0.170, 0.044, 0.040, 0.015, -0.140,
-                -0.305, -0.312, -0.186, -0.063, -0.001, 0.039, 0.118,
-                0.231, 0.267, 0.135, -0.099, -0.278, -0.350, -0.419,
-                -0.510, -0.495, -0.341, -0.163, -0.079, -0.094, -0.115,
-                -0.093, -0.080, -0.115, -0.157, -0.155, -0.095, 0.016,
-                0.151, 0.286, 0.392, 0.412, 0.316, 0.121, -0.141,
+                -0.204, -0.113, -0.092, -0.191, -0.325, -0.366, -0.309, -0.255,
+                -0.261, -0.272, -0.18, 0.016, 0.156, 0.141, 0.096, 0.164, 0.317,
+                0.475, 0.565, 0.499, 0.302, 0.117, 0.041, 0.047, 0.031, -0.055,
+                -0.087, 0.032, 0.172, 0.234, 0.298, 0.376, 0.338, 0.17, 0.044,
+                0.04, 0.015, -0.14, -0.305, -0.312, -0.186, -0.063, -0.001,
+                0.039, 0.118, 0.231, 0.267, 0.135, -0.099, -0.278, -0.35,
+                -0.419, -0.51, -0.495, -0.341, -0.163, -0.079, -0.094, -0.115,
+                -0.093, -0.08, -0.115, -0.157, -0.155, -0.095, 0.016, 0.151,
+                0.286, 0.392, 0.412, 0.316, 0.121, -0.141,
               ];
               const n = activity.length;
               const W = 620,
@@ -2995,17 +3005,9 @@ export default function PaperPage() {
                     {/* High-activity region (above zero) — orange.
                         Path interpolates zero-crossings so the fill
                         meets the baseline cleanly between scenes. */}
-                    <path
-                      d={aboveD}
-                      fill="#F59E0B"
-                      fillOpacity="0.38"
-                    />
+                    <path d={aboveD} fill="#F59E0B" fillOpacity="0.38" />
                     {/* Low-activity region (below zero) — light blue. */}
-                    <path
-                      d={belowD}
-                      fill="#93C5FD"
-                      fillOpacity="0.32"
-                    />
+                    <path d={belowD} fill="#93C5FD" fillOpacity="0.32" />
                     {/* Activity line — thin so it does not dominate
                         the shaded regions. */}
                     <polyline
@@ -3082,10 +3084,10 @@ export default function PaperPage() {
                     })}
                   </svg>
                   <p className="text-[10px] text-white/30 text-center mt-2">
-                    Harry Potter and the Sorcerer&apos;s Stone &mdash;
-                    73-scene smoothed activity curve. Orange above
-                    zero marks high-activity scenes; light blue below
-                    marks quieter setup stretches.
+                    Harry Potter and the Sorcerer&apos;s Stone &mdash; 73-scene
+                    smoothed activity curve. Orange above zero marks
+                    high-activity scenes; light blue below marks quieter setup
+                    stretches.
                   </p>
                 </div>
               );
@@ -3093,52 +3095,49 @@ export default function PaperPage() {
 
             <P>
               The <B>peaks</B> line up with scenes where HP&apos;s three
-              channels fire together: Hagrid&apos;s reveal, the Gringotts
-              vault, the first Hogwarts lessons, the Flamel hunt, the
+              channels fire together: Hagrid&apos;s reveal, the Gringotts vault,
+              the first Hogwarts lessons, the Flamel hunt, the
               Quirrell-Voldemort confrontation. Threads commit, entities
-              transform, and the world&apos;s rules snap into focus at
-              once. The peaks are not chosen by taste; they emerge from
-              the deltas.
+              transform, and the world&apos;s rules snap into focus at once. The
+              peaks are not chosen by taste; they emerge from the deltas.
             </P>
             <P>
               The <B>valleys</B> are equally load-bearing. The Dursleys&apos;
-              opening normalcy, the three-headed-dog aftermath, the
-              winter stretch before the Forbidden Forest, the denouement
-              &mdash; none of these resolve a thread. They are{" "}
-              <B>turning points</B>: tension is seeded, a boundary is
-              crossed, a character glimpses the unknown. Structurally
-              they contribute less to each force, so the curve dips; the
-              energy they store is what makes the next peak feel earned.
+              opening normalcy, the three-headed-dog aftermath, the winter
+              stretch before the Forbidden Forest, the denouement &mdash; none
+              of these resolve a thread. They are <B>turning points</B>: tension
+              is seeded, a boundary is crossed, a character glimpses the
+              unknown. Structurally they contribute less to each force, so the
+              curve dips; the energy they store is what makes the next peak feel
+              earned.
             </P>
             <P>
-              Peaks are where the story <B>commits</B>; valleys are where
-              it <B>launches</B>. The rhythm between them is the
-              narrative&apos;s pulse, and both sides of the zero line
-              carry weight.
+              Peaks are where the story <B>commits</B>; valleys are where it{" "}
+              <B>launches</B>. The rhythm between them is the narrative&apos;s
+              pulse, and both sides of the zero line carry weight.
             </P>
             <P>
               The core claim:{" "}
-              <B>deterministic formulas applied to structural deltas
-              recover the dramatic shape of a narrative</B>. The LLM
-              extracts deltas at low temperature; the math is fully
-              deterministic. Cross-run validation confirms stable
-              rankings, and the same formulas drive generation &mdash;
-              the measurement <em>is</em> the objective function.
+              <B>
+                deterministic formulas applied to structural deltas recover the
+                dramatic shape of a narrative
+              </B>
+              . The LLM extracts deltas at low temperature; the math is fully
+              deterministic. Cross-run validation confirms stable rankings, and
+              the same formulas drive generation &mdash; the measurement{" "}
+              <em>is</em> the objective function.
             </P>
             <P>
-              The implication runs past the proof of concept.
-              Recovering <em>Harry Potter</em>&apos;s dramatic shape
-              from delta arithmetic alone extends a small empirical
-              tradition &mdash; emotional-arc and narrative-shape
-              recovery from text
+              The implication runs past the proof of concept. Recovering{" "}
+              <em>Harry Potter</em>&apos;s dramatic shape from delta arithmetic
+              alone extends a small empirical tradition &mdash; emotional-arc
+              and narrative-shape recovery from text
               <Cite id="reagan2016" label="Reagan et al. 2016" />
-              <Cite id="boyd2020" label="Boyd et al. 2020" />{" "}
-              &mdash; by reading not just sentiment but the three
-              structural force-fields beneath it.{" "}
-              <B>Story has measurable physics.</B> The same math that
-              reads a 73-scene novel reads a 73-turn campaign, a
-              73-paragraph paper, a 73-step strategy plan &mdash; not
-              by analogy, by physics.
+              <Cite id="boyd2020" label="Boyd et al. 2020" /> &mdash; by reading
+              not just sentiment but the three structural force-fields beneath
+              it. <B>Story has measurable physics.</B> The same math that reads
+              a 73-scene novel reads a 73-turn campaign, a 73-paragraph paper, a
+              73-step strategy plan &mdash; not by analogy, by physics.
             </P>
           </Section>
 
@@ -3169,9 +3168,8 @@ export default function PaperPage() {
             </P>
 
             <P>
-              Each force is normalised against a reference mean so that
-              scores are comparable across works of different signatures
-              and lengths.
+              Each force is normalised against a reference mean so that scores
+              are comparable across works of different signatures and lengths.
             </P>
             <P>
               The overall score sums all four sub-grades:{" "}
@@ -3187,46 +3185,44 @@ export default function PaperPage() {
               average swing magnitude.
             </P>
             <P>
-              Forecast calibration is a separate ledger from narrative
-              grading. Probabilistic forecasts &mdash; thread-stance
-              probabilities over named outcomes, scenario softmax
-              cohorts &mdash; are scored against landed reality with a
-              strictly proper scoring rule
+              Forecast calibration is a separate ledger from narrative grading.
+              Probabilistic forecasts &mdash; thread-stance probabilities over
+              named outcomes, scenario softmax cohorts &mdash; are scored
+              against landed reality with a strictly proper scoring rule
               <Cite id="brier1950" label="Brier 1950" />
               <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />.
-              Strict propriety is the technical reason it&apos;s the
-              right tool: the rule is uniquely minimised by reporting
-              the operator&apos;s true belief, so honest reporting is
-              the dominant strategy.
+              Strict propriety is the technical reason it&apos;s the right tool:
+              the rule is uniquely minimised by reporting the operator&apos;s
+              true belief, so honest reporting is the dominant strategy.
             </P>
           </Section>
 
           {/* ── Embeddings & Proposition Classification ─────────────────── */}
           <Section id="embeddings" label="Embeddings">
             <P>
-              Forces operate at the scene level. Readers experience{" "}
-              <B>prose</B>, composed of <B>propositions</B> — atomic claims
-              that must be accepted as true within the world. &ldquo;Harry
-              has a lightning-bolt scar.&rdquo; &ldquo;The wand chooses the
-              wizard.&rdquo; Forces measure <B>what changes</B> in the
-              knowledge graph; propositions measure <B>what is stated</B> in
-              the prose. Every proposition is embedded as a 1536-dimensional
-              vector (OpenAI text-embedding-3-small
-              <Cite id="openai-emb2024" label="OpenAI 2024" />),
-              transforming prose into a geometric space where
-              similarity is distance
+              Forces operate at the scene level. Readers experience <B>prose</B>
+              , composed of <B>propositions</B> — atomic claims that must be
+              accepted as true within the world. &ldquo;Harry has a
+              lightning-bolt scar.&rdquo; &ldquo;The wand chooses the
+              wizard.&rdquo; Forces measure <B>what changes</B> in the knowledge
+              graph; propositions measure <B>what is stated</B> in the prose.
+              Every proposition is embedded as a 1536-dimensional vector (OpenAI
+              text-embedding-3-small
+              <Cite id="openai-emb2024" label="OpenAI 2024" />
+              ), transforming prose into a geometric space where similarity is
+              distance
               <Cite id="reimers2019" label="Reimers &amp; Gurevych 2019" />.
             </P>
             <P>
-              Coherent writing behaves <em>like</em> a <B>proof graph</B>:
-              each proposition introduces, derives from, or resolves prior
-              content. A plot hole reads as a broken inference chain, a
-              satisfying resolution as a deep tree closing. The honest
-              caveat: cosine similarity is <em>geometric approximation</em>,
-              not logical inference — two propositions can cluster tightly
-              from shared subject matter alone. The proof graph we recover
-              is therefore <em>soft</em> — a well-shaped prior surfacing
-              probable dependencies, not a verdict.
+              Coherent writing behaves <em>like</em> a <B>proof graph</B>: each
+              proposition introduces, derives from, or resolves prior content. A
+              plot hole reads as a broken inference chain, a satisfying
+              resolution as a deep tree closing. The honest caveat: cosine
+              similarity is <em>geometric approximation</em>, not logical
+              inference — two propositions can cluster tightly from shared
+              subject matter alone. The proof graph we recover is therefore{" "}
+              <em>soft</em> — a well-shaped prior surfacing probable
+              dependencies, not a verdict.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
@@ -3400,9 +3396,10 @@ export default function PaperPage() {
             <P>
               At the narrative level, each text is classified by which forces
               dominate its profile — a force is dominant if it scores &ge; 21
-              and falls within 5 points of the maximum. A &ldquo;Chronicle&rdquo;
-              (World + System) and a &ldquo;Stage&rdquo; (World-driven) demand
-              different pacing, thread management, and revision priorities.
+              and falls within 5 points of the maximum. A
+              &ldquo;Chronicle&rdquo; (World + System) and a &ldquo;Stage&rdquo;
+              (World-driven) demand different pacing, thread management, and
+              revision priorities.
             </P>
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
               {ARCHETYPES.map(({ key, name, desc, color }) => (
@@ -3541,22 +3538,53 @@ export default function PaperPage() {
               <a href="#planning" className="text-accent hover:underline">
                 causal reasoning graph
               </a>{" "}
-              classifies every node into eight typed roles across three
-              tiers. <B>Pressure</B> (fate, warning) forces change.{" "}
-              <B>Substrate</B> (character, location, artifact, system) is
-              what&rsquo;s changed. <B>Bridge</B> (reasoning, pattern)
-              connects them.
+              classifies every node into eight typed roles across three tiers.{" "}
+              <B>Pressure</B> (fate, warning) forces change. <B>Substrate</B>{" "}
+              (character, location, artifact, system) is what&rsquo;s changed.{" "}
+              <B>Bridge</B> (reasoning, pattern) connects them.
             </P>
             <div className="mt-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
               {[
-                { name: "fate",      color: "#EF4444", body: "a thread's gravitational pull — what must resolve, and in which direction" },
-                { name: "reasoning", color: "#A855F7", body: "a logical step connecting what fate needs to what entities can supply" },
-                { name: "character", color: "#22C55E", body: "an active agent whose position, knowledge, or relationships move the arc" },
-                { name: "location",  color: "#22D3EE", body: "a setting that enables or constrains what can happen" },
-                { name: "artifact",  color: "#F59E0B", body: "an object whose presence, transfer, or loss carries narrative weight" },
-                { name: "system",    color: "#3B82F6", body: "a rule of the world — magic, economics, social norm — that shapes action" },
-                { name: "pattern",   color: "#84CC16", body: "an expansion agent — unexpected collisions, emergent properties, creative surprise" },
-                { name: "warning",   color: "#F43F5E", body: "a subversion agent — predictable trajectories or unpaid costs to disrupt" },
+                {
+                  name: "fate",
+                  color: "#EF4444",
+                  body: "a thread's gravitational pull — what must resolve, and in which direction",
+                },
+                {
+                  name: "reasoning",
+                  color: "#A855F7",
+                  body: "a logical step connecting what fate needs to what entities can supply",
+                },
+                {
+                  name: "character",
+                  color: "#22C55E",
+                  body: "an active agent whose position, knowledge, or relationships move the arc",
+                },
+                {
+                  name: "location",
+                  color: "#22D3EE",
+                  body: "a setting that enables or constrains what can happen",
+                },
+                {
+                  name: "artifact",
+                  color: "#F59E0B",
+                  body: "an object whose presence, transfer, or loss carries narrative weight",
+                },
+                {
+                  name: "system",
+                  color: "#3B82F6",
+                  body: "a rule of the world — magic, economics, social norm — that shapes action",
+                },
+                {
+                  name: "pattern",
+                  color: "#84CC16",
+                  body: "an expansion agent — unexpected collisions, emergent properties, creative surprise",
+                },
+                {
+                  name: "warning",
+                  color: "#F43F5E",
+                  body: "a subversion agent — predictable trajectories or unpaid costs to disrupt",
+                },
               ].map(({ name, color, body }) => (
                 <div
                   key={name}
@@ -3573,24 +3601,22 @@ export default function PaperPage() {
               ))}
             </div>
             <P>
-              Edges carry equal semantic weight:{" "}
-              <em>requires</em> (the workhorse),{" "}
-              <em>enables</em>, <em>constrains</em>, <em>risks</em>,{" "}
+              Edges carry equal semantic weight: <em>requires</em> (the
+              workhorse), <em>enables</em>, <em>constrains</em>, <em>risks</em>,{" "}
               <em>causes</em>, <em>reveals</em>, <em>develops</em>,{" "}
-              <em>resolves</em>. Edge type shapes both how the LLM walks
-              the graph during scene generation and how the visual tree
-              lays out.
+              <em>resolves</em>. Edge type shapes both how the LLM walks the
+              graph during scene generation and how the visual tree lays out.
             </P>
           </Section>
 
           {/* ── Research Methods ──────────────────────────────────────── */}
           <Section id="research" label="Research Methods">
             <P>
-              Forces and embeddings measure what&rsquo;s <B>on the page</B>.
-              A knowledge graph becomes a living world only when it is{" "}
+              Forces and embeddings measure what&rsquo;s <B>on the page</B>. A
+              knowledge graph becomes a living world only when it is{" "}
               <em>probed</em>. Four instruments compose a{" "}
-              <B>four-layer diagnostic</B> of a world&rsquo;s interior —
-              each revealing a structure the prose never summarises:
+              <B>four-layer diagnostic</B> of a world&rsquo;s interior — each
+              revealing a structure the prose never summarises:
             </P>
             <div className="mt-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
               {[
@@ -3619,9 +3645,17 @@ export default function PaperPage() {
                   color: "#F97316",
                 },
               ].map(({ name, caption, body, color }) => (
-                <div key={name} className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2">
+                <div
+                  key={name}
+                  className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2"
+                >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="uppercase tracking-wider font-mono text-[10px]" style={{ color }}>{name}</span>
+                    <span
+                      className="uppercase tracking-wider font-mono text-[10px]"
+                      style={{ color }}
+                    >
+                      {name}
+                    </span>
                     <span className="text-white/30 text-[10px]">{caption}</span>
                   </div>
                   <span className="text-white/55">{body}</span>
@@ -3629,24 +3663,23 @@ export default function PaperPage() {
               ))}
             </div>
             <P>
-              Every respondent answers in-character from its own world-
-              graph continuity, grounded in what that specific entity
-              knows. ELO
+              Every respondent answers in-character from its own world- graph
+              continuity, grounded in what that specific entity knows. ELO
               <Cite id="elo1978" label="Elo 1978" />
-              <Cite id="glickman1999" label="Glickman 1999" />{" "}
-              uses a continuous margin rather than binary W/L:
+              <Cite id="glickman1999" label="Glickman 1999" /> uses a continuous
+              margin rather than binary W/L:
             </P>
             <Eq
               label="Margin score from A's perspective"
               tex="s_A = \mathrm{clamp}\left(0.5 + \frac{\Delta_A - \Delta_B}{16},\ 0,\ 1\right)"
             />
             <P>
-              Surveys sample breadth, interviews profile one mind, game
-              theory names the strategic shape of a beat, ELO tracks who
-              accumulates advantage. Narrative and strategic structure
-              are orthogonal: a force-balanced scene can contain an
-              unresolved prisoner&rsquo;s dilemma, and that orthogonality
-              is what makes the fourth layer informative.
+              Surveys sample breadth, interviews profile one mind, game theory
+              names the strategic shape of a beat, ELO tracks who accumulates
+              advantage. Narrative and strategic structure are orthogonal: a
+              force-balanced scene can contain an unresolved prisoner&rsquo;s
+              dilemma, and that orthogonality is what makes the fourth layer
+              informative.
             </P>
           </Section>
 
@@ -3664,21 +3697,19 @@ export default function PaperPage() {
               graph.
             </P>
             <P>
-              The architecture preserves this graph explicitly. Before
-              any scene of an arc is generated, a{" "}
-              <B>causal reasoning graph</B> is built: a typed graph of
-              what must happen and why. Scenes then execute the graph
-              rather than improvising local transitions. A longer-lived{" "}
-              <B>mode graph</B> sits beneath every arc &mdash; the
-              working model of the world&apos;s patterns, conventions,
-              attractors, agents, rules, pressures, and landmarks &mdash;
-              so each CRG reasons within the same world-physics rather
-              than re-deriving it. Loose observations and source
-              fragments queue in an editable <B>driver</B> surface until
-              they fold into one of these graphs and become canonical.
-              The node and edge taxonomy &mdash; eight node types across
-              pressure, substrate, and bridge tiers, plus eight edge
-              types &mdash; is enumerated in the{" "}
+              The architecture preserves this graph explicitly. Before any scene
+              of an arc is generated, a <B>causal reasoning graph</B> is built:
+              a typed graph of what must happen and why. Scenes then execute the
+              graph rather than improvising local transitions. A longer-lived{" "}
+              <B>mode graph</B> sits beneath every arc &mdash; the working model
+              of the world&apos;s patterns, conventions, attractors, agents,
+              rules, pressures, and landmarks &mdash; so each CRG reasons within
+              the same world-physics rather than re-deriving it. Loose
+              observations and source fragments queue in an editable{" "}
+              <B>driver</B> surface until they fold into one of these graphs and
+              become canonical. The node and edge taxonomy &mdash; eight node
+              types across pressure, substrate, and bridge tiers, plus eight
+              edge types &mdash; is enumerated in the{" "}
               <a href="#classification" className="text-accent hover:underline">
                 Classification
               </a>{" "}
@@ -3692,18 +3723,16 @@ export default function PaperPage() {
               <em>How</em> the graph is built is as structural a choice as
               what&rsquo;s in it. Four modes cover the 2&times;2 of{" "}
               <B>direction</B> (forward from a premise ↔ backward from an
-              outcome) and <B>scope</B> (selective — commit to one ↔
-              expansive — keep many). The four map onto the classical
-              epistemological typology: <em>abduction</em>{" "}
-              <Cite id="peirce1903" label="Peirce 1903" /> as inference
-              to the best explanation, <em>deduction</em> and{" "}
-              <em>induction</em> in their textbook senses, and{" "}
-              <em>divergent</em> thinking as the named cognitive mode
-              for expansive ideation
-              <Cite id="guilford1967" label="Guilford 1967" />.
-              Click through the animation below to see each
-              mode&rsquo;s distinct shape; the prose then unpacks how
-              each actually builds a graph.
+              outcome) and <B>scope</B> (selective — commit to one ↔ expansive —
+              keep many). The four map onto the classical epistemological
+              typology: <em>abduction</em>{" "}
+              <Cite id="peirce1903" label="Peirce 1903" /> as inference to the
+              best explanation, <em>deduction</em> and <em>induction</em> in
+              their textbook senses, and <em>divergent</em> thinking as the
+              named cognitive mode for expansive ideation
+              <Cite id="guilford1967" label="Guilford 1967" />. Click through
+              the animation below to see each mode&rsquo;s distinct shape; the
+              prose then unpacks how each actually builds a graph.
             </P>
 
             {/* ── Interactive thinking-mode animation ─────────────── */}
@@ -3718,15 +3747,16 @@ export default function PaperPage() {
                   note: "default",
                   body: (
                     <>
-                      Start from what the arc must end at — a thread
-                      resolution, a character turn, a payoff — and ask{" "}
-                      <em>which hypothesis, among competitors, best
-                      produces this?</em> The engine generates several
-                      candidate causal chains in parallel, then commits to
-                      the strongest. Anchor discipline keeps the rejected
-                      lanes visible as it builds; once the first prior
-                      commits, abduction can silently flip into deduction
-                      and stop considering alternatives.
+                      Start from what the arc must end at — a thread resolution,
+                      a character turn, a payoff — and ask{" "}
+                      <em>
+                        which hypothesis, among competitors, best produces this?
+                      </em>{" "}
+                      The engine generates several candidate causal chains in
+                      parallel, then commits to the strongest. Anchor discipline
+                      keeps the rejected lanes visible as it builds; once the
+                      first prior commits, abduction can silently flip into
+                      deduction and stop considering alternatives.
                     </>
                   ),
                 },
@@ -3736,13 +3766,12 @@ export default function PaperPage() {
                   color: "#FBBF24",
                   body: (
                     <>
-                      Start from one source — an entity, event, or thread
-                      — and branch into many possibilities without
-                      committing. A final check asks which leaf-pairs are{" "}
-                      <B>mutually exclusive</B>. The mode for{" "}
-                      <B>world expansion</B> and collision discovery, when
-                      the goal is surprising adjacencies rather than a
-                      specific outcome.
+                      Start from one source — an entity, event, or thread — and
+                      branch into many possibilities without committing. A final
+                      check asks which leaf-pairs are <B>mutually exclusive</B>.
+                      The mode for <B>world expansion</B> and collision
+                      discovery, when the goal is surprising adjacencies rather
+                      than a specific outcome.
                     </>
                   ),
                 },
@@ -3753,12 +3782,12 @@ export default function PaperPage() {
                   body: (
                     <>
                       Given a premise, derive the{" "}
-                      <em>single necessary consequence</em> at each step.
-                      No branching, no alternatives. The mode for arcs
-                      where the premise <B>fully determines the
-                      outcome</B> — siege logistics, inheritance politics,
-                      the endgame of a trap already walked into. Branching
-                      means drift into divergent and must correct.
+                      <em>single necessary consequence</em> at each step. No
+                      branching, no alternatives. The mode for arcs where the
+                      premise <B>fully determines the outcome</B> — siege
+                      logistics, inheritance politics, the endgame of a trap
+                      already walked into. Branching means drift into divergent
+                      and must correct.
                     </>
                   ),
                 },
@@ -3769,13 +3798,13 @@ export default function PaperPage() {
                   body: (
                     <>
                       Many observations → inferred principle. The engine
-                      collects prior events and asks: <em>what pattern
-                      underlies these?</em> The answer is promoted to a
-                      principle-level claim that governs future scenes. At
-                      least one <B>competing generalisation</B> survives
-                      as a live alternative. Useful for backfilling
-                      worldbuilding or surfacing a thematic claim the
-                      prose has been enacting implicitly.
+                      collects prior events and asks:{" "}
+                      <em>what pattern underlies these?</em> The answer is
+                      promoted to a principle-level claim that governs future
+                      scenes. At least one <B>competing generalisation</B>{" "}
+                      survives as a live alternative. Useful for backfilling
+                      worldbuilding or surfacing a thematic claim the prose has
+                      been enacting implicitly.
                     </>
                   ),
                 },
@@ -3811,54 +3840,49 @@ export default function PaperPage() {
             </div>
 
             <P>
-              Two further knobs shape the palette: <B>force preference</B>{" "}
-              (fate / world / system / chaos / freeform) weights the
-              node-kind mix, and <B>network bias</B> (inside / neutral /
-              outside) tilts activation toward hot-recurring or cold-fresh
-              entities. Each new arc also receives the <em>previous</em>{" "}
-              arc&rsquo;s graph with a divergence directive — commitments
-              must differ in kind, the reasoning chain must switch modes —
-              so successive arcs don&rsquo;t re-describe the same causal
-              spine.
+              Two further knobs shape the palette: <B>force preference</B> (fate
+              / world / system / chaos / freeform) weights the node-kind mix,
+              and <B>network bias</B> (inside / neutral / outside) tilts
+              activation toward hot-recurring or cold-fresh entities. Each new
+              arc also receives the <em>previous</em> arc&rsquo;s graph with a
+              divergence directive — commitments must differ in kind, the
+              reasoning chain must switch modes — so successive arcs don&rsquo;t
+              re-describe the same causal spine.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
               The Graph
             </h3>
             <P>
-              Whatever the mode, the object produced is the same: a small
-              typed graph. In the default abductive pass, generation does
-              not start from the current scene asking &ldquo;what happens
-              next?&rdquo; It starts from <B>fate</B> — the threads the
-              story owes the reader — and asks{" "}
-              <em>
-                what would have to be true for these threads to advance?
-              </em>{" "}
-              Each answer becomes a reasoning node, which pulls in the
-              entities that can fulfil it. Pattern and warning nodes
-              inject in parallel — patterns push for unexpected
-              collisions, warnings flag the predictable path so the arc
-              doesn&apos;t take it.
+              Whatever the mode, the object produced is the same: a small typed
+              graph. In the default abductive pass, generation does not start
+              from the current scene asking &ldquo;what happens next?&rdquo; It
+              starts from <B>fate</B> — the threads the story owes the reader —
+              and asks{" "}
+              <em>what would have to be true for these threads to advance?</em>{" "}
+              Each answer becomes a reasoning node, which pulls in the entities
+              that can fulfil it. Pattern and warning nodes inject in parallel —
+              patterns push for unexpected collisions, warnings flag the
+              predictable path so the arc doesn&apos;t take it.
             </P>
             <P>
               Edges carry equal semantic weight. <em>Requires</em> is the
-              workhorse (&ldquo;what must be true for this to
-              happen&rdquo;), joined by <em>enables</em>,{" "}
-              <em>constrains</em>, <em>risks</em>, <em>causes</em>,{" "}
-              <em>reveals</em>, <em>develops</em>, and <em>resolves</em>.
-              The result is a small causal graph — typically 8–20 nodes per
-              arc — that the LLM walks as it generates. Scenes{" "}
-              <em>execute</em> the graph; threads advance because an entity
-              was forced to decide, not because the prompt said so.
+              workhorse (&ldquo;what must be true for this to happen&rdquo;),
+              joined by <em>enables</em>, <em>constrains</em>, <em>risks</em>,{" "}
+              <em>causes</em>, <em>reveals</em>, <em>develops</em>, and{" "}
+              <em>resolves</em>. The result is a small causal graph — typically
+              8–20 nodes per arc — that the LLM walks as it generates. Scenes{" "}
+              <em>execute</em> the graph; threads advance because an entity was
+              forced to decide, not because the prompt said so.
             </P>
             <P>
-              Below, a worked example: a causal reasoning graph built for
-              a single arc. Fate nodes sit at the top (the threads the arc
-              owes the reader), reasoning nodes bridge downward, and
-              character / location / artifact / system nodes ground the
-              chain in specifics. A pattern node and a warning node inject
-              sideways — one pushing for unexpected collision, one
-              flagging the predictable path to route around.
+              Below, a worked example: a causal reasoning graph built for a
+              single arc. Fate nodes sit at the top (the threads the arc owes
+              the reader), reasoning nodes bridge downward, and character /
+              location / artifact / system nodes ground the chain in specifics.
+              A pattern node and a warning node inject sideways — one pushing
+              for unexpected collision, one flagging the predictable path to
+              route around.
             </P>
             <ReasoningGraphDiagram />
 
@@ -3880,20 +3904,19 @@ export default function PaperPage() {
           <Section id="variables" label="Variable Scenarios">
             <P>
               Causal reasoning commits to <em>one</em> chain — the arc&apos;s
-              spine. <B>Variable scenario modelling</B> is the
-              complement: a cohort of timelines with relative
-              probabilities. The CRG asks <em>what must happen and why</em>;
-              variables ask <em>what could happen, and how likely</em>.
+              spine. <B>Variable scenario modelling</B> is the complement: a
+              cohort of timelines with relative probabilities. The CRG asks{" "}
+              <em>what must happen and why</em>; variables ask{" "}
+              <em>what could happen, and how likely</em>.
             </P>
             <P>
               The arc decomposes into a small <B>pool of variables</B> — the
-              load-bearing forces that most reshape trajectory if they
-              shift. Each <B>scenario</B> is one coordination over that
-              pool: a pattern of intensities (0 off → 4 extreme). A{" "}
-              <B>priorLogit ∈ [-4, +4]</B> scores each scenario relative to
-              its siblings; softmax across the cohort produces the displayed
-              probability &mdash; the cohort reads as a <B>compass</B>{" "}
-              over possible continuations.
+              load-bearing forces that most reshape trajectory if they shift.
+              Each <B>scenario</B> is one coordination over that pool: a pattern
+              of intensities (0 off → 4 extreme). A <B>priorLogit ∈ [-4, +4]</B>{" "}
+              scores each scenario relative to its siblings; softmax across the
+              cohort produces the displayed probability &mdash; the cohort reads
+              as a <B>compass</B> over possible continuations.
             </P>
 
             <VariableScenarioDiagram />
@@ -3902,69 +3925,66 @@ export default function PaperPage() {
               Two surfaces, power-law shape
             </h3>
             <P>
-              <B>Present</B> — the arc&apos;s load-bearing variables right
-              now. <B>Future</B> — a cohort of next-arc scenarios over a
-              shared pool. Reality doesn&apos;t distribute uniformly: most
-              futures cluster near modal continuation; a thin tail covers
-              rupture. The cohort matches the shape it&apos;s drawn from —
-              tight when the possibility space is tight, fat-tailed when a
-              load-bearing mechanism could ignite. PriorLogit is
-              independent of intensity: intensity carries magnitude, the
-              logit carries rarity.
+              <B>Present</B> — the arc&apos;s load-bearing variables right now.{" "}
+              <B>Future</B> — a cohort of next-arc scenarios over a shared pool.
+              Reality doesn&apos;t distribute uniformly: most futures cluster
+              near modal continuation; a thin tail covers rupture. The cohort
+              matches the shape it&apos;s drawn from — tight when the
+              possibility space is tight, fat-tailed when a load-bearing
+              mechanism could ignite. PriorLogit is independent of intensity:
+              intensity carries magnitude, the logit carries rarity.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
               From scenarios to branches
             </h3>
             <P>
-              Scenarios drive <B>Scenarios</B>: one parallel arc
-              continuation per scenario. On commit, every scenario attaches
-              as a sister branch; the softmax-top scenario&apos;s branch
-              becomes active. Every committed run carries the variable
-              fingerprint that produced it, so the engine can compare what{" "}
-              <em>actually</em> played out against the prior the model
-              assigned.
+              Scenarios drive <B>Scenarios</B>: one parallel arc continuation
+              per scenario. On commit, every scenario attaches as a sister
+              branch; the softmax-top scenario&apos;s branch becomes active.
+              Every committed run carries the variable fingerprint that produced
+              it, so the engine can compare what <em>actually</em> played out
+              against the prior the model assigned.
             </P>
           </Section>
 
           {/* ── Prose Profiles ────────────────────────────────────────── */}
           <Section id="prose-profiles" label="Prose Profiles">
             <P>
-              Prose generation separates <B>content</B> (what is written)
-              from <B>accent</B> (how). Content comes from beat plans —
-              blueprints specifying the narrative work each paragraph must
-              perform. Accent comes from prose profiles — statistical
-              fingerprints of authorial voice reverse-engineered from
-              published works.
+              Prose generation separates <B>content</B> (what is written) from{" "}
+              <B>accent</B> (how). Content comes from beat plans — blueprints
+              specifying the narrative work each paragraph must perform. Accent
+              comes from prose profiles — statistical fingerprints of authorial
+              voice reverse-engineered from published works.
             </P>
 
             <P>
-              A <B>prose profile</B> has two components:{" "}
-              <Tex>{"(1)"}</Tex> a distribution over 8 delivery mechanisms —
-              the author&apos;s balance of dialogue, action, thought,
-              narration; <Tex>{"(2)"}</Tex> voice parameters — register,
-              stance, tense, rhetorical devices. Each beat in a plan is
-              classified by function (a 10-item taxonomy: breathe, inform,
-              advance, bond, turn, reveal, shift, expand, foreshadow,
-              resolve) and delivered through one of the 8 mechanisms.
+              A <B>prose profile</B> has two components: <Tex>{"(1)"}</Tex> a
+              distribution over 8 delivery mechanisms — the author&apos;s
+              balance of dialogue, action, thought, narration;{" "}
+              <Tex>{"(2)"}</Tex> voice parameters — register, stance, tense,
+              rhetorical devices. Each beat in a plan is classified by function
+              (a 10-item taxonomy: breathe, inform, advance, bond, turn, reveal,
+              shift, expand, foreshadow, resolve) and delivered through one of
+              the 8 mechanisms.
             </P>
 
             <P>
-              Profiles are extracted empirically: an LLM decomposes scenes
-              into typed beats classified against the taxonomy; mechanism
-              counts become a distribution. During generation, beat functions
-              are chosen by the LLM per scene; mechanisms sample from the
+              Profiles are extracted empirically: an LLM decomposes scenes into
+              typed beats classified against the taxonomy; mechanism counts
+              become a distribution. During generation, beat functions are
+              chosen by the LLM per scene; mechanisms sample from the
               distribution; voice parameters constrain each beat.
             </P>
 
             <P>
               The payoff is{" "}
-              <B>structural control without stylistic constraint</B>. Beat
-              plans scaffold what happens; profiles supply how it sounds.
-              Swap the profile and the same story renders in a different
-              authorial accent — a thriller in Orwell&apos;s introspective
-              voice produces psychological tension; the same story in
-              Rowling&apos;s dialogue-driven style produces kinetic urgency.
+              <B>structural control without stylistic constraint</B>. Beat plans
+              scaffold what happens; profiles supply how it sounds. Swap the
+              profile and the same story renders in a different authorial accent
+              — a thriller in Orwell&apos;s introspective voice produces
+              psychological tension; the same story in Rowling&apos;s
+              dialogue-driven style produces kinetic urgency.
             </P>
           </Section>
 
@@ -3972,15 +3992,13 @@ export default function PaperPage() {
           <Section id="markov" label="Markov Chains">
             <P>
               InkTide uses two layers of Markov chains
-              <Cite id="norris1998" label="Norris 1998" />. Layer 1
-              operates at the <strong>scene level</strong> &mdash;
-              sampling force profiles from an 8-state matrix to
-              control pacing. Layer 2 operates at the{" "}
-              <strong>beat level</strong> &mdash; sampling sequences
-              from a 10-state matrix over beat functions to control
-              prose texture. Both are derived the same way: classify
-              each unit, count consecutive transitions, normalise
-              rows.
+              <Cite id="norris1998" label="Norris 1998" />. Layer 1 operates at
+              the <strong>scene level</strong> &mdash; sampling force profiles
+              from an 8-state matrix to control pacing. Layer 2 operates at the{" "}
+              <strong>beat level</strong> &mdash; sampling sequences from a
+              10-state matrix over beat functions to control prose texture. Both
+              are derived the same way: classify each unit, count consecutive
+              transitions, normalise rows.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-3">
@@ -3991,9 +4009,9 @@ export default function PaperPage() {
               occupies one corner; consecutive scenes form an empirical Markov
               chain <Tex>{"T \\in \\mathbb{R}^{8 \\times 8}"}</Tex>, where{" "}
               <Tex>{"T_{ij}"}</Tex> is the probability of moving from mode{" "}
-              <Tex>{"i"}</Tex> to mode <Tex>{"j"}</Tex>. Raw forces are
-              computed per scene, z-score normalised across the novel, and
-              classified into corners.
+              <Tex>{"i"}</Tex> to mode <Tex>{"j"}</Tex>. Raw forces are computed
+              per scene, z-score normalised across the novel, and classified
+              into corners.
             </P>
 
             {/* HP Pacing State Graph — all 49 transitions */}
@@ -4171,15 +4189,14 @@ export default function PaperPage() {
             </div>
 
             <P>
-              Harry Potter&apos;s pacing chain is broadly distributed:
-              entropy 2.78/3.00, self-loop rate 20.8%, fate-to-buildup ratio
-              35/38. Rest (16 visits) and Closure (15) lead, with Growth (12)
-              and Epoch (11) close behind — the story spends most of its time
-              either breathing or earning its peaks, with high-force scenes
-              punctuating rather than dominating. The strongest transitions
-              (Rest&rarr;Rest 5x, then Closure&rarr;Growth, Climax&rarr;Rest,
-              and Epoch&rarr;Closure each 4x) show a rhythm of build,
-              culminate, settle, build again.
+              Harry Potter&apos;s pacing chain is broadly distributed: entropy
+              2.78/3.00, self-loop rate 20.8%, fate-to-buildup ratio 35/38. Rest
+              (16 visits) and Closure (15) lead, with Growth (12) and Epoch (11)
+              close behind — the story spends most of its time either breathing
+              or earning its peaks, with high-force scenes punctuating rather
+              than dominating. The strongest transitions (Rest&rarr;Rest 5x,
+              then Closure&rarr;Growth, Climax&rarr;Rest, and Epoch&rarr;Closure
+              each 4x) show a rhythm of build, culminate, settle, build again.
             </P>
             <P>
               Other works produce strikingly different fingerprints.{" "}
@@ -4191,15 +4208,15 @@ export default function PaperPage() {
               work&apos;s transition matrix is a measurable authorial signature.
             </P>
             <P>
-              Before generating an arc, the engine walks the active matrix
-              for N steps, producing a sequence like{" "}
+              Before generating an arc, the engine walks the active matrix for N
+              steps, producing a sequence like{" "}
               <span className="font-mono text-white/50">
                 Growth &rarr; Lore &rarr; Climax &rarr; Rest &rarr; Growth
               </span>
               . Each step becomes a per-scene force target. Users pick a{" "}
-              <em>rhythm profile</em> derived from a published work: a story
-              on Rowling&apos;s matrix pivots constantly between peaks, one
-              on Orwell&apos;s sustains pressure then erupts. Whether Markov
+              <em>rhythm profile</em> derived from a published work: a story on
+              Rowling&apos;s matrix pivots constantly between peaks, one on
+              Orwell&apos;s sustains pressure then erupts. Whether Markov
               guidance beats unguided generation on composite score is a
               testable claim we have not yet run in controlled experiment.
             </P>
@@ -4208,12 +4225,12 @@ export default function PaperPage() {
               Layer 2: Beat Chains (Beat &rarr; Beat)
             </h3>
             <P>
-              Pacing chains control <em>which force profile</em> a scene
-              hits. Within a scene, the prose itself has structure — a
-              sequence of discrete <strong>beats</strong>, each a specific
-              narrative function delivered through a specific mechanism. An
-              LLM decomposes scenes into beats classified against a fixed
-              taxonomy of 10 functions and 8 mechanisms.
+              Pacing chains control <em>which force profile</em> a scene hits.
+              Within a scene, the prose itself has structure — a sequence of
+              discrete <strong>beats</strong>, each a specific narrative
+              function delivered through a specific mechanism. An LLM decomposes
+              scenes into beats classified against a fixed taxonomy of 10
+              functions and 8 mechanisms.
             </P>
 
             <P>
@@ -4252,10 +4269,9 @@ export default function PaperPage() {
               plans from every scene of a published work, tally consecutive
               function&rarr;function transitions, normalise rows, and produce a
               Markov matrix <Tex>{"B \\in \\mathbb{R}^{10 \\times 10}"}</Tex>.
-              Applied to <em>Harry Potter and the Sorcerer&apos;s
-              Stone</em>, beat-plan extraction yielded 1,254 beats
-              across the 73-scene novel &mdash; roughly 17 beats per
-              scene:
+              Applied to <em>Harry Potter and the Sorcerer&apos;s Stone</em>,
+              beat-plan extraction yielded 1,254 beats across the 73-scene novel
+              &mdash; roughly 17 beats per scene:
             </P>
 
             {/* HP Beat Profile Graph — all 92 transitions */}
@@ -4491,21 +4507,20 @@ export default function PaperPage() {
             </div>
 
             <P>
-              The chain reveals <em>advance</em> as the dominant hub (329
-              beats, 26%) — momentum is Rowling&apos;s connective tissue.
-              The strongest single transition is{" "}
-              <em>inform &rarr; advance</em> (98x): knowledge delivery
-              triggers action. <em>Breathe</em> feeds almost exclusively into{" "}
-              <em>inform</em> (82x) and <em>advance</em> (56x) — atmosphere
-              exists to launch the next movement. All 100 pairs appear at
-              least once; the matrix is dense.
+              The chain reveals <em>advance</em> as the dominant hub (329 beats,
+              26%) — momentum is Rowling&apos;s connective tissue. The strongest
+              single transition is <em>inform &rarr; advance</em> (98x):
+              knowledge delivery triggers action. <em>Breathe</em> feeds almost
+              exclusively into <em>inform</em> (82x) and <em>advance</em> (56x)
+              — atmosphere exists to launch the next movement. All 100 pairs
+              appear at least once; the matrix is dense.
             </P>
 
             <P>
-              Other works shift the pattern. <em>Nineteen Eighty-Four</em>{" "}
-              gives reveal unusual prominence — a mind trapped between inner
-              world and outer surveillance. <em>Gatsby</em> leans on dialogue
-              and narration — Fitzgerald&apos;s observer-narrator reporting.{" "}
+              Other works shift the pattern. <em>Nineteen Eighty-Four</em> gives
+              reveal unusual prominence — a mind trapped between inner world and
+              outer surveillance. <em>Gatsby</em> leans on dialogue and
+              narration — Fitzgerald&apos;s observer-narrator reporting.{" "}
               <em>Alice</em> is advance-dominant with minimal bonding — a
               protagonist propelled through episodes without deepening
               relationships.
@@ -4523,25 +4538,23 @@ export default function PaperPage() {
               Combining the Chains
             </h3>
             <P>
-              Two independent chains, orthogonal axes:{" "}
-              <em>what happens</em> (LLM from narrative logic),{" "}
-              <em>how intensely</em> (scene-level pacing chain), and{" "}
-              <em>how it reads</em> (beat-level prose chain). Both derived
-              empirically from published works.
+              Two independent chains, orthogonal axes: <em>what happens</em>{" "}
+              (LLM from narrative logic), <em>how intensely</em> (scene-level
+              pacing chain), and <em>how it reads</em> (beat-level prose chain).
+              Both derived empirically from published works.
             </P>
           </Section>
 
           {/* ── Revision ──────────────────────────────────────────── */}
           <Section id="revision" label="Revision">
             <P>
-              First drafts are rough. <B>Evaluation</B> reads scene
-              summaries and assigns per-scene verdicts;{" "}
-              <B>reconstruction</B> creates a new versioned branch,
-              applying verdicts in parallel — edits revise content,
-              merges combine scenes, inserts fill gaps, moves
-              reposition without any LLM call, cuts are omitted. World
-              commits pass through at their original positions. The
-              original branch is never modified.
+              First drafts are rough. <B>Evaluation</B> reads scene summaries
+              and assigns per-scene verdicts; <B>reconstruction</B> creates a
+              new versioned branch, applying verdicts in parallel — edits revise
+              content, merges combine scenes, inserts fill gaps, moves
+              reposition without any LLM call, cuts are omitted. World commits
+              pass through at their original positions. The original branch is
+              never modified.
             </P>
 
             <div className="mt-4 space-y-1.5 text-[12px]">
@@ -4602,13 +4615,13 @@ export default function PaperPage() {
             </div>
 
             <P>
-              Evaluations can be <B>guided</B> with external feedback —
-              from another AI, a human editor, or the author&apos;s own
-              notes. Each reconstruction produces a versioned branch
-              (<em>v2</em>, <em>v3</em>, <em>v4</em>); the loop
-              converges in 2–3 passes. Structural branching uses git-
-              like reference sharing so a 200-scene narrative with 10
-              branches stores far fewer than 2000 scene objects.
+              Evaluations can be <B>guided</B> with external feedback — from
+              another AI, a human editor, or the author&apos;s own notes. Each
+              reconstruction produces a versioned branch (<em>v2</em>,{" "}
+              <em>v3</em>, <em>v4</em>); the loop converges in 2–3 passes.
+              Structural branching uses git- like reference sharing so a
+              200-scene narrative with 10 branches stores far fewer than 2000
+              scene objects.
             </P>
           </Section>
 
@@ -4616,239 +4629,221 @@ export default function PaperPage() {
           <Section id="multiplayer-wargaming" label="Multiplayer Wargaming">
             <P>
               Narrative is the validation substrate; strategy is the
-              destination. Same engine, same forces, same fork-and-
-              commit math &mdash; the leap is operator depth, not
-              engine change. The product shape is{" "}
-              <em>multiplayer wargaming</em>
+              destination. Same engine, same forces, same fork-and- commit math
+              &mdash; the leap is operator depth, not engine change. The product
+              shape is <em>multiplayer wargaming</em>
               <Cite id="perla1990" label="Perla 1990" />
-              <Cite id="schelling1960" label="Schelling 1960" />: the
-              client team on one
-              side, InkTide adversarial operators driving competitors
-              / regulators / customers on the other, every move
-              committed against a shared substrate that arbitrates
-              the rules. Real and simulated actors share the board.
-              The engine already carries what a wargame needs
-              &mdash; system graph for the rules, threads pricing
-              live questions, decision matrix scoring every move,
-              ELO keeping the ledger. Turn structure, side-aware POV
+              <Cite id="schelling1960" label="Schelling 1960" />: the client
+              team on one side, InkTide adversarial operators driving
+              competitors / regulators / customers on the other, every move
+              committed against a shared substrate that arbitrates the rules.
+              Real and simulated actors share the board. The engine already
+              carries what a wargame needs &mdash; system graph for the rules,
+              threads pricing live questions, decision matrix scoring every
+              move, ELO keeping the ledger. Turn structure, side-aware POV
               gating, referee loop are the rest.
             </P>
             <P>
-              <B>Play</B> &mdash; the wargame&apos;s concrete shape.
-              The <em>Compass</em> exposes the current decision space:
-              the load-bearing variables and the activations they
-              admit. Each operator is dealt a hand from their
-              actor&apos;s available moves, commits a card against
-              the space &mdash; <B>face-up</B> to commit publicly,{" "}
-              <B>face-down</B> to commit privately &mdash; and during
-              the commit-to-reveal window negotiates: disclosing
-              cards from the hand, trading information, proposing
-              deals, threatening defections, withholding. Empty
-              seats fill with AI agents from configurable profiles
-              (<em>compete</em> / <em>cooperate</em> / <em>extract</em>
-              {" "}/ <em>spoil</em>) playing the same hand against the
-              same Compass. Reveals resolve in declared order; the
-              decision matrix scores the round.
+              <B>Play</B> &mdash; the wargame&apos;s concrete shape. The{" "}
+              <em>Compass</em> exposes the current decision space: the
+              load-bearing variables and the activations they admit. Each
+              operator is dealt a hand from their actor&apos;s available moves,
+              commits a card against the space &mdash; <B>face-up</B> to commit
+              publicly, <B>face-down</B> to commit privately &mdash; and during
+              the commit-to-reveal window negotiates: disclosing cards from the
+              hand, trading information, proposing deals, threatening
+              defections, withholding. Empty seats fill with AI agents from
+              configurable profiles (<em>compete</em> / <em>cooperate</em> /{" "}
+              <em>extract</em> / <em>spoil</em>) playing the same hand against
+              the same Compass. Reveals resolve in declared order; the decision
+              matrix scores the round.
             </P>
             <P>
-              The engine then iterates the state one step forward.
-              The default narrator advances using the Compass
-              cohort; the operator can replace it with a custom
-              Compass &mdash; a scripted opponent, a market
-              simulator, a regulator&apos;s response model &mdash;
-              to shape the future state space deliberately. New
-              variables surface, old ones decay, hands redeal, the
-              next turn opens. Every commitment becomes a thread
-              delta, every reveal updates priors, every negotiated
-              agreement is a system rule the next move either honors
-              or breaks. <B>A deck dealt against a moving world, one
-              step at a time.</B>
+              The engine then iterates the state one step forward. The default
+              narrator advances using the Compass cohort; the operator can
+              replace it with a custom Compass &mdash; a scripted opponent, a
+              market simulator, a regulator&apos;s response model &mdash; to
+              shape the future state space deliberately. New variables surface,
+              old ones decay, hands redeal, the next turn opens. Every
+              commitment becomes a thread delta, every reveal updates priors,
+              every negotiated agreement is a system rule the next move either
+              honors or breaks.{" "}
+              <B>A deck dealt against a moving world, one step at a time.</B>
             </P>
             <P>
               Unaided executive judgment loses to systematic biases:
-              overconfidence on competitor response, anchoring on
-              first-mover assumptions, confirmation bias on the
-              chosen path. Kahneman, Lovallo &amp; Sibony&apos;s{" "}
-              <em>deliberate ignorance</em>
+              overconfidence on competitor response, anchoring on first-mover
+              assumptions, confirmation bias on the chosen path. Kahneman,
+              Lovallo &amp; Sibony&apos;s <em>deliberate ignorance</em>
               <Cite id="kahneman2011" label="Kahneman et al. 2011" />
               <Cite id="lovallo2003" label="Lovallo &amp; Kahneman 2003" />{" "}
-              holds &mdash; executives underweight competitor reaction
-              because modelling it is cognitively costly. Wargaming
-              makes the reaction structurally necessary.
+              holds &mdash; executives underweight competitor reaction because
+              modelling it is cognitively costly. Wargaming makes the reaction
+              structurally necessary.
             </P>
             <P>
               Three limits, each answered by the substrate.{" "}
               <B>Tacit knowledge</B>
-              <Cite id="polanyi1966" label="Polanyi 1966" />{" "}
-              resists formalisation &mdash; but the engine is
-              calibrated for foxes, and tacit knowledge IS captured
-              when it produces calibrated forecasts that outperform.{" "}
-              <B>Conceivability</B> &mdash; a simulation only explores
-              what its designers conceive &mdash; is unresolvable by
-              the engine alone; multiplayer is how human adversaries
-              surface what the model-builder cannot. <B>Goodhart</B>
+              <Cite id="polanyi1966" label="Polanyi 1966" /> resists
+              formalisation &mdash; but the engine is calibrated for foxes, and
+              tacit knowledge IS captured when it produces calibrated forecasts
+              that outperform. <B>Conceivability</B> &mdash; a simulation only
+              explores what its designers conceive &mdash; is unresolvable by
+              the engine alone; multiplayer is how human adversaries surface
+              what the model-builder cannot. <B>Goodhart</B>
               <Cite id="goodhart1975" label="Goodhart 1975" />
-              <Cite id="strathern1997" label="Strathern 1997" />{" "}
-              &mdash; players gaming the simulation rather than
-              reality &mdash; is mitigated by fork-and-commit: the
-              substrate updates against reality, not against itself.
-              Reality is the referee.
+              <Cite id="strathern1997" label="Strathern 1997" /> &mdash; players
+              gaming the simulation rather than reality &mdash; is mitigated by
+              fork-and-commit: the substrate updates against reality, not
+              against itself. Reality is the referee.
             </P>
           </Section>
 
           {/* ── Integration ──────────────────────────────────────────── */}
           <Section id="integration" label="Integration">
             <P>
-              <B>SAP for finance. Palantir for operations. InkTide for
-              strategic cognition itself.</B> After eighteen months a
-              client isn&apos;t subscribing &mdash; they&apos;re
-              operating on a digital twin of their strategic
-              position: thousands of analyst-hours, hundreds of
-              decisions, a calibrated record of how their industry
-              moved, all on one living model. Replicating that on a
-              competitor&apos;s stack costs eighteen months plus the
-              institutional memory that lived in it.{" "}
+              <B>
+                SAP for finance. Palantir for operations. InkTide for strategic
+                cognition itself.
+              </B>{" "}
+              After eighteen months a client isn&apos;t subscribing &mdash;
+              they&apos;re operating on a digital twin of their strategic
+              position: thousands of analyst-hours, hundreds of decisions, a
+              calibrated record of how their industry moved, all on one living
+              model. Replicating that on a competitor&apos;s stack costs
+              eighteen months plus the institutional memory that lived in it.{" "}
               <B>SAP-grade switching cost, not consulting-grade.</B>
             </P>
             <P>
-              Integrations are continuous, not one-time. A client
-              signs with three sources; they stay because new feeds
-              &mdash; CRM, competitive intel, strategy docs, analyst
-              subscriptions, board materials &mdash; land every
-              quarter and the model gets richer for each.{" "}
-              <B>The substrate is the client&apos;s world; integrations
-              are how it stays alive.</B>
+              Integrations are continuous, not one-time. A client signs with
+              three sources; they stay because new feeds &mdash; CRM,
+              competitive intel, strategy docs, analyst subscriptions, board
+              materials &mdash; land every quarter and the model gets richer for
+              each.{" "}
+              <B>
+                The substrate is the client&apos;s world; integrations are how
+                it stays alive.
+              </B>
             </P>
 
             <IntegrationRoadmap />
 
             <P>
-              The Snowflake / Fivetran lesson: own the connector
-              library, own the market. Each connector is real
-              engineering &mdash; auth, schema drift, rate limits,
-              entity reconciliation &mdash; but the catalog compounds.
-              The library is the durable asset; the engine earns its
-              keep against it.
+              The Snowflake / Fivetran lesson: own the connector library, own
+              the market. Each connector is real engineering &mdash; auth,
+              schema drift, rate limits, entity reconciliation &mdash; but the
+              catalog compounds. The library is the durable asset; the engine
+              earns its keep against it.
             </P>
             <P>
-              That&apos;s the <B>commercial</B> moat. The{" "}
-              <B>epistemic</B> moat compounds faster: every committed
-              fork, graded against what reality returned, teaches the
-              substrate how worlds actually move. Eighteen months
-              across fifty PE portcos isn&apos;t integration depth
-              &mdash; it&apos;s a calibrated prior on how mid-market
-              B2B companies behave under competitive pressure.
-              Snowflake owns connectors; we own{" "}
-              <B>calibrated world views of how industries actually
-              behave</B>.
+              That&apos;s the <B>commercial</B> moat. The <B>epistemic</B> moat
+              compounds faster: every committed fork, graded against what
+              reality returned, teaches the substrate how worlds actually move.
+              Eighteen months across fifty PE portcos isn&apos;t integration
+              depth &mdash; it&apos;s a calibrated prior on how mid-market B2B
+              companies behave under competitive pressure. Snowflake owns
+              connectors; we own{" "}
+              <B>calibrated world views of how industries actually behave</B>.
             </P>
             <P>
-              <B>First vertical: mid-market PE portcos.</B> PE firms
-              standardise tools across portfolio &mdash; one
-              fund-level reference opens 10&ndash;20 accounts.
-              Their portcos converge on a narrow stack (Salesforce
-              + Snowflake + SharePoint + one of AlphaSense /
-              PitchBook / S&amp;P Capital IQ), collapsing Phase 1
-              to ~six load-bearing connectors. PE owners demand
-              value-creation discipline as fiduciary obligation
-              &mdash; buyer with both budget and incentive. PE adds
-              its own dynamic: fund-level standardisation multiplies
-              access, but exit cycles introduce portco-level
-              turnover that the substrate has to survive &mdash;
-              calibrated priors carry through, the operator does
-              not. Second vertical falls out naturally: mid-market
-              B2B SaaS, same stack, same appetite.
+              <B>First vertical: mid-market PE portcos.</B> PE firms standardise
+              tools across portfolio &mdash; one fund-level reference opens
+              10&ndash;20 accounts. Their portcos converge on a narrow stack
+              (Salesforce + Snowflake + SharePoint + one of AlphaSense /
+              PitchBook / S&amp;P Capital IQ), collapsing Phase 1 to ~six
+              load-bearing connectors. PE owners demand value-creation
+              discipline as fiduciary obligation &mdash; buyer with both budget
+              and incentive. PE adds its own dynamic: fund-level standardisation
+              multiplies access, but exit cycles introduce portco-level turnover
+              that the substrate has to survive &mdash; calibrated priors carry
+              through, the operator does not. Second vertical falls out
+              naturally: mid-market B2B SaaS, same stack, same appetite.
             </P>
             <P>
-              With the moat defined &mdash; what the client
-              accumulates over time &mdash; the commercial case
-              justifies the timing.
+              With the moat defined &mdash; what the client accumulates over
+              time &mdash; the commercial case justifies the timing.
             </P>
           </Section>
 
           {/* ── Economics ──────────────────────────────────────────────── */}
           <Section id="economics" label="Economics">
             <P>
-              Strategy consulting runs on a structural contradiction.
-              A junior billed at <B>$450/hr</B> costs ~<B>$120</B> in
-              comp &mdash; ~<B>73%</B> margin per billable. AI that
-              compresses <B>70&ndash;85%</B> of junior work
-              doesn&apos;t shrink the pyramid; it collapses its base.
-              Per-engagement margin falls from ~<B>66%</B> toward{" "}
-              ~<B>39%</B>. Lilli, Gene, Bain&apos;s OpenAI tie are
-              efficiency plays cannibalising their own revenue.
-              Outcome-based pricing (~<B>25%</B> of McKinsey global
-              fees) accelerates the contradiction, not the way out.
+              Strategy consulting runs on a structural contradiction. A junior
+              billed at <B>$450/hr</B> costs ~<B>$120</B> in comp &mdash; ~
+              <B>73%</B> margin per billable. AI that compresses{" "}
+              <B>70&ndash;85%</B> of junior work doesn&apos;t shrink the
+              pyramid; it collapses its base. Per-engagement margin falls from ~
+              <B>66%</B> toward ~<B>39%</B>. Lilli, Gene, Bain&apos;s OpenAI tie
+              are efficiency plays cannibalising their own revenue.
+              Outcome-based pricing (~<B>25%</B> of McKinsey global fees)
+              accelerates the contradiction, not the way out.
             </P>
             <P>
-              The mid-market is what&apos;s been ceded.{" "}
-              ~<B>95%</B> of US firms (<B>$50M&ndash;$500M</B>{" "}
-              revenue) spend ~<B>$45B/yr</B> on strategy-adjacent
-              work from tier-2 firms and the Big Four &mdash; same
-              project unit, lower price. MBB itself has migrated
-              from <B>$500K</B> engagements to <B>$2M&ndash;$20M+</B>{" "}
-              transformations; the lower tier isn&apos;t served at
-              all. The opening is a different unit altogether:{" "}
+              The mid-market is what&apos;s been ceded. ~<B>95%</B> of US firms
+              (<B>$50M&ndash;$500M</B> revenue) spend ~<B>$45B/yr</B> on
+              strategy-adjacent work from tier-2 firms and the Big Four &mdash;
+              same project unit, lower price. MBB itself has migrated from{" "}
+              <B>$500K</B> engagements to <B>$2M&ndash;$20M+</B>{" "}
+              transformations; the lower tier isn&apos;t served at all. The
+              opening is a different unit altogether:{" "}
               <B>simulation-as-subscription</B>.
             </P>
             <P>
-              MBB can&apos;t disrupt itself. A partner selling a
-              $10K/month subscription is compensated less than
-              selling a $2M transformation, and partnership votes
-              elect on book of business. Response window:{" "}
-              ~<B>18 months</B> from a credible commercial launch
-              &mdash; the gravity of every prior compensation cycle
-              works against the subscription unit.
+              MBB can&apos;t disrupt itself. A partner selling a $10K/month
+              subscription is compensated less than selling a $2M
+              transformation, and partnership votes elect on book of business.
+              Response window: ~<B>18 months</B> from a credible commercial
+              launch &mdash; the gravity of every prior compensation cycle works
+              against the subscription unit.
             </P>
 
             <PricingTiers />
 
             <P>
-              Beneath each tier the engine runs in pennies. Labor is
-              where the cost lives &mdash; a thin layer of senior
-              facilitators replaces the pyramid; the substrate does
-              the analytical work juniors used to bill for. The math:
+              Beneath each tier the engine runs in pennies. Labor is where the
+              cost lives &mdash; a thin layer of senior facilitators replaces
+              the pyramid; the substrate does the analytical work juniors used
+              to bill for. The math:
             </P>
 
             <UnitEconomics />
 
             <P>
-              <B>Computation is fixed and cheap; data quality
-              decides the result; the integration layer is the work.</B>{" "}
-              Ship the engine. Embed in ten PE portcos. Build the
-              connectors the tenth client validates. Let the catalog
-              compound. Everything else &mdash; Scout self-service,
-              blended SaaS margins, the moat &mdash; falls out of
-              that.
+              <B>
+                Computation is fixed and cheap; data quality decides the result;
+                the integration layer is the work.
+              </B>{" "}
+              Ship the engine. Embed in ten PE portcos. Build the connectors the
+              tenth client validates. Let the catalog compound. Everything else
+              &mdash; Scout self-service, blended SaaS margins, the moat &mdash;
+              falls out of that.
             </P>
           </Section>
 
           {/* ── Coda ──────────────────────────────────────────────────── */}
           <Section id="coda" label="Coda">
             <P>
-              Step back from pricing and pipelines. What InkTide does
-              is <B>let an author raise an imagined society and watch
-              it think</B>. The author legislates the citizens, the
-              rules, the open questions; the substrate simulates how
-              the society moves under its own gravity.
+              Step back from pricing and pipelines. What InkTide does is{" "}
+              <B>let an author raise an imagined society and watch it think</B>.
+              The author legislates the citizens, the rules, the open questions;
+              the substrate simulates how the society moves under its own
+              gravity.
             </P>
             <P>
-              The relatable picture is a <em>bee hive</em> &mdash;
-              knowledge unevenly distributed, the queen never sees the
-              field, the colony moves as one body with no single bee
-              holding the map. But the hive evolved; the society
-              InkTide raises is <B>authored</B>. A history, a paper, a
-              novel, a wargame brief &mdash; every coherent text
-              authors a society. We make the implicit explicit:
-              extract it, simulate its futures, grade them against
-              what reality returned, sharpen the next iteration.
+              The relatable picture is a <em>bee hive</em> &mdash; knowledge
+              unevenly distributed, the queen never sees the field, the colony
+              moves as one body with no single bee holding the map. But the hive
+              evolved; the society InkTide raises is <B>authored</B>. A history,
+              a paper, a novel, a wargame brief &mdash; every coherent text
+              authors a society. We make the implicit explicit: extract it,
+              simulate its futures, grade them against what reality returned,
+              sharpen the next iteration.
             </P>
             <P>
-              The math, the connectors, the unit economics are how we
-              keep the promise. The promise is the substrate
-              civilisation uses to reason about its own long-horizon
-              questions &mdash; markets, campaigns, alliances,
-              doctrines, futures.{" "}
+              The math, the connectors, the unit economics are how we keep the
+              promise. The promise is the substrate civilisation uses to reason
+              about its own long-horizon questions &mdash; markets, campaigns,
+              alliances, doctrines, futures.{" "}
               <B>Pricing is the wedge. The wedge is not the bet.</B>
             </P>
           </Section>
@@ -4856,11 +4851,11 @@ export default function PaperPage() {
           {/* ── Bibliography ────────────────────────────────────────────── */}
           <Section id="bibliography" label="Bibliography">
             <P>
-              Inline citations follow author-year style and link to the
-              entries below. Each entry carries the canonical
-              publisher / DOI link first and open-access alternates
-              (arXiv, author PDF, archive) where available, so AI
-              ingestion can chain through to the primary source.
+              Inline citations follow author-year style and link to the entries
+              below. Each entry carries the canonical publisher / DOI link first
+              and open-access alternates (arXiv, author PDF, archive) where
+              available, so AI ingestion can chain through to the primary
+              source.
             </P>
 
             <div className="space-y-4 mt-8">
