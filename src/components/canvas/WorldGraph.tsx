@@ -223,6 +223,17 @@ export default function WorldGraph() {
     const width = svgRef.current.clientWidth || 800;
     const height = svgRef.current.clientHeight || 600;
 
+    // Capture the current zoom transform before wiping the SVG so a
+    // mid-rebuild scene change doesn't yank the user back to the
+    // default pan/zoom. Null means "no previous transform — use the
+    // initial centred 0.9 scale".
+    const previousTransform = svgRef.current
+      ? d3.zoomTransform(svgRef.current)
+      : null;
+    const hadPreviousTransform = previousTransform != null && (
+      previousTransform.k !== 1 || previousTransform.x !== 0 || previousTransform.y !== 0
+    );
+
     // Clear previous
     svg.selectAll('*').remove();
 
@@ -581,7 +592,13 @@ export default function WorldGraph() {
 
     svg.call(zoom);
     zoomRef.current = zoom;
-    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
+    // Restore the user's pan/zoom across scene-change rebuilds so the
+    // viewport stays where they left it. Only fall back to the default
+    // centred 0.9 scale on the very first build (no prior transform).
+    const initialTransform = hadPreviousTransform
+      ? previousTransform!
+      : d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9);
+    svg.call(zoom.transform, initialTransform);
 
     // Click on empty canvas → revert inspector to current scene
     svg.on('click', (event: MouseEvent) => {
