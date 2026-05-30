@@ -112,6 +112,39 @@ export default function LocationDetail({ locationId }: Props) {
         </p>
       )}
 
+      {/* Ties — characters with a significant bond to this location (at the current scene) */}
+      {(() => {
+        const sceneTies = getTiesAtScene(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+        const tiedIds = Array.from(sceneTies.get(locationId) ?? []);
+        const tied = tiedIds.map(id => narrative.characters[id]).filter(Boolean);
+        if (tied.length === 0) return null;
+        return (
+          <CollapsibleSection title="Ties" count={tied.length}>
+            <ul className="flex flex-col gap-1">
+              {tied.map((char) => (
+                <li key={char.id}>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'character', characterId: char.id } })}
+                    className="text-xs text-text-primary transition-colors hover:underline"
+                  >
+                    {char.name}
+                    <span className="ml-1.5 text-[9px] text-text-dim">{char.role}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        );
+      })()}
+
+      {/* Image prompt — editable, with AI suggest from continuity */}
+      <ImagePromptEditor
+        kind="location"
+        entityId={locationId}
+        value={location.imagePrompt}
+      />
+
       {/* Spatial connections */}
       {(() => {
         const allLocations = Object.values(narrative.locations);
@@ -165,40 +198,6 @@ export default function LocationDetail({ locationId }: Props) {
           </CollapsibleSection>
         );
       })()}
-
-      {/* Ties — characters with a significant bond to this location (at the current scene) */}
-      {(() => {
-        const sceneTies = getTiesAtScene(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
-        const tiedIds = Array.from(sceneTies.get(locationId) ?? []);
-        const tied = tiedIds.map(id => narrative.characters[id]).filter(Boolean);
-        if (tied.length === 0) return null;
-        return (
-          <CollapsibleSection title="Ties" count={tied.length}>
-            <ul className="flex flex-col gap-1">
-              {tied.map((char) => (
-                <li key={char.id}>
-                  <button
-                    type="button"
-                    onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'character', characterId: char.id } })}
-                    className="text-xs text-text-primary transition-colors hover:underline"
-                  >
-                    {char.name}
-                    <span className="ml-1.5 text-[9px] text-text-dim">{char.role}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </CollapsibleSection>
-        );
-      })()}
-
-      {/* Image prompt — editable, with AI suggest from continuity */}
-      <ImagePromptEditor
-        kind="location"
-        entityId={locationId}
-        value={location.imagePrompt}
-      />
-
 
       {/* Continuity — paginated, most recent first */}
       {worldNodes.length > 0 && (() => {

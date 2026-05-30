@@ -214,14 +214,20 @@ export default function MediaDrive() {
       });
     }
     // artifacts
-    return artifacts.filter((a) => a.imageUrl).map((a) => ({
-      id: a.id,
-      imageUrl: a.imageUrl!,
-      label: a.name,
-      sublabel: a.significance,
-      prompt: a.imagePrompt,
-      aspectClass: 'aspect-square',
-    }));
+    return artifacts.filter((a) => a.imageUrl).map((a) => {
+      const ownerName = a.parentId
+        ? (narrative?.characters[a.parentId]?.name ?? narrative?.locations[a.parentId]?.name)
+        : undefined;
+      const sublabel = ownerName ? `${a.significance} · of ${ownerName}` : a.significance;
+      return {
+        id: a.id,
+        imageUrl: a.imageUrl!,
+        label: a.name,
+        sublabel,
+        prompt: a.imagePrompt,
+        aspectClass: 'aspect-square',
+      };
+    });
   }, [tab, characters, locations, artifacts, narrative]);
 
   const openPreview = useCallback((id: string) => {
@@ -508,9 +514,11 @@ export default function MediaDrive() {
               className="flex-1 text-left min-w-0"
             >
               <p className="text-xs text-text-primary truncate">{loc.name}</p>
-              {loc.parentId && narrative.locations[loc.parentId] && (
-                <p className="text-[10px] text-text-dim truncate">in {narrative.locations[loc.parentId].name}</p>
-              )}
+              {(() => {
+                const parentName = loc.parentId ? narrative.locations[loc.parentId]?.name : undefined;
+                const sub = parentName ? `${loc.prominence} · in ${parentName}` : loc.prominence;
+                return <p className="text-[10px] text-text-dim truncate">{sub}</p>;
+              })()}
             </button>
             <GenerateButton onClick={() => generateLocationImage(loc)} disabled={generating !== null || batchBusy} generating={generating === loc.id} />
           </div>
@@ -533,7 +541,13 @@ export default function MediaDrive() {
               className="flex-1 text-left min-w-0"
             >
               <p className="text-xs text-text-primary truncate">{artifact.name}</p>
-              <p className="text-[10px] text-text-dim">{artifact.significance}</p>
+              {(() => {
+                const ownerName = artifact.parentId
+                  ? (narrative.characters[artifact.parentId]?.name ?? narrative.locations[artifact.parentId]?.name)
+                  : undefined;
+                const sub = ownerName ? `${artifact.significance} · of ${ownerName}` : artifact.significance;
+                return <p className="text-[10px] text-text-dim truncate">{sub}</p>;
+              })()}
             </button>
             <GenerateButton onClick={() => generateArtifactImage(artifact)} disabled={generating !== null || batchBusy} generating={generating === artifact.id} />
           </div>
