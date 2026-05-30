@@ -15,7 +15,7 @@
  * candidate continuations).
  */
 
-import { ANALYSIS_TEMPERATURE, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
+import { ANALYSIS_TEMPERATURE, INTERACTION_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import type { NarrativeState } from '@/types/narrative';
 import { resolveEntrySequence } from '@/lib/narrative-utils';
 import { buildBranchChatSystem, workIdentityFor } from '@/lib/prompts/paradigm';
@@ -260,7 +260,7 @@ export async function streamBranchChatTurn(opts: {
     onToken,
     MAX_TOKENS_DEFAULT,
     'branch-chat-turn',
-    DEFAULT_MODEL,
+    INTERACTION_MODEL,
     reasoningBudget,
     onReasoning,
     ANALYSIS_TEMPERATURE,

@@ -19,7 +19,7 @@ export const ANALYSIS_MAX_CORPUS_WORDS = 500_000;
 /** Default LLM model — fallback for everything not explicitly routed: evaluation,
  *  reviews, briefings, game theory, search synthesis, report generation,
  *  prose-rewrite changelog, ingest. */
-export const DEFAULT_MODEL = "google/gemini-2.5-flash";
+export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
 
 /** Model for scene generation — generateScenes, generateNarrative (intro arc),
  *  reconstruction edits/inserts/merges. */

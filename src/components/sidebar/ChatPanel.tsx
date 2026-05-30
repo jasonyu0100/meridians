@@ -35,7 +35,7 @@ import {
   buildWorldPersonaPrompt,
 } from "@/lib/prompts/chat";
 import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from "@/lib/ai/api";
-import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
+import { DEFAULT_MODEL, INTERACTION_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
 import {
   ReasoningCollapsed,
   ReasoningInline,
@@ -418,7 +418,7 @@ export default function ChatPanel() {
         (tok) => setStreamText((prev) => prev + tok),
         MAX_TOKENS_DEFAULT,
         "ChatPanel.send",
-        DEFAULT_MODEL,
+        INTERACTION_MODEL,
         reasoningBudget,
         (tok) => {
           reasoningAcc += tok;
