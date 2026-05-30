@@ -27,7 +27,7 @@ export function Markdown({
       className={
         isReading
           ? 'text-[14px] text-text-secondary leading-relaxed flex flex-col gap-4'
-          : 'text-[12.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5'
+          : 'text-[13.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5'
       }
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
@@ -92,7 +92,7 @@ const SHARED_COMPONENTS: Components = {
   ),
   table: ({ children }) => (
     <div className="overflow-x-auto -mx-1 my-1">
-      <table className="w-full border-collapse text-[12.5px]">{children}</table>
+      <table className="w-full border-collapse text-[13px]">{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead>{children}</thead>,

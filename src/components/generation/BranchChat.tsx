@@ -24,6 +24,7 @@ import {
   type ScopeState,
 } from "./BranchScopeControl";
 import { ReasoningCollapsed, ReasoningInline } from "./ReasoningStream";
+import { Markdown } from "@/components/ui/Markdown";
 
 /**
  * Branch Chat — multi-branch analytical chat with controlled scopes.
@@ -419,11 +420,9 @@ export function BranchChat({
               <ReasoningInline text={reasoningText} active={!streamText} />
             )}
             {streamText ? (
-              <div className="text-[12.5px] text-text-secondary leading-relaxed whitespace-pre-wrap">
-                {streamText}
-              </div>
+              <Markdown text={streamText} />
             ) : !reasoningText ? (
-              <div className="text-[12.5px] inline-flex gap-1 items-center text-text-dim/50">
+              <div className="text-[13.5px] inline-flex gap-1 items-center text-text-dim/50">
                 <span className="w-1 h-1 rounded-full bg-text-dim/40 animate-pulse" />
                 thinking
               </div>
@@ -490,8 +489,8 @@ function Message({ message }: { message: BranchChatMessage }) {
           <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
           You
         </div>
-        <div className="text-[12.5px] text-text-primary/90 leading-relaxed">
-          {message.content}
+        <div className="text-text-primary/90">
+          <Markdown text={message.content} />
         </div>
       </div>
     );
@@ -509,174 +508,6 @@ function Message({ message }: { message: BranchChatMessage }) {
       <Markdown text={message.content} />
     </div>
   );
-}
-
-// ── Lightweight markdown renderer ──────────────────────────────────────────
-//
-// Handles the small set of constructs the branch-chat prompts emit: H2/H3
-// headings, bold inline, italic inline, lists, paragraphs. Avoids pulling
-// react-markdown for a feature with this tight surface.
-
-function Markdown({ text }: { text: string }) {
-  const blocks = useMemo(() => parseMarkdownBlocks(text), [text]);
-  return (
-    <div className="text-[12.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5">
-      {blocks.map((b, i) => {
-        if (b.type === "h2") {
-          return (
-            <h3
-              key={i}
-              className="text-[11px] uppercase tracking-widest text-text-primary/85 font-semibold mt-2"
-            >
-              {renderInline(b.text)}
-            </h3>
-          );
-        }
-        if (b.type === "h3") {
-          return (
-            <h4 key={i} className="text-[11px] text-text-primary/75 font-semibold">
-              {renderInline(b.text)}
-            </h4>
-          );
-        }
-        if (b.type === "list") {
-          return (
-            <ul key={i} className="flex flex-col gap-1 pl-3">
-              {b.items.map((it, j) => (
-                <li key={j} className="text-text-secondary leading-relaxed">
-                  <span className="text-text-dim/50 mr-1.5">·</span>
-                  {renderInline(it)}
-                </li>
-              ))}
-            </ul>
-          );
-        }
-        return (
-          <p key={i} className="leading-relaxed">
-            {renderInline(b.text)}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
-
-type MdBlock =
-  | { type: "h2"; text: string }
-  | { type: "h3"; text: string }
-  | { type: "p"; text: string }
-  | { type: "list"; items: string[] };
-
-function parseMarkdownBlocks(text: string): MdBlock[] {
-  const lines = text.split("\n");
-  const out: MdBlock[] = [];
-  let buf: string[] = [];
-  let listBuf: string[] = [];
-
-  function flushPara() {
-    if (buf.length) {
-      out.push({ type: "p", text: buf.join(" ").trim() });
-      buf = [];
-    }
-  }
-  function flushList() {
-    if (listBuf.length) {
-      out.push({ type: "list", items: listBuf });
-      listBuf = [];
-    }
-  }
-
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, "");
-    if (!line.trim()) {
-      flushPara();
-      flushList();
-      continue;
-    }
-    const h2 = /^##\s+(.+)/.exec(line);
-    if (h2) {
-      flushPara();
-      flushList();
-      out.push({ type: "h2", text: h2[1] });
-      continue;
-    }
-    const h3 = /^###\s+(.+)/.exec(line);
-    if (h3) {
-      flushPara();
-      flushList();
-      out.push({ type: "h3", text: h3[1] });
-      continue;
-    }
-    const li = /^\s*[-*]\s+(.+)/.exec(line);
-    if (li) {
-      flushPara();
-      listBuf.push(li[1]);
-      continue;
-    }
-    flushList();
-    buf.push(line);
-  }
-  flushPara();
-  flushList();
-  return out;
-}
-
-function renderInline(text: string): React.ReactNode {
-  // Tokens: **bold**, *italic*, `code`. Greedy non-overlapping pass.
-  const out: React.ReactNode[] = [];
-  let i = 0;
-  let key = 0;
-  while (i < text.length) {
-    if (text.startsWith("**", i)) {
-      const end = text.indexOf("**", i + 2);
-      if (end > -1) {
-        out.push(
-          <strong key={key++} className="text-text-primary font-semibold">
-            {text.slice(i + 2, end)}
-          </strong>,
-        );
-        i = end + 2;
-        continue;
-      }
-    }
-    if (text[i] === "*") {
-      const end = text.indexOf("*", i + 1);
-      if (end > -1) {
-        out.push(
-          <em key={key++} className="italic text-text-secondary">
-            {text.slice(i + 1, end)}
-          </em>,
-        );
-        i = end + 1;
-        continue;
-      }
-    }
-    if (text[i] === "`") {
-      const end = text.indexOf("`", i + 1);
-      if (end > -1) {
-        out.push(
-          <code key={key++} className="text-text-primary bg-white/6 rounded px-1 py-px text-[11px] font-mono">
-            {text.slice(i + 1, end)}
-          </code>,
-        );
-        i = end + 1;
-        continue;
-      }
-    }
-    // Plain run — to next special char or end.
-    const next = nextSpecial(text, i);
-    out.push(text.slice(i, next));
-    i = next;
-  }
-  return out;
-}
-
-function nextSpecial(text: string, from: number): number {
-  for (let i = from; i < text.length; i++) {
-    const c = text[i];
-    if (c === "*" || c === "`") return i;
-  }
-  return text.length;
 }
 
 // ── Suggestions marquee ─────────────────────────────────────────────────────
