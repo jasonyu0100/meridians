@@ -1606,6 +1606,27 @@ export default function PaperPage() {
               hedge fund; what changed is the cost and the
               cultural permission to bring it to everyone else.
             </P>
+            <P>
+              <B>Market.</B> The addressable space for structured
+              strategic rehearsal is roughly{" "}
+              <span className="font-mono tabular-nums text-white/70">~$2B</span>
+              {" "}annually &mdash; concentrated in defence
+              wargaming and decision-support (
+              <span className="font-mono tabular-nums text-white/70">~$1.2B</span>),
+              financial services (
+              <span className="font-mono tabular-nums text-white/70">~$600M</span>
+              {" "}across hedge funds, asset managers, corp-dev), and
+              political campaigns / policy units (
+              <span className="font-mono tabular-nums text-white/70">~$200M</span>
+              {" "}during election cycles). Large enough to fund a
+              serious venture business at the wedge tier; small
+              enough that nobody currently owns the category. The
+              public-game and stakes layers expand the surface
+              into adjacent consumer markets (fantasy sports ~$30B
+              globally, prediction markets ~$10B emerging), but
+              those are options earned by execution, not the
+              wedge.
+            </P>
           </Section>
 
           {/* ── Approach ──────────────────────────────────────────────── */}
@@ -4533,104 +4554,46 @@ export default function PaperPage() {
               to do; the substrate keeps the record.
             </P>
             <P>
-              <B>Public and private rooms.</B> A War Room can be{" "}
-              <em>private</em> &mdash; a closed table of named
-              operators with their own substrate, their own priors,
-              their own confidential plays. It can also be{" "}
-              <em>public</em> &mdash; AI-centric games on topics
-              of broad interest, hosted by InkTide and run on
-              substrates that admins or trusted curators maintain
-              in the open. Public rooms aggregate decisions across
-              the population that joins them: how thousands of
-              participants would have played the seat of a
-              regulator, a competitor, a faction. Open intelligence
-              gathering and open simulation, in the same gesture.
-              Private rooms compound a single firm&apos;s or
-              operator&apos;s edge; public rooms compound the
-              calibrated priors of an entire interested public.
+              <B>Public and private rooms.</B> Private rooms are
+              closed tables on their own substrate. Public rooms
+              are AI-centric community games hosted by InkTide on
+              substrates of broad interest, maintained in the
+              open by admins or trusted curators. Private compounds
+              one operator&apos;s edge; public compounds the
+              calibrated priors of an interested public. Operating
+              Model breaks down which is which.
             </P>
             <P>
               <B>Stakes &mdash; fictional, reality-anchored, or
-              real.</B> Every War Room can run with a stakes layer
-              attached to its plays. At the lightest setting,
-              stakes are <em>fictional</em>: ELO, leaderboards,
-              house chips, the satisfaction of a calibrated call.
-              At the middle setting they&apos;re{" "}
-              <em>reality-anchored</em>: forecast questions whose
-              resolutions are graded against what the public record
-              eventually returns, with prize pools for the players
-              whose plays held up. At the heaviest setting they
-              can be <em>real</em>: actual trades, hedges, or
-              positions taken in markets the room is playing
-              forward, recorded as commitments the substrate
-              tracks. Stakes turn the game from rehearsal into
-              <em> skin-in-the-game rehearsal</em>; the cost of a
-              dishonest signal becomes structural, and the room
-              becomes a forum for choices the operator would
-              actually make.
+              real.</B> Light: ELO, leaderboards, the satisfaction
+              of a calibrated call. Middle: forecast questions
+              graded against what the record returns, with prize
+              pools. Heavy: real trades and positions recorded as
+              commitments. Stakes turn rehearsal into{" "}
+              <em>skin-in-the-game rehearsal</em> &mdash; the cost
+              of a dishonest signal becomes structural.
             </P>
             <P>
               <B>More agency than a prediction market.</B>{" "}
-              Prediction markets aggregate; they reduce every
-              participant to a price and a position size.
+              Prediction markets reduce every participant to a price
+              and a position size.
               <Cite id="hanson2003" label="Hanson 2003" />
-              <Cite id="wolfers2004" label="Wolfers &amp; Zitzewitz 2004" />{" "}
-              That&apos;s a real epistemic achievement and a
-              real ceiling. A War Room is a personalised
-              alternative: instead of pricing the outcome,{" "}
-              <em>you play the actor that produces it</em>. You
-              take a seat, hold a private log, signal with cards,
-              negotiate with the other seats, commit to a phased
+              <Cite id="wolfers2004" label="Wolfers &amp; Zitzewitz 2004" />
+              {" "}A War Room asks you to <em>play the actor that
+              produces the outcome</em>: take a seat, hold a private
+              log, signal with cards, negotiate, commit to a phased
               move. The market gives you a number; the room gives
-              you a role, a hand, and a story you helped author.
-              The same forecast question, played as a War Room,
-              produces calibrated probabilities <em>plus</em> the
-              causal chains the room explored to get there &mdash;
-              the kind of qualitative read a market can&apos;t
-              produce because it never asked any trader to play
-              a part.
+              you a role and a story you helped author &mdash;
+              calibrated probabilities <em>plus</em> the causal
+              chains that got there.
             </P>
             <P>
-              Unaided executive judgment loses to systematic biases:
-              overconfidence on competitor response, anchoring on
-              first-mover assumptions, confirmation bias on the
-              chosen path. Kahneman, Lovallo &amp; Sibony&apos;s{" "}
-              <em>deliberate ignorance</em>
-              <Cite id="kahneman2011" label="Kahneman et al. 2011" />
-              <Cite id="lovallo2003" label="Lovallo &amp; Kahneman 2003" />{" "}
-              holds &mdash; executives underweight competitor reaction
-              because modelling it is cognitively costly. The War
-              Room makes the reaction structurally necessary.
-            </P>
-            <P>
-              Three limits, each answered by the substrate.{" "}
-              <B>Tacit knowledge</B>
-              <Cite id="polanyi1966" label="Polanyi 1966" />{" "}
-              resists formalisation &mdash; but the engine is
-              calibrated for foxes, and tacit knowledge IS captured
-              when it produces calibrated forecasts that outperform.{" "}
-              <B>Conceivability</B> &mdash; a simulation only explores
-              what its designers conceive &mdash; is unresolvable by
-              the engine alone; the War Room is how human adversaries
-              surface what the model-builder cannot. <B>Goodhart</B>
-              <Cite id="goodhart1975" label="Goodhart 1975" />
-              <Cite id="strathern1997" label="Strathern 1997" />{" "}
-              &mdash; players gaming the simulation rather than
-              reality &mdash; is mitigated by fork-and-commit: the
-              substrate updates against reality, not against itself.
-              Reality is the referee.
-            </P>
-            <P>
-              The headline value prop, said plainly:{" "}
-              <B>
-                a War Room is what falls out of a sufficiently
-                primed SWF corpus.
-              </B>{" "}
-              Build the priors deep enough across System, World, and
-              Fate &mdash; via analysis, generation, ingestion, or
-              all three &mdash; and the substrate is ready to host a
-              game. Pick the spatial type the world wants. Deal the
-              cards. Begin.
+              The headline, plainly:{" "}
+              <B>a War Room is what falls out of a sufficiently
+              primed SWF corpus.</B>{" "}
+              Build the priors deep enough across System, World,
+              and Fate; pick the spatial type the world wants;
+              deal the cards; begin.
             </P>
           </Section>
 
@@ -4638,492 +4601,334 @@ export default function PaperPage() {
           <Section id="practice" label="Practice">
             <P>
               A War Room is built to be <B>instituted</B>, not
-              admired. The point is the muscle the room develops by
-              meeting regularly &mdash; reflexes for adversarial
-              moves, calibrated priors on which futures actually
-              arrive, doctrine that survives the day a surprise
-              lands. Every client we work with we encourage to
-              institute the room at one of two cadences.
+              admired. The muscle comes from meeting regularly
+              &mdash; reflexes for adversarial moves, calibrated
+              priors on which futures arrive, doctrine that
+              survives the day a surprise lands. We encourage
+              every client to institute one of two cadences.
             </P>
             <P>
-              <B>Weekly War Rooms</B> &mdash; for what moves fast.
-              Markets, current operations, competitive intel, a
-              campaign in mid-flight, a policy file actively under
-              consultation. One to two hours. Each operator walks in
-              with the week&apos;s fresh signal &mdash; the article
-              they read, the announcement they parsed, the
-              conversation they overheard. The opening twenty
-              minutes integrates what every seat brought; the rest
-              of the room plays the implications forward. The point
-              isn&apos;t precision &mdash; it&apos;s the disciplined
-              frame the cards force, the calibrated record the
-              substrate keeps, and the cultivated habit of bringing
-              the week&apos;s information to a table that will use
-              it.
+              <B>Weekly War Rooms</B> &mdash; for what moves fast
+              (markets, current ops, competitive intel, a campaign
+              in flight, a live policy file). One to two hours.
+              Each operator walks in with the week&apos;s fresh
+              signal; the opening integrates what every seat
+              brought; the rest plays the implications forward.
+              The point is the disciplined frame, the calibrated
+              record, and the cultivated habit of arriving with
+              information the table will use.
             </P>
             <P>
-              <B>Monthly War Rooms</B> &mdash; for what moves slow.
-              Doctrine, portfolio composition, organisational
-              design, a multi-year political bet, a life direction.
-              Two to four hours. Longer horizons, deeper priors,
-              more variable surfacing. Players come with
-              accumulated reading &mdash; the quarter&apos;s major
-              moves, the doctrinal shifts they noticed, the
-              counterparty plays they catalogued. The monthly room
-              is where strategic <em>shape</em> is rehearsed
-              &mdash; not the next move but the kind of move the
-              operator will reach for under pressure six months
-              from now.
+              <B>Monthly War Rooms</B> &mdash; for what moves slow
+              (doctrine, portfolio composition, organisational
+              design, a multi-year political bet, a life
+              direction). Two to four hours. Players come with
+              accumulated reading; the room rehearses strategic{" "}
+              <em>shape</em> &mdash; not the next move but the kind
+              of move the operator reaches for under pressure six
+              months from now.
             </P>
             <P>
-              <B>Who it&apos;s for.</B> The substrate doesn&apos;t
-              care whether the seats are filled by executives, an
-              investment committee, a campaign team, a tabletop group
-              playing high-level board game dynamics, or a single
-              operator rehearsing a personal decision alone with AI
-              counterparts. Five honest use cases:
+              <B>Who it&apos;s for.</B> Five honest use cases:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Personal simulation.</B> A career pivot, a
-                  relocation, a major purchase, a treatment plan
-                  &mdash; futures one person will live inside but
-                  hasn&apos;t yet. The solo operator takes their own
-                  seat plus the seats of the consequential others
-                  (employer, market, family, regulator) and plays
-                  the move forward.
+                  <B>Personal simulation.</B> A career pivot,
+                  relocation, treatment plan. The solo operator
+                  takes their own seat plus the seats of
+                  consequential others (employer, market, family,
+                  regulator) and plays the move forward.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
                   <B>Investment.</B> A portfolio committee plays
-                  every position against the moves of the operators
-                  who own them, the competitors who hunt them, and
-                  the macro regime they live in. Calibrated priors
-                  on management response, capital structure stress,
-                  exit-path optionality become artefacts of the room.
+                  positions against management response, competitor
+                  hunts, and macro regime. Calibrated priors on
+                  capital-structure stress and exit-path optionality
+                  become artefacts of the room.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Politics.</B> A campaign team or policy unit
-                  plays the opposition&apos;s next move, the
-                  regulator&apos;s next move, the media&apos;s next
-                  move, against the same substrate. The rehearsed
-                  campaign moves faster on the morning of the leak
-                  than the unrehearsed campaign that meets the leak
-                  for the first time.
+                  <B>Politics.</B> A campaign team plays the
+                  opposition&apos;s, regulator&apos;s, and
+                  media&apos;s next moves. The rehearsed campaign
+                  moves faster the morning of the leak than the
+                  unrehearsed one meeting it for the first time.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Strategy.</B> Executives convene around the
-                  board with the seats of competitors, regulators,
-                  customers, and channel partners staffed by
-                  operators (or AI). Every committed move scores
-                  against the substrate and updates it; the
-                  decision becomes part of the prior the next room
-                  inherits.
+                  <B>Strategy.</B> Executives convene with the
+                  seats of competitors, regulators, customers,
+                  channel partners staffed by operators or AI.
+                  Every committed move updates the substrate; the
+                  decision becomes a prior the next room inherits.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Board game dynamics.</B> A tabletop group
-                  &mdash; players who already think in game terms
-                  &mdash; uses the room as a high-fidelity sandbox
-                  for the kind of grand-strategy session a paper map
-                  and a six-sided die can only gesture toward.
-                  Information asymmetry, faction-internal politics,
-                  diplomacy, and multi-turn doctrine are all native.
+                  <B>Board game dynamics.</B> A tabletop group uses
+                  the room as a high-fidelity grand-strategy
+                  sandbox. Information asymmetry, faction-internal
+                  politics, diplomacy, multi-turn doctrine all
+                  native.
                 </span>
               </li>
             </ul>
             <P>
-              <B>The queue is the curation surface.</B> Between
-              sessions, every operator drops articles, headlines,
-              memos, transcripts, market updates, conversation notes
-              &mdash; anything that might move a prior &mdash; into
-              the room&apos;s <em>queue</em>. The queue is where
-              raw information lives until it&apos;s reviewed,
-              compressed, and folded into the substrate. The
-              discipline is curation, not capture: not everything
-              that crosses an operator&apos;s desk belongs in the
-              game. Each session opens with the room walking the
-              queue, deciding what actually shifts priors, and
-              letting the rest age out. Detail is reduced on
-              purpose so the priors stay readable; the substrate
-              is a working model, not an archive.
+              <B>The queue.</B> Between sessions, operators drop
+              articles, transcripts, observations &mdash; anything
+              that might move a prior &mdash; into the room&apos;s
+              queue. Each session opens by walking it: what shifts
+              priors enters the substrate, the rest ages out.
+              Curation, not capture. Detail is reduced on purpose
+              so priors stay readable; the substrate is a working
+              model, not an archive. Automated feeds (market data,
+              news) are <em>optional</em> aids piped into the same
+              queue &mdash; the human still decides what enters
+              the ledger.
             </P>
             <P>
-              <B>Data streams are optional accuracy aids.</B> A
-              room that wants to keep its priors aligned with a
-              fast-moving world can opt in to external feeds &mdash;
-              market data, news, sector trackers &mdash; piped into
-              the same queue the humans drop into. We treat these
-              as <em>accuracy maintenance</em>, not replacement for
-              the operators&apos; own curation. The human stays in
-              the loop: feeds populate the queue; the room decides
-              what enters the substrate. Without the human review
-              step, the queue becomes noise and the priors
-              calcify against information no one actually weighted.
-              Recommended cadence stays plain: <B>weekly to monthly
-              updates</B>. Life is a long-term game; preparedness
-              is a long-term practice; the substrate can only
-              simulate so far into the future before its forecasts
-              wash out. The point is the rhythm, not the speed.
-            </P>
-            <P>
-              <B>The compounding loop.</B> Each session, the queue
+              <B>The compounding loop.</B> Each session the queue
               gets curated, the substrate gets sharper, the room
-              plays several futures through, and the next session
+              plays several futures through, the next session
               inherits a deeper map. The fiftieth weekly War Room
-              is not five times sharper than the tenth &mdash; it
-              is qualitatively a different room, because the priors
-              underneath have absorbed fifty cycles of adversarial
-              rehearsal, fifty curated information drops, fifty
-              graded forecasts, fifty resolved or unresolved bets.
-              The room that practises wins the morning the surprise
-              lands.
+              is qualitatively different from the tenth &mdash;
+              fifty cycles of rehearsal, fifty curated drops,
+              fifty graded forecasts. The room that practises wins
+              the morning the surprise lands.
             </P>
           </Section>
 
           {/* ── Operating Model ─────────────────────────────────────── */}
           <Section id="operating-model" label="Operating Model">
             <P>
-              The operating model is in service of the practice, not
-              the other way around. Pricing tiers, facilitation
-              tooling, and the specifics of go-to-market are still
-              being shaped &mdash; what is load-bearing is the unit:{" "}
-              <B>simulation-as-subscription</B>, not engagement-by-
-              engagement. A client doesn&apos;t buy a deck or a
-              transformation. They buy a substrate that grows
-              sharper every session the room meets, a vocabulary
-              for thinking adversarially, and a facilitation layer
-              that helps them keep the meeting on the calendar.
+              The unit is <B>simulation-as-subscription</B>, not
+              engagement-by-engagement. A client doesn&apos;t buy
+              a deck or a transformation &mdash; they buy a
+              substrate that grows sharper every session, a
+              vocabulary for thinking adversarially, and a
+              facilitation layer that keeps the meeting on the
+              calendar.
             </P>
             <P>
-              <B>Human-curated priors.</B> Priors update through
-              a curated <em>queue</em>: every operator drops what
-              they&apos;ve read, heard, traded, and observed
-              between sessions, the room walks the queue at the
-              top of each meeting, and what survives the review
+              <B>Human-curated priors.</B> Priors update through a{" "}
+              <em>queue</em>: operators drop what they&apos;ve
+              read, heard, traded, observed; each session opens
+              by walking the queue; what survives the review
               folds into the substrate. Automated feeds (market
-              data, news, sector trackers) are <em>optional</em>
-              {" "}accuracy aids that pipe into the same queue
-              &mdash; the human still decides what enters the
-              ledger. Without curation the queue becomes noise;
-              without humans the priors calcify. The discipline
-              of arriving with fresh, weighted information is half
-              the practice the room teaches.
+              data, news) are <em>optional</em> aids piped into
+              the same queue &mdash; the human still decides what
+              enters the ledger. The discipline of arriving with
+              fresh, weighted information is half the practice
+              the room teaches.
             </P>
             <P>
-              <B>Two product surfaces, one substrate.</B>{" "}
-              <em>Private</em> rooms are closed tables &mdash; a
-              firm, an investment committee, a campaign team, a
-              single operator &mdash; subscribing to the engine
-              and compounding their own priors in their own
-              browser. <em>Public</em> rooms are AI-centric
-              community games hosted by InkTide on substrates of
-              broad interest: elections, markets, sport seasons,
-              policy files, geopolitical theatres, franchises,
-              cultural questions. Anyone can join, take a seat,
-              and play. The two modes feed each other &mdash; the
-              public substrate gives private rooms a calibrated
-              read on how a broad population would play a seat
-              they don&apos;t hold; private rooms supply the
+              <B>Two surfaces, one substrate.</B> Private rooms
+              are closed tables on the local data model. Public
+              rooms are AI-centric community games hosted by
+              InkTide on substrates of broad interest. The two
+              feed each other: the public substrate gives private
+              rooms a read on how a broad population would play a
+              seat they don&apos;t hold; private rooms supply
               specialist depth no crowd-sourced room reaches
-              alone.
+              alone. Public games are maintained by admins or
+              trusted curators &mdash; the encyclopedia model
+              applied to worlds worth playing forward.
             </P>
             <P>
-              <B>Open intelligence gathering.</B> Public games are
-              maintained by admins or trusted curators with
-              permissioned write access &mdash; the encyclopedia
-              model, applied to <em>worlds worth playing
-              forward</em>. Anyone drops into the public queue;
-              curators decide what enters the substrate; every
-              player inherits the deepening priors. An open
-              system of intelligence gathering and simulation,
-              run in public, with the substrate keeping the
-              ledger honest.
+              <B>A more agentful alternative to prediction markets.</B>
+              {" "}Prediction markets aggregate priced positions
+              into a probability. Public War Rooms aggregate{" "}
+              <em>played seats</em> &mdash; who I would have been,
+              what move I would have made, what intent I would
+              have signalled. The participant gets agency markets
+              never offer; the public gets a read on how a
+              population thinks, not only how it prices.
             </P>
             <P>
-              <B>A more agentful alternative to prediction
-              markets.</B> Prediction markets aggregate priced
-              positions into a probability. Public War Rooms
-              aggregate <em>played seats</em> &mdash; not just
-              &ldquo;what odds&rdquo; but &ldquo;who I would have
-              been, what move I would have made, what intent I
-              would have signalled, what cards I would have
-              played&rdquo;. The participant gets the agency
-              markets never offer; the public gets a richer read
-              on how a population thinks, not only how it prices.
+              <B>The moat.</B> What the private client accumulates
+              after a year of weekly rooms is not a subscription
+              &mdash; it is a deepened map of their own strategic
+              position, authored by the people who have to live
+              inside it. The epistemic moat is the substrate
+              embedded in a firm or a life; it cannot be cloned
+              without the sessions that built it.
             </P>
             <P>
-              <B>What the client accumulates.</B> After a year of
-              weekly rooms, a private client is not subscribing
-              &mdash; they are operating on a deepened map of
-              their own strategic position, authored by the people
-              who have to live inside it. <B>What we hold</B> is
-              the epistemic moat: every committed fork, graded
-              against what reality returned, teaches the substrate
-              how its operators&apos; world actually moves. The
-              longer the rooms run, the more InkTide looks like
-              calibrated practice embedded in a firm or a life,
-              not a tool that hosts the meeting.
+              <B>Honest about time-to-value.</B> A defensible
+              substrate on a new domain takes{" "}
+              <span className="font-mono tabular-nums text-white/70">2–3 months</span>
+              {" "}of priming &mdash; corpus ingestion, prior
+              calibration, scenario surfacing, facilitator
+              briefing, the first half-dozen calibration sessions.
+              The product is not turnkey; the early weeks are a
+              build-out, not a meeting. The pilot motion exists
+              for exactly this reason.
             </P>
             <P>
               <B>What stops a foundation model from cloning this.</B>
-              {" "}The natural VC question. Three answers, layered.
-              <em> One</em>: the surface is cheap to copy, the
-              substrate isn&apos;t &mdash; a foundation-model
-              vendor can ship a chat called &ldquo;Strategy
-              Mode&rdquo; in a month, but they can&apos;t ship the
-              priors a room has compounded over fifty sessions, and
-              the priors are what makes the next session sharp.{" "}
-              <em>Two</em>: local-data private rooms are a privacy
-              moat &mdash; high-stakes operators do not let their
-              confidential plays sit on a foundation-model
-              vendor&apos;s servers, and InkTide&apos;s
-              client-side architecture is the only place that
+              {" "}Three answers. <em>One</em>: a vendor can ship
+              a &ldquo;Strategy Mode&rdquo; chat in a month, but
+              not the priors a room has compounded over fifty
+              sessions &mdash; and the priors are what make the
+              next session sharp. <em>Two</em>: local-data is a
+              privacy moat &mdash; high-stakes operators do not
+              put confidential plays on a foundation-model
+              vendor&apos;s servers; client-side is where that
               promise actually holds. <em>Three</em>: public games
-              are network goods &mdash; the substrate is
-              maintained by admins and curators, the leaderboards
-              are populated by returning players, and a clone with
-              none of that history is an empty room. Foundation
-              models commoditise <em>generation</em>; they
-              don&apos;t commoditise <em>practice</em>.
+              are network goods &mdash; leaderboards and
+              returning players take time, not training compute.
+              Foundation models commoditise <em>generation</em>;
+              they don&apos;t commoditise <em>practice</em>.
             </P>
             <P>
-              <B>The bet is the practice.</B> Pricing tiers and
-              go-to-market specifics remain open hypotheses; the
-              shape we&apos;re committing to is{" "}
+              <B>The bet is the practice.</B> The shape:{" "}
               <em>free public distribution + private subscription
-              for agency + value-add layers on top</em>. The
-              numbers follow in the next section.
+              for agency + value-add layers on top</em>. Numbers
+              follow.
             </P>
           </Section>
 
           {/* ── Economics ──────────────────────────────────────────── */}
           <Section id="economics" label="Economics">
             <P>
-              Two cost models, one substrate. <B>Private</B> rooms
-              run on the local data model: IndexedDB holds state,
-              the engine drives the LLM directly, no backend on our
-              side. <B>Public</B> rooms run on a hosted server with
-              one shared substrate per game and LLM cost amortised
-              across every participant. Architecture matches
-              audience &mdash; private gets a near-zero cost floor
-              and full data sovereignty; public gets the shared
-              world it needs to aggregate plays.
+              <B>Two cost models, one substrate.</B> Private rooms
+              run on the local data model (IndexedDB, no backend);
+              public rooms run on a hosted server with LLM cost
+              amortised across the cohort. A session costs{" "}
+              <span className="font-mono tabular-nums text-white/70">~$0.30–$0.50</span>
+              {" "}in LLM on the DeepSeek + Gemini Flash split
+              the engine currently uses &mdash; weekly cadence ≈{" "}
+              <span className="font-mono tabular-nums text-white/70">$1.50–$2.00</span>
+              {" "}per private room per month. Subscriptions cover
+              that with room to spare.
             </P>
             <P>
-              <B>Real numbers.</B> A War Room session ≈ one to two
-              arcs of forward play plus interrogation and
-              decision-matrix calls. End-to-end LLM, on the
-              DeepSeek v4 Flash + Gemini 2.5 Flash split InkTide
-              currently runs:{" "}
-              <span className="font-mono tabular-nums text-white/70">
-                ~$0.30 – $0.50
-              </span>{" "}
-              per session. Weekly cadence ≈{" "}
-              <span className="font-mono tabular-nums text-white/70">
-                $1.50 – $2.00
-              </span>{" "}
-              per room per month. Private subscription tiers cover
-              that with room to spare; the model is high-margin by
-              default because computation is fixed and cheap.
-            </P>
-            <P>
-              <B>Public is free-to-play distribution.</B> The
-              public model is not entry-fee-driven; it is{" "}
-              <em>scale-and-distribution-driven</em>. The goal is
-              thousands of community games on substrates worth
+              <B>Public is free-to-play distribution.</B>{" "}
+              Thousands of community games on substrates worth
               simulating &mdash; markets, elections, sport seasons,
-              policy files, cultural questions, franchises, public
-              dilemmas &mdash; with the base game free for anyone
-              to join, watch, or play. A cohort of 1,000 active
-              players on a shared substrate amortises a few dollars
-              of weekly LLM cost down to ~$0.01 per player per
-              season. Distribution is the goal; the public
-              substrate&apos;s job is to be everywhere a
-              compelling world wants playing forward. Revenue
-              comes from <em>value-add layers</em> on top: pro
-              subscriptions, opt-in betting markets, sponsorships
-              and media. The free base is the funnel.
+              policy files, franchises, public dilemmas &mdash;
+              free for anyone to join, watch, or play. A cohort of
+              1,000 amortises weekly LLM cost down to{" "}
+              <span className="font-mono tabular-nums text-white/70">~$0.01</span>
+              {" "}per player per season. Revenue comes from
+              <em> value-add layers</em>: pro subscriptions,
+              opt-in betting, sponsorships, media. The free base
+              is the funnel.
             </P>
 
             <BusinessModels />
 
             <P>
-              <B>Why this shape.</B> Public War Rooms are{" "}
-              <em>community games people tune into</em>. The room
-              is somewhere between a sports league, a
-              participatory drama, and an open intelligence
-              exercise; the base experience is free because the
-              social compound is the asset. Operators who want
-              agency over their own decisions, their own priors,
-              their own confidential plays go private &mdash;
-              that&apos;s where subscription revenue lives.{" "}
-              <B>Free public + paid private + value-add layers</B>
-              {" "}covers the spectrum: distribution at the base,
-              agency at the top, monetisation in the optional
-              middle.
+              <B>Wedge — two parallel motions.</B> The
+              high-conviction motion is a{" "}
+              <em>6-month pilot partnership</em> with a single
+              defence contractor, hedge fund, or political-research
+              shop &mdash;{" "}
+              <span className="font-mono tabular-nums text-white/70">~$80–120K</span>
+              {" "}engagement at ~75% gross margin, structured as
+              priors-accumulation against a real question. One
+              credible pilot earns the case study the next ten
+              sales require. The bottom-up motion runs in
+              parallel: ~500 Team subs ($99/mo) at boutique
+              investment committees, family offices, campaign
+              cells, M&amp;A teams, policy units &mdash; the first
+              $1M of recurring revenue alongside the pilot.
             </P>
             <P>
-              <B>Sequencing.</B> <em>Private first, public next.</em>
-              {" "}The local-data private room is the cheapest
-              shape to ship, the easiest to demonstrate to a
-              high-stakes operator, and the proving ground for the
-              substrate. Once private rooms are running, public
-              games inherit the social proof: <em>this is what
-              serious rooms use, and now anyone can play in it</em>.
-              Public games then bring the War Room into the
-              public&apos;s perception. The pitch is not &ldquo;another
-              prediction market&rdquo; or &ldquo;another fantasy
-              league&rdquo; &mdash; it is <B>agency restored to
-              people</B>.
+              <B>Scale math — bear / base / bull (year 3).</B>{" "}
+              <span className="font-mono tabular-nums text-white/70">Bear ~$500K</span>
+              {" "}&mdash; pilot doesn&apos;t compound, B2B-light
+              stays slow.{" "}
+              <span className="font-mono tabular-nums text-white/70">Base ~$3.5M</span>
+              {" "}&mdash; ~200 Team + ~5K Solo + two enterprise
+              pilots, public games in pilot.{" "}
+              <span className="font-mono tabular-nums text-white/70">Bull ~$15M</span>
+              {" "}&mdash; public layer catches, ~7% Pro
+              conversion on ~50K free players, betting vertical
+              launched in a licensed jurisdiction, two
+              six-figure-ACV enterprise accounts. Base alone is
+              venture-defensible; bull is the upside the substrate
+              makes possible.
             </P>
             <P>
-              <B>Wedge.</B> The first $1M of ARR is not consumer
-              prosumer Solo; it is the <em>B2B-light</em>{" "}
-              segment that already does informal war-gaming and
-              has budget at the $99–$499/mo point: <em>investment
-              committees at boutique funds, family offices,
-              campaign cells, M&amp;A teams, policy units, small
-              leadership teams</em>. ~500 Team subscriptions
-              reaches it. Solo is the funnel underneath &mdash;
-              individual operators (PE associates, hedge-fund
-              analysts, political operatives) who pull their
-              committee into the practice once they&apos;ve felt
-              it work for themselves.
-            </P>
-            <P>
-              <B>Scale math.</B> Three checkpoints, plain
-              arithmetic.{" "}
-              <span className="font-mono tabular-nums text-white/70">
-                Year 1
-              </span>{" "}
-              wedge: 1,000 Solo + 200 Team + 50 Pro ≈ ${" "}
-              <span className="font-mono tabular-nums text-white/70">~64K MRR / ~$770K ARR</span>.
-              {" "}
-              <span className="font-mono tabular-nums text-white/70">
-                Year 2
-              </span>{" "}
-              private scale-up + first public pilots: 5K Solo +
-              1K Team + 200 Pro ≈ ${" "}
-              <span className="font-mono tabular-nums text-white/70">~290K MRR / ~$3.5M ARR</span>.
-              {" "}
-              <span className="font-mono tabular-nums text-white/70">
-                Year 3
-              </span>{" "}
-              public layer compounds: private mid-five-figures of
-              accounts + 100K free public players at 5% Pro
-              conversion (~5K subs × $14.99) + nascent betting
-              vertical &asymp;{" "}
-              <span className="font-mono tabular-nums text-white/70">$10–20M ARR</span>.
-              All speculative; the <em>shape</em> &mdash;
-              high-margin private as the base, public free
-              distribution turning into pro/betting/media at
-              scale &mdash; is what the math wants you to test.
-            </P>
-            <P>
-              <B>Honest risks.</B> Four worth naming explicitly.
-              {" "}<em>Adoption friction</em> &mdash; even
-              disciplined firms struggle to institute weekly
-              rituals; churn at year-one will be the leading
-              indicator. <em>Foundation-model encroachment</em>
-              {" "}&mdash; addressed above; the priors and the
-              local-data architecture are the answer, but the
-              answer must keep being earned. <em>Betting
-              regulation</em> &mdash; real-money markets are
-              jurisdiction-by-jurisdiction work; we plan to gate
-              and partner rather than litigate. <em>Public-game
-              cold start</em> &mdash; a free game with 50 players
-              is not a community; the first public substrates
-              need editorial cultivation, not just an open
-              signup. Each of these is a focus, not a footnote.
+              <B>Honest risks.</B> Six worth naming.{" "}
+              <em>Adoption friction</em> &mdash; weekly rituals are
+              hard to sustain; sustained-session retention (week 4,
+              8, 12) is the leading indicator.{" "}
+              <em>Service margin disguised as software margin</em>
+              {" "}&mdash; the LLM-only figure ignores facilitation,
+              customer success, and CAC; real contribution margin is
+              closer to 50–60%.{" "}
+              <em>Solo at $19 reads as therapy, not software</em>
+              {" "}&mdash; weekly-commitment products at therapy
+              prices churn; Solo may need to reposition as funnel
+              only. <em>Foundation-model encroachment</em> &mdash;
+              priors and local-data privacy are the answer; must
+              keep being earned. <em>Betting regulation</em>
+              {" "}&mdash; clears as &ldquo;game of skill&rdquo;
+              under most US state regimes (licensed-and-gated path
+              workable), harder in EU; partner, don&apos;t
+              litigate. <em>Public-game cold start</em> &mdash; a
+              free game with 50 players is not a community; first
+              public substrates need editorial cultivation.
             </P>
           </Section>
 
           {/* ── Coda ──────────────────────────────────────────────────── */}
           <Section id="coda" label="Coda">
             <P>
-              Step back. What InkTide does is{" "}
-              <B>convene a room to play the future before it arrives</B>
-              {" "}&mdash; on a measured substrate that learns from every
-              committed move. The room takes the seats of every actor
-              that matters: the competitor, the regulator, the
-              counterparty, the market, the future self. Cards signal
+              What InkTide does is <B>convene a room to play the
+              future before it arrives</B>, on a measured substrate
+              that learns from every committed move. Cards signal
               intent in public; private logs hold actual intent;
-              negotiation, cooperation, and defection are the
-              currency. The substrate scores, records, and updates.
-              The next room inherits the priors.
+              the substrate keeps the ledger; the next room
+              inherits the priors.
             </P>
             <P>
-              The relatable picture is a <em>bee hive</em> &mdash;
-              knowledge unevenly distributed, the queen never sees
-              the field, the colony moves as one body with no single
-              bee holding the map. The hive evolved by foragers
-              returning each shift with what they saw; the room
-              InkTide convenes operates the same way. Each session,
-              the operators return with what they have read, heard,
-              traded, and observed since the last meeting; the game
-              integrates it; the substrate inherits the deeper map.
-              Every coherent text describes a world worth playing
-              forward &mdash; a history, a paper, a novel, a memo,
-              a doctrine, a market brief &mdash; and any of them
-              can seed the first session. After that, the room
-              authors its own world.
+              The relatable picture is a <em>bee hive</em>: knowledge
+              unevenly distributed, the colony moving as one body
+              by foragers returning each shift with what they saw.
+              Each session, the operators return with what they
+              read, heard, traded, observed; the game integrates
+              it; the substrate inherits the deeper map. Any
+              coherent text &mdash; a history, a paper, a novel, a
+              memo, a doctrine, a market brief &mdash; can seed
+              the first session. After that, the room authors its
+              own world.
             </P>
             <P>
-              The math, the spatial primitives, the card mechanics,
-              the queue, the public and private modes are how we
-              keep the promise. The promise is the substrate{" "}
-              <B>civilisation uses to rehearse its own long-horizon
-              decisions</B> &mdash; markets, campaigns, alliances,
-              doctrines, lives. Private rooms compound the edge of
-              the operators who run them; public rooms compound
-              the calibrated priors of an entire interested public.
-              An open system of intelligence gathering and
-              simulation, in the same gesture.
+              <B>One stretch picture worth holding.</B> The same
+              engine that hosts strategic War Rooms can host
+              public <em>stories</em>. Instead of cinemas, an
+              audience tunes in to fictional worlds unfolding on
+              a live stage through AI + human synthesis, with
+              viewers able to take seats, vote, signal intent.
+              Cinema is one-way; a public narrative room is a
+              stage the audience steps onto. Not the focus
+              &mdash; <em>private first</em> &mdash; but the
+              architecture allows it.
             </P>
             <P>
-              <B>One stretch picture worth holding.</B> The
-              substrate that hosts a public War Room can also host
-              a public <em>story</em>. Instead of cinemas, an
-              audience tunes in to fictional worlds unfolding on a
-              live stage over time &mdash; serial worlds, written
-              session by session through a synthesis of AI
-              generation and human authorship, where viewers can
-              take seats, vote, signal intent, and watch the
-              substrate render the next chapter against what the
-              room committed. The same engine that hosts strategic
-              War Rooms hosts collaborative narrative ones. The
-              same architecture; a different room. A stretch goal,
-              not the focus &mdash; <em>private first</em> remains
-              the strategy &mdash; but worth naming because it
-              follows from the same primitives. Cinema is one-way
-              broadcast; a public narrative War Room is a stage
-              the audience can step onto.
-            </P>
-            <P>
-              <B>Vision is humanity&apos;s edge over AI.</B> The
-              models scale prediction, language, search,
-              optimisation. What they do not originate is the act
-              of <em>seeing a future and choosing to play toward
-              it</em>. That is what the room is for. The map and
-              the graph are visual because vision is the
-              differentiator humans bring; the substrate keeps the
-              record because the record is what compounds. Private
-              rooms first, public rooms next, narrative stages
-              last. <B>Readiness is a habit. Vision is the edge.
-              Convene the room.</B>
+              <B>Vision is humanity&apos;s edge over AI.</B> Models
+              scale prediction, language, search, optimisation.
+              What they don&apos;t originate is the act of seeing
+              a future and choosing to play toward it. The map and
+              graph surfaces are visual because vision is the
+              differentiator; the substrate keeps the record
+              because the record is what compounds. Private rooms
+              first, public rooms next, narrative stages last.{" "}
+              <B>Readiness is a habit. Vision is the edge. Convene
+              the room.</B>
             </P>
           </Section>
 
