@@ -169,8 +169,6 @@ export function BoardView() {
   const imageUrl = useImageUrl(currentMap?.imageUrl);
 
   const push = useCallback((rootId: string) => setStack((s) => [...s, rootId]), []);
-  const back = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
-  const jumpTo = useCallback((idx: number) => setStack((s) => s.slice(0, idx + 1)), []);
 
   // The map directly above the current one (nearest ancestor with its own map,
   // or the Global board). Clicking the title ascends to it.
@@ -251,36 +249,8 @@ export function BoardView() {
 
   return (
     <div className="relative h-full flex flex-col bg-bg-base">
-      {/* Breadcrumb / navigation strip */}
-      <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-border">
-        <button
-          onClick={back}
-          disabled={stack.length <= 1}
-          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded text-text-dim hover:text-text-primary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          title="Back to parent map"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          Back
-        </button>
-        <div className="w-px h-3.5 bg-white/10" />
-        <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
-          {stack.map((rootId, idx) => (
-            <div key={rootId} className="flex items-center gap-1 shrink-0">
-              {idx > 0 && <span className="text-text-dim/40 text-[10px]">›</span>}
-              <button
-                onClick={() => jumpTo(idx)}
-                className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${
-                  idx === stack.length - 1 ? 'text-text-primary font-medium' : 'text-text-dim hover:text-text-secondary hover:bg-white/5'
-                }`}
-              >
-                {titleOf(rootId)}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Board */}
+      {/* Board — navigation is in the map itself: click the title to ascend to
+          the parent map, click a region label to drill into its sub-map. */}
       <div ref={areaRef} className="flex-1 min-h-0 overflow-hidden flex items-center justify-center p-6">
         {imageUrl ? (
           // Explicit 4:3 box sized to fit the measured area, so the whole map
