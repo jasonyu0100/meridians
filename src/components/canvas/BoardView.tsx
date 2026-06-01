@@ -26,7 +26,7 @@ function mapByRoot(maps: Record<string, LocationMap>, rootId: string): LocationM
  *  walks the parent chain upward (cycle-guarded). Used so a character standing
  *  in a sub-location rolls up into the territory label that contains it. */
 function isWithin(locations: NarrativeState['locations'], locId: string, ancestorId: string): boolean {
-  let cur: string | undefined = locId;
+  let cur: string | null | undefined = locId;
   const seen = new Set<string>();
   while (cur && !seen.has(cur)) {
     if (cur === ancestorId) return true;
@@ -153,14 +153,15 @@ export function BoardView() {
   }, [narrative]);
   const charImages = useImageUrlMap(charImageRefs);
 
-  // Navigation stack of map roots; current = last. Reset to a fresh path when
-  // the narrative changes (kept across scene changes so the user stays put).
+  // Navigation stack of map roots; current = last. The path follows the active
+  // scene: when the narrative loads or the scene's location changes, jump to the
+  // map that shows that location (the user can still drill/ascend within it).
   const startPath = useMemo(() => {
     if (!narrative) return [];
     const start = pickStartRoot(narrative, maps, currentScene?.locationId ?? null);
     return start ? buildPath(narrative, maps, start) : [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narrative?.id]);
+  }, [narrative?.id, currentScene?.locationId]);
   const [stack, setStack] = useState<string[]>(startPath);
   useEffect(() => { setStack(startPath); }, [startPath]);
 
@@ -222,30 +223,36 @@ export function BoardView() {
   // is drillable when a map is rooted at that location.
   const labels = (currentMap.labels ?? []).filter((lb) => lb.locationId !== currentMap.rootLocationId);
 
-  const renderCluster = (locId: string) => {
-    // Gather everyone whose current location is this territory or any
-    // descendant of it — a character in a sub-location counts as "inside" the
-    // label that contains it. Sibling labels on a map are disjoint subtrees, so
-    // no one is double-counted.
-    const chars: Character[] = [];
-    for (const [exactLoc, bucket] of charsByLocation) {
-      if (isWithin(narrative.locations, exactLoc, locId)) chars.push(...bucket);
-    }
+  const renderAvatars = (chars: Character[]) => {
     if (chars.length === 0) return null;
-    const shown = chars.slice(0, 6);
     return (
-      <div className="flex -space-x-2 mt-1 justify-center">
-        {shown.map((c) => (
+      <div className="flex flex-wrap -space-x-2 mt-1 justify-center max-w-50">
+        {chars.map((c) => (
           <Avatar key={c.id} char={c} url={c.imageUrl ? charImages.get(c.imageUrl) ?? null : null} onClick={() => inspectCharacter(c.id)} />
         ))}
-        {chars.length > shown.length && (
-          <span className="w-7 h-7 rounded-full bg-black/70 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white shadow-md shrink-0">
-            +{chars.length - shown.length}
-          </span>
-        )}
       </div>
     );
   };
+
+  // Everyone whose current location is this territory or any descendant of it —
+  // a character in a sub-location counts as "inside" the label that contains it.
+  // Sibling labels on a map are disjoint subtrees, so no one is double-counted.
+  const renderCluster = (locId: string) =>
+    renderAvatars(
+      [...charsByLocation]
+        .filter(([exactLoc]) => isWithin(narrative.locations, exactLoc, locId))
+        .flatMap(([, bucket]) => bucket),
+    );
+
+  // Members standing at the parent (map root) itself — within the root's
+  // territory but not inside any drilled-down child label, so they aren't shown
+  // anywhere else. Rendered under the title.
+  const parentMembers = [...charsByLocation]
+    .filter(([exactLoc]) =>
+      isWithin(narrative.locations, exactLoc, currentMap.rootLocationId) &&
+      !labels.some((lb) => isWithin(narrative.locations, exactLoc, lb.locationId)),
+    )
+    .flatMap(([, bucket]) => bucket);
 
   return (
     <div className="relative h-full flex flex-col bg-bg-base">
@@ -260,8 +267,9 @@ export function BoardView() {
           <div className="relative select-none" style={{ width: board.w, height: board.h }}>
             <img src={imageUrl} alt={currentMap.name} className="absolute inset-0 w-full h-full object-cover rounded-lg border border-border shadow-lg" draggable={false} />
 
-            {/* Map title — clicking ascends to the parent map when one exists. */}
-            <div className="absolute top-0 inset-x-0 flex justify-center pt-3">
+            {/* Map title — clicking ascends to the parent map when one exists.
+                Members standing at the parent itself cluster beneath it. */}
+            <div className="absolute top-0 inset-x-0 flex flex-col items-center pt-3">
               <button
                 onClick={goToParent}
                 disabled={!parentRoot}
@@ -272,6 +280,7 @@ export function BoardView() {
               >
                 {titleOf(currentRoot!)}
               </button>
+              {renderAvatars(parentMembers)}
             </div>
 
             {/* Region labels + character clusters */}
