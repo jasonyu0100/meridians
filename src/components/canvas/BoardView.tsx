@@ -71,8 +71,26 @@ function buildPath(narrative: NarrativeState, maps: Record<string, LocationMap>,
   return path;
 }
 
-/** Pick the most useful starting board: the map that shows the current scene's
- *  location as a region, else the global map, else any map with an image. */
+/** Depth of a location in the containment tree (0 = top-level). */
+function locDepth(locations: NarrativeState['locations'], locId: string): number {
+  let d = 0;
+  let cur: string | null | undefined = locations[locId]?.parentId;
+  const seen = new Set<string>([locId]);
+  while (cur && !seen.has(cur)) {
+    d++;
+    seen.add(cur);
+    cur = locations[cur]?.parentId;
+  }
+  return d;
+}
+
+/** Pick the most useful starting board for a location:
+ *  1. the map that shows the location directly as a region (tightest scope), else
+ *  2. the deepest existing map whose subtree still contains it — i.e. the lowest
+ *     map in the tree with a child region leading down to the location (so when
+ *     the location's own map isn't generated, we land on the nearest ancestor
+ *     map that does exist rather than jumping all the way to Global), else
+ *  3. the global map, else any map with an image. */
 function pickStartRoot(
   narrative: NarrativeState,
   maps: Record<string, LocationMap>,
@@ -81,13 +99,21 @@ function pickStartRoot(
   const all = Object.values(maps);
   if (all.length === 0) return null;
   if (currentLocId) {
-    // Prefer the deepest map containing the location (rooted nearest to it).
-    const containing = all
+    // 1. Maps that show the location as a region of their own — tightest first.
+    const direct = all
       .filter((m) => m.imageUrl && m.locationIds.includes(currentLocId))
-      .sort((a, b) => b.locationIds.length - a.locationIds.length); // smaller scope = nearer; but locationIds count ~ proxy
-    // A tighter board (fewer members) is usually the more specific one.
-    const nearest = containing.sort((a, b) => a.locationIds.length - b.locationIds.length)[0];
-    if (nearest) return nearest.rootLocationId;
+      .sort((a, b) => a.locationIds.length - b.locationIds.length);
+    if (direct[0]) return direct[0].rootLocationId;
+    // 2. No direct map — the deepest existing map whose subtree contains it.
+    const containing = all
+      .filter(
+        (m) =>
+          m.imageUrl &&
+          m.rootLocationId !== GLOBAL_MAP_ROOT &&
+          isWithin(narrative.locations, currentLocId, m.rootLocationId),
+      )
+      .sort((a, b) => locDepth(narrative.locations, b.rootLocationId) - locDepth(narrative.locations, a.rootLocationId));
+    if (containing[0]) return containing[0].rootLocationId;
   }
   const global = mapByRoot(maps, GLOBAL_MAP_ROOT);
   if (global?.imageUrl) return GLOBAL_MAP_ROOT;
@@ -95,13 +121,17 @@ function pickStartRoot(
   return withImage?.rootLocationId ?? null;
 }
 
-/** Small circular character avatar — image when available, else an initial. */
-function Avatar({ char, url, onClick }: { char: Character; url: string | null; onClick: () => void }) {
+/** Small circular character avatar — image when available, else an initial.
+ *  `active` marks a participant in the current scene with a subtle accent ring
+ *  and lifts them above the overlap stack; everyone else renders normally. */
+function Avatar({ char, url, onClick, active }: { char: Character; url: string | null; onClick: () => void; active: boolean }) {
   return (
     <button
       onClick={onClick}
-      title={char.name}
-      className="w-7 h-7 rounded-full overflow-hidden border-2 border-white shadow-md bg-bg-elevated flex items-center justify-center shrink-0 hover:ring-2 hover:ring-accent transition-shadow"
+      title={active ? `${char.name} · in this scene` : char.name}
+      className={`w-7 h-7 rounded-full overflow-hidden shadow-md bg-bg-elevated flex items-center justify-center shrink-0 transition-all hover:ring-2 hover:ring-accent ${
+        active ? 'ring-2 ring-accent z-10' : ''
+      }`}
     >
       {url
         ? <img src={url} alt={char.name} className="w-full h-full object-cover" />
@@ -223,12 +253,16 @@ export function BoardView() {
   // is drillable when a map is rooted at that location.
   const labels = (currentMap.labels ?? []).filter((lb) => lb.locationId !== currentMap.rootLocationId);
 
+  // Participants of the active scene — highlighted; sorted to the front so the
+  // active cast is on top of the overlap stack.
+  const sceneParticipants = new Set(currentScene?.participantIds ?? []);
   const renderAvatars = (chars: Character[]) => {
     if (chars.length === 0) return null;
+    const ordered = [...chars].sort((a, b) => Number(sceneParticipants.has(b.id)) - Number(sceneParticipants.has(a.id)));
     return (
       <div className="flex flex-wrap -space-x-2 mt-1 justify-center max-w-50">
-        {chars.map((c) => (
-          <Avatar key={c.id} char={c} url={c.imageUrl ? charImages.get(c.imageUrl) ?? null : null} onClick={() => inspectCharacter(c.id)} />
+        {ordered.map((c) => (
+          <Avatar key={c.id} char={c} url={c.imageUrl ? charImages.get(c.imageUrl) ?? null : null} active={sceneParticipants.has(c.id)} onClick={() => inspectCharacter(c.id)} />
         ))}
       </div>
     );
