@@ -333,7 +333,7 @@ function FeaturedStance({
   const catColor = THREAD_CATEGORY_HEX[category];
 
   return (
-    <div className="relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-xl p-6 shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_24px_60px_-24px_rgba(0,0,0,0.7)] overflow-hidden">
+    <div className="relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-xl p-6 panel-raise overflow-hidden">
       {/* Top highlight — Apple-style lit edge */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/15 to-transparent" />
       {/* Header */}
@@ -623,7 +623,7 @@ function StanceListSidebar({
   };
 
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-xl h-full overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_24px_60px_-24px_rgba(0,0,0,0.7)]">
+    <div className="relative rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-xl h-full overflow-hidden panel-raise">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/15 to-transparent" />
       <div className="absolute inset-0 flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between">
@@ -756,7 +756,7 @@ function KPITrendCard({
   const fillColor = `${lineColor}22`;
   return (
     <div
-      className="relative flex flex-col gap-1.5 p-3.5 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl min-w-0 overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]"
+      className="relative flex flex-col gap-1.5 p-3.5 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl min-w-0 overflow-hidden panel-raise-sm"
       title={hint}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/12 to-transparent" />
@@ -831,7 +831,7 @@ function CategoryBreakdown({ rows }: { rows: PortfolioRow[] }) {
     'abandoned',
   ];
   return (
-    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]">
+    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden panel-raise-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] uppercase tracking-widest text-text-dim">
           Category mix
@@ -893,7 +893,7 @@ function ResolutionQualityPanel({
     { label: 'Thin', count: bands.thin, color: '#FB7185', hint: 'Quality < 0.4' },
   ];
   return (
-    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]">
+    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden panel-raise-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] uppercase tracking-widest text-text-dim">
           Resolution quality
@@ -957,7 +957,7 @@ function TopMovers({
 }) {
   const top = movements.filter((m) => Math.abs(m.deltaProb) >= 0.01).slice(0, 5);
   return (
-    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]">
+    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden panel-raise-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] uppercase tracking-widest text-text-dim">
           Top movers
@@ -1035,7 +1035,7 @@ function VolatilityLeaders({
     .sort((a, b) => b.volatility - a.volatility)
     .slice(0, 5);
   return (
-    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]">
+    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden panel-raise-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] uppercase tracking-widest text-text-dim">
           Volatility leaders
@@ -1098,7 +1098,7 @@ function EntropyHistogram({ rows }: { rows: PortfolioRow[] }) {
   const maxBin = Math.max(1, ...bins);
   const labels = ['0–20', '20–40', '40–60', '60–80', '80–100'];
   return (
-    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]">
+    <div className="relative flex flex-col gap-3 p-4 rounded-xl border border-white/8 bg-white/2.5 backdrop-blur-xl overflow-hidden panel-raise-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] uppercase tracking-widest text-text-dim">
           Uncertainty distribution

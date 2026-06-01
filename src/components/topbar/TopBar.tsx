@@ -29,6 +29,7 @@ import { NarrativeEditModal } from "@/components/topbar/NarrativeEditModal";
 import { PatternsModal } from "@/components/topbar/PatternsModal";
 import { PropositionAnalysisModal } from "@/components/topbar/PropositionAnalysisModal";
 import SystemLogModal from "@/components/topbar/SystemLogModal";
+import { ThemeModal } from "@/components/topbar/ThemeModal";
 import { GameTheoryDashboard } from "@/components/topbar/GameTheoryDashboard";
 import {
   GasMeter,
@@ -66,6 +67,7 @@ import {
   GAME_TYPE_LABELS,
 } from "@/types/narrative";
 import { useLogs } from "@/lib/logs-context";
+import { useTheme } from "@/lib/theme-context";
 import {
   ANALYSIS_NARRATIVE_IDS,
   PLAYGROUND_NARRATIVE_IDS,
@@ -330,6 +332,7 @@ export default function TopBar() {
   const { state, dispatch } = useStore();
   const { dispatch: wizardDispatch } = useWizard();
   const { state: logsState } = useLogs();
+  const { theme } = useTheme();
   const narrative = state.activeNarrative;
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -350,6 +353,7 @@ export default function TopBar() {
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [timeFlowOpen, setTimeFlowOpen] = useState(false);
   const [definitionsOpen, setDefinitionsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const [slidesOpen, setSlidesOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [markovOpen, setMarkovOpen] = useState(false);
@@ -1291,6 +1295,7 @@ export default function TopBar() {
                 window.dispatchEvent(new Event("open-cast-analytics")),
               disabled: !hasNarrative,
             },
+            { label: "Theme", onClick: () => setThemeOpen(true) },
           ]}
         />
 
@@ -1386,6 +1391,28 @@ export default function TopBar() {
 
       {/* Right: quick actions */}
       <div className="flex items-center gap-1.5">
+        {/* Theme switcher */}
+        <button
+          onClick={() => setThemeOpen(true)}
+          className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border text-text-dim hover:text-text-primary hover:bg-white/5 border-white/8"
+          title="Theme"
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
+          </svg>
+          <span className="capitalize">{theme}</span>
+        </button>
+
         {/* Usage pill */}
         <div className="relative" ref={usageRef}>
           <button
@@ -2310,6 +2337,7 @@ export default function TopBar() {
       {definitionsOpen && (
         <DefinitionsModal onClose={() => setDefinitionsOpen(false)} />
       )}
+      {themeOpen && <ThemeModal onClose={() => setThemeOpen(false)} />}
       {propositionAnalysisOpen && narrative && (
         <PropositionAnalysisModal
           narrative={narrative}

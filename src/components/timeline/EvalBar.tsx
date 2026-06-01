@@ -122,7 +122,7 @@ export default function EvalBar() {
     >
       {/* Bar track */}
       <div className="w-4 h-full rounded-full overflow-hidden shadow-lg">
-        <div className="relative w-full h-full bg-neutral-900/80 backdrop-blur-sm">
+        <div className="relative w-full h-full backdrop-blur-sm" style={{ background: 'var(--track-bg)' }}>
           {/* Growing fill from center */}
           <div
             className="absolute inset-x-0"
@@ -139,7 +139,7 @@ export default function EvalBar() {
         style={{ bottom: `${displayPct}%`, transform: 'translateY(50%)' }}
       >
         <span className={`ml-1.5 text-[10px] font-mono font-semibold whitespace-nowrap drop-shadow-md`}
-          style={{ color: calibrating ? 'rgba(255,255,255,0.4)' : isPositive ? 'rgba(245,158,11,0.8)' : 'rgba(147,197,253,0.8)' }}
+          style={{ color: calibrating ? 'var(--text-dim)' : isPositive ? 'rgba(245,158,11,0.8)' : 'rgba(147,197,253,0.8)' }}
         >
           {displayValue}
         </span>

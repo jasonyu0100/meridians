@@ -2,6 +2,7 @@
 
 import { LogsProvider } from '@/lib/logs-context';
 import { StoreProvider, useStore } from '@/lib/store';
+import { ThemeProvider } from '@/lib/theme-context';
 import { WizardProvider } from '@/lib/wizard-context';
 import type { ReactNode } from 'react';
 
@@ -17,10 +18,12 @@ function LogsProviderBridge({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <StoreProvider>
-      <WizardProvider>
-        <LogsProviderBridge>{children}</LogsProviderBridge>
-      </WizardProvider>
-    </StoreProvider>
+    <ThemeProvider>
+      <StoreProvider>
+        <WizardProvider>
+          <LogsProviderBridge>{children}</LogsProviderBridge>
+        </WizardProvider>
+      </StoreProvider>
+    </ThemeProvider>
   );
 }

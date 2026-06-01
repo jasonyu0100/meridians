@@ -127,7 +127,9 @@ export default function EntityWorldGraphView({ entityId, entityName, world, scen
     const edgeT = (d: CLink) =>
       ((d.source as CNode).degree + (d.target as CNode).degree) / (maxDegree * 2);
     linkAll
-      .attr('stroke', '#ffffff')
+      // CSS-variable stroke so edges recolour live on theme switch (white on
+      // dark themes, dark ink on light) without a D3 rebuild.
+      .style('stroke', 'var(--graph-edge)')
       .attr('stroke-opacity', (d) => edgeOpacityFor(edgeT(d)))
       .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)));
 

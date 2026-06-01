@@ -286,7 +286,8 @@ export default function KnowledgeGraphView({ narrative, resolvedKeys, currentInd
       return touches ? base : base * FOCUS_WIDTH_FACTOR_DIM;
     };
     linkAll
-      .attr('stroke', '#ffffff')
+      // Theme-aware stroke via CSS variable (white on dark, dark ink on light).
+      .style('stroke', 'var(--graph-edge)')
       // .style() (inline) so the values can't be overridden by any cached
       // or future CSS rule on parent classes.
       .style('opacity', baseEdgeOpacity)

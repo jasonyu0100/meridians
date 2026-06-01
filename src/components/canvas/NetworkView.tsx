@@ -331,10 +331,11 @@ export default function NetworkView() {
       // closure). Same pattern WG / KGV / TGV use.
       .attr('fill', 'none')
       .attr('vector-effect', 'non-scaling-stroke')
-      // Plain white stroke — matches WorldGraph. The categorical
-      // force-blend colouring read as noise here; nodes carry the
-      // category, edges just carry topology.
-      .attr('stroke', '#ffffff')
+      // Theme-aware stroke via CSS variable — white on dark themes, dark ink
+      // on light — so edges stay visible on a white canvas and recolour live.
+      // The categorical force-blend colouring read as noise here; nodes carry
+      // the category, edges just carry topology.
+      .style('stroke', 'var(--graph-edge)')
       // Group `opacity` (not stroke-opacity) so the arrowhead fades with
       // its line — context-stroke inherits colour only, not opacity, so
       // a faded line would otherwise render with a fully-opaque marker

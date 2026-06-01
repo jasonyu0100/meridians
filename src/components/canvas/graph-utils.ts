@@ -229,6 +229,65 @@ export const KNOWLEDGE_OPACITY: Record<string, number> = {
 export const DEFAULT_WORLD_FILL = "#FFFFFF";
 export const DEFAULT_KNOWLEDGE_OPACITY = 0.7;
 
+// ── Theme-aware graph neutrals ──────────────────────────────────────────────
+//
+// The grayscale entity/edge/label colours must invert per theme (pale on dark,
+// dark on white). They live as CSS variables (see globals.css `--graph-*`) so
+// the palette has a single source of truth; this resolver reads the active
+// values at graph-build time. Callers pass the result down to D3 attrs. The
+// hardcoded fallbacks mirror the astral defaults for SSR / pre-paint. Because
+// the values come from CSS variables, any graph that wants to re-theme on a
+// theme switch must re-run its build effect (include `theme` in its deps).
+
+export type GraphNeutrals = {
+  charAnchor: string;
+  charRecurring: string;
+  charTransient: string;
+  location: string;
+  defaultFill: string;
+  edge: string;
+  pulse: string;
+  /** Generic muted fill for untyped world/entity nodes. */
+  muted: string;
+};
+
+const GRAPH_NEUTRAL_FALLBACK: GraphNeutrals = {
+  charAnchor: "#E8E8E8",
+  charRecurring: "#888888",
+  charTransient: "#555555",
+  location: "#333333",
+  defaultFill: "#FFFFFF",
+  edge: "#FFFFFF",
+  pulse: "#FFFFFF99",
+  muted: "#888888",
+};
+
+export function resolveGraphNeutrals(): GraphNeutrals {
+  if (typeof document === "undefined") return GRAPH_NEUTRAL_FALLBACK;
+  const cs = getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string) =>
+    cs.getPropertyValue(name).trim() || fallback;
+  return {
+    charAnchor: read("--graph-char-anchor", GRAPH_NEUTRAL_FALLBACK.charAnchor),
+    charRecurring: read("--graph-char-recurring", GRAPH_NEUTRAL_FALLBACK.charRecurring),
+    charTransient: read("--graph-char-transient", GRAPH_NEUTRAL_FALLBACK.charTransient),
+    location: read("--graph-location", GRAPH_NEUTRAL_FALLBACK.location),
+    defaultFill: read("--graph-default-fill", GRAPH_NEUTRAL_FALLBACK.defaultFill),
+    edge: read("--graph-edge", GRAPH_NEUTRAL_FALLBACK.edge),
+    pulse: read("--graph-pulse", GRAPH_NEUTRAL_FALLBACK.pulse),
+    muted: read("--graph-char-recurring", GRAPH_NEUTRAL_FALLBACK.muted),
+  };
+}
+
+/** Character fill by role, resolved against the active theme's neutrals. */
+export function roleFill(role: CharacterRole | undefined, n: GraphNeutrals): string {
+  return role === "anchor"
+    ? n.charAnchor
+    : role === "transient"
+      ? n.charTransient
+      : n.charRecurring;
+}
+
 // ── Thread log node type colors ─────────────────────────────────────────────
 export const THREAD_LOG_FILL: Record<string, string> = {
   pulse: "#FFFFFF99", // faint white

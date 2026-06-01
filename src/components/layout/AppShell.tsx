@@ -4,6 +4,7 @@ import { type ReactNode, useState, useCallback, useRef } from 'react';
 import TopBar from '@/components/topbar/TopBar';
 import { StarField } from '@/components/effects/StarField';
 import { IconChevronLeft, IconChevronRight } from '@/components/icons';
+import { useTheme } from '@/lib/theme-context';
 
 type AppShellProps = {
   children: ReactNode;
@@ -66,21 +67,24 @@ export default function AppShell({ children, sidebar, sidepanel, rail }: AppShel
   const left = useResize(300, 150, 600, 'left', true);
   const right = useResize(500, 150, 1200, 'right', false);
   const railWidth = rail ? 56 : 0;
+  const { theme } = useTheme();
 
   return (
     <div className="h-screen bg-bg-base flex flex-col overflow-hidden relative">
-      {/* Ambient cosmic background — dim nebulae + star field behind workspace */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="cosmos-container cosmos-workspace absolute inset-0 z-0">
-          <div className="nebula nebula-1" />
-          <div className="nebula nebula-2" />
-          <div className="nebula nebula-3" />
-          <div className="cosmos-glow" />
+      {/* Ambient cosmic background — astral theme only; dark/light run flat */}
+      {theme === 'astral' && (
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="cosmos-container cosmos-workspace absolute inset-0 z-0">
+            <div className="nebula nebula-1" />
+            <div className="nebula nebula-2" />
+            <div className="nebula nebula-3" />
+            <div className="cosmos-glow" />
+          </div>
+          <div className="cosmos-layer absolute inset-0 z-10 opacity-50">
+            <StarField />
+          </div>
         </div>
-        <div className="absolute inset-0 z-10 opacity-50">
-          <StarField />
-        </div>
-      </div>
+      )}
 
       {/* TopBar */}
       <div className="h-11 shrink-0 relative z-20">

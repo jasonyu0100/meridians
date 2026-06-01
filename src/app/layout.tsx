@@ -26,7 +26,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="theme-astral dark" suppressHydrationWarning>
+      <head>
+        {/* No-FOUC theme bootstrap — applies the stored theme class to <html>
+            before first paint so the page never flashes the default theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('meridians_theme');if(t!=='astral'&&t!=='dark'&&t!=='light')t='astral';var e=document.documentElement;e.classList.remove('theme-astral','theme-dark','theme-light','dark','light');e.classList.add('theme-'+t);e.classList.add(t==='light'?'light':'dark');e.style.colorScheme=t==='light'?'light':'dark';}catch(_){}})();`,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-bg-base text-text-primary`}
       >

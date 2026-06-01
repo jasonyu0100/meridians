@@ -38,18 +38,19 @@ import {
   getSceneArtifactIds,
   heatColor,
   ROLE_RADIUS,
-  ROLE_FILL,
   LOCATION_SIZE,
   LOCATION_RX,
-  LOCATION_FILL,
   WORLD_FILL,
-  DEFAULT_WORLD_FILL,
+  resolveGraphNeutrals,
+  roleFill,
 } from './graph-utils';
+import { useTheme } from '@/lib/theme-context';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
 import { edgeWidthFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM } from '@/lib/graph-styling';
 
 export default function WorldGraph() {
   const { state, dispatch } = useStore();
+  const { theme } = useTheme();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null);
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
@@ -247,6 +248,10 @@ export default function WorldGraph() {
     const svg = d3.select(svgRef.current);
     const width = svgRef.current.clientWidth || 800;
     const height = svgRef.current.clientHeight || 600;
+
+    // Theme-aware grayscale palette (anchors, locations, edges, default fills).
+    // `theme` is in this effect's deps so the graph re-resolves on theme swap.
+    const neutrals = resolveGraphNeutrals();
 
     // Capture the current zoom transform before wiping the SVG so a
     // mid-rebuild scene change doesn't yank the user back to the
@@ -793,8 +798,8 @@ export default function WorldGraph() {
         if (d.linkKind === 'character-location') return '#3B82F6';  // Blue - current position
         if (d.linkKind === 'tie') return '#A855F7';                 // Purple - permanent affiliation
         if (d.linkKind === 'ownership') return '#FBBF24';           // Amber - artifact ownership
-        if (d.linkKind === 'knowledge') return '#FFFFFF';
-        return '#FFFFFF';
+        if (d.linkKind === 'knowledge') return neutrals.edge;
+        return neutrals.edge;
       })
       // Group opacity (not stroke-opacity) so the arrowhead fades together
       // with its line — context-stroke inherits colour only, not opacity.
@@ -940,7 +945,7 @@ export default function WorldGraph() {
         return ROLE_RADIUS[d.role as keyof typeof ROLE_RADIUS] ?? ROLE_RADIUS.recurring;
       })
       .attr('fill', (d) =>
-        showHeatmap ? heatColor(normChar(d)) : (ROLE_FILL[d.role as keyof typeof ROLE_FILL] ?? ROLE_FILL.recurring),
+        showHeatmap ? heatColor(normChar(d)) : roleFill(d.role, neutrals),
       );
 
     // Location rounded rects
@@ -958,7 +963,7 @@ export default function WorldGraph() {
           .attr('width', size)
           .attr('height', size)
           .attr('rx', LOCATION_RX)
-          .attr('fill', showHeatmap ? heatColor(normLoc(d)) : LOCATION_FILL);
+          .attr('fill', showHeatmap ? heatColor(normLoc(d)) : neutrals.location);
       });
 
     // ── Node images (clip-masked portraits & location photos) ──────────
@@ -1008,7 +1013,7 @@ export default function WorldGraph() {
       .filter((d) => d.kind === 'knowledge')
       .append('circle')
       .attr('r', 8)
-      .attr('fill', (d) => WORLD_FILL[d.worldType ?? 'trait'] ?? DEFAULT_WORLD_FILL);
+      .attr('fill', (d) => WORLD_FILL[d.worldType ?? 'trait'] ?? neutrals.defaultFill);
 
     // Artifact diamonds — sized by significance (ARTIFACT_SIZES defined above).
     const ARTIFACT_FILLS: Record<string, string> = { key: '#F59E0B', notable: '#D97706', minor: '#92400E' };
@@ -1117,7 +1122,7 @@ export default function WorldGraph() {
       gRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial, showVicinity]);
+  }, [theme, narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial, showVicinity]);
 
   // ── Lightweight: update selected node highlight + relationship edges ──
   useEffect(() => {

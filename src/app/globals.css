@@ -1,16 +1,25 @@
 @import "tailwindcss";
 
+/* ── Theme system ──────────────────────────────────────────────────────────
+ * Tailwind utilities (bg-bg-base, text-text-primary, border-border, …) resolve
+ * to the indirection variables below. The raw token values live on per-theme
+ * root classes (.theme-astral / .theme-dark / .theme-light), so swapping the
+ * class on <html> retheme the entire app at runtime. Astral is the default and
+ * is also mirrored onto :root so server-rendered markup paints correctly before
+ * the theme class is applied. */
 @theme inline {
-  --color-background: #0c0a14;
-  --color-foreground: #e8e8e8;
-  --color-bg-base: #0c0a14;
-  --color-bg-panel: #16131e;
-  --color-bg-elevated: #1d1a26;
-  --color-bg-overlay: #25212f;
-  --color-text-primary: #e8e8e8;
-  --color-text-secondary: #888888;
-  --color-text-dim: #666666;
-  --color-border: rgba(196, 181, 253, 0.1);
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-bg-base: var(--bg-base);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-dim: var(--text-dim);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-fate: #ef4444;
   --color-world: #22c55e;
   --color-variety: #3b82f6;
@@ -18,6 +27,146 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* Astral — luminous deep-space violet with cosmos (the aesthetic default).
+ * Deliberately lifted and more saturated than the flat Dark theme: the base is
+ * an illuminated indigo-violet, not near-black, so the cosmos reads as ambient
+ * light rather than decoration on black. Dark stays neutral/flat by contrast. */
+:root,
+.theme-astral {
+  --bg-base: #0d0919;
+  --bg-panel: #161029;
+  --bg-elevated: #1f1738;
+  --bg-overlay: #281f45;
+  --text-primary: #ededf2;
+  --text-secondary: #9a93ad;
+  --text-dim: #6f6886;
+  --border: rgba(196, 181, 253, 0.12);
+  --accent: #a78bfa;
+  --accent-soft: rgba(167, 139, 250, 0.18);
+  --glass-bg: rgba(26, 20, 44, 0.97);
+  --glass-pill-bg: rgba(26, 20, 44, 0.96);
+  --glass-panel-bg: rgba(18, 13, 36, 0.72);
+  --glass-border: rgba(196, 181, 253, 0.18);
+  --glass-shadow: 0 12px 36px rgba(8, 6, 20, 0.6), 0 0 0 1px rgba(196, 181, 253, 0.06);
+  --scrollbar-thumb: rgba(196, 181, 253, 0.14);
+  --scrollbar-thumb-hover: rgba(196, 181, 253, 0.26);
+  --node-glow: rgba(196, 181, 253, 0.55);
+  /* Neutral "empty channel" fill for meters/tracks (EvalBar etc.) — dark on
+     dark themes, light grey on light. */
+  --track-bg: rgba(18, 18, 24, 0.8);
+  /* Raised-card shadows — heavy dark drop on dark themes, near-flat hairline on
+     light (where deep shadows read as excessive halos). */
+  --panel-raise-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.06) inset, 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+  --panel-raise-sm-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 12px 30px -18px rgba(0, 0, 0, 0.6);
+  /* Graph data-viz neutrals — the grayscale entity/edge/label colours that
+     must invert per theme (the vibrant type colours in graph-utils stay fixed
+     since they read on any background). */
+  --graph-bg: var(--bg-base);
+  --graph-char-anchor: #e8e8e8;
+  --graph-char-recurring: #888888;
+  --graph-char-transient: #555555;
+  --graph-location: #333333;
+  --graph-default-fill: #ffffff;
+  --graph-edge: #ffffff;
+  --graph-label: #9ca0b0;
+  --graph-pulse: #ffffff99;
+  /* Cosmos background — tokenised so a theme can fully recolour the ambient
+     nebulae + glow without touching the animation/position rules. */
+  --nebula-1: radial-gradient(circle at 35% 40%, rgba(149, 105, 255, 0.62) 0%, rgba(99, 41, 196, 0.32) 35%, transparent 70%);
+  --nebula-2: radial-gradient(circle at 65% 45%, rgba(224, 84, 245, 0.42) 0%, rgba(133, 68, 247, 0.26) 40%, transparent 75%);
+  --nebula-3: radial-gradient(ellipse at 50% 70%, rgba(252, 199, 64, 0.26) 0%, rgba(245, 158, 11, 0.12) 40%, transparent 75%);
+  --cosmos-glow: radial-gradient(ellipse 60% 100% at 50% 100%, rgba(201, 188, 255, 0.4), rgba(149, 105, 255, 0.16) 40%, transparent 70%);
+  color-scheme: dark;
+}
+
+/* Dark — clean neutral dark, no cosmos */
+.theme-dark {
+  --bg-base: #0a0a0b;
+  --bg-panel: #141416;
+  --bg-elevated: #1c1c1f;
+  --bg-overlay: #242427;
+  --text-primary: #ededed;
+  --text-secondary: #8a8a8f;
+  --text-dim: #5c5c61;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #a78bfa;
+  --accent-soft: rgba(167, 139, 250, 0.16);
+  --glass-bg: rgba(20, 20, 22, 0.98);
+  --glass-pill-bg: rgba(20, 20, 22, 0.97);
+  --glass-panel-bg: rgba(12, 12, 13, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+  --node-glow: rgba(255, 255, 255, 0.5);
+  --track-bg: rgba(255, 255, 255, 0.08);
+  --panel-raise-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 24px 60px -24px rgba(0, 0, 0, 0.65);
+  --panel-raise-sm-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 12px 30px -18px rgba(0, 0, 0, 0.55);
+  --graph-bg: var(--bg-base);
+  --graph-char-anchor: #e8e8e8;
+  --graph-char-recurring: #888888;
+  --graph-char-transient: #555555;
+  --graph-location: #333333;
+  --graph-default-fill: #d8d8e0;
+  --graph-edge: #ffffff;
+  --graph-label: #9ca0b0;
+  --graph-pulse: #ffffff99;
+  color-scheme: dark;
+}
+
+/* Light — bright neutral surface, dark text, no cosmos.
+ *
+ * The whole UI builds depth from translucent `white/x` overlays (panels,
+ * borders, hovers) designed for a dark base — on white they vanish. Tailwind v4
+ * resolves every `*-white/x` utility through `var(--color-white)`, so remapping
+ * that one variable to a dark ink (below) flips all of them into correct dark
+ * surface tints in a single stroke. The handful of solid `bg-white` knobs go
+ * dark too, which reads fine on light toggle tracks. */
+.theme-light {
+  --color-white: #14141c;
+
+  /* Surfaces are uniformly white — base, panels, sidebars, graph all match, so
+     there are no grey blocks between divs. Separation comes from borders and
+     the ink overlay tints (the --color-white remap above), not from fills. */
+  --bg-base: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-overlay: #ffffff;
+  --text-primary: #14141c;
+  --text-secondary: #44444f;
+  --text-dim: #70707c;
+  --border: rgba(20, 20, 35, 0.16);
+  --accent: #5b46d9;
+  --accent-soft: rgba(91, 70, 217, 0.12);
+  --glass-bg: rgba(255, 255, 255, 0.98);
+  --glass-pill-bg: rgba(255, 255, 255, 0.97);
+  --glass-panel-bg: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(20, 20, 35, 0.14);
+  --glass-shadow: 0 10px 34px rgba(40, 35, 70, 0.13), 0 0 0 1px rgba(20, 20, 35, 0.06);
+  --scrollbar-thumb: rgba(30, 25, 50, 0.24);
+  --scrollbar-thumb-hover: rgba(30, 25, 50, 0.4);
+  --node-glow: rgba(91, 70, 217, 0.45);
+  --track-bg: rgba(20, 20, 35, 0.1);
+  /* Near-flat on light — a hairline border-shadow instead of a deep drop. */
+  --panel-raise-shadow: 0 1px 2px rgba(20, 20, 35, 0.05), 0 0 0 1px rgba(20, 20, 35, 0.04);
+  --panel-raise-sm-shadow: 0 1px 2px rgba(20, 20, 35, 0.04);
+  /* Graph neutrals inverted for a white canvas — dark inks instead of pale
+     greys/whites so nodes, edges and labels read with strong contrast. */
+  --graph-bg: #ffffff;
+  --graph-char-anchor: #2e2e3a;
+  --graph-char-recurring: #6a6a78;
+  --graph-char-transient: #9a9aa6;
+  --graph-location: #2a2a35;
+  --graph-default-fill: #51515e;
+  --graph-edge: rgba(20, 20, 35, 0.5);
+  --graph-label: #55555f;
+  --graph-pulse: rgba(20, 20, 35, 0.55);
+  color-scheme: light;
+}
+
+/* Modal backdrop reads as a scrim on every theme. The shared `bg-black/x`
+ * backdrop darkens light surfaces fine, so nothing to remap there. */
 
 body {
   background: var(--color-bg-base);
@@ -43,45 +192,59 @@ button,
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(196, 181, 253, 0.14);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(196, 181, 253, 0.26);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Glass utility — violet-tinted dark, lavender border + halo. Near-opaque
  * so floating overlays stay legible over busy prose / canvas content;
  * subtle blur is kept as a depth cue but doesn't carry legibility. */
 .glass {
-  background: rgba(22, 19, 30, 0.98);
+  background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(196, 181, 253, 0.16);
-  box-shadow:
-    0 12px 36px rgba(8, 6, 20, 0.7),
-    0 0 0 1px rgba(196, 181, 253, 0.05);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 /* Floating pill chrome (FloatingPalette, DriverPalette, control bars,
  * scene info bars). Same near-opaque treatment as .glass so prose /
  * canvas content can't bleed through and reduce contrast. */
 .glass-pill {
-  background: rgba(22, 19, 30, 0.97);
+  background: var(--glass-pill-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(196, 181, 253, 0.18);
-  box-shadow:
-    0 12px 36px rgba(8, 6, 20, 0.65),
-    0 0 0 1px rgba(196, 181, 253, 0.06);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   border-radius: 999px;
 }
 
 /* Glass panel — semi-transparent so cosmos seeps through */
 .glass-panel {
-  background: rgba(14, 12, 22, 0.74);
+  background: var(--glass-panel-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+}
+
+/* Raised card shadows — theme-aware (deep on dark, near-flat on light). Use
+ * these instead of inline shadow-[…] so the elevation adapts per theme. */
+.panel-raise {
+  box-shadow: var(--panel-raise-shadow);
+}
+.panel-raise-sm {
+  box-shadow: var(--panel-raise-sm-shadow);
+}
+
+/* Content layered over a background image. The light theme remaps --color-white
+ * to a dark ink (so `white/x` surface tints read on a white page) — but over a
+ * dark image scrim that would turn overlaid text/dividers invisible. Apply this
+ * to any image-overlay container so `text-white/*`, `bg-black/*` scrims and
+ * white hairlines resolve to TRUE white/black there, in every theme. */
+.media-overlay {
+  --color-white: #fff;
 }
 
 /* D3 graph styles. Every canvas graph (WorldGraph, ThreadGraphView,
@@ -97,13 +260,13 @@ button,
   opacity: 0.85;
 }
 .graph-label {
-  fill: #9ca0b0;
+  fill: var(--graph-label);
   font-size: 10px;
   pointer-events: none;
   user-select: none;
 }
 .node-selected {
-  filter: drop-shadow(0 0 8px rgba(196, 181, 253, 0.55));
+  filter: drop-shadow(0 0 8px var(--node-glow));
 }
 
 /* Landing page animations */
@@ -169,14 +332,26 @@ button,
 }
 
 /* ── Cosmos / astrology theme ──────────────────────────────────────────── */
+/* The cosmos (nebulae + star field) is an astral-only flourish. The dark and
+ * light themes hide it for a flat, focused surface. Components also gate the
+ * cosmos in JS so it isn't rendered/animated off-theme; this is the CSS
+ * backstop for any cosmos mounted outside that gating. */
+.theme-dark .cosmos-container,
+.theme-dark .cosmos-layer,
+.theme-light .cosmos-container,
+.theme-light .cosmos-layer {
+  display: none !important;
+}
+
 .cosmos-container {
   opacity: 1;
   animation: cosmos-fade-in 2.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Dimmer workspace variant — ambient nebulae behind panels */
+/* Workspace variant — ambient nebulae behind panels. Lifted so the astral
+ * background feels illuminated, not just tinted, across the main canvas. */
 .cosmos-workspace {
-  opacity: 0.4;
+  opacity: 0.6;
   animation: none;
 }
 
@@ -198,58 +373,43 @@ button,
   will-change: transform, opacity;
 }
 
-/* Nebula 1 — deep indigo / royal violet, top-left */
+/* Nebula 1 — deep indigo / royal violet, top-left. Colour from --nebula-1. */
 .nebula-1 {
   top: -10%;
   left: -15%;
   width: 65%;
   height: 70%;
-  background: radial-gradient(
-    circle at 35% 40%,
-    rgba(139, 92, 246, 0.55) 0%,
-    rgba(91, 33, 182, 0.28) 35%,
-    transparent 70%
-  );
+  background: var(--nebula-1);
   animation:
     nebula-drift-1 38s ease-in-out infinite,
     nebula-pulse 14s ease-in-out infinite;
 }
 
-/* Nebula 2 — magenta / rose, mid-right */
+/* Nebula 2 — magenta / rose, mid-right. Colour from --nebula-2. */
 .nebula-2 {
   top: 12%;
   right: -18%;
   width: 60%;
   height: 65%;
-  background: radial-gradient(
-    circle at 65% 45%,
-    rgba(217, 70, 239, 0.36) 0%,
-    rgba(124, 58, 237, 0.22) 40%,
-    transparent 75%
-  );
+  background: var(--nebula-2);
   animation:
     nebula-drift-2 44s ease-in-out infinite,
     nebula-pulse 16s ease-in-out 2s infinite;
 }
 
-/* Nebula 3 — gold / amber, bottom centre */
+/* Nebula 3 — gold / amber, bottom centre. Colour from --nebula-3. */
 .nebula-3 {
   bottom: -12%;
   left: 18%;
   width: 64%;
   height: 55%;
-  background: radial-gradient(
-    ellipse at 50% 70%,
-    rgba(251, 191, 36, 0.22) 0%,
-    rgba(245, 158, 11, 0.1) 40%,
-    transparent 75%
-  );
+  background: var(--nebula-3);
   animation:
     nebula-drift-3 40s ease-in-out infinite,
     nebula-pulse 18s ease-in-out 3s infinite;
 }
 
-/* Soft halo at the base — moonrise */
+/* Soft halo at the base — moonrise. Colour from --cosmos-glow. */
 .cosmos-glow {
   position: absolute;
   bottom: -10%;
@@ -257,12 +417,7 @@ button,
   transform: translateX(-50%);
   width: 130%;
   height: 65%;
-  background: radial-gradient(
-    ellipse 60% 100% at 50% 100%,
-    rgba(196, 181, 253, 0.32),
-    rgba(139, 92, 246, 0.12) 40%,
-    transparent 70%
-  );
+  background: var(--cosmos-glow);
   filter: blur(60px);
   animation: nebula-pulse 20s ease-in-out infinite;
 }

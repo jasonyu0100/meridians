@@ -10,6 +10,7 @@ import {
   resolveEntrySequence,
 } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
+import { useTheme } from "@/lib/theme-context";
 import type { Arc, Scene, Branch } from "@/types/narrative";
 import { isScene, resolveEntry } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,8 +33,18 @@ const ARC_TINTS = [
 
 export default function TimelineStrip() {
   const { state, dispatch } = useStore();
+  const { theme } = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   const narrative = state.activeNarrative;
+
+  // Timeline node/line neutrals adapt to the theme. Astral + dark share the
+  // pale-on-dark palette; light inverts to dark-on-white so the strip doesn't
+  // read as heavy black dots on a white surface.
+  const isLight = theme === "light";
+  const nodeFill = isLight ? "#b0b0bc" : "#444444";
+  const nodeFillSelected = isLight ? "#2c2c38" : "#E8E8E8";
+  const lineStroke = isLight ? "rgba(20,20,35,0.18)" : "#333333";
+  const ringStroke = isLight ? "#2c2c38" : "#FFFFFF";
 
   const sceneKeys = state.resolvedEntryKeys;
 
@@ -309,7 +320,7 @@ export default function TimelineStrip() {
                 y1={PADDING_TOP + 8}
                 x2={xOf(i)}
                 y2={PADDING_TOP + 8}
-                stroke={isForkBoundary ? "#F59E0B" : "#333333"}
+                stroke={isForkBoundary ? "#F59E0B" : lineStroke}
                 strokeWidth={isForkBoundary ? 1.5 : 1}
                 strokeDasharray={isForkBoundary ? "3 3" : undefined}
               />
@@ -349,7 +360,7 @@ export default function TimelineStrip() {
                     cy={y}
                     r={NODE_RADIUS + 3}
                     fill="none"
-                    stroke="#FFFFFF"
+                    stroke={ringStroke}
                     strokeWidth={2}
                   />
                 )}
@@ -382,7 +393,7 @@ export default function TimelineStrip() {
                     cx={x}
                     cy={y}
                     r={NODE_RADIUS}
-                    fill={isSelected ? "#E8E8E8" : "#444444"}
+                    fill={isSelected ? nodeFillSelected : nodeFill}
                   />
                 )}
               </g>

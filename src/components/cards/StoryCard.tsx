@@ -66,7 +66,14 @@ export function StoryCard({
       style={{ animationDelay: `${animationDelayBase + index * 0.08}s` }}
     >
       <div
-        className={`relative rounded-xl overflow-hidden border border-white/6 bg-transparent transition-all duration-300 group-hover:border-white/15 group-hover:-translate-y-1 group-hover:shadow-[0_8px_30px_-10px_rgba(80,200,160,0.2)] ${isLg ? 'h-96' : 'h-80'}`}
+        className={`relative rounded-xl overflow-hidden border transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_8px_30px_-10px_rgba(80,200,160,0.2)] ${isLg ? 'h-96' : 'h-80'} ${
+          coverUrl
+            // Over a cover image: keep true white/black so the scrim + overlaid
+            // text stay legible regardless of theme.
+            ? 'media-overlay border-white/6 bg-transparent group-hover:border-white/15'
+            // No image: themed surface so the card is visible on a light page.
+            : 'border-border bg-bg-panel group-hover:border-border'
+        }`}
       >
         {coverUrl && (
           <div className="absolute inset-0">

@@ -127,7 +127,8 @@ export default function ThreadLogGraphView({
     const edgeT = (d: TLLink) =>
       ((d.source as TLNode).degree + (d.target as TLNode).degree) / (maxDegree * 2);
     linkAll
-      .attr('stroke', '#ffffff')
+      // Theme-aware stroke via CSS variable (white on dark, dark ink on light).
+      .style('stroke', 'var(--graph-edge)')
       .attr('stroke-opacity', d => edgeOpacityFor(edgeT(d)))
       .attr('stroke-width', d => edgeWidthFor(edgeT(d)))
       .attr('marker-end', 'url(#tl-arrow)');

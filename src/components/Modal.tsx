@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { StarField } from '@/components/effects/StarField';
+import { useTheme } from '@/lib/theme-context';
 
 type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl' | 'full';
 
@@ -31,6 +32,7 @@ type Props = {
 };
 
 export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, panelClassName }: Props) {
+  const { theme } = useTheme();
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -53,19 +55,21 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
     return (
       <div className="fixed inset-0 bg-bg-base z-50 flex flex-col overflow-hidden">
         {/* Cosmic background — nebulae + glow + star field, identical to the
-            home page's hero stack. Pointer-events-none so all input still
-            hits the modal content above. */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="cosmos-container absolute inset-0 z-0">
-            <div className="nebula nebula-1" />
-            <div className="nebula nebula-2" />
-            <div className="nebula nebula-3" />
-            <div className="cosmos-glow" />
+            home page's hero stack. Astral theme only; dark/light run flat.
+            Pointer-events-none so all input still hits the modal content. */}
+        {theme === 'astral' && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="cosmos-container absolute inset-0 z-0">
+              <div className="nebula nebula-1" />
+              <div className="nebula nebula-2" />
+              <div className="nebula nebula-3" />
+              <div className="cosmos-glow" />
+            </div>
+            <div className="cosmos-layer absolute inset-0 z-1">
+              <StarField />
+            </div>
           </div>
-          <div className="absolute inset-0 z-1">
-            <StarField />
-          </div>
-        </div>
+        )}
         {/* Content layer */}
         <div className="relative z-10 flex flex-col h-full">
           {children}
@@ -77,7 +81,7 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className={`bg-bg-base border border-white/10 rounded-2xl flex flex-col overflow-hidden ${SIZE_CLASSES[size]} ${panelClassName ?? ''}`}
+        className={`bg-bg-base border border-border rounded-2xl flex flex-col overflow-hidden ${SIZE_CLASSES[size]} ${panelClassName ?? ''}`}
         style={{ maxHeight: maxHeight ?? 'calc(100vh - 4rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
