@@ -1,18 +1,12 @@
 # InkTide
 
-A measured substrate for the practice of strategic preparedness. The destination is the **War Room**: a vision-based, role-played, information-asymmetric game where executives, investors, political actors, board-game thinkers, and individuals at any decision point convene around a shared board and play the future one phased turn at a time. Cards signal intent in public; private logs hold actual intent; cooperation, defection, and strategic objectives are first-class. Spatial primitives are first-class too — **graph / grid / hex / map** — chosen to match how the modelled world moves. The room is the why; the substrate is the how. The bet is the **practice** — weekly War Rooms for fast-moving questions, monthly War Rooms for slow-moving ones. Readiness is a habit.
+> **Grounded architecture reference.** Sections below describe what ships in the codebase today: the engine, the data model, the prompts, the pipelines, the file layout. The forward-looking product framing (War Rooms, public/private rooms, stakes, expert systems, fantasy-sports layer) lives in a dedicated **[Vision — where this is heading](#vision--where-this-is-heading)** section at the bottom. Keep the two separated when working on this codebase: the architecture is what's real, the vision is the bet on top of it.
 
-**Games are human-driven; priors update through a curated queue.** Operators drop articles, transcripts, observations into the room's queue between sessions; each meeting opens by walking the queue and folding what matters into the substrate. Automated data streams (market data, news, sector trackers) are *optional* accuracy aids piped into the same queue — the human still curates what enters the ledger. Recommended cadence: weekly to monthly. **Private and public rooms** are both first-class — private rooms compound a single operator's edge; public AI-centric rooms aggregate decisions from anyone who joins, on substrates maintained by admins / trusted curators in the open. **Stakes are an optional layer** (fictional → reality-anchored → real trades). The public stakes layer runs as fantasy sports applied to strategic worlds — entry fees, prize pools, seasonal leaderboards, ELO trajectories per player. Positioned as a **more agentful alternative to prediction markets**: instead of pricing the outcome, the participant plays the actor that produces it. Public + private + stakes are the bread and butter of the InkTide business model.
+InkTide is a **Next.js 16 + React 19 + TypeScript** browser app that extracts and generates **World Views** — typed, causally coherent, mutable knowledge structures over the three force fields **System / World / Fate (SWF)**. Any coherent long-form text describes one: a research paper, a market brief, a campaign plan, a novel. The pipeline is: priors → world view → timelines → forecast. Feed the engine rich context, it extracts a typed knowledge graph that mutates section by section, you branch alternative trajectories, and structural intelligence comes out.
 
-**Architecture splits along the audience.** Private rooms run on the **local data model** — state + embeddings in the operator's IndexedDB, no backend, near-zero infrastructure cost on our side. Public rooms run on a **hosted server** with one shared substrate per game, LLM cost amortised across many participants, admins curating the queue, and the stakes / leaderboard / future-betting-market layers attached. **Sequencing is private-first, then public** — ship local-data private rooms (cheapest to deliver, easiest to demonstrate); use that credibility to host public games on substrates of broad interest; layer betting markets, democratic voting, and long-running multi-season games as participation justifies. End-state: agency restored to people in the futures that affect their lives.
+The core flow is **analyze → query → generate**, available in any of the three modes. The moat is the priors: detail and freshness of input data drive the accuracy of every forecast. Computation is fixed and cheap; data quality decides the result.
 
-**Vision is humanity's edge over AI.** Models scale prediction / search / language / optimisation; humans originate the act of seeing a future and choosing to play toward it. Most operator time in the UI is spent on two visual surfaces: the **map / board state** for the current game, or the **raw graph substrate** underneath. Everything else (cards, dialogue logs, settings panes) is fast plumbing. Treat those two surfaces as the load-bearing UX — they're where the strategic-vision differentiator lives.
-
-**Stretch goal — public narrative stages.** The same engine that hosts a strategic War Room can host a public *story*: fictional worlds unfolding session by session through AI + human synthesis, with audience members able to take seats, vote, and signal intent. Cinema replacement, not cinema add-on. Not the current focus (private-first remains the strategy) but the architecture supports it without rework when the time comes.
-
-The substrate is a **World View**: a causally coherent, mutable, queryable knowledge structure over the three force fields **System / World / Fate (SWF)**. Any coherent text describes one: *Harry Potter and the Sorcerer's Stone* has one, a research paper has one, a campaign brief has one. World view and narrative are interchangeable terms here — narrative is the canonical case study, world view is the underlying abstraction. The engine spans **fiction**, **non-fiction** (research, essay, argument), and **real-world simulation** (scenario forecasts, alternate-history modelling, strategic timelines). Pipeline: **priors → world view → timelines → War Room**. Feed the engine rich context, it extracts a typed knowledge graph, you branch alternative trajectories, and the room is what falls out of a sufficiently primed SWF corpus. Next.js 16 + React 19 + TypeScript.
-
-The core flow is **analyze → query → generate → role-play**, available to operators in any of the four modes. The moat is the priors: detail and freshness of input data drive the accuracy of every forecast and the credibility of every War Room. Computation is fixed and cheap; data quality decides the result.
+**Shared vocabulary** — [LANGUAGE.md](LANGUAGE.md) is the canonical glossary for the recurring terms (World View, Substrate, Forces / SWF, Threads, Stance, Belief System, Priors, Queue, CRG, PRG / Mode Graph, Compass, Variables, War Room, Card, Stakes, Practice, etc). If a term shows up in this doc, the manifesto, or in-app copy, that file is the source of truth; new vocabulary belongs there before it gets used elsewhere.
 
 ## Core Concept
 
@@ -538,3 +532,64 @@ Key tuning values:
 - `ANALYSIS_CONCURRENCY = 20` — parallel text analysis chunks
 - `DEFAULT_CONTEXT_SCENES = 50` — default branch time horizon (overridden per-story in settings)
 - `AUTO_STOP_CYCLE_LENGTH = 25` — auto-engine arc limit
+
+---
+
+## Vision — where this is heading
+
+> **Forward-looking, not currently shipped.** Everything above describes the engine as it exists. This section describes the product surface the engine is being built toward. Some of it is in active design, some is partial implementation, some may not pan out. When you encounter War Room / Practice / Expert System / Stakes / Public Game vocabulary in other docs, prompts, or in-app copy, treat them as forward-looking concepts grounded in the engine above but not yet a complete shipped experience.
+
+### Category positioning
+
+InkTide is being built as **an evolving game that codifies reality** — sitting in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. Maintenance is the practice, and the practice is the value.
+
+### The War Room
+
+A vision-based, role-played, information-asymmetric game on the substrate. A team sits around the same board (rendered as a graph, grid, hex, or map), holds private logs, signals intent through cards (AI-dealt or operator-authored), negotiates, commits to phased moves. The room is meant to function as three things at once:
+
+- **Role-play simulator** for rehearsing the future
+- **Strategy table** for deciding on it
+- **Living expert system** the team owns and maintains
+
+Most operator time in the planned UI lives on two visual surfaces: the **map / board state** for the current game, or the **raw graph substrate** underneath. Everything else (cards, dialogue logs, settings panes) is fast plumbing. Treat those two surfaces as the load-bearing UX in any new room-related work.
+
+### Expert system as question bank
+
+The expert system the room builds is materialised as a **multiple-choice question bank** generated directly from the substrate's scenes and arcs. Each question carries (a) the substrate's calibrated correct answer, (b) a set of **distractors** — plausible-but-wrong reads, where nuance lives, and (c) an **embedding** of the question text so the bank is searchable by meaning. Three roles in one artifact:
+
+- **Acclimation** — new operators learn the team's subjective world by working through the bank
+- **Testing** — distractors expose where intuition diverges from calibrated priors; expert disagreement opens new threads
+- **Expert System RAG** — semantic retrieval over the embedded bank surfaces the closest known questions and their answers as grounding for novel queries
+
+The bigger the bank, the more real decisions covered, the stronger the expert system.
+
+### Two product surfaces, sequenced
+
+- **Private rooms** — closed tables on the local data model (state + embeddings in IndexedDB, no backend, near-zero infrastructure cost on our side). The wedge: B2B-light subscriptions to investment committees, family offices, campaign cells, M&A teams, policy units.
+
+- **Public rooms** — AI-centric community games hosted on a shared substrate, free to play, monetised by pro subscriptions (analytics, ELO history, ad-free), opt-in betting markets (3–5% rake, jurisdiction-gated), media and sponsorships. Framing: *fantasy sports applied to strategic worlds* — a more agentful alternative to prediction markets.
+
+Sequencing is **private-first, then public**. Ship local-data private rooms, use that credibility to host public games on substrates of broad interest, layer betting markets / democratic voting / long-running multi-season games as participation justifies.
+
+### Stakes layer
+
+Optional, attached to plays:
+- **Fictional** — ELO, leaderboards, the satisfaction of a calibrated call
+- **Reality-anchored** — forecast questions graded against the public record, with prize pools
+- **Real** — actual trades and positions recorded as commitments
+
+### Speculative upside
+
+(Explicitly aspirational, not on the critical path.)
+
+- Public narrative stages where audiences tune in to fictional worlds unfolding session by session through AI + human synthesis — cinema-replacement adjacency the architecture supports natively.
+- Long-running multi-season games with persistent stakes positions and player "careers" across substrates.
+- Democratic governance over public substrate curation.
+- Bull-case year-3 ARR in the $10–20M range if the public layer catches and a betting vertical launches in a licensed jurisdiction.
+- The substrate as the medium civilisation uses to rehearse its own long-horizon decisions.
+
+The manifesto's base case (~$3.5M ARR) is venture-defensible without any of this. The rest is what the architecture earns the right to build.
+
+### Reading the rest of the codebase
+
+When implementing or refactoring, anchor on the **engine sections above** (Architecture, Domain Model, AI Pipeline, etc.). When implementing or refactoring War Room / Practice / Expert System / Stakes features specifically, this Vision section is the design intent, the [manifesto](https://inktide-sourcenovel.vercel.app/manifesto) is the long-form rationale, and [LANGUAGE.md](LANGUAGE.md) is the canonical vocabulary. The grounded engine is what survives if the vision changes — keep the architecture honest to what's shipped, and label new vision-aligned code as such.

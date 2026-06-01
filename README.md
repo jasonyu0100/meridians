@@ -2,25 +2,13 @@
 
 # InkTide
 
-**A measured substrate for the practice of strategic preparedness.** InkTide builds **War Rooms** — vision-based, role-played, information-asymmetric games where executives, investors, political actors, board-game thinkers, and individuals at any decision point convene around a shared board and play the future one phased turn at a time. Cards signal intent in public; private logs hold actual intent; cooperation, defection, and strategic objectives are first-class. Spatial primitives are first-class too — **graph, grid, hex, or map** — chosen to match how the modelled world actually moves. The room is what the substrate is *for*; the substrate is what makes the room credible. Run it weekly for fast-moving questions, monthly for slow-moving ones. **Readiness is a habit.**
+**A browser-based engine that turns long-form text into a typed, queryable, simulatable knowledge structure.** Paste a corpus — a market brief, a memoir, a paper, a policy doctrine, a campaign plan, a novel — and the engine extracts a mutable graph of actors, locations, artifacts, threads, and system rules. The graph then drives analysis (force trajectories, pacing fingerprints, prose profiles), interrogation (surveys, interviews, semantic search, RAG over embeddings), and generation (causal reasoning graphs, scene structures, beat plans, prose).
 
-**The games are human-driven.** Priors update through a curated **queue** — operators drop articles, headlines, transcripts, observations between sessions; each meeting opens by walking the queue and folding what matters into the substrate. Automated data streams (market data, news, sector trackers) are *optional* accuracy aids piped into the same queue — the human still curates what enters the ledger. The substrate keeps the record; the operators are the data layer; the discipline of arriving with fresh, weighted information is half the practice the room teaches. Recommended cadence: **weekly to monthly** (life is a long-term game; no simulation reaches indefinitely far forward before its forecasts wash out).
+The measurable spine is the three force fields — **System** (rules and structures), **World** (actors and their state), **Fate** (open questions and the work's bearing on them). LLM-extracted deltas turn into reproducible scores via deterministic formulas; same input, same score. The engine spans fiction, non-fiction, and real-world simulation.
 
-**Private and public rooms.** *Private* War Rooms are closed tables — a firm, an investment committee, a campaign team, a single operator — compounding their own priors. *Public* War Rooms are AI-centric games hosted in the open on topics of broad interest (elections, market regimes, policy files, geopolitical theatres, sport, cultural questions), maintained by admins or trusted curators, aggregating decisions from every participant who joins.
+No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key and run locally — your data stays in your browser.
 
-**Stakes are an optional layer** attached to plays — *fictional* (ELO, leaderboards), *reality-anchored* (forecast questions graded against what the record returns, with prize pools), or *real* (actual trades and positions recorded as commitments). The public stakes layer runs as **fantasy sports applied to strategic worlds**: skill-based competitions with entry fees, prize pools, and seasonal leaderboards on substrates of broad interest. **A more agentful alternative to prediction markets** — instead of pricing the outcome, you play the actor that produces it. Public + private + stakes are the bread and butter of how InkTide operates.
-
-**Architecture splits cost the way audience splits.** Private rooms run on the **local data model** — state and embeddings live in the operator's own IndexedDB; near-zero infrastructure cost on our side; the operator pays their own LLM bill. Public rooms run on a **hosted server** where one shared substrate serves many participants, LLM cost amortises across the cohort, admins curate the queue, and stakes / leaderboards / betting markets layer on top. The sequencing is **private first, then public** — ship local-data private rooms (cheapest to deliver, easiest to demonstrate to high-stakes operators); use that credibility to host public games on substrates of broad interest; introduce betting markets, democratic voting, and long-running multi-season games as the public substrate earns the trust to extend them. **Agency restored to people** is the destination.
-
-**Vision is humanity's edge over AI.** Models scale prediction, search, language, optimisation — what they don't originate is the act of *seeing a future and choosing to play toward it*. Most of an operator's time in InkTide is spent on two visual surfaces: the **map / board state** the room is playing on, or the **raw graph substrate** underneath. Both are visual because vision is the differentiator humans carry; the substrate keeps the record because the record is what compounds. We are facilitating strategic vision, not replacing it.
-
-**Stretch goal — public narrative stages.** The same engine that hosts a strategic War Room can host a public *story*. Instead of cinemas, an audience tunes in to fictional worlds unfolding session by session through a synthesis of AI generation and human authorship, with viewers able to take seats, vote, and signal intent. A stretch goal, not the focus — *private first* remains the strategy — but the architecture supports it natively.
-
-The substrate underneath is a **World View** — a causally coherent, mutable, queryable knowledge structure over the three force fields **(System, World, Fate — SWF)**. Any coherent text describes one: a market brief, a memoir, a paper, a policy doctrine, a campaign plan, a novel. World view and narrative are interchangeable here — narrative is the canonical case study, world view is the underlying abstraction. The framework spans **fiction**, **non-fiction** (research, argument, essay), and **real-world simulation** (scenario forecasts, alternate-history modelling, strategic timelines). The moat is your priors. A sufficiently primed SWF corpus deploys directly into a playable War Room.
-
-No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key, paste a corpus, brief, or dataset, and the engine extracts a typed knowledge graph that mutates section by section — actors, locations, artifacts, threads, system rules. The three forces are derived deterministically from the graph; no second LLM call required to grade structure. The world view is **queryable** (semantic search, propositional logic, surveys / interviews), **mutable** (every session commits new state the next builds on), and **extendable via simulation with variable predictive modelling** — branch alternative trajectories grounded in the same view, at fixed cost, reproducibly.
-
-**[Try it →](https://inktide-sourcenovel.vercel.app/)** · **[Read the manifesto →](https://inktide-sourcenovel.vercel.app/manifesto)** · **[Architecture reference →](CLAUDE.md)**
+**[Try it →](https://inktide-sourcenovel.vercel.app/)** · **[Read the manifesto →](https://inktide-sourcenovel.vercel.app/manifesto)** · **[Architecture reference →](CLAUDE.md)** · **[Shared vocabulary →](LANGUAGE.md)**
 
 ---
 
@@ -36,7 +24,7 @@ npm run dev                   # → http://localhost:3001
 
 | Variable                        | Required | Purpose                                                |
 | ------------------------------- | :------: | ------------------------------------------------------ |
-| `OPENROUTER_API_KEY`            | yes      | LLM calls (default: Gemini 2.5 / 3 Flash)              |
+| `OPENROUTER_API_KEY`            | yes      | LLM calls (DeepSeek v4 Flash + Gemini 2.5 Flash split) |
 | `OPENAI_API_KEY`                | optional | Embeddings — disables semantic search if absent        |
 | `REPLICATE_API_TOKEN`           | optional | Image generation (Seedream 4.5)                        |
 | `NEXT_PUBLIC_USER_API_KEYS`     | optional | Allow user-supplied keys via the in-app modal          |
@@ -45,21 +33,23 @@ See `.env.example` for the full list.
 
 ---
 
-## What you can build with it
+## What you can build with it today
+
+This section is the **grounded** value prop — features that ship in the current codebase and work end-to-end.
 
 **Narrative simulation.** Generate full arcs end-to-end through a layered pipeline — phase graph (the world's working machinery) → causal reasoning graph (per-arc causal logic) → scene structures (deltas + summaries) → beat plans (function + mechanism scaffolding) → prose. Each stage commits decisions the next executes against, so coherence survives across hundreds of scenes. Branchable, reviewable, reconstructable. Renders into prose, screenplay, meta-overlay, or in-world simulation overlay — same beat plan, format-tailored accent profile.
 
-**Real-world scenario modeling.** Feed the engine a rich brief or dataset — a market state, a strategic timeline, an alternate-history premise, a domain corpus — and it builds the same typed graph. Branch alternative timelines from any decision point, evaluate them in **Branch Chat** (multi-branch analytical chat with controlled scope windows, register-agnostic prompts, persisted threads), and compare outcomes through the same force math that grades novels. The framework is genre-neutral; what it actually measures is how a world is moving and where pressure builds.
+**Real-world scenario modeling.** Feed the engine a brief or dataset and it builds the same typed graph. Branch alternative timelines from any decision point, evaluate them in **Branch Chat** (multi-branch analytical chat with controlled scope windows), and compare outcomes through the same force math that grades novels. Genre-neutral; what it actually measures is how a world is moving and where pressure builds.
 
-**Variable scenario forecasting.** Probabilistic alternative to causal reasoning: instead of committing to one chain, the engine extracts a pool of load-bearing variables and produces a cohort of next-arc timelines as coordinations over that pool — each scored with a priorLogit, softmaxed to a relative probability. The cohort follows the power-law shape of real possibility space (most mass on modal continuation, a thin tail on rupture), works identically for fiction continuations, market scenarios, research counterfactuals, or strategic forecasts, and feeds **Scenarios** (in-app: *Branch Scenarios*) which generates one parallel branch per scenario for multi-timeline analysis.
+**Variable scenario forecasting.** Probabilistic alternative to causal reasoning: the engine extracts a pool of load-bearing variables and produces a cohort of next-arc timelines as coordinations over that pool — each scored with a priorLogit, softmaxed to a relative probability. The cohort follows the power-law shape of real possibility space (most mass on modal continuation, thin tail on rupture). **Scenarios** (in-app: *Branch Scenarios*) generates one parallel branch per scenario for multi-timeline analysis.
 
-**Text corpus analysis.** Paste any long-form work and the engine extracts its full structure: typed knowledge graph, force trajectories, pacing fingerprint (Markov transition matrices over scene-level cube modes), prose profile (authorial Markov chains over a 10-function / 8-mechanism beat taxonomy). Every analyzed work compounds the network — pacing patterns and prose signatures become reusable for cross-corpus comparison, scenario seeding, or generation.
+**Text corpus analysis.** Paste any long-form work and the engine extracts its full structure: typed knowledge graph, force trajectories, pacing fingerprint (Markov transition matrices over scene-level cube modes), prose profile (authorial Markov chains over a 10-function / 8-mechanism beat taxonomy).
 
-**Mind mapping at scale.** Entities, threads, knowledge nodes, and embeddings render as interactive D3 graphs: world graph (entities + relationships + positions, derived from participation), network view (cumulative activation tiers across the timeline), mode graph (working model of reality: patterns / conventions / attractors / agents / rules / pressures / landmarks), reasoning graph (per-arc causal chain), per-entity inner knowledge graph. A driver surface upstream of these holds editable observations until they fold into a commit. Toggle relationship / tie / spatial edges, scope by Arc Focus, expand the location cluster via Vicinity — all without leaving the canvas.
+**Mind mapping at scale.** Entities, threads, knowledge nodes, and embeddings render as interactive D3 graphs: world graph, network view, mode graph, reasoning graph, per-entity inner knowledge graph.
 
-**Semantic retrieval.** Every proposition, beat, and scene is embedded as a 1536-dim vector via OpenAI's `text-embedding-3-small`. Cosine similarity surfaces meaning, not keywords — searching for "betrayal" returns scenes of broken trust even when the word never appears. AI-synthesized overviews cite back to source spans. Drives continuity validation, knowledge-asymmetry tracking, and intelligent RAG for generation.
+**Semantic retrieval.** Every proposition, beat, and scene is embedded as a 1536-dim vector via OpenAI's `text-embedding-3-small`. Cosine similarity surfaces meaning, not keywords. AI-synthesized overviews cite back to source spans.
 
-**Strategic interrogation.** Surveys (one question × N entities, each answering in-character from its own world-graph continuity), interviews (one entity × N questions), per-scene **decision matrix** (game-theoretic decomposition along 14 axes × 19 game shapes), ELO rankings derived from per-scene stake deltas. Surfaces structural patterns the prose alone never summarises.
+**Strategic interrogation.** Surveys (one question × N entities, each answering in-character), interviews (one entity × N questions), per-scene decision matrix (game-theoretic decomposition along 14 axes × 19 game shapes), ELO rankings derived from per-scene stake deltas.
 
 ---
 
@@ -75,21 +65,50 @@ See `.env.example` for the full list.
 
 ## Why this beats LLM-only
 
-LLMs alone collapse on long-form reasoning — they forget, hallucinate, drift off premise, and can't tell you _why_ a world is moving the way it is. They cannot hold a calibrated record across sessions, cannot host a multi-actor room where every seat has its own private log, and cannot grade their own forecasts against what reality returned. InkTide is the substrate the LLM is missing, and the room is what runs on top of it:
+LLMs alone collapse on long-form reasoning — they forget, hallucinate, drift off premise, and can't tell you _why_ a world is moving the way it is. They cannot hold a calibrated record across sessions or grade their own forecasts against what reality returned. InkTide is the substrate the LLM is missing:
 
 - A **persistent typed graph** that mutates section by section, so the next generation knows what every prior scene committed.
 - **Deterministic force math** — no LLM tax to grade structure, reproducible across runs.
 - **Semantic embeddings** indexed on every proposition, so retrieval pulls relevant context from anywhere in the timeline.
-- A **layered generation pipeline** (phase → CRG → scene → plan → prose) where each stage commits decisions the next executes against, with arc-level engine settings (force preference, reasoning mode, network bias) synced from CRG construction through scene rendering.
+- A **layered generation pipeline** (phase → CRG → scene → plan → prose) where each stage commits decisions the next executes against, with arc-level engine settings synced from CRG construction through scene rendering.
 
 The engine is the spine; the LLM is one tool the engine drives.
+
+---
+
+## Vision — where this is heading
+
+Everything above is grounded — features that ship today. This section is the **forward-looking direction**: where we believe the product is going. Some of it is in active development, some is design-stage, and some may not pan out. Treat it as the bet, not the deliverable.
+
+InkTide's category position is **gaming + education + strategy** — an evolving game that adapts to its players' scenarios and codifies their reality into playable worlds. The intended product surface on top of the engine is the **War Room**: a role-played, information-asymmetric game on the substrate where a team sits around the same board (rendered as a graph, grid, hex, or map), holds private logs, signals intent via cards, and rehearses the future on a regular cadence. The room is meant to function as three things at once:
+
+- a **role-play simulator** for rehearsing the future;
+- a **strategy table** for deciding on it;
+- a **living expert system** the team owns and maintains, materialised as a multiple-choice question bank generated from the substrate's scenes and arcs (each question carries the substrate's calibrated answer plus distractors, embedded for semantic search; novel queries get RAG-grounded answers from accumulated decisions).
+
+**Maintenance is the practice.** An expert system is not a one-time deliverable; it requires the team to keep updating its world, every session. The world evolves; the substrate keeps up; the priors stay sharp. Stop playing for a quarter and the expert system goes stale.
+
+**Two product surfaces, planned in sequence — private first, public next.**
+
+- **Private rooms** run on the local data model (state + embeddings in IndexedDB, no backend, near-zero infrastructure cost on our side). The wedge: B2B-light subscriptions to investment committees, family offices, campaign cells, M&A teams, policy units — concentrated where war-gaming is already an informal practice with budget.
+
+- **Public rooms** are AI-centric community games hosted on a shared substrate, free to play, with revenue from value-add layers: pro subscriptions (analytics, ELO history, ad-free), opt-in betting markets (3–5% rake, jurisdiction-gated), media and sponsorships. The framing is *fantasy sports applied to strategic worlds* — a more agentful alternative to prediction markets, where instead of pricing an outcome you play the actor that produces it.
+
+**Stakes** are an optional layer attached to plays — fictional (ELO, leaderboards), reality-anchored (forecast questions graded against the record, prize pools), or real (actual trades and positions recorded as commitments). Stakes turn rehearsal into skin-in-the-game rehearsal.
+
+**Speculative upside** (explicitly aspirational, not a forecast): public narrative stages where audiences tune in to fictional worlds unfolding session by session through AI + human synthesis (a cinema-replacement adjacency the architecture supports natively); long-running multi-season games with persistent stakes positions and player "careers"; democratic governance over public substrate curation; bull-case year-3 ARR in the $10–20M range if the public layer catches and a betting vertical launches in a licensed jurisdiction. The manifesto's base case (~$3.5M ARR) is venture-defensible without any of this; the rest is what the architecture earns the right to build.
+
+**The honest bet, said plainly:** maintenance is the practice, and the practice is the value. The room teaches the team to keep updating its world; the substrate compounds the priors; the question bank captures what the team knows; the expert system answers questions the team will ask tomorrow. *Vision is humanity's edge over AI* — models scale prediction, language, search, optimisation, but they don't originate the act of seeing a future and choosing to play toward it. The room hands that act back to humans; the engine handles the rest.
+
+This section may be wrong about specifics. The grounded sections above are what works today regardless.
 
 ---
 
 ## For developers digging in
 
 - **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference. Every major subsystem (forces, threads, mode graph, CRG, scenes, plans, prose, embeddings, surveys, game theory, auto-engine, scenarios, repair / diagnose) documented with file pointers.
-- **[`/manifesto`](https://inktide-sourcenovel.vercel.app/manifesto)** — the vision and the theory: ant-colony metaphor, force formulas, Markov chain pacing, variable scenario modelling, decision-matrix decomposition, calibration against published works.
+- **[`LANGUAGE.md`](LANGUAGE.md)** — canonical glossary for the recurring vocabulary.
+- **[`/manifesto`](https://inktide-sourcenovel.vercel.app/manifesto)** — the long-form vision and theory: force formulas, validation against published works, calibration, GTM, the War Room product surface.
 - **`src/types/narrative.ts`** — the domain model.
 - **`src/lib/ai/`** — the LLM call surface. All generation routes through `callGenerate` / `callGenerateStream`.
 - **`src/lib/prompts/`** — every prompt, modular and scoped. Phase-graph application, scene generation, beat planning, prose rendering, world expansion all live here.
@@ -103,6 +122,6 @@ State: React Context + `useReducer` (`src/lib/store.tsx`). Persistence: IndexedD
 
 ```
 Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3.js
-OpenRouter (DeepSeek v4 Flash) · OpenAI Embeddings · Replicate (Seedream 4.5)
+OpenRouter (DeepSeek v4 Flash + Gemini 2.5 Flash) · OpenAI Embeddings · Replicate (Seedream 4.5)
 IndexedDB + localStorage — fully client-side persistence, no backend database
 ```
