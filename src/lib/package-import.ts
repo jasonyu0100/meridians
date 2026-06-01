@@ -1,5 +1,5 @@
 /**
- * Package Import - Import .inktide packages
+ * Package Import - Import .meridians packages
  *
  * Supports two formats:
  * 1. ZIP packages - exported via ExportPackageModal (includes assets)
@@ -60,7 +60,7 @@ export async function readPackageManifest(file: File): Promise<PackageManifest> 
 
   const manifestFile = zip.file('manifest.json');
   if (!manifestFile) {
-    throw new Error('Invalid .inktide ZIP: missing manifest.json');
+    throw new Error('Invalid .meridians ZIP: missing manifest.json');
   }
 
   const manifestText = await manifestFile.async('text');
@@ -68,7 +68,7 @@ export async function readPackageManifest(file: File): Promise<PackageManifest> 
 }
 
 /**
- * Check if a file is a valid .inktide package (supports both formats)
+ * Check if a file is a valid .meridians package (supports both formats)
  */
 export async function validatePackage(file: File): Promise<{ valid: boolean; error?: string; format?: 'zip' | 'json' }> {
   try {
@@ -118,13 +118,13 @@ export async function validatePackage(file: File): Promise<{ valid: boolean; err
 // ── Main Import Function ──────────────────────────────────────────────────────
 
 /**
- * Import narrative from .inktide package
+ * Import narrative from .meridians package
  *
  * Supports two formats:
  * - ZIP: Full package with embeddings, audio, images
  * - JSON: Plain NarrativeState (bundled works format)
  *
- * @param file .inktide file (ZIP or JSON)
+ * @param file .meridians file (ZIP or JSON)
  * @param options Import options (only applies to ZIP format)
  * @param onProgress Optional progress callback
  * @returns Restored narrative state
@@ -157,7 +157,7 @@ export async function importFromPackage(
   // Read narrative.json
   const narrativeFile = zip.file('narrative.json');
   if (!narrativeFile) {
-    throw new Error('Invalid .inktide ZIP: missing narrative.json');
+    throw new Error('Invalid .meridians ZIP: missing narrative.json');
   }
 
   const narrativeText = await narrativeFile.async('text');
@@ -430,7 +430,7 @@ export async function getPackageInfo(file: File): Promise<{
 // ── Directory Import ─────────────────────────────────────────────────────────
 
 /**
- * Validate a directory FileList as an InkTide package
+ * Validate a directory FileList as an Meridians package
  * Expects narrative.json at minimum, optionally manifest.json and embeddings/*.bin
  */
 export async function validateDirectory(files: FileList): Promise<{ valid: boolean; error?: string }> {

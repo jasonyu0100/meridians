@@ -1,6 +1,6 @@
-![InkTide](public/readme-banner.png)
+![Meridians](public/readme-banner.png)
 
-# InkTide
+# Meridians
 
 **A browser-based engine that turns long-form text into a typed, queryable, simulatable knowledge structure.** Paste a corpus — a market brief, a memoir, a paper, a policy doctrine, a campaign plan, a novel — and the engine extracts a mutable graph of actors, locations, artifacts, threads, and system rules. The graph then drives analysis (force trajectories, pacing fingerprints, prose profiles), interrogation (surveys, interviews, semantic search, RAG over embeddings), and generation (causal reasoning graphs, scene structures, beat plans, prose).
 
@@ -8,15 +8,15 @@ The measurable spine is the three force fields — **System** (rules and structu
 
 No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key and run locally — your data stays in your browser.
 
-**[Try it →](https://inktide-sourcenovel.vercel.app/)** · **[Read the manifesto →](https://inktide-sourcenovel.vercel.app/manifesto)** · **[Architecture reference →](CLAUDE.md)** · **[Shared vocabulary →](LANGUAGE.md)**
+**[Try it →](https://meridians-sourcenovel.vercel.app/)** · **[Read the manifesto →](https://meridians-sourcenovel.vercel.app/manifesto)** · **[Architecture reference →](CLAUDE.md)** · **[Shared vocabulary →](LANGUAGE.md)**
 
 ---
 
 ## Setup
 
 ```bash
-git clone https://github.com/jasonyu0100/inktide.git
-cd inktide
+git clone https://github.com/jasonyu0100/meridians.git
+cd meridians
 npm install
 cp .env.example .env.local   # add your OpenRouter key
 npm run dev                   # → http://localhost:3001
@@ -65,7 +65,7 @@ This section is the **grounded** value prop — features that ship in the curren
 
 ## Why this beats LLM-only
 
-LLMs alone collapse on long-form reasoning — they forget, hallucinate, drift off premise, and can't tell you _why_ a world is moving the way it is. They cannot hold a calibrated record across sessions or grade their own forecasts against what reality returned. InkTide is the substrate the LLM is missing:
+LLMs alone collapse on long-form reasoning — they forget, hallucinate, drift off premise, and can't tell you _why_ a world is moving the way it is. They cannot hold a calibrated record across sessions or grade their own forecasts against what reality returned. Meridians is the substrate the LLM is missing:
 
 - A **persistent typed graph** that mutates section by section, so the next generation knows what every prior scene committed.
 - **Deterministic force math** — no LLM tax to grade structure, reproducible across runs.
@@ -80,7 +80,7 @@ The engine is the spine; the LLM is one tool the engine drives.
 
 Everything above is grounded — features that ship today. This section is the **forward-looking direction**: where we believe the product is going. Some of it is in active development, some is design-stage, and some may not pan out. Treat it as the bet, not the deliverable.
 
-InkTide's category position is **gaming + education + strategy** — an evolving game that adapts to its players' scenarios and codifies their reality into playable worlds. The intended product surface on top of the engine is the **War Room**: a role-played, information-asymmetric game on the substrate where a team sits around the same board (rendered as a graph, grid, hex, or map), holds private logs, signals intent via cards, and rehearses the future on a regular cadence. The room is meant to function as three things at once:
+Meridians's category position is **gaming + education + strategy** — an evolving game that adapts to its players' scenarios and codifies their reality into playable worlds. The intended product surface on top of the engine is the **War Room**: a role-played, information-asymmetric game on the substrate where a team sits around the same board (rendered as a graph, grid, hex, or map), holds private logs, signals intent via cards, and rehearses the future on a regular cadence. The room is meant to function as three things at once:
 
 - a **role-play simulator** for rehearsing the future;
 - a **strategy table** for deciding on it;
@@ -108,7 +108,7 @@ This section may be wrong about specifics. The grounded sections above are what 
 
 - **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference. Every major subsystem (forces, threads, mode graph, CRG, scenes, plans, prose, embeddings, surveys, game theory, auto-engine, scenarios, repair / diagnose) documented with file pointers.
 - **[`LANGUAGE.md`](LANGUAGE.md)** — canonical glossary for the recurring vocabulary.
-- **[`/manifesto`](https://inktide-sourcenovel.vercel.app/manifesto)** — the long-form vision and theory: force formulas, validation against published works, calibration, GTM, the War Room product surface.
+- **[`/manifesto`](https://meridians-sourcenovel.vercel.app/manifesto)** — the long-form vision and theory: force formulas, validation against published works, calibration, GTM, the War Room product surface.
 - **`src/types/narrative.ts`** — the domain model.
 - **`src/lib/ai/`** — the LLM call surface. All generation routes through `callGenerate` / `callGenerateStream`.
 - **`src/lib/prompts/`** — every prompt, modular and scoped. Phase-graph application, scene generation, beat planning, prose rendering, world expansion all live here.

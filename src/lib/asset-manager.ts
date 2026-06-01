@@ -3,7 +3,7 @@
  *
  * Narrative JSON only stores references (`emb_…`, `audio_…`, `img_…`,
  * `text_…`); the binary/large payloads live in IndexedDB. As of the
- * inktide-main consolidation the asset stores live alongside
+ * meridians-main consolidation the asset stores live alongside
  * narratives/meta/apiLogs in the single shared database — see
  * `src/lib/db.ts` for the canonical schema. This module is a typed
  * façade over those stores.
@@ -22,7 +22,7 @@ class AssetManager {
 
   // ── Initialization ──────────────────────────────────────────────────────────
 
-  /** Open (or reuse) the shared inktide-main connection. Idempotent
+  /** Open (or reuse) the shared meridians-main connection. Idempotent
    *  via `openMainDB`'s memoised promise — repeated calls return the
    *  same handle. Kept on the class surface because legacy callers
    *  (TopBar, audio-store, MediaDrive, file-conversion) explicitly

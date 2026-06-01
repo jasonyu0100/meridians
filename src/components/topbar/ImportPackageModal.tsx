@@ -151,7 +151,7 @@ export function ImportPackageModal({ onClose }: Props) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".inktide,.json"
+              accept=".meridians,.json"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -172,7 +172,7 @@ export function ImportPackageModal({ onClose }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <div className="text-[10px] text-text-secondary">
-                    .inktide or .json file
+                    .meridians or .json file
                   </div>
                 </div>
               </button>
@@ -185,7 +185,7 @@ export function ImportPackageModal({ onClose }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                   </svg>
                   <div className="text-[10px] text-text-secondary">
-                    InkTide directory
+                    Meridians directory
                   </div>
                 </div>
               </button>

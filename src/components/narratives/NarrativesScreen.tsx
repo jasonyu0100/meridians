@@ -41,7 +41,7 @@ export function NarrativesScreen() {
 
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center pt-20">
-      <h1 className="text-lg font-semibold text-text-primary mb-1">InkTide</h1>
+      <h1 className="text-lg font-semibold text-text-primary mb-1">Meridians</h1>
       <p className="text-sm text-text-secondary mb-8">A simulation engine for long-form reasoning</p>
 
       {narratives.length === 0 ? (

@@ -1,5 +1,5 @@
 /**
- * Shared principle for every reasoning artifact InkTide produces — CRG
+ * Shared principle for every reasoning artifact Meridians produces — CRG
  * (investigation graphs), PRG (mode graphs), and coordination plans.
  *
  * The graphs are not the product. The user's advanced thinking is. Every

@@ -1358,7 +1358,7 @@ export default function FloatingPalette({
                   // VariablesView consumes it on mount.
                   try {
                     sessionStorage.setItem(
-                      "inktide:pending-generate-compass",
+                      "meridians:pending-generate-compass",
                       "1",
                     );
                   } catch {

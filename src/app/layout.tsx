@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "InkTide",
+  title: "Meridians",
   description: "A simulation engine for long-form reasoning. Extract, query, and generate world views — causally coherent knowledge structures over fate, world, and system.",
 };
 

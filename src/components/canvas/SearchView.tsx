@@ -384,7 +384,7 @@ export function SearchView() {
             <div className="flex items-center gap-4">
               <Image
                 src="/logo.svg"
-                alt="InkTide"
+                alt="Meridians"
                 width={64}
                 height={64}
                 className="opacity-70"

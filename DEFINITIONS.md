@@ -1,6 +1,6 @@
-# InkTide Narrative Definitions
+# Meridians Narrative Definitions
 
-Comprehensive reference for all narrative classification systems, scene modes, beat types, and structural archetypes used throughout InkTide.
+Comprehensive reference for all narrative classification systems, scene modes, beat types, and structural archetypes used throughout Meridians.
 
 ---
 
@@ -196,7 +196,7 @@ Sum of individual rounded grades: `payoff + change + knowledge + swing`
 
 ---
 
-## Usage in InkTide
+## Usage in Meridians
 
 These definitions are used throughout the platform:
 
@@ -211,5 +211,5 @@ See `src/lib/narrative-utils.ts` for full mathematical definitions and detection
 
 ---
 
-**Version:** Aligned with InkTide narrative type refactor (January 2025)
+**Version:** Aligned with Meridians narrative type refactor (January 2025)
 **Calibration Source:** Harry Potter, Tale of Two Cities, 1984, Great Gatsby, Romeo & Juliet, Reverend Insanity, Crime & Punishment, Coiling Dragon

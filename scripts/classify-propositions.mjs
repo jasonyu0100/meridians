@@ -2,7 +2,7 @@
 /**
  * Proposition Classification Benchmark
  *
- * Extracts propositions + embeddings from .inktide packages in public/works/,
+ * Extracts propositions + embeddings from .meridians packages in public/works/,
  * runs the classification algorithm, and prints per-work distributions.
  *
  * Usage: node scripts/classify-propositions.mjs
@@ -32,7 +32,7 @@ function percentile(arr, p) {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
-// ── Load .inktide package ───────────────────────────────────────────────────
+// ── Load .meridians package ───────────────────────────────────────────────────
 
 async function loadPackage(filePath) {
   const buf = fs.readFileSync(filePath);
@@ -279,13 +279,13 @@ async function classify(narrative, resolvedKeys, embeddingsMap) {
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const files = fs.readdirSync(WORKS_DIR).filter(f => f.endsWith('.inktide'));
+  const files = fs.readdirSync(WORKS_DIR).filter(f => f.endsWith('.meridians'));
   console.log(`Found ${files.length} works\n`);
 
   const results = [];
 
   for (const file of files) {
-    const name = file.replace('.inktide', '');
+    const name = file.replace('.meridians', '');
     console.log(`─── ${name} ───`);
     const t0 = performance.now();
 

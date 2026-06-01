@@ -1,5 +1,5 @@
 /**
- * Package Export - Create portable .inktide ZIP packages
+ * Package Export - Create portable .meridians ZIP packages
  *
  * Combines narrative JSON + binary assets into a single ZIP file
  * Assets are read from IndexedDB and packaged for portability
@@ -279,7 +279,7 @@ export async function validateAssets(narrative: NarrativeState): Promise<AssetVa
 // ── Main Export Function ──────────────────────────────────────────────────────
 
 /**
- * Export narrative as a .inktide package (ZIP archive)
+ * Export narrative as a .meridians package (ZIP archive)
  *
  * Structure:
  * - narrative.json: Core story structure with asset references

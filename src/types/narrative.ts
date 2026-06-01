@@ -970,7 +970,7 @@ export type Scene = {
   /** Wall-clock timestamp (ISO 8601) when this scene was committed into the
    *  narrative — by the LLM, by analysis extraction, or by reconstruction.
    *  Used to surface "when this prediction was made" for credibility when
-   *  showing forecasts InkTide produced. Stamped at the boundary; never
+   *  showing forecasts Meridians produced. Stamped at the boundary; never
    *  emitted by the LLM itself. Optional for backward compatibility with
    *  scenes generated before this field existed. */
   createdAt?: string;

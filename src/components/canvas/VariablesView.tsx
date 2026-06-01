@@ -480,8 +480,8 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     if (mode !== 'compass') return;
     let pending = false;
     try {
-      pending = sessionStorage.getItem('inktide:pending-generate-compass') === '1';
-      if (pending) sessionStorage.removeItem('inktide:pending-generate-compass');
+      pending = sessionStorage.getItem('meridians:pending-generate-compass') === '1';
+      if (pending) sessionStorage.removeItem('meridians:pending-generate-compass');
     } catch {
       // sessionStorage unavailable — skip
     }

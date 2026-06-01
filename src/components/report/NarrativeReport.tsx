@@ -2164,7 +2164,7 @@ export function NarrativeReport({
           <footer className="text-center pt-12 pb-6">
             <div className="w-8 h-px bg-white/[0.06] mx-auto mb-4" />
             <p className="text-[9px] text-white/15 tracking-[0.15em] uppercase">
-              InkTide Narrative Analysis Engine
+              Meridians Narrative Analysis Engine
             </p>
           </footer>
         </div>

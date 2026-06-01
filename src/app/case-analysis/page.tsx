@@ -20,7 +20,7 @@ export default function ExamplePage() {
     (async () => {
       try {
         const r = await fetch(
-          `/works/harry_potter_and_the_sorcerer_s_stone.inktide`,
+          `/works/harry_potter_and_the_sorcerer_s_stone.meridians`,
         );
         if (!r.ok) throw new Error("Failed to load");
         const arrayBuffer = await r.arrayBuffer();

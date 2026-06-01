@@ -1,5 +1,5 @@
 /**
- * inktide-main — the single IndexedDB database for the entire app.
+ * meridians-main — the single IndexedDB database for the entire app.
  *
  * One database, many object stores. Everything that needs persistent
  * client-side storage lives here so the connection lifecycle, schema
@@ -24,7 +24,7 @@
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
-const DB_NAME = 'inktide-main';
+const DB_NAME = 'meridians-main';
 const DB_VERSION = 4;
 
 export interface MainDB extends DBSchema {
@@ -117,7 +117,7 @@ export function checkIndexedDBAvailability(): { available: boolean; reason?: str
 
 let dbPromise: Promise<IDBPDatabase<MainDB>> | null = null;
 
-/** Open (or return the cached handle to) the inktide-main database.
+/** Open (or return the cached handle to) the meridians-main database.
  *  Idempotent and concurrency-safe — every caller awaits the same
  *  promise, so we open the underlying connection exactly once. */
 export function openMainDB(): Promise<IDBPDatabase<MainDB>> {

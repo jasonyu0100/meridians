@@ -3885,10 +3885,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const narrativeFile = zip.file("narrative.json");
             if (!narrativeFile) {
               console.error(
-                `[loadManifest] Invalid .inktide ZIP in ${dir}/${file}: missing narrative.json`,
+                `[loadManifest] Invalid .meridians ZIP in ${dir}/${file}: missing narrative.json`,
               );
               logWarning(
-                `Invalid .inktide ZIP in ${dir}/${file}`,
+                `Invalid .meridians ZIP in ${dir}/${file}`,
                 "missing narrative.json",
                 {
                   source: "other",

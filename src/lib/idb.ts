@@ -1,8 +1,8 @@
 /**
- * IndexedDB helpers — thin wrappers around the shared `inktide-main`
+ * IndexedDB helpers — thin wrappers around the shared `meridians-main`
  * connection from `./db`. The functions in this module preserve the
  * pre-consolidation API (idbGet, idbPut, …) so persistence.ts callers
- * didn't have to change when the asset stores moved into inktide-main.
+ * didn't have to change when the asset stores moved into meridians-main.
  *
  * Re-exports the availability + error types from `./db` so existing
  * imports against `@/lib/idb` keep working.

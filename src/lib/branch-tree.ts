@@ -5,7 +5,7 @@ import type { Branch } from '@/types/narrative';
  * branch hierarchy as a nested tree (`BranchTreePopover`, and the
  * column-ordering / fork-connector logic inside `BranchModal.buildGrid`).
  *
- * The load-bearing idea: in InkTide, the "true" fork point of a branch
+ * The load-bearing idea: in Meridians, the "true" fork point of a branch
  * is not the abstract `parentBranchId` (which records the creation-time
  * ancestor) but `forkEntryId` — the entry where the branch peeled off
  * its actual history. Two branches that the data chains as

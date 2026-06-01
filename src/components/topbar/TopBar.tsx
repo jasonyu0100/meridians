@@ -1026,7 +1026,7 @@ export default function TopBar() {
           className="px-1.5 py-1 rounded hover:bg-bg-elevated transition-colors"
           title="All series"
         >
-          <Image src="/logo.svg" alt="InkTide" width={20} height={20} />
+          <Image src="/logo.svg" alt="Meridians" width={20} height={20} />
         </button>
 
         {/* Narrative selector */}

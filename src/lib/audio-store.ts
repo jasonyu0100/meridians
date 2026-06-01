@@ -1,5 +1,5 @@
 /**
- * Audio blob storage — uses inktide-assets IndexedDB for binary storage.
+ * Audio blob storage — uses meridians-assets IndexedDB for binary storage.
  *
  * Scene.audioUrl stores asset IDs like "audio_xyz789" to reference the blob.
  */

@@ -1368,7 +1368,7 @@ export default function PaperPage() {
               ends.
             </P>
             <P>
-              <B>InkTide builds War Rooms.</B> A role-played
+              <B>Meridians builds War Rooms.</B> A role-played
               game with private hands and public moves, run on a
               measured substrate, where a <em>team</em> sits
               around the same board and plays one phased turn at
@@ -1398,7 +1398,7 @@ export default function PaperPage() {
             </P>
             <P>
               <B>The category, plainly: an evolving game that
-              codifies reality.</B> InkTide doesn&apos;t sit in
+              codifies reality.</B> Meridians doesn&apos;t sit in
               consulting, prediction markets, fantasy sports, or
               educational software cleanly &mdash; it sits in the
               unclaimed segment where{" "}
@@ -1524,7 +1524,7 @@ export default function PaperPage() {
               next year builds doctrine the unprepared firm
               can&apos;t copy. A solo operator running the same
               practice on their own portfolio or political bet
-              earns the same compounding edge. InkTide gives the
+              earns the same compounding edge. Meridians gives the
               habit a substrate.
             </P>
             <P>
@@ -4822,7 +4822,7 @@ export default function PaperPage() {
               {" "}A private War Room is the operator&apos;s
               substrate on the operator&apos;s hardware &mdash; no
               vendor with read access to confidential plays, no
-              per-user database on InkTide&apos;s side. The
+              per-user database on Meridians&apos;s side. The
               operator&apos;s machine <em>is</em> the room&apos;s
               server. This is what makes the privacy moat real and
               what keeps per-private-room infrastructure cost at
@@ -5114,7 +5114,7 @@ export default function PaperPage() {
           {/* ── Coda ──────────────────────────────────────────────────── */}
           <Section id="coda" label="Coda">
             <P>
-              What InkTide does is <B>convene a room to play the
+              What Meridians does is <B>convene a room to play the
               future before it arrives</B>, on a measured
               substrate that learns from every committed move.
               Cards signal intent in public. Private logs hold

@@ -1,10 +1,10 @@
-# InkTide — shared vocabulary
+# Meridians — shared vocabulary
 
 The canonical terms the manifesto, README, CLAUDE.md, in-app copy, and prompts all use. Each entry is the one-paragraph definition; if a term shows up in any doc, it should mean what this file says it means. When in doubt, this is the source of truth — drift here gets corrected first.
 
 ## Category positioning
 
-**InkTide is an evolving game that codifies reality.** Specifically: it lives in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. The expert system that emerges sharpens because the team keeps updating its world; the world stays alive because the team keeps playing it. *Maintenance is the practice, and the practice is the value.* When choosing vocabulary across docs, lean into the **gaming + education + strategy** triad — avoid framing that collapses InkTide into any single one of the three.
+**Meridians is an evolving game that codifies reality.** Specifically: it lives in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. The expert system that emerges sharpens because the team keeps updating its world; the world stays alive because the team keeps playing it. *Maintenance is the practice, and the practice is the value.* When choosing vocabulary across docs, lean into the **gaming + education + strategy** triad — avoid framing that collapses Meridians into any single one of the three.
 
 ## Layers
 

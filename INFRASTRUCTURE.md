@@ -1,4 +1,4 @@
-# InkTide Infrastructure
+# Meridians Infrastructure
 
 ```mermaid
 flowchart TB
@@ -62,8 +62,8 @@ flowchart TB
 
     subgraph Persist["💾 Persistence (src/lib)"]
         PersistTs["persistence.ts"]
-        IDBMain[("IndexedDB · inktide-main<br/>narratives · meta · apiLogs")]
-        IDBAssets[("IndexedDB · inktide-assets<br/>embeddings · audio · images")]
+        IDBMain[("IndexedDB · meridians-main<br/>narratives · meta · apiLogs")]
+        IDBAssets[("IndexedDB · meridians-assets<br/>embeddings · audio · images")]
         LS[("localStorage<br/>activeId · prefs")]
     end
 

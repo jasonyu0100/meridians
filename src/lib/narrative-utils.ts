@@ -2139,7 +2139,7 @@ const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((s, v) => s + v, 0) /
  *  additions (n + √e), system in rule-graph additions (n + √e). Grading
  *  runs each against its own μ_ref, so the curve is unit-invariant.
  *
- *  Calibrated by triangulating across three inktide works of distinct
+ *  Calibrated by triangulating across three meridians works of distinct
  *  information signatures:
  *                             avg F    avg W    avg S    graded (F, W, S)
  *    - Harry Potter            1.64    22.20     3.36       22 / 23 / 17

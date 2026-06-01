@@ -1,7 +1,7 @@
 /**
  * Package Export/Import Tests
  *
- * Tests for .inktide ZIP package export and import
+ * Tests for .meridians ZIP package export and import
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { exportAsPackage, estimateExportSize } from '@/lib/package-export';
@@ -130,7 +130,7 @@ describe('Package Export/Import', () => {
         compressionLevel: 'none',
       });
       // Convert blob to file with ArrayBuffer for Node.js compatibility
-      const file = await blobToFile(zipBlob, 'test.inktide');
+      const file = await blobToFile(zipBlob, 'test.meridians');
       const validation = await validatePackage(file);
       expect(validation.valid).toBe(true);
     });
@@ -157,7 +157,7 @@ describe('Package Export/Import', () => {
         includeImages: false,
         compressionLevel: 'none',
       });
-      const file = new File([zipBlob], 'test.inktide');
+      const file = new File([zipBlob], 'test.meridians');
       const info = await getPackageInfo(file);
       expect(info.manifest.assets.embeddings).toBe(1);
       expect(info.sizes.embeddings).toBeGreaterThan(0);
@@ -193,7 +193,7 @@ describe('Package Export/Import', () => {
         includeImages: true,
         compressionLevel: 'none',
       });
-      const file = new File([zipBlob], 'test.inktide');
+      const file = new File([zipBlob], 'test.meridians');
       const info = await getPackageInfo(file);
       expect(info.manifest.assets.images).toBe(3);
     });
@@ -226,14 +226,14 @@ describe('Package Export/Import', () => {
         includeImages: false,
         compressionLevel: 'none',
       });
-      const file = new File([zipBlob], 'valid.inktide');
+      const file = new File([zipBlob], 'valid.meridians');
       const validation = await validatePackage(file);
       expect(validation.valid).toBe(true);
       expect(validation.error).toBeUndefined();
     });
     it('should reject invalid ZIP files', async () => {
       const invalidBlob = new Blob(['not a zip file']);
-      const file = new File([invalidBlob], 'invalid.inktide');
+      const file = new File([invalidBlob], 'invalid.meridians');
       const validation = await validatePackage(file);
       expect(validation.valid).toBe(false);
       expect(validation.error).toBeDefined();
@@ -248,7 +248,7 @@ describe('Package Export/Import', () => {
         includeImages: false,
         compressionLevel: 'none',
       });
-      const file = new File([zipBlob], 'test.inktide');
+      const file = new File([zipBlob], 'test.meridians');
       const imported = await importFromPackage(file, {
         importEmbeddings: false,
         importAudio: false,
@@ -285,7 +285,7 @@ describe('Package Export/Import', () => {
       await assetManager.deleteEmbedding(emb1);
       expect(await assetManager.getEmbedding(emb1)).toBeNull();
       // Import should restore it
-      const file = new File([zipBlob], 'test.inktide');
+      const file = new File([zipBlob], 'test.meridians');
       const imported = await importFromPackage(file, {
         importEmbeddings: true,
         importAudio: false,
@@ -303,7 +303,7 @@ describe('Package Export/Import', () => {
         includeImages: false,
         compressionLevel: 'none',
       });
-      const file = new File([zipBlob], 'test.inktide');
+      const file = new File([zipBlob], 'test.meridians');
       const progressUpdates: Array<{ status: string; percent: number }> = [];
       await importFromPackage(
         file,
@@ -353,7 +353,7 @@ describe('Package Export/Import', () => {
       await assetManager.deleteEmbedding(emb);
       await assetManager.deleteAudio(audio);
       // Import
-      const file = new File([zipBlob], 'full-test.inktide');
+      const file = new File([zipBlob], 'full-test.meridians');
       const imported = await importFromPackage(file, {
         importEmbeddings: true,
         importAudio: true,
@@ -385,7 +385,7 @@ describe('Package Export/Import', () => {
         includeImages: false,
         compressionLevel: 'none',
       });
-      const file = new File([zipBlob], 'info.inktide');
+      const file = new File([zipBlob], 'info.meridians');
       const info = await getPackageInfo(file);
       expect(info.manifest.narrative.title).toBe('Info Test');
       expect(info.sizes.narrative).toBeGreaterThan(0);

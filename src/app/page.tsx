@@ -321,14 +321,14 @@ export default function HomePage() {
           <div className="animate-fade-up mb-6">
             <Image
               src="/logo.svg"
-              alt="InkTide"
+              alt="Meridians"
               width={56}
               height={56}
               className="opacity-90"
             />
           </div>
           <p className="animate-fade-up text-[10px] uppercase tracking-[0.3em] text-white/50 font-mono mb-8">
-            InkTide Engine
+            Meridians Engine
           </p>
 
           <h1 className="animate-fade-up-delay-1 text-5xl sm:text-7xl font-bold tracking-[-0.03em] text-center leading-[1.05] max-w-160 sm:whitespace-nowrap">
@@ -464,7 +464,7 @@ export default function HomePage() {
               {[
                 {
                   q: "What can I do with this?",
-                  a: "Paste any long-form text and InkTide extracts a typed knowledge graph you can query by meaning, interrogate in-character, simulate forward, and extend with new content — all from the same substrate.",
+                  a: "Paste any long-form text and Meridians extracts a typed knowledge graph you can query by meaning, interrogate in-character, simulate forward, and extend with new content — all from the same substrate.",
                 },
                 {
                   q: "What's a 'world view'?",
@@ -472,7 +472,7 @@ export default function HomePage() {
                 },
                 {
                   q: "How is this different from a wiki or notes?",
-                  a: "Integrated Obsidian with a quantitative engine that simulates forward. Notes give you a static graph; InkTide gives you one that's queryable like a database, chattable like a character, and brancheable like Git.",
+                  a: "Integrated Obsidian with a quantitative engine that simulates forward. Notes give you a static graph; Meridians gives you one that's queryable like a database, chattable like a character, and brancheable like Git.",
                 },
                 {
                   q: "How can I query the world view?",
@@ -534,13 +534,13 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5">
               <Image
                 src="/logo.svg"
-                alt="InkTide"
+                alt="Meridians"
                 width={20}
                 height={20}
                 className="opacity-40"
               />
               <p className="text-[11px] font-mono text-white/20 uppercase tracking-[0.2em]">
-                InkTide
+                Meridians
               </p>
             </div>
             <div className="flex items-center gap-5">

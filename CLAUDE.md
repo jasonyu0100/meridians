@@ -1,8 +1,8 @@
-# InkTide
+# Meridians
 
 > **Grounded architecture reference.** Sections below describe what ships in the codebase today: the engine, the data model, the prompts, the pipelines, the file layout. The forward-looking product framing (War Rooms, public/private rooms, stakes, expert systems, fantasy-sports layer) lives in a dedicated **[Vision — where this is heading](#vision--where-this-is-heading)** section at the bottom. Keep the two separated when working on this codebase: the architecture is what's real, the vision is the bet on top of it.
 
-InkTide is a **Next.js 16 + React 19 + TypeScript** browser app that extracts and generates **World Views** — typed, causally coherent, mutable knowledge structures over the three force fields **System / World / Fate (SWF)**. Any coherent long-form text describes one: a research paper, a market brief, a campaign plan, a novel. The pipeline is: priors → world view → timelines → forecast. Feed the engine rich context, it extracts a typed knowledge graph that mutates section by section, you branch alternative trajectories, and structural intelligence comes out.
+Meridians is a **Next.js 16 + React 19 + TypeScript** browser app that extracts and generates **World Views** — typed, causally coherent, mutable knowledge structures over the three force fields **System / World / Fate (SWF)**. Any coherent long-form text describes one: a research paper, a market brief, a campaign plan, a novel. The pipeline is: priors → world view → timelines → forecast. Feed the engine rich context, it extracts a typed knowledge graph that mutates section by section, you branch alternative trajectories, and structural intelligence comes out.
 
 The core flow is **analyze → query → generate**, available in any of the three modes. The moat is the priors: detail and freshness of input data drive the accuracy of every forecast. Computation is fixed and cheap; data quality decides the result.
 
@@ -190,7 +190,7 @@ Per-scene strategic decomposition. Purely additive — writes only to `scene.gam
 
 ## Reasoning Graphs & Thinking Modes (src/lib/ai/reasoning-graph.ts, reasoning-graph/)
 
-The causal reasoning graph is how InkTide plans an arc. Built once per arc before any scene is generated; scenes execute the graph.
+The causal reasoning graph is how Meridians plans an arc. Built once per arc before any scene is generated; scenes execute the graph.
 
 ### Graph structure (8–20 nodes/arc)
 - **Node types**: fate, reasoning, character, location, artifact, system, pattern, warning, chaos
@@ -326,7 +326,7 @@ Derived metrics:
 - **Activity** — `A_i = w_F·F + w_W·W + w_S·S` — signature-weighted aggregate of the three force channels. Weights come from PCA (`computeForceSignature`) on the three normalised force curves; no hand-picked archetypes. We're measuring how much the three forces are *moving together* at each scene — high A = the channels the work uses are firing in concert; low A = quiet stretches between peaks.
 - **Swing** — Euclidean distance between consecutive force snapshots.
 
-Reference means (calibrated across three inktide works — HP fate-dominant, Alice world-dominant, *Quantifying Narrative Force* system-dominant): `{ fate: 1.4, world: 14, system: 6 }`. Grading curve `g(x̃) = 25 − 17·exp(−k·x̃)` with `k = ln(17/4)`; HP grades 22/23/17, QNF 12/14/25.
+Reference means (calibrated across three meridians works — HP fate-dominant, Alice world-dominant, *Quantifying Narrative Force* system-dominant): `{ fate: 1.4, world: 14, system: 6 }`. Grading curve `g(x̃) = 25 − 17·exp(−k·x̃)` with `k = ln(17/4)`; HP grades 22/23/17, QNF 12/14/25.
 
 Formulas in `src/lib/narrative-utils.ts`. The **cube** model maps forces into 3D space for trajectory analysis.
 
@@ -388,7 +388,7 @@ The same beat plan re-renders into different output formats. Each format has its
 
 - **prose** — default; standard fiction / memoir / essay / reportage register
 - **screenplay** — industry-standard format. Interior mechanisms (`thought` / `narration` / `memory` / `comic`) externalise via one of four conventions chosen per scene: V.O., soliloquy / aside, pure performance + symbolism, or visualised aperture / flashback. Per-mechanism translation table maps each plan mechanism to its screenplay rendering. Sparser propositions per minute, dialogue-heavier, action lines describe what the camera SEES not what a character KNOWS
-- **meta** — fluid prose interleaved with bracketed engine observations (qualitative shifts in InkTide's understanding: thread committed, seed planted, payoff landed, arc pivoted)
+- **meta** — fluid prose interleaved with bracketed engine observations (qualitative shifts in Meridians's understanding: thread committed, seed planted, payoff landed, arc pivoted)
 - **simulation** — fluid prose interleaved with in-world system logs (HUD overlay diegetic to the story world: cultivation tier gates, LitRPG stat changes, finding/anomaly logs in research papers)
 
 Plan generation also receives a `<rendering-format>` block (`src/lib/prompts/scenes/plan-format.ts`) so non-prose formats can lean their accent profile correctly during planning, not just during rendering.
@@ -410,7 +410,7 @@ Stories are divided into **phases** with objectives and scene allocations. When 
 
 ## Version Control
 
-InkTide implements two distinct versioning systems:
+Meridians implements two distinct versioning systems:
 
 **Branch Reconstruction Versioning**: The revision pipeline creates new branch versions (main-v2, main-v3, main-v4) through the review → reconstruct cycle. Each reconstruction pass evaluates the entire branch, applies structural edits across multiple scenes, and produces a new versioned branch. These branch versions represent complete narrative revisions where the system has reevaluated story structure, pacing, and continuity across the full timeline. Reconstruction is destructive iteration — you get a new branch with changes applied, not a document you can incrementally edit.
 
@@ -541,7 +541,7 @@ Key tuning values:
 
 ### Category positioning
 
-InkTide is being built as **an evolving game that codifies reality** — sitting in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. Maintenance is the practice, and the practice is the value.
+Meridians is being built as **an evolving game that codifies reality** — sitting in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. Maintenance is the practice, and the practice is the value.
 
 ### The War Room
 
@@ -592,4 +592,4 @@ The manifesto's base case (~$3.5M ARR) is venture-defensible without any of this
 
 ### Reading the rest of the codebase
 
-When implementing or refactoring, anchor on the **engine sections above** (Architecture, Domain Model, AI Pipeline, etc.). When implementing or refactoring War Room / Practice / Expert System / Stakes features specifically, this Vision section is the design intent, the [manifesto](https://inktide-sourcenovel.vercel.app/manifesto) is the long-form rationale, and [LANGUAGE.md](LANGUAGE.md) is the canonical vocabulary. The grounded engine is what survives if the vision changes — keep the architecture honest to what's shipped, and label new vision-aligned code as such.
+When implementing or refactoring, anchor on the **engine sections above** (Architecture, Domain Model, AI Pipeline, etc.). When implementing or refactoring War Room / Practice / Expert System / Stakes features specifically, this Vision section is the design intent, the [manifesto](https://meridians-sourcenovel.vercel.app/manifesto) is the long-form rationale, and [LANGUAGE.md](LANGUAGE.md) is the canonical vocabulary. The grounded engine is what survives if the vision changes — keep the architecture honest to what's shipped, and label new vision-aligned code as such.

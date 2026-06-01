@@ -1,6 +1,6 @@
 # Core Language
 
-This document defines the canonical vocabulary InkTide uses in **LLM prompts** and
+This document defines the canonical vocabulary Meridians uses in **LLM prompts** and
 in **internal reasoning** (directives, review critiques, report copy, auto-engine
 guidance). The aim is to keep terminology coherent across the system so that a
 prompt, a directive, and a UI label never drift against each other.
@@ -11,7 +11,7 @@ term feels wrong for a non-fiction or simulation register, **broaden the usage**
 (e.g. a "scene" of a research paper, a "beat" of an essay, a "scene" of a
 wargame turn) rather than introducing a parallel word.
 
-Rationale: InkTide is a multipurpose text engine. Eight top-level paradigms are
+Rationale: Meridians is a multipurpose text engine. Eight top-level paradigms are
 first-class, no paradigm preferenced over another. Each is named for an iconic
 text-form and occupies a distinct cell along three axes — **reality posture**
 (invented / observed / hybrid / typological / chronological), **voice cardinality**

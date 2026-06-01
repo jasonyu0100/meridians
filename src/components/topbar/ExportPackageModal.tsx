@@ -80,7 +80,7 @@ export function ExportPackageModal({ narrative, onClose }: Props) {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${narrative.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.inktide`;
+      a.download = `${narrative.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.meridians`;
       a.click();
       URL.revokeObjectURL(url);
 
