@@ -4,6 +4,7 @@ import ChatPanel from "@/components/sidebar/ChatPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
 import InvestigationPanel from "@/components/sidebar/InvestigationPanel";
+import CompassPanel from "@/components/sidebar/CompassPanel";
 import FilesPanel from "@/components/sidebar/FilesPanel";
 import ThreadPortfolio from "@/components/sidebar/ThreadPortfolio";
 import KnowledgePanel from "./KnowledgePanel";
@@ -14,7 +15,7 @@ import { type SceneRange } from "@/components/timeline/SceneRangeSelector";
 import { useStore } from "@/lib/store";
 import type { WorldBuild } from "@/types/narrative";
 import { isScene, type TimelineEntry } from "@/types/narrative";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ArcDetail from "./ArcDetail";
 import ArtifactDetail from "./ArtifactDetail";
@@ -35,9 +36,12 @@ import {
   IconLightbulb,
   IconList,
   IconUser,
-  IconSearch,
+  IconReasoning,
+  IconCompass,
   IconScorecard,
   IconThread,
+  IconChevronLeft,
+  IconChevronRight,
 } from "@/components/icons";
 import type { ComponentType, SVGProps } from "react";
 
@@ -50,6 +54,7 @@ type Tab =
   | "surveys"
   | "interviews"
   | "investigations"
+  | "compass"
   | "eval";
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -61,6 +66,7 @@ const TAB_LABELS: Record<Tab, string> = {
   surveys: "Surveys",
   interviews: "Interviews",
   investigations: "Investigations",
+  compass: "Compass",
   eval: "Review",
 };
 
@@ -129,7 +135,8 @@ const TAB_ICONS: Record<Tab, IconCmp> = {
   knowledge: IconLightbulb,
   surveys: IconList,
   interviews: IconUser,
-  investigations: IconSearch,
+  investigations: IconReasoning,
+  compass: IconCompass,
   eval: IconScorecard,
 };
 
@@ -142,6 +149,7 @@ const TAB_ORDER: Tab[] = [
   "surveys",
   "interviews",
   "investigations",
+  "compass",
   "eval",
 ];
 
@@ -202,6 +210,47 @@ function getDefaultContext(state: ReturnType<typeof useStore>["state"]) {
   return null;
 }
 
+// Self-contained resize for the content panel. The icon rail is always
+// visible; only this content pane collapses (like the left sidebar / drive
+// pullout). Width drives the pane when expanded; collapsed hides it entirely.
+function usePanelResize(initialWidth: number, minWidth: number, maxWidth: number) {
+  const [width, setWidth] = useState(initialWidth);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startW = useRef(0);
+
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragging.current = true;
+      startX.current = e.clientX;
+      startW.current = width;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!dragging.current) return;
+        const delta = startX.current - ev.clientX; // right-side panel
+        const next = Math.max(minWidth, Math.min(maxWidth, startW.current + delta));
+        setWidth(next);
+      };
+      const onMouseUp = () => {
+        dragging.current = false;
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [width, minWidth, maxWidth],
+  );
+
+  return { width, onMouseDown };
+}
+
 export default function SidePanel() {
   const { state, dispatch } = useStore();
   // Latch the scene-derived default the first time it resolves for this
@@ -226,10 +275,27 @@ export default function SidePanel() {
   const ctx =
     state.viewState.inspectorContext ?? latchedDefaultRef.current.context;
   const [tab, setTab] = useState<Tab>("inspector");
+  const [collapsed, setCollapsed] = useState(false);
+  const { width, onMouseDown } = usePanelResize(500, 150, 1200);
 
-  // Auto-switch to inspector tab when a new inspector context is set
+  // Clicking a tab: the active tab toggles the panel closed; any other tab
+  // switches to it and ensures the panel is open. The rail stays put either
+  // way — only the content pane minimises.
+  const handleTabClick = (t: Tab) => {
+    if (t === tab && !collapsed) setCollapsed(true);
+    else {
+      setTab(t);
+      setCollapsed(false);
+    }
+  };
+
+  // Auto-switch to inspector tab when a new inspector context is set, and
+  // reveal the panel if it was minimised so the selection is visible.
   useEffect(() => {
-    if (state.viewState.inspectorContext) setTab("inspector");
+    if (state.viewState.inspectorContext) {
+      setTab("inspector");
+      setCollapsed(false);
+    }
   }, [state.viewState.inspectorContext]);
   const [evalMode, setEvalMode] = useState<
     "branch" | "prose" | "plan"
@@ -276,9 +342,30 @@ export default function SidePanel() {
   }
 
   return (
-    <aside className="h-full flex flex-row border-l border-border glass-panel">
-      {/* Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+    <aside className="relative h-full flex flex-row glass-panel">
+      {/* Collapse toggle — always present, pinned to the panel's left edge.
+          Minimises only the content pane; the icon rail stays visible. */}
+      <div className="absolute top-0 bottom-0 left-0 z-30 w-4 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Expand inspector" : "Collapse inspector"}
+          className="pointer-events-auto flex items-center justify-center w-6 h-10 rounded-full glass-pill text-text-secondary opacity-80 hover:opacity-100 hover:scale-110 hover:text-violet-200 hover:shadow-[0_0_14px_rgba(196,181,253,0.35)] transition-all cursor-pointer"
+        >
+          {collapsed ? <IconChevronLeft size={10} /> : <IconChevronRight size={10} />}
+        </button>
+      </div>
+
+      {/* Content — collapsible pane */}
+      {!collapsed && (
+      <div
+        className="relative shrink-0 flex flex-col min-w-0 overflow-hidden border-l border-border"
+        style={{ width }}
+      >
+        {/* Resize handle — left edge */}
+        <div
+          className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-violet-300/15 active:bg-violet-300/25 transition-colors z-10"
+          onMouseDown={onMouseDown}
+        />
         {tab === "inspector" && (
           <div className="flex-1 overflow-y-auto min-h-0">
             {state.viewState.inspectorHistory.length > 0 && (
@@ -339,6 +426,11 @@ export default function SidePanel() {
             <InvestigationPanel />
           </div>
         )}
+        {tab === "compass" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <CompassPanel />
+          </div>
+        )}
         {tab === "eval" && (
           <div className="flex-1 min-h-0 flex flex-col">
             <div className="shrink-0 flex border-b border-white/5">
@@ -384,16 +476,17 @@ export default function SidePanel() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Icon tab rail — right edge */}
+      {/* Icon tab rail — right edge, always visible */}
       <div className="shrink-0 flex flex-col items-center py-2 gap-2 w-14 border-l border-border bg-bg-base/40">
         {TAB_ORDER.map((t) => (
           <RailTabButton
             key={t}
             icon={TAB_ICONS[t]}
             label={TAB_LABELS[t]}
-            active={tab === t}
-            onClick={() => setTab(t)}
+            active={tab === t && !collapsed}
+            onClick={() => handleTabClick(t)}
           />
         ))}
       </div>

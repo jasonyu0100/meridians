@@ -1617,6 +1617,63 @@ export type Branch = {
   createdAt: number;
 };
 
+// ── Location Maps ──────────────────────────────────────────────────────────
+
+/** A single parent→child containment edge within a location cluster. */
+export type MapEdge = {
+  from: string;
+  to: string;
+};
+
+/**
+ * A manually-placed label for one member location of a map. The map image is
+ * rendered textless (except its baked-in parent title); the user drags a label
+ * per child location onto its region in the annotator. `x`/`y` are normalized
+ * [0..1] coordinates over the map image, so positions are resolution-independent.
+ */
+export type MapLabel = {
+  locationId: string;
+  x: number;
+  y: number;
+};
+
+/**
+ * A generated map of a location cluster. A cluster is a connected component of
+ * the location parent/child graph (see lib/location-clusters.ts); a LocationMap
+ * is the Replicate-rendered image of one such cluster plus the snapshot of the
+ * cluster membership it was generated from.
+ *
+ * The `signature` is the sorted member-id fingerprint at generation time. When
+ * the live cluster's signature drifts (a location was added to / removed from
+ * the cluster), the map is considered outdated and prime to regenerate.
+ */
+export type LocationMap = {
+  id: string;
+  /** Cluster anchor — the top-most ancestor location id of the cluster. A map
+   *  is matched to a live cluster by this root id. */
+  rootLocationId: string;
+  /** Display name — the root location's name at generation time. */
+  name: string;
+  /** Member location ids included when the map was generated (cluster snapshot). */
+  locationIds: string[];
+  /** Parent→child edges among members, captured at generation. */
+  edges: MapEdge[];
+  /** Sorted member-id fingerprint used to detect cluster drift / outdatedness. */
+  signature: string;
+  /** Scope depth this map was generated at — generations of descendants below
+   *  the root that were included (undefined / Infinity ⇒ whole subtree). */
+  depth?: number;
+  /** Replicate-generated map image (asset id), once generated. */
+  imageUrl?: ImageRef;
+  /** The visual prompt used to render the map (transparency / regeneration). */
+  prompt?: string;
+  /** Manually-placed labels for member locations (drag-drop annotator). The map
+   *  art is textless except the parent title; these position each child's name. */
+  labels?: MapLabel[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 // ── Narrative State ──────────────────────────────────────────────────────────
 
 export type NarrativeState = {
@@ -1657,6 +1714,9 @@ export type NarrativeState = {
   branchChatThreads?: Record<string, BranchChatThread>;
   /** Notes keyed by note ID — persisted with the narrative */
   driverEntries?: Record<string, DriverEntry>;
+  /** Location maps keyed by map ID — Replicate-rendered images of location
+   *  clusters (connected components of the location parent/child graph). */
+  maps?: Record<string, LocationMap>;
   /** Branch evaluations keyed by branch ID — most recent eval per branch */
   structureReviews?: Record<string, StructureReview>;
   /** Prose evaluations keyed by branch ID — most recent prose eval per branch */

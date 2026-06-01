@@ -65,7 +65,6 @@ function useResize(
 
 export default function AppShell({ children, sidebar, sidepanel, rail }: AppShellProps) {
   const left = useResize(300, 150, 600, 'left', true);
-  const right = useResize(500, 150, 1200, 'right', false);
   const railWidth = rail ? 56 : 0;
   const { theme } = useTheme();
 
@@ -116,20 +115,11 @@ export default function AppShell({ children, sidebar, sidepanel, rail }: AppShel
           {children}
         </div>
 
-        {/* Right side panel */}
-        {!right.collapsed && (
-          <div
-            className="relative shrink-0 overflow-hidden"
-            style={{ width: right.width }}
-          >
-            {/* Resize handle */}
-            <div
-              className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-violet-300/15 active:bg-violet-300/25 transition-colors z-10"
-              onMouseDown={right.onMouseDown}
-            />
-            {sidepanel}
-          </div>
-        )}
+        {/* Right side panel — self-contained: owns its own resize, collapse,
+            and always-visible icon rail. */}
+        <div className="relative shrink-0 h-full">
+          {sidepanel}
+        </div>
 
         {/* Left toggle — pointer-events-none container (resize handle still works),
             pill is pointer-events-auto with low resting opacity so it's always findable */}
@@ -146,19 +136,6 @@ export default function AppShell({ children, sidebar, sidepanel, rail }: AppShel
           </button>
         </div>
 
-        {/* Right toggle — same pattern */}
-        <div
-          className="absolute top-0 bottom-0 z-30 w-4 flex items-center justify-center pointer-events-none"
-          style={{ right: right.collapsed ? 0 : right.width - 8 }}
-        >
-          <button
-            onClick={right.toggle}
-            title={right.collapsed ? 'Expand inspector' : 'Collapse inspector'}
-            className="pointer-events-auto flex items-center justify-center w-6 h-10 rounded-full glass-pill text-text-secondary opacity-80 hover:opacity-100 hover:scale-110 hover:text-violet-200 hover:shadow-[0_0_14px_rgba(196,181,253,0.35)] transition-all cursor-pointer"
-          >
-            {right.collapsed ? <IconChevronLeft size={10} /> : <IconChevronRight size={10} />}
-          </button>
-        </div>
       </div>
     </div>
   );

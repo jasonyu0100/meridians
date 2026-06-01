@@ -13,21 +13,19 @@ import { useMemo, useState } from "react";
  * UX shape mirrors Surveys / Interviews: top "+ New" opens the composer
  * modal; the stream below shows past investigations as compact cards.
  *
- * View scope: defaults to FOCUSED on the current arc (less noise — the
- * operator usually wants what's relevant to where they're reading). A
- * "View all" link reveals every investigation across the narrative; a
- * back button returns to the focused view. When the cursor is on a
- * world commit (no arc), the panel falls back to the all-view.
+ * Single combined view (no focused/all toggle): the current arc's
+ * investigations are pulled to the top under a "This arc" divider, then a
+ * chronological list of every investigation follows below. When the cursor
+ * is on a world commit (no arc), only the chronological list shows.
  */
 export default function InvestigationPanel() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const [composerOpen, setComposerOpen] = useState(false);
-  const [viewAll, setViewAll] = useState(false);
 
   // Resolve the current arc from the cursor. When the cursor is on a
-  // world commit (scene-less entry) or there's no narrative, this is
-  // null and the panel auto-shows the all-view.
+  // world commit (scene-less entry) or there's no narrative, this is null
+  // and the "This arc" section is omitted.
   const currentArcId = useMemo<string | null>(() => {
     if (!narrative) return null;
     const key = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
@@ -35,8 +33,6 @@ export default function InvestigationPanel() {
     return scene?.arcId ?? null;
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
   const currentArcName = currentArcId ? narrative?.arcs[currentArcId]?.name ?? null : null;
-  // Auto-fallback to all-view when no current arc is in scope.
-  const effectiveViewAll = viewAll || !currentArcId;
 
   // Last scene index per arc — used to sort the list in narrative order and
   // to navigate to an arc when an investigation is opened. Indices are
@@ -87,13 +83,11 @@ export default function InvestigationPanel() {
     return visible.sort((a, b) => b.createdAt - a.createdAt);
   }, [narrative?.investigations, arcLastSceneIndex]);
 
-  // Focused view shows only investigations on the current arc; all-view
-  // shows everything. Auto-falls-back to all when the cursor isn't on
-  // an arc (e.g. parked on a world commit).
-  const investigations = useMemo<ArcInvestigation[]>(() => {
-    if (effectiveViewAll) return allInvestigations;
+  // Current-arc subset, pulled to the top for quick access.
+  const arcInvestigations = useMemo<ArcInvestigation[]>(() => {
+    if (!currentArcId) return [];
     return allInvestigations.filter((inv) => inv.arcId === currentArcId);
-  }, [allInvestigations, effectiveViewAll, currentArcId]);
+  }, [allInvestigations, currentArcId]);
 
   function openInvestigation(inv: ArcInvestigation) {
     const idx = arcLastSceneIndex.get(inv.arcId);
@@ -102,6 +96,86 @@ export default function InvestigationPanel() {
     }
     dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: inv.id });
     dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "reasoning" });
+  }
+
+  function renderCard(inv: ArcInvestigation) {
+    const arc = narrative?.arcs[inv.arcId];
+    const nodes = inv.graph?.nodes?.length ?? 0;
+    const edges = inv.graph?.edges?.length ?? 0;
+    const style = inv.settings?.thinkingStyle;
+    const resource = inv.settings?.thinkingResource;
+    const range = arcSceneRange.get(inv.arcId);
+    const rangeLabel = range
+      ? range.start === range.end
+        ? `Scene ${range.start}`
+        : `Scenes ${range.start}–${range.end}`
+      : null;
+    return (
+      <div
+        key={inv.id}
+        onClick={() => openInvestigation(inv)}
+        className="group w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 cursor-pointer"
+      >
+        {/* Header: source chip · thinking style · resource — same chip row
+            pattern as SurveyCard's "questionType · category". */}
+        <div className="flex items-baseline gap-2 mb-1">
+          <span
+            className={`text-[9px] uppercase tracking-wider font-mono ${
+              inv.source === "coordination-plan" ? "text-emerald-300/80" : "text-text-dim/70"
+            }`}
+          >
+            {inv.source === "coordination-plan" ? "Plan" : "Manual"}
+          </span>
+          {style && style !== "freeform" && (
+            <span className="text-[9px] uppercase tracking-wider font-mono text-violet-300/70">
+              · {style}
+            </span>
+          )}
+          {resource && resource !== "freeform" && (
+            <span className="text-[9px] uppercase tracking-wider font-mono text-amber-300/70">
+              · {resource}
+            </span>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              dispatch({ type: "DELETE_INVESTIGATION", investigationId: inv.id });
+            }}
+            className="ml-auto text-text-dim/40 hover:text-fate opacity-0 group-hover:opacity-100 transition-opacity text-[14px] leading-none shrink-0"
+            title="Delete investigation"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Body: arc name (the subject) + scene-only range + optional
+            direction (the brief). Parallel to a survey's question + meta. */}
+        <p className="text-[12px] text-text-primary leading-snug">
+          {arc?.name ?? "Unknown arc"}
+        </p>
+        {rangeLabel && (
+          <p className="mt-0.5 text-[10px] font-mono text-text-dim/60 tabular-nums">
+            {rangeLabel}
+          </p>
+        )}
+        {inv.direction && (
+          <p className="mt-1 text-[10px] text-text-dim/70 italic line-clamp-2 leading-snug">
+            {inv.direction}
+          </p>
+        )}
+
+        {/* Footer: graph dimensions + date — mirrors SurveyCard's
+            sparkline/summary row. */}
+        <div className="mt-2 flex items-center gap-2 text-[9px] font-mono text-text-dim/60 tabular-nums">
+          <span>{nodes} node{nodes !== 1 ? "s" : ""}</span>
+          <span>·</span>
+          <span>{edges} edge{edges !== 1 ? "s" : ""}</span>
+          <span className="ml-auto">
+            {new Date(inv.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+          </span>
+        </div>
+      </div>
+    );
   }
 
   if (!narrative) {
@@ -114,160 +188,65 @@ export default function InvestigationPanel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 pt-2.5 pb-2 border-b border-white/8 flex flex-col gap-1.5">
-        <div className="flex items-center gap-2 min-w-0">
-          {effectiveViewAll && currentArcId ? (
-            <button
-              onClick={() => setViewAll(false)}
-              className="flex items-center gap-1 text-[10px] text-text-dim/70 hover:text-text-secondary transition-colors min-w-0"
-              title={`Back to ${currentArcName ?? 'current arc'}`}
-            >
-              <span className="leading-none">←</span>
-              <span className="truncate">Back</span>
-            </button>
-          ) : (
-            <span className="text-[11px] text-text-primary truncate min-w-0" title={currentArcName ?? undefined}>
-              {effectiveViewAll ? 'All investigations' : currentArcName ?? '—'}
-            </span>
-          )}
-          <button
-            onClick={() => setComposerOpen(true)}
-            className="ml-auto text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-text-primary transition-colors shrink-0"
-          >
-            + New
-          </button>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-text-dim/60">
-            {investigations.length}{" "}
-            {investigations.length === 1 ? "investigation" : "investigations"}
-            {!effectiveViewAll && allInvestigations.length > investigations.length && (
-              <span className="text-text-dim/40"> · {allInvestigations.length} total</span>
-            )}
-          </span>
-          {!effectiveViewAll && currentArcId && allInvestigations.length > 0 && (
-            <button
-              onClick={() => setViewAll(true)}
-              className="ml-auto text-[10px] text-text-dim/60 hover:text-text-secondary transition-colors"
-              title="Show investigations across every arc"
-            >
-              View all →
-            </button>
-          )}
-        </div>
+      <div className="shrink-0 px-3 pt-2.5 pb-2 border-b border-white/8 flex items-center gap-2">
+        <span className="text-[11px] text-text-primary">Investigations</span>
+        <span className="text-[10px] uppercase tracking-wider text-text-dim/50 tabular-nums">
+          {allInvestigations.length}
+        </span>
+        <button
+          onClick={() => setComposerOpen(true)}
+          className="ml-auto text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-text-primary transition-colors shrink-0"
+        >
+          + New
+        </button>
       </div>
 
-      {investigations.length === 0 ? (
+      {allInvestigations.length === 0 ? (
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center justify-center p-8 text-center gap-2">
           <svg className="w-8 h-8 text-text-dim/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <circle cx="11" cy="11" r="7" />
             <path strokeLinecap="round" d="m20 20-3.5-3.5" />
           </svg>
-          {!effectiveViewAll && allInvestigations.length > 0 ? (
-            <>
-              <p className="text-[11px] text-text-dim/80">No investigations on this arc yet.</p>
-              <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
-                Tap <span className="text-text-secondary">+ New</span> to investigate <span className="text-text-secondary">{currentArcName ?? 'this arc'}</span>, or{" "}
-                <button
-                  onClick={() => setViewAll(true)}
-                  className="text-text-secondary underline underline-offset-2 hover:text-text-primary transition-colors"
-                >
-                  view all {allInvestigations.length}
-                </button>{" "}
-                across the world view.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-[11px] text-text-dim/80">Open a causal investigation on any arc.</p>
-              <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
-                Tap <span className="text-text-secondary">+ New</span> to reason about the forces shaping an arc. Copy the result back into generation as direction.
-              </p>
-            </>
-          )}
+          <p className="text-[11px] text-text-dim/80">Open a causal investigation on any arc.</p>
+          <p className="text-[10px] text-text-dim/50 max-w-xs leading-relaxed">
+            Tap <span className="text-text-secondary">+ New</span> to reason about the forces shaping an arc. Copy the result back into generation as direction.
+          </p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-2">
-          {investigations.map((inv) => {
-            const arc = narrative.arcs[inv.arcId];
-            const nodes = inv.graph?.nodes?.length ?? 0;
-            const edges = inv.graph?.edges?.length ?? 0;
-            const style = inv.settings?.thinkingStyle;
-            const resource = inv.settings?.thinkingResource;
-            const range = arcSceneRange.get(inv.arcId);
-            const rangeLabel = range
-              ? range.start === range.end
-                ? `Scene ${range.start}`
-                : `Scenes ${range.start}–${range.end}`
-              : null;
-            return (
-              <div
-                key={inv.id}
-                onClick={() => openInvestigation(inv)}
-                className="group w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 cursor-pointer"
-              >
-                {/* Header: source chip · thinking style · resource — same
-                    chip row pattern as SurveyCard's "questionType · category". */}
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span
-                    className={`text-[9px] uppercase tracking-wider font-mono ${
-                      inv.source === "coordination-plan" ? "text-emerald-300/80" : "text-text-dim/70"
-                    }`}
-                  >
-                    {inv.source === "coordination-plan" ? "Plan" : "Manual"}
-                  </span>
-                  {style && style !== "freeform" && (
-                    <span className="text-[9px] uppercase tracking-wider font-mono text-violet-300/70">
-                      · {style}
-                    </span>
-                  )}
-                  {resource && resource !== "freeform" && (
-                    <span className="text-[9px] uppercase tracking-wider font-mono text-amber-300/70">
-                      · {resource}
-                    </span>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dispatch({ type: "DELETE_INVESTIGATION", investigationId: inv.id });
-                    }}
-                    className="ml-auto text-text-dim/40 hover:text-fate opacity-0 group-hover:opacity-100 transition-opacity text-[14px] leading-none shrink-0"
-                    title="Delete investigation"
-                  >
-                    &times;
-                  </button>
-                </div>
-
-                {/* Body: arc name (the subject) + scene-only range +
-                    optional direction (the brief). Parallel to a survey's
-                    question + meta line. */}
-                <p className="text-[12px] text-text-primary leading-snug">
-                  {arc?.name ?? "Unknown arc"}
-                </p>
-                {rangeLabel && (
-                  <p className="mt-0.5 text-[10px] font-mono text-text-dim/60 tabular-nums">
-                    {rangeLabel}
-                  </p>
-                )}
-                {inv.direction && (
-                  <p className="mt-1 text-[10px] text-text-dim/70 italic line-clamp-2 leading-snug">
-                    {inv.direction}
-                  </p>
-                )}
-
-                {/* Footer: graph dimensions + date — mirrors SurveyCard's
-                    sparkline/summary row. */}
-                <div className="mt-2 flex items-center gap-2 text-[9px] font-mono text-text-dim/60 tabular-nums">
-                  <span>{nodes} node{nodes !== 1 ? "s" : ""}</span>
-                  <span>·</span>
-                  <span>{edges} edge{edges !== 1 ? "s" : ""}</span>
-                  <span className="ml-auto">
-                    {new Date(inv.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
-                  </span>
-                </div>
+          {/* This-arc section — only when the cursor is on an arc. */}
+          {currentArcId && (
+            <>
+              <div className="flex items-center gap-2 px-0.5 pb-0.5">
+                <span
+                  className="text-[9px] uppercase tracking-wider text-text-dim/50 shrink-0 truncate max-w-[70%]"
+                  title={currentArcName ?? undefined}
+                >
+                  This arc · {currentArcName ?? "—"}
+                </span>
+                <div className="h-px flex-1 bg-white/8" />
               </div>
-            );
-          })}
+              {arcInvestigations.length > 0 ? (
+                arcInvestigations.map(renderCard)
+              ) : (
+                <p className="px-0.5 py-1 text-[10px] text-text-dim/50 leading-relaxed">
+                  No investigations on this arc yet. Tap{" "}
+                  <span className="text-text-secondary">+ New</span> to investigate it.
+                </p>
+              )}
+
+              {/* Divider into the full chronological list. */}
+              <div className="flex items-center gap-2 px-0.5 pt-2 pb-0.5">
+                <span className="text-[9px] uppercase tracking-wider text-text-dim/50 shrink-0">
+                  All investigations
+                </span>
+                <div className="h-px flex-1 bg-white/8" />
+              </div>
+            </>
+          )}
+
+          {/* Full chronological list (latest first). */}
+          {allInvestigations.map(renderCard)}
         </div>
       )}
 

@@ -71,6 +71,7 @@ import type {
   NarrativeState,
   NarrativeViewState,
   DriverEntry,
+  LocationMap,
   OwnershipDelta,
   PlanEvaluation,
   PlanningScenario,
@@ -1026,6 +1027,9 @@ export type Action =
   // Marks them locked — UPDATE_DRIVER_ENTRY and DELETE_DRIVER_ENTRY
   // become no-ops on these entries thereafter.
   | { type: "MARK_DRIVER_ENTRIES_USED"; entryIds: string[]; fileId: string }
+  // Location maps — Replicate-rendered images of location clusters.
+  | { type: "SAVE_MAP"; map: LocationMap }
+  | { type: "DELETE_MAP"; mapId: string }
   // Surveys
   | { type: "CREATE_SURVEY"; survey: Survey }
   | { type: "DELETE_SURVEY"; surveyId: string }
@@ -3345,6 +3349,20 @@ function reducer(state: AppState, action: Action): AppState {
           next[id] = { ...entry, usedInFileIds: [...usedInFileIds, action.fileId] };
         }
         return { ...n, driverEntries: next };
+      });
+
+    // ── Location maps ─────────────────────────────────────────────────────
+    case "SAVE_MAP":
+      // Upsert by id — generation and regeneration both flow through here.
+      return updateNarrative(state, (n) => ({
+        ...n,
+        maps: { ...(n.maps ?? {}), [action.map.id]: action.map },
+      }));
+
+    case "DELETE_MAP":
+      return updateNarrative(state, (n) => {
+        const { [action.mapId]: _removed, ...rest } = n.maps ?? {};
+        return { ...n, maps: rest };
       });
 
     // ── Surveys ───────────────────────────────────────────────────────────

@@ -126,6 +126,23 @@ export function IconSearch({ size, ...rest }: P) {
   );
 }
 
+export function IconCompass({ size, ...rest }: P) {
+  // Classic navigation compass — ring + a NE/SW needle. Marks the Compass
+  // surface (variable scenarios) in the inspector rail.
+  return (
+    <svg {...defaults(size)} {...rest}>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+      <polygon
+        points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 export function IconList({ size, ...rest }: P) {
   return (
     <svg {...defaults(size)} {...rest}>

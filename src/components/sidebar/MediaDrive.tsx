@@ -9,11 +9,18 @@ import { logApiCall, updateApiLog } from '@/lib/api-logger';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { assetManager } from '@/lib/asset-manager';
 import MediaPreview from '@/components/sidebar/MediaPreview';
-import { IconSpinner, IconImage, IconSettings } from '@/components/icons';
+import { IconSpinner, IconImage, IconSettings, IconMapPin, IconLocationPin, IconTrash } from '@/components/icons';
 import type { MediaItem } from '@/components/sidebar/MediaPreview';
-import type { Scene, Character, Location, Artifact, ImageRef } from '@/types/narrative';
+import type { Scene, Character, Location, Artifact, ImageRef, LocationMap, MapEdge } from '@/types/narrative';
+import {
+  computeLocationClusters,
+  clusterSignature,
+  type LocationCluster,
+} from '@/lib/location-clusters';
+import { computeMapScope, buildMapScope } from '@/lib/map-layout';
+import { MapAnnotator } from '@/components/sidebar/MapAnnotator';
 
-type AssetTab = 'characters' | 'locations' | 'artifacts';
+type AssetTab = 'characters' | 'locations' | 'artifacts' | 'maps';
 
 type BatchItem =
   | { kind: 'character'; char: Character }
@@ -36,11 +43,18 @@ type BatchState = {
 // Matches PROSE_CONCURRENCY; Replicate handles its own rate limiting.
 const BATCH_CONCURRENCY = 10;
 
+// Synthetic root id + title for the GLOBAL map — the very top of the map tree.
+// It has no backing location: its sub-regions are every top-level (parentless)
+// location, so it sits one tier above the natural top-level territory maps and
+// roots the whole tree-of-maps. Keyed in `narrative.maps` by this id.
+const GLOBAL_MAP_ROOT = '__global__';
+const GLOBAL_MAP_TITLE = 'Global';
+
 async function generateImage(
-  type: 'character' | 'location' | 'artifact',
+  type: 'character' | 'location' | 'artifact' | 'map',
   payload: Record<string, unknown>,
   narrativeId: string,
-): Promise<{ imageUrl: string }> {
+): Promise<{ imageUrl: string; visualPrompt?: string }> {
   const body = JSON.stringify({ type, ...payload });
   const logId = logApiCall(`MediaDrive.generateImage(${type})`, body.length, body, 'replicate/seedream-4.5');
   const start = performance.now();
@@ -68,7 +82,7 @@ async function generateImage(
     const assetId = await assetManager.storeImage(blob, blob.type, undefined, narrativeId);
 
     updateApiLog(logId, { status: 'success', durationMs: Math.round(performance.now() - start), responsePreview: `image stored (${assetId})` });
-    return { imageUrl: assetId };
+    return { imageUrl: assetId, visualPrompt: data.visualPrompt };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     updateApiLog(logId, { status: 'error', error: message, durationMs: Math.round(performance.now() - start) });
@@ -112,6 +126,8 @@ export default function MediaDrive() {
   const [showStyleEditor, setShowStyleEditor] = useState(false);
   const [styleDraft, setStyleDraft] = useState(narrative?.imageStyle ?? '');
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  // The map currently open in the drag-drop label annotator (null = closed).
+  const [annotateMap, setAnnotateMap] = useState<LocationMap | null>(null);
   const [batchState, setBatchState] = useState<BatchState | null>(null);
   const batchCancelRef = useRef(false);
   const batchBusy = batchState !== null;
@@ -133,6 +149,109 @@ export default function MediaDrive() {
     if (!narrative) return [];
     return Object.values(narrative.artifacts ?? {});
   }, [narrative]);
+
+  // Location clusters — connected components of the location parent/child
+  // graph. Each is a map candidate; size ≥ 2 (a lone location is not a map).
+  const clusters = useMemo<LocationCluster[]>(() => {
+    if (!narrative) return [];
+    return computeLocationClusters(narrative.locations);
+  }, [narrative]);
+
+  // Candidate map roots — any location with at least one child can anchor a
+  // map. Cluster roots come first (the natural top-level territories), then
+  // the rest, so the picker reads top-down.
+  const mapParents = useMemo<Location[]>(() => {
+    const withChild = new Set<string>();
+    for (const l of locations) if (l.parentId) withChild.add(l.parentId);
+    const clusterRoots = new Set(clusters.map((c) => c.rootId));
+    return locations
+      .filter((l) => withChild.has(l.id))
+      .sort((a, b) =>
+        (clusterRoots.has(b.id) ? 1 : 0) - (clusterRoots.has(a.id) ? 1 : 0)
+        || a.name.localeCompare(b.name));
+  }, [locations, clusters]);
+
+
+  // Saved maps, newest first. A map is keyed by its root location.
+  const savedMaps = useMemo<LocationMap[]>(() => {
+    if (!narrative?.maps) return [];
+    return Object.values(narrative.maps).sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [narrative]);
+
+  // Top-level (parentless) locations = the sub-regions of the GLOBAL map and the
+  // natural top-level territories of the map tree. The Global map only makes
+  // sense with ≥2 of them (a single root IS its own top map — Global would just
+  // duplicate it).
+  const topLevelLocs = useMemo<Location[]>(() => {
+    if (!narrative) return [];
+    return locations.filter((l) => !l.parentId || !narrative.locations[l.parentId]);
+  }, [narrative, locations]);
+  const showGlobal = topLevelLocs.length >= 2;
+  const globalMap = useMemo(
+    () => savedMaps.find((m) => m.rootLocationId === GLOBAL_MAP_ROOT),
+    [savedMaps],
+  );
+
+  // A saved map is outdated when its parent's direct children (maps are one
+  // layer deep) no longer match the snapshot it was generated from — i.e. a
+  // child was added or removed under the parent.
+  const savedMapStatus = useCallback((map: LocationMap): 'current' | 'outdated' => {
+    if (!narrative) return 'current';
+    // The Global map's membership is every top-level location, not a subtree.
+    const current = map.rootLocationId === GLOBAL_MAP_ROOT
+      ? clusterSignature(
+          Object.values(narrative.locations)
+            .filter((l) => !l.parentId || !narrative.locations[l.parentId])
+            .map((l) => l.id),
+        )
+      : clusterSignature(computeMapScope(narrative.locations, map.rootLocationId, 1));
+    return current === map.signature ? 'current' : 'outdated';
+  }, [narrative]);
+
+  // Every possible 1-depth map = each parent territory (a location with
+  // children) joined to its saved map and live status. Walked in LOCATION-TREE
+  // order so the list mirrors the map hierarchy: top-level (parentless) maps
+  // first, each child map indented under its parent. `depth` is the map-tree
+  // depth (number of ancestor maps) used for indentation. A parent is a map and
+  // also a sub-region inside its own parent's map.
+  const mapRows = useMemo(() => {
+    if (!narrative) return [];
+    const childrenOf = new Map<string, Location[]>();
+    for (const l of locations) {
+      if (!l.parentId) continue;
+      const b = childrenOf.get(l.parentId);
+      if (b) b.push(l);
+      else childrenOf.set(l.parentId, [l]);
+    }
+    const byName = (a: Location, b: Location) => a.name.localeCompare(b.name);
+    const roots = locations
+      .filter((l) => !l.parentId || !narrative.locations[l.parentId])
+      .sort(byName);
+    const rows: {
+      parent: Location;
+      childCount: number;
+      depth: number;
+      map: LocationMap | undefined;
+      status: 'current' | 'outdated' | null;
+    }[] = [];
+    const seen = new Set<string>();
+    const visit = (loc: Location, depth: number) => {
+      if (seen.has(loc.id)) return; // defensive against cycles
+      seen.add(loc.id);
+      const kids = childrenOf.get(loc.id) ?? [];
+      const isMap = kids.length > 0;
+      if (isMap) {
+        const map = savedMaps.find((m) => m.rootLocationId === loc.id);
+        rows.push({ parent: loc, childCount: kids.length, depth, map, status: map ? savedMapStatus(map) : null });
+      }
+      for (const k of [...kids].sort(byName)) visit(k, isMap ? depth + 1 : depth);
+    };
+    // When a Global map sits above them (≥2 top-level locations), the natural
+    // top-level territories are sub-regions of Global, so they indent one tier.
+    const base = roots.length >= 2 ? 1 : 0;
+    for (const r of roots) visit(r, base);
+    return rows;
+  }, [narrative, locations, savedMaps, savedMapStatus]);
 
   // Scenes (resolved up to head) — used to derive POV / "in scenes" filters
   // for the batch presets below. Not rendered directly.
@@ -170,6 +289,10 @@ export default function MediaDrive() {
         { key: 'all', label: 'All', items: missing.map((l) => ({ kind: 'location', loc: l })) },
       ];
     }
+
+    // Maps have no batch presets — clusters are generated individually from
+    // their row (a map is a deliberate, per-cluster render).
+    if (tab === 'maps') return [];
 
     // artifacts
     const missing = artifacts.filter((a) => !a.imageUrl);
@@ -213,6 +336,18 @@ export default function MediaDrive() {
         };
       });
     }
+    if (tab === 'maps') {
+      return savedMaps
+        .filter((m) => m.imageUrl)
+        .map((m) => ({
+          id: m.rootLocationId,
+          imageUrl: m.imageUrl!,
+          label: m.name,
+          sublabel: `${m.locationIds.length} locations${m.depth ? ` · depth ${m.depth}` : ''}`,
+          prompt: m.prompt,
+          aspectClass: 'aspect-[4/3]',
+        }));
+    }
     // artifacts
     return artifacts.filter((a) => a.imageUrl).map((a) => {
       const ownerName = a.parentId
@@ -228,7 +363,7 @@ export default function MediaDrive() {
         aspectClass: 'aspect-square',
       };
     });
-  }, [tab, characters, locations, artifacts, narrative]);
+  }, [tab, characters, locations, artifacts, savedMaps, narrative]);
 
   const openPreview = useCallback((id: string) => {
     const idx = previewItems.findIndex((item) => item.id === id);
@@ -295,6 +430,85 @@ export default function MediaDrive() {
     dispatch({ type: 'SET_ARTIFACT_IMAGE', artifactId: artifact.id, imageUrl });
   }, [narrative, dispatch]);
 
+  // Generate (or regenerate) the 1-depth map for a parent territory. We resolve
+  // the parent + its direct children and hand the image model the region
+  // structure plus each location's own image prompt — it paints the textless
+  // map (parent title only); labels are placed by hand in the annotator. On
+  // regenerate, label positions for still-present members are carried over.
+  const runScopedMapGen = useCallback(async (rootId: string): Promise<void> => {
+    if (!narrative) return;
+    const isGlobal = rootId === GLOBAL_MAP_ROOT;
+    const root = isGlobal ? undefined : narrative.locations[rootId];
+    if (!isGlobal && !root) return;
+
+    let memberIds: string[];
+    let edges: MapEdge[];
+    let signature: string;
+    let regions: { name: string; prominence: string; parentName?: string; imagePrompt?: string }[];
+    let displayName: string;
+
+    if (isGlobal) {
+      // Global = one tier: the synthetic "Global" title encloses every top-level
+      // location as a sub-region. No real edges (the root is synthetic); members
+      // are the top-level locations, which the annotator labels by hand.
+      const tops = Object.values(narrative.locations).filter(
+        (l) => !l.parentId || !narrative.locations[l.parentId],
+      );
+      memberIds = [...tops.map((l) => l.id)].sort();
+      edges = [];
+      signature = clusterSignature(memberIds);
+      displayName = GLOBAL_MAP_TITLE;
+      regions = [
+        { name: GLOBAL_MAP_TITLE, prominence: 'domain' },
+        ...tops.map((l) => ({
+          name: l.name,
+          prominence: l.prominence,
+          parentName: GLOBAL_MAP_TITLE,
+          imagePrompt: l.imagePrompt,
+        })),
+      ];
+    } else {
+      const scope = buildMapScope(narrative.locations, rootId, 1);
+      memberIds = scope.memberIds;
+      edges = scope.edges;
+      signature = scope.signature;
+      displayName = root!.name;
+      regions = memberIds.map((id) => {
+        const loc = narrative.locations[id];
+        const parent = loc.parentId ? narrative.locations[loc.parentId] : undefined;
+        return {
+          name: loc.name,
+          prominence: loc.prominence,
+          parentName: parent && memberIds.includes(parent.id) ? parent.name : undefined,
+          imagePrompt: loc.imagePrompt,
+        };
+      });
+    }
+    const { imageUrl, visualPrompt } = await generateImage('map', {
+      name: displayName,
+      regions,
+      imageStyle: narrative.imageStyle,
+    }, narrative.id);
+    const existing = Object.values(narrative.maps ?? {}).find((m) => m.rootLocationId === rootId);
+    const keptLabels = (existing?.labels ?? []).filter((lb) => memberIds.includes(lb.locationId));
+    const now = Date.now();
+    const map: LocationMap = {
+      id: existing?.id ?? `map-${rootId}-${now}`,
+      rootLocationId: rootId,
+      name: displayName,
+      locationIds: memberIds,
+      edges,
+      signature,
+      depth: 1,
+      imageUrl,
+      prompt: visualPrompt,
+      labels: keptLabels.length > 0 ? keptLabels : undefined,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    dispatch({ type: 'SAVE_MAP', map });
+  }, [narrative, dispatch]);
+
   // ── Single-call wrappers (click-driven). Guard against overlapping work.
 
   const generateCharacterImage = useCallback(async (char: Character) => {
@@ -320,6 +534,14 @@ export default function MediaDrive() {
     catch (err) { console.error('Failed to generate artifact image:', err); }
     finally { setGenerating(null); }
   }, [narrative, generating, batchBusy, requireKeys, runArtifactGen]);
+
+  const generateMapImage = useCallback(async (rootId: string) => {
+    if (!narrative || generating || batchBusy || requireKeys()) return;
+    setGenerating(rootId);
+    try { await runScopedMapGen(rootId); }
+    catch (err) { console.error('Failed to generate map:', err); }
+    finally { setGenerating(null); }
+  }, [narrative, generating, batchBusy, requireKeys, runScopedMapGen]);
 
   // ── Batch runner — bounded concurrency, cancellable mid-flight.
 
@@ -414,6 +636,7 @@ export default function MediaDrive() {
           ['characters', 'Characters'],
           ['locations', 'Locations'],
           ['artifacts', 'Artifacts'],
+          ['maps', 'Maps'],
         ] as [AssetTab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -552,6 +775,145 @@ export default function MediaDrive() {
             <GenerateButton onClick={() => generateArtifactImage(artifact)} disabled={generating !== null || batchBusy} generating={generating === artifact.id} />
           </div>
         ))}
+
+        {/* ── Maps ── one row per parent territory = every possible 1-depth map.
+            Maps are a single layer deep (a parent + its direct children) and are
+            drawn textless except the parent title; place names are added by hand
+            in the annotator. Ungenerated parents offer Generate; generated ones
+            offer Label (drag-drop annotator) / Regenerate, with outdated status
+            when the parent's children have changed since generation. */}
+        {tab === 'maps' && mapParents.length === 0 && !showGlobal && (
+          <div className="px-3 py-8 text-center">
+            <p className="text-[11px] text-text-dim/85 mb-1">No parent locations yet.</p>
+            <p className="text-[10px] text-text-dim/55 leading-relaxed">
+              Maps are built from a parent territory and the locations nested
+              inside it. Give a location a parent (containment) and it can be mapped.
+            </p>
+          </div>
+        )}
+
+        {/* Global map — the synthetic top of the map tree, above every natural
+            top-level territory. Only shown with ≥2 top-level locations (one root
+            is already its own top map). Its sub-regions are those top-level
+            locations; the rows below indent one tier under it. */}
+        {tab === 'maps' && showGlobal && (() => {
+          const busy = generating !== null || batchBusy;
+          const status = globalMap ? savedMapStatus(globalMap) : null;
+          return (
+            <div className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-bg-elevated transition-colors">
+              {globalMap?.imageUrl ? (
+                <button onClick={() => setAnnotateMap(globalMap)} className="shrink-0" title="Label this map">
+                  <ThumbnailImage imageRef={globalMap.imageUrl} alt={GLOBAL_MAP_TITLE} className="w-8 h-8 rounded object-cover border border-border hover:border-accent/50 transition-colors" />
+                </button>
+              ) : (
+                <div className="w-8 h-8 rounded bg-white/6 shrink-0 flex items-center justify-center border border-border border-dashed">
+                  <IconMapPin size={12} className="text-text-dim" />
+                </div>
+              )}
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-xs text-text-primary truncate">{GLOBAL_MAP_TITLE}</p>
+                <p className="text-[10px] text-text-dim truncate flex items-center gap-1">
+                  {topLevelLocs.length} top-level {topLevelLocs.length === 1 ? 'territory' : 'territories'}
+                  {status ? (
+                    <span className={status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}>
+                      · {status === 'current' ? 'up to date' : 'outdated'}
+                    </span>
+                  ) : (
+                    <span className="text-text-dim/50">· not generated</span>
+                  )}
+                </p>
+              </div>
+              {globalMap && (
+                <>
+                  <button
+                    onClick={() => setAnnotateMap(globalMap)}
+                    disabled={busy}
+                    title="Label this map"
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <IconLocationPin size={11} />
+                  </button>
+                  <button
+                    onClick={() => dispatch({ type: 'DELETE_MAP', mapId: globalMap.id })}
+                    disabled={busy}
+                    title="Delete map"
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-red-300 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <IconTrash size={11} />
+                  </button>
+                </>
+              )}
+              <GenerateButton
+                onClick={() => generateMapImage(GLOBAL_MAP_ROOT)}
+                disabled={busy}
+                generating={generating === GLOBAL_MAP_ROOT}
+              />
+            </div>
+          );
+        })()}
+
+        {tab === 'maps' && mapRows.map(({ parent, childCount, depth, map, status }) => {
+          const busy = generating !== null || batchBusy;
+          return (
+            <div
+              key={parent.id}
+              className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-bg-elevated transition-colors"
+              style={{ marginLeft: depth * 14 }}
+            >
+              {depth > 0 && <span className="shrink-0 text-text-dim/40 text-[11px] -ml-1.5">└</span>}
+              {map?.imageUrl ? (
+                <button onClick={() => setAnnotateMap(map)} className="shrink-0" title="Label this map">
+                  <ThumbnailImage imageRef={map.imageUrl} alt={parent.name} className="w-8 h-8 rounded object-cover border border-border hover:border-accent/50 transition-colors" />
+                </button>
+              ) : (
+                <div className="w-8 h-8 rounded bg-white/6 shrink-0 flex items-center justify-center border border-border border-dashed">
+                  <IconMapPin size={12} className="text-text-dim" />
+                </div>
+              )}
+              <button
+                onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'location', locationId: parent.id } })}
+                className="flex-1 text-left min-w-0"
+              >
+                <p className="text-xs text-text-primary truncate">{parent.name}</p>
+                <p className="text-[10px] text-text-dim truncate flex items-center gap-1">
+                  {childCount} {childCount === 1 ? 'location' : 'locations'}
+                  {status ? (
+                    <span className={status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}>
+                      · {status === 'current' ? 'up to date' : 'outdated'}
+                    </span>
+                  ) : (
+                    <span className="text-text-dim/50">· not generated</span>
+                  )}
+                </p>
+              </button>
+              {map && (
+                <>
+                  <button
+                    onClick={() => setAnnotateMap(map)}
+                    disabled={busy}
+                    title="Label this map"
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <IconLocationPin size={11} />
+                  </button>
+                  <button
+                    onClick={() => dispatch({ type: 'DELETE_MAP', mapId: map.id })}
+                    disabled={busy}
+                    title="Delete map"
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-red-300 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <IconTrash size={11} />
+                  </button>
+                </>
+              )}
+              <GenerateButton
+                onClick={() => generateMapImage(parent.id)}
+                disabled={busy || childCount < 1}
+                generating={generating === parent.id}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {previewIndex !== null && previewItems.length > 0 && (
@@ -560,6 +922,13 @@ export default function MediaDrive() {
           currentIndex={previewIndex}
           onNavigate={setPreviewIndex}
           onClose={() => setPreviewIndex(null)}
+        />
+      )}
+
+      {annotateMap && (
+        <MapAnnotator
+          map={annotateMap}
+          onClose={() => setAnnotateMap(null)}
         />
       )}
     </div>

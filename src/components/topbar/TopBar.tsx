@@ -1021,16 +1021,16 @@ export default function TopBar() {
   const hasNarrative = !!narrative;
 
   return (
-    <div className="flex items-center justify-between h-11 glass-panel border-b border-border px-3">
+    <div className="flex items-center justify-between h-11 glass-panel border-b border-border pr-3">
       {/* Left: home + title + menus */}
       <div className="flex items-center gap-0.5 text-sm min-w-0">
         {/* Home button with logo */}
         <button
           onClick={() => router.push("/")}
-          className="px-1.5 py-1 rounded hover:bg-bg-elevated transition-colors"
+          className="flex items-center justify-center w-14 py-1 rounded hover:bg-bg-elevated transition-colors"
           title="All series"
         >
-          <Image src="/logo.svg" alt="Meridians" width={20} height={20} />
+          <Image src="/logo.svg" alt="Meridians" width={30} height={30} />
         </button>
 
         {/* Narrative selector */}
