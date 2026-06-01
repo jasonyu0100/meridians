@@ -16,7 +16,7 @@ const OPTIONS: Record<Theme, ThemeOption> = {
     id: "astral",
     name: "Astral",
     desc: "Luminous deep-space violet with drifting nebulae and a star field — the Meridians signature.",
-    swatch: { bg: "#0d0919", panel: "#281f45", text: "#ededf2", accent: "#c4b5fd" },
+    swatch: { bg: "#0e0820", panel: "#2b2153", text: "#ededf2", accent: "#c4b5fd" },
   },
   dark: {
     id: "dark",

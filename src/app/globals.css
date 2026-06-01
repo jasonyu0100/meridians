@@ -34,10 +34,10 @@
  * light rather than decoration on black. Dark stays neutral/flat by contrast. */
 :root,
 .theme-astral {
-  --bg-base: #0d0919;
-  --bg-panel: #161029;
-  --bg-elevated: #1f1738;
-  --bg-overlay: #281f45;
+  --bg-base: #0e0820;
+  --bg-panel: #181036;
+  --bg-elevated: #221945;
+  --bg-overlay: #2b2153;
   --text-primary: #ededf2;
   --text-secondary: #9a93ad;
   --text-dim: #6f6886;
