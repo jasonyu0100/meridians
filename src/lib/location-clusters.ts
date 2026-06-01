@@ -14,6 +14,15 @@
 
 import type { Location, LocationMap, MapEdge } from '@/types/narrative';
 
+/**
+ * The synthetic top-of-tree "Global" map — it has no backing location; its
+ * members are every top-level (parentless) location. Keyed in `narrative.maps`
+ * by this root id. Shared so map generation (MediaDrive) and the map-tree
+ * overlay (map-tree-layout) agree on the identifier and title.
+ */
+export const GLOBAL_MAP_ROOT = '__global__';
+export const GLOBAL_MAP_TITLE = 'Global';
+
 export type LocationCluster = {
   /** Top-most ancestor location id — the cluster anchor. */
   rootId: string;

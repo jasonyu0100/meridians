@@ -2830,7 +2830,8 @@ export type GraphViewMode =
   | "belief"
   | "present"
   | "compass"
-  | "mode";
+  | "mode"
+  | "board";
 
 // ── Chat Threads ──────────────────────────────────────────────────────────────
 export type ChatMessage = {

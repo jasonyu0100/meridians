@@ -7,7 +7,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch } from '@/components/icons';
+import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch, IconMapPin } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
@@ -93,7 +93,7 @@ export const GRAPH_MODES = new Set<GraphViewMode>([
   'network-scene', 'network-arc', 'network-full',
 ]);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode';
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
 type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'decision';
 const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'decision'];
 
@@ -349,6 +349,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'present') return 'present';
   if (graphViewMode === 'compass') return 'compass';
   if (graphViewMode === 'mode') return 'mode';
+  if (graphViewMode === 'board') return 'board';
   return 'graph';
 }
 
@@ -1180,6 +1181,7 @@ export function CanvasTopBar() {
           {[
             { mode: 'driver' as const, Icon: IconList, label: 'Driver', activeWhen: inDriverMode },
             { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', activeWhen: canvasMode === 'graph' },
+            { mode: 'board' as const, Icon: IconMapPin, label: 'Board', activeWhen: canvasMode === 'board' },
             { mode: 'control' as const, Icon: IconBelief, label: 'Control', activeWhen: inControlMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', activeWhen: inSceneMode },
           ]

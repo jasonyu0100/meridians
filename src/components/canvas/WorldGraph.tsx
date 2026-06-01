@@ -25,6 +25,7 @@ import { DriverCanvas } from '@/components/driver/DriverCanvas';
 import { ReasoningGraphView } from './ReasoningGraphView';
 import { ModeCanvas } from './ModeGraphView';
 import NetworkView from './NetworkView';
+import { BoardView } from './BoardView';
 import BeliefView from './BeliefView';
 import VariablesView from './VariablesView';
 import {
@@ -46,6 +47,7 @@ import {
 } from './graph-utils';
 import { useTheme } from '@/lib/theme-context';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
+import { buildMapTreeLayout } from '@/lib/map-tree-layout';
 import { edgeWidthFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM } from '@/lib/graph-styling';
 
 export default function WorldGraph() {
@@ -68,6 +70,10 @@ export default function WorldGraph() {
   const [showTies, setShowTies] = useState(false);
   const [showSpatial, setShowSpatial] = useState(true);
   const [showVicinity, setShowVicinity] = useState(false);
+  const [showMapTree, setShowMapTree] = useState(false);
+  // Anchors of the currently-pinned location nodes (map-tree mode) — read by the
+  // drag handler so a dragged location snaps back to its map slot on release.
+  const pinnedAnchorsRef = useRef<Record<string, { x: number; y: number }>>({});
   const [groups, setGroups] = useState<GraphNode[][]>([]);
   const [focusedGroupIndex, setFocusedGroupIndex] = useState<number | null>(null);
   const [nodeTooltip, setNodeTooltip] = useState<{ x: number; y: number; label: string; kind: string; imagePrompt: string } | null>(null);
@@ -153,6 +159,10 @@ export default function WorldGraph() {
     }
     for (const art of Object.values(narrative.artifacts ?? {})) {
       if (art.imageUrl) refs.push(art.imageUrl);
+    }
+    // Map images — needed so the map-tree overlay can paint board backdrops.
+    for (const map of Object.values(narrative.maps ?? {})) {
+      if (map.imageUrl) refs.push(map.imageUrl);
     }
     return refs;
   }, [narrative]);
@@ -584,6 +594,27 @@ export default function WorldGraph() {
     // Store nodes ref for intra-arc updates
     nodesRef.current = nodes;
 
+    // ── Map-tree overlay ────────────────────────────────────────────────────
+    // When enabled, build the tree of map boards applicable to the locations
+    // present in this build, then PIN each location node (fx/fy) onto its label
+    // position. Pinned anchors are stashed so the drag handler can snap a
+    // dragged location back to its slot on release. When off, clear any pins so
+    // the force layout resumes from the preserved positions.
+    const mapTree = showMapTree && narrative
+      ? buildMapTreeLayout({
+          maps: narrative.maps ?? {},
+          locations: narrative.locations,
+          presentLocationIds: new Set(nodes.filter((n) => n.kind === 'location').map((n) => n.id)),
+        })
+      : null;
+    pinnedAnchorsRef.current = mapTree?.anchors ?? {};
+    for (const n of nodes) {
+      if (n.kind !== 'location') continue;
+      const anchor = mapTree?.anchors[n.id];
+      if (anchor) { n.x = anchor.x; n.y = anchor.y; n.fx = anchor.x; n.fy = anchor.y; }
+      else { n.fx = null; n.fy = null; }
+    }
+
     // Compute connected groups and reset focus
     setGroups(computeGroups(nodes, links));
     setFocusedGroupIndex(null);
@@ -623,6 +654,61 @@ export default function WorldGraph() {
     // Root group for zoom/pan
     const g = svg.append('g');
     gRef.current = g;
+
+    // ── Map-tree boards layer ───────────────────────────────────────────────
+    // Appended first so it renders BEHIND links and nodes. Boards are static in
+    // graph space (drawn once, no per-tick work): containment edges, then each
+    // board's image + border + title. Location nodes are pinned onto these via
+    // the anchors computed above.
+    if (mapTree && mapTree.boards.length > 0) {
+      const boardsG = g.append('g').attr('class', 'map-boards');
+      const boardByRoot = new Map(mapTree.boards.map((b) => [b.rootId, b]));
+
+      boardsG.append('g').attr('class', 'board-edges')
+        .selectAll('line')
+        .data(mapTree.edges.filter((e) => boardByRoot.has(e.parentRootId) && boardByRoot.has(e.childRootId)))
+        .join('line')
+        .attr('x1', (e) => { const b = boardByRoot.get(e.parentRootId)!; return b.x + b.w / 2; })
+        .attr('y1', (e) => { const b = boardByRoot.get(e.parentRootId)!; return b.y + b.h; })
+        .attr('x2', (e) => { const b = boardByRoot.get(e.childRootId)!; return b.x + b.w / 2; })
+        .attr('y2', (e) => { const b = boardByRoot.get(e.childRootId)!; return b.y; })
+        .attr('stroke', neutrals.edge)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .attr('opacity', 0.4);
+
+      const boardG = boardsG.selectAll('g.board')
+        .data(mapTree.boards, (b) => (b as typeof mapTree.boards[number]).rootId)
+        .join('g')
+        .attr('class', 'board')
+        .attr('transform', (b) => `translate(${b.x},${b.y})`);
+
+      boardG.filter((b) => !!b.map.imageUrl && resolvedImageUrls.has(b.map.imageUrl))
+        .append('image')
+        .attr('href', (b) => resolvedImageUrls.get(b.map.imageUrl!)!)
+        .attr('width', (b) => b.w)
+        .attr('height', (b) => b.h)
+        .attr('preserveAspectRatio', 'xMidYMid slice')
+        .attr('opacity', 0.85);
+
+      boardG.append('rect')
+        .attr('width', (b) => b.w)
+        .attr('height', (b) => b.h)
+        .attr('rx', 8)
+        .attr('fill', 'none')
+        .attr('stroke', neutrals.location)
+        .attr('stroke-width', 1.5)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .attr('opacity', 0.5);
+
+      boardG.append('text')
+        .attr('x', (b) => b.w / 2)
+        .attr('y', 22)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'graph-label')
+        .attr('font-weight', 700)
+        .text((b) => b.map.name);
+    }
 
     // Zoom behavior
     const zoom = d3
@@ -718,6 +804,12 @@ export default function WorldGraph() {
       );
 
     simulationRef.current = simulation;
+
+    // In map-tree mode ONLY the location nodes are fixed (pinned to their map
+    // slots above). Everything else stays fluid — characters/artifacts settle
+    // naturally around their pinned locations via the existing
+    // character-location / relationship / ownership links, with no extra
+    // positional force (a hard pull made actors collapse onto a single point).
 
     // ── Links ─────────────────────────────────────────────────────────────
     const nonRelLinks = validLinksDeduped.filter((l) => l.linkKind !== 'relationship');
@@ -931,8 +1023,11 @@ export default function WorldGraph() {
           })
           .on('end', (event, d) => {
             if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
+            // Map-tree pinned locations snap back to their map slot; everything
+            // else releases to the force layout as usual.
+            const pinned = pinnedAnchorsRef.current[d.id];
+            if (pinned) { d.fx = pinned.x; d.fy = pinned.y; }
+            else { d.fx = null; d.fy = null; }
           }),
       );
 
@@ -1122,7 +1217,7 @@ export default function WorldGraph() {
       gRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme, narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial, showVicinity]);
+  }, [theme, narrative, activeArcId, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showSpatial, showVicinity, showMapTree]);
 
   // ── Lightweight: update selected node highlight + relationship edges ──
   useEffect(() => {
@@ -1283,7 +1378,7 @@ export default function WorldGraph() {
     // Mirror the main rebuild's deps so char-loc lines are re-attached after
     // every full graph rebuild (arcFocus, vicinity, entity-kind toggles all
     // wipe the SVG; the char-loc layer has to follow).
-  }, [narrative, activeArcId, state.viewState.currentSceneIndex, showSpatial, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showVicinity, resolvedEntryKeys]);
+  }, [narrative, activeArcId, state.viewState.currentSceneIndex, showSpatial, graphViewMode, currentWorldBuildId, showHeatmap, arcFocus, currentScene, resolvedImageUrls.size, selectedKnowledgeEntity, showCharacters, showLocations, showArtifacts, showRelationships, showTies, showVicinity, showMapTree, resolvedEntryKeys]);
 
   // ── Zoom to focused group ──
   useEffect(() => {
@@ -1411,6 +1506,7 @@ export default function WorldGraph() {
             { key: 'rels', label: 'Relationships', checked: showRelationships, toggle: () => setShowRelationships((v) => !v) },
             { key: 'ties', label: 'Ties', checked: showTies, toggle: () => setShowTies((v) => !v) },
             { key: 'spatial', label: 'Spatial', checked: showSpatial, toggle: () => setShowSpatial((v) => !v) },
+            { key: 'map', label: 'Map', checked: showMapTree, toggle: () => setShowMapTree((v) => !v) },
           ] as { key: string; label: string; checked: boolean; toggle: () => void }[]).map(({ key, label, checked, toggle }) => (
             <button
               key={key}
@@ -1509,6 +1605,8 @@ export default function WorldGraph() {
         <VariablesView mode="compass" />
       ) : graphViewMode === 'mode' ? (
         <ModeCanvas />
+      ) : graphViewMode === 'board' ? (
+        <BoardView />
       ) : graphViewMode === 'reasoning' ? (
         // Scene investigation takes priority. Falls back to legacy arc / world-
         // build CRGs (still produced via the coordination plan path) when the
@@ -1552,7 +1650,7 @@ export default function WorldGraph() {
         />
       ) : (
         <div className="relative h-full w-full">
-          {locationBackgroundUrl && (
+          {locationBackgroundUrl && !showMapTree && (
             <>
               <div
                 aria-hidden="true"

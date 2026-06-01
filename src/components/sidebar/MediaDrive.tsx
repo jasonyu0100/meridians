@@ -15,6 +15,8 @@ import type { Scene, Character, Location, Artifact, ImageRef, LocationMap, MapEd
 import {
   computeLocationClusters,
   clusterSignature,
+  GLOBAL_MAP_ROOT,
+  GLOBAL_MAP_TITLE,
   type LocationCluster,
 } from '@/lib/location-clusters';
 import { computeMapScope, buildMapScope } from '@/lib/map-layout';
@@ -42,13 +44,6 @@ type BatchState = {
 // Sliding window — N workers pull from a shared queue until empty.
 // Matches PROSE_CONCURRENCY; Replicate handles its own rate limiting.
 const BATCH_CONCURRENCY = 10;
-
-// Synthetic root id + title for the GLOBAL map — the very top of the map tree.
-// It has no backing location: its sub-regions are every top-level (parentless)
-// location, so it sits one tier above the natural top-level territory maps and
-// roots the whole tree-of-maps. Keyed in `narrative.maps` by this id.
-const GLOBAL_MAP_ROOT = '__global__';
-const GLOBAL_MAP_TITLE = 'Global';
 
 async function generateImage(
   type: 'character' | 'location' | 'artifact' | 'map',
@@ -211,9 +206,9 @@ export default function MediaDrive() {
   // Every possible 1-depth map = each parent territory (a location with
   // children) joined to its saved map and live status. Walked in LOCATION-TREE
   // order so the list mirrors the map hierarchy: top-level (parentless) maps
-  // first, each child map indented under its parent. `depth` is the map-tree
-  // depth (number of ancestor maps) used for indentation. A parent is a map and
-  // also a sub-region inside its own parent's map.
+  // first, each child map listed under its parent. `depth` is the map-tree
+  // depth (number of ancestor maps), surfaced as a D0/D1/… badge per row. A
+  // parent is a map and also a sub-region inside its own parent's map.
   const mapRows = useMemo(() => {
     if (!narrative) return [];
     const childrenOf = new Map<string, Location[]>();
@@ -795,12 +790,19 @@ export default function MediaDrive() {
         {/* Global map — the synthetic top of the map tree, above every natural
             top-level territory. Only shown with ≥2 top-level locations (one root
             is already its own top map). Its sub-regions are those top-level
-            locations; the rows below indent one tier under it. */}
+            locations; the rows below are one depth tier deeper (D1+). */}
         {tab === 'maps' && showGlobal && (() => {
           const busy = generating !== null || batchBusy;
           const status = globalMap ? savedMapStatus(globalMap) : null;
           return (
             <div className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-bg-elevated transition-colors">
+              {/* Global is the synthetic top of the map tree → depth 0. */}
+              <span
+                title="Map-tree depth 0"
+                className="shrink-0 px-1 py-0.5 rounded bg-white/6 text-[9px] font-bold text-text-dim/80 tabular-nums"
+              >
+                D0
+              </span>
               {globalMap?.imageUrl ? (
                 <button onClick={() => setAnnotateMap(globalMap)} className="shrink-0" title="Label this map">
                   <ThumbnailImage imageRef={globalMap.imageUrl} alt={GLOBAL_MAP_TITLE} className="w-8 h-8 rounded object-cover border border-border hover:border-accent/50 transition-colors" />
@@ -858,9 +860,16 @@ export default function MediaDrive() {
             <div
               key={parent.id}
               className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-bg-elevated transition-colors"
-              style={{ marginLeft: depth * 14 }}
             >
-              {depth > 0 && <span className="shrink-0 text-text-dim/40 text-[11px] -ml-1.5">└</span>}
+              {/* Depth badge — how deep this territory sits in the map tree
+                  (D0 = top level), replacing tree indentation so every row
+                  shares the same left edge. */}
+              <span
+                title={`Map-tree depth ${depth}`}
+                className="shrink-0 px-1 py-0.5 rounded bg-white/6 text-[9px] font-bold text-text-dim/80 tabular-nums"
+              >
+                D{depth}
+              </span>
               {map?.imageUrl ? (
                 <button onClick={() => setAnnotateMap(map)} className="shrink-0" title="Label this map">
                   <ThumbnailImage imageRef={map.imageUrl} alt={parent.name} className="w-8 h-8 rounded object-cover border border-border hover:border-accent/50 transition-colors" />
