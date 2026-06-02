@@ -2,16 +2,12 @@
 
 import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
-import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/scene-filter';
+import { getWorldNodesAtScene } from '@/lib/scene-filter';
 import { WORLD_FILL } from '@/components/canvas/graph-utils';
+import { WORLD_NODE_TYPES, type WorldNodeType } from '@/types/narrative';
+import { InlineText, InlineSelect } from './InlineEdit';
 
 type Props = { entityId: string; nodeId: string };
-
-const TYPE_TEXT: Record<string, string> = {
-  trait: 'text-violet-400', state: 'text-emerald-400', history: 'text-amber-400',
-  capability: 'text-blue-400', opinion: 'text-pink-300', relation: 'text-purple-400',
-  secret: 'text-amber-500', goal: 'text-sky-400', weakness: 'text-red-400',
-};
 
 export default function WorldNodeDetail({ entityId, nodeId }: Props) {
   const { state, dispatch } = useStore();
@@ -28,25 +24,20 @@ export default function WorldNodeDetail({ entityId, nodeId }: Props) {
     [entity, entityId, narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex],
   );
 
-  const edges = useMemo(() =>
-    getWorldEdgesAtScene(entity.world.edges, entityId, narrative.scenes, state.resolvedEntryKeys, state.viewState.currentSceneIndex, entity.world.nodes),
-    [entity, entityId, narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex],
-  );
-
   const node = nodes.find(n => n.id === nodeId);
   if (!node) return <p className="text-xs text-text-dim">Node not found</p>;
 
-  // All edges involving this node
-  const connections = useMemo(() => {
-    return edges
-      .filter(e => e.from === nodeId || e.to === nodeId)
-      .map(e => {
-        const otherId = e.from === nodeId ? e.to : e.from;
-        const other = nodes.find(n => n.id === otherId);
-        const direction = e.from === nodeId ? 'outgoing' : 'incoming';
-        return { otherId, other, relation: e.relation, direction };
-      });
-  }, [edges, nodes, nodeId]);
+  // Every edge this node participates in, read from the entity's full world
+  // graph (not the scene-windowed set) so a node's connections always show. The
+  // other endpoint is resolved against all of the entity's nodes.
+  const connections = (entity.world.edges ?? [])
+    .filter(e => e.from === nodeId || e.to === nodeId)
+    .map(e => {
+      const otherId = e.from === nodeId ? e.to : e.from;
+      const other = entity.world.nodes[otherId];
+      const direction = e.from === nodeId ? 'outgoing' : 'incoming';
+      return { otherId, other, relation: e.relation, direction };
+    });
 
   // Scenes where this entity gains this node
   const mentionedScenes = useMemo(() => {
@@ -66,13 +57,24 @@ export default function WorldNodeDetail({ entityId, nodeId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
+      {/* Header — type + content are inline-editable. */}
+      <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full shrink-0" style={{ background: WORLD_FILL[node.type] ?? '#888' }} />
-          <span className={`text-[10px] uppercase tracking-widest ${TYPE_TEXT[node.type] ?? 'text-text-dim'}`}>{node.type}</span>
+          <InlineSelect<WorldNodeType>
+            value={node.type as WorldNodeType}
+            options={WORLD_NODE_TYPES}
+            onSave={(type) => dispatch({ type: 'UPDATE_WORLD_NODE', ownerKind: entityType, ownerId: entityId, nodeId, patch: { type } })}
+            className="text-[10px] uppercase tracking-widest"
+          />
         </div>
-        <p className="text-sm text-text-primary leading-relaxed">{node.content}</p>
+        <InlineText
+          value={node.content}
+          onSave={(content) => dispatch({ type: 'UPDATE_WORLD_NODE', ownerKind: entityType, ownerId: entityId, nodeId, patch: { content } })}
+          multiline
+          className="text-sm text-text-primary leading-relaxed"
+          inputClassName="text-sm"
+        />
         <span className="font-mono text-[10px] text-text-dim">{nodeId}</span>
       </div>
 

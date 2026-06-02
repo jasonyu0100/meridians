@@ -6,6 +6,11 @@ import { useImageUrl } from '@/hooks/useAssetUrl';
 import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/scene-filter';
 import { CollapsibleSection, Paginator, paginateRecent } from './CollapsibleSection';
 import ImagePromptEditor from './ImagePromptEditor';
+import { InlineText, InlineSelect } from './InlineEdit';
+import { AttributionsSection } from './AttributionsSection';
+import type { LocationProminence } from '@/types/narrative';
+
+const LOCATION_PROMINENCE: readonly LocationProminence[] = ['domain', 'place', 'margin'];
 
 type Props = {
   locationId: string;
@@ -82,35 +87,56 @@ export default function LocationDetail({ locationId }: Props) {
         />
       )}
 
-      {/* Name + ID */}
+      {/* Name + ID — name + prominence inline-editable */}
       <div className="flex flex-col gap-0.5">
-        <h2 className="text-sm font-semibold text-text-primary">{location.name}</h2>
+        <InlineText
+          value={location.name}
+          onSave={(name) => dispatch({ type: 'UPDATE_LOCATION', id: locationId, patch: { name } })}
+          className="text-sm font-semibold text-text-primary"
+          inputClassName="text-sm font-semibold"
+        />
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] text-text-dim">{locationId}</span>
-          {location.prominence && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-text-dim">{location.prominence}</span>
-          )}
+          <InlineSelect<LocationProminence>
+            value={location.prominence}
+            options={LOCATION_PROMINENCE}
+            onSave={(prominence) => dispatch({ type: 'UPDATE_LOCATION', id: locationId, patch: { prominence } })}
+            className="text-[9px]"
+          />
         </div>
       </div>
 
-      {/* Parent location */}
-      {parent && (
-        <p className="text-xs text-text-secondary">
-          in{' '}
-          <button
-            type="button"
-            onClick={() =>
-              dispatch({
-                type: 'SET_INSPECTOR',
-                context: { type: 'location', locationId: parent.id },
-              })
-            }
-            className="text-text-primary transition-colors hover:underline"
-          >
-            {parent.name}
-          </button>
-        </p>
-      )}
+      {/* Parent location — editable (cycle-safe: excludes self + descendants) */}
+      {(() => {
+        const locs = Object.values(narrative.locations);
+        const descendants = new Set<string>();
+        const stack = [locationId];
+        while (stack.length) {
+          const cur = stack.pop()!;
+          for (const l of locs) {
+            if (l.parentId === cur && !descendants.has(l.id)) { descendants.add(l.id); stack.push(l.id); }
+          }
+        }
+        const options = locs
+          .filter((l) => l.id !== locationId && !descendants.has(l.id))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        return (
+          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <span className="text-text-dim">in</span>
+            <select
+              value={location.parentId ?? ''}
+              onChange={(e) => dispatch({ type: 'UPDATE_LOCATION', id: locationId, patch: { parentId: e.target.value || null } })}
+              title="Set containing location"
+              className="cursor-pointer bg-bg-elevated border border-white/10 rounded px-1.5 py-0.5 text-text-secondary hover:border-accent/50 outline-none transition-colors max-w-[70%] truncate"
+            >
+              <option value="">— top level —</option>
+              {options.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </div>
+        );
+      })()}
 
       {/* Ties — characters with a significant bond to this location (at the current scene) */}
       {(() => {
@@ -206,9 +232,15 @@ export default function LocationDetail({ locationId }: Props) {
           <CollapsibleSection title="World" count={worldNodes.length}>
             <ul className="flex flex-col gap-1">
               {pageItems.map((node, i) => (
-                <li key={`${node.id}-${i}`} className="flex items-start gap-2">
-                  <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${continuityDotColors[node.type] ?? 'bg-white/40'}`} />
-                  <span className="text-xs text-text-primary">{node.content}</span>
+                <li key={`${node.id}-${i}`}>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'world', entityId: locationId, nodeId: node.id } })}
+                    className="flex items-start gap-2 w-full text-left group"
+                  >
+                    <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${continuityDotColors[node.type] ?? 'bg-white/40'}`} />
+                    <span className="text-xs text-text-primary group-hover:text-white transition-colors">{node.content}</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -228,7 +260,7 @@ export default function LocationDetail({ locationId }: Props) {
                   <button
                     type="button"
                     onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'thread', threadId: tid } })}
-                    className="font-mono text-xs text-text-secondary transition-colors hover:text-text-primary"
+                    className="block w-full text-left font-mono text-xs text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {tid}
                     {narrative.threads[tid] && (
@@ -320,6 +352,8 @@ export default function LocationDetail({ locationId }: Props) {
           </CollapsibleSection>
         );
       })()}
+
+      <AttributionsSection targetId={locationId} />
     </div>
   );
 }

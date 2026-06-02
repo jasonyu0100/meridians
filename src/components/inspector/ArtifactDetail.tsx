@@ -7,15 +7,14 @@ import { resolveEntityName } from '@/lib/narrative-utils';
 import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene } from '@/lib/scene-filter';
 import { CollapsibleSection, Paginator, paginateRecent } from './CollapsibleSection';
 import ImagePromptEditor from './ImagePromptEditor';
+import { InlineText, InlineSelect } from './InlineEdit';
+import { AttributionsSection } from './AttributionsSection';
+import type { ArtifactSignificance } from '@/types/narrative';
+
+const ARTIFACT_SIGNIFICANCE: readonly ArtifactSignificance[] = ['key', 'notable', 'minor'];
 
 type Props = {
   artifactId: string;
-};
-
-const significanceClasses: Record<string, string> = {
-  key: 'text-amber-400',
-  notable: 'text-amber-300/70',
-  minor: 'text-text-secondary',
 };
 
 const continuityDotColors: Record<string, string> = {
@@ -103,13 +102,23 @@ export default function ArtifactDetail({ artifactId }: Props) {
         />
       )}
 
-      {/* Name + ID */}
+      {/* Name + ID + significance — name & significance inline-editable */}
       <div className="flex flex-col gap-0.5">
-        <h2 className="text-sm font-semibold text-text-primary">{artifact.name}</h2>
-        <span className="font-mono text-[10px] text-text-dim">{artifactId}</span>
-        <span className={`text-[10px] uppercase tracking-widest ${significanceClasses[artifact.significance] ?? 'text-text-dim'}`}>
-          {artifact.significance}
-        </span>
+        <InlineText
+          value={artifact.name}
+          onSave={(name) => dispatch({ type: 'UPDATE_ARTIFACT', id: artifactId, patch: { name } })}
+          className="text-sm font-semibold text-text-primary"
+          inputClassName="text-sm font-semibold"
+        />
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-text-dim">{artifactId}</span>
+          <InlineSelect<ArtifactSignificance>
+            value={artifact.significance}
+            options={ARTIFACT_SIGNIFICANCE}
+            onSave={(significance) => dispatch({ type: 'UPDATE_ARTIFACT', id: artifactId, patch: { significance } })}
+            className="text-[9px]"
+          />
+        </div>
       </div>
 
       {/* Image prompt — editable, with AI suggest from continuity */}
@@ -152,12 +161,18 @@ export default function ArtifactDetail({ artifactId }: Props) {
           <CollapsibleSection title="World" count={worldNodes.length}>
             <ul className="flex flex-col gap-1">
               {pageItems.map((node, i) => (
-                <li key={`${node.id}-${i}`} className="flex items-start gap-2">
-                  <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${continuityDotColors[node.type] ?? 'bg-white/40'}`} />
-                  <div className="flex flex-col">
-                    <span className="text-xs text-text-primary">{node.content}</span>
-                    <span className="text-[10px] text-text-dim">{node.type}</span>
-                  </div>
+                <li key={`${node.id}-${i}`}>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'world', entityId: artifactId, nodeId: node.id } })}
+                    className="flex items-start gap-2 w-full text-left group"
+                  >
+                    <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${continuityDotColors[node.type] ?? 'bg-white/40'}`} />
+                    <div className="flex flex-col">
+                      <span className="text-xs text-text-primary group-hover:text-white transition-colors">{node.content}</span>
+                      <span className="text-[10px] text-text-dim">{node.type}</span>
+                    </div>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -177,7 +192,7 @@ export default function ArtifactDetail({ artifactId }: Props) {
                   <button
                     type="button"
                     onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'thread', threadId: tid } })}
-                    className="font-mono text-xs text-text-secondary transition-colors hover:text-text-primary"
+                    className="block w-full text-left font-mono text-xs text-text-secondary transition-colors hover:text-text-primary"
                   >
                     {tid}
                     {narrative.threads[tid] && (
@@ -249,6 +264,8 @@ export default function ArtifactDetail({ artifactId }: Props) {
           </CollapsibleSection>
         );
       })()}
+
+      <AttributionsSection targetId={artifactId} />
     </div>
   );
 }

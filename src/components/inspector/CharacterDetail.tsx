@@ -13,16 +13,14 @@ import type { CharacterRole } from "@/types/narrative";
 import React, { useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
 import ImagePromptEditor from "./ImagePromptEditor";
+import { InlineText, InlineSelect } from "./InlineEdit";
+import { AttributionsSection } from "./AttributionsSection";
+
+const CHARACTER_ROLES: readonly CharacterRole[] = ["anchor", "recurring", "transient"];
 import { buildPlayerGameSummary } from "@/lib/game-theory-player";
 
 type Props = {
   characterId: string;
-};
-
-const roleClasses: Record<CharacterRole, string> = {
-  anchor: "text-text-primary",
-  recurring: "text-text-secondary",
-  transient: "text-text-dim",
 };
 
 const continuityDotColors: Record<string, string> = {
@@ -155,22 +153,24 @@ export default function CharacterDetail({ characterId }: Props) {
         />
       )}
 
-      {/* Name + ID */}
+      {/* Name + ID + role — name & role inline-editable (id · dropdown pattern) */}
       <div className="flex flex-col gap-0.5">
-        <h2 className="text-sm font-semibold text-text-primary">
-          {character.name}
-        </h2>
-        <span className="font-mono text-[10px] text-text-dim">
-          {characterId}
-        </span>
+        <InlineText
+          value={character.name}
+          onSave={(name) => dispatch({ type: "UPDATE_CHARACTER", id: characterId, patch: { name } })}
+          className="text-sm font-semibold text-text-primary"
+          inputClassName="text-sm font-semibold"
+        />
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-text-dim">{characterId}</span>
+          <InlineSelect<CharacterRole>
+            value={character.role}
+            options={CHARACTER_ROLES}
+            onSave={(role) => dispatch({ type: "UPDATE_CHARACTER", id: characterId, patch: { role } })}
+            className="text-[9px]"
+          />
+        </div>
       </div>
-
-      {/* Role badge */}
-      <span
-        className={`text-[10px] uppercase tracking-widest ${roleClasses[character.role]}`}
-      >
-        {character.role}
-      </span>
 
       {/* Image prompt — editable, with AI suggest from continuity */}
       <ImagePromptEditor
@@ -392,16 +392,19 @@ export default function CharacterDetail({ characterId }: Props) {
             >
               <ul className="flex flex-col gap-1">
                 {pageItems.map((node, i) => (
-                  <li
-                    key={`${node.id}-${i}`}
-                    className="flex items-start gap-2"
-                  >
-                    <span
-                      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${continuityDotColors[node.type] ?? "bg-white/40"}`}
-                    />
-                    <span className="text-xs text-text-primary">
-                      {node.content}
-                    </span>
+                  <li key={`${node.id}-${i}`}>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: "SET_INSPECTOR", context: { type: "world", entityId: characterId, nodeId: node.id } })}
+                      className="flex items-start gap-2 w-full text-left group"
+                    >
+                      <span
+                        className={`mt-1 h-2 w-2 shrink-0 rounded-full ${continuityDotColors[node.type] ?? "bg-white/40"}`}
+                      />
+                      <span className="text-xs text-text-primary group-hover:text-white transition-colors">
+                        {node.content}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -434,7 +437,7 @@ export default function CharacterDetail({ characterId }: Props) {
                           context: { type: "thread", threadId: tid },
                         })
                       }
-                      className="font-mono text-xs text-text-secondary transition-colors hover:text-text-primary"
+                      className="block w-full text-left font-mono text-xs text-text-secondary transition-colors hover:text-text-primary"
                     >
                       {tid}
                       {narrative.threads[tid] && (
@@ -762,6 +765,8 @@ export default function CharacterDetail({ characterId }: Props) {
           </CollapsibleSection>
         );
       })()}
+
+      <AttributionsSection targetId={characterId} />
     </div>
   );
 }

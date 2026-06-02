@@ -1,22 +1,15 @@
 "use client";
 
 import { useStore } from "@/lib/store";
-import type { ThreadLogNode } from "@/types/narrative";
+import type { ThreadLogNode, ThreadLogNodeType } from "@/types/narrative";
 import { useMemo } from "react";
+import { InlineText, InlineSelect } from "./InlineEdit";
 
 type Props = { threadId: string; nodeId: string };
 
-const TYPE_TEXT: Record<string, string> = {
-  pulse: "text-white/50",
-  transition: "text-fate",
-  setup: "text-amber-400",
-  escalation: "text-orange-400",
-  payoff: "text-emerald-400",
-  twist: "text-violet-400",
-  callback: "text-sky-400",
-  resistance: "text-red-500",
-  stall: "text-red-400/50",
-};
+const LOG_TYPES: readonly ThreadLogNodeType[] = [
+  "pulse", "transition", "setup", "escalation", "payoff", "twist", "callback", "resistance", "stall",
+];
 
 const TYPE_FILL: Record<string, string> = {
   pulse: "#666",
@@ -54,6 +47,9 @@ export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
   if (!node) return <p className="text-xs text-text-dim">Log node not found</p>;
 
   const edges = thread.threadLog?.edges ?? [];
+  // The originating scene/worldbuild id — explicit on the node, else recovered
+  // from the node id pattern `${threadId}:${sceneId}`.
+  const logSceneId = node.sceneId ?? (nodeId.includes(":") ? nodeId.slice(nodeId.indexOf(":") + 1) : "");
 
   // All edges involving this node
   const connections = useMemo(() => {
@@ -95,22 +91,27 @@ export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
+      {/* Header — type + prose are inline-editable (patches the source delta) */}
+      <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-full shrink-0"
             style={{ background: TYPE_FILL[node.type] ?? "#888" }}
           />
-          <span
-            className={`text-[10px] uppercase tracking-widest ${TYPE_TEXT[node.type] ?? "text-text-dim"}`}
-          >
-            {node.type}
-          </span>
+          <InlineSelect<ThreadLogNodeType>
+            value={node.type}
+            options={LOG_TYPES}
+            onSave={(logType) => dispatch({ type: "UPDATE_THREAD_LOG_NODE", threadId, sceneId: logSceneId, patch: { logType } })}
+            className="text-[10px] uppercase tracking-widest"
+          />
         </div>
-        <p className="text-sm text-text-primary leading-relaxed">
-          {node.content}
-        </p>
+        <InlineText
+          value={node.content}
+          onSave={(rationale) => dispatch({ type: "UPDATE_THREAD_LOG_NODE", threadId, sceneId: logSceneId, patch: { rationale } })}
+          multiline
+          className="text-sm text-text-primary leading-relaxed"
+          inputClassName="text-sm"
+        />
         <span className="font-mono text-[10px] text-text-dim">{nodeId}</span>
       </div>
 

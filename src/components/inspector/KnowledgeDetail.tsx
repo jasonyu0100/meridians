@@ -3,8 +3,9 @@
 import { useMemo, useCallback } from 'react';
 import { useStore } from '@/lib/store';
 import { buildCumulativeSystemGraph, scoreSystemNodes } from '@/lib/narrative-utils';
-import type { SystemNodeType } from '@/types/narrative';
+import { SYSTEM_NODE_TYPES, type SystemNodeType } from '@/types/narrative';
 import { CollapsibleSection } from './CollapsibleSection';
+import { InlineText, InlineSelect } from './InlineEdit';
 
 type AttributionEntry = {
   sceneId: string;
@@ -201,16 +202,24 @@ export default function KnowledgeDetail({ nodeId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
+      {/* Header — concept + type are inline-editable. */}
+      <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${TYPE_COLORS[node.type] ?? 'bg-white/40'}`} />
-          <h2 className="text-sm font-semibold text-text-primary">{node.concept}</h2>
+          <InlineText
+            value={node.concept}
+            onSave={(concept) => dispatch({ type: 'UPDATE_SYSTEM_NODE', nodeId, patch: { concept } })}
+            className="text-sm font-semibold text-text-primary"
+            inputClassName="text-sm font-semibold"
+          />
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] uppercase tracking-widest ${TYPE_TEXT[node.type] ?? 'text-text-dim'}`}>
-            {node.type}
-          </span>
+          <InlineSelect<SystemNodeType>
+            value={node.type}
+            options={SYSTEM_NODE_TYPES}
+            onSave={(type) => dispatch({ type: 'UPDATE_SYSTEM_NODE', nodeId, patch: { type } })}
+            className="text-[10px] uppercase tracking-widest"
+          />
           <span className="text-[10px] text-text-dim font-mono">{nodeId}</span>
         </div>
       </div>
@@ -255,10 +264,10 @@ export default function KnowledgeDetail({ nodeId }: Props) {
                 <button
                   type="button"
                   onClick={() => navigateToNode(otherId)}
-                  className="flex items-center gap-2 group"
+                  className="flex items-start gap-2 group text-left w-full"
                 >
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${other ? TYPE_COLORS[other.type] ?? 'bg-white/40' : 'bg-white/20'}`} />
-                  <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">
+                  <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${other ? TYPE_COLORS[other.type] ?? 'bg-white/40' : 'bg-white/20'}`} />
+                  <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors flex-1 min-w-0">
                     {other?.concept ?? otherId}
                   </span>
                   {other && (

@@ -100,7 +100,10 @@ import type {
   SystemNode,
   Thread,
   ThreadDelta,
+  ThreadLogNodeType,
   TieDelta,
+  World,
+  WorldNode,
   Variable,
   WorldBuild,
 } from "@/types/narrative";
@@ -705,6 +708,50 @@ function updateActiveNarrativeIfMatch(
   return updateNarrative(state, updater);
 }
 
+// ── Inline entity editing ─────────────────────────────────────────────────────
+// Characters / locations / artifacts / threads (and their world/system nodes)
+// are DERIVED from the worldBuilds + scene manifests, so an inline edit must
+// patch the source manifest entry and then re-derive — the same contract as
+// SET_LOCATION_IMAGE_PROMPT / REBUILD_LOCATION_HIERARCHY.
+
+/** Apply a manifest updater, then re-derive the active narrative's entities. */
+function rederiveActive(
+  state: AppState,
+  updater: (n: NarrativeState) => NarrativeState,
+): AppState {
+  const after = updateNarrative(state, updater);
+  if (!after.activeNarrative) return after;
+  return {
+    ...after,
+    activeNarrative: withDerivedEntities(after.activeNarrative, after.resolvedEntryKeys),
+  };
+}
+
+/** Patch the entity with `id` in an entity collection across BOTH manifest
+ *  sources (worldBuilds expansion manifests + scene `new*` arrays). */
+function editManifestEntity(
+  n: NarrativeState,
+  key: "newCharacters" | "newLocations" | "newArtifacts" | "newThreads",
+  id: string,
+  patch: Record<string, unknown>,
+): NarrativeState {
+  const apply = (arr?: Array<{ id: string }>) =>
+    arr?.map((e) => (e.id === id ? { ...e, ...patch } : e));
+  const worldBuilds = Object.fromEntries(
+    Object.entries(n.worldBuilds).map(([k, wb]) => [
+      k,
+      { ...wb, expansionManifest: { ...wb.expansionManifest, [key]: apply(wb.expansionManifest[key]) } },
+    ]),
+  ) as typeof n.worldBuilds;
+  const scenes = Object.fromEntries(
+    Object.entries(n.scenes).map(([k, s]) => [
+      k,
+      { ...s, [key]: apply((s as Record<string, unknown>)[key] as Array<{ id: string }> | undefined) },
+    ]),
+  ) as typeof n.scenes;
+  return { ...n, worldBuilds, scenes };
+}
+
 export const SEED_NARRATIVE_IDS = SEED_IDS;
 export const PLAYGROUND_NARRATIVE_IDS = PLAYGROUND_IDS;
 export const ANALYSIS_NARRATIVE_IDS = ANALYSIS_IDS;
@@ -943,6 +990,14 @@ export type Action =
   | { type: "SET_CHARACTER_IMAGE_PROMPT"; characterId: string; imagePrompt: string }
   | { type: "SET_LOCATION_IMAGE_PROMPT"; locationId: string; imagePrompt: string }
   | { type: "REBUILD_LOCATION_HIERARCHY"; parents: Record<string, string | null> }
+  // Inline entity edits (patch source manifests + re-derive).
+  | { type: "UPDATE_CHARACTER"; id: string; patch: Partial<Pick<Character, "name" | "role">> }
+  | { type: "UPDATE_LOCATION"; id: string; patch: Partial<Pick<Location, "name" | "prominence" | "parentId">> }
+  | { type: "UPDATE_ARTIFACT"; id: string; patch: Partial<Pick<Artifact, "name" | "significance">> }
+  | { type: "UPDATE_THREAD"; id: string; patch: Partial<Pick<Thread, "description" | "participants">> }
+  | { type: "UPDATE_WORLD_NODE"; ownerKind: "character" | "location" | "artifact"; ownerId: string; nodeId: string; patch: Partial<Pick<WorldNode, "content" | "type">> }
+  | { type: "UPDATE_SYSTEM_NODE"; nodeId: string; patch: Partial<Pick<SystemNode, "concept" | "type">> }
+  | { type: "UPDATE_THREAD_LOG_NODE"; threadId: string; sceneId: string; patch: { rationale?: string; logType?: ThreadLogNodeType } }
   | { type: "SET_ARTIFACT_IMAGE_PROMPT"; artifactId: string; imagePrompt: string }
   | { type: "SET_IMAGE_STYLE"; style: string }
   | { type: "SET_STORY_SETTINGS"; settings: StorySettings }
@@ -2869,6 +2924,95 @@ function reducer(state: AppState, action: Action): AppState {
         afterUpdate.resolvedEntryKeys,
       );
       return { ...afterUpdate, activeNarrative: rederived };
+    }
+
+    case "UPDATE_CHARACTER":
+      return rederiveActive(state, (n) => editManifestEntity(n, "newCharacters", action.id, action.patch));
+
+    case "UPDATE_LOCATION":
+      return rederiveActive(state, (n) => editManifestEntity(n, "newLocations", action.id, action.patch));
+
+    case "UPDATE_ARTIFACT":
+      return rederiveActive(state, (n) => editManifestEntity(n, "newArtifacts", action.id, action.patch));
+
+    case "UPDATE_THREAD":
+      return rederiveActive(state, (n) => editManifestEntity(n, "newThreads", action.id, action.patch));
+
+    case "UPDATE_WORLD_NODE": {
+      // A world node may originate in an entity's seed `world.nodes` OR in a
+      // `worldDelta.addedNodes`. Patch every occurrence (ids are unique) so the
+      // derived node reflects the edit regardless of where it was introduced.
+      const { ownerKind, ownerId, nodeId, patch } = action;
+      const collKey = ownerKind === "character" ? "newCharacters" : ownerKind === "location" ? "newLocations" : "newArtifacts";
+      const patchAdded = (deltas?: WorldDelta[]) =>
+        deltas?.map((d) => ({ ...d, addedNodes: (d.addedNodes ?? []).map((nd) => (nd.id === nodeId ? { ...nd, ...patch } : nd)) }));
+      return rederiveActive(state, (n) => {
+        // 1. Seed node on the owner entity (across its manifest occurrences).
+        let next = editManifestEntity(n, collKey, ownerId, {});
+        const patchSeed = (arr?: Array<{ id: string; world?: World }>) =>
+          arr?.map((e) =>
+            e.id === ownerId && e.world?.nodes?.[nodeId]
+              ? { ...e, world: { ...e.world, nodes: { ...e.world.nodes, [nodeId]: { ...e.world.nodes[nodeId], ...patch } } } }
+              : e,
+          );
+        next = {
+          ...next,
+          worldBuilds: Object.fromEntries(
+            Object.entries(next.worldBuilds).map(([k, wb]) => [
+              k,
+              { ...wb, expansionManifest: { ...wb.expansionManifest, [collKey]: patchSeed(wb.expansionManifest[collKey] as Array<{ id: string; world?: World }>), worldDeltas: patchAdded(wb.expansionManifest.worldDeltas) } },
+            ]),
+          ) as typeof next.worldBuilds,
+          scenes: Object.fromEntries(
+            Object.entries(next.scenes).map(([k, s]) => [
+              k,
+              { ...s, [collKey]: patchSeed((s as Record<string, unknown>)[collKey] as Array<{ id: string; world?: World }> | undefined), worldDeltas: patchAdded(s.worldDeltas) },
+            ]),
+          ) as typeof next.scenes,
+        };
+        return next;
+      });
+    }
+
+    case "UPDATE_SYSTEM_NODE": {
+      // System nodes accumulate from `systemDeltas.addedNodes` (manifest + scene).
+      const { nodeId, patch } = action;
+      const patchSD = (sd?: SystemDelta) =>
+        sd ? { ...sd, addedNodes: (sd.addedNodes ?? []).map((nd) => (nd.id === nodeId ? { ...nd, ...patch } : nd)) } : sd;
+      return rederiveActive(state, (n) => ({
+        ...n,
+        worldBuilds: Object.fromEntries(
+          Object.entries(n.worldBuilds).map(([k, wb]) => [
+            k,
+            { ...wb, expansionManifest: { ...wb.expansionManifest, systemDeltas: patchSD(wb.expansionManifest.systemDeltas) } },
+          ]),
+        ) as typeof n.worldBuilds,
+        scenes: Object.fromEntries(
+          Object.entries(n.scenes).map(([k, s]) => [k, { ...s, systemDeltas: patchSD(s.systemDeltas) }]),
+        ) as typeof n.scenes,
+      }));
+    }
+
+    case "UPDATE_THREAD_LOG_NODE": {
+      // A thread-log node IS a threadDelta's prose+type at the scene/worldbuild
+      // that produced it (node id = `${threadId}:${sceneId}`; content =
+      // delta.rationale, type = delta.logType). Patch the source delta — matched
+      // by threadId AND its container id — then re-derive the log.
+      const { threadId, sceneId, patch } = action;
+      const patchDeltas = (deltas: ThreadDelta[] | undefined, containerId: string) =>
+        (deltas ?? []).map((d) => (d.threadId === threadId && containerId === sceneId ? { ...d, ...patch } : d));
+      return rederiveActive(state, (n) => ({
+        ...n,
+        worldBuilds: Object.fromEntries(
+          Object.entries(n.worldBuilds).map(([k, wb]) => [
+            k,
+            { ...wb, expansionManifest: { ...wb.expansionManifest, threadDeltas: patchDeltas(wb.expansionManifest.threadDeltas, k) } },
+          ]),
+        ) as typeof n.worldBuilds,
+        scenes: Object.fromEntries(
+          Object.entries(n.scenes).map(([k, s]) => [k, { ...s, threadDeltas: patchDeltas(s.threadDeltas, s.id) }]),
+        ) as typeof n.scenes,
+      }));
     }
 
     case "SET_ARTIFACT_IMAGE_PROMPT": {

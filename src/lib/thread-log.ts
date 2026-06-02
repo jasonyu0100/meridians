@@ -135,13 +135,35 @@ export function applyThreadDelta(
   const prevLogits = stance.logits.slice();
 
   // Clamp + apply evidence to logits (against the expanded outcome list).
+  // Match outcome names tolerantly (trim + case-fold): the LLM frequently emits
+  // an update whose outcome label differs from the thread's canonical outcome
+  // only in casing or whitespace ("Yes" vs "yes", " nobody " vs "nobody"). An
+  // exact-match lookup silently dropped that evidence, leaving the stance stuck
+  // at its uniform prior despite many logs.
+  const normOutcome = (s: string) => s.trim().toLowerCase();
   const outcomeIndex = new Map<string, number>();
-  expandedOutcomes.forEach((o, i) => outcomeIndex.set(o, i));
+  expandedOutcomes.forEach((o, i) => {
+    const k = normOutcome(o);
+    if (!outcomeIndex.has(k)) outcomeIndex.set(k, i);
+  });
   const newLogits = prevLogits.slice();
   let maxAbsShift = 0;
   for (const u of delta.updates ?? []) {
-    const idx = outcomeIndex.get(u.outcome);
-    if (idx === undefined) continue;
+    let idx = outcomeIndex.get(normOutcome(u.outcome));
+    if (idx === undefined) {
+      // Evidence references an outcome the thread doesn't list. On an OPEN
+      // thread, fold it into the market (an implicit addOutcome) rather than
+      // silently dropping the evidence — otherwise the stance is stuck at its
+      // uniform prior forever even as scene after scene reports on it. (Closed
+      // markets stay settled and still drop unknown outcomes.)
+      const name = typeof u.outcome === 'string' ? u.outcome.trim() : '';
+      if (thread.closedAt || !name) continue;
+      idx = expandedOutcomes.length;
+      expandedOutcomes.push(name);
+      addedOutcomes.push(name);
+      outcomeIndex.set(normOutcome(name), idx);
+      newLogits.push(0);
+    }
     const e = clampEvidence(u.evidence);
     const shift = e / STANCE_EVIDENCE_SENSITIVITY;
     newLogits[idx] += shift;

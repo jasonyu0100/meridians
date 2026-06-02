@@ -19,10 +19,12 @@ import {
 import { buildThreadTrajectory } from "@/lib/portfolio-analytics";
 import { getThreadLogAtScene } from "@/lib/scene-filter";
 import { STANCE_TAU_CLOSE, STANCE_ABANDON_VOLUME } from "@/lib/constants";
-import type { NarrativeState, Thread, ThreadLogNodeType } from "@/types/narrative";
+import type { NarrativeState, Thread, ThreadLogNodeType, ThreadParticipant } from "@/types/narrative";
 import { useStore } from "@/lib/store";
 import { useMemo, useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
+import { InlineText } from "./InlineEdit";
+import { AttributionsSection } from "./AttributionsSection";
 
 import { outcomeColourHex } from "@/lib/thread-category";
 
@@ -304,7 +306,6 @@ export default function ThreadDetail({ threadId }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const [logPage, setLogPage] = useState(0);
-  const [scenesPage, setScenesPage] = useState(0);
 
   const thread = narrative?.threads[threadId];
 
@@ -354,10 +355,21 @@ export default function ThreadDetail({ threadId }: Props) {
   const anchors = (thread.participants ?? []).map((a) => ({
     ...a,
     name:
-      a.type === "character"
-        ? (narrative.characters[a.id]?.name ?? a.id)
-        : (narrative.locations[a.id]?.name ?? a.id),
+      narrative.characters[a.id]?.name
+      ?? narrative.locations[a.id]?.name
+      ?? narrative.artifacts[a.id]?.name
+      ?? a.id,
   }));
+
+  // Add / remove thread participants (anchors). Patches the thread manifest.
+  const setParticipants = (next: Thread["participants"]) =>
+    dispatch({ type: "UPDATE_THREAD", id: threadId, patch: { participants: next } });
+  const removeParticipant = (id: string) =>
+    setParticipants((thread.participants ?? []).filter((p) => p.id !== id));
+  const addParticipant = (id: string, type: ThreadParticipant["type"]) => {
+    if (!id || (thread.participants ?? []).some((p) => p.id === id)) return;
+    setParticipants([...(thread.participants ?? []), { id, type }]);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -366,7 +378,13 @@ export default function ThreadDetail({ threadId }: Props) {
         <span className="rounded bg-white/6 px-1.5 py-0.5 font-mono text-[10px] text-text-dim self-start">
           {thread.id}
         </span>
-        <p className="text-sm text-text-primary">{thread.description}</p>
+        <InlineText
+          value={thread.description}
+          onSave={(description) => dispatch({ type: "UPDATE_THREAD", id: threadId, patch: { description } })}
+          multiline
+          className="text-sm text-text-primary"
+          inputClassName="text-sm"
+        />
       </div>
 
       {/* Category + kind + horizon + bandwidth */}
@@ -680,7 +698,10 @@ export default function ThreadDetail({ threadId }: Props) {
         );
       })()}
 
-      {/* Thread Log — progressive-reveal paginated list */}
+      {/* Thread Log — progressive-reveal paginated list. Each entry combines the
+          stance movement (logType + per-outcome evidence chips) with the prose
+          rationale and a link to its scene, so the market motion and the story
+          beat read together. */}
       {visibleLog.nodes.length > 0 &&
         (() => {
           const { pageItems, totalPages, safePage } = paginateRecent(
@@ -689,34 +710,61 @@ export default function ThreadDetail({ threadId }: Props) {
           );
           return (
             <CollapsibleSection
-              title="Thread Log"
+              title="Scenes"
               count={visibleLog.nodes.length}
               defaultOpen
             >
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-2.5">
                 {pageItems.map((node, i) => (
-                  <li
-                    key={`${node.id}-${i}`}
-                    className="flex items-start gap-2"
-                  >
-                    <span
-                      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${threadLogDotColors[node.type] ?? "bg-white/40"}`}
-                    />
+                  <li key={`${node.id}-${i}`} className="flex flex-col gap-1">
+                    {/* Movement row: logType badge + evidence chips + scene link */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span
+                        className="text-[8px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded cursor-help"
+                        style={{ color: LOG_TYPE_HEX[node.type] ?? '#888', backgroundColor: `${LOG_TYPE_HEX[node.type] ?? '#888'}1a` }}
+                        title={`${node.type.toUpperCase()} — ${LOG_TYPE_GLOSS[node.type] ?? ''}`}
+                      >
+                        {node.type}
+                      </span>
+                      {(node.updates ?? []).map((u, ui) => {
+                        const pos = u.evidence > 0, neg = u.evidence < 0;
+                        return (
+                          <span
+                            key={ui}
+                            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full cursor-help ${pos ? 'bg-emerald-500/12 text-emerald-300' : neg ? 'bg-red-500/12 text-red-300' : 'bg-white/6 text-text-dim'}`}
+                            title={`Evidence ${u.evidence >= 0 ? '+' : ''}${u.evidence} on "${u.outcome}". Signed, in [−4, +4]; shifts that outcome's logit by evidence / 2, then softmax renormalizes. |e|≥3 is a decisive move.`}
+                          >
+                            <span className="truncate max-w-35">{u.outcome}</span>
+                            <span className="font-mono tabular-nums shrink-0">{u.evidence >= 0 ? '+' : ''}{u.evidence}</span>
+                          </span>
+                        );
+                      })}
+                      {node.sceneId && (
+                        <button
+                          type="button"
+                          onClick={() => dispatch({ type: "SET_INSPECTOR", context: { type: "scene", sceneId: node.sceneId! } })}
+                          className="ml-auto font-mono text-[9px] text-text-dim/70 hover:text-text-secondary transition-colors shrink-0"
+                          title="Open the scene this entry came from"
+                        >
+                          {node.sceneId}
+                        </button>
+                      )}
+                    </div>
+                    {/* Prose rationale — opens the log node detail */}
                     <button
                       type="button"
                       onClick={() =>
                         dispatch({
                           type: "SET_INSPECTOR",
-                          context: {
-                            type: "threadLog",
-                            threadId,
-                            nodeId: node.id,
-                          },
+                          context: { type: "threadLog", threadId, nodeId: node.id },
                         })
                       }
-                      className="text-xs text-text-primary hover:text-white transition-colors text-left"
+                      className="flex items-start gap-2 text-left group"
                     >
-                      {node.content}
+                      <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${threadLogDotColors[node.type] ?? "bg-white/40"}`} />
+                      <span className="text-xs text-text-primary group-hover:text-white transition-colors">
+                        {node.content}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -730,92 +778,69 @@ export default function ThreadDetail({ threadId }: Props) {
           );
         })()}
 
-      {/* Scenes — derived from scene.threadDeltas, up to current index */}
-      {(() => {
-        const sceneKeysUpToCurrent = state.resolvedEntryKeys.slice(
-          0,
-          state.viewState.currentSceneIndex + 1,
-        );
-        const sceneTouches = sceneKeysUpToCurrent
-          .map((k) => narrative.scenes[k])
-          .filter(
-            (s) =>
-              s && s.threadDeltas.some((tm) => tm.threadId === threadId),
-          )
-          .map((s) => ({
-            sceneId: s.id,
-            deltas: s.threadDeltas.filter(
-              (tm) => tm.threadId === threadId,
-            ),
-          }));
-        if (sceneTouches.length === 0) return null;
-        const { pageItems, totalPages, safePage } = paginateRecent(
-          sceneTouches,
-          scenesPage,
-        );
-        return (
-          <CollapsibleSection title="Scenes" count={sceneTouches.length}>
-            <ul className="flex flex-col gap-1.5">
-              {pageItems.map(({ sceneId, deltas }) => (
-                <li key={sceneId} className="flex flex-col gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      dispatch({
-                        type: "SET_INSPECTOR",
-                        context: { type: "scene", sceneId },
-                      })
-                    }
-                    className="text-left font-mono text-[10px] text-text-dim transition-colors hover:text-text-secondary"
-                  >
-                    {sceneId}
-                  </button>
-                  {deltas.map((tm, tmIdx) => (
-                    <span
-                      key={`${tm.threadId}-${tmIdx}`}
-                      className={`text-xs cursor-help ${tm.logType === 'pulse' || tm.logType === 'stall' ? "text-text-dim" : "text-fate"}`}
-                      title={`${tm.logType.toUpperCase()} — ${LOG_TYPE_GLOSS[tm.logType as ThreadLogNodeType] ?? ''}\n\nEvidence is signed and in [−4, +4]. Each +e shifts that outcome's logit by e / 2; softmax renormalizes to probabilities. |e|≥3 is a decisive move.`}
-                    >
-                      [{tm.logType}] {(tm.updates ?? []).map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`).join(' ')}
-                    </span>
-                  ))}
-                </li>
-              ))}
-            </ul>
-            <Paginator
-              page={safePage}
-              totalPages={totalPages}
-              onPage={setScenesPage}
-            />
-          </CollapsibleSection>
-        );
-      })()}
-
-      {/* Anchors */}
+      {/* Anchors — participants, editable (remove ×, add via dropdown) */}
       <div className="flex flex-col gap-1">
         <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
-          {anchors.length === 0 ? "General Thread" : "Anchors"}
+          {anchors.length === 0 ? "Participants" : "Anchors"}
         </h3>
         {anchors.map((a, i) => (
-          <button
-            key={`${a.id}-${i}`}
-            type="button"
-            onClick={() =>
-              dispatch({
-                type: "SET_INSPECTOR",
-                context:
-                  a.type === "character"
-                    ? { type: "character", characterId: a.id }
-                    : { type: "location", locationId: a.id },
-              })
-            }
-            className="text-left text-xs text-text-secondary transition-colors hover:text-text-primary"
-          >
-            <span className="text-[10px] text-text-dim mr-1">{a.type}</span>
-            {a.name}
-          </button>
+          <div key={`${a.id}-${i}`} className="group flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() =>
+                dispatch({
+                  type: "SET_INSPECTOR",
+                  context:
+                    a.type === "character"
+                      ? { type: "character", characterId: a.id }
+                      : a.type === "location"
+                        ? { type: "location", locationId: a.id }
+                        : { type: "artifact", artifactId: a.id },
+                })
+              }
+              className="text-left text-xs text-text-secondary transition-colors hover:text-text-primary flex-1 min-w-0"
+            >
+              <span className="text-[10px] text-text-dim mr-1">{a.type}</span>
+              {a.name}
+            </button>
+            <button
+              type="button"
+              onClick={() => removeParticipant(a.id)}
+              title="Remove participant"
+              className="shrink-0 text-text-dim/40 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all px-1 leading-none"
+            >
+              ×
+            </button>
+          </div>
         ))}
+        {(() => {
+          const partIds = new Set((thread.participants ?? []).map((p) => p.id));
+          const addable: { id: string; name: string; type: ThreadParticipant["type"] }[] = [
+            ...Object.values(narrative.characters).map((c) => ({ id: c.id, name: c.name, type: "character" as const })),
+            ...Object.values(narrative.locations).map((l) => ({ id: l.id, name: l.name, type: "location" as const })),
+            ...Object.values(narrative.artifacts).map((a) => ({ id: a.id, name: a.name, type: "artifact" as const })),
+          ].filter((e) => !partIds.has(e.id)).sort((x, y) => x.name.localeCompare(y.name));
+          if (addable.length === 0) return null;
+          return (
+            <select
+              value=""
+              onChange={(e) => {
+                const ent = addable.find((x) => x.id === e.target.value);
+                if (ent) addParticipant(ent.id, ent.type);
+              }}
+              title="Add a participant"
+              className="mt-0.5 w-fit max-w-full cursor-pointer bg-transparent border-0 outline-none text-[10px] text-text-dim hover:text-text-secondary transition-colors"
+            >
+              <option value="">+ add participant…</option>
+              {addable.map((e) => (
+                <option key={e.id} value={e.id}>{e.type} · {e.name}</option>
+              ))}
+            </select>
+          );
+        })()}
       </div>
+
+      <AttributionsSection targetId={threadId} />
 
       {/* Connected Threads — bidirectional: what this thread converges with + what depends on it */}
       {(() => {
