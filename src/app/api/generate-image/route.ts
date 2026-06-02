@@ -91,11 +91,6 @@ const MAP_VIEWS: Record<MapViewId, MapView> = {
  *  position reads at a glance — that's the target. */
 const MAP_BOARD_DESIGN = 'Design the whole image like a well-crafted BOARD-GAME BOARD: clean, highly legible, with strong figure-ground and a balanced composition. Every sub-region is a clearly demarcated discrete space, generously separated from its neighbours so none blur together. Immersive extra detail (atmosphere, scatter, flora, props, weathering) is welcome to make the board feel alive — but it is BACKGROUND only and must never read as another region.';
 
-/** The 1:1 anchor contract. EXACTLY one blank anchor node per real sub-region —
- *  no more (invented/decorative places get NO anchor), no fewer (none merged or
- *  omitted) — so each label maps to one anchor unambiguously in the annotator. */
-const MAP_ANCHOR_DIRECTIVE = 'CRITICAL 1:1 ANCHOR RULE: give EVERY listed sub-region — and ONLY the listed sub-regions — exactly ONE clear anchor point at its visual centre: a small, plain, evenly-styled circular node/dot (a blank drop-spot, NOT a labelled pin, signpost or banner, with nothing written on or beside it). The number of anchor dots MUST equal the number of sub-regions, one each, in a strict one-to-one mapping. Do NOT add anchor dots to any imagined background detail, decoration or scenery, and do NOT merge, split, drop or duplicate a sub-region. A label is pinned to each anchor afterward, so an extra or missing dot breaks the mapping.';
-
 /** Composition guidance per image type (map uses the terrain default; the real
  *  map composition is chosen per view at the call sites via `MAP_VIEWS`). */
 const COMPOSITION: Record<ImageRequest['type'], string> = {
@@ -269,13 +264,6 @@ function describeMapStructure(regions: MapRegion[]): string {
   return roots.flatMap((r) => render(r, 0)).join('\n');
 }
 
-/** Count real sub-regions (everything whose parent is in-scope; the root frames
- *  the board, it is not itself a sub-region). Drives the 1:1 anchor count. */
-function countSubRegions(regions: MapRegion[]): number {
-  const names = new Set(regions.map((r) => r.name));
-  return regions.filter((r) => r.parentName && names.has(r.parentName)).length;
-}
-
 /** Use LLM to craft a rich visual description for image generation. For maps,
  *  `mapView` selects the cartographic treatment from `MAP_VIEWS`. Returns the
  *  crafted `prompt` plus the `systemPrompt` / `userPrompt` that produced it, so
@@ -305,9 +293,7 @@ async function describeVisually(
 
 COMPOSITION: ${view.composition}
 
-BOARD DESIGN: ${MAP_BOARD_DESIGN}
-
-ANCHORS: ${MAP_ANCHOR_DIRECTIVE}`
+BOARD DESIGN: ${MAP_BOARD_DESIGN}`
     : `You are a visual description specialist. Given narrative context, produce a single concise image generation prompt (2-3 sentences max). Focus on visual details: appearance, clothing, atmosphere, lighting, color palette. Never include text, words, or watermarks in the description. Output ONLY the prompt, nothing else.${styleDirective}
 
 COMPOSITION: ${COMPOSITION[request.type]}`;
@@ -319,14 +305,11 @@ COMPOSITION: ${COMPOSITION[request.type]}`;
     const parent = request.parentName ? ` (inside ${request.parentName})` : '';
     userPrompt = `Create an establishing shot prompt for the location "${request.name}"${parent} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
   } else if (request.type === 'map') {
-    // Count the real sub-regions (the root frames the whole board, not a region)
-    // so the prompt can pin the exact number of anchor dots required, 1:1.
-    const subRegionCount = countSubRegions(request.regions);
     // View-specific framing, then the shared structure outline + textless rule.
     userPrompt = `${view.userGuidance(displayLabel(request.name))}
 Structure outline (each line is a region with its visual description — use the description to choose its look / architecture / terrain / contents; the names are for YOUR layout reasoning only and must NEVER be written on the image):
 ${describeMapStructure(request.regions)}
-Every sub-region must read as a DISTINCT, individually identifiable area. Place EXACTLY ${subRegionCount} blank circular anchor dot${subRegionCount === 1 ? '' : 's'} — one at the centre of each of the ${subRegionCount} sub-region${subRegionCount === 1 ? '' : 's'} above and nowhere else (a strict 1:1 mapping; background detail gets no dot). The image must contain ABSOLUTELY NO TEXT of any kind — no title, names, labels, letters, numbers or calligraphy anywhere; every label is overlaid afterward.`;
+Every sub-region must read as a DISTINCT, individually identifiable area, clearly separated from its neighbours. Do NOT draw any pins, markers, dots, anchors, icons or symbols on top of the map — it is a clean illustration only; labels are overlaid by hand afterward. The image must contain ABSOLUTELY NO TEXT of any kind — no title, names, labels, letters, numbers or calligraphy anywhere.`;
   } else {
     const owner = request.ownerName ? ` (owned by ${request.ownerName})` : '';
     userPrompt = `Create an object study prompt for the artifact "${request.name}" (${request.significance})${owner} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
@@ -389,10 +372,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Build prompt: style → subject → guard. Style ALWAYS leads.
-    // For maps NOTHING is re-appended here — the full view / board-design /
-    // 1:1-anchor directives were already baked into `visualPrompt` by the
-    // cartographer system + user prompts (which go to the LLM, not the image
-    // API). Non-map types still get their composition + a short no-text guard.
+    // For maps NOTHING is re-appended here — the full view / board-design
+    // directives were already baked into `visualPrompt` by the cartographer
+    // system + user prompts (which go to the LLM, not the image API). Non-map
+    // types still get their composition + a short no-text guard.
     const parts: string[] = [];
     if (body.imageStyle) parts.push(body.imageStyle);
     parts.push(visualPrompt);

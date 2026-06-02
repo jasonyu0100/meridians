@@ -16,8 +16,7 @@
  */
 
 import type { Location, LocationMap } from '@/types/narrative';
-import { clusterSignature, GLOBAL_MAP_ROOT } from '@/lib/location-clusters';
-import { computeMapScope } from '@/lib/map-layout';
+import { GLOBAL_MAP_ROOT } from '@/lib/location-clusters';
 
 /** Board geometry, in graph coordinates. 640×480 is 4:3 — matches the aspect
  *  the annotator places labels against, so normalized label coords map cleanly. */
@@ -60,41 +59,27 @@ function isTopLevel(locations: Record<string, Location>, id: string): boolean {
   return !p || !locations[p];
 }
 
-/** Live member-id fingerprint a map's stored signature is checked against —
- *  top-level set for the synthetic global map, else the 1-depth scope. */
-function liveSignature(locations: Record<string, Location>, map: LocationMap): string {
-  if (map.rootLocationId === GLOBAL_MAP_ROOT) {
-    const topIds = Object.values(locations)
-      .filter((l) => isTopLevel(locations, l.id))
-      .map((l) => l.id);
-    return clusterSignature(topIds);
-  }
-  return clusterSignature(computeMapScope(locations, map.rootLocationId, 1));
-}
-
 /**
- * A map joins the tree only when it is renderable + trustworthy + relevant:
- *  - has an image,
- *  - VALID: stored signature matches the live scope (no drift),
- *  - FULLY ANNOTATED: every child member has a placed label,
- *  - PRESENT: at least one SUB-REGION (non-root child) is in the current
- *    world-graph scope. Being merely *at the parent* (the root present, none of
- *    its sub-regions) isn't enough — a sub-regional map only earns its board
- *    once you've actually descended into the sub-regions it breaks out.
+ * A map joins the tree when it can usefully anchor nodes:
+ *  - has an image, and
+ *  - can anchor at least one present, hand-LABELLED sub-region.
+ *
+ * Crucially this does NOT require the stored signature to match the live scope.
+ * A hand-placed label is a durable position for its own location, so honour it
+ * even after the hierarchy drifts (e.g. a Rebuild-hierarchy re-parent) — the
+ * worst case is a slightly stale backdrop image, while node positions stay
+ * correct. Present sub-regions that lack a label simply float (no position to
+ * pin them to); they don't disqualify the whole board.
  */
 function isApplicable(
   map: LocationMap,
-  locations: Record<string, Location>,
   presentLocationIds: Set<string>,
 ): boolean {
   if (!map.imageUrl) return false;
-  if (liveSignature(locations, map) !== map.signature) return false;
-
-  const childIds = map.locationIds.filter((id) => id !== map.rootLocationId);
   const labelled = new Set((map.labels ?? []).map((l) => l.locationId));
-  if (!childIds.every((id) => labelled.has(id))) return false;
-
-  return childIds.some((id) => presentLocationIds.has(id));
+  return map.locationIds.some(
+    (id) => id !== map.rootLocationId && presentLocationIds.has(id) && labelled.has(id),
+  );
 }
 
 /**
@@ -112,7 +97,7 @@ export function buildMapTreeLayout(args: {
   // 1. Applicable maps, keyed by root.
   const applicable = new Map<string, LocationMap>();
   for (const m of Object.values(maps ?? {})) {
-    if (isApplicable(m, locations, presentLocationIds)) applicable.set(m.rootLocationId, m);
+    if (isApplicable(m, presentLocationIds)) applicable.set(m.rootLocationId, m);
   }
   if (applicable.size === 0) return EMPTY;
 
@@ -222,6 +207,13 @@ export function buildMapTreeLayout(args: {
   for (const b of boards) {
     for (const lb of b.map.labels ?? []) {
       if (!presentLocationIds.has(lb.locationId)) continue;
+      // Only the board that CURRENTLY contains this location is authoritative —
+      // so a stale label left on a former parent's map (after a re-parent) can't
+      // hijack the position from the location's real parent board.
+      const belongs = b.rootId === GLOBAL_MAP_ROOT
+        ? isTopLevel(locations, lb.locationId)
+        : locations[lb.locationId]?.parentId === b.rootId;
+      if (!belongs) continue;
       anchors[lb.locationId] = { x: b.x + lb.x * b.w, y: b.y + lb.y * b.h };
     }
   }

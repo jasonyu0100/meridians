@@ -21,13 +21,15 @@ import {
 } from '@/lib/location-clusters';
 import { computeMapScope, buildMapScope } from '@/lib/map-layout';
 import { MapAnnotator } from '@/components/sidebar/MapAnnotator';
+import { HierarchyModal } from '@/components/sidebar/HierarchyModal';
 
 type AssetTab = 'characters' | 'locations' | 'artifacts' | 'maps';
 
 type BatchItem =
   | { kind: 'character'; char: Character }
   | { kind: 'location'; loc: Location }
-  | { kind: 'artifact'; artifact: Artifact };
+  | { kind: 'artifact'; artifact: Artifact }
+  | { kind: 'map'; rootId: string };
 
 type BatchPreset = {
   key: string;
@@ -137,6 +139,9 @@ export default function MediaDrive() {
   const [batchState, setBatchState] = useState<BatchState | null>(null);
   const batchCancelRef = useRef(false);
   const batchBusy = batchState !== null;
+  // Rebuild-hierarchy modal (AI re-parents every location into a balanced map
+  // tree; streams reasoning + a review/edit step before applying).
+  const [showHierarchy, setShowHierarchy] = useState(false);
 
   const characters = useMemo(() => {
     if (!narrative) return [];
@@ -256,7 +261,9 @@ export default function MediaDrive() {
     // top-level territories are sub-regions of Global, so they indent one tier.
     const base = roots.length >= 2 ? 1 : 0;
     for (const r of roots) visit(r, base);
-    return rows;
+    // Sort by map-tree depth ascending (D0/D1/D2…). Stable sort keeps the
+    // location-tree order within each depth tier.
+    return rows.sort((a, b) => a.depth - b.depth);
   }, [narrative, locations, savedMaps, savedMapStatus]);
 
   // Scenes (resolved up to head) — used to derive POV / "in scenes" filters
@@ -296,9 +303,22 @@ export default function MediaDrive() {
       ];
     }
 
-    // Maps have no batch presets — clusters are generated individually from
-    // their row (a map is a deliberate, per-cluster render).
-    if (tab === 'maps') return [];
+    if (tab === 'maps') {
+      // Every map in ascending map-tree depth (D0 Global first, then mapRows
+      // which are already depth-sorted) so a batch fills in top-to-bottom.
+      const all: { rootId: string; depth: number; status: 'current' | 'outdated' | null }[] = [];
+      if (showGlobal) all.push({ rootId: GLOBAL_MAP_ROOT, depth: 0, status: globalMap ? savedMapStatus(globalMap) : null });
+      for (const r of mapRows) all.push({ rootId: r.parent.id, depth: r.depth, status: r.status });
+      const toItems = (rows: typeof all): BatchItem[] => rows.map((m) => ({ kind: 'map', rootId: m.rootId }));
+      const depths = [...new Set(all.map((m) => m.depth))].sort((a, b) => a - b);
+      return [
+        { key: 'missing', label: 'Missing', items: toItems(all.filter((m) => m.status === null)) },
+        { key: 'outdated', label: 'Outdated', items: toItems(all.filter((m) => m.status === 'outdated')) },
+        { key: 'all', label: 'All', items: toItems(all) },
+        // Per-depth tiers so the operator can generate one level at a time.
+        ...depths.map((d) => ({ key: `d${d}`, label: `Depth ${d}`, items: toItems(all.filter((m) => m.depth === d)) })),
+      ];
+    }
 
     // artifacts
     const missing = artifacts.filter((a) => !a.imageUrl);
@@ -311,7 +331,7 @@ export default function MediaDrive() {
       { key: 'key', label: 'Key only', items: missing.filter((a) => a.significance === 'key').map((a) => ({ kind: 'artifact', artifact: a })) },
       { key: 'all', label: 'All', items: missing.map((a) => ({ kind: 'artifact', artifact: a })) },
     ];
-  }, [tab, narrative, characters, locations, artifacts, scenes]);
+  }, [tab, narrative, characters, locations, artifacts, scenes, mapRows, showGlobal, globalMap, savedMapStatus]);
 
   // Build preview items for current tab (only items with images)
   const previewItems = useMemo((): MediaItem[] => {
@@ -549,6 +569,12 @@ export default function MediaDrive() {
     finally { setGenerating(null); }
   }, [narrative, generating, batchBusy, requireKeys, runScopedMapGen]);
 
+  // Open the rebuild-hierarchy modal (it owns the AI run, streaming + review).
+  const openHierarchy = useCallback(() => {
+    if (!narrative || generating || batchBusy || requireKeys()) return;
+    setShowHierarchy(true);
+  }, [narrative, generating, batchBusy, requireKeys]);
+
   // ── Batch runner — bounded concurrency, cancellable mid-flight.
 
   const runBatch = useCallback(async (label: string, items: BatchItem[]) => {
@@ -568,7 +594,8 @@ export default function MediaDrive() {
         try {
           if (item.kind === 'character') await runCharacterGen(item.char);
           else if (item.kind === 'location') await runLocationGen(item.loc);
-          else await runArtifactGen(item.artifact);
+          else if (item.kind === 'artifact') await runArtifactGen(item.artifact);
+          else await runScopedMapGen(item.rootId);
         } catch (err) {
           console.error('Batch item failed:', err);
         }
@@ -582,7 +609,7 @@ export default function MediaDrive() {
     );
     await Promise.allSettled(workers);
     setBatchState(null);
-  }, [narrative, batchBusy, generating, requireKeys, runCharacterGen, runLocationGen, runArtifactGen]);
+  }, [narrative, batchBusy, generating, requireKeys, runCharacterGen, runLocationGen, runArtifactGen, runScopedMapGen]);
 
   const cancelBatch = useCallback(() => {
     batchCancelRef.current = true;
@@ -788,6 +815,31 @@ export default function MediaDrive() {
             in the annotator. Ungenerated parents offer Generate; generated ones
             offer Label (drag-drop annotator) / Regenerate, with outdated status
             when the parent's children have changed since generation. */}
+
+        {/* Rebuild-hierarchy — AI re-parents every location into a balanced map
+            tree. The map tree IS the location containment tree, so this reshapes
+            every map at once. */}
+        {tab === 'maps' && Object.keys(narrative.locations).length > 0 && (
+          <div className="mb-2 rounded-lg border border-border bg-white/3 px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-text-primary font-medium">Rebuild hierarchy</p>
+                <p className="text-[9px] text-text-dim/70 leading-snug">
+                  AI re-nests all locations into a balanced containment tree. Reshapes the whole map tree.
+                </p>
+              </div>
+              <button
+                onClick={openHierarchy}
+                disabled={generating !== null || batchBusy}
+                className="shrink-0 flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Rebuild the location hierarchy with AI"
+              >
+                Rebuild
+              </button>
+            </div>
+          </div>
+        )}
+
         {tab === 'maps' && mapParents.length === 0 && !showGlobal && (
           <div className="px-3 py-8 text-center">
             <p className="text-[11px] text-text-dim/85 mb-1">No parent locations yet.</p>
@@ -951,6 +1003,8 @@ export default function MediaDrive() {
           onClose={() => setAnnotateMap(null)}
         />
       )}
+
+      {showHierarchy && <HierarchyModal onClose={() => setShowHierarchy(false)} />}
     </div>
   );
 }

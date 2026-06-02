@@ -8,6 +8,9 @@ import { GLOBAL_MAP_ROOT, GLOBAL_MAP_TITLE } from '@/lib/location-clusters';
 import type { Character, LocationMap, NarrativeState } from '@/types/narrative';
 import { IconMapPin } from '@/components/icons';
 
+/** How many avatars a cluster shows before collapsing behind a "+N" toggle. */
+const COLLAPSED_AVATARS = 5;
+
 /** Label text = the English/Latin portion of a name; strips a trailing CJK
  *  parenthetical ("White Stone Pass (白石关)" → "White Stone Pass"). */
 function displayLabel(name: string): string {
@@ -129,13 +132,13 @@ function Avatar({ char, url, onClick, active }: { char: Character; url: string |
     <button
       onClick={onClick}
       title={active ? `${char.name} · in this scene` : char.name}
-      className={`w-7 h-7 rounded-full overflow-hidden shadow-md bg-bg-elevated flex items-center justify-center shrink-0 transition-all hover:ring-2 hover:ring-accent ${
+      className={`w-7 h-7 rounded-full overflow-hidden shadow-md bg-slate-200 flex items-center justify-center shrink-0 transition-all hover:ring-2 hover:ring-accent ${
         active ? 'ring-2 ring-accent z-10' : ''
       }`}
     >
       {url
         ? <img src={url} alt={char.name} className="w-full h-full object-cover" />
-        : <span className="text-[10px] font-bold text-text-secondary">{char.name[0] ?? '?'}</span>}
+        : <span className="text-[10px] font-bold text-slate-500">{char.name[0] ?? '?'}</span>}
     </button>
   );
 }
@@ -160,6 +163,17 @@ export function BoardView() {
     const key = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
     return key ? narrative.scenes[key] ?? null : null;
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
+
+  // Per-cluster expand/minimize. Collapsed clusters show only the first few
+  // avatars (active-scene members first) + a "+N" toggle; expanded show all.
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
+  const toggleCluster = useCallback((key: string) => {
+    setExpandedClusters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Each character's current location (latest participated scene up to head).
   const charsByLocation = useMemo(() => {
@@ -256,14 +270,28 @@ export function BoardView() {
   // Participants of the active scene — highlighted; sorted to the front so the
   // active cast is on top of the overlap stack.
   const sceneParticipants = new Set(currentScene?.participantIds ?? []);
-  const renderAvatars = (chars: Character[]) => {
+  const renderAvatars = (chars: Character[], clusterKey: string) => {
     if (chars.length === 0) return null;
+    // Active-scene members first, so a collapsed cluster surfaces the cast.
     const ordered = [...chars].sort((a, b) => Number(sceneParticipants.has(b.id)) - Number(sceneParticipants.has(a.id)));
+    const expanded = expandedClusters.has(clusterKey);
+    const collapsible = ordered.length > COLLAPSED_AVATARS;
+    const shown = expanded || !collapsible ? ordered : ordered.slice(0, COLLAPSED_AVATARS);
+    const hidden = ordered.length - shown.length;
     return (
       <div className="flex flex-wrap -space-x-2 mt-1 justify-center max-w-50">
-        {ordered.map((c) => (
+        {shown.map((c) => (
           <Avatar key={c.id} char={c} url={c.imageUrl ? charImages.get(c.imageUrl) ?? null : null} active={sceneParticipants.has(c.id)} onClick={() => inspectCharacter(c.id)} />
         ))}
+        {collapsible && (
+          <button
+            onClick={() => toggleCluster(clusterKey)}
+            title={expanded ? 'Show fewer' : `Show all ${ordered.length}`}
+            className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold flex items-center justify-center shrink-0 shadow-md hover:ring-2 hover:ring-accent transition-all z-10"
+          >
+            {expanded ? '–' : `+${hidden}`}
+          </button>
+        )}
       </div>
     );
   };
@@ -276,6 +304,7 @@ export function BoardView() {
       [...charsByLocation]
         .filter(([exactLoc]) => isWithin(narrative.locations, exactLoc, locId))
         .flatMap(([, bucket]) => bucket),
+      locId,
     );
 
   // Members standing at the parent (map root) itself — within the root's
@@ -314,7 +343,7 @@ export function BoardView() {
               >
                 {titleOf(currentRoot!)}
               </button>
-              {renderAvatars(parentMembers)}
+              {renderAvatars(parentMembers, currentMap.rootLocationId)}
             </div>
 
             {/* Region labels + character clusters */}

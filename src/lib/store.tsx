@@ -942,6 +942,7 @@ export type Action =
   | { type: "SET_ARTIFACT_IMAGE"; artifactId: string; imageUrl: string }
   | { type: "SET_CHARACTER_IMAGE_PROMPT"; characterId: string; imagePrompt: string }
   | { type: "SET_LOCATION_IMAGE_PROMPT"; locationId: string; imagePrompt: string }
+  | { type: "REBUILD_LOCATION_HIERARCHY"; parents: Record<string, string | null> }
   | { type: "SET_ARTIFACT_IMAGE_PROMPT"; artifactId: string; imagePrompt: string }
   | { type: "SET_IMAGE_STYLE"; style: string }
   | { type: "SET_STORY_SETTINGS"; settings: StorySettings }
@@ -2829,6 +2830,45 @@ function reducer(state: AppState, action: Action): AppState {
         afterUpdate.resolvedEntryKeys,
       );
       return { ...afterUpdate, activeNarrative: derived };
+    }
+
+    case "REBUILD_LOCATION_HIERARCHY": {
+      // Re-parent locations to reshape the map tree. Locations are DERIVED from
+      // the source manifests (worldBuilds / scene newLocations), so patch
+      // parentId at the source then re-derive. `parents` maps locationId →
+      // parentId|null; ids absent from the map keep their current parent.
+      const { parents } = action;
+      const patch = (l: Location): Location =>
+        Object.prototype.hasOwnProperty.call(parents, l.id)
+          ? { ...l, parentId: parents[l.id] }
+          : l;
+      const afterUpdate = updateNarrative(state, (n) => ({
+        ...n,
+        worldBuilds: Object.fromEntries(
+          Object.entries(n.worldBuilds).map(([k, wb]) => [
+            k,
+            {
+              ...wb,
+              expansionManifest: {
+                ...wb.expansionManifest,
+                newLocations: wb.expansionManifest.newLocations.map(patch),
+              },
+            },
+          ]),
+        ),
+        scenes: Object.fromEntries(
+          Object.entries(n.scenes).map(([k, s]) => [
+            k,
+            { ...s, newLocations: (s.newLocations ?? []).map(patch) },
+          ]),
+        ),
+      }));
+      if (!afterUpdate.activeNarrative) return afterUpdate;
+      const rederived = withDerivedEntities(
+        afterUpdate.activeNarrative,
+        afterUpdate.resolvedEntryKeys,
+      );
+      return { ...afterUpdate, activeNarrative: rederived };
     }
 
     case "SET_ARTIFACT_IMAGE_PROMPT": {
