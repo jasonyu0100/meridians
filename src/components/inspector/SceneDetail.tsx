@@ -3,8 +3,8 @@
 import { computeForceSnapshots, detectCubeCorner, getEffectivePovId, resolveEntityName } from "@/lib/narrative-utils";
 import { useStore } from "@/lib/store";
 import { formatTimeDelta } from "@/lib/time-deltas";
-import { isScene, resolveEntry, type InspectorContext, type Scene } from "@/types/narrative";
-import { useMemo } from "react";
+import { isScene, resolveEntry, type InspectorContext, type NarrativeState, type Scene } from "@/types/narrative";
+import { useMemo, useState } from "react";
 
 type Props = {
   sceneId: string;
@@ -1114,54 +1114,9 @@ export default function SceneDetail({ sceneId }: Props) {
         </div>
       )}
 
-      {/* System Attributions — existing nodes this scene leans on, excluding
-          any IDs already shown as creational additions above. Compact chip
-          layout since attributions carry more signal than the freshly added
-          nodes (they show what the scene is *acting on*). */}
-      {(() => {
-        const addedIds = new Set(
-          (scene.systemDeltas?.addedNodes ?? []).map((n) => n.id),
-        );
-        const attributionsOnly = (scene.attributions ?? []).filter(
-          (id: string) => id.startsWith('SYS-') && !addedIds.has(id),
-        );
-        if (attributionsOnly.length === 0) return null;
-        return (
-          <div className="flex flex-col gap-1.5">
-            <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
-              System Attributions
-              <span className="ml-1.5 text-text-dim/60 font-mono normal-case tracking-normal">
-                {attributionsOnly.length}
-              </span>
-            </h3>
-            <div className="flex flex-wrap gap-1">
-              {attributionsOnly.map((attrId: string) => {
-                const node = narrative.systemGraph.nodes[attrId];
-                const shortName = (concept: string) => {
-                  const dash = concept.indexOf(" — ");
-                  return dash > 0 ? concept.slice(0, dash) : concept;
-                };
-                return (
-                  <button
-                    key={`attr-${attrId}`}
-                    type="button"
-                    onClick={() =>
-                      dispatch({
-                        type: "SET_INSPECTOR",
-                        context: { type: "knowledge", nodeId: attrId },
-                      })
-                    }
-                    className="rounded border border-white/10 bg-white/2 px-1.5 py-0.5 text-[10px] text-text-secondary hover:text-text-primary hover:border-white/20 transition-colors"
-                    title={node ? `${node.concept} (${node.type})` : attrId}
-                  >
-                    {node ? shortName(node.concept) : attrId}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
+      {/* Attributions — what this scene acts on, split by force (World / System
+          / Thread) with a segmented toggle. */}
+      <SceneAttributions scene={scene} narrative={narrative} dispatch={dispatch} />
 
       {/* Events */}
       {scene.events.length > 0 && (
@@ -1181,6 +1136,109 @@ export default function SceneDetail({ sceneId }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Scene attributions split by force. The scene's flat `attributions` list mixes
+ *  entity (World), system (System), and thread (Fate) ids; a segmented toggle
+ *  views one force at a time. System ids freshly ADDED this scene are excluded
+ *  (they're shown as creational additions above). */
+type AttrForce = "world" | "system" | "thread";
+
+function SceneAttributions({
+  scene,
+  narrative,
+  dispatch,
+}: {
+  scene: Scene;
+  narrative: NarrativeState;
+  dispatch: (action: { type: "SET_INSPECTOR"; context: InspectorContext }) => void;
+}) {
+  const [force, setForce] = useState<AttrForce>("world");
+  const addedSys = new Set((scene.systemDeltas?.addedNodes ?? []).map((n) => n.id));
+  const attrs = scene.attributions ?? [];
+
+  // Only show ids that resolve to a real node/entity/thread — a generation pass
+  // can attribute a hallucinated or stale (pre-remap) id that points to nothing.
+  const groups: Record<AttrForce, string[]> = {
+    world: attrs.filter((id) =>
+      (id.startsWith("C-") && narrative.characters[id]) ||
+      (id.startsWith("L-") && narrative.locations[id]) ||
+      (id.startsWith("A-") && narrative.artifacts[id]),
+    ),
+    system: attrs.filter((id) => id.startsWith("SYS-") && !addedSys.has(id) && narrative.systemGraph.nodes[id]),
+    thread: attrs.filter((id) => id.startsWith("T-") && narrative.threads[id]),
+  };
+  const total = groups.world.length + groups.system.length + groups.thread.length;
+  if (total === 0) return null;
+
+  // Show the selected force, falling back to the first non-empty one.
+  const active: AttrForce = groups[force].length > 0
+    ? force
+    : (["world", "system", "thread"] as AttrForce[]).find((f) => groups[f].length > 0) ?? force;
+
+  const shortSystem = (concept: string) => {
+    const dash = concept.indexOf(" — ");
+    return dash > 0 ? concept.slice(0, dash) : concept;
+  };
+  const resolve = (id: string): { label: string; title: string; context: InspectorContext } => {
+    if (id.startsWith("C-")) return { label: narrative.characters[id]?.name ?? id, title: narrative.characters[id]?.name ?? id, context: { type: "character", characterId: id } };
+    if (id.startsWith("L-")) return { label: narrative.locations[id]?.name ?? id, title: narrative.locations[id]?.name ?? id, context: { type: "location", locationId: id } };
+    if (id.startsWith("A-")) return { label: narrative.artifacts[id]?.name ?? id, title: narrative.artifacts[id]?.name ?? id, context: { type: "artifact", artifactId: id } };
+    if (id.startsWith("SYS-")) { const n = narrative.systemGraph.nodes[id]; return { label: n ? shortSystem(n.concept) : id, title: n ? `${n.concept} (${n.type})` : id, context: { type: "knowledge", nodeId: id } }; }
+    const t = narrative.threads[id];
+    return { label: t?.description ?? id, title: t?.description ?? id, context: { type: "thread", threadId: id } };
+  };
+
+  const TABS: { key: AttrForce; label: string }[] = [
+    { key: "world", label: "World" },
+    { key: "system", label: "System" },
+    { key: "thread", label: "Thread" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[10px] uppercase tracking-widest text-text-dim">
+          Attributions
+          <span className="ml-1.5 font-mono normal-case tracking-normal text-text-dim/60">{total}</span>
+        </h3>
+        <div className="flex items-center gap-0.5 rounded-md bg-white/4 p-0.5">
+          {TABS.map((t) => {
+            const count = groups[t.key].length;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                disabled={count === 0}
+                onClick={() => setForce(t.key)}
+                className={`rounded px-1.5 py-0.5 text-[10px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                  active === t.key ? "bg-white/12 text-text-primary" : "text-text-dim hover:text-text-secondary"
+                }`}
+              >
+                {t.label} <span className="font-mono tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {groups[active].map((id) => {
+          const r = resolve(id);
+          return (
+            <button
+              key={`attr-${id}`}
+              type="button"
+              onClick={() => dispatch({ type: "SET_INSPECTOR", context: r.context })}
+              title={r.title}
+              className="max-w-full truncate rounded border border-white/10 bg-white/2 px-1.5 py-0.5 text-[10px] text-text-secondary transition-colors hover:border-white/20 hover:text-text-primary"
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
