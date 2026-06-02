@@ -838,16 +838,16 @@ function EloSparkline({ history }: { history: number[] }) {
   // Final-rating dot in the colour of the trajectory's net direction.
   const netColour = tail >= history[0] ? '#34d399' : '#fb7185';
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-16">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-16 text-text-dim">
       {/* Baseline at the starting ELO so the line's direction is legible. */}
       <line
         x1={PAD}
         x2={W - PAD}
         y1={yAt(history[0])}
         y2={yAt(history[0])}
-        stroke="#fff"
+        stroke="currentColor"
         strokeWidth={0.5}
-        opacity={0.08}
+        strokeOpacity={0.4}
         strokeDasharray="2 3"
       />
       <path d={d} fill="none" stroke={netColour} strokeWidth={1.5} opacity={0.85} strokeLinecap="round" />

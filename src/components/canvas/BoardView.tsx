@@ -360,11 +360,10 @@ export function BoardView() {
                     onClick={() => drillRoot && push(drillRoot)}
                     disabled={!drillRoot}
                     title={drillRoot ? `Open ${name} map` : name}
-                    className={`flex items-center gap-1.5 pl-2 pr-2.5 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
                       drillRoot ? 'ring-accent/40 hover:ring-accent cursor-pointer' : 'ring-black/10 cursor-default'
                     }`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-sm shrink-0" />
                     {name}
                   </button>
                   {renderCluster(lb.locationId)}

@@ -163,20 +163,19 @@ export function MapAnnotator({ map, onClose }: { map: LocationMap; onClose: () =
               ref={draggingId === lb.locationId ? dragElRef : null}
               onMouseDown={(e) => beginDrag(lb.locationId, e)}
               style={{ left: `${lb.x * 100}%`, top: `${lb.y * 100}%` }}
-              className={`group absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
+              className={`group absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
                 draggingId === lb.locationId
                   ? 'ring-2 ring-accent scale-105 cursor-grabbing z-10'
                   : 'ring-black/10 cursor-grab hover:ring-accent/60'
               }`}
             >
               {/* Accent pin dot — anchors the label to its region. */}
-              <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-sm shrink-0" />
               <span>{nameOf(lb.locationId)}</span>
               <button
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={() => unplace(lb.locationId)}
                 title="Remove from map"
-                className="text-slate-400 hover:text-red-500 leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                className="text-red-500"
               >
                 ×
               </button>

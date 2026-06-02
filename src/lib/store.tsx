@@ -865,7 +865,7 @@ export type Action =
   | { type: "SWITCH_BRANCH"; branchId: string }
   // Scene deltas
   | {
-      type: "UPDATE_SCENE";
+      type: "REVISE_SCENE";
       sceneId: string;
       updates: Partial<
         Pick<
@@ -998,6 +998,10 @@ export type Action =
   | { type: "UPDATE_WORLD_NODE"; ownerKind: "character" | "location" | "artifact"; ownerId: string; nodeId: string; patch: Partial<Pick<WorldNode, "content" | "type">> }
   | { type: "UPDATE_SYSTEM_NODE"; nodeId: string; patch: Partial<Pick<SystemNode, "concept" | "type">> }
   | { type: "UPDATE_THREAD_LOG_NODE"; threadId: string; sceneId: string; patch: { rationale?: string; logType?: ThreadLogNodeType } }
+  | { type: "UPDATE_ARC"; arcId: string; patch: Partial<Pick<Arc, "name" | "directionVector" | "worldState">> }
+  // Lightweight inline scene-metadata edit (e.g. summary). The heavy, versioned
+  // scene-content revision lives in REVISE_SCENE.
+  | { type: "UPDATE_SCENE"; sceneId: string; patch: Partial<Pick<Scene, "summary">> }
   | { type: "SET_ARTIFACT_IMAGE_PROMPT"; artifactId: string; imagePrompt: string }
   | { type: "SET_IMAGE_STYLE"; style: string }
   | { type: "SET_STORY_SETTINGS"; settings: StorySettings }
@@ -1573,7 +1577,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     // ── CRUD: Scenes ──────────────────────────────────────────────────────
-    case "UPDATE_SCENE":
+    case "REVISE_SCENE":
       return updateNarrative(state, (n) => {
         const scene = n.scenes[action.sceneId];
         if (!scene) return n;
@@ -1793,7 +1797,7 @@ function reducer(state: AppState, action: Action): AppState {
         // Apply remaining updates (non-versioned fields like summary, events, deltas, etc.)
         updatedScene = { ...updatedScene, ...updates };
 
-        // Sanitize if any delta/reference field was touched — UPDATE_SCENE can
+        // Sanitize if any delta/reference field was touched — REVISE_SCENE can
         // update threadDeltas / worldDeltas / etc. directly (e.g. via review
         // pipelines), and those carry the same hallucination risk as freshly
         // generated scenes. Prose/plan/embedding-only updates skip sanitization.
@@ -1809,7 +1813,7 @@ function reducer(state: AppState, action: Action): AppState {
           ].includes(k),
         );
         if (touchesDeltas) {
-          sanitizeScenes([updatedScene], n, "UPDATE_SCENE");
+          sanitizeScenes([updatedScene], n, "REVISE_SCENE");
         }
 
         // Update version pointers to point to newly created versions
@@ -3013,6 +3017,23 @@ function reducer(state: AppState, action: Action): AppState {
           Object.entries(n.scenes).map(([k, s]) => [k, { ...s, threadDeltas: patchDeltas(s.threadDeltas, s.id) }]),
         ) as typeof n.scenes,
       }));
+    }
+
+    case "UPDATE_ARC": {
+      // Arcs are stored directly (not derived) — patch in place.
+      const { arcId, patch } = action;
+      return updateNarrative(state, (n) =>
+        n.arcs[arcId] ? { ...n, arcs: { ...n.arcs, [arcId]: { ...n.arcs[arcId], ...patch } } } : n,
+      );
+    }
+
+    case "UPDATE_SCENE": {
+      // Lightweight in-place scene-metadata patch (summary). Unlike REVISE_SCENE
+      // this does no prose/plan versioning — summary is not a versioned field.
+      const { sceneId, patch } = action;
+      return updateNarrative(state, (n) =>
+        n.scenes[sceneId] ? { ...n, scenes: { ...n.scenes, [sceneId]: { ...n.scenes[sceneId], ...patch } } } : n,
+      );
     }
 
     case "SET_ARTIFACT_IMAGE_PROMPT": {
@@ -4533,7 +4554,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
             // Update scene with embedding (non-versioned update)
             dispatch({
-              type: "UPDATE_SCENE",
+              type: "REVISE_SCENE",
               sceneId,
               updates: { proseEmbedding },
             });

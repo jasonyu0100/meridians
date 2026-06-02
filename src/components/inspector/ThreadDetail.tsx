@@ -46,7 +46,7 @@ const threadLogDotColors: Record<string, string> = {
 
 // Shared hex palette for the log-type mix bar — matches dot colors above.
 const LOG_TYPE_HEX: Record<ThreadLogNodeType, string> = {
-  pulse: "#ffffff66",
+  pulse: "#9ca3af",
   transition: "#fbbf24",
   setup: "#fbbf24",
   escalation: "#fb923c",

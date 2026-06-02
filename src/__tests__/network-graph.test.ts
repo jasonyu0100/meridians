@@ -88,13 +88,14 @@ function makeScene(opts: {
   newCharacters?: Character[];
   newLocations?: Location[];
   newThreads?: Thread[];
+  locationId?: string | null;
 }): Scene {
   return {
     kind: "scene",
     id: opts.id,
     arcId: opts.arcId ?? "ARC-1",
     povId: null,
-    locationId: "L-1",
+    locationId: opts.locationId === undefined ? "L-1" : opts.locationId,
     participantIds: [],
     events: [],
     threadDeltas: [],
@@ -331,7 +332,9 @@ describe("aggregateNetworkGraph", () => {
     const narrative = makeNarrative({
       characters: { "C-1": makeCharacter("C-1") },
       scenes: {
-        "S-1": makeScene({ id: "S-1" }), // no attributions, no edges
+        // No attributions, no edges, and no participation (location/pov/cast)
+        // either — a genuinely empty step that shouldn't advance the counter.
+        "S-1": makeScene({ id: "S-1", locationId: null }),
         "S-2": makeScene({ id: "S-2", attributions: ["C-1"] }),
       },
     });

@@ -151,7 +151,7 @@ export function useBulkEmbed() {
     for (let i = 0; i < scenesToEmbed.length; i++) {
       const embeddingId = await assetManager.storeEmbedding(embeddings[i], 'text-embedding-3-small');
       dispatch({
-        type: 'UPDATE_SCENE',
+        type: 'REVISE_SCENE',
         sceneId: scenesToEmbed[i].id,
         updates: { summaryEmbedding: embeddingId },
       });
@@ -246,7 +246,7 @@ export function useBulkEmbed() {
 
         // Update scene with new plan and centroid
         dispatch({
-          type: 'UPDATE_SCENE',
+          type: 'REVISE_SCENE',
           sceneId: scene.id,
           updates: { plan: updatedPlan, planEmbeddingCentroid },
         });
@@ -291,7 +291,7 @@ export function useBulkEmbed() {
     for (let i = 0; i < scenesWithProse.length; i++) {
       const embeddingId = await assetManager.storeEmbedding(embeddings[i], 'text-embedding-3-small');
       dispatch({
-        type: 'UPDATE_SCENE',
+        type: 'REVISE_SCENE',
         sceneId: scenesWithProse[i].id,
         updates: { proseEmbedding: embeddingId },
       });

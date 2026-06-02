@@ -206,7 +206,7 @@ export function ScenePlanView({
         setMeta(null);
         window.dispatchEvent(new CustomEvent('bulk:plan-complete', { detail: { sceneId: scene.id } }));
         dispatch({
-          type: "UPDATE_SCENE",
+          type: "REVISE_SCENE",
           sceneId: scene.id,
           updates: beatProseMap ? { plan, beatProseMap } : { plan },
           versionType: 'generate', // Fresh AI generation creates major version
@@ -240,7 +240,7 @@ export function ScenePlanView({
         setPlanCache({ plan, status: "ready" });
         setReasoning("");
         dispatch({
-          type: "UPDATE_SCENE",
+          type: "REVISE_SCENE",
           sceneId: scene.id,
           updates: { plan },
           versionType: 'rewrite', // AI rewrite creates minor version
@@ -298,7 +298,7 @@ export function ScenePlanView({
       const newPlan: BeatPlan = { ...activePlan, beats: newBeats };
       setPlanCache({ plan: newPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: newPlan },
         versionType: 'edit', // Manual edit creates sub-minor version
@@ -314,7 +314,7 @@ export function ScenePlanView({
       const newPlan: BeatPlan = { ...activePlan, beats: newBeats };
       setPlanCache({ plan: newPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: newPlan },
         versionType: 'edit',
@@ -337,7 +337,7 @@ export function ScenePlanView({
       const newPlan: BeatPlan = { ...activePlan, beats: newBeats };
       setPlanCache({ plan: newPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: newPlan },
         versionType: 'edit',
@@ -357,7 +357,7 @@ export function ScenePlanView({
       const newPlan: BeatPlan = { ...activePlan, beats: newBeats };
       setPlanCache({ plan: newPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: newPlan },
         versionType: 'edit',
@@ -382,7 +382,7 @@ export function ScenePlanView({
       const newPlan: BeatPlan = { ...activePlan, beats: newBeats };
       setPlanCache({ plan: newPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: newPlan },
         versionType: 'edit',
@@ -402,7 +402,7 @@ export function ScenePlanView({
       const newPlan: BeatPlan = { ...activePlan, beats: newBeats };
       setPlanCache({ plan: newPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: newPlan },
         versionType: 'edit',
@@ -420,7 +420,7 @@ export function ScenePlanView({
       const selectedPlan = candidate.plan;
       setPlanCache({ plan: selectedPlan, status: "ready" });
       dispatch({
-        type: "UPDATE_SCENE",
+        type: "REVISE_SCENE",
         sceneId: scene.id,
         updates: { plan: selectedPlan },
         versionType: 'generate', // Candidates selection is like generation

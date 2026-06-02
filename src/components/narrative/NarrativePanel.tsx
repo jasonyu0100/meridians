@@ -10,6 +10,7 @@ import {
   formatTimeDelta,
 } from "@/lib/time-deltas";
 import { resolveEntry, type Scene } from "@/types/narrative";
+import { InlineText } from "@/components/inspector/InlineEdit";
 
 const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 800;
@@ -222,13 +223,23 @@ export default function NarrativePanel() {
           <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">
             {positionLabel}
           </span>
-          <span className="font-mono text-[10px] text-text-dim">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "SET_INSPECTOR", context: { type: "scene", sceneId: scene.id } })}
+            className="font-mono text-[10px] text-text-dim hover:text-text-secondary transition-colors"
+            title="Inspect this scene"
+          >
             {scene.id}
-          </span>
+          </button>
           {arc && (
-            <span className="text-[10px] text-text-dim uppercase tracking-wider">
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "SET_INSPECTOR", context: { type: "arc", arcId: arc.id } })}
+              className="text-[10px] text-text-dim uppercase tracking-wider hover:text-text-secondary transition-colors"
+              title="Inspect this arc"
+            >
               {arc.name}
-            </span>
+            </button>
           )}
           {sceneIdx > 0 && cumulativeSeconds > 0 && (
             <span
@@ -296,7 +307,7 @@ export default function NarrativePanel() {
           );
         })()}
       </div>
-      <p className="text-sm leading-relaxed text-text-primary">
+      <div className="text-sm leading-relaxed text-text-primary">
         {showTimeDelta && (
           <span
             className="text-text-dim italic mr-1.5"
@@ -305,8 +316,15 @@ export default function NarrativePanel() {
             +{formatTimeDelta(scene.timeDelta)} —
           </span>
         )}
-        {scene.summary || "No summary available."}
-      </p>
+        <InlineText
+          value={scene.summary}
+          onSave={(summary) => dispatch({ type: "UPDATE_SCENE", sceneId: scene.id, patch: { summary } })}
+          multiline
+          placeholder="Click to write a scene summary."
+          className="text-sm leading-relaxed text-text-primary"
+          inputClassName="text-sm leading-relaxed"
+        />
+      </div>
     </div>
   );
 }

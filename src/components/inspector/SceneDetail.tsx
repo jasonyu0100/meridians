@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import { formatTimeDelta } from "@/lib/time-deltas";
 import { isScene, resolveEntry, type InspectorContext, type NarrativeState, type Scene } from "@/types/narrative";
 import { useMemo, useState } from "react";
+import { InlineText } from "./InlineEdit";
 
 type Props = {
   sceneId: string;
@@ -503,10 +504,15 @@ export default function SceneDetail({ sceneId }: Props) {
         )}
       </div>
 
-      {/* Summary */}
-      <p className="text-xs text-text-secondary leading-relaxed">
-        {scene.summary || "No summary available."}
-      </p>
+      {/* Summary — editable */}
+      <InlineText
+        value={scene.summary}
+        onSave={(summary) => dispatch({ type: "UPDATE_SCENE", sceneId: scene.id, patch: { summary } })}
+        multiline
+        placeholder="Click to write a scene summary."
+        className="text-xs text-text-secondary leading-relaxed"
+        inputClassName="text-xs leading-relaxed"
+      />
 
       {/* First Appearances — entities introduced for the first time in this scene */}
       {(firstAppearances.characters.length > 0 ||

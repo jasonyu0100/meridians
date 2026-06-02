@@ -142,7 +142,7 @@ export function useBulkGenerate() {
                 },
               );
           window.dispatchEvent(new CustomEvent('bulk:plan-complete', { detail: { sceneId } }));
-          dispatch({ type: 'UPDATE_SCENE', sceneId, updates: { plan }, versionType: 'generate' });
+          dispatch({ type: 'REVISE_SCENE', sceneId, updates: { plan }, versionType: 'generate' });
         } else {
           window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId } }));
           // Prose mode + 'prose' source: generate prose without a plan so it flows free,
@@ -158,13 +158,13 @@ export function useBulkGenerate() {
             undefined, planForProse,
           );
           window.dispatchEvent(new CustomEvent('bulk:prose-complete', { detail: { sceneId } }));
-          dispatch({ type: 'UPDATE_SCENE', sceneId, updates: { prose, beatProseMap }, versionType: 'generate' });
+          dispatch({ type: 'REVISE_SCENE', sceneId, updates: { prose, beatProseMap }, versionType: 'generate' });
 
           if (planSource === 'prose') {
             try {
               const { plan, beatProseMap: reBeatMap } = await reverseEngineerScenePlan(activeNarrative, prose, scene.summary ?? '');
               dispatch({
-                type: 'UPDATE_SCENE',
+                type: 'REVISE_SCENE',
                 sceneId,
                 updates: { plan, beatProseMap: reBeatMap ?? beatProseMap },
                 versionType: 'generate',

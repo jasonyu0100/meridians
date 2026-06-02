@@ -151,9 +151,9 @@ function FeaturedTrajectory({
                 x2={W - PAD_R}
                 y1={PAD_T + (1 - f) * plotH}
                 y2={PAD_T + (1 - f) * plotH}
-                stroke="#fff"
+                stroke="var(--color-text-dim)"
                 strokeWidth={0.5}
-                opacity={0.05}
+                opacity={0.18}
                 strokeDasharray={f === 0 || f === 1 ? undefined : '2 4'}
               />
               <text
@@ -240,9 +240,9 @@ function FeaturedTrajectory({
             x2={W - PAD_R}
             y1={PAD_T + (1 - f) * plotH}
             y2={PAD_T + (1 - f) * plotH}
-            stroke="#fff"
+            stroke="var(--color-text-dim)"
             strokeWidth={0.5}
-            opacity={0.05}
+            opacity={0.18}
             strokeDasharray={f === 0 || f === 1 ? undefined : '2 4'}
           />
           <text

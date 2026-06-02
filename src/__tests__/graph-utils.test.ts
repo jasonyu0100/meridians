@@ -118,7 +118,7 @@ describe("Graph Constants", () => {
     expect(WORLD_FILL.state).toBeDefined();
     expect(WORLD_FILL.history).toBeDefined();
     expect(WORLD_FILL.capability).toBeDefined();
-    expect(WORLD_FILL.belief).toBeDefined();
+    expect(WORLD_FILL.opinion).toBeDefined();
     expect(WORLD_FILL.relation).toBeDefined();
     expect(WORLD_FILL.secret).toBeDefined();
     expect(WORLD_FILL.goal).toBeDefined();
@@ -374,8 +374,9 @@ describe("buildGraphData", () => {
     const { links } = buildGraphData({}, locations, [], {});
     expect(links.length).toBe(1);
     expect(links[0].linkKind).toBe("spatial");
-    expect(links[0].source).toBe("loc-2");
-    expect(links[0].target).toBe("loc-1");
+    // Arrow reads parent-points-to-child: source is the parent, target the child.
+    expect(links[0].source).toBe("loc-1");
+    expect(links[0].target).toBe("loc-2");
   });
   it("creates character-location links from positions", () => {
     const characters: Record<string, Character> = {

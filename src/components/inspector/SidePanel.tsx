@@ -110,7 +110,7 @@ function RailTabButton({
       >
         <Icon size={18} />
         {active && (
-          <span className="pointer-events-none absolute -right-2.5 top-1 bottom-1 w-0.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]" />
+          <span className="pointer-events-none absolute -right-2.5 top-1 bottom-1 w-0.5 bg-accent shadow-[0_0_8px_var(--color-accent)]" />
         )}
       </button>
       {tipPos && typeof document !== "undefined" &&

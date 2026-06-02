@@ -274,7 +274,7 @@ export default function ProseEval({ sceneRange, onRangeChange }: { sceneRange?: 
           const analysis = `PROSE EVALUATION ISSUES — fix all of these:\n${ev.issues.map((i) => `- ${i}`).join('\n')}`;
           const { prose } = await rewriteSceneProse(narrative, scene, filteredKeys, resolvedProse, analysis);
           if (!cancelledRef.current) {
-            dispatch({ type: 'UPDATE_SCENE', sceneId: ev.sceneId, updates: { prose } });
+            dispatch({ type: 'REVISE_SCENE', sceneId: ev.sceneId, updates: { prose } });
           }
           setRewriteStatuses((prev) => ({ ...prev, [ev.sceneId]: 'done' }));
         } catch {

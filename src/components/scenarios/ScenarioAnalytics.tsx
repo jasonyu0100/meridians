@@ -52,7 +52,14 @@ const POSITION_COLORS: Record<string, string> = {
   trough:  '#3B82F6',
   rising:  '#22C55E',
   falling: '#EF4444',
-  stable:  'rgba(255,255,255,0.3)',
+  stable:  'var(--color-text-secondary)',
+};
+
+// Per-logType colour for transition badges — matches ThreadDetail / ArcDetail.
+// `pulse` uses a theme-neutral grey so it stays visible in light mode.
+const LOG_TYPE_HEX: Record<string, string> = {
+  pulse: '#9ca3af', transition: '#fbbf24', setup: '#fbbf24', escalation: '#fb923c',
+  payoff: '#34d399', twist: '#a78bfa', callback: '#38bdf8', resistance: '#ef4444', stall: '#f87171',
 };
 
 // ── Derive everything from a scenario's result ───────────────────────────
@@ -317,18 +324,18 @@ export function ActivityChart({ points, arcStartIndex, width = 360, height = 64 
   const arcX = xOf(arcStart);
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="rounded bg-white/2">
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="rounded bg-text-dim/5 text-text-dim">
       {/* Arc-range tint — context cue for where the new scenes sit. */}
       {arcStart < n - 1 && (
         <rect x={arcX} y={0} width={width - arcX} height={height} fill={ACTIVITY_COLOR} fillOpacity={0.06} />
       )}
       {/* Zero baseline. */}
-      <line x1={0} x2={width} y1={zeroY} y2={zeroY} stroke="white" strokeOpacity={0.12} strokeWidth={0.5} />
+      <line x1={0} x2={width} y1={zeroY} y2={zeroY} stroke="currentColor" strokeOpacity={0.3} strokeWidth={0.5} />
       {/* High / low filled areas. */}
       <polygon points={posArea} fill={ACTIVITY_COLOR} fillOpacity={0.22} />
       <polygon points={negArea} fill={LOW_ACTIVITY_COLOR} fillOpacity={0.20} />
       {/* Macro trend (dashed). */}
-      <polyline points={macroPath} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={1} strokeDasharray="4 3" />
+      <polyline points={macroPath} fill="none" stroke="currentColor" strokeOpacity={0.45} strokeWidth={1} strokeDasharray="4 3" />
       {/* Primary smoothed line. */}
       <polyline
         points={linePath}
@@ -446,7 +453,7 @@ export function GradeStrip({ grade }: { grade: ReturnType<typeof gradeForces> })
       <div className="w-px h-3 bg-white/10" />
       <span
         className="text-[10px] uppercase tracking-wider"
-        style={{ color: balanced ? 'rgba(255,255,255,0.5)' : dominant.color }}
+        style={{ color: balanced ? 'var(--color-text-secondary)' : dominant.color }}
       >
         {balanced ? 'Balanced' : dominant.label}
       </span>
@@ -455,6 +462,34 @@ export function GradeStrip({ grade }: { grade: ReturnType<typeof gradeForces> })
 }
 
 // ── Develops section (threads this branch progresses) ────────────────────
+
+/** One thread transition — logType badge + per-outcome evidence chips. Matches
+ *  the Scenes view in ThreadDetail / ArcDetail so branched generation reads the
+ *  same as the committed timeline. */
+function TransitionRow({ logType, updates }: { logType: string; updates: { outcome: string; evidence: number }[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span
+        className="text-[8px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded"
+        style={{ color: LOG_TYPE_HEX[logType] ?? '#888', backgroundColor: `${LOG_TYPE_HEX[logType] ?? '#888'}1a` }}
+      >
+        {logType}
+      </span>
+      {updates.map((u, j) => {
+        const pos = u.evidence > 0, neg = u.evidence < 0;
+        return (
+          <span
+            key={j}
+            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${pos ? 'bg-emerald-500/12 text-emerald-300' : neg ? 'bg-red-500/12 text-red-300' : 'bg-white/6 text-text-dim'}`}
+          >
+            <span className="truncate max-w-35">{u.outcome}</span>
+            <span className="font-mono tabular-nums shrink-0">{u.evidence >= 0 ? '+' : ''}{u.evidence}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export function DevelopsList({ run }: { run: ScenarioRun }) {
   if (!run.result) return null;
@@ -478,16 +513,9 @@ export function DevelopsList({ run }: { run: ScenarioRun }) {
                 </span>
               </div>
               {transitions.length > 0 && (
-                <div className="flex items-center gap-1 pl-9 font-mono text-[9px] flex-wrap">
+                <div className="flex flex-col gap-1 pl-9">
                   {transitions.map((tm, i) => (
-                    <span key={i} className="flex items-center gap-1">
-                      <span className="text-text-dim">[{tm.logType}]</span>
-                      <span className="text-amber-400">
-                        {(tm.updates ?? [])
-                          .map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`)
-                          .join(' ')}
-                      </span>
-                    </span>
+                    <TransitionRow key={i} logType={tm.logType} updates={tm.updates ?? []} />
                   ))}
                 </div>
               )}
@@ -890,13 +918,8 @@ export function SceneDetail({
                     </span>
                   )}
                 </div>
-                <div className="font-mono text-[10px] text-text-dim pl-2">
-                  [{tm.logType}]{' '}
-                  <span className="text-amber-400">
-                    {(tm.updates ?? [])
-                      .map((u) => `${u.outcome}${u.evidence >= 0 ? '+' : ''}${u.evidence}`)
-                      .join(' ')}
-                  </span>
+                <div className="pl-2">
+                  <TransitionRow logType={tm.logType} updates={tm.updates ?? []} />
                 </div>
               </div>
             );

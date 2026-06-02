@@ -154,13 +154,13 @@ describe('repairJsonOutput — request shape', () => {
 describe('repairJsonOutput — response handling', () => {
   it('runs cleanJson on the LLM output (strips code fences, trailing commas)', async () => {
     mockedCallGenerate.mockResolvedValueOnce('```json\n{"ok":true,}\n```');
-    const result = await repairJsonOutput('{"ok":', 'generateScenes');
+    const result = await repairJsonOutput('{"ok":', 'generateScenes', PLAN);
     expect(result).toBe('{"ok":true}');
   });
 
   it('returns clean JSON unchanged when the model already gives a tidy response', async () => {
     mockedCallGenerate.mockResolvedValueOnce('{"id":"x","scenes":[]}');
-    const result = await repairJsonOutput('{"id":"x","scenes":[', 'scenarios');
+    const result = await repairJsonOutput('{"id":"x","scenes":[', 'scenarios', PLAN);
     expect(result).toBe('{"id":"x","scenes":[]}');
   });
 

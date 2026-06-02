@@ -183,7 +183,7 @@ export function SceneProseView({
         setProseState({ text: result.prose, status: "ready" });
         window.dispatchEvent(new CustomEvent('bulk:prose-complete', { detail: { sceneId: scene.id } }));
         dispatch({
-          type: "UPDATE_SCENE",
+          type: "REVISE_SCENE",
           sceneId: scene.id,
           updates: {
             prose: result.prose,
@@ -206,7 +206,7 @@ export function SceneProseView({
               scene.summary ?? '',
             );
             dispatch({
-              type: "UPDATE_SCENE",
+              type: "REVISE_SCENE",
               sceneId: scene.id,
               updates: { plan, beatProseMap: beatProseMap ?? undefined },
               versionType: 'generate',
@@ -252,7 +252,7 @@ export function SceneProseView({
         );
         setProseState({ text: prose, status: "ready" });
         dispatch({
-          type: "UPDATE_SCENE",
+          type: "REVISE_SCENE",
           sceneId: scene.id,
           updates: {
             prose,
@@ -274,7 +274,7 @@ export function SceneProseView({
     setProseState({ text, status: "ready" });
     setIsEditing(false);
     dispatch({
-      type: "UPDATE_SCENE",
+      type: "REVISE_SCENE",
       sceneId: scene.id,
       updates: {
         prose: text,

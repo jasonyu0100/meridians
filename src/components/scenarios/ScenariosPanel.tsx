@@ -638,7 +638,7 @@ function ScenarioRow({
         {metrics?.position && (
           <span
             className="text-[9px] font-medium ml-auto uppercase tracking-wider"
-            style={{ color: POSITION_COLORS[metrics.position.key] ?? 'rgba(255,255,255,0.4)' }}
+            style={{ color: POSITION_COLORS[metrics.position.key] ?? 'var(--color-text-secondary)' }}
           >
             {metrics.position.name}
           </span>
@@ -727,7 +727,7 @@ function ScenarioInspector({
         {metrics?.position && (
           <span
             className="text-[10px] font-medium uppercase tracking-wider"
-            style={{ color: POSITION_COLORS[metrics.position.key] ?? 'rgba(255,255,255,0.4)' }}
+            style={{ color: POSITION_COLORS[metrics.position.key] ?? 'var(--color-text-secondary)' }}
           >
             {metrics.position.name}
           </span>

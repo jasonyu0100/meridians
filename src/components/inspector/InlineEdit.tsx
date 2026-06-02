@@ -32,11 +32,20 @@ export function InlineText({
   // value→draft sync effect needed (the read view shows `value` directly).
   const startEditing = () => { setDraft(value); setEditing(true); };
 
+  // Grow a textarea to fit its content so the editor occupies the same height
+  // as the text it replaces (no jarring fixed-rows jump).
+  const autoSize = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   useEffect(() => {
     if (!editing) return;
     const el = multiline ? areaRef.current : inputRef.current;
     el?.focus();
     el?.select();
+    if (multiline) autoSize(areaRef.current);
   }, [editing, multiline]);
 
   const commit = () => {
@@ -68,11 +77,11 @@ export function InlineText({
     <textarea
       ref={areaRef}
       value={draft}
-      rows={3}
-      onChange={(e) => setDraft(e.target.value)}
+      rows={1}
+      onChange={(e) => { setDraft(e.target.value); autoSize(e.currentTarget); }}
       onBlur={commit}
       onKeyDown={onKeyDown}
-      className={`${cls} resize-y leading-relaxed`}
+      className={`${cls} resize-none overflow-hidden leading-relaxed`}
     />
   ) : (
     <input

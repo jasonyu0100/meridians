@@ -259,7 +259,7 @@ export default function PlanEval({ sceneRange, onRangeChange }: { sceneRange?: S
         try {
           const newPlan = await editScenePlan(narrative, scene, filteredKeys, ev.issues, resolvedPlan);
           if (!cancelledRef.current) {
-            dispatch({ type: 'UPDATE_SCENE', sceneId: ev.sceneId, updates: { plan: newPlan } });
+            dispatch({ type: 'REVISE_SCENE', sceneId: ev.sceneId, updates: { plan: newPlan } });
           }
           setReplanStatuses((prev) => ({ ...prev, [ev.sceneId]: 'done' }));
         } catch {

@@ -96,11 +96,11 @@ describe('store reducer', () => {
       },
     };
   });
-  describe('UPDATE_SCENE with versioning', () => {
+  describe('REVISE_SCENE with versioning', () => {
     it('should create a new prose version when prose is updated', () => {
-      // Simulate UPDATE_SCENE action
+      // Simulate REVISE_SCENE action
       const action = {
-        type: 'UPDATE_SCENE' as const,
+        type: 'REVISE_SCENE' as const,
         sceneId: 'S-1',
         updates: {
           prose: 'The sun rose over the ancient temple...',
@@ -145,7 +145,7 @@ describe('store reducer', () => {
     });
     it('should create a new plan version when plan is updated', () => {
       const action = {
-        type: 'UPDATE_SCENE' as const,
+        type: 'REVISE_SCENE' as const,
         sceneId: 'S-1',
         updates: {
           plan: {
@@ -257,7 +257,7 @@ describe('store reducer', () => {
     });
     it('should update non-versioned fields directly', () => {
       const action = {
-        type: 'UPDATE_SCENE' as const,
+        type: 'REVISE_SCENE' as const,
         sceneId: 'S-1',
         updates: {
           summary: 'Updated summary',
