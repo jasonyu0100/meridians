@@ -238,6 +238,80 @@ button,
   box-shadow: var(--panel-raise-sm-shadow);
 }
 
+/* Sidebar list card — the shared surface for the right-rail panels
+ * (Threads, Files, Knowledge, Surveys, Interviews, Investigations,
+ * Compass). Replaces the old flat `border-white/5 bg-white/3` recipe.
+ *
+ * Two ideas carry the look: a top-lit translucent gradient for depth,
+ * and a content-keyed left spine driven by `--card-accent` (a panel sets
+ * it inline per card — thread state, node type, scenario, file status;
+ * unset falls back to the violet accent). Theme-aware throughout: tints
+ * derive from --color-white (remapped to ink on the light theme) and
+ * elevation from the shared --panel-raise shadows. */
+.panel-card {
+  --card-accent: var(--accent);
+  position: relative;
+  border-radius: 0.75rem;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--color-white) 6%, transparent),
+    color-mix(in srgb, var(--color-white) 2.2%, transparent) 55%,
+    color-mix(in srgb, var(--color-white) 1%, transparent)
+  );
+  box-shadow:
+    var(--panel-raise-sm-shadow),
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-white) 7%, transparent);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+/* The spine is a floating rounded pill inset from the card's edges — it
+ * never touches the corners, so it can't poke past the rounded border
+ * regardless of the inner-vs-outer radius difference. It grows (scaleX,
+ * anchored left) and brightens on hover. */
+.panel-card::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.65rem;
+  bottom: 0.65rem;
+  width: 2px;
+  border-radius: 9999px;
+  background: var(--card-accent);
+  opacity: 0.5;
+  transform-origin: left center;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.panel-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--glass-border));
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--color-white) 9%, transparent),
+    color-mix(in srgb, var(--color-white) 3.5%, transparent) 55%,
+    color-mix(in srgb, var(--color-white) 1.5%, transparent)
+  );
+  box-shadow:
+    var(--panel-raise-shadow),
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-white) 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--card-accent) 22%, transparent);
+}
+.panel-card:hover::before {
+  opacity: 1;
+  transform: scaleX(1.75);
+}
+.panel-card:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+  box-shadow:
+    var(--panel-raise-shadow),
+    0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
 /* Content layered over a background image. The light theme remaps --color-white
  * to a dark ink (so `white/x` surface tints read on a white page) — but over a
  * dark image scrim that would turn overlaid text/dividers invisible. Apply this

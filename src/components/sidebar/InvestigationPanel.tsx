@@ -114,7 +114,10 @@ export default function InvestigationPanel() {
       <div
         key={inv.id}
         onClick={() => openInvestigation(inv)}
-        className="group w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 cursor-pointer"
+        className="panel-card group w-full text-left p-3 cursor-pointer"
+        style={{
+          ['--card-accent']: inv.source === 'coordination-plan' ? 'var(--color-world)' : 'var(--accent)',
+        } as React.CSSProperties}
       >
         {/* Header: source chip · thinking style · resource — same chip row
             pattern as SurveyCard's "questionType · category". */}

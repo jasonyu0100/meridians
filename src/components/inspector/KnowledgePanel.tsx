@@ -21,16 +21,18 @@ import { scoreSystemNodes } from '@/lib/narrative-utils';
 import type { SystemNodeType } from '@/types/narrative';
 
 /** Per-type accent — used on the type chip + the score bar. */
-const TYPE_ACCENT: Record<SystemNodeType, { text: string; bar: string }> = {
-  principle:   { text: 'text-amber-300/80',   bar: 'bg-amber-400/70'   },
-  system:      { text: 'text-sky-300/80',     bar: 'bg-sky-400/70'     },
-  concept:     { text: 'text-violet-300/80',  bar: 'bg-violet-400/70'  },
-  tension:     { text: 'text-rose-300/80',    bar: 'bg-rose-400/70'    },
-  event:       { text: 'text-emerald-300/80', bar: 'bg-emerald-400/70' },
-  structure:   { text: 'text-cyan-300/80',    bar: 'bg-cyan-400/70'    },
-  environment: { text: 'text-teal-300/80',    bar: 'bg-teal-400/70'    },
-  convention:  { text: 'text-indigo-300/80',  bar: 'bg-indigo-400/70'  },
-  constraint:  { text: 'text-orange-300/80',  bar: 'bg-orange-400/70'  },
+// `hex` drives the card's left spine (--card-accent); text/bar stay as
+// Tailwind utilities for the type chip and impact bar.
+const TYPE_ACCENT: Record<SystemNodeType, { text: string; bar: string; hex: string }> = {
+  principle:   { text: 'text-amber-300/80',   bar: 'bg-amber-400/70',   hex: '#fbbf24' },
+  system:      { text: 'text-sky-300/80',     bar: 'bg-sky-400/70',     hex: '#38bdf8' },
+  concept:     { text: 'text-violet-300/80',  bar: 'bg-violet-400/70',  hex: '#a78bfa' },
+  tension:     { text: 'text-rose-300/80',    bar: 'bg-rose-400/70',    hex: '#fb7185' },
+  event:       { text: 'text-emerald-300/80', bar: 'bg-emerald-400/70', hex: '#34d399' },
+  structure:   { text: 'text-cyan-300/80',    bar: 'bg-cyan-400/70',    hex: '#22d3ee' },
+  environment: { text: 'text-teal-300/80',    bar: 'bg-teal-400/70',    hex: '#2dd4bf' },
+  convention:  { text: 'text-indigo-300/80',  bar: 'bg-indigo-400/70',  hex: '#818cf8' },
+  constraint:  { text: 'text-orange-300/80',  bar: 'bg-orange-400/70',  hex: '#fb923c' },
 };
 
 export default function KnowledgePanel() {
@@ -73,7 +75,7 @@ export default function KnowledgePanel() {
   return (
     <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-2">
       {ranked.map(({ node, degree, attributions, reach, score }) => {
-        const accent = TYPE_ACCENT[node.type] ?? { text: 'text-text-dim', bar: 'bg-white/40' };
+        const accent = TYPE_ACCENT[node.type] ?? { text: 'text-text-dim', bar: 'bg-white/40', hex: 'var(--accent)' };
         const intensity = Math.max(0.08, Math.min(1, score / max));
         return (
           <button
@@ -85,7 +87,8 @@ export default function KnowledgePanel() {
                 context: { type: 'knowledge', nodeId: node.id },
               })
             }
-            className="w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3"
+            className="panel-card w-full text-left p-3"
+            style={{ ['--card-accent']: accent.hex } as React.CSSProperties}
           >
             {/* Header: type chip + impact badge (mirrors survey card's
                 "questionType · category · status" row). */}

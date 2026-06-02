@@ -71,9 +71,10 @@ function VolumeBar({ volume, scale }: { volume: number; scale: number }) {
 
 // ── Card ───────────────────────────────────────────────────────────────────
 
-/** Single thread expressed as a group-box card — same surface treatment
- *  (rounded-lg + border-white/5 + bg-white/3 hover lift) used by Survey,
- *  Investigation, and File panels. */
+/** Single thread expressed as a group-box card — shared `.panel-card`
+ *  surface (top-lit gradient + content-keyed left spine) used by Survey,
+ *  Investigation, Knowledge, Compass, and File panels. The spine is keyed
+ *  to the thread's lifecycle category colour. */
 function ThreadCard({
   row,
   maxVolume,
@@ -94,7 +95,8 @@ function ThreadCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 flex flex-col gap-1.5${dimmed ? ' opacity-65' : ''}`}
+      className={`panel-card w-full text-left p-3 flex flex-col gap-1.5${dimmed ? ' opacity-65' : ''}`}
+      style={{ ['--card-accent']: catColor } as React.CSSProperties}
     >
       {/* Meta row — id on the left, lifecycle category on the right, mirrors
           the SurveyCard's questionType / status header. Focus state is now

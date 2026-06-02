@@ -121,7 +121,7 @@ function InterviewStream({
         <button
           key={iv.id}
           onClick={() => onOpen(iv.id)}
-          className="w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3"
+          className="panel-card w-full text-left p-3"
         >
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-[12px] text-text-primary font-medium truncate">{subjectName(iv)}</span>

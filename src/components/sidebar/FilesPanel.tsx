@@ -41,28 +41,39 @@ function formatDate(ts: number): string {
   });
 }
 
-// Status chip styles — monochromatic by default, status colour reserved
-// for transient states (converting / ready / failed) so the eye snaps
-// to files that need attention.
+// Status chip styles — monochromatic when settled (staged / committed),
+// tinted into the app palette for the states that need attention. The
+// active/processing state uses the violet accent (the engine working),
+// not the old amber that fought the theme; ready/failed read as soft
+// world-green / fate-red rather than stock Tailwind swatches.
 const STATUS_STYLE: Record<SourceFile['status'], { label: string; chip: string }> = {
-  committed: { label: 'committed', chip: 'bg-white/10 text-text-dim/80' },
-  staged: { label: 'staged', chip: 'bg-white/10 text-text-secondary' },
-  converting: { label: 'converting', chip: 'bg-white/10 text-amber-400/85' },
-  ready: { label: 'ready', chip: 'bg-white/10 text-emerald-400/85' },
-  failed: { label: 'failed', chip: 'bg-white/10 text-red-400/85' },
+  committed: { label: 'committed', chip: 'bg-white/8 text-text-dim/80' },
+  staged: { label: 'staged', chip: 'bg-white/8 text-text-secondary' },
+  converting: { label: 'converting', chip: 'bg-accent/15 text-accent' },
+  ready: { label: 'ready', chip: 'bg-emerald-400/12 text-emerald-300/90' },
+  failed: { label: 'failed', chip: 'bg-red-400/12 text-red-300/90' },
 };
 
 function statusColor(status: SourceFile['status']): string {
-  if (status === 'ready') return 'text-emerald-400/85';
-  if (status === 'converting') return 'text-amber-400/85';
-  if (status === 'failed') return 'text-red-400/85';
+  if (status === 'ready') return 'text-emerald-300/90';
+  if (status === 'converting') return 'text-accent';
+  if (status === 'failed') return 'text-red-300/90';
   return 'text-text-dim/75';
+}
+
+// Left-spine colour for a file card, keyed to its lifecycle state so the
+// rail reads at a glance: violet while the engine runs, world-green when
+// a slice is ready to apply, fate-red on failure, accent otherwise.
+function statusAccentVar(status: SourceFile['status']): string {
+  if (status === 'ready') return 'var(--color-world)';
+  if (status === 'failed') return 'var(--color-fate)';
+  return 'var(--accent)';
 }
 
 /** Map a file's status to the primary action that should appear on
  *  the card. Returns null when no primary action is meaningful
- *  (converting, committed creation file). The action row also renders
- *  Remove + Job as secondary affordances independent of this. */
+ *  (converting). The action row also renders Remove + Job as secondary
+ *  affordances independent of this. */
 function primaryAction(
   file: SourceFile,
   branchId: string | null,
@@ -74,6 +85,18 @@ function primaryAction(
       kind: 'apply',
       label: branchId ? 'Extend branch' : 'Extend (no branch)',
     };
+  }
+  // Text-analysis-origin file: the corpus the world view was extracted from.
+  // It's the same artifact an upload+process produces, so it can be added to a
+  // timeline like any extended file. Creation retains the assembled slice
+  // (extractedRef), so the file offers Extend branch directly — no re-analysis.
+  // Legacy origin files created before slices were retained have none yet;
+  // offer Convert to extract one from the stored source text.
+  if (file.status === 'committed' && file.source === 'analysis') {
+    if (file.extractedRef) {
+      return { kind: 'apply', label: branchId ? 'Extend branch' : 'Extend (no branch)' };
+    }
+    return { kind: 'convert', label: 'Convert to timeline slice' };
   }
   return null;
 }
@@ -129,7 +152,7 @@ function ConvertingProgress({ job, fallbackLabel }: { job?: AnalysisJob; fallbac
   return (
     <div className="mt-2 space-y-1.5">
       <div className="flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-amber-400/85 animate-pulse shrink-0" />
+        <div className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0" />
         <span className="text-[10px] text-text-dim/80 truncate flex-1 min-w-0">{label}…</span>
         {isChunkPhase && totalChunks > 0 && (
           <span className="text-[9px] text-text-dim/60 font-mono tabular-nums shrink-0">
@@ -146,7 +169,7 @@ function ConvertingProgress({ job, fallbackLabel }: { job?: AnalysisJob; fallbac
               key={p}
               title={PHASE_LABEL[p] ?? p}
               className={`h-0.5 flex-1 rounded ${
-                done ? 'bg-white/30' : active ? 'bg-amber-400/85' : 'bg-white/8'
+                done ? 'bg-accent/45' : active ? 'bg-accent' : 'bg-white/8'
               }`}
             />
           );
@@ -155,7 +178,7 @@ function ConvertingProgress({ job, fallbackLabel }: { job?: AnalysisJob; fallbac
       {isChunkPhase && totalChunks > 0 && (
         <div className="h-0.5 w-full bg-white/6 rounded overflow-hidden">
           <div
-            className="h-full bg-amber-400/70 transition-all"
+            className="h-full bg-accent transition-all"
             style={{ width: `${Math.min(100, (completedChunks / totalChunks) * 100)}%` }}
           />
         </div>
@@ -250,14 +273,33 @@ export default function FilesPanel() {
             const phaseLabel =
               f.status === 'converting' && job?.phase ? PHASE_LABEL[job.phase] ?? job.phase : null;
             const primary = primaryAction(f, branchId);
+            // Text-analysis-origin files (the corpus a world view was extracted
+            // from) get the same affordances as a traditional file addition —
+            // they're removable like an 'extend' file, not a frozen record.
+            const isAnalysisOrigin = f.source === 'analysis';
+            const removable = f.mode === 'extend' || isAnalysisOrigin;
             return (
               <div
                 key={f.id}
-                className="group rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3.5"
+                className="panel-card group p-3.5"
+                style={{ ['--card-accent']: statusAccentVar(f.status) } as React.CSSProperties}
               >
                 {/* Meta row: kind on the left, status on the right. */}
                 <div className="flex items-baseline justify-between mb-2 text-[9px] uppercase tracking-wider font-mono">
-                  <span className="text-text-dim/65">{f.mode}</span>
+                  <span className="flex items-center gap-1 text-text-dim/65">
+                    {f.mode}
+                    {isAnalysisOrigin && (
+                      <span
+                        title="Created from text analysis"
+                        aria-label="Created from text analysis"
+                        className="text-amber-300/80"
+                      >
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26" />
+                        </svg>
+                      </span>
+                    )}
+                  </span>
                   <span className={statusColor(f.status)}>{STATUS_STYLE[f.status].label}</span>
                 </div>
 
@@ -293,7 +335,7 @@ export default function FilesPanel() {
                     (convert / apply) sits left; secondary affordances
                     (remove, open job) hug the right edge. Labels live
                     in the `title` tooltip so the row stays uncluttered. */}
-                {(primary || f.mode === 'extend' || f.analysisJobId) && (
+                {(primary || removable || f.analysisJobId) && (
                   <div className="mt-3 flex items-center gap-2">
                     {primary?.kind === 'convert' && (
                       <button
@@ -336,7 +378,7 @@ export default function FilesPanel() {
                         </svg>
                       </button>
                     )}
-                    {f.mode === 'extend' && (
+                    {removable && (
                       <button
                         onClick={() => void handleRemove(f)}
                         title="Remove file"

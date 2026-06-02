@@ -124,7 +124,10 @@ export default function CompassPanel() {
       <div
         key={arc.id}
         onClick={() => openReading(reading)}
-        className="group w-full text-left rounded-lg border border-white/5 bg-white/3 hover:bg-white/6 hover:border-white/10 transition-colors p-3 cursor-pointer"
+        className="panel-card group w-full text-left p-3 cursor-pointer"
+        style={{
+          ['--card-accent']: directionCount > 0 ? 'var(--accent)' : 'var(--color-system)',
+        } as React.CSSProperties}
       >
         {/* Header: which surfaces this arc carries. */}
         <div className="flex items-baseline gap-2 mb-1">

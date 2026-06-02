@@ -59,6 +59,18 @@ async function attachCreationFile(
 ): Promise<import('@/types/narrative').NarrativeState> {
   try {
     const contentRef = await assetManager.storeText(job.sourceText, undefined, narrative.id);
+    // Retain the assembled narrative as an appliable slice — the SAME artifact
+    // an upload+process ('extend') run parks on its file (it stores
+    // JSON.stringify(narrative) as extractedRef; see runPipeline). Creation
+    // already computed this; keeping it means the origin file can be added to a
+    // timeline (any branch) without re-running analysis. Snapshot is taken
+    // before the file is attached, so the slice carries no self-referential
+    // file record.
+    const extractedRef = await assetManager.storeText(
+      JSON.stringify(narrative),
+      undefined,
+      narrative.id,
+    );
     const file: SourceFile = {
       id: `F-${titlePrefix(narrative.title || job.title)}-1`,
       name: job.title || 'Source',
@@ -67,7 +79,15 @@ async function attachCreationFile(
       charCount: job.sourceText.length,
       wordCount: job.sourceText.trim().split(/\s+/).filter(Boolean).length,
       createdAt: Date.now(),
+      // The slice was assembled straight onto the new narrative's main branch,
+      // so the file is 'committed' — but it retains extractedRef, so it can
+      // still extend other branches (parity with an uploaded+processed file).
       status: 'committed',
+      extractedRef,
+      // Provenance: this file is the corpus the world view was extracted from.
+      // Tagging it 'analysis' gives it parity with traditionally-added files in
+      // FilesPanel (removable, origin star) instead of being a frozen record.
+      source: 'analysis',
     };
     return { ...narrative, files: { ...(narrative.files ?? {}), [file.id]: file } };
   } catch (err) {
