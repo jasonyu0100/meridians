@@ -76,7 +76,18 @@ async function generateImage(
     const blob = await imgRes.blob();
     const assetId = await assetManager.storeImage(blob, blob.type, undefined, narrativeId);
 
-    updateApiLog(logId, { status: 'success', durationMs: Math.round(performance.now() - start), responsePreview: `image stored (${assetId})` });
+    // Surface the REAL image-gen prompts the route built (the request body alone
+    // hides them): System tab = the image-gen system prompt + cartographer user
+    // prompt; Response tab = the final prompt actually sent to the image model.
+    const systemPromptPreview = [
+      data.systemPrompt && `=== IMAGE-GEN SYSTEM PROMPT ===\n${data.systemPrompt}`,
+      data.userPrompt && `=== CARTOGRAPHER USER PROMPT ===\n${data.userPrompt}`,
+    ].filter(Boolean).join('\n\n') || undefined;
+    const responsePreview = data.finalPrompt
+      ? `=== FINAL IMAGE PROMPT (→ image model${data.mapView ? `, view: ${data.mapView}` : ''}) ===\n${data.finalPrompt}\n\n→ image stored (${assetId})`
+      : `image stored (${assetId})`;
+
+    updateApiLog(logId, { status: 'success', durationMs: Math.round(performance.now() - start), systemPromptPreview, responsePreview });
     return { imageUrl: assetId, visualPrompt: data.visualPrompt };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
