@@ -1,137 +1,182 @@
-# Meridians — Roadmap
+# Meridians — Build Spec
 
-> **What this is.** A focused implementation plan for the features that turn the engine into a playable, Game-Master-run product. Much of this is *described* in the [manifesto](src/app/manifesto/page.tsx) and the [LANGUAGE.md](LANGUAGE.md) glossary but **not yet built** — this file is the order to build it in, and why.
+> **What this is.** The ordered, discrete steps that turn the shipping engine into a Game-Master-run product. Built to be tackled **one item at a time**: each has a goal, a concrete build list, and a *done-when* you can check off, so the work never has to be held in your head all at once.
 >
-> The grounded engine (force extraction, threads/stances, reasoning graphs, variable scenarios, embeddings, game theory incl. 1- and 2-player decisions) already ships — see [CLAUDE.md](CLAUDE.md). The roadmap is the layer on top: the **behavioural loop**, then **security**, then the **access model** (live over ngrok + async over WhatsApp), then **distribution** (a desktop app), **accounts + an encrypted `.meridian` drive**, and **commercialization**.
+> The grounded engine (force extraction, threads/stances, reasoning graphs, variable scenarios, embeddings, game theory incl. 1- and 2-player decisions) already ships — see [CLAUDE.md](CLAUDE.md). Everything here is the layer on top.
 
-## North star
+## How to read this
 
-Make Meridians **accessible to players** and **enhance the Game Master** and the tools they're exposed to. One Game Master on one master device runs the room; everyone else joins as a seat. The product is the **capture → rehearse → review** loop, played on a console — non-GMs join the full interface **live over an ngrok tunnel**, and drop priors **async into a WhatsApp group** when the instance is dark.
+- **Part A — Iterative features.** Small, self-contained steps that build on the **current Next.js app + engine**, with **no new infrastructure**. Each ships value on its own. Do these first.
+- **Part B — Platform changes.** The larger architectural lifts (networked access, desktop packaging, a backend, go-to-market). Do these once the loop is real.
+- Each item: **Goal · Build · Done when · Depends on.** A1 → A9 is the natural order, but A7 (decks) and A8 (encryption) can be pulled early.
 
-## Scope decisions (read first)
+## Scope decisions (the guardrails)
 
-- **The room's value is the behavioural loop** — capture, rehearse, review — not a materialised knowledge artifact.
-- **Rehearsal stays "Rehearsal."** (The breadth game; not renamed.)
-- **Two ways in for non-GMs: live (ngrok) and dark (WhatsApp).** This is the settled access model. **Live:** the GM hosts locally, fires an **ngrok tunnel**, posts the URL to the WhatsApp group; non-GMs open it on phone or desktop and get the **full Meridians interface** — same substrate, same board, same live state — with **read-write** access (submit inputs, adjust stances, play moves). The GM keeps elevated privileges. **Dark** (machine off): the **WhatsApp group** is the always-open capture layer — members drop priors / observations / belief shifts any time; the GM reviews the inbox when back online, curates, and commits what earns it. **No server-side component** for either: ngrok is a third-party tunnel, WhatsApp is a normal group, the substrate stays on the GM's machine. Single source of truth, no sync / merge / conflict.
-- **GM is the curation-and-commit layer and the gatekeeper.** The Game Master (a volunteer member, or a facilitator on our side) decides when the instance lives and which WhatsApp inputs graduate into the substrate — routing each into the seat it came from. Live continuous-updating of those per-seat stances (as priors arrive) is high-value and wanted — but **deferred** (see *Deferred*).
-- **High-end clients get custom security.** Bespoke security approaches for clients who require them, on top of the local encryption + PIN baseline.
-- **The online drive becomes a real backend** — a single **auth + `.meridian` file-drive microservice** (the **only** server-side component). Sync stays **opt-in and local-first by default**; the drive holds **ciphertext only** (zero-knowledge blob store), the master device stays the source of truth.
-- **Two security layers, kept distinct:** *local* (encryption + PIN/password protecting on-device data and the room) and *account auth* (sign-in for the online drive + subscription, in the microservice). Not a sprawling identity platform.
-- **Distribution is an Electron desktop app**; go-to-market is a **landing page + subscription pricing** tied to accounts.
-- **Card-based information-asymmetric gameplay is exploratory** — still up in the air. Design before committing.
-
----
-
-## Phase 1 — The behavioural loop (core)
-
-The set of features that make the loop real and player-facing. Build in dependency order; each is documented in the manifesto but needs the actual UX + engine wiring.
-
-The loop is three phases (rule of three): **Capture → Rehearsal → Review.**
-
-### 1.1 Capture
-*Assemble the priors — per-perspective.* Each seat sharpens its own stance on its own open threads (divergence preserved — an adversary's seat keeps deliberately hostile priors; what's shared is the board, not the belief). Two paths in: **live**, each member tends their own seat directly through the full interface over the ngrok tunnel (Phase 3); **dark**, they drop priors into WhatsApp and the GM curates + **routes each into the seat it came from**. The GM commits the high-certainty decisions that advance the simulation.
-- **Have:** the Priors surface (Driver/Queue), threads/stances, the Fate engine.
-- **Build:** per-perspective thread ownership (each seat its own open questions + a general perspective), the calibrated-reading view, and the "commit a high-certainty decision → advance the sim" action.
-- **Scope note:** **per-perspective is load-bearing** — it's what distinguishes this from a forecasting pool and makes the red-team purpose coherent; don't collapse seats into one aggregate read. A sparse seat just holds a wider, less-settled stance. Live continuous-updating of those stances is *Deferred*.
-- **Depends on:** nothing new. Foundational — do first.
-
-### 1.2 Rehearsal
-*The breadth game.* Play the Compass's possible trajectories forward across multiple timelines, from the captured priors (not by gathering new ones).
-- **Have:** Variable Scenarios + Branch Scenarios (parallel arc continuations, softmax cohort) as the base.
-- **Build:** the Rehearsal play UX on top of the Compass cohort; contested-thread protection + per-play divergence so it explores the state space rather than re-enacting the captured prior.
-- **Depends on:** Capture (the read it plays forward from) + the Compass.
-
-### 1.3 Review
-*The retrospective that closes the loop — audit + attribution + playback in one phase.* Combines what were separate Butterfly / War Room Review / onboarding-deck steps.
-- **Post-play audit:** show how the playthrough varied against the predicted state space (the softmax-ranked Compass cohort); the divergence becomes the next thread to capture. Build the played-path-vs-cohort comparison surface and the hand-off of divergences back into Capture.
-- **Butterfly (per-decision causal audit):** a sealed decision → trace its causal subgraph along the reasoning graph → resolve as the Fate outcomes it caused; a revisable verdict on how good/bad each decision was. Build the **sealed decision record** (freeze at commit, non-editable — for 1-player decisions capture the commit-time stance as a number, the stronger seal), the **causal-reach trace** over the downstream subgraph, and the **revisable verdict** that re-reads downstream Fate as more threads resolve. Decide the **bounded-vs-open-ended closure rule** (live design question). *Have:* the decision model (1- and 2-player + ELO — done), reasoning graph + causal edges, Fate resolutions.
-- **Slide-deck delivery (playback):** a **generated slide deck** of the session — history, the decisions that shaped it, Butterfly verdicts, resolved threads — delivered to members' phones (the WhatsApp summary, Phase 3) and doubling as onboarding for newcomers / re-sync for returning members. **Regenerates as the substrate moves.** *Have:* the slides feature (`SlidesPlayer`, `lib/slides-data.ts`). Can ship early — the most accessible surface and the cleanest demo of "see how the team decides."
-- **Depends on:** Rehearsal (the playthrough) + Compass (the prediction) + the decision model + Fate.
+- **The product is the behavioural loop** — **capture → rehearse → review** — not a materialised knowledge artifact.
+- **One source of truth: the GM's machine.** No sync, no merge, no conflict. The only server-side component ever introduced is the Part B drive microservice.
+- **Per-perspective is load-bearing.** Each seat keeps its own stance; divergence is preserved (an adversary's seat holds deliberately hostile priors). Don't collapse seats into one aggregate read.
+- **Two ways in for non-GMs:** **live** (full interface over an ngrok tunnel) and **dark** (a WhatsApp group as the always-open async capture layer; the GM curates and commits). The dark path is a *process* with near-zero build (Part A); the live path is an *infrastructure* lift (Part B).
+- **Commercialization pricing** follows the unbundled model in the manifesto Economics section (setup / facilitation / software, priced by service-intensity).
+- **Card-based information-asymmetric gameplay is exploratory** — design before committing.
 
 ---
 
-## Phase 2 — Security (basic, focused)
+# Part A — Iterative features (build on the app you have)
 
-Protect key data before it's exposed on a shared screen or a phone. Minimal, not a full identity system.
-- **Encrypted `.meridian` files** at rest (the substrate serialised as one encrypted artifact).
-- **PIN / password gating** of access to key data and the room.
-- **Depends on:** nothing; PIN-gates the instance before it's exposed over the ngrok tunnel. Do before Phase 3.
+No new infrastructure. Each is a step you can finish and ship before starting the next.
+
+### A1 · Per-perspective ownership
+- **Goal:** every seat owns its own open threads, with a general perspective by default.
+- **Build:**
+  - [ ] A seat → threads ownership model (each seat its own open questions).
+  - [ ] A perspective selector on the Priors/Driver surface; general perspective as the default.
+  - [ ] Two seats can hold opposed stances on the *same* thread without averaging.
+- **Done when:** you can file a prior to a specific seat and an adversary seat can hold an opposite stance on that thread — no pooling.
+- **Depends on:** existing threads/stances. Foundational — do first.
+
+### A2 · Calibrated-reading view
+- **Goal:** read out each seat's running probability per thread as priors accumulate.
+- **Build:**
+  - [ ] A per-seat stance readout (uses the Fate engine) over the Priors surface.
+  - [ ] The readout moves visibly as priors are added to that seat.
+- **Done when:** adding priors to a seat shifts that seat's thread probabilities on screen.
+- **Depends on:** A1.
+
+### A3 · Commit a decision → advance the sim
+- **Goal:** turn a high-certainty stance into a committed move that advances the simulation.
+- **Build:**
+  - [ ] A "commit decision" action on a high-certainty stance.
+  - [ ] Committing writes the move and advances state (the next N scenes / the board).
+- **Done when:** committing a high-certainty decision advances the room.
+- **Depends on:** A2.
+
+### A4 · Rehearsal play UX
+- **Goal:** play the contested space forward across the Compass cohort without re-enacting the prior.
+- **Build:**
+  - [ ] Play UX layered on the existing Branch/Variable Scenarios cohort.
+  - [ ] Contested-thread protection (no forced resolution) + a per-play divergence directive.
+  - [ ] Each play-through forks and is kept.
+- **Done when:** you can run a play-through that explores the state space; committed stances act as soft priors, contested threads stay open.
+- **Depends on:** A3 + the existing Scenarios/Compass.
+
+### A5 · Review — post-play audit
+- **Goal:** see how the playthrough varied from the predicted cohort; turn divergence into the next thing to capture.
+- **Build:**
+  - [ ] A played-path-vs-cohort comparison surface.
+  - [ ] A divergence → "next thread to capture" hand-off back into A1.
+- **Done when:** after a play-through you get a variance view and can push a divergence into Capture.
+- **Depends on:** A4.
+
+### A6 · Review — Butterfly (per-decision causal audit)
+- **Goal:** audit each committed decision for what reality did to it.
+- **Build:**
+  - [ ] **Sealed decision record** — freeze the decision at commit, non-editable (for 1-player decisions, capture the commit-time stance as a number — the stronger seal).
+  - [ ] **Causal-reach trace** — the reasoning-graph subgraph downstream of the sealed node.
+  - [ ] **Revisable verdict** — re-reads downstream Fate as more threads resolve.
+  - [ ] Decide the **bounded-vs-open-ended closure rule** (the live design question).
+- **Done when:** a committed decision shows a verdict that updates as downstream threads resolve.
+- **Depends on:** A3 (committed decisions) + reasoning graph + Fate. *Have:* decision model (1-/2-player) + ELO.
+
+### A7 · Review — slide-deck playback
+- **Goal:** a generated deck of the session that doubles as onboarding / re-sync.
+- **Build:**
+  - [ ] Deck generation scoped to a session / arc / set of decisions, over `SlidesPlayer`.
+  - [ ] Regeneration as the substrate moves; a "what changed since you last looked" mode.
+- **Done when:** you can generate and replay a current session deck.
+- **Depends on:** the slides feature (`SlidesPlayer`, `lib/slides-data.ts`). **Can ship early** — the most accessible surface and the cleanest demo of "see how the team decides."
+
+### A8 · Local encryption + PIN gate
+- **Goal:** protect the substrate at rest and gate access to the room.
+- **Build:**
+  - [ ] Encrypt the `.meridian` at rest (the substrate serialised as one encrypted artifact).
+  - [ ] PIN / password gate on opening the room.
+- **Done when:** the on-disk `.meridian` is ciphertext and opening the room needs the PIN.
+- **Depends on:** nothing. **Can be done anytime**; it's the prerequisite for B1 (networked access).
+
+### A9 · WhatsApp dark-capture workflow
+- **Goal:** make GM curation of WhatsApp drops frictionless — a process, not infrastructure.
+- **Build:**
+  - [ ] A "paste-and-route" affordance: paste a member's note, pick the seat, commit.
+  - [ ] (Process) the GM reads the group when the instance comes online and routes each drop into the seat it came from.
+- **Done when:** the GM can land a pasted observation on the right seat in a couple of clicks. **No backend.**
+- **Depends on:** A1 (seats) + A2.
 
 ---
 
-## Phase 3 — Access model: live (ngrok) + dark (WhatsApp)
+# Part B — Platform changes (the larger lifts)
 
-How non-GMs touch the room. The console (laptop / master device) holds truth and drives the shared screen; the single source of truth never leaves it. **No server-side component** — ngrok is a third-party tunnel, WhatsApp is a normal group.
-- **Live access (ngrok):** the GM hosts the instance locally and fires an **ngrok tunnel** → public URL, posted to the WhatsApp group. Non-GMs open it on phone or desktop and get the **full Meridians interface** — same substrate, board, and live state — with **read-write** access: submit calibration inputs, adjust stances, play moves, interact with the graph. Functions like a cloud-hosted app for the session. **PIN-gated** (Phase 2); the GM keeps **elevated privileges**.
-- **Dark capture (WhatsApp):** when the machine is off, the instance is dark (no interface). The **WhatsApp group** stays open as the **always-on capture layer** — members drop priors, observations, and belief shifts any time.
-- **Curate + commit:** the GM reviews the WhatsApp inbox when the instance comes back online, curates, and **commits the inputs that earn it** to the substrate manually. WhatsApp is the capture layer; the GM is the curation-and-commit layer and the gatekeeper of when the instance lives.
-- **Build:** a mobile-friendly responsive interface (the same app, usable on a phone over the tunnel); a role/permission split (GM elevated vs non-GM read-write); the tunnel-launch + URL-share affordance from the console.
-- **Depends on:** Phase 2 (PIN-gating the exposed instance) + the behavioural-loop surfaces it exposes.
+Do these once the loop in Part A is real. Each is a distinct architectural change.
 
----
+### B1 · Live multi-user access (ngrok)
+- **Goal:** non-GMs use the **full interface** live over an ngrok tunnel — not a crippled mobile view.
+- **Build:**
+  - [ ] A responsive / mobile-friendly interface (the same app, usable on a phone over the tunnel).
+  - [ ] A role / permission split — GM elevated, non-GMs read-write.
+  - [ ] A tunnel-launch + URL-share affordance from the console.
+- **Done when:** a non-GM opens the URL on a phone and can read-write the live state; the GM keeps elevated controls; access is PIN-gated.
+- **Depends on:** A8 (PIN) + the Part A loop surfaces it exposes. **No server-side component** — ngrok is a third-party tunnel.
 
-## Phase 4 — Distribution: Electron desktop app
+### B2 · Electron desktop app + auto-update
+- **Goal:** ship as a desktop binary — the room is an app, not a browser tab.
+- **Build:**
+  - [ ] Wrap the same Next.js build in **Electron** (known persistence location for the encrypted `.meridian`, console one launch away).
+  - [ ] Auto-update via `electron-updater` (or Squirrel) against a **release feed** (static host, or served from B3).
+  - [ ] Substrate versioned independently of the binary, with migrations — app updates never touch `.meridian` data.
+- **Done when:** the GM installs an app that self-updates; data survives updates.
+- **Depends on:** a stable core app (Part A). Can parallelize once settled; wants a CI build → signed artifact → feed pipeline.
 
-Package the local-first app as a desktop binary — the coherent install the manifesto describes.
-- **Build:** wrap the same Next.js build in **Electron**; the master device runs it like a native app (keyboard shortcuts, a known persistence location for the encrypted `.meridian`, the console one launch away). Same code; the surface around it stops being a browser tab.
-- **Auto-update:** ship new app versions to installed clients without a manual reinstall — `electron-updater` (or Squirrel) against a **release feed** (a static release host, or served from the Phase 5 backend). The Game Master's device stays current automatically; app updates change the *app*, never the user's `.meridian` data (the substrate is versioned independently of the binary, with migrations as needed).
-- **Depends on:** a stable core app (Phases 1–3). Can proceed in parallel once the app settles; auto-update wants a release/publish pipeline (CI build → signed artifact → feed).
+### B3 · Accounts + `.meridian` drive microservice
+- **Goal:** the **only** server-side component — auth plus an opt-in encrypted-file drive.
+- **Build:**
+  - [ ] **Auth / accounts** — sign-up / sign-in / identity; the login that gates the drive and subscription.
+  - [ ] **`.meridian` file drive** — online storage + sync of **ciphertext-only** `.meridian` files (zero-knowledge blob store), opt-in, local-first by default.
+- **Done when:** a user signs in and can back up / sync their encrypted `.meridian` across devices; the master device stays the source of truth.
+- **Depends on:** A8 (files already encrypted). Keep it small — auth + blob storage, nothing more.
 
----
-
-## Phase 5 — Accounts & backend microservice (auth + `.meridian` drive)
-
-One focused microservice — the **only server-side component** — doing two jobs:
-- **Authentication & accounts** — sign-up / sign-in / account identity. The login that gates the online drive and the subscription.
-- **`.meridian` file drive** — online storage + sync of encrypted `.meridian` files across a user's devices. **Ciphertext only** (zero-knowledge blob store): the substrate is encrypted client-side (Phase 2), the master device stays the source of truth, the drive is opt-in backup/sync. This *is* the online drive, now concrete and account-bound.
-- **Depends on:** Phase 2 (the files it stores are already encrypted). Keep it small — auth + blob storage, nothing more.
-
----
-
-## Phase 6 — Commercialization: landing page + subscription
-
-- **Landing page** to distribute the app (download the Electron build, sign up) and present the product.
-- **Subscription pricing** tied to accounts (billing through the microservice's account layer).
-- **Depends on:** Phase 5 (accounts) + Phase 4 (the app to distribute).
+### B4 · Commercialization
+- **Goal:** distribute and monetize.
+- **Build:**
+  - [ ] **Landing page** — download the Electron build, sign up, present the product.
+  - [ ] **Subscription billing** tied to accounts (through B3's account layer), following the unbundled pricing in the manifesto Economics section (setup / facilitation / software).
+- **Done when:** a buyer can land, download, sign up, and pay.
+- **Depends on:** B3 (accounts) + B2 (the app to distribute).
 
 ---
 
 ## Deferred (wanted next, not in the entry product)
 
-### Live-updating per-seat stances
-Each seat's stance moving in real time as priors arrive (whether dropped into WhatsApp or submitted live over the tunnel), surfaced back to members — rather than only updating when the GM curates and commits. The single most valuable next step (it's what makes the room a living model rather than a periodic snapshot). **Deferred on purpose:** the GM-as-gatekeeper commit step (routing each prior into the seat it came from) is the simple, ship-ready model; auto-commit is the upgrade once the loop is proven. Per-perspective divergence is preserved either way — this is about *when* a seat's stance updates, not whether seats stay distinct.
-
----
+- **Live-updating per-seat stances** — a seat's stance moving in real time as priors arrive, rather than only when the GM curates and commits. The single most valuable next step (it makes the room a living model, not a periodic snapshot). Deferred on purpose: the GM-as-gatekeeper commit step is the ship-ready model; auto-commit is the upgrade once the loop is proven. Per-perspective divergence is preserved either way — this is about *when* a stance updates, not whether seats stay distinct.
 
 ## Exploratory / undecided
 
-### AI-simulated seats → autonomous rooms
-Because Capture is per-perspective, an empty/quiet seat can have its priors **simulated** by the engine from its stances + open questions. Progression: (1) fill a missing perspective so a thin-rostered/underserved team isn't blind; (2) AI agents take seats beside humans; (3) fully autonomous rooms — narratives and war games that simulate their own detailed priors. Humans stay the main support; this is the spectrum, not a replacement.
-
-### High-end custom security
-Bespoke security approaches for clients who require more than the local encryption + PIN baseline (e.g. air-gapped operation, local inference, custom key management). Per-engagement, not a shipped tier.
-
-### Card-based, information-asymmetric gameplay
-The full War Room card game — cards as intent signals, private logs, phased turns, public moves. **Up in the air.** Worth prototyping the interaction model, but design before committing engine work. Not scheduled.
+- **AI-simulated seats → autonomous rooms** — because Capture is per-perspective, an empty/quiet seat can have its priors **simulated** from its stances + open questions. Progression: (1) fill a missing perspective so an underserved team isn't blind; (2) AI agents take seats beside humans; (3) fully autonomous rooms. Humans stay the main support; the spectrum, not a replacement. Builds on A1.
+- **High-end custom security** — bespoke approaches beyond the A8 encryption + PIN baseline (air-gapped operation, local inference, custom key management). Per-engagement, not a shipped tier.
+- **Card-based, information-asymmetric gameplay** — the full War Room card game (cards as intent signals, private logs, phased turns). Worth prototyping the interaction model; design before committing engine work. Not scheduled.
 
 ---
 
-## Housekeeping (doc + consistency)
-
-- **Taxonomy counts reconciled (2026-06):** code = **11 `ActionAxis` / 16 `GameType`** (verified against `src/types/narrative.ts`); manifesto, LANGUAGE.md, and CLAUDE.md now all say 11/16. LANGUAGE.md stays the source of truth if they drift again.
-- Keep [LANGUAGE.md](LANGUAGE.md) the single source of truth for every concept introduced here.
-
----
-
-## Sequencing summary
+## Build order at a glance
 
 ```
-Phase 1  Behavioural loop   Capture → Rehearsal → Review (Review folds in Butterfly + slide-deck playback)
-Phase 2  Security           encrypted .meridian + PIN/password
-Phase 3  Access model       live: full interface over ngrok (read-write, PIN) · dark: WhatsApp capture → GM commits (no server component)
-Phase 4  Distribution       Electron desktop app + auto-update (release feed)
-Phase 5  Accounts + backend auth + encrypted .meridian drive microservice (only server component)
-Phase 6  Commercialization  landing page + subscription pricing (account-bound)
-Deferred Living priors      per-seat stances updating live (vs GM curate-and-commit); wanted next
-Later    Exploratory        card / information-asymmetric gameplay (undecided) · high-end custom security
+PART A — iterative features (current app, no new infra)
+  A1  Per-perspective ownership        seats own their own threads
+  A2  Calibrated-reading view          per-seat probabilities move with priors
+  A3  Commit decision → advance sim    high-certainty stance advances the room
+  A4  Rehearsal play UX                play the cohort forward, divergence protected
+  A5  Review — post-play audit         played vs cohort; divergence → next capture
+  A6  Review — Butterfly               sealed decision · causal trace · revisable verdict
+  A7  Review — slide-deck playback     session deck; can ship early
+  A8  Local encryption + PIN           .meridian at rest + gate; anytime
+  A9  WhatsApp dark-capture workflow   paste-and-route; no backend
+
+PART B — platform changes (after the loop is real)
+  B1  Live multi-user access (ngrok)   full interface over the tunnel; roles; PIN-gated
+  B2  Electron desktop + auto-update   app not a tab; self-updating
+  B3  Accounts + .meridian drive       only server component; ciphertext-only sync
+  B4  Commercialization                landing page + subscription billing
 ```
+
+## Housekeeping
+
+- **Taxonomy counts reconciled (2026-06):** code = **11 `ActionAxis` / 16 `GameType`** (verified against `src/types/narrative.ts`); manifesto, LANGUAGE.md, and CLAUDE.md all say 11/16. LANGUAGE.md stays the source of truth if they drift.
+- Keep [LANGUAGE.md](LANGUAGE.md) the single source of truth for every concept named here.
