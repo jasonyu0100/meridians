@@ -25,6 +25,7 @@ import type {
   Scene,
   SceneGameAnalysis,
 } from "@/types/narrative";
+import { NARRATOR_AGENT_ID } from "@/types/narrative";
 
 type RawGame = Record<string, unknown>;
 
@@ -148,7 +149,7 @@ function buildSceneContext(
     if (loc) pushRow(scene.locationId, "location", `${loc.name} (setting)`);
   }
   if (seen.size === 0) {
-    parts.push("  (none — this scene has no listed participants; return empty games array)");
+    parts.push("  (none listed — this world has no explicit characters. You may still extract pivotal decisions and attribute them to the Narrator: leave the player id empty or use \"narrator\".)");
   }
   parts.push("");
 
@@ -236,6 +237,30 @@ function resolvePlayerId(
   return tryDirect(id) ?? tryName(name) ?? tryName(id) ?? null;
 }
 
+const NARRATOR_PLAYER = { id: NARRATOR_AGENT_ID, name: "Narrator" } as const;
+
+/**
+ * Resolve a player reference, defaulting to the Narrator when none is given.
+ * A MISSING reference (no id and no name) — or the literal "narrator" — maps to
+ * the Narrator agent, so worlds without explicit characters (a paper, a market
+ * brief, a doctrine) still produce evaluable decisions made by the implicit
+ * author / world. A reference that IS provided but matches no entity still
+ * returns null — we don't smuggle hallucinated IDs through as the Narrator.
+ */
+function resolveOrNarrator(
+  rawId: unknown,
+  rawName: unknown,
+  narrative: NarrativeState,
+): { id: string; name: string } | null {
+  const id = typeof rawId === "string" ? rawId.trim() : "";
+  const name = typeof rawName === "string" ? rawName.trim() : "";
+  if (!id && !name) return { ...NARRATOR_PLAYER };
+  if (id.toLowerCase() === NARRATOR_AGENT_ID || name.toLowerCase() === "narrator") {
+    return { ...NARRATOR_PLAYER };
+  }
+  return resolvePlayerId(rawId, rawName, narrative);
+}
+
 function warn(
   message: string,
   detail: string,
@@ -269,7 +294,7 @@ function sanitiseSoloGame(raw: RawGame, narrative: NarrativeState): BeatGame | n
     return null;
   }
 
-  const a = resolvePlayerId(raw.playerAId, raw.playerAName, narrative);
+  const a = resolveOrNarrator(raw.playerAId, raw.playerAName, narrative);
   if (!a) {
     warn(
       "game-analysis: dropped solo decision with unresolved decider",
@@ -356,8 +381,8 @@ function sanitiseDuelGame(raw: RawGame, narrative: NarrativeState): BeatGame | n
   }
 
   // ── Players ──
-  const a = resolvePlayerId(raw.playerAId, raw.playerAName, narrative);
-  const b = resolvePlayerId(raw.playerBId, raw.playerBName, narrative);
+  const a = resolveOrNarrator(raw.playerAId, raw.playerAName, narrative);
+  const b = resolveOrNarrator(raw.playerBId, raw.playerBName, narrative);
   if (!a || !b || a.id === b.id) {
     warn(
       "game-analysis: dropped game with invalid or duplicate players",

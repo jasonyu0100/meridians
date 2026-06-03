@@ -19,6 +19,7 @@ import type {
   NarrativeState,
   PlayerAction,
 } from "@/types/narrative";
+import { NARRATOR_AGENT_ID } from "@/types/narrative";
 
 // ── Solo vs duel ───────────────────────────────────────────────────────────
 
@@ -381,6 +382,10 @@ export function resolvePlayerName(
   id: string,
   storedFallback?: string,
 ): string {
+  // The Narrator is a synthetic agent (the implicit author / the world) — it
+  // has no entry in the entity registries, so name it explicitly. Worlds
+  // without characters attribute their decisions here.
+  if (id === NARRATOR_AGENT_ID) return storedFallback ?? "Narrator";
   return (
     narrative.characters[id]?.name ??
     narrative.locations[id]?.name ??

@@ -23,24 +23,27 @@ export function buildGameTheorySystemPrompt(): string {
 
 /** Detailed analysis guide — appended to the scene context in the user prompt. */
 const GAME_THEORY_GUIDE = `<doctrine>
+  <principle name="decisions-are-inflection-points">A decision is any inflection point of consequence — wherever a story, a simulation, OR an argument commits to one path when others were live. Find those points and name the alternatives that were on the table; that is the whole task. Who (or what) chose varies — a character, a faction, the rules, reality, or the author/Narrator — and does not gate inclusion. Do NOT restrict to scenes with named agents: a paper choosing a definition, a doctrine picking a tradeoff, a market regime tipping, are decisions exactly as much as a duel. If a stretch of text moves the world or the argument forward, ask "what was committed here, and against which alternatives?" — and if there is no human/agent to attribute it to, attribute it to the Narrator.</principle>
   <principle name="shape-vs-signature">Every consequential moment has a shape (the space of choices and consequences) that exists independent of any realised path through it. The realised cell is ONE signature on that space. Across fiction / non-fiction / simulation / analysis the SHAPE is the same; only who selected the path differs (author / writer / rules + priors / reality). Your job is to describe the shape and mark the signature — never to defend the signature.</principle>
   <principle name="evaluator-not-predictor">Agents often act against local strategic interest — they trade stake for identity, short-term for long-term, cooperation for arc, narrow win for institutional position. That is a feature of narrative AND of real-world strategic play. NEVER warp stake deltas to "justify" what happened. Score each cell as if it were the realised outcome — honestly, against that player's interests. A dominated realised cell is signal, not noise.</principle>
   <principle name="magnitude-is-importance">The magnitudes of your stake deltas calibrate how much the moment matters. A pivotal, arc-defining beat uses the full ±4 range. A quiet, low-consequence beat stays in ±1. Do not inflate stakes to make every beat dramatic — the ELO system reads magnitude as the importance signal. A scene where every beat scores ±4 tells the system every beat is equally pivotal, which is false.</principle>
 </doctrine>
 
-<scope hint="Include beats where two+ agentic parties make choices that meaningfully affect each other.">
+<scope hint="Include any beat where a consequential choice is made — two agents against each other, one agent against the world, or the text/author itself at an inflection point in an argument.">
   <include>Subtle beats: loaded silences, glances, quiet negotiations, anticipated reactions from absent parties, power-imbalanced games where the weaker side still has choices, moral decisions landing on another person. Simulation-register beats also qualify when the modelled agents (factions, market actors, treaty signatories, modelled cohorts, cultivation rivals) make choices the rule set forces consequences on — a tariff retaliation, a commitment to mobilise, a containment policy, a cultivation duel under stated rules. Non-fiction beats qualify too — a writer's choice to acknowledge vs minimise a counter-argument; an expert's disclosure vs containment of an inconvenient finding.</include>
   <include name="solo-decisions">PIVOTAL ONE-PLAYER decisions — a single actor choosing under uncertainty with no strategic counterpart (take the job or not, hold or fold, relocate, confess now or wait, commit capital or hold). These are bets against the world, not duels. Emit them as a SOLO decision (see &lt;solo-decisions&gt;), not a duel. Routine/reflexive solo action with nothing at stake is still excluded.</include>
-  <exclude>Internal monologue, pure atmosphere/exposition, and reflexive action with nothing meaningful at stake.</exclude>
-  <when-in-doubt>INCLUDE — stake deltas can say "near-trivial" via small magnitudes rather than omission. A pivotal choice with no counterparty is a SOLO decision, not a skip. But if a beat has no actions you can score, skip it rather than fabricate. Empty games array is valid output.</when-in-doubt>
+  <include name="theory-crafting">In a paper, theory, doctrine, or argument — text with no characters — the <B>author / Narrator</B> still makes pivotal moves at inflection points: committing to one definition, formula, or framing over its alternatives; conceding vs defending a claim; choosing which axis to measure on; deriving X rather than Y; naming a tradeoff and picking a side. Each is a real decision under uncertainty — live alternatives, and stakes in the argument's credibility and reach. Extract them as SOLO decisions attributed to the Narrator (see narrator-default). A theory section is a SEQUENCE of these moves, not exposition to skip — if you returned games for a story section but none for the argument around it, you under-read the argument.</include>
+  <exclude>Pure restatement, atmosphere, or worked-example illustration that commits to nothing — but a genuine choice between live alternatives is never "just exposition".</exclude>
+  <when-in-doubt>INCLUDE — stake deltas can say "near-trivial" via small magnitudes rather than omission. A pivotal choice with no counterparty is a SOLO decision, not a skip; an argument's inflection point is a Narrator decision, not exposition. Only return an empty games array when a section truly commits to nothing.</when-in-doubt>
 </scope>
 
 <player-identity>
   <rule>The scene context includes a PARTICIPANTS table with every valid player ID.</rule>
-  <rule>playerAId and playerBId MUST match IDs from PARTICIPANTS.</rule>
+  <rule>playerAId and playerBId MUST match IDs from PARTICIPANTS — with one exception (the Narrator, below).</rule>
   <rule>Never invent IDs. Never put a name in the ID field.</rule>
   <rule>Locations and artifacts are valid players ONLY if they carry agency in the beat (e.g., a cursed object actively resisting use). Most of the time locations are SETTING, not players.</rule>
   <rule>If a beat has only one agentic participant from the table: if the choice is PIVOTAL (real stakes, real alternatives) emit it as a SOLO decision; if it is trivial, skip it.</rule>
+  <rule name="narrator-default">When a world has NO explicit characters or agents in the table — a paper, a market brief, a doctrine, an analysis — pivotal decisions are still worth extracting. Attribute them to the <B>Narrator</B> (the implicit author / the world itself): leave the player id empty, or use the literal id <code>"narrator"</code>. This is the ONLY case where an empty or non-PARTICIPANTS id is allowed; whenever a real entity exists, use its exact id. A Narrator decision is almost always a SOLO decision (the world bets against itself); a Narrator-vs-entity duel is valid only when a named entity genuinely responds.</rule>
 </player-identity>
 
 <game-object hint="Each strategic beat becomes a GAME with these fields.">
@@ -295,6 +298,30 @@ const GAME_THEORY_GUIDE = `<doctrine>
   ],
   "realizedAAction": "raise instead",
   "rationale": "The founder bet on the upside over the certain exit, accepting market risk to keep the ceiling open."
+}</output>
+  </example>
+
+  <example title="THEORY — A paper deciding how to define a core quantity. No characters; the author/Narrator makes an argumentative move at an inflection point">
+    <classification-walkthrough>
+      <step name="scope">No characters in the section — but the text commits to one definition over live alternatives. That is a Narrator decision (theory-crafting).</step>
+      <step name="who">No PARTICIPANTS entity fits → attribute to the Narrator (id "narrator"); solo, since the author bets against the argument's reception, not another agent.</step>
+      <step name="axis">The move is binding the theory to a commitment &mdash; commitment.</step>
+    </classification-walkthrough>
+    <output>{
+  "beatIndex": 0,
+  "beatExcerpt": "The section defines the core force as information gain, choosing a parameter-free formula over a tunable one.",
+  "kind": "solo",
+  "gameType": "trivial",
+  "actionAxis": "commitment",
+  "playerAId": "narrator", "playerAName": "Narrator",
+  "playerAActions": [{ "name": "parameter-free definition" }, { "name": "tunable weighted formula" }, { "name": "leave it informal" }],
+  "outcomes": [
+    { "aActionName": "parameter-free definition", "description": "Reproducible and falsifiable, but must defend the rigid choice", "stakeDeltaA": 3 },
+    { "aActionName": "tunable weighted formula", "description": "Flexible fit, but invites accusations of overfitting and erodes the claim", "stakeDeltaA": -2 },
+    { "aActionName": "leave it informal", "description": "Avoids the fight but forfeits the paper's central rigor claim", "stakeDeltaA": -1 }
+  ],
+  "realizedAAction": "parameter-free definition",
+  "rationale": "The author committed to the rigid, reproducible definition because the whole credibility of the method rests on 'same input, same score'."
 }</output>
   </example>
 </examples>

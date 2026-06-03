@@ -626,6 +626,12 @@ describe("resolvePlayerName", () => {
     const n = makeNarrative();
     expect(resolvePlayerName(n, "C-99")).toBe("C-99");
   });
+  it("names the Narrator agent explicitly (worlds without characters)", () => {
+    const n = makeNarrative();
+    // "narrator" has no entity entry, but must render as "Narrator", not the raw id.
+    expect(resolvePlayerName(n, "narrator")).toBe("Narrator");
+    expect(resolvePlayerName(n, "narrator", "Narrator")).toBe("Narrator");
+  });
   it("preserves live renames (reads the name at call time)", () => {
     const n = makeNarrative({
       characters: {
