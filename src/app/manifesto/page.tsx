@@ -1119,6 +1119,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
       { id: "hierarchy", label: "Hierarchy" },
       { id: "forces", label: "Forces" },
       { id: "fate-engine", label: "Fate Engine" },
+      { id: "butterfly", label: "Butterfly" },
     ],
   },
   {
@@ -1495,6 +1496,37 @@ export default function PaperPage() {
               hold, skill accumulates. Where they don&apos;t,
               judgment drifts on first impressions and survives
               only because nothing tested it.
+            </P>
+            <P>
+              <B>Accumulation and play fail in opposite directions;
+              each corrects the other.</B> Pure accumulation has no
+              error signal &mdash; you can compound a coherent world
+              view that is confidently wrong, and it drifts
+              comfortably. Pure play is sharp but shallow &mdash; fast
+              signal on what is in front of you, but nothing carries
+              over, so you relearn the same lesson each time. A
+              goldfish with good instincts; a scholar never tested.
+              The loop is the unit: feedback turns accumulation into
+              judgment, accumulation lets feedback compound instead of
+              evaporate, and the correction writes back so the next
+              pass starts corrected. That write-back is the whole game
+              &mdash; and the hardest part, because most keep no
+              honest ledger of what reality returned, and run a flawed
+              model for decades at high confidence.
+            </P>
+            <P>
+              This is an old idea in new clothes &mdash; scientific
+              method, deliberate practice, OODA, Bayesian updating;
+              Tetlock&apos;s superforecasters win by running the loop
+              honestly and often.
+              <Cite id="tetlock-gardner2015" label="Tetlock &amp; Gardner 2015" />{" "}
+              The pairing is not the insight.{" "}
+              <B>The bet is narrower: the loop fails for want of a
+              substrate</B> &mdash; people don&apos;t lack the will to
+              read or rehearse, they lack a place where corrections
+              accumulate instead of fading when the meeting ends. The
+              binding constraint is the missing ledger, not the
+              missing practice.
             </P>
             <P>
               <B>
@@ -2542,6 +2574,189 @@ export default function PaperPage() {
             </P>
           </Section>
 
+          {/* ── Butterfly ───────────────────────────────────────────── */}
+          <Section id="butterfly" label="Butterfly">
+            <P>
+              Fate measures what reality does to what the world view{" "}
+              <em>believed</em>: it takes an open question, lets
+              reality land on it, and scores the belief.{" "}
+              <B>Butterfly</B> measures what reality does to what a
+              character <em>did</em>: it takes a pivotal decision,
+              traces its consequences forward, and reads the
+              decision&apos;s true effect as the set of Fate outcomes
+              on the threads downstream of it. Fate is reality landing
+              inward on a belief; Butterfly is consequence radiating
+              outward from a choice. They are the two arrows of the
+              same engine &mdash; what you believed and what you did,
+              each answered for by reality.
+            </P>
+            <P>
+              Butterfly is not a rating of a player&apos;s skill; that
+              is what{" "}
+              <a href="#research" className="underline hover:text-white/80">ELO</a>{" "}
+              already does, and it is left exactly as it is. Butterfly
+              is decision-anchored, not player-anchored. The question
+              is not &ldquo;is this actor good at winning?&rdquo; but
+              &ldquo;this specific pivotal choice &mdash; what did it
+              set in motion, and how did that ultimately land on the
+              character who made it?&rdquo; It borrows the fan-out
+              image of the butterfly effect &mdash; a small choice, a
+              wide divergent consequence &mdash; but not its
+              pop-science claim: consequence here is{" "}
+              <em>trackable in retrospect</em> and weighted by stake,
+              the opposite of unforeseeable.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
+              Sealed at commit &mdash; two kinds of opponent
+            </h3>
+            <P>
+              Butterfly&apos;s atom is a committed decision under
+              uncertainty, sealed at the moment of choice: the option
+              taken, the alternatives that were live, what was at
+              stake, and the stance held at commit. Whether there was
+              an opponent is a property of the decision, not a
+              requirement of the engine, and decisions come in two
+              flavours treated identically downstream. A{" "}
+              <B>strategic</B> decision&apos;s uncertainty is another
+              actor&apos;s response: it seals the game-theoretic
+              structure &mdash; the{" "}
+              <a href="#research" className="underline hover:text-white/80">Decision Matrix</a>&apos;s
+              {" "}axis, shape, and both seats&apos; stake deltas in{" "}
+              <Tex>{String.raw`[-4, +4]`}</Tex> &mdash; and the stance
+              is what the committer expected the other seats to do. An{" "}
+              <B>existential</B> decision&apos;s uncertainty is the
+              world: it seals the option set and stake, and the stance
+              is a probability over how reality would land &mdash;
+              structurally a side bet on a Fate thread, with reality
+              playing the other seat. The two-player game was never the
+              essential thing; it was the case where the uncertainty
+              bet against happened to be an agent rather than the
+              world&apos;s indifference.
+            </P>
+            <P>
+              Both seal at commit and never edit &mdash; the decision
+              frozen as it was actually made, under the information
+              actually available, so hindsight cannot rewrite what the
+              choice really was. This seal is the non-negotiable
+              discipline: the causal trace is only honest if its origin
+              cannot be rewritten once the consequences are known. And
+              it binds <em>harder</em> on the existential case, not
+              softer &mdash; a two-player game leaves external structure
+              (the shape, the opponent&apos;s options) constraining what
+              you can later claim you believed, but a solo bet&apos;s
+              only record of what you expected is the number you sealed.
+              The commit-time probability has to be captured as a
+              number, at commit, non-editable, or the
+              process-versus-luck distinction quietly collapses into
+              &ldquo;I knew it all along.&rdquo;
+            </P>
+            <P>
+              Making the existential case first-class is a correction,
+              not an add-on. Anchored only on the two-player matrix,
+              Butterfly would be blind to the decisions that don&apos;t
+              look adversarial &mdash; the relocation, the
+              hold-or-fold, the slow drift nobody red-teams because
+              there is no obvious opponent &mdash; which is exactly
+              where good operators get hurt. It is also what makes the
+              solo, personal-simulation mode coherent: most of an
+              operator&apos;s own decisions are bets against a market, a
+              diagnosis, a trajectory, not duels with a named adversary,
+              and the existential flavour is what makes &ldquo;a life
+              authored deliberately is a working model you decide
+              against&rdquo; true rather than aspirational.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
+              Causal reach, bounded by the graph
+            </h3>
+            <P>
+              A butterfly&apos;s reach is the subgraph causally
+              downstream of the sealed decision node, traced along the{" "}
+              <a href="#planning" className="underline hover:text-white/80">reasoning graph</a>&apos;s
+              {" "}existing causal edges &mdash; <em>causes</em>,{" "}
+              <em>enables</em>, <em>risks</em>, <em>requires</em>. Only
+              threads reachable from the decision by those edges count
+              as its butterfly, which bounds attribution structurally
+              rather than by storytelling and keeps the claim
+              &ldquo;this choice caused this downstream fate&rdquo;
+              falsifiable. The honest caveat: long-range causal
+              attribution is hard &mdash; when a thread resolves badly
+              several scenes later, many decisions sit between &mdash;
+              so Butterfly leans on the explicit subgraph rather than
+              claiming proof; reach past the edges is suggestive, not
+              certain. Only pivotal, high-stake decisions earn a
+              tracked, long-lived butterfly; routine moves decay out of
+              the ledger, the same curation Fate applies through volume.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
+              Read as Fate, revised over time
+            </h3>
+            <P>
+              Butterfly invents no new scoring rule. A decision&apos;s
+              effect is literally the fate that befell the threads in
+              its causal subgraph &mdash; how they ultimately resolved,
+              their stance closures and resolution quality. A choice
+              that looked small at commit and detonated an arc later
+              has a long reach; one that resolved locally and changed
+              nothing has a short one. The verdict does not close at
+              resolution: it revises as more downstream threads
+              resolve, and can reverse &mdash; a decision that looked
+              good early and aged badly, or the reverse. This is the
+              feature, not the flaw: a decision that only half-resolves,
+              or reverses years later, is not a scoring failure but a
+              butterfly whose causal subgraph has not finished
+              resolving.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
+              The loop it closes
+            </h3>
+            <P>
+              A settled butterfly becomes a prior the next round of{" "}
+              <a href="#loop" className="underline hover:text-white/80">Calibration</a>{" "}
+              inherits. Forward play without retrospective is rehearsal
+              you never audit; Butterfly is the audit, and the audit
+              feeds the next rehearsal. It is the answer to the
+              question proper scoring could not handle &mdash; not
+              &ldquo;was the probability calibrated?&rdquo; but
+              &ldquo;was the decision well-made, and what did it
+              ultimately cause?&rdquo;
+            </P>
+            <P>
+              One question stays open, the way Fate&apos;s closure rule
+              once did: whether a butterfly&apos;s reach is{" "}
+              <em>bounded</em> &mdash; it settles once the threads it
+              caused have closed &mdash; or <em>open-ended</em>, still
+              propagating as long as new threads trace causally back to
+              it, so the decision casts its shadow indefinitely. That
+              choice decides whether a butterfly ever finishes, and we
+              have not made it.
+            </P>
+            <P>
+              <B>What is built, and what is owed.</B> The structure is
+              symmetric to Fate and rests on machinery that already
+              exists &mdash; the two-player game-theoretic
+              deconstruction, the reasoning graph&apos;s causal edges,
+              stake deltas, and Fate&apos;s own thread resolutions. The
+              seal is done in principle and non-negotiable. What
+              remains owed: the one-player existential decision record
+              &mdash; option set, stake, and a sealed commit-time
+              stance &mdash; to sit beside the two-player game; a worked
+              example of a decision&apos;s butterfly traced across its
+              subgraph; a cadence for when the verdict re-evaluates; and
+              the bounded-versus-open-ended closure rule. Named, not yet
+              shown.
+            </P>
+            <P>
+              Fate and Butterfly &mdash; what you believed and what you
+              did &mdash; each answered for by reality: one the
+              mind&apos;s bearing on the undecided, the other the long
+              causal shadow of the decided.
+            </P>
+          </Section>
+
           {/* ── Validation ──────────────────────────────────────────── */}
           <Section id="validation" label="Validation">
             <P>
@@ -2883,17 +3098,15 @@ export default function PaperPage() {
               average swing magnitude.
             </P>
             <P>
-              Forecast calibration is a separate ledger from narrative
-              grading. Probabilistic forecasts &mdash; thread-stance
-              probabilities over named outcomes, scenario softmax
-              cohorts &mdash; are scored against landed reality with a
-              strictly proper scoring rule
+              Forecast and decision evaluation is a separate ledger
+              from narrative grading, and it lives in{" "}
+              <a href="#butterfly" className="underline hover:text-white/80">Butterfly</a>
+              {" "}&mdash; which reads the Fate a sealed choice
+              actually caused rather than scoring a probability in
+              isolation; where a bare forecast must still be graded on
+              its own, the discipline stays a strictly proper rule.
               <Cite id="brier1950" label="Brier 1950" />
-              <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />.
-              Strict propriety is the technical reason it&apos;s the
-              right tool: the rule is uniquely minimised by reporting
-              the operator&apos;s true belief, so honest reporting is
-              the dominant strategy.
+              <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />
             </P>
           </Section>
 
@@ -3313,8 +3526,8 @@ export default function PaperPage() {
                 },
                 {
                   name: "decision matrix",
-                  caption: "2\u00d72 game-theory decomposition per beat",
-                  body: "strategic structure beneath the prose. Each game carries an axis (14 types \u2014 disclosure / trust / stakes\u2026) and a shape (19 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. Additive: written to scene.gameAnalysis, never mutates deltas.",
+                  caption: "1- or 2-player decision per beat",
+                  body: "the decision structure beneath the prose. A two-player decision is a 2\u00d72 game \u2014 an axis (14 types \u2014 disclosure / trust / stakes\u2026) and a shape (19 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. A one-player decision seals the option set, the chosen option, the stake, and the stance held at commit \u2014 a staked bet on a Fate thread, reality in the other seat. Additive: written to scene.gameAnalysis, never mutates deltas.",
                   color: "#A855F7",
                 },
                 {
@@ -3382,8 +3595,9 @@ export default function PaperPage() {
               conventions, attractors, agents, rules, pressures, and
               landmarks &mdash; so each CRG reasons within the same
               world-physics rather than re-deriving it. Loose observations and source
-              fragments queue in an editable <B>driver</B> surface until
-              they fold into one of these graphs and become canonical.
+              fragments collect in the editable <B>Priors</B> surface
+              until they fold into one of these graphs and become
+              canonical.
               The node and edge taxonomy &mdash; eight node types across
               pressure, substrate, and bridge tiers, plus eight edge
               types &mdash; is enumerated in the{" "}
@@ -4329,56 +4543,38 @@ export default function PaperPage() {
               <Cite id="schelling1960" label="Schelling 1960" />
             </P>
             <P>
-              <B>The board picks the geometry.</B> A War Room
-              renders the world view as a board the operators can
-              read at a glance. The substrate underneath stays the
-              same; the surface on top is chosen to match how the
-              modelled world actually moves. Four spatial
-              primitives are first-class:
+              <B>The console shows the board; the controllers play
+              it.</B> A War Room renders the world view on the shared
+              screen &mdash; the laptop console everyone reads at a
+              glance &mdash; while each player works a phone as a
+              controller. The render is one of two surfaces, the same
+              two the app is built around:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Graph</B> &mdash; nodes and edges. The default;
-                  network reads of who knows whom, who controls what,
-                  what causes what. Suits influence campaigns,
+                  <B>Graph</B> &mdash; the raw substrate: nodes and
+                  edges, who knows whom, who controls what, what
+                  causes what. The default for influence campaigns,
                   conspiracies, supply chains.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Grid</B> &mdash; rectangular cells. Discrete
-                  positions with adjacency that respects rows and
-                  columns. Suits city blocks, market tiers, org
-                  charts, abstracted territory.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Hex</B> &mdash; hexagonal cells. Equidistant
-                  neighbours and natural radial movement; the
-                  classical wargame board. Suits military campaigns,
-                  pursuit dynamics, regional contests.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Map</B> &mdash; continuous geographic space.
-                  Coordinates, distances, terrain. Suits real-world
-                  scenarios where actual geography is the binding
-                  constraint &mdash; logistics, geopolitics,
-                  expedition modelling.
+                  <B>Board</B> &mdash; a board-game-style map with
+                  nested maps: continuous space, territories, terrain
+                  you can drill into. The fit wherever geography or
+                  position is the binding constraint &mdash;
+                  logistics, geopolitics, regional contests.
                 </span>
               </li>
             </ul>
             <P>
               Switching surface is re-projection, not rebuilding
-              &mdash; the same substrate read through whichever
-              geometry the room needs.
+              &mdash; the same substrate read as whichever of the two
+              the room needs.
             </P>
             <P>
               <B>Information-asymmetry driven card gameplay.</B>{" "}
@@ -4541,6 +4737,51 @@ export default function PaperPage() {
           {/* ── The Loop ─────────────────────────────────────────────── */}
           <Section id="loop" label="The Loop">
             <P>
+              <B>Two kinds of play: Calibration and Rehearsal.</B>{" "}
+              Playing Meridians is two rhythms.{" "}
+              <B>Calibration</B> sharpens perspectives, and it is{" "}
+              <em>per-perspective</em> by design: every seat carries
+              its own open threads, personal to that character&apos;s
+              story, and Calibration sharpens <em>that seat&apos;s</em>{" "}
+              stance on <em>its own</em> questions as priors
+              accumulate. It is not a forecasting pool that averages
+              the room into one consensus &mdash; which is exactly
+              what you must not do when a seat models an adversary who
+              should surprise you. The adversary&apos;s seat keeps its
+              own deliberately hostile priors; divergence across
+              perspectives is preserved. What is shared is the board,
+              not the belief: one reality every seat reads, each
+              holding a distinct and often opposed calibrated stance.
+              Threads are not fixed either &mdash; new ones are added
+              as the story turns, so each perspective is an evolving
+              decision system.
+            </P>
+            <P>
+              <B>Rehearsal</B> explores the uncertainty &mdash; and
+              must not re-enact the prior. When Calibration settles,
+              only the actions a perspective has <em>committed to or
+              holds at high certainty</em> are played forward to
+              advance the simulation; everything still contested stays
+              open. Rehearsal takes that uncertain space into the War
+              Room and plays the Compass&apos;s possible trajectories
+              forward &mdash; board, card, and information dynamics, a
+              compressed simulation of reality, to rehearse possible
+              futures. The discipline that earns it: a committed
+              stance is a <em>soft prior, not a constraint</em>;
+              contested threads are protected from forced resolution
+              and each play-through carries a divergence directive, so
+              the room explores the state space rather than confirming
+              its own consensus back to itself. Without that,
+              calibrate-then-rehearse quietly launders a prior into a
+              target &mdash; the same way abduction can silently flip
+              into deduction once a prior commits. Every play-through
+              is a fork the substrate keeps and grades against what
+              reality actually returns &mdash; the external check that
+              keeps the loop from collapsing into a self-consistent
+              fiction, audited in retrospect by{" "}
+              <a href="#butterfly" className="underline hover:text-white/80">Butterfly</a>.
+            </P>
+            <P>
               The War Room is the heaviest mode of engagement,
               not the only one. Five surfaces share one
               substrate; the value of the product is the{" "}
@@ -4550,11 +4791,19 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Update priors.</B> Articles, transcripts,
-                  observations drop into the queue between
-                  sessions. The opening walks it; what shifts a
-                  prior enters the substrate. Automated feeds
-                  are optional aids; the human curates.
+                  <B>Build the Priors.</B> Between sessions a human
+                  collects observations against the room&apos;s open
+                  questions, filtering and structuring them (web
+                  search assists). <B>Priors</B> is perspective-based
+                  &mdash; each perspective keeps its own, a general
+                  one by default &mdash; and reads out a calibrated,
+                  running probability on how each thread resolves
+                  across the chronology its priors were added, a
+                  belief that moves as evidence accumulates. Fold a
+                  perspective&apos;s Priors into the world view and
+                  the stances commit &mdash; a calibrated local
+                  stance that guides move generation, the next N
+                  scenes that carry the story forward.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -4609,12 +4858,36 @@ export default function PaperPage() {
             <P>
               <B>What makes it compound.</B> Each mode feeds the
               others. A query surfaces a coverage gap that goes
-              into the queue. A queue update reweights the
+              into Priors. A Priors update reweights the
               question bank. A well-answered question becomes a
               prior the next play uses. A play generates new
               questions, new scenarios, new entries the query
               surface pulls from tomorrow. Whichever surface the
               operator engages, the work compounds.
+            </P>
+            <P>
+              <B>A life accumulates the same way.</B> Gameplay one
+              step at a time &mdash; and a life is the longest game
+              there is. The decisions that compound (what to build,
+              who to keep close, which bet to make) accumulate from
+              thousands of small thoughts and actions, the way a
+              narrative accumulates from scenes. The substrate that
+              holds a market regime holds a life: each observation
+              curated, each call committed, each outcome scored
+              &mdash; so a life authored deliberately is a working
+              model you decide against, not a past you remember.
+            </P>
+            <P>
+              <B>Be honest about where the loop bites.</B> Play earns
+              its keep where feedback is fast and clean &mdash;
+              markets, politics more slowly. A career pivot or a
+              relocation resolves once, ambiguously, years later: the
+              partial, deferred outcomes the write-back handles worst.
+              Not a refutation &mdash; rehearsing a one-shot decision
+              still beats walking in cold &mdash; but it sets the
+              division of labour: play to sharpen the reflexes you use
+              weekly, accumulate to face the few decisions you only
+              get to make once.
             </P>
           </Section>
 
@@ -4640,7 +4913,7 @@ export default function PaperPage() {
               training is the practice.</B> Expert systems are
               not one-time deliverables &mdash; they decay the
               moment the world stops being updated. Every session
-              is a training pass: the team walks the queue,
+              is a training pass: the team walks its Priors,
               plays the future forward, scores the round,
               refines the question bank, disagrees with the
               distractors. Stop playing for a quarter and the
@@ -4758,8 +5031,8 @@ export default function PaperPage() {
               The specific tools below are the current stack;
               component names will change as the ecosystem
               moves. The architectural read is what to take
-              forward: local-first, LLM-as-gateway, host-runs-
-              the-room.
+              forward: local-first, laptop-console /
+              mobile-controllers, LLM-as-gateway.
             </p>
             <P>
               The substrate ships as a single Next.js application
@@ -4790,20 +5063,35 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>IndexedDB</B> &mdash; local persistence for
-                  everything that compounds. No backend database;
-                  nothing leaves the browser unless the operator
-                  chooses.
+                  <B>IndexedDB on the host</B> &mdash; the single
+                  source of truth, serialised to disk as an{" "}
+                  <B>encrypted{" "}
+                  <code className="text-white/70">.meridian</code>{" "}
+                  file</B>. No backend database; it exports as one
+                  encrypted artifact the game master backs up and
+                  carries between machines.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>LLM gateway (OpenRouter)</B> &mdash; routes
-                  to the cheapest model that meets each pipeline
-                  stage&apos;s bar; current split is DeepSeek for
-                  generation, Gemini Flash for planning and
-                  analysis.
+                  <B>PIN-protected ngrok tunnel</B> &mdash; exposes
+                  the one host at a public URL so phones reach it;
+                  no separate instances, every device hits the same
+                  store, and a PIN gates who joins.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-white/25 shrink-0">·</span>
+                <span>
+                  <B>LLM gateway (OpenRouter)</B> &mdash; our
+                  provider, for its opt-in Zero Data Retention
+                  policy; routes to the cheapest model that clears
+                  each stage&apos;s bar (currently DeepSeek for
+                  generation, Gemini Flash for planning / analysis).
+                  The privacy boundary, not the storage layer (see
+                  below); local LLMs are theoretically supportable,
+                  not productised.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -4812,78 +5100,83 @@ export default function PaperPage() {
                   <B>OpenAI embeddings + Replicate</B> &mdash;
                   1536-dim vectors over every scene, beat, and
                   proposition for semantic search; Seedream 4.5
-                  for board art and covers.
+                  for board art and covers. Same caveat: content
+                  on the wire.
                 </span>
               </li>
             </ul>
 
             <P>
-              <B>Local-first is a feature, not an inconvenience.</B>
-              {" "}A private War Room is the operator&apos;s
-              substrate on the operator&apos;s hardware &mdash; no
-              vendor with read access to confidential plays, no
-              per-user database on Meridians&apos;s side. The
-              operator&apos;s machine <em>is</em> the room&apos;s
-              server. This is what makes the privacy moat real and
-              what keeps per-private-room infrastructure cost at
-              effectively zero.
+              <B>Local-first is the storage stance; privacy is a
+              setting, not a default win.</B> The substrate sits on
+              your machine as an encrypted file &mdash; no per-user
+              database on our side &mdash; but the AI has to read it,
+              so every call leaves through the gateway. We route
+              through <B>OpenRouter</B> for one reason: its{" "}
+              <B>Zero Data Retention</B> policy can be opted into, so
+              providers store nothing. Local models are theoretically
+              supportable, not productised. The honest residual,
+              named as a risk: ZDR stops storage, not processing
+              &mdash; where the provider itself is the objection,
+              only local inference clears it, and we don&apos;t ship
+              that yet.
             </P>
-
             <P>
-              <B>One host, many seats.</B> A local host doesn&apos;t
-              need to ship the room to the cloud to invite players.
-              The host runs the app; an{" "}
+              <B>One game master, one master device &mdash; and a
+              backup discipline.</B> One person owns the machine and
+              the room: keeps the data safe, runs the weekly session,
+              refines the models, convenes the table; everyone else
+              joins as a seat. That custody is the risk too &mdash;
+              months of irreplaceable priors on one device is a bus
+              factor of one, and Electron stops browser eviction but
+              not disk failure or a departing custodian. The fix is
+              the operator&apos;s: versioned encrypted{" "}
+              <code className="text-white/70">.meridian</code> copies,
+              plus an optional in-app online drive for off-device
+              ones. The game master holds the truth &mdash; and the
+              duty of keeping it.
+            </P>
+            <P>
+              <B>Think console and controllers.</B> The laptop is
+              the console &mdash; it holds the game state and drives
+              the shared screen; the phones are controllers. A{" "}
+              <B>PIN-protected</B>{" "}
               <a
                 href="https://ngrok.com"
                 className="text-white/70 underline-offset-2 hover:underline"
               >
                 ngrok
               </a>{" "}
-              tunnel exposes the local Next.js server through a
-              temporary public URL; guests scan a <B>QR code</B>{" "}
-              on the main display and join from their phones, no
-              install required. The host owns the substrate;
-              phones become controllers. The main display (a
-              laptop, a TV in the room, a shared screen on a video
-              call) carries the map / board / graph &mdash; the{" "}
-              <em>seeing</em> surfaces every operator watches
-              together. Each phone is a private hand: cards to
-              play, the private log, side-channel disclosures, the
-              disclose / leak / hold decision. Combined with{" "}
-              <B>screen sharing</B> in whatever meeting tool the
-              room already has open, remote players see the same
-              board the local players see and play through their
-              phones the same way. The architectural payoff is
-              that a War Room can be impromptu &mdash; a host
-              fires up the app, drops a QR code in the chat, the
-              table is dealt.
+              tunnel gives the console a public URL; players scan a{" "}
+              <B>QR code</B> to join, no install. The shared screen
+              carries the map / board / graph everyone watches; each
+              phone is a private hand &mdash; cards, the private log,
+              the disclose / leak / hold call &mdash; holding no copy
+              of the substrate, only sending inputs for the console
+              to apply. Between sessions the controller is still the
+              easy way to feed the room: a note into Priors, the
+              contextual chat, the belief lines moving on your
+              threads. So a room is impromptu &mdash; open the app,
+              drop the QR in the chat, deal &mdash; and mobile safety
+              is only ever as strong as ngrok and the PIN that gate
+              it.
             </P>
-
             <P>
-              <B>Electron for the coherent install.</B> The browser
-              experience is the daily driver, but a War Room
-              instituted as a habit deserves to feel like an app,
-              not a tab. An Electron bundle wraps the same Next.js
-              build into a single binary the operator launches
-              like any desktop application &mdash; keyboard
-              shortcuts behave, the IndexedDB substrate persists
-              in a known location, the tunnel-and-QR surface is
-              one menu item away. Same code; the surface around it
-              just stops being a tab among many.
+              <B>Electron for the install.</B> An Electron bundle
+              wraps the same build into a desktop binary, so the room
+              feels like an app, not a tab &mdash; shortcuts, a known
+              persistence location, the tunnel-and-QR surface one menu
+              item away.
             </P>
-
             <P>
-              <B>Scrapers for the queue.</B> The queue lives or
-              dies on what fresh signal arrives. Operators
-              curate by hand today; the architectural extension
-              is a layer of <em>scrapers</em> aggregating from
-              sources the room cares about &mdash; markets,
-              news, sector trackers, regulatory filings,
-              relevant literature. Scrapers don&apos;t bypass
-              the human queue; they pipe candidates into it.
-              Scope is still being worked out (which sources,
-              what cadence, how aggressively to deduplicate);
-              direction is clear, shape isn&apos;t committed.
+              <B>Priors are human-made, not scraped.</B> A person
+              authors each prior &mdash; web search enhances the
+              drafting, but the human filters the noise, structures
+              the prior, and sets the open-ended threads worth
+              calibrating. That is the humanistic bet: people decide
+              what matters, the engine only quantifies it &mdash;
+              sharpening judgement before the war room meets to argue
+              it.
             </P>
           </Section>
 
@@ -5070,8 +5363,18 @@ export default function PaperPage() {
               narrative is concrete.
             </P>
             <P>
-              <B>Honest risks.</B> Seven we are watching, in rough
+              <B>Honest risks.</B> Nine we are watching, in rough
               order of worry.{" "}
+              <em>Inference data path</em> &mdash; content crosses
+              the wire on every call; opt-in ZDR closes storage, but
+              a third party still processes it, and where the model
+              or its jurisdiction is itself the objection only local
+              inference would clear it &mdash; which we don&apos;t
+              yet ship.{" "}
+              <em>Substrate durability</em> &mdash; the irreplaceable
+              asset sits on one device, bus factor of one; encrypted
+              backups and the optional online drive help, but the
+              default puts data safety on the operator.{" "}
               <em>Adoption friction</em> &mdash; weekly rituals
               are hard to sustain; week-4 / 8 / 12 retention is
               the leading indicator.{" "}
@@ -5122,7 +5425,10 @@ export default function PaperPage() {
               next room inherits the priors. Any coherent text
               can seed the first session &mdash; a history, a
               paper, a novel, a doctrine, a market brief. After
-              that, the room authors its own world.
+              that, the room authors its own world. The same holds
+              for a life: authored one deliberate step at a time,
+              it becomes a world view you can play against rather
+              than a past you merely remember.
             </P>
             <P>
               Three things we believe.{" "}
