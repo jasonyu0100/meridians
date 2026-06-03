@@ -750,42 +750,66 @@ function ShapeCurve({
 // LLM cost amortises across a cohort so per-player marginal cost is
 // cents per season even on a heavy game.
 
-type PrivateTier = {
-  tier: string;
+// Cost is human hours, not LLM. So price the service-intensity, and
+// unbundle three independent dials: a one-time setup, a removable
+// facilitation retainer, and the cheap recurring software line. Every
+// number is a hypothesis — price the first pilots by hand; publish a
+// rate card only after.
+
+type UnbundledLine = {
+  line: string;
+  shape: string;
   price: string;
-  marginFacilitated: string;
-  marginSelf: string;
+  built: string;
+};
+
+const UNBUNDLED_LINES: UnbundledLine[] = [
+  {
+    line: "Software / access",
+    shape: "recurring · SaaS",
+    price: "$99–299 / mo · per room",
+    built: "The only line a self-facilitating client pays. ~75–85% — no human in it.",
+  },
+  {
+    line: "Facilitation",
+    shape: "recurring · removable",
+    price: "per-session or monthly retainer",
+    built: "Sunsets to zero once the client's own GM is certified — graduation is a price cut they choose, not a margin shift we hope for.",
+  },
+  {
+    line: "Setup / priming",
+    shape: "one-time · services",
+    price: "$15–40K · by corpus depth",
+    built: "Recovered where the cost occurs, not amortised into subs. Pilot-end only — never at the entry door.",
+  },
+];
+
+type Motion = {
+  motion: string;
+  price: string;
   role: string;
 };
 
-const PRIVATE_TIERS: PrivateTier[] = [
+const MOTIONS: Motion[] = [
   {
-    tier: "Solo",
-    price: "$19 / mo",
-    marginFacilitated: "30–40%",
-    marginSelf: "30–40%",
-    role: "Funnel into Team. Near-zero net revenue, not the bet.",
+    motion: "Free room",
+    price: "$0 · capped, self-serve",
+    role: "The no-friction taste; costs cents to serve. Top of funnel.",
   },
   {
-    tier: "Team",
-    price: "$99 / mo",
-    marginFacilitated: "50–60%",
-    marginSelf: "75–85%",
-    role: "Core paid surface. Committees, cells, leadership teams.",
+    motion: "Workshop",
+    price: "one-off · ~few hundred – $2K",
+    role: "First paid touch, priced like a team offsite. Leaves a seeded substrate + a generated deck — no setup fee, no recurring obligation.",
   },
   {
-    tier: "Pro",
-    price: "$499 / mo",
-    marginFacilitated: "35–45%",
-    marginSelf: "70–80%",
-    role: "Software + optional senior facilitation.",
+    motion: "Recurring",
+    price: "software base + sunsetting facilitation",
+    role: "Opt-in after value is felt. Where the client-led margin lift shows up.",
   },
   {
-    tier: "Pilot",
+    motion: "Pilot",
     price: "$80–120K / 6mo",
-    marginFacilitated: "40–55%",
-    marginSelf: "65–75%",
-    role: "Wedge motion. Defence, hedge, political-research.",
+    role: "Wedge motion (defence, hedge, political-research). Priming included; renewal steps down to software + light facilitation.",
   },
 ];
 
@@ -831,45 +855,76 @@ const PUBLIC_STREAMS: PublicStream[] = [
 function BusinessModels() {
   return (
     <div className="my-8 space-y-8">
-      {/* ── Private ───────────────────────────────────────────────── */}
+      {/* ── Private: three lines ──────────────────────────────────── */}
       <div>
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <h4 className="text-[12.5px] font-semibold tracking-wide text-white/80">
-            Private — subscription-as-substrate
+            Private — priced by service-intensity, not features
           </h4>
           <span className="text-[10px] text-white/35 font-mono tabular-nums">
-            margin = LLM + CS + facilitation + amortised CAC
+            three dials, not one ladder
           </span>
         </div>
         <div className="rounded-lg border border-white/6 bg-white/1.5 overflow-hidden">
           <table className="w-full text-[11.5px] table-fixed">
             <colgroup>
-              <col className="w-[13%]" />
-              <col className="w-[17%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[44%]" />
+              <col className="w-[18%]" />
+              <col className="w-[18%]" />
+              <col className="w-[22%]" />
+              <col className="w-[42%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-white/35 border-b border-white/8 bg-white/1.5">
-                <th className="px-3 py-2 font-medium" rowSpan={2}>Tier</th>
-                <th className="px-3 py-2 font-medium font-mono tabular-nums" rowSpan={2}>Price</th>
-                <th className="px-3 py-1 font-medium text-center text-emerald-400/70 border-b border-white/5" colSpan={2}>Loaded margin</th>
-                <th className="px-3 py-2 font-medium" rowSpan={2}>Role</th>
-              </tr>
-              <tr className="text-left text-[9.5px] uppercase tracking-wider text-white/30 border-b border-white/8 bg-white/1.5">
-                <th className="px-3 pb-2 pt-1 font-normal font-mono tabular-nums">w/ our facilitation</th>
-                <th className="px-3 pb-2 pt-1 font-normal font-mono tabular-nums">client-led</th>
+                <th className="px-3 py-2 font-medium">Line</th>
+                <th className="px-3 py-2 font-medium">Shape</th>
+                <th className="px-3 py-2 font-medium font-mono tabular-nums">Illustrative</th>
+                <th className="px-3 py-2 font-medium">Built to</th>
               </tr>
             </thead>
             <tbody>
-              {PRIVATE_TIERS.map((t) => (
-                <tr key={t.tier} className="border-b border-white/5 last:border-b-0 align-baseline">
-                  <td className="px-3 py-2.5 font-medium text-white/85">{t.tier}</td>
-                  <td className="px-3 py-2.5 font-mono tabular-nums text-white/65">{t.price}</td>
-                  <td className="px-3 py-2.5 font-mono tabular-nums text-emerald-400/75">{t.marginFacilitated}</td>
-                  <td className="px-3 py-2.5 font-mono tabular-nums text-emerald-400/90">{t.marginSelf}</td>
-                  <td className="px-3 py-2.5 text-white/55 leading-snug">{t.role}</td>
+              {UNBUNDLED_LINES.map((l) => (
+                <tr key={l.line} className="border-b border-white/5 last:border-b-0 align-baseline">
+                  <td className="px-3 py-2.5 font-medium text-white/85 leading-snug">{l.line}</td>
+                  <td className="px-3 py-2.5 text-white/55 leading-snug">{l.shape}</td>
+                  <td className="px-3 py-2.5 font-mono tabular-nums text-white/65 leading-snug">{l.price}</td>
+                  <td className="px-3 py-2.5 text-white/55 leading-snug">{l.built}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Private: the motions (funnel) ─────────────────────────── */}
+      <div>
+        <div className="flex items-baseline justify-between gap-2 mb-2">
+          <h4 className="text-[12.5px] font-semibold tracking-wide text-white/80">
+            The motions — a wide, cheap front door onto the substrate
+          </h4>
+          <span className="text-[10px] text-white/35 font-mono tabular-nums">
+            free → workshop → recurring → pilot
+          </span>
+        </div>
+        <div className="rounded-lg border border-white/6 bg-white/1.5 overflow-hidden">
+          <table className="w-full text-[11.5px] table-fixed">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[30%]" />
+              <col className="w-[54%]" />
+            </colgroup>
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-white/35 border-b border-white/8 bg-white/1.5">
+                <th className="px-3 py-2 font-medium">Motion</th>
+                <th className="px-3 py-2 font-medium font-mono tabular-nums">Price</th>
+                <th className="px-3 py-2 font-medium">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MOTIONS.map((m) => (
+                <tr key={m.motion} className="border-b border-white/5 last:border-b-0 align-baseline">
+                  <td className="px-3 py-2.5 font-medium text-white/85 leading-snug">{m.motion}</td>
+                  <td className="px-3 py-2.5 font-mono tabular-nums text-white/65 leading-snug">{m.price}</td>
+                  <td className="px-3 py-2.5 text-white/55 leading-snug">{m.role}</td>
                 </tr>
               ))}
             </tbody>
@@ -918,13 +973,17 @@ function BusinessModels() {
       </div>
 
       <p className="text-[10.5px] text-white/35 italic leading-relaxed">
-        Loaded margin folds LLM cost, customer success, facilitation hours, and amortised CAC
-        &mdash; not the 90%+ figure an LLM-only view produces. The <em>client-led</em> column is
-        the structural ceiling: when the organisation runs its own facilitation, the service line
-        drops out of COGS and margins approach software-shape. The pitch to a serious operator is
-        to graduate there. Solo at $19 is a funnel, not a revenue line; the base case rests on
-        Team subs and pilot ACV. Public economics stay separate &mdash; the cohort doesn&apos;t
-        exist yet.
+        The cost is human hours, not LLM &mdash; a session is rounding error; facilitation,
+        customer success, and the priming build-out are the spend. So price the service-intensity
+        and unbundle it: a one-time <em>setup</em> recovered where it occurs, a <em>facilitation</em>
+        retainer built to sunset, and the cheap recurring <em>software</em> line that finally
+        carries software-shape margin on its own. Graduation stops being a margin shift we hope for
+        and becomes a price cut the client chooses &mdash; the investment thesis turned into a
+        billing mechanic. The entry door stays wide and nearly free: a workshop leaves a seeded
+        substrate behind, so the cheapness buys a foothold on the moat rather than a one-night
+        stand, and no setup fee sits anywhere near it. Every number here is a hypothesis &mdash;
+        price the first pilots by hand and publish a rate card only once buyers have shown where
+        they flinch. Public economics stay separate; the cohort doesn&apos;t exist yet.
       </p>
     </div>
   );
@@ -5308,7 +5367,7 @@ export default function PaperPage() {
               {" "}per private room per month. That is the easy
               part. Once customer success, facilitation, and
               amortised CAC are folded in, contribution margin on
-              the facilitated tiers sits in the{" "}
+              facilitated engagements sits in the{" "}
               <span className="font-mono tabular-nums text-white/70">35&ndash;60%</span>
               {" "}band &mdash; respectable, but not the
               software-margin daydream an LLM-only view produces.
@@ -5323,8 +5382,9 @@ export default function PaperPage() {
               the heaviest line in COGS disappears and loaded
               margin steps up sharply &mdash;{" "}
               <span className="font-mono tabular-nums text-white/70">~75%+</span>
-              {" "}on Team and Pro, comparable on Pilot once the
-              priming work is done. The product pitch to a serious
+              {" "}on the recurring software line once the facilitation
+              retainer sunsets, comparable on Pilot once the priming
+              work is done. The product pitch to a serious
               operator is to get up to speed inside the first 90 days
               and run rooms internally thereafter; we keep
               answering hard questions but stop being a
@@ -5346,37 +5406,42 @@ export default function PaperPage() {
               <B>Entry, then the high-end follow-through.</B> The
               entry is the board-game bonding exercise (see{" "}
               <a href="#wedge" className="text-white/70 underline-offset-2 hover:underline">The Wedge</a>)
-              &mdash; priced to spread, not to earn: a one-off paid
-              workshop or a low per-seat month
-              (<span className="font-mono tabular-nums text-white/70">~$15&ndash;30</span>),
-              deliberately cheap so it lands in change-receptive orgs
-              and produces the case study. It is the validation
-              motion, not the revenue line. The tier it earns into is
-              a{" "}
+              &mdash; priced for the easiest yes, not to earn. A free
+              capped room is the no-friction taste; the first paid touch
+              is a one-off <em>workshop</em>, priced like a team offsite
+              (<span className="font-mono tabular-nums text-white/70">~few hundred&ndash;$2K</span>),
+              that leaves a seeded substrate and a generated deck behind
+              &mdash; no setup fee, no recurring obligation, so the
+              cheapness buys a foothold rather than a one-night stand.
+              It is the validation motion, not the revenue line. The
+              engagement it earns into is a{" "}
               <em>6-month pilot partnership</em> with a single defence
               contractor, hedge fund, or political-research shop
               &mdash; targeted ACV in the{" "}
               <span className="font-mono tabular-nums text-white/70">~$80&ndash;120K</span>
-              {" "}range, structured as priors-accumulation against
-              a real question. Services-heavy on day one and we
-              treat it that way: the pilot funds itself, produces
-              the case study the next ten sales require, and seeds
-              the substrate the client owns afterwards. In
-              parallel, Team subs ($99/mo) at boutique investment
-              committees, family offices, campaign cells, M&amp;A
-              teams, policy units &mdash; the lower-touch surface
-              that builds the recurring line.
+              {" "}range, priming included, structured as
+              priors-accumulation against a real question and stepping
+              down to software + light facilitation on renewal.
+              Services-heavy on day one and we treat it that way: the
+              pilot funds itself, produces the case study the next ten
+              sales require, and seeds the substrate the client owns
+              afterwards. In parallel, the recurring line &mdash;
+              software at{" "}
+              <span className="font-mono tabular-nums text-white/70">$99&ndash;299/mo per room</span>
+              {" "}plus a sunsetting facilitation retainer &mdash; at
+              boutique investment committees, family offices, campaign
+              cells, M&amp;A teams, policy units.
             </P>
             <P>
               <B>Scale math &mdash; scenarios.</B>{" "}
               <span className="font-mono tabular-nums text-white/70">Bear ~$500K</span>
-              {" "}&mdash; one pilot, no compounding, Team adoption
-              stalls.{" "}
+              {" "}&mdash; one pilot, no compounding, recurring
+              adoption stalls.{" "}
               <span className="font-mono tabular-nums text-white/70">Base ~$3.5M</span>
-              {" "}&mdash; ~200 Team subs + two to three running
+              {" "}&mdash; ~200 recurring rooms + two to three running
               pilots with at least one renewing into a multi-room
-              expansion. Solo is funnel-only in this base, not a
-              revenue line. Base alone is venture-defensible.
+              expansion. The free room is funnel-only in this base, not
+              a revenue line. Base alone is venture-defensible.
               Upside beyond this &mdash; public layer at scale, a
               betting vertical &mdash; we keep separate so it
               doesn&apos;t muddy the near-term plan.
@@ -5413,8 +5478,9 @@ export default function PaperPage() {
               the leading indicator.{" "}
               <em>Service margin disguised as software margin</em>
               {" "}&mdash; facilitation, customer success, and CAC
-              keep loaded margin in the 35&ndash;60% band on
-              facilitated tiers until clients self-facilitate.{" "}
+              keep loaded margin in the 35&ndash;60% band while the
+              facilitation retainer is live, until clients
+              self-facilitate.{" "}
               <em>Behavioural moat fragility</em> &mdash; the real
               competitor is not a foundation model; it is a lighter
               tool that delivers 70% of the value for 10% of the
@@ -5427,9 +5493,10 @@ export default function PaperPage() {
               case study at a hedge fund may not port to defence
               or political research without a second priming
               motion.{" "}
-              <em>Solo as standalone</em> &mdash; weekly-commitment
-              products at therapy prices churn; Solo only works as
-              a funnel, never as a revenue centre.{" "}
+              <em>Entry conversion</em> &mdash; a free capped room and a
+              one-off workshop set a deliberately low bar; the risk is
+              whether that low-friction entry converts into recurring
+              rooms rather than stopping at a pleasant one-off.{" "}
               <em>Public-game cold start</em> &mdash; the hardest
               one; a free game with fifty players isn&apos;t a
               community.
