@@ -265,12 +265,19 @@ export async function reconcileExtensionAgainstNarrative(
   const sliceThreadDescs = Object.values(slice.threads).map((t) => t.description);
   const sliceSysConcepts = Object.values(slice.systemGraph?.nodes ?? {}).map((n) => n.concept);
 
-  // If the slice has nothing in a category, skip that category — the
-  // underlying prompt handles empty inputs but there's no point paying
-  // an LLM round-trip for nothing.
+  // A reconcile phase only produces usable merges when BOTH sides have
+  // content: the slice supplies variants and the narrative supplies the
+  // existing records they fold into. If either side is empty there's
+  // nothing to align — `buildSliceToExistingMap` discards every mapping
+  // whose target isn't an existing name, so running the LLM against an
+  // empty narrative (the first extension into a fresh world) is pure
+  // wasted reasoning. Skip the round-trip; everything lands as net-new.
   const hasEntityWork =
-    sliceCharNames.length > 0 || sliceLocNames.length > 0 || sliceArtNames.length > 0;
-  const hasSemanticWork = sliceThreadDescs.length > 0 || sliceSysConcepts.length > 0;
+    (sliceCharNames.length > 0 || sliceLocNames.length > 0 || sliceArtNames.length > 0) &&
+    (existingCharNames.size > 0 || existingLocNames.size > 0 || existingArtNames.size > 0);
+  const hasSemanticWork =
+    (sliceThreadDescs.length > 0 || sliceSysConcepts.length > 0) &&
+    (existingThreadDescs.size > 0 || existingSysConcepts.size > 0);
   if (!hasEntityWork && !hasSemanticWork) return EMPTY_MERGE_PLAN;
 
   // Combined name sets — existing first, slice second. The reconcile
