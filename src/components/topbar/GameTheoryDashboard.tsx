@@ -13,6 +13,7 @@ import {
   computeEloHistories,
   ELO_INITIAL,
   gameScoreA,
+  isSolo,
   nashEquilibria,
   realizedIsNash,
   realizedOutcome,
@@ -728,8 +729,64 @@ function aggregate(
 
   ordered.forEach((ctx, idx) => {
     const g = ctx.game;
+
+    // ── Solo (1-player) decision ─────────────────────────────────────────
+    // Only the decider has a profile; reality is par, so there is no B side,
+    // no pair, no opponent. Updates the same profile fields the duel path does.
+    if (isSolo(g)) {
+      const pS = ensure(g.playerAId, resolvePlayerName(narrative, g.playerAId, g.playerAName));
+      pS.games++;
+      pS.asRoleA++;
+      const realizedS = realizedOutcome(g);
+      const dS = realizedS?.stakeDeltaA ?? 0;
+      pS.avgStakeDelta += dS;
+      pS.avgStakeAdvantage += dS; // no counterpart — advantage is the raw delta
+      if (!stakeHistory.has(g.playerAId)) stakeHistory.set(g.playerAId, []);
+      stakeHistory.get(g.playerAId)!.push(dS);
+      if (dS > 0) pS.positiveCells++;
+      else if (dS < 0) pS.negativeCells++;
+      pS.gameTypeCounts.set(g.gameType, (pS.gameTypeCounts.get(g.gameType) ?? 0) + 1);
+      pS.axisCounts.set(g.actionAxis, (pS.axisCounts.get(g.actionAxis) ?? 0) + 1);
+      const rS = stakeRank(g, "A");
+      if (rS) {
+        pS.sumRealizedRank += rS.rank;
+        pS.sumRealizedRankTotal += rS.total;
+      }
+      const scoreS = gameScoreA(g);
+      if (scoreS === 1) pS.wins++;
+      else if (scoreS === 0) pS.losses++;
+      else pS.draws++;
+      if (realizedIsNash(g)) {
+        pS.realizedNashCount++;
+        nashRealizedCount++;
+      } else {
+        offEq.push(ctx);
+      }
+      // ELO swing for the decider (vs par) from the precomputed history.
+      const prevS = runningElo.get(g.playerAId) ?? ELO_INITIAL;
+      const histS = histories.get(g.playerAId);
+      const idxS = histS?.games.indexOf(idx);
+      const postS = idxS !== undefined && idxS >= 0 ? histS!.ratings[idxS + 1] : prevS;
+      const swingS = postS - prevS;
+      runningElo.set(g.playerAId, postS);
+      if (!biggestSwing || Math.abs(swingS) > Math.abs(biggestSwing.ratingGain)) {
+        biggestSwing = {
+          gameCtx: ctx,
+          swinger: resolvePlayerName(narrative, g.playerAId, g.playerAName),
+          ratingGain: swingS,
+        };
+      }
+      if (swingS > 0 && (!pS.biggestUpset || swingS > pS.biggestUpset.ratingGain)) {
+        pS.biggestUpset = { opponentName: "the field", ratingGain: swingS, sceneIndex: ctx.sceneIndex };
+      }
+      return;
+    }
+
+    // ── Duel (2-player) game ─────────────────────────────────────────────
+    const bId = g.playerBId!;
+    const bName = g.playerBName ?? bId;
     const pA = ensure(g.playerAId, resolvePlayerName(narrative, g.playerAId, g.playerAName));
-    const pB = ensure(g.playerBId, resolvePlayerName(narrative, g.playerBId, g.playerBName));
+    const pB = ensure(bId, resolvePlayerName(narrative, bId, bName));
     pA.games++;
     pB.games++;
     pA.asRoleA++;
@@ -750,9 +807,9 @@ function aggregate(
     // Per-player stake history — order of appearance, used to split into
     // early / late halves after the loop for arc-shift detection.
     if (!stakeHistory.has(g.playerAId)) stakeHistory.set(g.playerAId, []);
-    if (!stakeHistory.has(g.playerBId)) stakeHistory.set(g.playerBId, []);
+    if (!stakeHistory.has(bId)) stakeHistory.set(bId, []);
     stakeHistory.get(g.playerAId)!.push(deltaA);
-    stakeHistory.get(g.playerBId)!.push(deltaB);
+    stakeHistory.get(bId)!.push(deltaB);
     if (deltaA > 0) pA.positiveCells++;
     else if (deltaA < 0) pA.negativeCells++;
     if (deltaB > 0) pB.positiveCells++;
@@ -800,14 +857,14 @@ function aggregate(
     }
 
     // Opponents
-    pA.opponentCounts.set(g.playerBId, (pA.opponentCounts.get(g.playerBId) ?? 0) + 1);
+    pA.opponentCounts.set(bId, (pA.opponentCounts.get(bId) ?? 0) + 1);
     pB.opponentCounts.set(g.playerAId, (pB.opponentCounts.get(g.playerAId) ?? 0) + 1);
 
     // Pairwise tracking — feeds both rivalries and coalitions
-    const rk = pairKey(g.playerAId, g.playerBId);
-    const [canonAId, canonBId] = g.playerAId < g.playerBId
-      ? [g.playerAId, g.playerBId]
-      : [g.playerBId, g.playerAId];
+    const rk = pairKey(g.playerAId, bId);
+    const [canonAId, canonBId] = g.playerAId < bId
+      ? [g.playerAId, bId]
+      : [bId, g.playerAId];
     const swapped = canonAId !== g.playerAId;
 
     let pd = pairMap.get(rk);
@@ -815,8 +872,8 @@ function aggregate(
       pd = {
         aId: canonAId,
         bId: canonBId,
-        aName: resolvePlayerName(narrative, canonAId, swapped ? g.playerBName : g.playerAName),
-        bName: resolvePlayerName(narrative, canonBId, swapped ? g.playerAName : g.playerBName),
+        aName: resolvePlayerName(narrative, canonAId, swapped ? bName : g.playerAName),
+        bName: resolvePlayerName(narrative, canonBId, swapped ? g.playerAName : bName),
         games: 0,
         aWins: 0,
         bWins: 0,
@@ -846,9 +903,9 @@ function aggregate(
 
     // Single-game ELO swing tracking
     const prevA = runningElo.get(g.playerAId) ?? ELO_INITIAL;
-    const prevB = runningElo.get(g.playerBId) ?? ELO_INITIAL;
+    const prevB = runningElo.get(bId) ?? ELO_INITIAL;
     const histA = histories.get(g.playerAId);
-    const histB = histories.get(g.playerBId);
+    const histB = histories.get(bId);
     // Find this game's post-rating in each history by game index alignment
     const idxA = histA?.games.indexOf(idx);
     const idxB = histB?.games.indexOf(idx);
@@ -857,11 +914,11 @@ function aggregate(
     const swingA = postA - prevA;
     const swingB = postB - prevB;
     runningElo.set(g.playerAId, postA);
-    runningElo.set(g.playerBId, postB);
+    runningElo.set(bId, postB);
 
     const bigger = Math.abs(swingA) > Math.abs(swingB)
       ? { id: g.playerAId, name: resolvePlayerName(narrative, g.playerAId, g.playerAName), swing: swingA }
-      : { id: g.playerBId, name: resolvePlayerName(narrative, g.playerBId, g.playerBName), swing: swingB };
+      : { id: bId, name: resolvePlayerName(narrative, bId, bName), swing: swingB };
     if (!biggestSwing || Math.abs(bigger.swing) > Math.abs(biggestSwing.ratingGain)) {
       biggestSwing = {
         gameCtx: ctx,
@@ -877,7 +934,7 @@ function aggregate(
         p.biggestUpset = { opponentName, ratingGain: swing, sceneIndex: ctx.sceneIndex };
       }
     };
-    updatePlayerUpset(pA, swingA, resolvePlayerName(narrative, g.playerBId, g.playerBName));
+    updatePlayerUpset(pA, swingA, resolvePlayerName(narrative, bId, bName));
     updatePlayerUpset(pB, swingB, resolvePlayerName(narrative, g.playerAId, g.playerAName));
   });
 
@@ -2007,15 +2064,20 @@ function OffEquilibrium({
       <div className="flex flex-col gap-1">
         {top.map(({ game, sceneIndex }, i) => {
           const ne = nashEquilibria(game);
+          const solo = isSolo(game);
           const idealLabel =
             ne.length > 0
               ? ne
-                  .map((p) => `${p.aActionName} × ${p.bActionName}`)
+                  .map((p) => (solo ? p.aActionName : `${p.aActionName} × ${p.bActionName}`))
                   .join(" · ")
               : "—";
-          const realizedLabel = `${game.realizedAAction} × ${game.realizedBAction}`;
+          const realizedLabel = solo
+            ? game.realizedAAction
+            : `${game.realizedAAction} × ${game.realizedBAction}`;
           const aName = resolvePlayerName(narrative, game.playerAId, game.playerAName);
-          const bName = resolvePlayerName(narrative, game.playerBId, game.playerBName);
+          const bName = game.playerBId
+            ? resolvePlayerName(narrative, game.playerBId, game.playerBName)
+            : "the world";
           return (
             <button
               key={i}

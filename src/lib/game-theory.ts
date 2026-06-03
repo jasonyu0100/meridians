@@ -20,14 +20,28 @@ import type {
   PlayerAction,
 } from "@/types/narrative";
 
+// ── Solo vs duel ───────────────────────────────────────────────────────────
+
+/** A 1-player decision (a row of options, reality in the other seat) rather
+ *  than a 2-player game (an NxM matrix). */
+export function isSolo(game: BeatGame): boolean {
+  return game.kind === "solo";
+}
+
+const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
+
 // ── Outcome lookup ─────────────────────────────────────────────────────────
 
-/** Find the outcome cell for a specific (A, B) action pair. */
+/** Find the outcome cell for a specific (A, B) action pair — or, for a solo
+ *  decision, the option cell keyed by A's action alone. */
 export function outcomeAt(
   game: BeatGame,
   aActionName: string,
-  bActionName: string,
+  bActionName?: string,
 ): GameOutcome | null {
+  if (isSolo(game)) {
+    return game.outcomes.find((o) => o.aActionName === aActionName) ?? null;
+  }
   return (
     game.outcomes.find(
       (o) => o.aActionName === aActionName && o.bActionName === bActionName,
@@ -37,6 +51,9 @@ export function outcomeAt(
 
 /** The realized outcome — what the author actually wrote. */
 export function realizedOutcome(game: BeatGame): GameOutcome | null {
+  if (isSolo(game)) {
+    return game.outcomes.find((o) => o.aActionName === game.realizedAAction) ?? null;
+  }
   return outcomeAt(game, game.realizedAAction, game.realizedBAction);
 }
 
@@ -52,8 +69,17 @@ export function realizedOutcome(game: BeatGame): GameOutcome | null {
  */
 export function nashEquilibria(
   game: BeatGame,
-): Array<{ aActionName: string; bActionName: string }> {
-  const result: Array<{ aActionName: string; bActionName: string }> = [];
+): Array<{ aActionName: string; bActionName?: string }> {
+  // Solo: there is no opponent — the "equilibrium" is simply the
+  // stake-maximising option(s), the rational pick against an indifferent world.
+  if (isSolo(game)) {
+    if (game.outcomes.length === 0) return [];
+    const best = Math.max(...game.outcomes.map((o) => o.stakeDeltaA));
+    return game.outcomes
+      .filter((o) => o.stakeDeltaA === best)
+      .map((o) => ({ aActionName: o.aActionName }));
+  }
+  const result: Array<{ aActionName: string; bActionName?: string }> = [];
   for (const cell of game.outcomes) {
     // A wouldn't switch rows given B plays bActionName
     let aStable = true;
@@ -71,7 +97,7 @@ export function nashEquilibria(
     for (const alt of game.playerBActions) {
       if (alt.name === cell.bActionName) continue;
       const altCell = outcomeAt(game, cell.aActionName, alt.name);
-      if (altCell && altCell.stakeDeltaB > cell.stakeDeltaB) {
+      if (altCell && (altCell.stakeDeltaB ?? 0) > (cell.stakeDeltaB ?? 0)) {
         bStable = false;
         break;
       }
@@ -85,6 +111,9 @@ export function nashEquilibria(
 /** Is the realized cell a Nash equilibrium? Descriptive, not normative. */
 export function realizedIsNash(game: BeatGame): boolean {
   const ne = nashEquilibria(game);
+  if (isSolo(game)) {
+    return ne.some((p) => p.aActionName === game.realizedAAction);
+  }
   return ne.some(
     (p) =>
       p.aActionName === game.realizedAAction &&
@@ -105,8 +134,11 @@ export function realizedIsNash(game: BeatGame): boolean {
 export function gameScoreA(game: BeatGame): number {
   const cell = realizedOutcome(game);
   if (!cell) return 0.5;
-  if (cell.stakeDeltaA > cell.stakeDeltaB) return 1;
-  if (cell.stakeDeltaA < cell.stakeDeltaB) return 0;
+  // Solo: the decider plays against reality (par at 0). A positive immediate
+  // outcome is a win, negative a loss, zero a wash.
+  const opponentDelta = isSolo(game) ? 0 : cell.stakeDeltaB ?? 0;
+  if (cell.stakeDeltaA > opponentDelta) return 1;
+  if (cell.stakeDeltaA < opponentDelta) return 0;
   return 0.5;
 }
 
@@ -121,17 +153,20 @@ export function stakeRank(
   game: BeatGame,
   player: "A" | "B",
 ): { rank: number; total: number } | null {
+  // Solo decisions have no B side to rank.
+  if (isSolo(game) && player === "B") return null;
   const cell = realizedOutcome(game);
   if (!cell) return null;
   const key = player === "A" ? "stakeDeltaA" : "stakeDeltaB";
-  const realizedValue = cell[key];
-  const sorted = game.outcomes.slice().sort((x, y) => y[key] - x[key]);
-  const rank = sorted.findIndex(
-    (o) => o.aActionName === cell.aActionName && o.bActionName === cell.bActionName,
-  );
+  const sorted = game.outcomes
+    .slice()
+    .sort((x, y) => (y[key] ?? 0) - (x[key] ?? 0));
+  const rank = isSolo(game)
+    ? sorted.findIndex((o) => o.aActionName === cell.aActionName)
+    : sorted.findIndex(
+        (o) => o.aActionName === cell.aActionName && o.bActionName === cell.bActionName,
+      );
   return rank >= 0 ? { rank: rank + 1, total: sorted.length } : null;
-  // realizedValue intentionally computed for potential future use
-  void realizedValue;
 }
 
 // ── Arc cost — stake left on the table ─────────────────────────────────────
@@ -153,14 +188,24 @@ export function stakeRank(
 export function arcCost(game: BeatGame, player: "A" | "B"): number {
   const cell = realizedOutcome(game);
   if (!cell) return 0;
+  // Solo: the "row" is the whole option set, so arcCost(A) is regret against
+  // the best option the decider could have taken. No B side.
+  if (isSolo(game)) {
+    if (player === "B") return 0;
+    const best = game.outcomes.reduce(
+      (m, o) => (o.stakeDeltaA > m ? o.stakeDeltaA : m),
+      -Infinity,
+    );
+    return Math.max(0, best - cell.stakeDeltaA);
+  }
   if (player === "A") {
     const row = rowOutcomes(game, cell.aActionName);
     const best = row.reduce((m, o) => (o.stakeDeltaA > m ? o.stakeDeltaA : m), -Infinity);
     return Math.max(0, best - cell.stakeDeltaA);
   } else {
-    const col = columnOutcomes(game, cell.bActionName);
-    const best = col.reduce((m, o) => (o.stakeDeltaB > m ? o.stakeDeltaB : m), -Infinity);
-    return Math.max(0, best - cell.stakeDeltaB);
+    const col = columnOutcomes(game, cell.bActionName ?? "");
+    const best = col.reduce((m, o) => ((o.stakeDeltaB ?? 0) > m ? (o.stakeDeltaB ?? 0) : m), -Infinity);
+    return Math.max(0, best - (cell.stakeDeltaB ?? 0));
   }
 }
 
@@ -168,6 +213,9 @@ export function arcCost(game: BeatGame, player: "A" | "B"): number {
 
 export const ELO_INITIAL = 1500;
 export const ELO_K = 32;
+/** The fixed rating "reality" plays at when scoring a solo (1-player) decision.
+ *  The world is a neutral, non-learning opponent at par. */
+export const ELO_PAR = ELO_INITIAL;
 
 export function expectedScore(ra: number, rb: number): number {
   return 1 / (1 + Math.pow(10, (rb - ra) / 400));
@@ -190,8 +238,13 @@ export function expectedScore(ra: number, rb: number): number {
 export function gameMarginScore(game: BeatGame): number {
   const cell = realizedOutcome(game);
   if (!cell) return 0.5;
-  const raw = 0.5 + (cell.stakeDeltaA - cell.stakeDeltaB) / 16;
-  return Math.max(0, Math.min(1, raw));
+  // Solo: reality plays par (0). The realized delta in [-4, +4] maps directly
+  // onto [0, 1] — +4 is a full win, −4 a full loss, 0 a wash. Dividing by 8
+  // (not 16) keeps the same "saturating result = 1.0" scale the duel gets from
+  // its ±4/∓4 differential.
+  if (isSolo(game)) return clamp01(0.5 + cell.stakeDeltaA / 8);
+  const raw = 0.5 + (cell.stakeDeltaA - (cell.stakeDeltaB ?? 0)) / 16;
+  return clamp01(raw);
 }
 
 /**
@@ -209,7 +262,7 @@ export function kEffective(game: BeatGame, kBase: number = ELO_K): number {
   let maxAbs = 0;
   for (const o of game.outcomes) {
     const a = Math.abs(o.stakeDeltaA);
-    const b = Math.abs(o.stakeDeltaB);
+    const b = Math.abs(o.stakeDeltaB ?? 0);
     if (a > maxAbs) maxAbs = a;
     if (b > maxAbs) maxAbs = b;
   }
@@ -247,17 +300,30 @@ export function computeEloHistories(
 
   games.forEach((g, idx) => {
     ensure(g.playerAId);
-    ensure(g.playerBId);
+
+    // Solo: the decider plays reality at par. Only A's rating moves — par is a
+    // fixed reference, not a tracked player, so it has no history of its own.
+    if (isSolo(g)) {
+      const ra = current.get(g.playerAId)!;
+      const expectedA = expectedScore(ra, ELO_PAR);
+      const newRa = ra + kEffective(g) * (gameMarginScore(g) - expectedA);
+      current.set(g.playerAId, newRa);
+      histories.get(g.playerAId)!.ratings.push(newRa);
+      histories.get(g.playerAId)!.games.push(idx);
+      return;
+    }
+
+    ensure(g.playerBId!);
     const ra = current.get(g.playerAId)!;
-    const rb = current.get(g.playerBId)!;
+    const rb = current.get(g.playerBId!)!;
     const [newRa, newRb] = eloUpdate(ra, rb, gameMarginScore(g), kEffective(g));
     current.set(g.playerAId, newRa);
-    current.set(g.playerBId, newRb);
+    current.set(g.playerBId!, newRb);
 
     histories.get(g.playerAId)!.ratings.push(newRa);
     histories.get(g.playerAId)!.games.push(idx);
-    histories.get(g.playerBId)!.ratings.push(newRb);
-    histories.get(g.playerBId)!.games.push(idx);
+    histories.get(g.playerBId!)!.ratings.push(newRb);
+    histories.get(g.playerBId!)!.games.push(idx);
   });
 
   return histories;
@@ -275,8 +341,18 @@ export function columnOutcomes(game: BeatGame, bActionName: string): GameOutcome
   return game.outcomes.filter((o) => o.bActionName === bActionName);
 }
 
-/** Does the game have a well-formed NxM grid? */
+/** Does the game have a well-formed grid? duel = full NxM matrix; solo = one
+ *  cell per option in the row. */
 export function isGridComplete(game: BeatGame): boolean {
+  if (isSolo(game)) {
+    if (game.outcomes.length !== game.playerAActions.length) return false;
+    const seen = new Set<string>();
+    for (const o of game.outcomes) {
+      if (seen.has(o.aActionName)) return false;
+      seen.add(o.aActionName);
+    }
+    return true;
+  }
   const expected = game.playerAActions.length * game.playerBActions.length;
   if (game.outcomes.length !== expected) return false;
   const seen = new Set<string>();

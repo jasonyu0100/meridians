@@ -56,6 +56,7 @@ import {
   resolveProseForBranch,
 } from "@/lib/narrative-utils";
 import {
+  isSolo,
   nashEquilibria,
   outcomeAt,
   realizedIsNash,
@@ -502,6 +503,35 @@ export default function TopBar() {
             const rankA = stakeRank(g, "A");
             const rankB = stakeRank(g, "B");
 
+            // ── Solo (1-player) decision — a row, not a matrix ──
+            if (isSolo(g)) {
+              lines.push("");
+              lines.push(`──────────────────────────────────────────────────────`);
+              lines.push(`Beat ${g.beatIndex + 1}: ${g.beatExcerpt}`);
+              lines.push(`Decider: ${g.playerAName} (${g.playerAId}) — 1-player decision (vs the world)`);
+              lines.push(`Action axis: ${g.actionAxis} — ${ACTION_AXIS_LABELS[g.actionAxis] ?? ""}`);
+              lines.push("");
+              lines.push(`Options (immediate outcome on −4..+4):`);
+              for (const a of g.playerAActions) {
+                const o = outcomeAt(g, a.name);
+                const isRealized = a.name === g.realizedAAction;
+                const isBest = ne.some((p) => p.aActionName === a.name);
+                const mk = `${isBest ? " [best]" : ""}${isRealized ? " ← chosen" : ""}`;
+                lines.push(`  ${a.name}  ${o ? fmtDelta(o.stakeDeltaA) : "(missing)"}${mk}`);
+                if (o) lines.push(`      ${o.description}`);
+              }
+              lines.push("");
+              if (rankA) {
+                lines.push(`${g.playerAName} picked rank ${rankA.rank}/${rankA.total} by stake`);
+              }
+              if (realized) {
+                lines.push(`Realized: ${g.playerAName} "${g.realizedAAction}" → ${fmtDelta(realized.stakeDeltaA)}`);
+                lines.push(`Realized outcome: ${realized.description}`);
+              }
+              if (g.rationale) lines.push(`Why this option: ${g.rationale}`);
+              continue;
+            }
+
             lines.push("");
             lines.push(`──────────────────────────────────────────────────────`);
             lines.push(`Beat ${g.beatIndex + 1}: ${g.beatExcerpt}`);
@@ -544,7 +574,7 @@ export default function TopBar() {
                 const marker = isRealized ? " ← realized" : "";
                 const nashMark = nashSet.has(key) ? " [Nash]" : "";
                 lines.push(
-                  `  ${aAction.name} × ${bAction.name}  ${fmtDelta(o.stakeDeltaA)}/${fmtDelta(o.stakeDeltaB)}${nashMark}${marker}`,
+                  `  ${aAction.name} × ${bAction.name}  ${fmtDelta(o.stakeDeltaA)}/${fmtDelta(o.stakeDeltaB ?? 0)}${nashMark}${marker}`,
                 );
                 lines.push(`      ${o.description}`);
               }
@@ -581,7 +611,7 @@ export default function TopBar() {
             );
             if (realized) {
               lines.push(
-                `Realized stakes: ${g.playerAName}=${fmtDelta(realized.stakeDeltaA)}, ${g.playerBName}=${fmtDelta(realized.stakeDeltaB)}`,
+                `Realized stakes: ${g.playerAName}=${fmtDelta(realized.stakeDeltaA)}, ${g.playerBName}=${fmtDelta(realized.stakeDeltaB ?? 0)}`,
               );
               lines.push(`Realized outcome: ${realized.description}`);
             }

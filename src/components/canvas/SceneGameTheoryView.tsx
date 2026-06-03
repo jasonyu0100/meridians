@@ -17,6 +17,7 @@ import { generateSceneGameAnalysis } from "@/lib/ai";
 import { useSceneBulkStream } from "@/lib/bulk-stream-store";
 import {
   arcCost,
+  isSolo,
   nashEquilibria,
   outcomeAt,
   realizedIsNash,
@@ -202,7 +203,9 @@ function AnalysisTimeline({
   const games = analysis.games.map<BeatGame>((g) => ({
     ...g,
     playerAName: resolvePlayerName(narrative, g.playerAId, g.playerAName),
-    playerBName: resolvePlayerName(narrative, g.playerBId, g.playerBName),
+    playerBName: g.playerBId
+      ? resolvePlayerName(narrative, g.playerBId, g.playerBName)
+      : g.playerBName,
   }));
   return (
     <div>
@@ -268,8 +271,9 @@ function TimelineEntry({
   index: number;
   isLast: boolean;
 }) {
-  const cols = game.playerBActions.length;
-  // Matrix width scales with column count so big grids stay legible.
+  const solo = isSolo(game);
+  // Board width scales with the menu so big grids / long rows stay legible.
+  const cols = solo ? game.playerAActions.length : game.playerBActions.length;
   const matrixWidthPx = Math.max(420, 140 + cols * 150);
 
   return (
@@ -292,9 +296,9 @@ function TimelineEntry({
           relative to the matrix so big grids stay legible beside short
           analysis blocks. */}
       <div className="flex-1 flex gap-10 min-w-0 items-center">
-        {/* Matrix — scales with menu size */}
+        {/* Board — matrix for duel, single option-row for solo */}
         <div className="shrink-0" style={{ width: matrixWidthPx }}>
-          <MatrixBoard game={game} />
+          {solo ? <SoloBoard game={game} /> : <MatrixBoard game={game} />}
         </div>
 
         {/* Analysis prose */}
@@ -309,9 +313,9 @@ function TimelineEntry({
             <span className="text-text-dim/20">·</span>
             <span
               className="text-[11px] font-mono font-medium text-sky-300/90 bg-sky-400/10 px-1.5 py-px rounded"
-              title={GAME_TYPE_LABELS[game.gameType] ?? ""}
+              title={solo ? "A 1-player decision — the actor chooses against the world, no opponent." : GAME_TYPE_LABELS[game.gameType] ?? ""}
             >
-              {game.gameType}
+              {solo ? "1-player decision" : game.gameType}
             </span>
             <span
               className="text-[11px] font-mono font-medium text-text-dim/75 bg-white/5 px-1.5 py-px rounded"
@@ -324,8 +328,12 @@ function TimelineEntry({
           {/* One-line copy explaining the strategic frame — names live in the
               pills above; only the descriptions go here to avoid repetition. */}
           <p className="text-[11px] text-text-dim/65 leading-snug -mt-2">
-            <span>{GAME_TYPE_LABELS[game.gameType] ?? ""}</span>
-            <span className="text-text-dim/30"> · </span>
+            {!solo && (
+              <>
+                <span>{GAME_TYPE_LABELS[game.gameType] ?? ""}</span>
+                <span className="text-text-dim/30"> · </span>
+              </>
+            )}
             <span>{ACTION_AXIS_LABELS[game.actionAxis] ?? game.actionAxis}</span>
           </p>
 
@@ -368,6 +376,26 @@ function PlayersHeader({ game }: { game: BeatGame }) {
 
   const fmt = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
+  // Solo: one decider, one immediate outcome — reality is the other seat.
+  if (isSolo(game)) {
+    return (
+      <div className="flex items-baseline gap-2 text-[13px]">
+        <PlayerLink
+          id={game.playerAId}
+          name={game.playerAName}
+          className={`font-semibold ${deltaA > 0 ? "text-emerald-300" : deltaA < 0 ? "text-red-400/80" : "text-text-secondary"}`}
+        />
+        <span
+          className="font-mono text-[12px] text-text-dim/80 tabular-nums"
+          title={GT_TIPS.stakeDeltaPair}
+        >
+          {fmt(deltaA)}
+        </span>
+        <span className="text-[12px] text-text-dim/55">vs the world</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-baseline gap-2 text-[13px]">
       <PlayerLink
@@ -382,8 +410,8 @@ function PlayersHeader({ game }: { game: BeatGame }) {
         {fmt(deltaA)}&nbsp;/&nbsp;{fmt(deltaB)}
       </span>
       <PlayerLink
-        id={game.playerBId}
-        name={game.playerBName}
+        id={game.playerBId ?? ""}
+        name={game.playerBName ?? ""}
         className={`font-semibold ${nameClass(bWins, aWins)}`}
       />
     </div>
@@ -437,6 +465,7 @@ function PlayerLink({
 // signal, not error — it's the author trading stake for arc.
 
 function StrategicShape({ game }: { game: BeatGame }) {
+  const solo = isSolo(game);
   const ne = useMemo(() => nashEquilibria(game), [game]);
   const isRealizedNash = realizedIsNash(game);
   const rankA = stakeRank(game, "A");
@@ -453,32 +482,34 @@ function StrategicShape({ game }: { game: BeatGame }) {
         {ne.length > 0 ? (
           <span
             className="text-[11px] px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-300 font-mono uppercase"
-            title={GT_TIPS.nashEquilibrium}
+            title={solo ? "The stake-maximising option — the rational pick against an indifferent world." : GT_TIPS.nashEquilibrium}
           >
-            {ne.length === 1 ? "1 nash" : `${ne.length} nash`}
+            {solo
+              ? (ne.length === 1 ? "best option" : `${ne.length} best`)
+              : (ne.length === 1 ? "1 nash" : `${ne.length} nash`)}
           </span>
         ) : (
           <span
             className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-text-dim/75 font-mono uppercase"
             title={GT_TIPS.noPureNash}
           >
-            no pure nash
+            {solo ? "no clear best" : "no pure nash"}
           </span>
         )}
         {isRealizedNash && (
           <span
             className="text-[11px] px-1.5 py-0.5 rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
-            title={GT_TIPS.realizedEqNash}
+            title={solo ? "The decider took the stake-maximising option." : GT_TIPS.realizedEqNash}
           >
-            realized ≡ nash
+            {solo ? "took the best" : "realized ≡ nash"}
           </span>
         )}
         {!isRealizedNash && ne.length > 0 && (
           <span
             className="text-[11px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-300/80 border border-amber-400/20"
-            title={GT_TIPS.offNash}
+            title={solo ? "The decider passed up the stake-maximising option — arc over local stake." : GT_TIPS.offNash}
           >
-            off-nash cell
+            {solo ? "off-best option" : "off-nash cell"}
           </span>
         )}
       </div>
@@ -487,7 +518,9 @@ function StrategicShape({ game }: { game: BeatGame }) {
           <div title={GT_TIPS.stakeRank}>
             <PlayerLink id={game.playerAId} name={game.playerAName} className="text-white font-medium" />
             <span className="text-text-dim/75">
-              : got the {ordinal(rankA.rank)}-best of {rankA.total} possible outcomes
+              {solo
+                ? `: picked the ${ordinal(rankA.rank)}-best of ${rankA.total} options`
+                : `: got the ${ordinal(rankA.rank)}-best of ${rankA.total} possible outcomes`}
               {arcCostA > 0 && (
                 <span className="text-amber-300/85" title={GT_TIPS.arcCost}>
                   {" "}· left +{arcCostA} on the table
@@ -496,9 +529,9 @@ function StrategicShape({ game }: { game: BeatGame }) {
             </span>
           </div>
         )}
-        {rankB && (
+        {rankB && game.playerBId && (
           <div title={GT_TIPS.stakeRank}>
-            <PlayerLink id={game.playerBId} name={game.playerBName} className="text-sky-200 font-medium" />
+            <PlayerLink id={game.playerBId} name={game.playerBName ?? game.playerBId} className="text-sky-200 font-medium" />
             <span className="text-text-dim/75">
               : got the {ordinal(rankB.rank)}-best of {rankB.total} possible outcomes
               {arcCostB > 0 && (
@@ -555,8 +588,8 @@ function MatrixBoard({ game }: { game: BeatGame }) {
             />
             <div className="relative flex flex-col items-end gap-2">
               <PlayerLink
-                id={game.playerBId}
-                name={game.playerBName}
+                id={game.playerBId ?? ""}
+                name={game.playerBName ?? ""}
                 className="text-[12px] font-medium text-text-primary"
               />
               <div className="self-start">
@@ -677,11 +710,94 @@ function Cell({
           {fmt(outcome.stakeDeltaA)}
         </span>
         <span className="text-[12px] font-mono text-text-dim/65 leading-none">/</span>
-        <span className={`text-[16px] font-mono font-bold leading-none tabular-nums ${deltaColor(outcome.stakeDeltaB)}`}>
-          {fmt(outcome.stakeDeltaB)}
+        <span className={`text-[16px] font-mono font-bold leading-none tabular-nums ${deltaColor(outcome.stakeDeltaB ?? 0)}`}>
+          {fmt(outcome.stakeDeltaB ?? 0)}
         </span>
       </div>
       <p className="text-[12px] text-text-dim/85 leading-snug">{outcome.description}</p>
     </td>
+  );
+}
+
+// ── Solo board — a single row of option cells (1-player decision) ──────────
+// No matrix: the decider faces a menu of options, each with one immediate
+// outcome on the −4…+4 scale. Reality is the other seat. The chosen option is
+// ringed; the stake-maximising option is marked "best".
+
+function SoloBoard({ game }: { game: BeatGame }) {
+  const best = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of nashEquilibria(game)) set.add(p.aActionName);
+    return set;
+  }, [game]);
+
+  const fmt = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  const deltaColor = (n: number) =>
+    n > 0 ? "text-emerald-300" : n < 0 ? "text-red-400/80" : "text-text-dim/70";
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <PlayerLink
+          id={game.playerAId}
+          name={game.playerAName}
+          className="text-[12px] font-medium text-text-secondary"
+        />
+        <span className="text-[10px] uppercase tracking-wider text-text-dim/55">
+          decides
+        </span>
+      </div>
+      <div className="flex gap-px rounded-lg overflow-hidden border-b border-r border-white/10">
+        {game.playerAActions.map((opt, i) => {
+          const outcome = outcomeAt(game, opt.name);
+          const delta = outcome?.stakeDeltaA ?? 0;
+          const isRealized = opt.name === game.realizedAAction;
+          const isBest = best.has(opt.name);
+          return (
+            <div
+              key={`opt-${i}`}
+              className={`relative flex-1 min-w-0 px-3 py-3 h-32 border-t border-l border-white/10 ${
+                isRealized
+                  ? "bg-amber-400/10 ring-1 ring-inset ring-amber-400/40"
+                  : "bg-white/2"
+              }`}
+            >
+              <div className="absolute top-1.5 right-1.5 flex gap-1">
+                {isBest && (
+                  <span
+                    className="text-[10px] font-semibold px-1 py-px rounded bg-sky-400/20 text-sky-200 uppercase tracking-wider"
+                    title="Stake-maximising option — the rational pick against an indifferent world."
+                  >
+                    best
+                  </span>
+                )}
+                {isRealized && (
+                  <span
+                    className="text-[10px] font-semibold px-1 py-px rounded bg-amber-400/25 text-amber-200 uppercase tracking-wider"
+                    title={GT_TIPS.realizedCell}
+                  >
+                    chosen
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-text-primary leading-snug mb-1.5 pr-12">
+                {opt.name}
+              </div>
+              <div
+                className={`text-[16px] font-mono font-bold leading-none tabular-nums mb-1.5 ${deltaColor(delta)}`}
+                title="Immediate outcome on the −4…+4 scale"
+              >
+                {fmt(delta)}
+              </div>
+              {outcome && (
+                <p className="text-[11px] text-text-dim/85 leading-snug">
+                  {outcome.description}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -18,7 +18,7 @@
  */
 
 export function buildGameTheorySystemPrompt(): string {
-  return `You are a strategic analyst. Every consequential moment in this scene has a SHAPE — the full space of choices each agent could have made, and what would have happened in each pairing. The realised cell is one signature on that space. Your job is to describe the space (every plausible action, every consequence) and mark the realised cell. You are an EVALUATOR, not a predictor: the realised choice is already on the page (author in fiction / non-fiction, rule set in simulation, reality in analysis). Score each cell honestly against the player's interests, including the realised one. A dominated cell landing as realised is exactly the information downstream analysis wants. Follow the taxonomy, scoring scale, and output schema supplied in the user prompt. Return ONLY valid JSON.`;
+  return `You are a strategic analyst. Every consequential moment in this scene has a SHAPE — the full space of choices each agent could have made, and what would have happened in each pairing. The realised cell is one signature on that space. Your job is to describe the space (every plausible action, every consequence) and mark the realised cell. You are an EVALUATOR, not a predictor: the realised choice is already on the page (author in fiction / non-fiction, rule set in simulation, reality in analysis). Score each cell honestly against the player's interests, including the realised one. A dominated cell landing as realised is exactly the information downstream analysis wants. A decision may be TWO-PLAYER (a strategic game against another agent) or ONE-PLAYER (a pivotal choice against the world — reality in the other seat, scored as a row of options rather than a matrix); both are in scope. Follow the taxonomy, scoring scale, and output schema supplied in the user prompt. Return ONLY valid JSON.`;
 }
 
 /** Detailed analysis guide — appended to the scene context in the user prompt. */
@@ -30,8 +30,9 @@ const GAME_THEORY_GUIDE = `<doctrine>
 
 <scope hint="Include beats where two+ agentic parties make choices that meaningfully affect each other.">
   <include>Subtle beats: loaded silences, glances, quiet negotiations, anticipated reactions from absent parties, power-imbalanced games where the weaker side still has choices, moral decisions landing on another person. Simulation-register beats also qualify when the modelled agents (factions, market actors, treaty signatories, modelled cohorts, cultivation rivals) make choices the rule set forces consequences on — a tariff retaliation, a commitment to mobilise, a containment policy, a cultivation duel under stated rules. Non-fiction beats qualify too — a writer's choice to acknowledge vs minimise a counter-argument; an expert's disclosure vs containment of an inconvenient finding.</include>
-  <exclude>Internal monologue, pure atmosphere/exposition, solo action against a passive world.</exclude>
-  <when-in-doubt>INCLUDE — stake deltas can say "near-trivial" via small magnitudes rather than omission. But if a beat has no counterparty you can name and no actions you can score, skip it rather than fabricate. Empty games array is valid output.</when-in-doubt>
+  <include name="solo-decisions">PIVOTAL ONE-PLAYER decisions — a single actor choosing under uncertainty with no strategic counterpart (take the job or not, hold or fold, relocate, confess now or wait, commit capital or hold). These are bets against the world, not duels. Emit them as a SOLO decision (see &lt;solo-decisions&gt;), not a duel. Routine/reflexive solo action with nothing at stake is still excluded.</include>
+  <exclude>Internal monologue, pure atmosphere/exposition, and reflexive action with nothing meaningful at stake.</exclude>
+  <when-in-doubt>INCLUDE — stake deltas can say "near-trivial" via small magnitudes rather than omission. A pivotal choice with no counterparty is a SOLO decision, not a skip. But if a beat has no actions you can score, skip it rather than fabricate. Empty games array is valid output.</when-in-doubt>
 </scope>
 
 <player-identity>
@@ -39,7 +40,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <rule>playerAId and playerBId MUST match IDs from PARTICIPANTS.</rule>
   <rule>Never invent IDs. Never put a name in the ID field.</rule>
   <rule>Locations and artifacts are valid players ONLY if they carry agency in the beat (e.g., a cursed object actively resisting use). Most of the time locations are SETTING, not players.</rule>
-  <rule>If a beat has only one agentic participant from the table, skip it.</rule>
+  <rule>If a beat has only one agentic participant from the table: if the choice is PIVOTAL (real stakes, real alternatives) emit it as a SOLO decision; if it is trivial, skip it.</rule>
 </player-identity>
 
 <game-object hint="Each strategic beat becomes a GAME with these fields.">
@@ -57,11 +58,25 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <field name="rationale">ONE sentence: why did the realised cell land where it did, instead of any alternative? (Authorial choice in fiction / non-fiction; rule-forced consequence in simulation; observed event in analysis.)</field>
   <constraint>Both players' actions live on the SAME axis (both on trust, both on information, etc.). Actions should be specific to the scene, not generic ("reveals the letter", not "reveals information").</constraint>
   <constraint name="json-numbers">Write positives as plain digits (0, 1, 2, 3, 4), negatives with a minus (-1, -2, -3, -4). A leading "+" is invalid JSON and fails the whole response.</constraint>
+  <field name="kind">Omit (or "duel") for a two-player game. Set "solo" for a one-player decision — see below.</field>
 </game-object>
+
+<solo-decisions hint="A pivotal one-player decision is a ROW, not a matrix: one decider, a menu of options, one immediate outcome per option. Reality is the other seat. Use this when there is no strategic counterpart whose choice matters.">
+  <field name="kind">"solo".</field>
+  <field name="playerAId/Name">The decider; must match PARTICIPANTS. No playerB.</field>
+  <field name="actionAxis">The dimension the choice lives on (same axis taxonomy — e.g. commitment: commit ↔ withdraw, timing: act ↔ wait, stakes: escalate ↔ deescalate).</field>
+  <field name="playerAActions">2-4 concrete options the decider could have taken (each a \`name\`, 2-5 words).</field>
+  <field name="outcomes">ONE cell per option: { aActionName, description, stakeDeltaA }. NO bActionName, NO stakeDeltaB. stakeDeltaA in [-4, +4] is the IMMEDIATE outcome if that option is taken — how it lands for the decider, scored honestly (a bad option scores negative even if it wasn't chosen).</field>
+  <field name="realizedAAction">The option actually taken (must match a menu entry).</field>
+  <field name="rationale">ONE sentence: why this option was taken over the alternatives.</field>
+  <omit>gameType is advisory for solo (set "trivial" if nothing fits); there is no playerB, playerBActions, bActionName, stakeDeltaB, or realizedBAction.</omit>
+  <discipline>Score each option as if it were the one taken — do not bias the chosen option to look best. A decider taking a sub-optimal option (left stake on the table) is exactly the signal downstream analysis wants. These are IMMEDIATE outcomes only; long-range causal consequences are evaluated separately (Butterfly), not here.</discipline>
+</solo-decisions>
 
 <decision-procedure hint="Walk three steps in order. Each step routes the beat to exactly one label by construction. Answer the questions; do not pattern-match against type definitions.">
   <step index="1" name="scope" hint="Count strategic agents (preferences over outcomes + choices over actions). Obstacles, traps, locked doors are NOT agents.">
-    <case>Non-agent counterparty only → re-code against the strategic party BEHIND the obstacle (villain who set the trap; designer of the test) OR skip.</case>
+    <case>Exactly 1 strategic agent facing a PIVOTAL choice against the world (no counterpart whose choice matters) → kind: "solo"; emit a row of options (see &lt;solo-decisions&gt;), exit.</case>
+    <case>Non-agent counterparty only, but the decider faces real stakes and alternatives → kind: "solo" (the world is the other seat). Otherwise re-code against the strategic party BEHIND the obstacle, or skip.</case>
     <case>Cooperating heroes with no real disagreement → skip. But if heroes ARE disagreeing mid-cooperation (retreat vs press on, volunteer vs protest), code THAT inter-hero decision.</case>
     <case>≥3 agents, rank-ordered competition for a prize → gameType: contest, exit.</case>
     <case>≥3 agents contributing to a shared threshold with free-rider dynamics → gameType: collective-action, exit.</case>
@@ -259,6 +274,29 @@ const GAME_THEORY_GUIDE = `<doctrine>
   "rationale": "The rule set's deterrence module forced F-2 to hold once F-1's commitment crossed the credibility threshold — the standard Stackelberg trap closing in real time."
 }</output>
   </example>
+
+  <example title="SOLO — A founder (C-7) deciding whether to take an acquisition offer or stay independent — no counterpart whose choice matters; the world is the other seat">
+    <classification-walkthrough>
+      <step name="scope">One strategic agent facing a pivotal choice against the world (the market will do what it does). → kind: "solo".</step>
+      <step name="axis">The choice is whether to bind to a path or keep options open → commitment.</step>
+    </classification-walkthrough>
+    <output>{
+  "beatIndex": 3,
+  "beatExcerpt": "The founder weighs the acquisition term sheet against staying independent through the next raise.",
+  "kind": "solo",
+  "gameType": "trivial",
+  "actionAxis": "commitment",
+  "playerAId": "C-7", "playerAName": "Founder",
+  "playerAActions": [{ "name": "accept the offer" }, { "name": "raise instead" }, { "name": "bootstrap on" }],
+  "outcomes": [
+    { "aActionName": "accept the offer", "description": "Locks a certain outcome; upside capped but downside closed", "stakeDeltaA": 2 },
+    { "aActionName": "raise instead", "description": "Keeps upside alive but bets on a market that may turn", "stakeDeltaA": 1 },
+    { "aActionName": "bootstrap on", "description": "Maximum control, maximum exposure if runway thins", "stakeDeltaA": -1 }
+  ],
+  "realizedAAction": "raise instead",
+  "rationale": "The founder bet on the upside over the certain exit, accepting market risk to keep the ceiling open."
+}</output>
+  </example>
 </examples>
 
 <output-format>
@@ -269,9 +307,8 @@ const GAME_THEORY_GUIDE = `<doctrine>
 </output-format>
 
 <hard-constraints>
-  <constraint>playerAActions and playerBActions: 1-4 entries each. playerAId ≠ playerBId.</constraint>
-  <constraint>outcomes.length MUST equal playerAActions.length × playerBActions.length.</constraint>
-  <constraint>Every outcome's aActionName/bActionName and the two realized* fields MUST match action-menu entries exactly (string equality).</constraint>
+  <constraint>DUEL (kind omitted/"duel"): playerAActions and playerBActions 1-4 entries each, playerAId ≠ playerBId; outcomes.length MUST equal playerAActions.length × playerBActions.length; every outcome's aActionName/bActionName and the two realized* fields MUST match menu entries exactly.</constraint>
+  <constraint>SOLO (kind "solo"): playerAActions 2-4 options, NO playerB / playerBActions / bActionName / stakeDeltaB / realizedBAction; outcomes.length MUST equal playerAActions.length (one cell per option); every outcome's aActionName and realizedAAction MUST match a menu entry exactly.</constraint>
   <constraint>Stake deltas are integers in [-4, 4]. JSON sign rule stated earlier — no leading "+".</constraint>
   <constraint>OUTPUT JSON ONLY. No prose preamble, no markdown. An empty games array is valid: {"summary": "...", "games": []}.</constraint>
 </hard-constraints>`;

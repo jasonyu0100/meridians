@@ -82,6 +82,19 @@ function coerceOutcome(v: unknown): GameOutcome | null {
   };
 }
 
+/** Solo (1-player) option cell — a row entry. No B side; stakeDeltaA is the
+ *  immediate outcome if the decider takes this option. */
+function coerceSoloOutcome(v: unknown): GameOutcome | null {
+  const c = (v ?? {}) as Record<string, unknown>;
+  const aActionName = typeof c.aActionName === "string" ? c.aActionName.trim() : "";
+  if (!aActionName) return null;
+  return {
+    aActionName,
+    description: typeof c.description === "string" ? c.description : "",
+    stakeDeltaA: coerceStake(c.stakeDeltaA),
+  };
+}
+
 /**
  * Build the scene context block the analyser reads.
  *
@@ -235,7 +248,103 @@ function warn(
   }, "warning");
 }
 
+/** Dispatch on the declared decision kind. "solo" → a 1-player row; anything
+ *  else (incl. absent) → a 2-player duel matrix. */
 function sanitiseGame(raw: RawGame, narrative: NarrativeState): BeatGame | null {
+  return raw.kind === "solo"
+    ? sanitiseSoloGame(raw, narrative)
+    : sanitiseDuelGame(raw, narrative);
+}
+
+/** A 1-player decision: a single decider, a row of options, one immediate
+ *  stake delta per option. Reality is the other seat — no B side. */
+function sanitiseSoloGame(raw: RawGame, narrative: NarrativeState): BeatGame | null {
+  const beatIndex = typeof raw.beatIndex === "number" ? raw.beatIndex : -1;
+  if (beatIndex < 0) {
+    warn(
+      "game-analysis: dropped solo decision with invalid beatIndex",
+      `invalid beatIndex: ${String(raw.beatIndex)}`,
+      { beatIndex: String(raw.beatIndex ?? "(missing)"), narrativeId: narrative.id },
+    );
+    return null;
+  }
+
+  const a = resolvePlayerId(raw.playerAId, raw.playerAName, narrative);
+  if (!a) {
+    warn(
+      "game-analysis: dropped solo decision with unresolved decider",
+      `unresolved decider: ${String(raw.playerAId ?? raw.playerAName)}`,
+      { beatIndex, playerAId: String(raw.playerAId ?? "(missing)") },
+    );
+    return null;
+  }
+
+  // Option menu (the row) — 2-4 options.
+  const rawOptions = Array.isArray(raw.playerAActions) ? raw.playerAActions : [];
+  const options = rawOptions
+    .map(coerceAction)
+    .filter((x): x is PlayerAction => x !== null)
+    .slice(0, 4);
+  const names = new Set<string>();
+  const dedupedOptions = options.filter((o) => {
+    if (names.has(o.name)) return false;
+    names.add(o.name);
+    return true;
+  });
+  if (dedupedOptions.length < 2) {
+    warn(
+      "game-analysis: dropped solo decision with <2 options",
+      `${dedupedOptions.length} option(s)`,
+      { beatIndex, optionCount: dedupedOptions.length },
+    );
+    return null;
+  }
+
+  // One outcome per option, keyed by aActionName.
+  const rawOutcomes = Array.isArray(raw.outcomes) ? raw.outcomes : [];
+  const outcomeMap = new Map<string, GameOutcome>();
+  for (const o of rawOutcomes.map(coerceSoloOutcome)) {
+    if (o && names.has(o.aActionName)) outcomeMap.set(o.aActionName, o);
+  }
+  const outcomes = Array.from(outcomeMap.values());
+  if (outcomes.length !== dedupedOptions.length) {
+    warn(
+      "game-analysis: dropped solo decision with incomplete option row",
+      `expected ${dedupedOptions.length} options, got ${outcomes.length}`,
+      { beatIndex, expected: dedupedOptions.length, actual: outcomes.length },
+    );
+    return null;
+  }
+
+  const asStr = (v: unknown, fallback = ""): string =>
+    typeof v === "string" && v.trim() ? v.trim() : fallback;
+  const realizedAAction = asStr(raw.realizedAAction);
+  if (!names.has(realizedAAction)) {
+    warn(
+      "game-analysis: dropped solo decision with invalid realized option",
+      `realized='${realizedAAction}' — not in option menu`,
+      { beatIndex, realizedAAction: realizedAAction || "(missing)" },
+    );
+    return null;
+  }
+
+  return {
+    beatIndex,
+    beatExcerpt: asStr(raw.beatExcerpt),
+    kind: "solo",
+    gameType: coerceGameType(raw.gameType),
+    actionAxis: coerceAxis(raw.actionAxis),
+    playerAId: a.id,
+    playerAName: a.name,
+    playerAActions: dedupedOptions,
+    playerBActions: [],
+    outcomes,
+    realizedAAction,
+    rationale: asStr(raw.rationale),
+  };
+}
+
+function sanitiseDuelGame(raw: RawGame, narrative: NarrativeState): BeatGame | null {
   const beatIndex = typeof raw.beatIndex === "number" ? raw.beatIndex : -1;
   if (beatIndex < 0) {
     warn(
@@ -303,7 +412,7 @@ function sanitiseGame(raw: RawGame, narrative: NarrativeState): BeatGame | null 
     .map(coerceOutcome)
     .filter((o): o is GameOutcome => o !== null)
     // Only keep outcomes whose action names exist in the respective menus
-    .filter((o) => aNames.has(o.aActionName) && bNames.has(o.bActionName));
+    .filter((o) => aNames.has(o.aActionName) && bNames.has(o.bActionName ?? ""));
 
   // Dedupe by (aActionName, bActionName) — last write wins
   const outcomeMap = new Map<string, GameOutcome>();
@@ -349,6 +458,7 @@ function sanitiseGame(raw: RawGame, narrative: NarrativeState): BeatGame | null 
   return {
     beatIndex,
     beatExcerpt: asStr(raw.beatExcerpt),
+    kind: "duel",
     gameType: coerceGameType(raw.gameType),
     actionAxis: coerceAxis(raw.actionAxis),
     playerAId: a.id,

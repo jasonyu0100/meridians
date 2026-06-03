@@ -12,9 +12,13 @@ import { getActiveMode } from '@/lib/mode-graph';
 import { buildSequentialPath } from '@/lib/prompts/reasoning/sequential-path';
 import {
   ELO_INITIAL,
+  ELO_K,
+  ELO_PAR,
   eloUpdate,
+  expectedScore,
   gameMarginScore,
   gameScoreA,
+  isSolo,
   nashEquilibria,
   realizedIsNash,
   realizedOutcome,
@@ -2141,15 +2145,57 @@ function renderGameXml(
   // Track names so the closing rankings can resolve ids → display
   // names without re-walking the game list.
   if (g.playerAId) playerNameById.set(g.playerAId, g.playerAName);
-  if (g.playerBId) playerNameById.set(g.playerBId, g.playerBName);
+  if (g.playerBId) playerNameById.set(g.playerBId, g.playerBName ?? g.playerBId);
+
+  // ── Solo (1-player) decision — reality plays par; only the decider moves ──
+  if (isSolo(g)) {
+    const before = eloByPlayer.get(g.playerAId) ?? ELO_INITIAL;
+    const margin = gameMarginScore(g);
+    const score = gameScoreA(g);
+    const after = before + ELO_K * (margin - expectedScore(before, ELO_PAR));
+    eloByPlayer.set(g.playerAId, after);
+    const peak = peakByPlayer.get(g.playerAId);
+    if (peak === undefined || Math.max(before, after) > peak) peakByPlayer.set(g.playerAId, Math.max(before, after));
+    const trough = troughByPlayer.get(g.playerAId);
+    if (trough === undefined || Math.min(before, after) < trough) troughByPlayer.set(g.playerAId, Math.min(before, after));
+    const rec = recordByPlayer.get(g.playerAId) ?? { games: 0, wins: 0, losses: 0, draws: 0 };
+    rec.games += 1;
+    rec[score === 1 ? 'wins' : score === 0 ? 'losses' : 'draws'] += 1;
+    recordByPlayer.set(g.playerAId, rec);
+
+    const neS = nashEquilibria(g);
+    const realizedS = realizedOutcome(g);
+    const rankS = stakeRank(g, 'A');
+    const optionCells = g.outcomes
+      .map((cell) => {
+        const isBest = neS.some((p) => p.aActionName === cell.aActionName);
+        const isRealized = realizedS?.aActionName === cell.aActionName;
+        const flags = `${isBest ? ' best="true"' : ''}${isRealized ? ' realized="true"' : ''}`;
+        return `        <option a="${xmlEscape(cell.aActionName)}" deltaA="${cell.stakeDeltaA}"${flags} />`;
+      })
+      .join('\n');
+    const optList = g.playerAActions.map((a) => a.name).join(' | ');
+    const deltaSigned = after - before >= 0 ? `+${(after - before).toFixed(1)}` : (after - before).toFixed(1);
+    return [
+      `      <solo-decision axis="${xmlEscape(g.actionAxis)}"`,
+      ` player="${xmlEscape(g.playerAName)}" realized="${xmlEscape(g.realizedAAction)}"`,
+      ` margin="${margin.toFixed(2)}" picked="${rankS ? `${rankS.rank}/${rankS.total}` : 'n/a'}"`,
+      ` hint="1-player decision vs the world — a row of options, each an immediate stake delta in [-4,+4]">\n`,
+      `        <options list="${xmlEscape(optList)}" />\n`,
+      `        <row>\n${optionCells}\n        </row>\n`,
+      `        <elo-after player-before="${Math.round(before)}" player-after="${Math.round(after)}" player-delta="${deltaSigned}" vs="par" />\n`,
+      `        <rationale>${xmlEscape(g.rationale ?? '')}</rationale>\n`,
+      `      </solo-decision>`,
+    ].join('');
+  }
 
   const aBefore = eloByPlayer.get(g.playerAId) ?? ELO_INITIAL;
-  const bBefore = eloByPlayer.get(g.playerBId) ?? ELO_INITIAL;
+  const bBefore = eloByPlayer.get(g.playerBId!) ?? ELO_INITIAL;
   const score = gameScoreA(g);
   const margin = gameMarginScore(g);
   const [aAfter, bAfter] = eloUpdate(aBefore, bBefore, margin);
   eloByPlayer.set(g.playerAId, aAfter);
-  eloByPlayer.set(g.playerBId, bAfter);
+  eloByPlayer.set(g.playerBId!, bAfter);
 
   // Track peak / trough / W / L / D in the same walk so the closing
   // rankings block reads it off without a second pass.
@@ -2161,8 +2207,8 @@ function renderGameXml(
   };
   noteRating(g.playerAId, aBefore);
   noteRating(g.playerAId, aAfter);
-  noteRating(g.playerBId, bBefore);
-  noteRating(g.playerBId, bAfter);
+  noteRating(g.playerBId!, bBefore);
+  noteRating(g.playerBId!, bAfter);
   const bumpRecord = (id: string, kind: 'wins' | 'losses' | 'draws') => {
     const r =
       recordByPlayer.get(id) ?? { games: 0, wins: 0, losses: 0, draws: 0 };
@@ -2172,20 +2218,20 @@ function renderGameXml(
   };
   if (score === 0.5) {
     bumpRecord(g.playerAId, 'draws');
-    bumpRecord(g.playerBId, 'draws');
+    bumpRecord(g.playerBId!, 'draws');
   } else if (score === 1) {
     bumpRecord(g.playerAId, 'wins');
-    bumpRecord(g.playerBId, 'losses');
+    bumpRecord(g.playerBId!, 'losses');
   } else {
     bumpRecord(g.playerAId, 'losses');
-    bumpRecord(g.playerBId, 'wins');
+    bumpRecord(g.playerBId!, 'wins');
   }
 
   const winner =
     score === 1
       ? xmlEscape(g.playerAName)
       : score === 0
-        ? xmlEscape(g.playerBName)
+        ? xmlEscape(g.playerBName!)
         : 'tie';
 
   // Nash equilibria — the equilibrium cells the LLM should reason
@@ -2213,7 +2259,7 @@ function renderGameXml(
         isNash ? ' nash="true"' : '',
         isRealized ? ' realized="true"' : '',
       ].join('');
-      return `        <cell a="${xmlEscape(cell.aActionName)}" b="${xmlEscape(cell.bActionName)}" deltaA="${cell.stakeDeltaA}" deltaB="${cell.stakeDeltaB}"${flags} />`;
+      return `        <cell a="${xmlEscape(cell.aActionName)}" b="${xmlEscape(cell.bActionName ?? "")}" deltaA="${cell.stakeDeltaA}" deltaB="${cell.stakeDeltaB ?? 0}"${flags} />`;
     })
     .join('\n');
 
@@ -2226,7 +2272,7 @@ function renderGameXml(
     ne.length === 0
       ? 'none'
       : ne
-          .map((c) => `${xmlEscape(c.aActionName)}/${xmlEscape(c.bActionName)}`)
+          .map((c) => `${xmlEscape(c.aActionName)}/${xmlEscape(c.bActionName ?? "")}`)
           .join(', ');
 
   const rankSummary = (() => {
@@ -2242,8 +2288,8 @@ function renderGameXml(
 
   return [
     `      <game type="${xmlEscape(g.gameType)}" axis="${xmlEscape(g.actionAxis)}"`,
-    ` playerA="${xmlEscape(g.playerAName)}" playerB="${xmlEscape(g.playerBName)}"`,
-    ` realizedA="${xmlEscape(g.realizedAAction)}" realizedB="${xmlEscape(g.realizedBAction)}"`,
+    ` playerA="${xmlEscape(g.playerAName)}" playerB="${xmlEscape(g.playerBName!)}"`,
+    ` realizedA="${xmlEscape(g.realizedAAction)}" realizedB="${xmlEscape(g.realizedBAction!)}"`,
     ` winner="${winner}" margin="${margin.toFixed(2)}"`,
     ` nashCount="${ne.length}" realizedIsNash="${realizedNash}"`,
     ` stakeRank="${rankSummary}">\n`,

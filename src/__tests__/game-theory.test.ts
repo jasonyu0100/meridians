@@ -1,14 +1,17 @@
 import {
   actionNames,
+  arcCost,
   columnOutcomes,
   computeEloHistories,
   ELO_INITIAL,
   ELO_K,
+  ELO_PAR,
   eloUpdate,
   expectedScore,
   gameMarginScore,
   gameScoreA,
   isGridComplete,
+  isSolo,
   nashEquilibria,
   outcomeAt,
   realizedIsNash,
@@ -697,5 +700,145 @@ describe("game-theory taxonomy", () => {
     // distinction the prompt leans on.
     expect(GAME_TYPE_LABELS["stealth"]).not.toBe(GAME_TYPE_LABELS["divergence"]);
     expect(GAME_TYPE_LABELS["stealth"].toLowerCase()).toContain("unaware");
+  });
+});
+
+// ── Solo (1-player) decisions ─────────────────────────────────────────────
+
+/** A 1-player decision: a row of options (no B), each with an immediate
+ *  stakeDeltaA. realizedAAction is the chosen option. */
+function createSolo(overrides: Partial<BeatGame> = {}): BeatGame {
+  const options: PlayerAction[] = [
+    { name: "accept" },
+    { name: "raise" },
+    { name: "bootstrap" },
+  ];
+  const outcomes: GameOutcome[] = [
+    { aActionName: "accept", description: "", stakeDeltaA: 2 },
+    { aActionName: "raise", description: "", stakeDeltaA: 4 },
+    { aActionName: "bootstrap", description: "", stakeDeltaA: -1 },
+  ];
+  return {
+    beatIndex: 0,
+    beatExcerpt: "solo beat",
+    kind: "solo",
+    gameType: "trivial",
+    actionAxis: "commitment",
+    playerAId: "C-7",
+    playerAName: "Founder",
+    playerAActions: options,
+    playerBActions: [],
+    outcomes,
+    realizedAAction: "accept",
+    rationale: "took the certain option",
+    ...overrides,
+  };
+}
+
+describe("solo decisions", () => {
+  it("isSolo distinguishes solo from duel", () => {
+    expect(isSolo(createSolo())).toBe(true);
+    expect(isSolo(createGame())).toBe(false);
+    // Absent kind defaults to duel
+    expect(isSolo(createGame({ kind: undefined }))).toBe(false);
+  });
+
+  it("realizedOutcome resolves by aActionName alone", () => {
+    const g = createSolo({ realizedAAction: "raise" });
+    expect(realizedOutcome(g)?.stakeDeltaA).toBe(4);
+  });
+
+  it("isGridComplete checks one cell per option", () => {
+    expect(isGridComplete(createSolo())).toBe(true);
+    // Missing a cell for an option
+    const missing = createSolo({
+      outcomes: [
+        { aActionName: "accept", description: "", stakeDeltaA: 2 },
+        { aActionName: "raise", description: "", stakeDeltaA: 4 },
+      ],
+    });
+    expect(isGridComplete(missing)).toBe(false);
+  });
+
+  it("gameMarginScore maps the realized delta directly onto [0,1] (÷8)", () => {
+    expect(gameMarginScore(createSolo({ realizedAAction: "raise" }))).toBeCloseTo(1.0); // +4
+    expect(gameMarginScore(createSolo({ realizedAAction: "accept" }))).toBeCloseTo(0.75); // +2
+    expect(gameMarginScore(createSolo({ realizedAAction: "bootstrap" }))).toBeCloseTo(0.375); // -1
+    const wash = createSolo({
+      realizedAAction: "hold",
+      playerAActions: [{ name: "hold" }, { name: "move" }],
+      outcomes: [
+        { aActionName: "hold", description: "", stakeDeltaA: 0 },
+        { aActionName: "move", description: "", stakeDeltaA: 2 },
+      ],
+    });
+    expect(gameMarginScore(wash)).toBeCloseTo(0.5); // 0 → wash
+  });
+
+  it("gameScoreA scores against par (0)", () => {
+    expect(gameScoreA(createSolo({ realizedAAction: "raise" }))).toBe(1); // +4 win
+    expect(gameScoreA(createSolo({ realizedAAction: "bootstrap" }))).toBe(0); // -1 loss
+    const draw = createSolo({
+      realizedAAction: "hold",
+      playerAActions: [{ name: "hold" }, { name: "move" }],
+      outcomes: [
+        { aActionName: "hold", description: "", stakeDeltaA: 0 },
+        { aActionName: "move", description: "", stakeDeltaA: 1 },
+      ],
+    });
+    expect(gameScoreA(draw)).toBe(0.5);
+  });
+
+  it("nashEquilibria returns the stake-maximising option(s)", () => {
+    const ne = nashEquilibria(createSolo());
+    expect(ne).toHaveLength(1);
+    expect(ne[0].aActionName).toBe("raise"); // +4 is the best
+    expect(ne[0].bActionName).toBeUndefined();
+  });
+
+  it("realizedIsNash is true only when the best option was taken", () => {
+    expect(realizedIsNash(createSolo({ realizedAAction: "raise" }))).toBe(true);
+    expect(realizedIsNash(createSolo({ realizedAAction: "accept" }))).toBe(false);
+  });
+
+  it("stakeRank ranks among options for A and is null for B", () => {
+    // accept (+2) is 2nd-best of 3 (raise +4 best, bootstrap -1 worst)
+    expect(stakeRank(createSolo(), "A")).toEqual({ rank: 2, total: 3 });
+    expect(stakeRank(createSolo(), "B")).toBeNull();
+  });
+
+  it("arcCost is regret vs the best option for A, zero for B", () => {
+    // chose accept (+2); best was raise (+4) → regret 2
+    expect(arcCost(createSolo(), "A")).toBe(2);
+    expect(arcCost(createSolo({ realizedAAction: "raise" }), "A")).toBe(0);
+    expect(arcCost(createSolo(), "B")).toBe(0);
+  });
+
+  it("computeEloHistories moves only the decider, scored vs par", () => {
+    const histories = computeEloHistories([createSolo({ realizedAAction: "raise" })]);
+    // Only the decider has a history — no opponent/par entry.
+    expect([...histories.keys()]).toEqual(["C-7"]);
+    const h = histories.get("C-7")!;
+    // Started at par, a +4 (margin 1.0) result against an equal par opponent
+    // raises the rating.
+    expect(h.ratings[0]).toBe(ELO_INITIAL);
+    expect(h.ratings[h.ratings.length - 1]).toBeGreaterThan(ELO_INITIAL);
+    expect(ELO_PAR).toBe(ELO_INITIAL);
+  });
+
+  it("a bad solo decision lowers the decider's rating", () => {
+    const histories = computeEloHistories([createSolo({ realizedAAction: "bootstrap" })]);
+    const h = histories.get("C-7")!;
+    expect(h.ratings[h.ratings.length - 1]).toBeLessThan(ELO_INITIAL);
+  });
+
+  it("mixes solo and duel decisions in one ELO walk without crashing", () => {
+    const histories = computeEloHistories([
+      createGame(), // duel: C-1 vs C-2
+      createSolo({ realizedAAction: "raise" }), // solo: C-7
+    ]);
+    expect(histories.has("C-1")).toBe(true);
+    expect(histories.has("C-2")).toBe(true);
+    expect(histories.has("C-7")).toBe(true);
   });
 });

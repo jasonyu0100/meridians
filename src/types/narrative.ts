@@ -2088,54 +2088,70 @@ export type PlayerAction = {
   name: string;
 };
 
-/** One outcome cell: the world-state if A takes aAction and B takes bAction. */
+/** One outcome cell.
+ *  - duel (2-player): the world-state if A takes aAction and B takes bAction.
+ *  - solo (1-player): one option in the decider's row — bActionName / stakeDeltaB
+ *    omitted; stakeDeltaA is the immediate outcome if A takes this option. */
 export type GameOutcome = {
   /** Name of A's action — must match an entry in playerAActions[].name. */
   aActionName: string;
-  /** Name of B's action — must match an entry in playerBActions[].name. */
-  bActionName: string;
+  /** Name of B's action — must match an entry in playerBActions[].name.
+   *  Omitted for solo decisions (no opponent). */
+  bActionName?: string;
   /** 5-15 words narrating what happens at this cell. */
   description: string;
   /** A's stake delta: -4 (catastrophic for A) to +4 (ideal for A). */
   stakeDeltaA: number;
-  /** B's stake delta: -4 to +4. */
-  stakeDeltaB: number;
+  /** B's stake delta: -4 to +4. Omitted for solo decisions. */
+  stakeDeltaB?: number;
 };
 
-/** A strategic beat: the outcome space around a single decision. */
+/** A strategic beat: the outcome space around a single decision.
+ *
+ *  Two flavours, discriminated by `kind`:
+ *  - "duel" (default, 2-player): a full NxM matrix — A and B each pick from a
+ *    menu, every pairing has a cell with both players' stake deltas.
+ *  - "solo" (1-player): a ROW, not a matrix — one decider faces a menu of
+ *    options under uncertainty (reality is the other seat). `playerB*` and
+ *    `realizedBAction` are absent, `playerBActions` is empty, and `outcomes`
+ *    holds one cell per option (keyed by aActionName, stakeDeltaA only). */
 export type BeatGame = {
   /** Which beat in the scene's BeatPlan.beats this game corresponds to. */
   beatIndex: number;
   /** Short excerpt of the beat for context. */
   beatExcerpt: string;
 
-  /** Classical strategic frame of the beat. */
+  /** "duel" (2-player game, default when absent) or "solo" (1-player decision). */
+  kind?: "duel" | "solo";
+
+  /** Classical strategic frame of the beat (duel). For solo, advisory only. */
   gameType: GameType;
-  /** Dimension both players' actions are organised along. */
+  /** Dimension the action(s) are organised along. */
   actionAxis: ActionAxis;
 
-  // ── Player A ─────────────────────────────────────────────────────────
+  // ── Player A (the decider) ───────────────────────────────────────────
   playerAId: string;
   playerAName: string;
-  /** A's action menu, 1-4 entries. */
+  /** A's action / option menu, 1-4 entries. For solo, the row of options. */
   playerAActions: PlayerAction[];
 
-  // ── Player B ─────────────────────────────────────────────────────────
-  playerBId: string;
-  playerBName: string;
+  // ── Player B (absent for solo) ───────────────────────────────────────
+  playerBId?: string;
+  playerBName?: string;
+  /** Empty array for solo decisions. */
   playerBActions: PlayerAction[];
 
   /**
-   * Every (A, B) action pairing — exactly playerAActions.length *
-   * playerBActions.length entries. Order is not significant; cells are looked
-   * up by their action-name pair.
+   * duel: every (A, B) action pairing — exactly playerAActions.length *
+   * playerBActions.length cells, looked up by action-name pair.
+   * solo: one cell per option in playerAActions, looked up by aActionName.
    */
   outcomes: GameOutcome[];
 
   /** A's action name in the realized outcome (must match an A menu entry). */
   realizedAAction: string;
-  /** B's action name in the realized outcome. */
-  realizedBAction: string;
+  /** B's action name in the realized outcome. Absent for solo. */
+  realizedBAction?: string;
 
   /** One sentence explaining why the authored beat landed on the realized cell. */
   rationale: string;
