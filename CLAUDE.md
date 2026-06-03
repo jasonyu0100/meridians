@@ -1,6 +1,6 @@
 # Meridians
 
-> **Grounded architecture reference.** Sections below describe what ships in the codebase today: the engine, the data model, the prompts, the pipelines, the file layout. The forward-looking product framing (War Rooms, public/private rooms, stakes, expert systems, fantasy-sports layer) lives in a dedicated **[Vision — where this is heading](#vision--where-this-is-heading)** section at the bottom. Keep the two separated when working on this codebase: the architecture is what's real, the vision is the bet on top of it.
+> **Grounded architecture reference.** Sections below describe what ships in the codebase today: the engine, the data model, the prompts, the pipelines, the file layout. The forward-looking product framing (War Rooms, public/private rooms, stakes, fantasy-sports layer) lives in a dedicated **[Vision — where this is heading](#vision--where-this-is-heading)** section at the bottom. Keep the two separated when working on this codebase: the architecture is what's real, the vision is the bet on top of it.
 
 Meridians is a **Next.js 16 + React 19 + TypeScript** browser app that extracts and generates **World Views** — typed, causally coherent, mutable knowledge structures over the three force fields **System / World / Fate (SWF)**. Any coherent long-form text describes one: a research paper, a market brief, a campaign plan, a novel. The pipeline is: priors → world view → timelines → forecast. Feed the engine rich context, it extracts a typed knowledge graph that mutates section by section, you branch alternative trajectories, and structural intelligence comes out.
 
@@ -537,7 +537,7 @@ Key tuning values:
 
 ## Vision — where this is heading
 
-> **Forward-looking, not currently shipped.** Everything above describes the engine as it exists. This section describes the product surface the engine is being built toward. Some of it is in active design, some is partial implementation, some may not pan out. When you encounter War Room / Practice / Expert System / Stakes / Public Game vocabulary in other docs, prompts, or in-app copy, treat them as forward-looking concepts grounded in the engine above but not yet a complete shipped experience.
+> **Forward-looking, not currently shipped.** Everything above describes the engine as it exists. This section describes the product surface the engine is being built toward. Some of it is in active design, some is partial implementation, some may not pan out. When you encounter War Room / Practice / Stakes / Public Game vocabulary in other docs, prompts, or in-app copy, treat them as forward-looking concepts grounded in the engine above but not yet a complete shipped experience.
 
 ### Category positioning
 
@@ -545,23 +545,12 @@ Meridians is being built as **an evolving game that codifies reality** — sitti
 
 ### The War Room
 
-A vision-based, role-played, information-asymmetric game on the substrate. A team sits around the same board (rendered as a graph, grid, hex, or map), holds private logs, signals intent through cards (AI-dealt or operator-authored), negotiates, commits to phased moves. The room is meant to function as three things at once:
+A vision-based, role-played, information-asymmetric game on the substrate. A team sits around the same board (rendered as a graph or a board with nested maps), holds private logs, signals intent through cards (AI-dealt or operator-authored), negotiates, commits to phased moves. The room is meant to function as two things at once:
 
 - **Role-play simulator** for rehearsing the future
 - **Strategy table** for deciding on it
-- **Living expert system** the team owns and maintains
 
 Most operator time in the planned UI lives on two visual surfaces: the **map / board state** for the current game, or the **raw graph substrate** underneath. Everything else (cards, dialogue logs, settings panes) is fast plumbing. Treat those two surfaces as the load-bearing UX in any new room-related work.
-
-### Expert system as question bank
-
-The expert system the room builds is materialised as a **multiple-choice question bank** generated directly from the substrate's scenes and arcs. Each question carries (a) the substrate's calibrated correct answer, (b) a set of **distractors** — plausible-but-wrong reads, where nuance lives, and (c) an **embedding** of the question text so the bank is searchable by meaning. Three roles in one artifact:
-
-- **Acclimation** — new operators learn the team's subjective world by working through the bank
-- **Testing** — distractors expose where intuition diverges from calibrated priors; expert disagreement opens new threads
-- **Expert System RAG** — semantic retrieval over the embedded bank surfaces the closest known questions and their answers as grounding for novel queries
-
-The bigger the bank, the more real decisions covered, the stronger the expert system.
 
 ### Two product surfaces, sequenced
 
@@ -592,4 +581,4 @@ The manifesto's base case (~$3.5M ARR) is venture-defensible without any of this
 
 ### Reading the rest of the codebase
 
-When implementing or refactoring, anchor on the **engine sections above** (Architecture, Domain Model, AI Pipeline, etc.). When implementing or refactoring War Room / Practice / Expert System / Stakes features specifically, this Vision section is the design intent, the [manifesto](https://meridians-sourcenovel.vercel.app/manifesto) is the long-form rationale, and [LANGUAGE.md](LANGUAGE.md) is the canonical vocabulary. The grounded engine is what survives if the vision changes — keep the architecture honest to what's shipped, and label new vision-aligned code as such.
+When implementing or refactoring, anchor on the **engine sections above** (Architecture, Domain Model, AI Pipeline, etc.). When implementing or refactoring War Room / Practice / Stakes features specifically, this Vision section is the design intent, the [manifesto](https://meridians-sourcenovel.vercel.app/manifesto) is the long-form rationale, and [LANGUAGE.md](LANGUAGE.md) is the canonical vocabulary. The grounded engine is what survives if the vision changes — keep the architecture honest to what's shipped, and label new vision-aligned code as such.

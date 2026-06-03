@@ -1110,6 +1110,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
     items: [
       { id: "abstract", label: "Abstract" },
       { id: "problem", label: "Why Practice" },
+      { id: "wedge", label: "The Wedge" },
       { id: "approach", label: "The Substrate" },
     ],
   },
@@ -1382,16 +1383,13 @@ export default function PaperPage() {
               time lives on two surfaces &mdash; the{" "}
               <B>map / board</B> the room is playing on, and the{" "}
               <B>raw graph substrate</B> underneath. The room is
-              three things at once: a <em>role-play simulator</em>{" "}
-              for rehearsing the future, a <em>strategy table</em>{" "}
-              for deciding on it, and a{" "}
-              <em>living expert system</em> the team owns and
-              trains against via question banks generated from
-              its own world view. The full war game is the
-              heaviest mode of engagement; the quiz bank and the
-              expert-system query surface are lighter cadences
-              that share the same substrate. You do not need to
-              play the games to benefit &mdash; see{" "}
+              two things at once: a <em>role-play simulator</em>{" "}
+              for rehearsing the future and a <em>strategy table</em>{" "}
+              for deciding on it. The full war game is the heaviest
+              mode of engagement; lighter cadences &mdash; calibrating
+              priors between sessions, generating forward solo &mdash;
+              share the same substrate. You do not need to play the
+              full game to benefit &mdash; see{" "}
               <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">
                 The Loop
               </a>
@@ -1403,14 +1401,15 @@ export default function PaperPage() {
               consulting, prediction markets, fantasy sports, or
               educational software cleanly &mdash; it sits in the
               unclaimed segment where{" "}
-              <em>gaming, education, and strategy converge</em>.
-              Not a strategy tool dressed up as a game; not a
-              serious game pretending to be entertainment. An
+              <em>gaming, education, and strategy converge</em>
+              &mdash; where the education is an organisation learning
+              to see itself decide, by playing in the open, not
+              courseware. Not a strategy tool dressed up as a game;
+              not a serious game pretending to be entertainment. An
               evolving game that <em>adapts to its players&apos;
               scenarios and turns their reality into playable
-              worlds</em>. The expert system that emerges
-              sharpens because the team keeps updating its world;
-              the world stays alive because the team keeps
+              worlds</em>. The world view sharpens because the team
+              keeps updating it; it stays alive because the team keeps
               playing it. Maintenance is the practice, and the
               practice is the value.
             </P>
@@ -1423,7 +1422,10 @@ export default function PaperPage() {
               which moves are worth making. The room hands that
               act back to humans. The engine handles the
               supporting work &mdash; arbitrating rules, holding
-              private state, scoring every committed move.
+              private state, scoring every committed move. It runs on{" "}
+              <em>humanistic priors</em>: it values and aggregates the
+              judgement of the people in an organisation &mdash;
+              human-up, not data-down.
             </P>
             <P>
               The substrate is a <B>world view</B>: a typed,
@@ -1456,25 +1458,16 @@ export default function PaperPage() {
               public is where the curiosity is.
             </P>
             <P>
-              <B>The skill ceiling is your priors.</B> The math
-              is fixed and cheap. The depth and freshness of what
-              you feed the substrate decides the result. Hold one
-              world view deeply &mdash; the <em>hedgehog</em>{" "}
-              &mdash; or hold many at once, calibrating as
-              evidence comes in &mdash; the <em>fox</em>
+              <B>The skill ceiling is your priors.</B> The math is
+              fixed and cheap; the depth and freshness of what you
+              feed the substrate decides the result. Hold one world
+              view deeply &mdash; the <em>hedgehog</em> &mdash; or
+              many at once, calibrating as evidence arrives &mdash;
+              the <em>fox</em>
               <Cite id="berlin1953" label="Berlin 1953" />
               <Cite id="tetlock2005" label="Tetlock 2005" />
               <Cite id="tetlock-gardner2015" label="Tetlock &amp; Gardner 2015" />.
-              The substrate serves both. The deeper sections
-              build it; the{" "}
-              <a href="#war-rooms" className="text-white/70 underline-offset-2 hover:underline">
-                War Rooms
-              </a>{" "}
-              and{" "}
-              <a href="#practice" className="text-white/70 underline-offset-2 hover:underline">
-                Practice
-              </a>{" "}
-              sections close the loop. <B>Institute the room.</B>
+              The substrate serves both. <B>Institute the room.</B>
             </P>
           </Section>
 
@@ -1571,33 +1564,56 @@ export default function PaperPage() {
               permission to bring it to anyone outside the
               general-staff tradition.
             </P>
+          </Section>
+
+          {/* ── The Wedge ─────────────────────────────────────────────── */}
+          <Section id="wedge" label="The Wedge">
             <P>
-              <B>Lead buyer: the investment team.</B> An
-              investment committee, hedge-fund analyst pod, or
-              family-office strategy table that already runs
-              pre-mortems and red-team sessions, for whom
-              calibrated forward play against named scenarios is
-              the everyday work. They have the cadence, the
-              budget, the appetite for being wrong sharply
-              instead of vaguely, and the institutional
-              vocabulary the room is built to fit. One credible
-              pilot here is what earns the next ten sales; this
-              is where we are pointing the wedge.
+              <B>Meridians runs on humanistic priors.</B> The unit of
+              value is human <em>judgement</em> &mdash; the read each
+              person carries on the questions that matter &mdash; and
+              the engine is built to honour it. A <B>game master</B>{" "}
+              gathers the priors, calls, and disagreements of a room,
+              every member represented, and AI-human tools (above all
+              the <em>thread-prediction views</em>) aggregate them
+              &mdash; divergence preserved, not averaged into
+              consensus &mdash; into one living read of how the
+              organisation believes and decides, disagreements and
+              all, <em>manifested as narrative</em>.
+              Human-up, not data-down: where the index-everything
+              tools (Glean and its kind) mine what has already been
+              written, Meridians surfaces the judgement that lives
+              only in its people &mdash; the part no drive can be
+              scraped for.
             </P>
             <P>
-              <B>Also possible, not the wedge.</B> Defence and
-              policy consultancies running wargames. Political
-              shops war-gaming opposition response. Solo
-              operators currently substituting coaches and
-              reading. Tabletop strategy groups looking for a
-              high-fidelity sandbox. These are real markets, the
-              engine fits them in principle, and one of them may
-              well become the lead segment once the first pilot
-              lands. We are not pretending all five are equally
-              ready, and we are not citing a top-down market
-              figure for any of them &mdash; the question that
-              matters is whether the investment-team pilot earns
-              the case study.{" "}
+              <B>The board game is a trojan horse.</B> It enters
+              framed as a team-bonding exercise &mdash; low-friction,
+              no budget line, easy to say yes to &mdash; but the real
+              objective is organisational transformation: instituting
+              one new behaviour, the{" "}
+              <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">calibrate
+              → rehearse → butterfly → review</a> loop, that makes
+              operating an organisation <em>transparent and
+              queryable</em>. You cannot realign an organisation you
+              cannot see deciding; run weekly, the loop becomes a
+              running narrative update of how the place thinks &mdash;
+              an interface layer to the company&apos;s own context.
+              The game is the wrapper; the loop is the payload.
+            </P>
+            <P>
+              <B>Sold to leaders, as transformation.</B> Human-up
+              needs top-down agreement to land &mdash; or at least a
+              committed small team &mdash; so the buyer is a leader
+              buying organisational change, not a seat buying a tool.
+              The entry is cheap and broad: a board-game session at a
+              change-receptive organisation (non-profits, university
+              societies, member associations &mdash; the cadence, the
+              openness, the least to defend). The follow-through is
+              the high end, where the ACV lives &mdash; investment
+              committees, defence and policy units, political shops
+              (see <a href="#economics" className="text-white/70 underline-offset-2 hover:underline">Economics</a>).{" "}
+              <B>Land via the board game; expand into the war room.</B>{" "}
               <em>Earn the morning the surprise lands.</em>
             </P>
           </Section>
@@ -1607,7 +1623,11 @@ export default function PaperPage() {
             <P>
               A room can&apos;t play forward without a shared
               ledger of where it stands. The substrate is that
-              ledger. Every world the room cares about &mdash; a
+              ledger &mdash; and, for an organisation, an{" "}
+              <em>interface layer to its own context</em>:
+              transparent and queryable, a place to ask how the team
+              actually decides. Every world the room cares about
+              &mdash; a
               market regime, a campaign theatre, a portfolio, a
               novel, an alternate-history timeline &mdash; is
               modelled as a knowledge graph
@@ -1705,7 +1725,7 @@ export default function PaperPage() {
             </P>
             <p className="text-[12.5px] text-white/35 italic leading-[1.85] mt-6 border-l-2 border-white/10 pl-4">
               A note to the reader. The sections that follow
-              (Hierarchy through Markov Chains) describe how the
+              (Hierarchy through Reconstruction) describe how the
               substrate is built and measured. The buyer
               doesn&apos;t need to follow the math to use the
               room &mdash; the math is what keeps scoring
@@ -2612,59 +2632,37 @@ export default function PaperPage() {
             </h3>
             <P>
               Butterfly&apos;s atom is a committed decision under
-              uncertainty, sealed at the moment of choice: the option
-              taken, the alternatives that were live, what was at
-              stake, and the stance held at commit. Whether there was
-              an opponent is a property of the decision, not a
-              requirement of the engine, and decisions come in two
-              flavours treated identically downstream. A{" "}
+              uncertainty, sealed at the moment of choice &mdash; the
+              option taken, the live alternatives, the stake, and the
+              stance held &mdash; and never edited, so hindsight
+              can&apos;t rewrite what the choice really was. Two
+              flavours, treated identically downstream. A{" "}
               <B>strategic</B> decision&apos;s uncertainty is another
-              actor&apos;s response: it seals the game-theoretic
-              structure &mdash; the{" "}
+              actor: it seals the{" "}
               <a href="#research" className="underline hover:text-white/80">Decision Matrix</a>&apos;s
-              {" "}axis, shape, and both seats&apos; stake deltas in{" "}
-              <Tex>{String.raw`[-4, +4]`}</Tex> &mdash; and the stance
-              is what the committer expected the other seats to do. An{" "}
-              <B>existential</B> decision&apos;s uncertainty is the
-              world: it seals the option set and stake, and the stance
-              is a probability over how reality would land &mdash;
-              structurally a side bet on a Fate thread, with reality
-              playing the other seat. The two-player game was never the
-              essential thing; it was the case where the uncertainty
-              bet against happened to be an agent rather than the
+              {" "}axis, shape, and both seats&apos; stake deltas, and
+              the stance is what the committer expected the others to
+              do. An <B>existential</B> decision&apos;s uncertainty is
+              the world: it seals the option set, the stake, and a
+              probability over how reality would land &mdash; a side
+              bet on a Fate thread, reality in the other seat. The
+              two-player game was never essential; it was just the
+              case where the uncertainty was an agent rather than the
               world&apos;s indifference.
             </P>
             <P>
-              Both seal at commit and never edit &mdash; the decision
-              frozen as it was actually made, under the information
-              actually available, so hindsight cannot rewrite what the
-              choice really was. This seal is the non-negotiable
-              discipline: the causal trace is only honest if its origin
-              cannot be rewritten once the consequences are known. And
-              it binds <em>harder</em> on the existential case, not
-              softer &mdash; a two-player game leaves external structure
-              (the shape, the opponent&apos;s options) constraining what
-              you can later claim you believed, but a solo bet&apos;s
-              only record of what you expected is the number you sealed.
-              The commit-time probability has to be captured as a
-              number, at commit, non-editable, or the
-              process-versus-luck distinction quietly collapses into
-              &ldquo;I knew it all along.&rdquo;
-            </P>
-            <P>
-              Making the existential case first-class is a correction,
-              not an add-on. Anchored only on the two-player matrix,
-              Butterfly would be blind to the decisions that don&apos;t
-              look adversarial &mdash; the relocation, the
-              hold-or-fold, the slow drift nobody red-teams because
-              there is no obvious opponent &mdash; which is exactly
-              where good operators get hurt. It is also what makes the
-              solo, personal-simulation mode coherent: most of an
-              operator&apos;s own decisions are bets against a market, a
-              diagnosis, a trajectory, not duels with a named adversary,
-              and the existential flavour is what makes &ldquo;a life
-              authored deliberately is a working model you decide
-              against&rdquo; true rather than aspirational.
+              The seal binds <em>harder</em> on the existential case,
+              not softer: a game leaves external structure to check
+              your claimed belief, but a solo bet&apos;s only record is
+              the number you sealed &mdash; so capture the commit-time
+              probability as a number, non-editable, or process and
+              luck collapse into &ldquo;I knew it all along.&rdquo;
+              Making the existential case first-class is the correction
+              that matters: anchored only on the two-player matrix,
+              Butterfly would miss the decisions that don&apos;t look
+              adversarial &mdash; the relocation, the hold-or-fold, the
+              slow drift &mdash; which is exactly where operators get
+              hurt, and where the author-your-own-life mode lives.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
@@ -2725,28 +2723,27 @@ export default function PaperPage() {
               ultimately cause?&rdquo;
             </P>
             <P>
-              One question stays open, the way Fate&apos;s closure rule
-              once did: whether a butterfly&apos;s reach is{" "}
-              <em>bounded</em> &mdash; it settles once the threads it
-              caused have closed &mdash; or <em>open-ended</em>, still
-              propagating as long as new threads trace causally back to
-              it, so the decision casts its shadow indefinitely. That
-              choice decides whether a butterfly ever finishes, and we
-              have not made it.
+              <B>Closure works the way a Fate stance does.</B> A
+              butterfly is itself a belief &mdash; a distribution over
+              verdicts on the decision &mdash; and the downstream Fate
+              outcomes are the evidence that moves its logits. It
+              resolves when one verdict accumulates enough weight to
+              clear a margin over the others, the same closure rule a
+              thread obeys; until then it stays open and revisable. No
+              separate horizon primitive is needed &mdash; a butterfly
+              finishes when its downstream evidence is decisive, and
+              not before.
             </P>
             <P>
               <B>What is built, and what is owed.</B> The structure is
-              symmetric to Fate and rests on machinery that already
-              exists &mdash; the two-player game-theoretic
-              deconstruction, the reasoning graph&apos;s causal edges,
-              stake deltas, and Fate&apos;s own thread resolutions. The
-              seal is done in principle and non-negotiable. What
-              remains owed: the one-player existential decision record
-              &mdash; option set, stake, and a sealed commit-time
-              stance &mdash; to sit beside the two-player game; a worked
-              example of a decision&apos;s butterfly traced across its
-              subgraph; a cadence for when the verdict re-evaluates; and
-              the bounded-versus-open-ended closure rule. Named, not yet
+              symmetric to Fate and rests on machinery that exists
+              &mdash; the game-theoretic deconstruction, the reasoning
+              graph&apos;s causal edges, stake deltas, Fate&apos;s
+              thread resolutions, and Fate&apos;s own closure
+              arithmetic, which the verdict reuses. Owed: the
+              one-player decision record (option set, stake, sealed
+              commit-time stance) beside the two-player game; a worked
+              example; and a re-evaluation cadence. Named, not yet
               shown.
             </P>
             <P>
@@ -3527,7 +3524,7 @@ export default function PaperPage() {
                 {
                   name: "decision matrix",
                   caption: "1- or 2-player decision per beat",
-                  body: "the decision structure beneath the prose. A two-player decision is a 2\u00d72 game \u2014 an axis (14 types \u2014 disclosure / trust / stakes\u2026) and a shape (19 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. A one-player decision seals the option set, the chosen option, the stake, and the stance held at commit \u2014 a staked bet on a Fate thread, reality in the other seat. Additive: written to scene.gameAnalysis, never mutates deltas.",
+                  body: "the decision structure beneath the prose. A two-player decision is a 2\u00d72 game \u2014 an axis (11 types \u2014 information / trust / commitment\u2026) and a shape (16 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. A one-player decision seals the option set, the chosen option, the stake, and the stance held at commit \u2014 a staked bet on a Fate thread, reality in the other seat. Additive: written to scene.gameAnalysis, never mutates deltas.",
                   color: "#A855F7",
                 },
                 {
@@ -4689,42 +4686,6 @@ export default function PaperPage() {
               for the breakdown).
             </P>
             <P>
-              <B>The room is also an expert system.</B> The
-              substrate isn&apos;t only a stage for play &mdash;
-              it&apos;s an authored body of knowledge the team
-              can interrogate. The expert system is materialised
-              as a <B>multiple-choice question bank</B>, derived
-              directly from the world view&apos;s scenes and arcs
-              (&ldquo;Given <em>this</em> regime, what move from
-              the regulator?&rdquo; &ldquo;Which faction holds
-              leverage when the supply line is cut?&rdquo;). Each
-              question carries the substrate&apos;s calibrated
-              answer plus a set of <em>distractors</em> &mdash;
-              the plausible-but-wrong reads the substrate weighs
-              against, which is where the nuance lives. The bank
-              is embedded as vectors so it&apos;s searchable by
-              meaning: when an operator asks something new,
-              semantic retrieval over the bank surfaces the
-              closest known questions and their answers as
-              grounding (<B>Expert System RAG</B>). The bank
-              serves three roles at once &mdash;{" "}
-              <em>acclimation</em> (new operators learn the
-              team&apos;s subjective world by working through it;
-              each world has its own rules, the bank is how you
-              learn them), <em>testing</em> (distractors expose
-              where intuition diverges from the calibrated
-              priors; expert disagreement opens new threads), and{" "}
-              <em>answering</em> (direct questions get
-              RAG-grounded responses from accumulated decisions).{" "}
-              <B>The bigger the bank, the more real decisions
-              covered, the stronger the expert system.</B> The
-              room is therefore three things at once &mdash; a{" "}
-              <em>role-play simulator</em> for rehearsing the
-              future, a <em>strategy table</em> for deciding on
-              it, and a <em>living expert system</em> the team
-              owns and grows.
-            </P>
-            <P>
               The headline, plainly:{" "}
               <B>once the SWF priors are deep enough, a playable
               War Room is what the engine produces.</B> Prime the
@@ -4783,7 +4744,7 @@ export default function PaperPage() {
             </P>
             <P>
               The War Room is the heaviest mode of engagement,
-              not the only one. Five surfaces share one
+              not the only one. Four surfaces share one
               substrate; the value of the product is the{" "}
               <em>loop</em> between them.
             </P>
@@ -4828,42 +4789,34 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Answer the question bank.</B> Every
-                  committed play generates calibrated questions
-                  with distractors that encode the
-                  plausible-but-wrong reads. Onboarding from
-                  session memory, not a deck of slides.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Query the expert system.</B> The substrate
-                  is searchable end to end &mdash; every
-                  committed fact, every entity&apos;s recorded
-                  knowledge, every thread&apos;s trajectory,
-                  every prior resolution. Lightest cadence in
-                  the loop: any operator, any time.
+                  <B>Onboard by playback.</B> Generated{" "}
+                  <B>slide decks</B> walk a newcomer through the
+                  room&apos;s history and the decisions that shaped it
+                  &mdash; the lightweight way to update your priors
+                  when you join a team, move between teams, or step
+                  into a new room. The decks regenerate as the
+                  substrate moves, so they stay current; no session to
+                  convene.
                 </span>
               </li>
             </ul>
             <P>
-              <B>You don&apos;t need to play the war games to
-              benefit.</B> The question bank and the query
-              surface drive value on their own. A solo operator
-              can run scenarios without convening anyone. The
-              team-weekly War Room is the deepest source of new
-              deltas; it isn&apos;t the only entry point.
+              <B>You don&apos;t need to play the full war game to
+              benefit.</B> Building Priors, generating forward, and
+              onboarding from the decks each drive value on their own
+              &mdash; a solo operator can calibrate or run scenarios,
+              and a new hire can get up to speed, without convening
+              anyone. The team-weekly War Room is the deepest source
+              of new deltas; it isn&apos;t the only entry point.
             </P>
             <P>
-              <B>What makes it compound.</B> Each mode feeds the
-              others. A query surfaces a coverage gap that goes
-              into Priors. A Priors update reweights the
-              question bank. A well-answered question becomes a
-              prior the next play uses. A play generates new
-              questions, new scenarios, new entries the query
-              surface pulls from tomorrow. Whichever surface the
-              operator engages, the work compounds.
+              <B>What makes it compound.</B> Each surface feeds the
+              others. A scenario surfaces a gap that goes into Priors;
+              a Priors update reweights the next play; a play lands new
+              decisions and threads; the next deck onboards a newcomer
+              with them, and that newcomer arrives with sharper priors
+              for the session after. Whichever surface the operator
+              engages, the work compounds.
             </P>
             <P>
               <B>A life accumulates the same way.</B> Gameplay one
@@ -4896,30 +4849,27 @@ export default function PaperPage() {
             <P>
               The cadence that produces the richest substrate is
               the team that institutes the War Room weekly or
-              monthly. The lighter surfaces (question bank,
-              expert-system query) live in{" "}
+              monthly. The lighter surfaces (calibrating Priors,
+              generating forward) live in{" "}
               <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">
                 The Loop
               </a>{" "}
               and need none of the discipline below. What lives
               here is the heavy ritual: meeting regularly to
               build reflexes for adversarial moves, calibrated
-              priors on which futures arrive, doctrine that
-              survives the day a surprise lands, and the shared
-              expert system every member contributes to.
+              priors on which futures arrive, and doctrine that
+              survives the day a surprise lands.
             </P>
             <P>
-              <B>The expert system requires training, and the
-              training is the practice.</B> Expert systems are
-              not one-time deliverables &mdash; they decay the
-              moment the world stops being updated. Every session
-              is a training pass: the team walks its Priors,
-              plays the future forward, scores the round,
-              refines the question bank, disagrees with the
-              distractors. Stop playing for a quarter and the
-              priors go stale. The maintenance loop is what
-              keeps the expert system honest to a world that is
-              itself still moving.
+              <B>The substrate requires maintenance, and the
+              maintenance is the practice.</B> A world view is not
+              a one-time deliverable &mdash; it decays the moment the
+              team stops updating it. Every session is a maintenance
+              pass: the team walks its Priors, plays the future
+              forward, scores the round. Stop playing for a quarter
+              and the priors go stale. The maintenance loop is what
+              keeps the substrate honest to a world that is itself
+              still moving.
             </P>
             <P>
               <B>Weekly War Rooms</B> &mdash; for what moves fast
@@ -4996,19 +4946,19 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Knowledge transfer &amp; expert systems.</B>{" "}
-                  The team&apos;s expert system is materialised as
-                  a multiple-choice question bank generated from
-                  the substrate&apos;s scenes and arcs &mdash;
-                  embedded for semantic search so new questions
-                  can be answered by retrieving the closest known
-                  ones. New hires <em>acclimate</em> to the
-                  team&apos;s subjective world by working through
-                  the bank (each domain has its own rules; the
-                  bank is how you learn them); senior experts
-                  refine it by disagreeing with the distractors;
-                  the substrate keeps the disagreements. The
-                  bigger the bank, the stronger the expert system.
+                  <B>Knowledge transfer.</B> The substrate is the
+                  team&apos;s institutional memory made playable, and
+                  the lightweight way in is <em>playback</em>:{" "}
+                  generated <B>slide decks</B> that walk a newcomer
+                  through the room&apos;s history and the decisions
+                  that shaped it, updating their priors without
+                  convening a session. Decks regenerate as the
+                  substrate moves, so a person joining, moving teams,
+                  or stepping into a new room gets a current read, not
+                  dead documentation. Heavier still: take a seat and
+                  play. Departing experts leave their committed calls
+                  and the threads they opened behind, where the
+                  substrate keeps them.
                 </span>
               </li>
             </ul>
@@ -5018,10 +4968,9 @@ export default function PaperPage() {
               not an archive. Curation, not capture. The
               fiftieth weekly War Room is qualitatively different
               from the tenth: fifty cycles of rehearsal, fifty
-              curated drops, fifty graded forecasts, hundreds of
-              questions answered, and the expert system that
-              emerges from them. The team that practises earns
-              the morning the surprise lands.
+              curated drops, fifty graded forecasts, and the
+              sharpened substrate that emerges from them. The team
+              that practises earns the morning the surprise lands.
             </P>
           </Section>
 
@@ -5187,9 +5136,9 @@ export default function PaperPage() {
               no vendor can ship from cold.</B> A team running
               weekly War Rooms accumulates a working model of its
               own strategic position &mdash; priors, calibrated
-              reads, an embedded question bank with the
-              distractors that encode the plausible-but-wrong
-              moves the team has seen and named. That artefact
+              reads, graded forecasts, and the committed decisions
+              and threads the team has played out and named. That
+              artefact
               lives in the substrate&apos;s history, on the
               client&apos;s machine, authored by the people who
               live inside the problem. A foundation-model vendor
@@ -5244,17 +5193,19 @@ export default function PaperPage() {
               <em>compounded practice on client-owned state</em>.
             </P>
             <P>
-              <B>Versus a lighter alternative.</B> The real
-              competitor is not a frontier model; it is a stripped
-              tool that delivers 70% of the value for 10% of the
-              effort and never asks the operator to maintain a
-              substrate. The behavioural moat is fragile and we
-              know it. Our answer is to make the maintenance
-              loop deliver something the lighter tool literally
-              cannot &mdash; the team&apos;s own expert system,
-              queryable by anyone they hire next year &mdash;
-              and to keep proving it on real engagements before
-              the lighter tool ships its v2.
+              <B>Versus the alternatives.</B> Two real competitors,
+              neither a frontier model. The <em>stripped tool</em>{" "}
+              that delivers 70% of the value for 10% of the effort and
+              never asks anyone to maintain a substrate &mdash; the
+              behavioural moat is fragile against it, and our answer
+              is the compounding substrate of the team&apos;s own
+              judgement it can&apos;t ship cold. And the{" "}
+              <em>index-everything play</em> (Glean and its kind) that
+              searches what&apos;s already written &mdash; where
+              Meridians is the inverse, surfacing the judgement that
+              never reached a document. Connecting the humans is the
+              harder, more defensible layer; we keep proving it on
+              real engagements before either ships its v2.
             </P>
             <P>
               <B>The bet is the practice.</B> The shape:{" "}
@@ -5269,10 +5220,11 @@ export default function PaperPage() {
             <p className="text-[12.5px] text-white/35 italic leading-[1.85] mt-3 border-l-2 border-white/10 pl-4">
               Numbers below are today&apos;s figures &mdash;
               LLM costs and pricing intent will move. The shape
-              of the model (private subscription covers a session
-              that costs cents; public is amortised across a
-              cohort; pilot is the wedge) is what the section is
-              about.
+              of the model (the board-game bonding exercise is the
+              entry; the high-end B2B pilot is the follow-through;
+              private subscription covers a session that costs cents;
+              public is amortised across a cohort) is what the section
+              is about.
             </p>
             <P>
               <B>LLM cost is cheap; loaded margin is the honest
@@ -5301,7 +5253,7 @@ export default function PaperPage() {
               <span className="font-mono tabular-nums text-white/70">~75%+</span>
               {" "}on Team and Pro, comparable on Pilot once the
               priming work is done. The product pitch to a serious
-              operator is to acclimate inside the first 90 days
+              operator is to get up to speed inside the first 90 days
               and run rooms internally thereafter; we keep
               answering hard questions but stop being a
               services line item.
@@ -5319,10 +5271,19 @@ export default function PaperPage() {
             <BusinessModels />
 
             <P>
-              <B>Wedge.</B> A{" "}
-              <em>6-month pilot partnership</em> with a single
-              defence contractor, hedge fund, or political-research
-              shop &mdash; targeted ACV in the{" "}
+              <B>Entry, then the high-end follow-through.</B> The
+              entry is the board-game bonding exercise (see{" "}
+              <a href="#wedge" className="text-white/70 underline-offset-2 hover:underline">The Wedge</a>)
+              &mdash; priced to spread, not to earn: a one-off paid
+              workshop or a low per-seat month
+              (<span className="font-mono tabular-nums text-white/70">~$15&ndash;30</span>),
+              deliberately cheap so it lands in change-receptive orgs
+              and produces the case study. It is the validation
+              motion, not the revenue line. The tier it earns into is
+              a{" "}
+              <em>6-month pilot partnership</em> with a single defence
+              contractor, hedge fund, or political-research shop
+              &mdash; targeted ACV in the{" "}
               <span className="font-mono tabular-nums text-white/70">~$80&ndash;120K</span>
               {" "}range, structured as priors-accumulation against
               a real question. Services-heavy on day one and we
@@ -5354,11 +5315,11 @@ export default function PaperPage() {
               <em>Week-12 retention on heavy-mode non-founder
               users</em> &mdash; whether weekly War Rooms hold past
               the novelty window for operators who aren&apos;t us.{" "}
-              <em>One demonstrable expert-system answer from an
-              accumulated substrate</em> &mdash; a real query, on a
-              real client&apos;s priors, returning a calibrated
-              read no foundation-model chat could produce from
-              cold. Until both exist, the strongest part of the
+              <em>One demonstrably better call from an accumulated
+              substrate</em> &mdash; a real decision, on a real
+              client&apos;s priors, scored against what reality
+              returned, that no foundation-model chat could produce
+              from cold. Until both exist, the strongest part of the
               pitch is theoretical; once they exist, the moat
               narrative is concrete.
             </P>

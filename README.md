@@ -80,13 +80,12 @@ The engine is the spine; the LLM is one tool the engine drives.
 
 Everything above is grounded — features that ship today. This section is the **forward-looking direction**: where we believe the product is going. Some of it is in active development, some is design-stage, and some may not pan out. Treat it as the bet, not the deliverable.
 
-Meridians's category position is **gaming + education + strategy** — an evolving game that adapts to its players' scenarios and codifies their reality into playable worlds. The intended product surface on top of the engine is the **War Room**: a role-played, information-asymmetric game on the substrate where a team sits around the same board (rendered as a graph, grid, hex, or map), holds private logs, signals intent via cards, and rehearses the future on a regular cadence. The room is meant to function as three things at once:
+Meridians's category position is **gaming + education + strategy** — an evolving game that adapts to its players' scenarios and codifies their reality into playable worlds. The intended product surface on top of the engine is the **War Room**: a role-played, information-asymmetric game on the substrate where a team sits around the same board (rendered as a graph or a board with nested maps), holds private logs, signals intent via cards, and rehearses the future on a regular cadence. The room is meant to function as two things at once:
 
 - a **role-play simulator** for rehearsing the future;
-- a **strategy table** for deciding on it;
-- a **living expert system** the team owns and maintains, materialised as a multiple-choice question bank generated from the substrate's scenes and arcs (each question carries the substrate's calibrated answer plus distractors, embedded for semantic search; novel queries get RAG-grounded answers from accumulated decisions).
+- a **strategy table** for deciding on it.
 
-**Maintenance is the practice.** An expert system is not a one-time deliverable; it requires the team to keep updating its world, every session. The world evolves; the substrate keeps up; the priors stay sharp. Stop playing for a quarter and the expert system goes stale.
+**Maintenance is the practice.** A world view is not a one-time deliverable; it requires the team to keep updating it, every session. The world evolves; the substrate keeps up; the priors stay sharp. Stop playing for a quarter and the substrate goes stale.
 
 **Two product surfaces, planned in sequence — private first, public next.**
 
@@ -98,7 +97,7 @@ Meridians's category position is **gaming + education + strategy** — an evolvi
 
 **Speculative upside** (explicitly aspirational, not a forecast): public narrative stages where audiences tune in to fictional worlds unfolding session by session through AI + human synthesis (a cinema-replacement adjacency the architecture supports natively); long-running multi-season games with persistent stakes positions and player "careers"; democratic governance over public substrate curation; bull-case year-3 ARR in the $10–20M range if the public layer catches and a betting vertical launches in a licensed jurisdiction. The manifesto's base case (~$3.5M ARR) is venture-defensible without any of this; the rest is what the architecture earns the right to build.
 
-**The honest bet, said plainly:** maintenance is the practice, and the practice is the value. The room teaches the team to keep updating its world; the substrate compounds the priors; the question bank captures what the team knows; the expert system answers questions the team will ask tomorrow. *Vision is humanity's edge over AI* — models scale prediction, language, search, optimisation, but they don't originate the act of seeing a future and choosing to play toward it. The room hands that act back to humans; the engine handles the rest.
+**The honest bet, said plainly:** maintenance is the practice, and the practice is the value. The room teaches the team to keep updating its world; the substrate compounds the priors; the next room inherits them. *Vision is humanity's edge over AI* — models scale prediction, language, search, optimisation, but they don't originate the act of seeing a future and choosing to play toward it. The room hands that act back to humans; the engine handles the rest.
 
 This section may be wrong about specifics. The grounded sections above are what works today regardless.
 
