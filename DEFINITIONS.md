@@ -124,7 +124,17 @@ Sixteen shapes (consolidated from 19 — battle-of-sexes folds into coordination
 
 ### Stake & ELO Metrics
 
-Each outcome cell carries integer **stake deltas** in `[-4, +4]` per player — how much that outcome advances or harms a player's arc-level interests if it were the one that happened. Magnitude is calibrated as *importance*: pivotal beats use the full ±4, quiet beats stay in ±1.
+Each outcome cell carries integer **stake deltas** in `[-4, +4]` per player — how much that outcome advances or harms a player's arc-level interests if it were the one that happened. Magnitude is **inflection, not drama**, and is calibrated against the *whole work*, not the sentence:
+
+| Value | Meaning |
+|-------|---------|
+| **±4** | Arc-defining / irreversible — the trajectory itself changes. Rare. |
+| **±3** | Major — clearly shifts the balance; hard to undo. |
+| **±2** | Moderate — a real but recoverable move (the modal score). |
+| **±1** | Minor — a nudge; a small edge or cost. |
+| **0**  | Neutral — nothing material moved. |
+
+Over-crediting is the common failure: most decisions are ±1–±2, and a beat where everything scores ±3/±4 is inflated. The two kinds of decision read the scale differently: a **two-player** decision is scored on **relative reward** — each side's delta and the differential `ΔA − ΔB` (who gains relative to whom). A **one-player** decision is scored on its **field of alternatives** — each option's outcome, so the chosen option's reward is weighed fairly by its **contribution** against what else was available (taking +2 when +4 was on the table is a costly call), not in isolation.
 
 | Metric | Definition |
 |--------|------------|

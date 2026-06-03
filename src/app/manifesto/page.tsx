@@ -3524,7 +3524,7 @@ export default function PaperPage() {
                 {
                   name: "decision matrix",
                   caption: "1- or 2-player decision per beat",
-                  body: "the decision structure beneath the prose. A two-player decision is a 2\u00d72 game \u2014 an axis (11 types \u2014 information / trust / commitment\u2026) and a shape (16 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4]. A one-player decision seals the option set, the chosen option, the stake, and the stance held at commit \u2014 a staked bet on a Fate thread, reality in the other seat. Additive: written to scene.gameAnalysis, never mutates deltas.",
+                  body: "the decision structure beneath the prose. A two-player decision is a 2\u00d72 game \u2014 an axis (11 types \u2014 information / trust / commitment\u2026) and a shape (16 types \u2014 dilemma / stag-hunt / signaling\u2026) with integer stake deltas in [\u22124, +4], scored on relative reward (who gains relative to whom). A one-player decision is a row over its alternatives \u2014 the chosen option weighed by its contribution against the field \u2014 a staked bet on a Fate thread, reality in the other seat. Stake magnitude is inflection, not drama: \u00b14 is arc-defining and rare, most moves are \u00b11\u2013\u00b12. Additive: written to scene.gameAnalysis, never mutates deltas.",
                   color: "#A855F7",
                 },
                 {

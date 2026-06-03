@@ -26,7 +26,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <principle name="decisions-are-inflection-points">A decision is any inflection point of consequence — wherever a story, a simulation, OR an argument commits to one path when others were live. Find those points and name the alternatives that were on the table; that is the whole task. Who (or what) chose varies — a character, a faction, the rules, reality, or the author/Narrator — and does not gate inclusion. Do NOT restrict to scenes with named agents: a paper choosing a definition, a doctrine picking a tradeoff, a market regime tipping, are decisions exactly as much as a duel. If a stretch of text moves the world or the argument forward, ask "what was committed here, and against which alternatives?" — and if there is no human/agent to attribute it to, attribute it to the Narrator.</principle>
   <principle name="shape-vs-signature">Every consequential moment has a shape (the space of choices and consequences) that exists independent of any realised path through it. The realised cell is ONE signature on that space. Across fiction / non-fiction / simulation / analysis the SHAPE is the same; only who selected the path differs (author / writer / rules + priors / reality). Your job is to describe the shape and mark the signature — never to defend the signature.</principle>
   <principle name="evaluator-not-predictor">Agents often act against local strategic interest — they trade stake for identity, short-term for long-term, cooperation for arc, narrow win for institutional position. That is a feature of narrative AND of real-world strategic play. NEVER warp stake deltas to "justify" what happened. Score each cell as if it were the realised outcome — honestly, against that player's interests. A dominated realised cell is signal, not noise.</principle>
-  <principle name="magnitude-is-importance">The magnitudes of your stake deltas calibrate how much the moment matters. A pivotal, arc-defining beat uses the full ±4 range. A quiet, low-consequence beat stays in ±1. Do not inflate stakes to make every beat dramatic — the ELO system reads magnitude as the importance signal. A scene where every beat scores ±4 tells the system every beat is equally pivotal, which is false.</principle>
+  <principle name="magnitude-is-importance">The magnitudes of your stake deltas calibrate how much the moment matters, in INFLECTION not drama. Over-crediting is the common failure: most decisions are ±1 to ±2, and ±3/±4 is reserved for genuine arc-defining inflection. Significance is relative to the WHOLE work, not the sentence — a scene where every beat scores ±3/±4 tells the system every beat is equally pivotal, which is false. See the stake-delta rubric for the anchored scale.</principle>
 </doctrine>
 
 <scope hint="Include any beat where a consequential choice is made — two agents against each other, one agent against the world, or the text/author itself at an inflection point in an argument.">
@@ -73,7 +73,7 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <field name="realizedAAction">The option actually taken (must match a menu entry).</field>
   <field name="rationale">ONE sentence: why this option was taken over the alternatives.</field>
   <omit>gameType is advisory for solo (set "trivial" if nothing fits); there is no playerB, playerBActions, bActionName, stakeDeltaB, or realizedBAction.</omit>
-  <discipline>Score each option as if it were the one taken — do not bias the chosen option to look best. A decider taking a sub-optimal option (left stake on the table) is exactly the signal downstream analysis wants. These are IMMEDIATE outcomes only; long-range causal consequences are evaluated separately (Butterfly), not here.</discipline>
+  <discipline>The alternatives ARE the measurement. Score each option as if it were the one taken — do not bias the chosen option to look best — so the chosen option's reward reads fairly against the field (its contribution), not in isolation. A decider taking a sub-optimal option (left stake on the table) is exactly the signal downstream analysis wants. These are IMMEDIATE outcomes only; long-range causal consequences are evaluated separately (Butterfly), not here.</discipline>
 </solo-decisions>
 
 <decision-procedure hint="Walk three steps in order. Each step routes the beat to exactly one label by construction. Answer the questions; do not pattern-match against type definitions.">
@@ -185,14 +185,18 @@ const GAME_THEORY_GUIDE = `<doctrine>
   <rule>Do not collapse genuinely distinct options into one label. "panel rules in plaintiff's favour" and "panel rules in defendant's favour" are TWO actions, not one.</rule>
 </grid-cardinality>
 
-<stake-delta-scoring hint='stakeDeltaA answers: "If this outcome were the one that happened, how much does it advance or harm A''s stated interests in this arc?"'>
-  <scale value="+4">Strongly advances A's arc-level goals — a structurally pivotal win.</scale>
-  <scale value="+2">Moderately helpful.</scale>
-  <scale value="0">Neutral, no meaningful effect.</scale>
-  <scale value="-2">Moderately harmful.</scale>
-  <scale value="-4">Catastrophic — a structurally pivotal loss.</scale>
-  <calibration name="magnitude-is-importance">The MAGNITUDE you write IS your judgement of how much this beat matters. A scene-level pivotal beat uses the full ±4 range. A quiet, low-consequence beat stays in ±1. The ELO system reads magnitude as the importance signal: high-magnitude grids move ratings far more than low-magnitude ones. Treat the scale as a budget — not every beat gets ±4.</calibration>
-  <key>Score as if the cell were the realised outcome. Do not bias toward making the realised cell look maximal. The evaluator's value comes from honest cross-cell comparison — a dominated cell landing as realised is exactly the information downstream analysis wants to surface.</key>
+<stake-delta-scoring hint='A stake delta answers: "If this outcome happened, how much does it advance or harm that party''s interests?" — measured in INFLECTION, not drama. The magnitude is significance relative to the WHOLE work, not to the sentence.'>
+  <rubric hint="Anchor every number to consequence and reversibility, not intensity of language.">
+    <level value="±4">Arc-defining / irreversible. The trajectory itself changes — a load-bearing thread closes, a position is decisively won or lost, a commitment that can't be walked back. RARE. If you can imagine the work continuing roughly unchanged, it is not a ±4.</level>
+    <level value="±3">Major. Clearly shifts the balance or sets up a resolution; hard (not impossible) to undo.</level>
+    <level value="±2">Moderate. A real but recoverable gain or loss — the everyday consequential move. This is the modal score for a genuine decision.</level>
+    <level value="±1">Minor. A nudge: a small edge, a small cost, a step that matters a little.</level>
+    <level value="0">Neutral. Nothing material moved (a pulse; positioning without consequence).</level>
+  </rubric>
+  <anti-inflation>Over-crediting is the default failure. Most decisions are ±1 to ±2. Reserve ±3 and ±4 for true inflection points — moments that change where the world or argument is heading, not moments that merely FEEL high-stakes. If most cells in a scene sit at ±3/±4, you are inflating: re-rank them against each other and against the work as a whole, and pull the routine ones down. Calibrate across the work, not within the beat.</anti-inflation>
+  <two-player>For a duel, the cells encode RELATIVE reward: score each side honestly and let the differential (ΔA − ΔB) carry the beat — what matters is who gains relative to whom. A zero-sum beat's cells sum to ~0; a mixed beat's don't.</two-player>
+  <one-player>For a solo decision, the row IS the field of alternatives, and that field is the measurement. Score each option's outcome honestly so the chosen option's CONTRIBUTION reads against what else was available: taking +2 when +4 was on the table is a costly call; taking +1 when every other option was negative is a strong one. Do NOT over-credit the chosen option just because it happened — the spread across the alternatives is the point, not the single realized number.</one-player>
+  <key>Score as if each cell were the realised outcome. Do not bias toward making the realised cell look maximal — a dominated realised cell is exactly the signal downstream analysis wants.</key>
 </stake-delta-scoring>
 
 <examples>
