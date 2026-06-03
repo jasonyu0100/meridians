@@ -272,9 +272,10 @@ function TimelineEntry({
   isLast: boolean;
 }) {
   const solo = isSolo(game);
-  // Board width scales with the menu so big grids / long rows stay legible.
-  const cols = solo ? game.playerAActions.length : game.playerBActions.length;
-  const matrixWidthPx = Math.max(420, 140 + cols * 150);
+  // Solo decisions stack into a single column, so a fixed narrow width is enough.
+  // Duel grids scale with the menu so big grids stay legible.
+  const cols = game.playerBActions.length;
+  const matrixWidthPx = solo ? 460 : Math.max(420, 140 + cols * 150);
 
   return (
     <div className={`relative flex gap-6 ${isLast ? "" : "pb-10"}`}>
@@ -747,7 +748,7 @@ function SoloBoard({ game }: { game: BeatGame }) {
           decides
         </span>
       </div>
-      <div className="flex gap-px rounded-lg overflow-hidden border-b border-r border-white/10">
+      <div className="flex flex-col rounded-lg overflow-hidden border border-white/10">
         {game.playerAActions.map((opt, i) => {
           const outcome = outcomeAt(game, opt.name);
           const delta = outcome?.stakeDeltaA ?? 0;
@@ -756,7 +757,7 @@ function SoloBoard({ game }: { game: BeatGame }) {
           return (
             <div
               key={`opt-${i}`}
-              className={`relative flex-1 min-w-0 px-3 py-3 h-32 border-t border-l border-white/10 ${
+              className={`relative px-3 py-3 ${i > 0 ? "border-t border-white/10" : ""} ${
                 isRealized
                   ? "bg-amber-400/10 ring-1 ring-inset ring-amber-400/40"
                   : "bg-white/2"
