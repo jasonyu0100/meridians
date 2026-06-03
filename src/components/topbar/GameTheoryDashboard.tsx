@@ -52,7 +52,7 @@ type GameWithContext = {
   scene: Scene;
 };
 
-type PlayerProfile = {
+export type PlayerProfile = {
   id: string;
   name: string;
   // ELO
@@ -88,6 +88,9 @@ type PlayerProfile = {
   soloGames: number;        // how many of this player's games were 1-player
   soloTookBest: number;     // solo games where they took the stake-maximising option
   soloStakeSum: number;     // sum of realized stake delta across solo games
+  soloAxisCounts: Map<ActionAxis, number>; // solo-only axis tally — the
+                            // characteristic dimension of their bets against
+                            // the world (isolated from duel axis affinity)
   // Game-type / axis participation
   gameTypeCounts: Map<GameType, number>;
   axisCounts: Map<ActionAxis, number>;
@@ -198,6 +201,27 @@ type Aggregate = {
 const ARCHETYPE_MIN_GAMES = 3;
 const GAMETYPE_AFFINITY_THRESHOLD = 0.5;   // share of a player's games
 const AXIS_AFFINITY_THRESHOLD = 0.5;
+// Solo-axis affinity: at least this many solo decisions, and this share of
+// them on one axis, before we crown a characteristic solo dimension.
+const SOLO_AXIS_MIN_GAMES = 2;
+const SOLO_AXIS_AFFINITY_THRESHOLD = 0.5;
+
+// What it means for a player's bets-against-the-world to concentrate on a
+// given axis — phrased as the silent counterpart they're really playing.
+// Timing is the one axis where that counterpart is literal: the clock.
+const SOLO_AXIS_PHRASE: Record<ActionAxis, string> = {
+  timing:       "when to move — act now vs. hold and wait. Their counterpart is the clock; they are forever playing against time.",
+  commitment:   "whether to bind themselves to a path or keep options open — staking a course against an uncertain world.",
+  stakes:       "whether to escalate or back off what's on the line, with no one across the table forcing the raise.",
+  information:  "what to reveal or hold when no one is negotiating back — disclosure as a bet against the world.",
+  identity:     "who to claim or disown when the choice is theirs alone.",
+  trust:        "whether to lower their guard with nothing but circumstance on the other side.",
+  alliance:     "which side to throw in with, unilaterally, before anyone answers.",
+  status:       "whether to assert or yield rank on their own initiative.",
+  pressure:     "how hard to press or absorb against circumstance rather than an opponent.",
+  resources:    "what to commit or give up when the decision rests on them alone.",
+  obligation:   "whether to take on or discharge a debt unprompted.",
+};
 
 function topEntry<K>(m: Map<K, number>): { key: K; count: number } | null {
   let best: { key: K; count: number } | null = null;
@@ -330,7 +354,7 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
   return null;
 }
 
-function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
+export function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   const tags: PlayerArchetype[] = [];
   if (p.games < ARCHETYPE_MIN_GAMES) return tags;
 
@@ -497,6 +521,24 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
         label: "gambler",
         description: "In their solo bets they routinely pass up the safe-best option — playing for the upside and leaving stake on the table.",
         tone: "conflict",
+      });
+    }
+  }
+
+  // Group 2.6 — SOLO DECISION AXIS. The characteristic dimension of a
+  // player's bets against the world, isolated from their duel axis affinity
+  // (which the generic `axis: X` tag pools together). Answers "what kind of
+  // call do they make when no one is across the table?" — for timing, the
+  // counterpart is the clock itself, so this surfaces players who are
+  // forever playing against time.
+  if (p.soloGames >= SOLO_AXIS_MIN_GAMES) {
+    const topSoloAxis = topEntry(p.soloAxisCounts);
+    if (topSoloAxis && topSoloAxis.count / p.soloGames >= SOLO_AXIS_AFFINITY_THRESHOLD) {
+      tags.push({
+        id: `solo-axis-${topSoloAxis.key}`,
+        label: `solo: ${topSoloAxis.key}`,
+        description: `Most of their solo bets are ${topSoloAxis.key} decisions: ${SOLO_AXIS_PHRASE[topSoloAxis.key]}`,
+        tone: "strategic",
       });
     }
   }
@@ -674,7 +716,7 @@ function archetypeToneClasses(tone: PlayerArchetype["tone"]): string {
   }
 }
 
-function aggregate(
+export function aggregate(
   narrative: NarrativeState,
   resolvedKeys: string[],
 ): Aggregate {
@@ -728,6 +770,7 @@ function aggregate(
         soloGames: 0,
         soloTookBest: 0,
         soloStakeSum: 0,
+        soloAxisCounts: new Map(),
         gameTypeCounts: new Map(),
         axisCounts: new Map(),
         earlyGames: 0,
@@ -789,6 +832,7 @@ function aggregate(
       else if (dS < 0) pS.negativeCells++;
       pS.gameTypeCounts.set(g.gameType, (pS.gameTypeCounts.get(g.gameType) ?? 0) + 1);
       pS.axisCounts.set(g.actionAxis, (pS.axisCounts.get(g.actionAxis) ?? 0) + 1);
+      pS.soloAxisCounts.set(g.actionAxis, (pS.soloAxisCounts.get(g.actionAxis) ?? 0) + 1);
       const rS = stakeRank(g, "A");
       if (rS) {
         pS.sumRealizedRank += rS.rank;

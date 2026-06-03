@@ -1,6 +1,6 @@
 # Meridians Narrative Definitions
 
-Comprehensive reference for all narrative classification systems, scene modes, beat types, and structural archetypes used throughout Meridians.
+Comprehensive reference for all narrative classification systems, scene modes, beat types, structural archetypes, and game-theory tagging used throughout Meridians.
 
 ---
 
@@ -65,6 +65,116 @@ Beats are the atomic units of scene structure — individual moments that advanc
 
 **Usage:**
 Each scene contains a sequence of beats. Beat profiles (distributions of functions and mechanisms) define authorial voice and pacing style.
+
+---
+
+## Game Theory Tagging
+
+Every scene is additively decomposed into a sequence of **2×2-style strategic games**, one per strategic beat (written to `scene.gameAnalysis`, never mutating deltas). Each game names the *shape* of a decision — the full space of choices each party could have made and the consequence of every pairing — and marks the **realized cell** (what the author actually wrote). The shape says how stake *can* move; the realized cell says how it *did* move; the gap is what was left on the table.
+
+Tagging happens on three layers: each game carries a **game kind**, an **action axis**, and a **game type (shape)**; the realized outcomes feed **ELO / stake metrics**; and those metrics aggregate into per-player **behavioural tags**.
+
+### Game Kind
+
+| Kind | Shape | Description |
+|------|-------|-------------|
+| **duel** | N×M matrix | Two strategic agents, each with a menu of actions. Every (A-action, B-action) pairing is a scored cell. Default kind. |
+| **solo** | row of options | One decider facing a pivotal choice against the world (reality in the other seat). A menu of options, one immediate outcome each — no opponent column. |
+
+### Action Axes (the dimension the choice trades on)
+
+Both players' actions live on the **same** axis — the thing that *shifts* as a result of the decision, not the surface topic. Eleven axes (consolidated from earlier finer sets; e.g. *control* and *confrontation* fold into pressure, *moral* into commitment):
+
+| Axis | Question it asks |
+|------|------------------|
+| **information** | reveal ↔ conceal — what facts about the world does each side expose or hide? |
+| **identity** | claim ↔ disown — do I assert who I am, or distance myself from it? |
+| **trust** | extend ↔ guard — do I lower my defenses, or keep them up? |
+| **alliance** | ally ↔ separate — are we on the same side going forward, or not? |
+| **status** | assert ↔ defer — do I push for the higher position, or yield rank? |
+| **pressure** | press ↔ yield — how much force am I applying, or absorbing? (absorbs control, confrontation) |
+| **stakes** | escalate ↔ deescalate — am I raising or lowering what's on the line? |
+| **resources** | take ↔ give — who ends up holding the resources / lives / knowledge? |
+| **obligation** | incur ↔ discharge — am I taking on a debt/favor, or paying it off? |
+| **commitment** | commit ↔ withdraw / hedge — am I binding myself, or keeping options open? (absorbs moral) |
+| **timing** | act ↔ wait — do I move now, or hold and watch? |
+
+### Game Types (the strategic shape)
+
+Sixteen shapes (consolidated from 19 — battle-of-sexes folds into coordination, cheap-talk into signaling, pure-opposition drops, anti-coordination renamed divergence). Classified by a decision procedure over **scope → mechanism → information × preference**.
+
+| Group | Type | Shape |
+|-------|------|-------|
+| Symmetric-info | **coordination** | Both want to end up in the same place; stake moves together when actions match (incl. battle-of-sexes flavour). |
+| | **stag-hunt** | Coordination with a trust gate — big shared prize vs. the safe solo play. Payoff-dominant Nash is risk-dominated. |
+| | **dilemma** | Mutual cooperation pareto-dominates Nash, but each has a private incentive to defect (prisoner's-dilemma). |
+| | **chicken** | Both want the other to yield; if neither does, both crash (incl. war-of-attrition). |
+| | **divergence** | Both *actively* want to differ on a shared axis. (One-sided → stealth or zero-sum.) |
+| | **zero-sum** | Grid literally sums to zero in every cell — any +X for one is −X for the other. |
+| Asymmetric-info | **signaling** | Informed party reveals type via a costly, hard-to-fake action (absorbs cheap-talk when costly enough). |
+| | **screening** | Uninformed party *designs* a mechanism to sort agents by type — tests, auditions, loyalty trials. |
+| | **principal-agent** | Delegation **and** hidden action — task handed off and execution opaque (both required). |
+| | **stealth** | Covert action vs. an unaware observer whose only move is attention allocation (no delegation). |
+| Mechanism | **stackelberg** | Sequential commit-then-respond — leader moves visibly first, follower best-responds. |
+| | **bargaining** | Offer → counter → accept/reject rounds (one-shot ultimatum is the degenerate case). |
+| | **commitment-game** | Whether one party can *credibly* self-bind IS the game (vow, burned bridge, hostage, contract). |
+| Multi-party | **contest** | N-player rank-ordered competition for a prize. |
+| | **collective-action** | N-player threshold contribution with free-rider dynamics. |
+| Degenerate | **trivial** | No real strategic content — the choice is in name only. Used sparingly. |
+
+### Stake & ELO Metrics
+
+Each outcome cell carries integer **stake deltas** in `[-4, +4]` per player — how much that outcome advances or harms a player's arc-level interests if it were the one that happened. Magnitude is calibrated as *importance*: pivotal beats use the full ±4, quiet beats stay in ±1.
+
+| Metric | Definition |
+|--------|------------|
+| **Margin score** | `clamp(0.5 + (ΔA − ΔB)/16, 0, 1)` — continuous score ELO consumes; folds margin-of-victory into the math (+4/−4 crush = 1.0, +1/0 edge ≈ 0.56, tie = 0.5). Solo: `clamp(0.5 + ΔA/8, 0, 1)` against par. |
+| **Game score (W/L/D)** | Binary 1 / 0 / 0.5 for display — *not* what ELO reads. |
+| **ELO** | `ELO_INITIAL = 1500`, `ELO_K = 32`; `K_effective = K × min(1, max\|stake\|/4)` so crucial moments move ratings far more. Solo decisions play reality at par (1500), and only the decider's rating moves. |
+| **Nash** | A realized cell is a (weak) pure-strategy equilibrium if neither player could unilaterally improve their stake delta. Descriptive, not normative — off-Nash cells are exactly what ELO learns from. |
+| **Stake rank** | Rank of the realized cell among all outcomes by stake delta for a player (1 = best available). |
+| **Arc cost** | Stake left on the table — `max(stake in realized row/column) − realized stake`. Rises when a player trades local stake for identity / principle / arc. |
+
+### Behavioural Tags
+
+ELO trajectory, outcome shape, game-type participation, and role split aggregate per player into orthogonal tags. One **narrative-role headline** leads; mechanical tags follow.
+
+**Narrative role (headline, one max)** — a cross-genre pattern over the signals:
+
+| Tag | Pattern |
+|-----|---------|
+| **prime mover** | Rising ELO, leads the play, repeatedly lands above what the grid predicts — the world bends around them. |
+| **adversary** | Dominates grids at others' expense; lives in conflict / power-framing games. |
+| **tragic figure** | Absorbs losses for others and pays for it — ELO declines while carrying the sacrifice. |
+| **mentor** | Cooperative, steady ELO, gives more stake than they take. |
+| **comeback** | Arc shifts upward — later outcomes better than early; growth / redemption. |
+| **slipping** | Arc shifts downward — started stronger than they end. |
+| **trickster** | Info-asymmetric games, high variance, mostly ends ahead. |
+| **counterforce** | Almost always responding, almost always in conflict, ELO near baseline. |
+| **anchor** | High participation, near-baseline ELO, broadly cooperative — the stable presence. |
+
+**Outcome shape (one max):** **extractor** (wins at another's expense) · **sacrificial** (pays so others gain) · **scorched-earth** (both-lose cells dominate) · **uneven ally** (cooperates but stacked in their favour) · **ally** (genuine even cooperator).
+
+**Trajectory (one max):** **dominant** (lands near the top of every grid) · **rising** / **falling** (ELO climbed / eroded ≥80) · **high-variance** (swings big) · **steady** (rating barely moves).
+
+**Solo decision style:** **soloist** (mostly 1-player bets against the world) · **sure-handed** (usually takes the stake-maximising option) · **gambler** (routinely passes up the safe-best for the upside).
+
+**Solo decision axis:** **solo: X** — the characteristic dimension of a player's bets against the world, isolated from their duel axis affinity. In a solo decision reality sits in the other seat, so this names the silent counterpart they keep playing. On the **timing** axis that counterpart is literal — the clock — so **solo: timing** marks a player forever choosing *when* to move (act ↔ wait) against time itself.
+
+**Strategic style (one max):** **defies the odds** (wins off-Nash cells rational play says they shouldn't — protagonist signature) · **strategist** (lands on Nash, plays the defensible move) · **off-script** (rarely plays the rational move).
+
+**Strategic agency (from game-type participation):** **schemer** (plays the information game and wins it) · **power-broker** (sets the terms, first mover in commitment / bargaining) · **combatant** (lives in zero-sum / chicken / divergence) · **coordinator** (builds shared action in alignment games).
+
+**Arc shift:** **upward arc** / **downward arc** (late-vs-early stake split).
+
+**Relational:** **rival: X** (losing record concentrated against X) · **leads: X** (winning record concentrated against X).
+
+**Role bias:** **initiator** (almost always Player A) · **responder** (almost always Player B).
+
+**Affinity:** **axis: X** (most choices trade on axis X) · **X-heavy** (most decisions sit inside game-type X).
+
+**Files:**
+`src/lib/game-theory.ts` (pure math), `src/lib/ai/game-analysis.ts` + `src/lib/prompts/scenes/game-theory.ts` (LLM decomposition), `src/types/narrative.ts` (`ActionAxis`, `GameType`, label tables), `src/components/topbar/GameTheoryDashboard.tsx` (behavioural tags), `src/components/canvas/SceneGameTheoryView.tsx` (per-scene payoff matrix).
 
 ---
 
@@ -205,6 +315,7 @@ These definitions are used throughout the platform:
 3. **Analytics** — Density, scale, and position classify narratives for comparison
 4. **Planning** — Course correction uses force gradients and cube trajectories
 5. **Visualization** — Cube viewer, delivery curves, and force charts all map to these concepts
+6. **Game Theory** — Per-scene decomposition into games (axis + shape), ELO rankings, and behavioural tags (Decision Matrix / Game Theory Dashboard)
 
 **Formulas & Implementation:**
 See `src/lib/narrative-utils.ts` for full mathematical definitions and detection algorithms.
