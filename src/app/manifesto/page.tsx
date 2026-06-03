@@ -1592,8 +1592,8 @@ export default function PaperPage() {
               no budget line, easy to say yes to &mdash; but the real
               objective is organisational transformation: instituting
               one new behaviour, the{" "}
-              <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">calibrate
-              → rehearse → butterfly → review</a> loop, that makes
+              <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">capture
+              → rehearse → review</a> loop, that makes
               operating an organisation <em>transparent and
               queryable</em>. You cannot realign an organisation you
               cannot see deciding; run weekly, the loop becomes a
@@ -2713,7 +2713,7 @@ export default function PaperPage() {
             </h3>
             <P>
               A settled butterfly becomes a prior the next round of{" "}
-              <a href="#loop" className="underline hover:text-white/80">Calibration</a>{" "}
+              <a href="#loop" className="underline hover:text-white/80">Capture</a>{" "}
               inherits. Forward play without retrospective is rehearsal
               you never audit; Butterfly is the audit, and the audit
               feeds the next rehearsal. It is the answer to the
@@ -4540,12 +4540,13 @@ export default function PaperPage() {
               <Cite id="schelling1960" label="Schelling 1960" />
             </P>
             <P>
-              <B>The console shows the board; the controllers play
-              it.</B> A War Room renders the world view on the shared
-              screen &mdash; the laptop console everyone reads at a
-              glance &mdash; while each player works a phone as a
-              controller. The render is one of two surfaces, the same
-              two the app is built around:
+              <B>The console shows the board; everyone joins the same
+              instance.</B> A War Room renders the world view on the
+              shared screen &mdash; the laptop console everyone reads at
+              a glance &mdash; while each player works the full
+              interface on their own device, joined over the tunnel to
+              the same live state. The render is one of two surfaces,
+              the same two the app is built around:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
@@ -4698,49 +4699,76 @@ export default function PaperPage() {
           {/* ── The Loop ─────────────────────────────────────────────── */}
           <Section id="loop" label="The Loop">
             <P>
-              <B>Two kinds of play: Calibration and Rehearsal.</B>{" "}
-              Playing Meridians is two rhythms.{" "}
-              <B>Calibration</B> sharpens perspectives, and it is{" "}
-              <em>per-perspective</em> by design: every seat carries
-              its own open threads, personal to that character&apos;s
-              story, and Calibration sharpens <em>that seat&apos;s</em>{" "}
-              stance on <em>its own</em> questions as priors
-              accumulate. It is not a forecasting pool that averages
-              the room into one consensus &mdash; which is exactly
-              what you must not do when a seat models an adversary who
-              should surprise you. The adversary&apos;s seat keeps its
-              own deliberately hostile priors; divergence across
-              perspectives is preserved. What is shared is the board,
-              not the belief: one reality every seat reads, each
-              holding a distinct and often opposed calibrated stance.
-              Threads are not fixed either &mdash; new ones are added
-              as the story turns, so each perspective is an evolving
-              decision system.
+              <B>Three phases: Capture, Rehearsal, Review.</B>{" "}
+              Playing Meridians is one loop in three beats.{" "}
+              <B>Capture</B> assembles the priors &mdash; and it is{" "}
+              <em>per-perspective</em> by design. Every seat carries its
+              own open threads, personal to the actor it models, and
+              Capture sharpens <em>that seat&apos;s</em> stance as priors
+              accumulate. It is not a forecasting pool that averages the
+              room into one consensus &mdash; which is exactly what you
+              must not do when a seat models an adversary who should
+              surprise you. The adversary&apos;s seat keeps its own
+              deliberately hostile priors; what is shared is the board,
+              not the belief. The priors arrive two ways: live, each
+              member tends their own seat through the full interface;
+              dark, they drop observations into WhatsApp and the game
+              master routes each into the seat it came from. A sparse
+              seat just holds a wider, less-settled stance &mdash; it is
+              never folded into someone else&apos;s. Threads are not
+              fixed either &mdash; new ones are added as the story turns,
+              so each perspective is an evolving decision system.
             </P>
             <P>
               <B>Rehearsal</B> explores the uncertainty &mdash; and
-              must not re-enact the prior. When Calibration settles,
-              only the actions a perspective has <em>committed to or
-              holds at high certainty</em> are played forward to
-              advance the simulation; everything still contested stays
-              open. Rehearsal takes that uncertain space into the War
-              Room and plays the Compass&apos;s possible trajectories
-              forward &mdash; board, card, and information dynamics, a
+              must not re-enact the prior. When the captured priors
+              settle, only the moves the room has <em>committed to or
+              holds at high certainty</em> are played forward to advance
+              the simulation; everything still contested stays open.
+              Rehearsal takes that uncertain space into the War Room and
+              plays the Compass&apos;s possible trajectories forward
+              &mdash; board, card, and information dynamics, a
               compressed simulation of reality, to rehearse possible
-              futures. The discipline that earns it: a committed
-              stance is a <em>soft prior, not a constraint</em>;
-              contested threads are protected from forced resolution
-              and each play-through carries a divergence directive, so
-              the room explores the state space rather than confirming
-              its own consensus back to itself. Without that,
-              calibrate-then-rehearse quietly launders a prior into a
-              target &mdash; the same way abduction can silently flip
-              into deduction once a prior commits. Every play-through
-              is a fork the substrate keeps and grades against what
-              reality actually returns &mdash; the external check that
-              keeps the loop from collapsing into a self-consistent
-              fiction, audited in retrospect by{" "}
-              <a href="#butterfly" className="underline hover:text-white/80">Butterfly</a>.
+              futures. The discipline that earns it: a committed stance
+              is a <em>soft prior, not a constraint</em>; contested
+              threads are protected from forced resolution and each
+              play-through carries a divergence directive, so the room
+              explores the state space rather than confirming its own
+              read back to itself. Without that, capture-then-rehearse
+              quietly launders a prior into a target &mdash; the same
+              way abduction can silently flip into deduction once a
+              prior commits. Every play-through is a fork the substrate
+              keeps and grades against what reality actually returns.
+            </P>
+            <P>
+              <B>Review</B> closes the loop. It shows how the
+              room&apos;s forward play varied against the predicted
+              state space &mdash; the Compass cohort the substrate
+              softmax-ranked &mdash; so the divergence becomes the next
+              thread to capture. It audits each committed decision for
+              what reality did to it (
+              <a href="#butterfly" className="underline hover:text-white/80">Butterfly</a>{" "}
+              &mdash; consequence radiating out along the causal graph).
+              And it ships the result as a generated slide deck: the
+              room&apos;s history and the decisions that shaped it,
+              delivered to members&apos; phones, current enough to bring
+              a newcomer up to speed or re-sync a returning one. Audit,
+              attribution, and playback are one phase.
+            </P>
+            <P>
+              <B>A seat with no human still has a stance.</B> Because
+              Capture is per-perspective, an empty or quiet seat is not
+              a hole in the loop: the engine can simulate its priors
+              from the stances and open questions already on it, playing
+              the actor the way its recorded continuity says it would.
+              That keeps a thin-rostered team whole &mdash; an
+              underserved room missing a perspective has it filled
+              rather than going blind &mdash; and it composes upward: AI
+              agents take seats beside humans, and at the limit a fully
+              autonomous room runs every seat, narratives and war games
+              that simulate their own detailed priors. We mainly support
+              humans; the simulation is what lets the loop keep running
+              when a human is not there to run it.
             </P>
             <P>
               The War Room is the heaviest mode of engagement,
@@ -4752,19 +4780,17 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Build the Priors.</B> Between sessions a human
-                  collects observations against the room&apos;s open
-                  questions, filtering and structuring them (web
-                  search assists). <B>Priors</B> is perspective-based
-                  &mdash; each perspective keeps its own, a general
-                  one by default &mdash; and reads out a calibrated,
-                  running probability on how each thread resolves
-                  across the chronology its priors were added, a
-                  belief that moves as evidence accumulates. Fold a
-                  perspective&apos;s Priors into the world view and
-                  the stances commit &mdash; a calibrated local
-                  stance that guides move generation, the next N
-                  scenes that carry the story forward.
+                  <B>Capture the priors.</B> Members collect
+                  observations against the room&apos;s open questions,
+                  filtering and structuring them (web search assists).{" "}
+                  <B>Priors</B> are per-perspective &mdash; each seat
+                  keeps its own, a general one by default &mdash; and
+                  read out a calibrated, running probability on how each
+                  thread resolves, a stance that moves as evidence
+                  accumulates. Fold a seat&apos;s priors into the world
+                  view and its stance commits &mdash; the read that
+                  guides move generation, the next N scenes that carry
+                  the story forward.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -4980,8 +5006,9 @@ export default function PaperPage() {
               The specific tools below are the current stack;
               component names will change as the ecosystem
               moves. The architectural read is what to take
-              forward: local-first, laptop-console /
-              mobile-controllers, LLM-as-gateway.
+              forward: local-first, a laptop console reached live
+              over an ngrok tunnel and async through a WhatsApp
+              group, LLM-as-gateway.
             </p>
             <P>
               The substrate ships as a single Next.js application
@@ -5024,10 +5051,27 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>PIN-protected ngrok tunnel</B> &mdash; exposes
-                  the one host at a public URL so phones reach it;
-                  no separate instances, every device hits the same
-                  store, and a PIN gates who joins.
+                  <B>ngrok tunnel</B> &mdash; live access. While the
+                  game master hosts, an ngrok tunnel puts the local
+                  instance behind a public URL; the GM drops it in the
+                  WhatsApp group and non-GMs open it on any device. They
+                  get the <em>full</em> interface &mdash; same substrate,
+                  same board, same live state, read-write &mdash; not a
+                  stripped mobile view. PIN-gated, GM-elevated, and gone
+                  the moment the machine sleeps.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-white/25 shrink-0">·</span>
+                <span>
+                  <B>WhatsApp group</B> &mdash; the always-open capture
+                  layer. No bot, no relay: a normal group already in
+                  everyone&apos;s pocket. While the instance is dark,
+                  members keep dropping priors, observations, and belief
+                  shifts; the GM folds the inbox into the substrate when
+                  it is back. It is also our standing line to the team
+                  &mdash; the channel the work and the facilitation
+                  already share.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -5086,36 +5130,64 @@ export default function PaperPage() {
               duty of keeping it.
             </P>
             <P>
-              <B>Think console and controllers.</B> The laptop is
-              the console &mdash; it holds the game state and drives
-              the shared screen; the phones are controllers. A{" "}
-              <B>PIN-protected</B>{" "}
+              <B>Two ways in: live and dark.</B> The console is the
+              single source of truth &mdash; no sync, no merge, no
+              conflict &mdash; and the room reaches it on two clocks.{" "}
+              <B>Live</B>, the game master raises the{" "}
               <a
                 href="https://ngrok.com"
                 className="text-white/70 underline-offset-2 hover:underline"
               >
                 ngrok
               </a>{" "}
-              tunnel gives the console a public URL; players scan a{" "}
-              <B>QR code</B> to join, no install. The shared screen
-              carries the map / board / graph everyone watches; each
-              phone is a private hand &mdash; cards, the private log,
-              the disclose / leak / hold call &mdash; holding no copy
-              of the substrate, only sending inputs for the console
-              to apply. Between sessions the controller is still the
-              easy way to feed the room: a note into Priors, the
-              contextual chat, the belief lines moving on your
-              threads. So a room is impromptu &mdash; open the app,
-              drop the QR in the chat, deal &mdash; and mobile safety
-              is only ever as strong as ngrok and the PIN that gate
-              it.
+              tunnel and the team plays the real interface together over
+              it. <B>Dark</B>, the tunnel is down but{" "}
+              <a
+                href="https://www.whatsapp.com"
+                className="text-white/70 underline-offset-2 hover:underline"
+              >
+                WhatsApp
+              </a>{" "}
+              is not: priors keep arriving in the group, and the GM
+              &mdash; a volunteer inside the organisation, or a
+              facilitator on our side &mdash; folds them into the
+              substrate when the instance wakes. Capture below,
+              curation-and-commit above, the GM the gatekeeper of when
+              the instance lives. Nothing we run sits between: a tunnel,
+              a group chat, and the substrate on one laptop. The
+              aggregate belief updating live as priors arrive is the
+              feature we most want next; high-end clients who need it
+              get custom security on top.
+            </P>
+            <P>
+              <B>The access path is its own risk, named.</B> A public
+              tunnel URL plus a consumer messaging app as the standing
+              channel is real exposure, and it belongs in the risk list
+              beside the inference path, not buried. The live instance
+              is <B>PIN-gated</B> and exists only while the game master
+              hosts &mdash; the tunnel closes when the machine sleeps
+              &mdash; but a leaked URL mid-session is a live door, so the
+              PIN is load-bearing and rotating it per session is the
+              discipline. WhatsApp is the other half: prior content
+              crosses Meta&apos;s servers before the GM ever curates it,
+              so the judgement that is supposed to be the moat transits
+              a third party in the clear &mdash; the capture channel is
+              convenient precisely because it is someone else&apos;s
+              infrastructure. For the named high-stakes buyers &mdash;
+              desks, funds, units &mdash; that is the line a security
+              reviewer stops on, and the honest answer is the custom
+              security above: a private channel in place of WhatsApp,
+              tighter gating or a VPN in place of the public tunnel, per
+              engagement. The default is built to ship; the hardened
+              path is built to order.
             </P>
             <P>
               <B>Electron for the install.</B> An Electron bundle
               wraps the same build into a desktop binary, so the room
               feels like an app, not a tab &mdash; shortcuts, a known
-              persistence location, the tunnel-and-QR surface one menu
-              item away.
+              persistence location for the encrypted{" "}
+              <code className="text-white/70">.meridian</code>, the
+              console one launch away.
             </P>
             <P>
               <B>Priors are human-made, not scraped.</B> A person

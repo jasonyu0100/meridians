@@ -28,7 +28,7 @@ A world view is modelled as a **knowledge graph** that mutates section by sectio
 ### Interrogation (deep world understanding)
 - **Surveys** — one question × N respondents; each entity answers in-character from its own world-graph continuity. Eight research lenses (Personality, Values, Knowledge, Trust, Allegiance, Threat, Predictions, Backstory) + General
 - **Interviews** — one subject × N questions; AI-generated question batches tuned to the subject's recorded continuity
-- **Game theory** — per-scene decomposition into 2×2 games (14 axes × 19 shapes), additive to scene.gameAnalysis without mutating deltas
+- **Game theory** — per-scene decomposition into 2×2 games (11 axes × 16 shapes), additive to scene.gameAnalysis without mutating deltas
 - **ELO rankings** — continuous margin score from stake deltas drives per-player rating updates across all games; trajectories, W/L/D, outcome mix, Nash-rate and behavioural tags (extractor, schemer, dominant, responder, steady, rival:X)
 
 ### Generation
@@ -170,8 +170,8 @@ Per-scene strategic decomposition. Purely additive — writes only to `scene.gam
 ### Game decomposition
 - **Input**: scene prose (authoritative) OR beat plan (fallback) OR structural deltas (last resort)
 - **Output**: a sequence of 2×2 games, one per strategic beat. Each carries:
-  - `axis` — one of 14 dichotomies (disclosure, identity, trust, alliance, confrontation, status, pressure, stakes, control, acquisition, obligation, moral, commitment, timing)
-  - `gameType` — one of 19 shapes (coordination, anti-coordination, battle-of-sexes, dilemma, stag-hunt, chicken, zero-sum, pure-opposition, contest, collective-action, principal-agent, screening, signaling, stealth, stackelberg, cheap-talk, commitment-game, bargaining, trivial)
+  - `axis` — one of 11 dichotomies (information, identity, trust, alliance, status, pressure, stakes, resources, obligation, commitment, timing)
+  - `gameType` — one of 16 shapes (coordination, stag-hunt, dilemma, chicken, divergence, zero-sum, signaling, screening, principal-agent, stealth, stackelberg, bargaining, commitment-game, contest, collective-action, trivial)
   - `outcomes` — integer stake deltas (-4..+4) for each player in each cell
   - `realizedAAction` / `realizedBAction` — what the author actually wrote
 
