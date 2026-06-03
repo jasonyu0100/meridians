@@ -767,3 +767,22 @@ button,
     opacity: 0;
   }
 }
+
+/* ── Game-theory accent colors — light-theme legibility ──────────────────────
+ * The Decision Matrix chips and stake deltas use Tailwind's -200/-300/emerald/
+ * red tones, tuned for dark surfaces. Over the pale light-theme cards they wash
+ * out (see the BEST / CHOSEN badges). Keep the dark look untouched; darken the
+ * text on the light theme only. Marker classes carry the semantic; the existing
+ * Tailwind utilities still set the dark default. */
+.theme-light .gt-sky {
+  color: #0369a1; /* sky-700 */
+}
+.theme-light .gt-amber {
+  color: #b45309; /* amber-700 */
+}
+.theme-light .gt-pos {
+  color: #047857; /* emerald-700 */
+}
+.theme-light .gt-neg {
+  color: #b91c1c; /* red-700 */
+}

@@ -152,7 +152,7 @@ export function SceneGameTheoryView({
 
         {error && !isStreaming && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <p className="text-[12px] text-red-400/80">
+            <p className="gt-neg text-[12px] text-red-400/80">
               Analysis failed.
             </p>
             <p className="text-[10px] text-text-dim/75 max-w-md text-center leading-relaxed">
@@ -313,7 +313,7 @@ function TimelineEntry({
             </span>
             <span className="text-text-dim/20">·</span>
             <span
-              className="text-[11px] font-mono font-medium text-sky-300/90 bg-sky-400/10 px-1.5 py-px rounded"
+              className="gt-sky text-[11px] font-mono font-medium text-sky-300/90 bg-sky-400/10 px-1.5 py-px rounded"
               title={solo ? "A 1-player decision — the actor chooses against the world, no opponent." : GAME_TYPE_LABELS[game.gameType] ?? ""}
             >
               {solo ? "1-player decision" : game.gameType}
@@ -370,8 +370,8 @@ function PlayersHeader({ game }: { game: BeatGame }) {
   const bWins = deltaB > deltaA;
 
   const nameClass = (winner: boolean, loser: boolean): string => {
-    if (winner) return "text-emerald-300";
-    if (loser) return "text-red-400/80";
+    if (winner) return "gt-pos text-emerald-300";
+    if (loser) return "gt-neg text-red-400/80";
     return "text-text-secondary";
   };
 
@@ -384,7 +384,7 @@ function PlayersHeader({ game }: { game: BeatGame }) {
         <PlayerLink
           id={game.playerAId}
           name={game.playerAName}
-          className={`font-semibold ${deltaA > 0 ? "text-emerald-300" : deltaA < 0 ? "text-red-400/80" : "text-text-secondary"}`}
+          className={`font-semibold ${deltaA > 0 ? "gt-pos text-emerald-300" : deltaA < 0 ? "gt-neg text-red-400/80" : "text-text-secondary"}`}
         />
         <span
           className="font-mono text-[12px] text-text-dim/80 tabular-nums"
@@ -482,7 +482,7 @@ function StrategicShape({ game }: { game: BeatGame }) {
       <div className="flex items-center gap-2 flex-wrap mb-2">
         {ne.length > 0 ? (
           <span
-            className="text-[11px] px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-300 font-mono uppercase"
+            className="gt-sky text-[11px] px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-300 font-mono uppercase"
             title={solo ? "The stake-maximising option — the rational pick against an indifferent world." : GT_TIPS.nashEquilibrium}
           >
             {solo
@@ -499,7 +499,7 @@ function StrategicShape({ game }: { game: BeatGame }) {
         )}
         {isRealizedNash && (
           <span
-            className="text-[11px] px-1.5 py-0.5 rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
+            className="gt-sky text-[11px] px-1.5 py-0.5 rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
             title={solo ? "The decider took the stake-maximising option." : GT_TIPS.realizedEqNash}
           >
             {solo ? "took the best" : "realized ≡ nash"}
@@ -507,7 +507,7 @@ function StrategicShape({ game }: { game: BeatGame }) {
         )}
         {!isRealizedNash && ne.length > 0 && (
           <span
-            className="text-[11px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-300/80 border border-amber-400/20"
+            className="gt-amber text-[11px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-300/80 border border-amber-400/20"
             title={solo ? "The decider passed up the stake-maximising option — arc over local stake." : GT_TIPS.offNash}
           >
             {solo ? "off-best option" : "off-nash cell"}
@@ -523,7 +523,7 @@ function StrategicShape({ game }: { game: BeatGame }) {
                 ? `: picked the ${ordinal(rankA.rank)}-best of ${rankA.total} options`
                 : `: got the ${ordinal(rankA.rank)}-best of ${rankA.total} possible outcomes`}
               {arcCostA > 0 && (
-                <span className="text-amber-300/85" title={GT_TIPS.arcCost}>
+                <span className="gt-amber text-amber-300/85" title={GT_TIPS.arcCost}>
                   {" "}· left +{arcCostA} on the table
                 </span>
               )}
@@ -532,11 +532,11 @@ function StrategicShape({ game }: { game: BeatGame }) {
         )}
         {rankB && game.playerBId && (
           <div title={GT_TIPS.stakeRank}>
-            <PlayerLink id={game.playerBId} name={game.playerBName ?? game.playerBId} className="text-sky-200 font-medium" />
+            <PlayerLink id={game.playerBId} name={game.playerBName ?? game.playerBId} className="gt-sky text-sky-200 font-medium" />
             <span className="text-text-dim/75">
               : got the {ordinal(rankB.rank)}-best of {rankB.total} possible outcomes
               {arcCostB > 0 && (
-                <span className="text-amber-300/85" title={GT_TIPS.arcCost}>
+                <span className="gt-amber text-amber-300/85" title={GT_TIPS.arcCost}>
                   {" "}· left +{arcCostB} on the table
                 </span>
               )}
@@ -676,8 +676,8 @@ function Cell({
 
   const fmt = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const deltaColor = (n: number) => {
-    if (n > 0) return "text-emerald-300";
-    if (n < 0) return "text-red-400/80";
+    if (n > 0) return "gt-pos text-emerald-300";
+    if (n < 0) return "gt-neg text-red-400/80";
     return "text-text-dim/70";
   };
 
@@ -686,7 +686,7 @@ function Cell({
       <div className="absolute top-1.5 right-1.5 flex gap-1">
         {isNash && (
           <span
-            className="text-[10px] font-semibold px-1 py-px rounded bg-sky-400/20 text-sky-200 uppercase tracking-wider"
+            className="gt-sky text-[10px] font-semibold px-1 py-px rounded bg-sky-400/20 text-sky-200 uppercase tracking-wider"
             title={GT_TIPS.nashCell}
           >
             nash
@@ -694,7 +694,7 @@ function Cell({
         )}
         {isRealized && (
           <span
-            className="text-[10px] font-semibold px-1 py-px rounded bg-amber-400/25 text-amber-200 uppercase tracking-wider"
+            className="gt-amber text-[10px] font-semibold px-1 py-px rounded bg-amber-400/25 text-amber-200 uppercase tracking-wider"
             title={GT_TIPS.realizedCell}
           >
             realized
@@ -734,7 +734,7 @@ function SoloBoard({ game }: { game: BeatGame }) {
 
   const fmt = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const deltaColor = (n: number) =>
-    n > 0 ? "text-emerald-300" : n < 0 ? "text-red-400/80" : "text-text-dim/70";
+    n > 0 ? "gt-pos text-emerald-300" : n < 0 ? "gt-neg text-red-400/80" : "text-text-dim/70";
 
   return (
     <div className="flex flex-col gap-2">
@@ -766,7 +766,7 @@ function SoloBoard({ game }: { game: BeatGame }) {
               <div className="absolute top-1.5 right-1.5 flex gap-1">
                 {isBest && (
                   <span
-                    className="text-[10px] font-semibold px-1 py-px rounded bg-sky-400/20 text-sky-200 uppercase tracking-wider"
+                    className="gt-sky text-[10px] font-semibold px-1 py-px rounded bg-sky-400/20 text-sky-200 uppercase tracking-wider"
                     title="Stake-maximising option — the rational pick against an indifferent world."
                   >
                     best
@@ -774,7 +774,7 @@ function SoloBoard({ game }: { game: BeatGame }) {
                 )}
                 {isRealized && (
                   <span
-                    className="text-[10px] font-semibold px-1 py-px rounded bg-amber-400/25 text-amber-200 uppercase tracking-wider"
+                    className="gt-amber text-[10px] font-semibold px-1 py-px rounded bg-amber-400/25 text-amber-200 uppercase tracking-wider"
                     title={GT_TIPS.realizedCell}
                   >
                     chosen
