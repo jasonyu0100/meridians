@@ -178,7 +178,7 @@ export function DriverCanvas() {
   return (
     <div className="h-full flex min-h-0 overflow-hidden">
       {/* Sidebar — notes list, grouped Queue / Historical */}
-      <aside className="w-64 shrink-0 border-r border-white/8 bg-black/15 flex flex-col min-h-0">
+      <aside className="w-64 shrink-0 border-r border-white/8 bg-white/2 flex flex-col min-h-0">
         {/* Selection bar — only when queue items are selected */}
         {selectedIds.size > 0 && (
           <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-white/6 bg-amber-400/8">
