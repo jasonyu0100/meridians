@@ -84,6 +84,10 @@ type PlayerProfile = {
   // Role preference
   asRoleA: number;
   asRoleB: number;
+  // Solo (1-player) decisions — bets against the world, no counterpart
+  soloGames: number;        // how many of this player's games were 1-player
+  soloTookBest: number;     // solo games where they took the stake-maximising option
+  soloStakeSum: number;     // sum of realized stake delta across solo games
   // Game-type / axis participation
   gameTypeCounts: Map<GameType, number>;
   axisCounts: Map<ActionAxis, number>;
@@ -233,9 +237,9 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
   // ELO climbs, outcomes land above expectation, they drive scenes.
   if (s.eloDelta >= 80 && s.aShare >= 0.5 && p.avgStakeDelta >= 0.8 && s.nashRate <= 0.5) {
     return {
-      id: "role-protagonist",
-      label: "protagonist",
-      description: "Ascendant ELO, leads scenes, repeatedly lands above what the strategic grid predicts. The narrative is bending around them — the main-character force is active.",
+      id: "role-prime-mover",
+      label: "prime mover",
+      description: "Rising rating, leads the play, repeatedly lands above what the strategic grid predicts. The world is bending around them — they drive the game more than it drives them.",
       tone: "win",
     };
   }
@@ -256,7 +260,7 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
   // seen, not rewarded.
   if (s.sacrificeRate >= 0.25 && s.eloDelta <= -40 && p.games >= 4) {
     return {
-      id: "role-tragic",
+      id: "role-tragic-figure",
       label: "tragic figure",
       description: "Absorbs losses while others gain, and pays for it across the arc — ELO declines even as they carry the sacrifice. The cost is visible but not redeemed within the window.",
       tone: "moral",
@@ -276,8 +280,8 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
   // ascendant. Redemption / growth arc.
   if (s.hasArc && s.arcShift >= 1.2 && s.eloDelta >= 0) {
     return {
-      id: "role-survivor",
-      label: "survivor",
+      id: "role-comeback",
+      label: "comeback",
       description: "Arc shifts visibly upward — their later outcomes are better than their early ones. Growth or redemption arc — they start beneath the water line and climb.",
       tone: "win",
     };
@@ -287,8 +291,8 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
   // into a mythic register they don't belong in.
   if (s.hasArc && s.arcShift <= -1.2 && s.eloDelta <= 0) {
     return {
-      id: "role-declining",
-      label: "declining",
+      id: "role-slipping",
+      label: "slipping",
       description: "Arc shifts visibly downward — started stronger than they end. The world view is watching them lose ground across the window.",
       tone: "loss",
     };
@@ -307,9 +311,9 @@ function narrativeRole(p: PlayerProfile, s: Signals): PlayerArchetype | null {
   // trajectory. Exists to push against someone else's motion.
   if (s.aShare <= 0.3 && s.conflictShare >= 0.3 && Math.abs(s.eloDelta) < 50) {
     return {
-      id: "role-foil",
-      label: "foil",
-      description: "Almost always responding, almost always in conflict, ELO stays near baseline. Their narrative function is to push against someone else's motion rather than drive their own.",
+      id: "role-counterforce",
+      label: "counterforce",
+      description: "Almost always responding, almost always in conflict, ELO stays near baseline. Their role is to push against someone else's motion rather than drive their own.",
       tone: "neutral",
     };
   }
@@ -405,22 +409,22 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     });
   } else if (mutualLossRate >= 0.3) {
     tags.push({
-      id: "destructive",
-      label: "destructive",
+      id: "scorched-earth",
+      label: "scorched-earth",
       description: "Brings everyone down. Their moments land disproportionately in cells where both sides lose — no-win confrontations, spoiled alliances.",
       tone: "conflict",
     });
   } else if (teamRate >= 0.4 && asymmetry >= 1.0) {
     tags.push({
-      id: "lopsided",
+      id: "uneven-ally",
       label: "uneven ally",
       description: "Cooperates, but the cooperation is stacked in their favour. Both sides gain — they gain much more. The alliance is real but unequal.",
       tone: "conflict",
     });
   } else if (teamRate >= 0.5 && Math.abs(asymmetry) < 0.7) {
     tags.push({
-      id: "teammate",
-      label: "teammate",
+      id: "ally",
+      label: "ally",
       description: "A genuine cooperator. Most of their realized moments leave both parties roughly even — when they work with someone, both sides benefit.",
       tone: "cooperation",
     });
@@ -436,22 +440,22 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     });
   } else if (eloDelta >= 80) {
     tags.push({
-      id: "ascendant",
+      id: "rising",
       label: "rising",
       description: "Rating climbed sharply across the world view. They gained strategic ground from where they started.",
       tone: "win",
     });
   } else if (eloDelta <= -80) {
     tags.push({
-      id: "fading",
+      id: "falling",
       label: "falling",
       description: "Rating eroded across the world view. The strategic ground they once held has been lost.",
       tone: "loss",
     });
   } else if (p.eloVolatility >= 18) {
     tags.push({
-      id: "volatile",
-      label: "volatile",
+      id: "high-variance",
+      label: "high-variance",
       description: "Wins big and loses big. Rating swings wildly between moments — high-variance player, never settled in one spot for long.",
       tone: "strategic",
     });
@@ -464,6 +468,39 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
     });
   }
 
+  // Group 2.5 — SOLO (1-player) DECISION STYLE. Fires for players who make a
+  // meaningful share of their consequential calls alone, against the world
+  // (no counterpart whose choice matters). "soloist" is the arena signal;
+  // sure-handed / gambler are the quality signal (took the stake-maximising
+  // option vs played for the upside and left stake on the table).
+  if (p.soloGames >= 2) {
+    const soloShare = p.soloGames / p.games;
+    const soloBestRate = p.soloTookBest / p.soloGames;
+    if (soloShare >= 0.5) {
+      tags.push({
+        id: "soloist",
+        label: "soloist",
+        description: "Makes most of their consequential calls alone — bets against the world, not duels across a table. Their record is mostly 1-player decisions.",
+        tone: "strategic",
+      });
+    }
+    if (soloBestRate >= 0.6) {
+      tags.push({
+        id: "sure-handed",
+        label: "sure-handed",
+        description: "In their solo bets they usually take the stake-maximising option — calibrated calls against an indifferent world.",
+        tone: "win",
+      });
+    } else if (soloBestRate <= 0.34) {
+      tags.push({
+        id: "gambler",
+        label: "gambler",
+        description: "In their solo bets they routinely pass up the safe-best option — playing for the upside and leaving stake on the table.",
+        tone: "conflict",
+      });
+    }
+  }
+
   // Group 3 — STRATEGIC STYLE. Up to one of strategist / off-script /
   // arc-breaker. Arc-breaker is the 'main-character' signal: the player
   // keeps landing on off-Nash cells AND keeps winning from them — the
@@ -471,8 +508,8 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   // Potter should fire this tag strongly.
   if (nashRate <= 0.35 && eloDelta >= 50 && p.avgStakeDelta >= 1) {
     tags.push({
-      id: "arc-breaker",
-      label: "main-character force",
+      id: "defies-the-odds",
+      label: "defies the odds",
       description: "Routinely wins moments rational play says they shouldn't. The world view bends in their favour even when strategic logic would have given the win to the other side — the unmistakable signature of a protagonist.",
       tone: "strategic",
     });
@@ -515,8 +552,8 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   }
   if (conflictShare >= 0.4) {
     tags.push({
-      id: "oppositional",
-      label: "oppositional",
+      id: "combatant",
+      label: "combatant",
       description: "Lives in direct collision. Their moments concentrate in zero-sum, chicken, and divergence games — the kind where someone has to lose for someone to win.",
       tone: "conflict",
     });
@@ -537,15 +574,15 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   if (hasArc) {
     if (arcShift >= 1.5) {
       tags.push({
-        id: "arc-rising",
-        label: "redemption arc",
+        id: "upward-arc",
+        label: "upward arc",
         description: "Late-game outcomes are substantially better than early ones. The arc moves upward over the world view — growth, redemption, or belated recognition.",
         tone: "win",
       });
     } else if (arcShift <= -1.5) {
       tags.push({
-        id: "arc-falling",
-        label: "decline arc",
+        id: "downward-arc",
+        label: "downward arc",
         description: "Late-game outcomes are substantially worse than early ones. The arc moves downward — corruption, loss of footing, or defeat.",
         tone: "loss",
       });
@@ -556,7 +593,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   // single opposing relationship accounts for much of their record.
   if (p.nemesisName && p.nemesisNetScore <= -2) {
     tags.push({
-      id: "has-rival",
+      id: "rival",
       label: `rival: ${p.nemesisName}`,
       description: `Losing record concentrated against ${p.nemesisName}. Whatever this relationship is — workplace friction, competing theory, sworn enemy — it shapes their trajectory more than any other counterpart.`,
       tone: "conflict",
@@ -564,7 +601,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   }
   if (p.patronName && p.patronNetScore >= 2) {
     tags.push({
-      id: "leads-vs",
+      id: "leads",
       label: `leads: ${p.patronName}`,
       description: `Winning record concentrated against ${p.patronName}. Whatever the frame — rivalry, mentorship, competing claim — they routinely come out ahead in this pairing.`,
       tone: "win",
@@ -584,7 +621,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
       tags.push({
         id: "responder",
         label: "responder",
-        description: "Almost always reacting (Player B). Their narrative role is to answer others' gambits rather than set them.",
+        description: "Almost always reacting (Player B). Their role is to answer others' gambits rather than set them.",
         tone: "neutral",
       });
     }
@@ -606,7 +643,7 @@ function classifyPlayer(p: PlayerProfile): PlayerArchetype[] {
   // Drop game-type-heavy tag if a more specific agency tag already covered
   // it (schemer, power-broker, oppositional, coordinator all capture
   // game-type concentration). Otherwise emit as a generic arena affinity.
-  const agencyTagIds = new Set(["schemer", "power-broker", "oppositional", "coordinator"]);
+  const agencyTagIds = new Set(["schemer", "power-broker", "combatant", "coordinator"]);
   const hasAgencyTag = tags.some((t) => agencyTagIds.has(t.id));
   if (!hasAgencyTag) {
     const topGT = topEntry(p.gameTypeCounts);
@@ -688,6 +725,9 @@ function aggregate(
         realizedNashCount: 0,
         asRoleA: 0,
         asRoleB: 0,
+        soloGames: 0,
+        soloTookBest: 0,
+        soloStakeSum: 0,
         gameTypeCounts: new Map(),
         axisCounts: new Map(),
         earlyGames: 0,
@@ -737,8 +777,10 @@ function aggregate(
       const pS = ensure(g.playerAId, resolvePlayerName(narrative, g.playerAId, g.playerAName));
       pS.games++;
       pS.asRoleA++;
+      pS.soloGames++;
       const realizedS = realizedOutcome(g);
       const dS = realizedS?.stakeDeltaA ?? 0;
+      pS.soloStakeSum += dS;
       pS.avgStakeDelta += dS;
       pS.avgStakeAdvantage += dS; // no counterpart — advantage is the raw delta
       if (!stakeHistory.has(g.playerAId)) stakeHistory.set(g.playerAId, []);
@@ -758,6 +800,7 @@ function aggregate(
       else pS.draws++;
       if (realizedIsNash(g)) {
         pS.realizedNashCount++;
+        pS.soloTookBest++;
         nashRealizedCount++;
       } else {
         offEq.push(ctx);
@@ -1507,10 +1550,9 @@ function outcomeMixLabel(winPct: number, drawPct: number, lossPct: number): stri
 
 function ArchetypeTags({ tags }: { tags: PlayerArchetype[] }) {
   if (tags.length === 0) return null;
-  const shown = tags.slice(0, 4);
   return (
     <div className="flex items-center gap-1 flex-wrap mt-1">
-      {shown.map((t) => (
+      {tags.map((t) => (
         <span
           key={t.id}
           title={t.description}

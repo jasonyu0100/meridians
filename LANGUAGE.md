@@ -89,7 +89,7 @@ The application layer. Where the substrate is *used* — by teams, in rooms, on 
 
 **Surfaces** — The five primary tabs the app and the room are organised around, the general language users learn. **Driver** — the ingest workspace (**Priors** + semantic Search). **Graph** — the substrate read as a knowledge graph (World / System / Threads / Network, each at *Scene* / *Arc* / *Full* scope). **Board** — the map and location hierarchy. **Control** — the stance and machinery (**Belief** / **Present** / **Compass** / **Mode**). **Scene** — the move being authored (**Investigation** / **Plan** / **Prose** / **Audio** / **Decision**). The console shows these; controllers drive them.
 
-**Decision Matrix** — The per-scene game-theoretic decomposition. Each scene contains a sequence of 2×2 games, classified along 14 axes × 19 game shapes, with integer stake deltas `[-4, +4]` per player per cell. Drives Nash analysis, ELO rating, behavioural tagging per actor. Also called **incentive structures** when discussing the conceptual frame; the same artifact.
+**Decision Matrix** — The per-scene game-theoretic decomposition: a sequence of decisions (1- or 2-player), each scored with integer stake deltas, driving Nash analysis, ELO, and the player archetypes. Full vocabulary in **Strategic play (game theory)** below. Also called **incentive structures**.
 
 **Stakes** — The cost layer optionally attached to plays. Three settings:
 
@@ -121,6 +121,48 @@ Stakes turn rehearsal into *skin-in-the-game rehearsal*; the cost of a dishonest
 
 ---
 
+## Strategic play (game theory)
+
+A facet of Play: the strategic layer beneath the prose. Each consequential beat is a **decision** the engine deconstructs and scores; the scores drive ELO and the player archetypes. Purely additive — written to `scene.gameAnalysis`, never mutating the force deltas.
+
+**Decision** — A consequential beat, sealed and scored. Two kinds:
+
+- **Duel** (2-player) — a strategic game against another agent. A full NxM matrix: each player picks from a menu, every pairing is a cell with both players' stake deltas.
+- **Solo** (1-player) — a pivotal choice against the world, reality in the other seat. A *row*, not a matrix: one decider, a menu of options, one immediate stake delta per option (take the job, hold or fold, relocate, confess now or wait).
+
+**Decision Matrix** — The per-scene sequence of decisions. Each carries an **action axis** and (for duels) a **game shape**, with integer **stake deltas** per cell. Also called **incentive structures** — the same artifact.
+
+**Stake delta** — An integer in `[-4, +4]` scoring how much an outcome advances (+) or harms (−) a player's arc-level interests. *Magnitude is importance*: a pivotal beat uses the full ±4, a quiet beat stays ±1. Scored honestly per cell — never warped to justify what happened; a dominated cell landing as realized is signal.
+
+**Action axis** — The dimension a decision trades on; both players' actions live on the SAME axis. Eleven: information, identity, trust, alliance, status, pressure, stakes, resources, obligation, commitment, timing.
+
+**Game shape** — The strategic frame of a duel — one of sixteen: coordination, stag-hunt, dilemma, chicken, divergence, zero-sum, signaling, screening, principal-agent, stealth, stackelberg, bargaining, commitment-game, contest, collective-action, trivial. Solo decisions have no shape.
+
+**Nash equilibrium** — A cell no player can improve on by switching alone. For a solo decision, the stake-maximising option (the rational pick against an indifferent world). **Realized cell** — what actually happened; landing off-Nash is signal (arc, identity, or principle over local stake), not error.
+
+**Arc cost** — Stake a player left on the table: the best outcome available to them minus the realized one. For a solo decision, regret against the best option.
+
+**Stake rank** — Where the realized cell sits in a player's preference order over the whole grid (1 = best).
+
+**ELO** — Continuous skill rating per player, updated each decision. `ELO_INITIAL = 1500`, `ELO_K = 32`. The **margin score** folds margin-of-victory into the update — duel: `clamp(0.5 + (ΔA − ΔB)/16, 0, 1)`; solo: `clamp(0.5 + ΔA/8, 0, 1)` against **par** (reality, a fixed non-learning opponent at 1500, `ELO_PAR`). K is **stake-weighted** so high-stake beats move ratings far more than low-stake ones. The player archetypes fall out of the trajectory plus the outcome mix.
+
+### Player archetypes
+
+The behavioural tags a player earns from their decision record. Tag `id` matches its `label` (kebab-case) for consistency. Grouped:
+
+- **Role** (one headline): *prime mover* (drives the game; the world bends toward them), *adversary* (dominates at others' expense), *tragic figure* (absorbs cost, declines anyway), *mentor* (gives more stake than they take), *comeback* (arc climbs from below), *slipping* (loses ground across the window), *trickster* (wins the information game, high variance), *counterforce* (exists to push against another's motion), *anchor* (stable, cooperative, near-baseline).
+- **Relational outcome** (how realized cells split): *extractor* (gains at the other's expense), *sacrificial* (pays so others gain), *scorched-earth* (lands in both-lose cells), *uneven ally* (cooperates but takes the bigger slice), *ally* (genuine even cooperation).
+- **Trajectory**: *dominant* (lands near the top of every grid), *rising* / *falling* (rating climbed / eroded), *high-variance* (wins big, loses big), *steady* (rating barely swings).
+- **Solo decision style**: *soloist* (most calls are 1-player bets against the world), *sure-handed* (usually takes the stake-maximising option), *gambler* (passes up the safe-best, plays for the upside).
+- **Strategic style**: *defies the odds* (keeps winning moments rational play says they shouldn't — the prime-mover signature), *strategist* (overwhelmingly plays the Nash move and it pays), *off-script* (rarely plays the rational move).
+- **Agency** (from game-shape participation): *schemer* (wins information-asymmetric games), *power-broker* (sets the terms — first mover in commitment / bargaining), *combatant* (lives in zero-sum / chicken / divergence), *coordinator* (builds shared action in alignment games).
+- **Arc shift**: *upward arc* / *downward arc* (late outcomes substantially better / worse than early).
+- **Relationships**: *rival: X* (losing record concentrated against X), *leads: X* (winning record against X).
+- **Role bias**: *initiator* (almost always the prime mover / Player A), *responder* (almost always reacting / Player B).
+- **Affinity**: *axis: X* (characteristic action axis), *X-heavy* (characteristic game shape).
+
+---
+
 ## Vocabulary discipline
 
 A few rules-of-the-road that keep the language tight across docs and prompts:
@@ -138,3 +180,5 @@ A few rules-of-the-road that keep the language tight across docs and prompts:
 11. **Priors are human-made, never scraped.** The prior-collection is humanistic by design — a person filters, structures, and sets the threads; web search only *assists* drafting. Don't reintroduce "automated feeds" or "scrapers" as inputs.
 12. **Two map types only: Graph and Board.** The raw graph substrate and a board-game-style map with nested maps. Don't reintroduce "grid" or "hex" as board geometries.
 13. **The queue is now "Priors."** "Queue" survives only as a code/UI label inside the Driver tab; in prose and vocabulary it's *Priors*.
+14. **Player-archetype tag `id` matches its `label`** (kebab-case) in the game-theory dashboard — no literary/code-name drift between what's stored and what's shown. New tags get an entry under *Player archetypes* above.
+15. **A decision is 1- or 2-player.** Two-player = *duel* (a matrix); one-player = *solo* (a row, reality in the other seat). Don't describe game theory as inherently two-player.
