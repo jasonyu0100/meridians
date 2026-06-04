@@ -39,7 +39,7 @@ import { logError, logWarning } from "@/lib/system-logger";
 const INFERENCE_TIER_TYPES = new Set(["reasoning", "pattern", "warning", "chaos", "conclusion"]);
 import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/network-graph";
 import type { CoordinationPlanContext } from "./scenes";
-import { buildActiveModeSection } from "./mode-graph";
+import { buildActivePhaseSection } from "./phase-graph";
 
 // ── Subsystem imports ───────────────────────────────────────────────────────
 
@@ -294,7 +294,7 @@ ${buildSequentialPath({ nodes: lastArcGraph.graph.nodes, edges: lastArcGraph.gra
       : undefined,
     direction,
     priorGraphSection,
-    modeSection: buildActiveModeSection(narrative, "reasoning-arc"),
+    modeSection: buildActivePhaseSection(narrative, "reasoning-arc"),
     forcePreferenceBlockText: forcePreferenceBlock("arc", options?.thinkingResource),
     reasoningModeBlockText: reasoningModeBlock(options?.thinkingStyle),
     networkBiasBlockText: networkBiasBlock(options?.networkBias),
@@ -699,7 +699,7 @@ export async function generateCoordinationPlan(
     nodeGuidance,
     forcePreferenceBlockText: forcePreferenceBlock("plan", guidance.thinkingResource),
     reasoningModeBlockText: reasoningModeBlock(guidance.thinkingStyle),
-    modeSection: buildActiveModeSection(narrative, "reasoning-plan"),
+    modeSection: buildActivePhaseSection(narrative, "reasoning-plan"),
   });
 
   const reasoningBudget = defaultReasoningBudget(narrative);

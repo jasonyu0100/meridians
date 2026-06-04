@@ -1,7 +1,7 @@
 /**
  * Shared edge styling for d3 force graph views (NetworkView,
- * KnowledgeGraphView, ThreadGraphView, ThreadLogGraphView,
- * EntityWorldGraphView). Keeps the visual language consistent across the
+ * SystemGraphView, ThreadGraphView, ThreadLogGraphView,
+ * WorldGraphView). Keeps the visual language consistent across the
  * canvas: light pairs stay legible (floor), heavy pairs read prominent
  * (ceiling), and gamma below 1 favours the high end so a handful of
  * dominant edges visibly stand out rather than getting washed out by
@@ -32,7 +32,7 @@ export const SIM_ALPHA_DECAY = 0.04;
 // ── Zoom config (shared across all canvas graph views) ───────────────────
 
 /** Pan/zoom scale bounds for every canvas graph view. Lower bound is
- *  generous enough to fit WorldGraph's wider canvases; upper bound is
+ *  generous enough to fit Stage's wider canvases; upper bound is
  *  the d3 ceiling. Unifying the extent across views means the same
  *  gesture produces the same effect on every graph. */
 export const GRAPH_ZOOM_EXTENT: [number, number] = [0.2, 4];
@@ -45,9 +45,9 @@ export const GRAPH_INITIAL_SCALE = 0.9;
 // ── Focus opacity (shared across all canvas graph views) ─────────────────
 //
 // Every graph view dims edges AND nodes by default and brightens the
-// ones in (or touching) the "currently activated" set — WorldGraph
+// ones in (or touching) the "currently activated" set — Stage
 // uses the current scene's POV/participants/location/artifacts,
-// KnowledgeGraphView uses sceneNodeIds in codex mode, ThreadGraphView
+// SystemGraphView uses sceneNodeIds in codex mode, ThreadGraphView
 // uses threads with a delta at the current scene in threads mode,
 // NetworkView uses nodes attributed at the current step. The visual
 // contract is the same everywhere: structure stays visible at the dim

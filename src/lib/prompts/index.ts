@@ -129,7 +129,7 @@ export {
   META_EXTRACTION_SYSTEM,
   buildMetaExtractionPrompt,
   DRIVER_SYNTHESIS_SYSTEM,
-  buildDriverSynthesisPrompt,
+  buildPriorsSynthesisPrompt,
   THREAD_INTEGRATION_SYSTEM,
   buildThreadIntegrationPrompt,
 } from './analysis';

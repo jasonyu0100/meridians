@@ -2,7 +2,7 @@
  * Thread Integration Prompt (Daily-Driver only)
  *
  * The thread-integration pass is the heart of "make the file native"
- * for daily-driver ingests. Other entity types (characters / locations
+ * for priors-compact ingests. Other entity types (characters / locations
  * / artifacts / system concepts) align cheaply by name or phrasing —
  * threads need real integration work because they're propositions, not
  * proper names, and a daily file is dominated by continuations of

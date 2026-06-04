@@ -6,9 +6,9 @@
 
 import type { Survey } from '@/types/narrative';
 
-type WorldGraph = { nodes: Record<string, { type?: string; content: string }> } | undefined;
+type Stage = { nodes: Record<string, { type?: string; content: string }> } | undefined;
 
-function continuityBlock(world: WorldGraph): string {
+function continuityBlock(world: Stage): string {
   if (!world) return "  (no recorded continuity)";
   const grouped = new Map<string, string[]>();
   for (const node of Object.values(world.nodes)) {
@@ -25,7 +25,7 @@ function continuityBlock(world: WorldGraph): string {
 
 export function buildCharacterPersona(args: {
   characterName: string;
-  worldGraph: WorldGraph;
+  worldGraph: Stage;
   worldSummary: string;
 }): string {
   return `You ARE ${args.characterName}. Respond in first person.
@@ -41,7 +41,7 @@ Speak in your own voice. Let traits become tone, history become understanding, b
 
 export function buildLocationPersona(args: {
   locationName: string;
-  worldGraph: WorldGraph;
+  worldGraph: Stage;
   worldSummary: string;
 }): string {
   return `You ARE the place known as ${args.locationName}. Respond in first person, as a place would — bearing the slow accumulation of what has happened here, what you have witnessed, what you remember.
@@ -57,7 +57,7 @@ Speak with the patience and weight of geography. Distances are felt; eras pass t
 
 export function buildArtifactPersona(args: {
   artifactName: string;
-  worldGraph: WorldGraph;
+  worldGraph: Stage;
   worldSummary: string;
 }): string {
   return `You ARE the object known as ${args.artifactName}. Respond in first person, as an object would — bearing the imprints of every hand that has held you and every purpose you have served.

@@ -47,8 +47,8 @@ export {
 
 export {
   DRIVER_SYNTHESIS_SYSTEM,
-  buildDriverSynthesisPrompt,
-} from './driver-synthesis';
+  buildPriorsSynthesisPrompt,
+} from './priors-synthesis';
 
 export {
   THREAD_INTEGRATION_SYSTEM,

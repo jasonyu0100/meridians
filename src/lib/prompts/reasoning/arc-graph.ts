@@ -16,7 +16,7 @@
  * section) so the prompts module stays free of upstream dependencies.
  */
 
-import { modePriorityEntry } from "../mode/application";
+import { modePriorityEntry } from "../phase/application";
 import { GRAPH_THINKING_PRINCIPLE } from "./principles";
 import {
   composeAnalystIdentity,

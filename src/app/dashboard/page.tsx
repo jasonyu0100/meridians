@@ -42,7 +42,7 @@ export default function DashboardPage() {
     else { setSortKey(key); setReversed(false); }
   };
 
-  const userSeries = useMemo(() => {
+  const userNarratives = useMemo(() => {
     const list = state.narratives.filter((e) => !SEED_NARRATIVE_IDS.has(e.id));
     const cmp = sortKey === 'recent'
       ? (a: typeof list[number], b: typeof list[number]) => b.updatedAt - a.updatedAt
@@ -123,7 +123,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 mb-5">
               <h2 className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono">Your World Views</h2>
               <div className="flex-1 h-px bg-white/6" />
-              {userSeries.length > 1 && (
+              {userNarratives.length > 1 && (
                 <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.15em]">
                   {(['recent', 'name'] as const).map((k) => {
                     const active = sortKey === k;
@@ -144,9 +144,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-            {userSeries.length > 0 ? (
+            {userNarratives.length > 0 ? (
               <div className="flex gap-3 flex-wrap">
-                {userSeries.map((entry, i) => (
+                {userNarratives.map((entry, i) => (
                   <StoryCard key={entry.id} entry={entry} index={i} showTimeAgo />
                 ))}
               </div>

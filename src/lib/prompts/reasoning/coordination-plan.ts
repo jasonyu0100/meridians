@@ -5,7 +5,7 @@
  * reasoning-mode) so the prompts module stays free of upstream dependencies.
  */
 
-import { modePriorityEntry } from "../mode/application";
+import { modePriorityEntry } from "../phase/application";
 
 export type CoordPlanNodeGuidance = {
   totalMin: number;

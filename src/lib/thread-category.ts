@@ -109,7 +109,7 @@ export const THREAD_CATEGORY_HEX: Record<ThreadCategory, string> = {
 // portfolio rows, stance chart, thread inspector. Outcomes are colour-indexed
 // by their position in `thread.outcomes` (or trajectory snapshot), so a view
 // using a different palette would paint the same outcome a different hue.
-// Three views consume this: ThreadPortfolio (left sidebar), BeliefView
+// Three views consume this: ThreadsPanel (left sidebar), BeliefView
 // (centre chart), ThreadDetail (right inspector).
 //
 // Sizing: the analysis-time stance schema caps at ~6 outcomes ("2 to ~6 named

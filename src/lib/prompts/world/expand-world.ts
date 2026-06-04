@@ -6,7 +6,7 @@
  */
 
 import { PROMPT_ENTITY_INTEGRATION } from '../entities/integration';
-import { modePriorityEntry } from '../mode/application';
+import { modePriorityEntry } from '../phase/application';
 import type { ExpansionSizeConfig, WorldExpansionSize } from './expansion-suggestion';
 
 export const EXPANSION_SIZE_CONFIG: Record<WorldExpansionSize, ExpansionSizeConfig> = {

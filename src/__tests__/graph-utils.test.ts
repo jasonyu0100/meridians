@@ -13,7 +13,7 @@ import {
   SYS_TYPE_COLORS,
   type GraphLink,
   type GraphNode,
-} from "@/components/canvas/graph-utils";
+} from "@/components/stage/graph-utils";
 import type {
   Arc,
   Artifact,

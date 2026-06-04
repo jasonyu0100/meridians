@@ -659,7 +659,7 @@ export async function reconcileSemantic(
 }
 
 /**
- * Thread alignment (daily-driver only) — corrective pass that runs after
+ * Thread alignment (priors-compact only) — corrective pass that runs after
  * standard reconciliation on slices produced from the Driver compact
  * path. Inputs are slice threads that survived reconcileSemantic as
  * net-new; output is a {slice-description → existing-description} map

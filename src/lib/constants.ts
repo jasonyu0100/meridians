@@ -159,7 +159,7 @@ export const SHAPE_TROUGH_BAND_HI = 0.8;
 /** Items per page in inspector detail panels */
 export const INSPECTOR_PAGE_SIZE = 20;
 
-/** Knowledge nodes shown in the WorldGraph per entity */
+/** Knowledge nodes shown in the Stage per entity */
 export const GRAPH_WORLD_LIMIT = 20;
 
 /** Arc count above which ForceAnalytics switches to dense mode */

@@ -10,7 +10,7 @@ import { WEBSEARCH_MAX_RESULTS, WEBSEARCH_DEFAULT_MAX_TOTAL } from '@/types/narr
 import { DEFAULT_STORY_SETTINGS, REASONING_BUDGETS } from '@/types/narrative';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import type { CubeCornerKey } from '@/types/narrative';
-import { MATRIX_PRESETS, STORYTELLER_PRESET, computeMatrixFromNarrative, type TransitionMatrix } from '@/lib/pacing-profile';
+import { MATRIX_PRESETS, STORYTELLER_PRESET, computeMatrixFromNarrative, type TransitionMatrix } from '@/lib/pacing-markov';
 import { DEFAULT_BEAT_SAMPLER, BEAT_PROFILE_PRESETS, computeSamplerFromResolvedScenes } from '@/lib/beat-profiles';
 import { MECHANISM_PROFILE_PRESETS, computeMechanismDist, DEFAULT_MECHANISM_DIST } from '@/lib/mechanism-profiles';
 import { IconChevronDown } from '@/components/icons';

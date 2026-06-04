@@ -6,7 +6,7 @@
  * doctrine without the beat machinery.
  */
 
-import { modePriorityEntry } from "../mode/application";
+import { modePriorityEntry } from "../phase/application";
 
 /** Final assembly: inputs + format rules + instructions. The system prompt
  *  stays high-level (role only); craft detail lives here. */

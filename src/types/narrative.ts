@@ -1244,7 +1244,7 @@ export type Arc = {
    * regenerates a new current phase graph or clears the active one.
    * Undefined = no phase graph was active when this arc was generated.
    */
-  modeId?: string;
+  phaseGraphId?: string;
 };
 
 /** Stored reasoning graph snapshot — decoupled from the ai module for type safety */
@@ -1294,7 +1294,7 @@ export type ReasoningNodeSnapshot = {
   /**
    * Universal inference shape — the three fields below appear on every
    * node-like artifact across the reasoning subsystem (this snapshot,
-   * ModeNodeSnapshot, PlanningScenario). Same field names, same abstract
+   * PhaseNodeSnapshot, PlanningScenario). Same field names, same abstract
    * semantics; per-context specifics live in the prompt that produced
    * the node, not in the type. Together they expose the *machinery* of
    * the inference rather than just the conclusion — the three handles a
@@ -1363,9 +1363,9 @@ export type ReasoningEdgeSnapshot = {
 //
 // STORAGE LIFECYCLE: PRGs are user-managed via the Phase tab — switch
 // current, name, use as basis for a new PRG, or delete explicitly. Arcs
-// hold an `arc.modeId` reference to the PRG that was current at
+// hold an `arc.phaseGraphId` reference to the PRG that was current at
 // arc generation time, preserving the model the arc was built under.
-// `pruneModes` (reference-counted helper) is exposed for opt-in
+// `prunePhaseGraphs` (reference-counted helper) is exposed for opt-in
 // cleanup, but the canonical lifecycle is explicit user management.
 
 /**
@@ -1378,7 +1378,7 @@ export type ReasoningEdgeSnapshot = {
  *   - pressure   : accumulated tension · accumulating-toward-discharge
  *   - landmark   : discharged event with persistent influence · past-but-anchoring
  */
-export type ModeNodeType =
+export type PhaseNodeType =
   | "pattern"
   | "convention"
   | "attractor"
@@ -1387,13 +1387,13 @@ export type ModeNodeType =
   | "pressure"
   | "landmark";
 
-export type ModeNodeSnapshot = {
+export type PhaseNodeSnapshot = {
   id: string;
   /** Presentation / causal order — used for display and sequential walks. */
   index: number;
   /** Generation order — the order the AI emitted this node (JSON position). May differ from `index` in backward modes. */
   order?: number;
-  type: ModeNodeType;
+  type: PhaseNodeType;
   label: string;
   detail?: string;
   /** Alternatives considered and rejected — the option space this node
@@ -1417,7 +1417,7 @@ export type ModeNodeSnapshot = {
 };
 
 /** Mode edges reuse the CRG edge ontology — same nine types. */
-export type ModeEdgeSnapshot = {
+export type PhaseEdgeSnapshot = {
   id: string;
   from: string;
   to: string;
@@ -1429,10 +1429,10 @@ export type ModeEdgeSnapshot = {
  * Stored Phase Reasoning Graph (PRG) — the working model of reality.
  * Immutable once stored; regeneration produces a new PRG (optionally seeded
  * by an existing one via `basedOn`). Arcs reference these by id via
- * `Arc.modeId`. Users manage the collection in the Phase tab: name,
+ * `Arc.phaseGraphId`. Users manage the collection in the Phase tab: name,
  * switch current, use as basis, or delete explicitly.
  */
-export type Mode = {
+export type Phase = {
   id: string;
   /**
    * Display name shown in the Phase tab list. User-editable; defaults to a
@@ -1441,8 +1441,8 @@ export type Mode = {
   name?: string;
   /** 1-2 sentence summary of the working model this PRG asserts. */
   summary: string;
-  nodes: ModeNodeSnapshot[];
-  edges: ModeEdgeSnapshot[];
+  nodes: PhaseNodeSnapshot[];
+  edges: PhaseEdgeSnapshot[];
   /** PRG this one was seeded from (regeneration with a basis). Undefined = mined fresh from narrative context. */
   basedOn?: string;
   /** User guidance / hypothesis given at generation time (optional). */
@@ -1713,7 +1713,7 @@ export type NarrativeState = {
    *  with the narrative so prior cross-branch analysis can be revisited. */
   branchChatThreads?: Record<string, BranchChatThread>;
   /** Notes keyed by note ID — persisted with the narrative */
-  driverEntries?: Record<string, DriverEntry>;
+  priors?: Record<string, Prior>;
   /** Location maps keyed by map ID — Replicate-rendered images of location
    *  clusters (connected components of the location parent/child graph). */
   maps?: Record<string, LocationMap>;
@@ -1752,14 +1752,14 @@ export type NarrativeState = {
    * (optionally seeded from an existing one), never mutated. Arcs reference
    * these by id. Empty / undefined = no phase graph has ever been generated.
    */
-  modes?: Record<string, Mode>;
+  phaseGraphs?: Record<string, Phase>;
   /**
    * Id of the currently-active phase graph that downstream generation reads
    * from. Undefined = no active phase graph (generation falls back to a
    * historical viewpoint of the narrative context). Setting / clearing this
    * field is the only mutation users perform on mode state.
    */
-  currentModeId?: string;
+  currentPhaseGraphId?: string;
   /**
    * Canon branch — the one branch this world view treats as its OFFICIAL
    * record. Separate from `activeBranchId` (the branch the operator is
@@ -2740,7 +2740,7 @@ export type InspectorContext =
   | { type: "world"; entityId: string; nodeId: string }
   | { type: "threadLog"; threadId: string; nodeId: string }
   | { type: "reasoning"; arcId?: string; worldBuildId?: string; nodeId: string }
-  | { type: "mode"; modeId: string; nodeId: string };
+  | { type: "mode"; phaseGraphId: string; nodeId: string };
 
 export type WizardStep = "form" | "details" | "generate";
 
@@ -2814,8 +2814,8 @@ export type WizardData = {
  * toggle and every graph view's rendering branch.
  *
  * Graph modes follow `{domain}-{scope}`:
- *   world-scene   / world-arc   / world-full   — WorldGraph
- *   system-scene  / system-arc  / system-full  — KnowledgeGraphView
+ *   world-scene   / world-arc   / world-full   — Stage
+ *   system-scene  / system-arc  / system-full  — SystemGraphView
  *   threads-scene / threads-arc / threads-full — ThreadGraphView
  *   network-scene / network-arc / network-full — NetworkView
  *
@@ -2919,7 +2919,7 @@ export type BranchChatThread = {
 // the standard extend → reconcile → Apply pipeline. Entries are stateless:
 // compaction is a read, the entry persists and can be re-included in
 // later compacts.
-export type DriverEntry = {
+export type Prior = {
   id: string;
   /** Short title — the operator's structural anchor for the entry. Shown
    *  on the queue card; used by the synthesiser as a grouping hint. May

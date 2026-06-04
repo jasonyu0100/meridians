@@ -6,17 +6,17 @@ import { useStore } from '@/lib/store';
 import { useWizard } from '@/lib/wizard-context';
 import { IconChevronDown } from '@/components/icons';
 import AppShell from '@/components/layout/AppShell';
-import Sidebar from '@/components/sidebar/Sidebar';
+import Sidebar from '@/components/layout/DrivePanel';
 import NarrativeRail from '@/components/sidebar/NarrativeRail';
-import SidePanel from '@/components/inspector/SidePanel';
-import WorldGraph from '@/components/canvas/WorldGraph';
-import FloatingPalette from '@/components/canvas/FloatingPalette';
-import { CanvasTopBar, GRAPH_MODES } from '@/components/canvas/CanvasTopBar';
+import InspectorPanel from '@/components/inspector/InspectorPanel';
+import Stage from '@/components/stage/Stage';
+import StagePalette from '@/components/stage/StagePalette';
+import { StageBar, GRAPH_MODES } from '@/components/stage/StageBar';
 import { AudioPlayerProvider } from '@/hooks/useAudioPlayer';
 import TimelineStrip from '@/components/timeline/TimelineStrip';
 import ForceTimeline from '@/components/timeline/ForceTimeline';
 import { PropositionClassificationProvider } from '@/hooks/usePropositionClassification';
-import NarrativePanel from '@/components/narrative/NarrativePanel';
+import ScenePanel from '@/components/stage/ScenePanel';
 import { CreationWizard } from '@/components/wizard/CreationWizard';
 import { GeneratePanel } from '@/components/generation/GeneratePanel';
 import { BranchModal } from '@/components/generation/BranchModal';
@@ -29,7 +29,7 @@ import { ForceAnalytics } from '@/components/analytics/ForceAnalytics';
 import { CastAnalytics } from '@/components/analytics/CastAnalytics';
 import ProseProfilePanel from '@/components/layout/ProseProfilePanel';
 import { ScenariosPanel } from '@/components/scenarios/ScenariosPanel';
-import { ModeControlBar } from '@/components/generation/ModeControlBar';
+import { RunBar } from '@/components/generation/RunBar';
 import { useScenarios } from '@/hooks/useScenarios';
 import { StorySettingsModal } from '@/components/settings/StorySettingsModal';
 import { CoordinationPlanIndicator } from '@/components/generation/CoordinationPlanIndicator';
@@ -47,7 +47,7 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
-export default function SeriesPage() {
+export default function NarrativeWorkspace() {
   const params = useParams();
   const router = useRouter();
   const { state, dispatch } = useStore();
@@ -206,15 +206,15 @@ export default function SeriesPage() {
       <AppShell
         rail={<NarrativeRail />}
         sidebar={<Sidebar />}
-        sidepanel={<SidePanel />}
+        sidepanel={<InspectorPanel />}
       >
         <div className="relative flex flex-col h-full min-h-0">
-          <CanvasTopBar />
+          <StageBar />
           <div className="flex-1 relative overflow-hidden">
-            <WorldGraph />
+            <Stage />
             {/* Top bar light — washes the upper canvas for legibility. Both
                 the wash and divider start at the bottom edge of the topmost
-                bar (CanvasTopBar, plus a legend strip when in graph mode), so
+                bar (StageBar, plus a legend strip when in graph mode), so
                 the light only ever spills downward. Suppressed for the
                 Variables view, which renders its own internal version. */}
             {!suppressBarLight && (
@@ -244,7 +244,7 @@ export default function SeriesPage() {
             )}
             {/* Mode control bars - prioritize: bulk-audio > bulk > scenarios > auto */}
             {showBulkAudioBar && bulkAudio.runState && (
-              <ModeControlBar
+              <RunBar
                 mode="bulk-audio"
                 isRunning={bulkAudio.runState.isRunning}
                 isPaused={bulkAudio.runState.isPaused}
@@ -256,7 +256,7 @@ export default function SeriesPage() {
               />
             )}
             {!showBulkAudioBar && showBulkBar && bulk.runState && (
-              <ModeControlBar
+              <RunBar
                 mode={
                   bulk.runState.mode === 'plan' ? 'bulk-plan' :
                   bulk.runState.mode === 'prose' ? 'bulk-prose' :
@@ -272,7 +272,7 @@ export default function SeriesPage() {
               />
             )}
             {!showBulkAudioBar && !showBulkBar && showScenariosBar && (
-              <ModeControlBar
+              <RunBar
                 mode="scenarios"
                 runState={scenarios.runState}
                 // Stop on the floating pill kills the run AND clears the bar
@@ -285,7 +285,7 @@ export default function SeriesPage() {
               />
             )}
             {!showBulkAudioBar && !showBulkBar && !showScenariosBar && showAutoBar && (
-              <ModeControlBar
+              <RunBar
                 mode="auto"
                 isRunning={autoPlay.isRunning}
                 currentCycle={autoPlay.currentCycle}
@@ -304,7 +304,7 @@ export default function SeriesPage() {
               state.graphViewMode === 'decision' ||
               state.graphViewMode === 'mode' ||
               state.graphViewMode === 'reasoning') && (
-              <FloatingPalette
+              <StagePalette
                 isBulkActive={!!(bulk.runState?.isRunning || bulk.runState?.isPaused)}
                 isBulkAudioActive={!!(bulkAudio.runState?.isRunning || bulkAudio.runState?.isPaused)}
                 isScenariosActive={scenarios.runState.status === 'running'}
@@ -337,7 +337,7 @@ export default function SeriesPage() {
 
             {!bottomPanelCollapsed && (
               <>
-                <NarrativePanel />
+                <ScenePanel />
                 <TimelineStrip />
                 <ForceTimeline />
               </>

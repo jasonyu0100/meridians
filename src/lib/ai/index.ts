@@ -21,7 +21,7 @@ export { rewriteSceneProse } from './prose';
 export { suggestPremise } from './premise';
 
 // Driver entry generation
-export { generateDriverEntry } from './driver';
+export { generatePrior } from './capture';
 
 // Image prompt
 export { suggestImagePrompt } from './image-prompt';

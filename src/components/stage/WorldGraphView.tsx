@@ -1,0 +1,294 @@
+'use client';
+
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import * as d3 from 'd3';
+import { useStore } from '@/lib/store';
+import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/scene-filter';
+import { WORLD_FILL } from './graph-utils';
+import type { WorldNode, WorldEdge, World, WorldNodeType } from '@/types/narrative';
+import { WORLD_NODE_TYPES, WORLD_NODE_CATEGORY } from '@/types/narrative';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
+
+type CNode = d3.SimulationNodeDatum & { id: string; content: string; type: string; degree: number };
+type CLink = d3.SimulationLinkDatum<CNode> & { relation: string };
+
+export default function WorldGraphView({ entityId, entityName, world, scenes, resolvedKeys, currentIndex }: {
+  entityId: string;
+  entityName: string;
+  world: World;
+  scenes: Record<string, import('@/types/narrative').Scene>;
+  resolvedKeys: string[];
+  currentIndex: number;
+}) {
+  const { dispatch } = useStore();
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const simRef = useRef<d3.Simulation<CNode, CLink> | null>(null);
+  const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
+  const nodesRef = useRef<CNode[]>([]);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const [showLabels, setShowLabels] = useState(true);
+  const [showRelations, setShowRelations] = useState(false);
+  const [showTypes, setShowTypes] = useState(true);
+  // Two-category filters — Core (trait/capability/goal/secret/weakness)
+  // and Context (state/history/opinion/relation). Both default on.
+  // Toggling either off drops every node in that category, along with
+  // edges whose endpoint disappears.
+  const [showCore, setShowCore] = useState(true);
+  const [showContext, setShowContext] = useState(true);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string; type: string; degree: number } | null>(null);
+
+  const graphData = useMemo(() => {
+    const rawNodes = getWorldNodesAtScene(world.nodes, entityId, scenes, resolvedKeys, currentIndex);
+    const rawEdges = getWorldEdgesAtScene(world.edges, entityId, scenes, resolvedKeys, currentIndex, world.nodes);
+    // Category filter — drop nodes whose category is currently hidden,
+    // then drop any edge whose endpoint disappeared with them.
+    const allowed = (t: string): boolean => {
+      const cat = WORLD_NODE_CATEGORY[t as WorldNodeType];
+      if (cat === 'core') return showCore;
+      if (cat === 'context') return showContext;
+      // Unknown / un-categorised types stay visible — defensive default.
+      return true;
+    };
+    const nodes = rawNodes.filter((n) => allowed(n.type));
+    const visibleIds = new Set(nodes.map((n) => n.id));
+    const edges = rawEdges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to));
+    return { nodes, edges };
+  }, [world, entityId, scenes, resolvedKeys, currentIndex, showCore, showContext]);
+
+  // Initial setup
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const svg = d3.select(svgEl);
+    svg.selectAll('*').remove();
+    const g = svg.append('g');
+    gRef.current = g;
+
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 4])
+      .on('zoom', (event) => g.attr('transform', event.transform));
+    svg.call(zoom);
+    zoomRef.current = zoom;
+    const width = svgEl.clientWidth ?? 800;
+    const height = svgEl.clientHeight ?? 600;
+    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.9));
+
+    g.append('g').attr('class', 'c-links');
+    g.append('g').attr('class', 'c-nodes');
+    g.append('g').attr('class', 'c-labels');
+    g.append('g').attr('class', 'c-relations');
+
+    // Force settings match SystemGraphView exactly
+    const sim = d3.forceSimulation<CNode, CLink>()
+      .force('link', d3.forceLink<CNode, CLink>([]).id((d) => d.id).distance(140))
+      .force('charge', d3.forceManyBody().strength(-500))
+      .force('center', d3.forceCenter(0, 0))
+      .force('x', d3.forceX(0).strength(0.05))
+      .force('y', d3.forceY(0).strength(0.05))
+      .force('collide', d3.forceCollide<CNode>().radius(40));
+    simRef.current = sim;
+
+    return () => { sim.stop(); simRef.current = null; gRef.current = null; };
+  }, []);
+
+  // Data update
+  useEffect(() => {
+    const sim = simRef.current;
+    const g = gRef.current;
+    if (!sim || !g) return;
+
+    const { nodes: rawNodes, edges } = graphData;
+    const degreeMap = new Map<string, number>();
+    for (const e of edges) {
+      degreeMap.set(e.from, (degreeMap.get(e.from) ?? 0) + 1);
+      degreeMap.set(e.to, (degreeMap.get(e.to) ?? 0) + 1);
+    }
+    const maxDegree = Math.max(...rawNodes.map((n) => degreeMap.get(n.id) ?? 0), 1);
+    const nodeRadius = (d: CNode) => 5 + (d.degree / maxDegree) * 20;
+
+    const prevPos = new Map(nodesRef.current.map((n) => [n.id, { x: n.x, y: n.y }]));
+    const simNodes: CNode[] = rawNodes.map((n) => {
+      const prev = prevPos.get(n.id);
+      return { id: n.id, content: n.content, type: n.type, degree: degreeMap.get(n.id) ?? 0, ...(prev ?? {}) };
+    });
+    nodesRef.current = simNodes;
+    const nodeMap = new Map(simNodes.map((n) => [n.id, n]));
+    const simLinks: CLink[] = edges
+      .filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to))
+      .map((e) => ({ source: nodeMap.get(e.from)!, target: nodeMap.get(e.to)!, relation: e.relation }));
+
+    // Links
+    const linkSel = g.select<SVGGElement>('g.c-links')
+      .selectAll<SVGLineElement, CLink>('line')
+      .data(simLinks, (d) => `${(d.source as CNode).id}-${(d.target as CNode).id}`);
+    linkSel.exit().remove();
+    const linkAll = linkSel.enter().append('line').merge(linkSel);
+    // Edge intensity: opacity + width scale with mean endpoint degree.
+    const edgeT = (d: CLink) =>
+      ((d.source as CNode).degree + (d.target as CNode).degree) / (maxDegree * 2);
+    linkAll
+      // CSS-variable stroke so edges recolour live on theme switch (white on
+      // dark themes, dark ink on light) without a D3 rebuild.
+      .style('stroke', 'var(--graph-edge)')
+      .attr('stroke-opacity', (d) => edgeOpacityFor(edgeT(d)))
+      .attr('stroke-width', (d) => edgeWidthFor(edgeT(d)));
+
+    // Nodes
+    const nodeSel = g.select<SVGGElement>('g.c-nodes')
+      .selectAll<SVGCircleElement, CNode>('circle')
+      .data(simNodes, (d) => d.id);
+    nodeSel.exit().remove();
+    const nodeAll = nodeSel.enter().append('circle').style('cursor', 'pointer').merge(nodeSel);
+    nodeAll
+      .attr('r', nodeRadius)
+      .attr('fill', (d) => showTypes ? (WORLD_FILL[d.type] ?? '#888') : '#888')
+      .attr('opacity', 0.9);
+
+    // Drag
+    const drag = d3.drag<SVGCircleElement, CNode>()
+      .on('start', (event, d) => { if (!event.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; setTooltip(null); })
+      .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on('end', (event, d) => { if (!event.active) sim.alphaTarget(0); d.fx = null; d.fy = null; });
+    nodeAll.call(drag);
+
+    nodeAll
+      .on('mouseenter', (event, d) => {
+        const rect = svgRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        setTooltip({ x: event.clientX - rect.left, y: event.clientY - rect.top - 10, content: d.content, type: d.type, degree: d.degree });
+      })
+      .on('mouseleave', () => setTooltip(null))
+      .on('click', (_event, d) => {
+        _event.stopPropagation();
+        dispatch({ type: 'SET_INSPECTOR', context: { type: 'world', entityId, nodeId: d.id } });
+      });
+
+    // Labels
+    const labelSel = g.select<SVGGElement>('g.c-labels')
+      .selectAll<SVGTextElement, CNode>('text')
+      .data(simNodes, (d) => d.id);
+    labelSel.exit().remove();
+    const labelAll = labelSel.enter().append('text').attr('text-anchor', 'middle').merge(labelSel);
+    labelAll
+      .attr('fill', (d) => showTypes ? (WORLD_FILL[d.type] ?? '#ccc') : '#ccc')
+      .attr('font-size', (d) => `${Math.max(9, 9 + (d.degree / maxDegree) * 4)}px`)
+      .attr('font-weight', (d) => d.degree >= maxDegree * 0.5 ? '600' : '400')
+      .attr('display', showLabels ? 'block' : 'none')
+      .attr('opacity', (d) => d.degree >= 2 ? 0.85 : 0.45)
+      .text((d) => {
+        const text = d.content ?? '';
+        const dash = text.indexOf(' — ');
+        return dash > 0 ? text.slice(0, dash) : text.slice(0, 40) + (text.length > 40 ? '…' : '');
+      });
+
+    // Relation labels
+    const relSel = g.select<SVGGElement>('g.c-relations')
+      .selectAll<SVGTextElement, CLink>('text')
+      .data(simLinks, (d) => `${(d.source as CNode).id}-${(d.target as CNode).id}-rel`);
+    relSel.exit().remove();
+    const relAll = relSel.enter().append('text').attr('text-anchor', 'middle').attr('font-size', '7px').merge(relSel);
+    relAll
+      .attr('fill', '#ffffff30')
+      .attr('display', showRelations ? 'block' : 'none')
+      .text((d) => d.relation);
+
+    // Simulation
+    sim.nodes(simNodes);
+    (sim.force('link') as d3.ForceLink<CNode, CLink>).links(simLinks);
+    (sim.force('collide') as d3.ForceCollide<CNode>).radius((d) => nodeRadius(d) + 30);
+    sim.on('tick', () => {
+      linkAll
+        .attr('x1', (d) => (d.source as CNode).x ?? 0).attr('y1', (d) => (d.source as CNode).y ?? 0)
+        .attr('x2', (d) => (d.target as CNode).x ?? 0).attr('y2', (d) => (d.target as CNode).y ?? 0);
+      nodeAll.attr('cx', (d) => d.x ?? 0).attr('cy', (d) => d.y ?? 0);
+      labelAll.attr('x', (d) => d.x ?? 0).attr('y', (d) => d.y ?? 0).attr('dy', (d) => -(nodeRadius(d) + 5));
+      relAll
+        .attr('x', (d) => ((d.source as CNode).x! + (d.target as CNode).x!) / 2)
+        .attr('y', (d) => ((d.source as CNode).y! + (d.target as CNode).y!) / 2);
+    });
+    sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
+  }, [graphData, showLabels, showRelations, showTypes]);
+
+  const legendItems = [
+    { key: 'labels', label: 'Labels', checked: showLabels, toggle: () => setShowLabels((v) => !v) },
+    { key: 'relations', label: 'Relations', checked: showRelations, toggle: () => setShowRelations((v) => !v) },
+    { key: 'types', label: 'Types', checked: showTypes, toggle: () => setShowTypes((v) => !v) },
+  ];
+  // Category filters live in their own group so they read as a SCOPE
+  // control (what's visible) rather than a STYLE control (Labels /
+  // Relations / Types).
+  const categoryItems = [
+    { key: 'core', label: 'Core', checked: showCore, toggle: () => setShowCore((v) => !v) },
+    { key: 'context', label: 'Context', checked: showContext, toggle: () => setShowContext((v) => !v) },
+  ];
+
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col">
+      {/* Legend strip */}
+      <div className="shrink-0 flex items-center gap-0 px-2 h-7 border-b border-border glass-panel z-30">
+        <button
+          onClick={() => dispatch({ type: 'SELECT_KNOWLEDGE_ENTITY', entityId: null })}
+          className="text-[10px] text-text-dim hover:text-text-secondary transition-colors flex items-center gap-1 mr-2"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+          World
+        </button>
+        <span className="text-[10px] text-text-dim mr-1">/</span>
+        <span className="text-[10px] text-text-secondary font-medium mr-3">{entityName}</span>
+        <div className="w-px h-3 bg-border mr-1" />
+        {legendItems.map(({ key, label, checked, toggle }) => (
+          <button key={key} onClick={toggle}
+            className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${checked ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}>
+            {label}
+          </button>
+        ))}
+        <div className="w-px h-3 bg-border mx-1" />
+        {categoryItems.map(({ key, label, checked, toggle }) => (
+          <button key={key} onClick={toggle}
+            className={`text-[9px] px-2 py-1 rounded transition-colors select-none ${checked ? 'text-text-secondary' : 'text-text-dim/40 hover:text-text-dim'}`}>
+            {label}
+          </button>
+        ))}
+        {showTypes && (
+          <>
+            <div className="w-px h-3 bg-border mx-1" />
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {WORLD_NODE_TYPES.map((t) => (
+                <div key={t} className="flex items-center gap-1 shrink-0">
+                  <div className="w-2 h-2 rounded-full" style={{ background: WORLD_FILL[t] }} />
+                  <span className="text-[8px] text-text-dim/60 capitalize">{t}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <span className="text-[9px] text-text-dim ml-auto shrink-0">
+          {graphData.nodes.length} nodes · {graphData.edges.length} edges
+        </span>
+      </div>
+
+      {/* Canvas */}
+      <div className="relative flex-1">
+        <svg ref={svgRef} className="w-full h-full" />
+        {tooltip && (
+          <div
+            className="absolute z-40 pointer-events-none"
+            style={{ left: tooltip.x, top: tooltip.y - 12, transform: 'translate(-50%, -100%)' }}
+          >
+            <div className="bg-bg-elevated border border-border rounded-lg px-3 py-2 shadow-xl max-w-sm">
+              <div className="flex items-start gap-2 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5" style={{ background: WORLD_FILL[tooltip.type] ?? '#888', boxShadow: `0 0 6px ${WORLD_FILL[tooltip.type] ?? '#888'}80` }} />
+                <div>
+                  <span className="text-xs font-semibold text-text-primary whitespace-normal wrap-break-word">{tooltip.content}</span>
+                  <span className="text-[10px] text-text-dim capitalize ml-1">({tooltip.type})</span>
+                </div>
+              </div>
+              <div className="text-[10px] text-text-secondary">{tooltip.degree} connection{tooltip.degree !== 1 ? 's' : ''}</div>
+            </div>
+            <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-bg-elevated border-r border-b border-border rotate-45 -mt-1.5" /></div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

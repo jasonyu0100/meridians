@@ -318,7 +318,7 @@ export interface ExtractPresentInput {
   outline?: string;
   /** Pre-rendered active Mode section — folds the working-machinery graph
    *  (agents, pressures, rules, attractors, landmarks) into the prompt so
-   *  the variables inherit the substrate. Built via `buildActiveModeSection`. */
+   *  the variables inherit the substrate. Built via `buildActivePhaseSection`. */
   modeSection?: string;
   direction?: string;
   /** Stream reasoning tokens to the caller (e.g. for the variables view to
@@ -502,7 +502,7 @@ export interface ScenarioGenerationInput {
   context?: VariablesContextSource;
   /** Pre-rendered story outline up to the current scene (`outlineContext`). */
   outline?: string;
-  /** Pre-rendered active Mode section (`buildActiveModeSection`). */
+  /** Pre-rendered active Mode section (`buildActivePhaseSection`). */
   modeSection?: string;
   direction?: string;
   /** Stream reasoning tokens to the caller — when set, uses the streaming
@@ -704,7 +704,7 @@ export interface RescoreScenarioInput {
   context?: VariablesContextSource;
   /** Pre-rendered story outline up to the current scene (`outlineContext`). */
   outline?: string;
-  /** Pre-rendered active Mode section (`buildActiveModeSection`). */
+  /** Pre-rendered active Mode section (`buildActivePhaseSection`). */
   modeSection?: string;
 }
 

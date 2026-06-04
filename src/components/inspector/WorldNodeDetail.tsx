@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { getWorldNodesAtScene } from '@/lib/scene-filter';
-import { WORLD_FILL } from '@/components/canvas/graph-utils';
+import { WORLD_FILL } from '@/components/stage/graph-utils';
 import { WORLD_NODE_TYPES, type WorldNodeType } from '@/types/narrative';
 import { InlineText, InlineSelect } from './InlineEdit';
 

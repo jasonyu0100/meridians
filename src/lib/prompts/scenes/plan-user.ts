@@ -11,7 +11,7 @@
 import { BEAT_FN_LIST, BEAT_MECHANISM_LIST } from "@/types/narrative";
 import { PROMPT_BEAT_TAXONOMY } from "../core/beat-taxonomy";
 import { PROMPT_PROPOSITIONS } from "../core/propositions";
-import { modePriorityEntry } from "../mode/application";
+import { modePriorityEntry } from "../phase/application";
 import { WORDS_PER_BEAT, BEATS_PER_SCENE, WORDS_PER_SCENE } from "@/lib/constants";
 
 export function buildScenePlanUserPrompt(args: {

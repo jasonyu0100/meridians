@@ -22,7 +22,7 @@ import {
   resolvePlanForBranch,
   resolveProseForBranch,
 } from "@/lib/narrative-utils";
-import { initMatrixPresets } from "@/lib/pacing-profile";
+import { initMatrixPresets } from "@/lib/pacing-markov";
 import {
   deleteAnalysisApiLogs,
   deleteApiLogs,
@@ -66,11 +66,11 @@ import type {
   GraphViewMode,
   InspectorContext,
   Location,
-  Mode,
+  Phase,
   NarrativeEntry,
   NarrativeState,
   NarrativeViewState,
-  DriverEntry,
+  Prior,
   LocationMap,
   OwnershipDelta,
   PlanEvaluation,
@@ -1012,10 +1012,10 @@ export type Action =
   | { type: "DELETE_SAVED_PROSE_PROFILE"; id: string }
   | { type: "SET_PATTERNS"; patterns: string[] }
   | { type: "SET_ANTI_PATTERNS"; antiPatterns: string[] }
-  | { type: "ADD_PHASE_GRAPH"; graph: Mode }
-  | { type: "SET_CURRENT_PHASE_GRAPH"; modeId: string | null }
-  | { type: "RENAME_PHASE_GRAPH"; modeId: string; name: string }
-  | { type: "DELETE_PHASE_GRAPH"; modeId: string }
+  | { type: "ADD_PHASE_GRAPH"; graph: Phase }
+  | { type: "SET_CURRENT_PHASE_GRAPH"; phaseGraphId: string | null }
+  | { type: "RENAME_PHASE_GRAPH"; phaseGraphId: string; name: string }
+  | { type: "DELETE_PHASE_GRAPH"; phaseGraphId: string }
   | { type: "SET_GENRE"; genre: string }
   | { type: "SET_SUBGENRE"; subgenre: string }
   | { type: "SET_DETECTED_PATTERNS"; paradigm?: NarrativeParadigm; genre: string; subgenre: string; patterns: string[]; antiPatterns: string[] }
@@ -1079,14 +1079,14 @@ export type Action =
       compareBranchIds?: string[];
       scopeState?: ScopeState;
     }
-  // Driver workspace — entries in the daily-driver queue
-  | { type: "CREATE_DRIVER_ENTRY"; entry: DriverEntry }
-  | { type: "DELETE_DRIVER_ENTRY"; entryId: string }
-  | { type: "UPDATE_DRIVER_ENTRY"; entryId: string; title?: string; text?: string; tags?: string[] }
+  // Driver workspace — entries in the priors-compact queue
+  | { type: "CREATE_PRIOR"; entry: Prior }
+  | { type: "DELETE_PRIOR"; entryId: string }
+  | { type: "UPDATE_PRIOR"; entryId: string; title?: string; text?: string; tags?: string[] }
   // Stamp a set of entries with the SourceFile they were folded into.
-  // Marks them locked — UPDATE_DRIVER_ENTRY and DELETE_DRIVER_ENTRY
+  // Marks them locked — UPDATE_PRIOR and DELETE_PRIOR
   // become no-ops on these entries thereafter.
-  | { type: "MARK_DRIVER_ENTRIES_USED"; entryIds: string[]; fileId: string }
+  | { type: "MARK_PRIORS_USED"; entryIds: string[]; fileId: string }
   // Location maps — Replicate-rendered images of location clusters.
   | { type: "SAVE_MAP"; map: LocationMap }
   | { type: "DELETE_MAP"; mapId: string }
@@ -3157,38 +3157,38 @@ function reducer(state: AppState, action: Action): AppState {
     case "ADD_PHASE_GRAPH":
       return updateNarrative(state, (n) => ({
         ...n,
-        modes: { ...(n.modes ?? {}), [action.graph.id]: action.graph },
-        currentModeId: action.graph.id,
+        phaseGraphs: { ...(n.phaseGraphs ?? {}), [action.graph.id]: action.graph },
+        currentPhaseGraphId: action.graph.id,
       }));
 
     case "SET_CURRENT_PHASE_GRAPH":
       return updateNarrative(state, (n) => ({
         ...n,
-        currentModeId: action.modeId ?? undefined,
+        currentPhaseGraphId: action.phaseGraphId ?? undefined,
       }));
 
     case "RENAME_PHASE_GRAPH":
       return updateNarrative(state, (n) => {
-        const graph = n.modes?.[action.modeId];
+        const graph = n.phaseGraphs?.[action.phaseGraphId];
         if (!graph) return n;
         return {
           ...n,
-          modes: {
-            ...n.modes,
-            [action.modeId]: { ...graph, name: action.name },
+          phaseGraphs: {
+            ...n.phaseGraphs,
+            [action.phaseGraphId]: { ...graph, name: action.name },
           },
         };
       });
 
     case "DELETE_PHASE_GRAPH":
       return updateNarrative(state, (n) => {
-        const next = { ...(n.modes ?? {}) };
-        delete next[action.modeId];
+        const next = { ...(n.phaseGraphs ?? {}) };
+        delete next[action.phaseGraphId];
         return {
           ...n,
-          modes: next,
-          currentModeId:
-            n.currentModeId === action.modeId ? undefined : n.currentModeId,
+          phaseGraphs: next,
+          currentPhaseGraphId:
+            n.currentPhaseGraphId === action.phaseGraphId ? undefined : n.currentPhaseGraphId,
         };
       });
 
@@ -3502,35 +3502,35 @@ function reducer(state: AppState, action: Action): AppState {
         };
       });
 
-    // ── Driver entries (daily-driver queue) ───────────────────────────────
-    case "CREATE_DRIVER_ENTRY":
+    // ── Driver entries (priors-compact queue) ───────────────────────────────
+    case "CREATE_PRIOR":
       return updateNarrative(state, (n) => ({
         ...n,
-        driverEntries: { ...(n.driverEntries ?? {}), [action.entry.id]: action.entry },
+        priors: { ...(n.priors ?? {}), [action.entry.id]: action.entry },
       }));
 
-    case "DELETE_DRIVER_ENTRY":
+    case "DELETE_PRIOR":
       return updateNarrative(state, (n) => {
-        const entry = n.driverEntries?.[action.entryId];
+        const entry = n.priors?.[action.entryId];
         // Locked entries (already folded into a SourceFile) are immutable.
         // Silently no-op rather than throwing — the UI surface should
         // never offer the action, but the guard keeps state coherent if
         // a stale callsite tries.
         if (!entry || (entry.usedInFileIds && entry.usedInFileIds.length > 0)) return n;
-        const { [action.entryId]: _, ...rest } = n.driverEntries ?? {};
-        return { ...n, driverEntries: rest };
+        const { [action.entryId]: _, ...rest } = n.priors ?? {};
+        return { ...n, priors: rest };
       });
 
-    case "UPDATE_DRIVER_ENTRY":
+    case "UPDATE_PRIOR":
       return updateNarrative(state, (n) => {
-        const entry = n.driverEntries?.[action.entryId];
+        const entry = n.priors?.[action.entryId];
         if (!entry) return n;
         // Locked entries are read-only — see DELETE comment above.
         if (entry.usedInFileIds && entry.usedInFileIds.length > 0) return n;
         return {
           ...n,
-          driverEntries: {
-            ...(n.driverEntries ?? {}),
+          priors: {
+            ...(n.priors ?? {}),
             [action.entryId]: {
               ...entry,
               ...(action.title !== undefined ? { title: action.title } : {}),
@@ -3541,11 +3541,11 @@ function reducer(state: AppState, action: Action): AppState {
         };
       });
 
-    case "MARK_DRIVER_ENTRIES_USED":
+    case "MARK_PRIORS_USED":
       return updateNarrative(state, (n) => {
-        const entries = n.driverEntries ?? {};
+        const entries = n.priors ?? {};
         const ids = new Set(action.entryIds);
-        const next: Record<string, DriverEntry> = { ...entries };
+        const next: Record<string, Prior> = { ...entries };
         for (const id of ids) {
           const entry = entries[id];
           if (!entry) continue;
@@ -3553,7 +3553,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (usedInFileIds.includes(action.fileId)) continue;
           next[id] = { ...entry, usedInFileIds: [...usedInFileIds, action.fileId] };
         }
-        return { ...n, driverEntries: next };
+        return { ...n, priors: next };
       });
 
     // ── Location maps ─────────────────────────────────────────────────────

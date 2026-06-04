@@ -210,7 +210,7 @@ button,
   box-shadow: var(--glass-shadow);
 }
 
-/* Floating pill chrome (FloatingPalette, DriverPalette, control bars,
+/* Floating pill chrome (StagePalette, CapturePalette, control bars,
  * scene info bars). Same near-opaque treatment as .glass so prose /
  * canvas content can't bleed through and reduce contrast. */
 .glass-pill {
@@ -321,8 +321,8 @@ button,
   --color-white: #fff;
 }
 
-/* D3 graph styles. Every canvas graph (WorldGraph, ThreadGraphView,
- * KnowledgeGraphView, NetworkView) tags its node elements with this
+/* D3 graph styles. Every canvas graph (Stage, ThreadGraphView,
+ * SystemGraphView, NetworkView) tags its node elements with this
  * class so a single rule controls the hover affordance: solid by
  * default, slightly dim on hover so the pointed-at node reads as the
  * active target. Only EDGES carry persistent transparency. */

@@ -5,7 +5,7 @@
  * prompts module stays free of upstream dependencies.
  */
 
-import { modePriorityEntry } from "../mode/application";
+import { modePriorityEntry } from "../phase/application";
 import type { NarrativeParadigm } from '@/types/narrative';
 import {
   composeWorkIdentity,

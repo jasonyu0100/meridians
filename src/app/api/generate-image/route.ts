@@ -17,7 +17,7 @@ type ImageRequest =
   | { type: 'map'; name: string; regions: MapRegion[]; imagePrompt?: string; imageStyle?: string };
 
 /** The map treatment. Meridians supports exactly two map types: the RAW GRAPH
- *  map (the WorldGraph — drawn live from the substrate, never image-generated)
+ *  map (the Stage — drawn live from the substrate, never image-generated)
  *  and this BOARD-GAME STYLE map. Every generated map — a world, a region, a
  *  settlement, a building — renders as ONE cohesive board-game board: a
  *  hand-painted top-down strategy board whose sub-regions are distinct,

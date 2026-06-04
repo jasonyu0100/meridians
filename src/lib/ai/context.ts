@@ -8,7 +8,7 @@ import { getIntroducedIds } from '@/lib/scene-filter';
 import { computeCumulativePositions } from '@/lib/positions';
 import { describeTimeGap, formatTimeDelta } from '@/lib/time-deltas';
 import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/network-graph';
-import { getActiveMode } from '@/lib/mode-graph';
+import { getActivePhaseGraph } from '@/lib/phase-graph';
 import { buildSequentialPath } from '@/lib/prompts/reasoning/sequential-path';
 import {
   ELO_INITIAL,
@@ -1799,7 +1799,7 @@ export function hasCompassScenarios(
  *  rendering the downstream pipeline reads — wrapped in a `<mode>` root.
  *  Returns an empty string when there is no active Mode. */
 export function modeContext(n: NarrativeState): string {
-  const graph = getActiveMode(n);
+  const graph = getActivePhaseGraph(n);
   if (!graph || !graph.nodes || graph.nodes.length === 0) return '';
   const guidance = graph.guidance
     ? `\n  <guidance>${xmlEscape(graph.guidance)}</guidance>`
@@ -1844,7 +1844,7 @@ ${sequentialPath}
  *  node. ChatPanel uses this to conditionally show the Mode option in the
  *  context-mode dropdown. */
 export function hasMode(n: NarrativeState): boolean {
-  const graph = getActiveMode(n);
+  const graph = getActivePhaseGraph(n);
   return !!graph && Array.isArray(graph.nodes) && graph.nodes.length > 0;
 }
 
@@ -1860,7 +1860,7 @@ export function hasMode(n: NarrativeState): boolean {
 /** Resolve the active investigation for the arc at the current cursor.
  *  When `selectedInvestigationId` matches an investigation on that arc
  *  it wins; otherwise we fall back to the first investigation by
- *  createdAt, matching CanvasTopBar's resolution. Returns null when the
+ *  createdAt, matching StageBar's resolution. Returns null when the
  *  cursor is on a world commit or the arc has no investigations. */
 function activeInvestigationAtIndex(
   n: NarrativeState,

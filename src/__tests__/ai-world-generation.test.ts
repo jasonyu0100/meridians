@@ -25,7 +25,7 @@ vi.mock('@/lib/ai/prompts', () => ({
   buildForceStandardsPrompt: vi.fn().mockReturnValue('Mock force standards prompt'),
 }));
 // Mock pacing-profile to avoid unrelated markov chain logic
-vi.mock('@/lib/pacing-profile', () => ({
+vi.mock('@/lib/pacing-markov', () => ({
   buildSequencePrompt: vi.fn().mockReturnValue('Mock sequence prompt'),
   buildIntroductionSequence: vi.fn().mockReturnValue({
     steps: [],

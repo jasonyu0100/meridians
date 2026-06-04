@@ -10,7 +10,7 @@ type Props = {
 /**
  * Minimal pill indicator showing coordination plan progress.
  * Appears at the bottom of the canvas when a plan is active.
- * Matches the ModeControlBar design language.
+ * Matches the RunBar design language.
  */
 export function CoordinationPlanIndicator({ branchPlan, onClick }: Props) {
   const { plan } = branchPlan;

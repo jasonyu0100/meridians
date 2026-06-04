@@ -739,7 +739,7 @@ describe('commitPreparedApply', () => {
   // ── Phase III.b — Thread expansion on merge ─────────────────────────────
   //
   // When a slice thread merges into an existing one (via reconcileSemantic
-  // description-match or via the daily-driver thread-integration LLM
+  // description-match or via the priors-compact thread-integration LLM
   // pass), the slice's outcomes and participants should fold into the
   // existing thread. commitPreparedApply doesn't mutate the existing
   // thread itself — it emits `threadExpansions` on the APPLY_EXTENSION

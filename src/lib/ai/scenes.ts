@@ -28,13 +28,13 @@ import {
   buildProseInstructionsFreeform,
   buildSceneProseUserPrompt,
 } from '@/lib/prompts/scenes/prose-instructions';
-import { samplePacingSequence, buildSequencePrompt, detectCurrentMode, MATRIX_PRESETS, DEFAULT_TRANSITION_MATRIX, type PacingSequence } from '@/lib/pacing-profile';
+import { samplePacingSequence, buildSequencePrompt, detectCurrentMode, MATRIX_PRESETS, DEFAULT_TRANSITION_MATRIX, type PacingSequence } from '@/lib/pacing-markov';
 import { resolveProfile, resolveSampler, sampleBeatSequence } from '@/lib/beat-profiles';
 import { FORMAT_INSTRUCTIONS } from '@/lib/prompts';
 import { logWarning, logError, logInfo } from '@/lib/system-logger';
 import type { ReasoningGraph, ArcSettings } from './reasoning-graph';
 import { buildSequentialPath, extractPatternWarningDirectives } from './reasoning-graph';
-import { buildActiveModeSection } from './mode-graph';
+import { buildActivePhaseSection } from './phase-graph';
 import { retryWithValidation, validateBeatPlan, validateBeatProseMap } from './validation';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/system-graph';
 import { ensureSceneAttributions } from '@/lib/attribution';
@@ -374,7 +374,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     inputBlocks.push(`  <first-scene-transition unit="${firstSceneTimeUnit}"${valueAttr} hint="${hint}">${constraintBody}</first-scene-transition>`);
   }
   if (sequencePrompt) inputBlocks.push(`  <pacing-sequence>\n${sequencePrompt}\n  </pacing-sequence>`);
-  const modeSection = buildActiveModeSection(narrative, 'scene-structure');
+  const modeSection = buildActivePhaseSection(narrative, 'scene-structure');
   if (modeSection) inputBlocks.push(`  ${modeSection.replace(/\n/g, '\n  ')}`);
 
   const povRestrictedHint = storySettings.povMode !== 'free' && storySettings.povCharacterIds.length > 0
@@ -727,7 +727,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
         // Stamp the active Phase Reasoning Graph (PRG) at arc-creation time
         // so the working-model-of-reality the arc was built under is preserved
         // even after the user later switches or clears the active PRG.
-        modeId: narrative.currentModeId,
+        phaseGraphId: narrative.currentPhaseGraphId,
       };
 
   logInfo('Completed scene generation', {
@@ -1004,7 +1004,7 @@ ${proseProfileBlock}
   const planFormatBlock = buildPlanFormatBlock(planFormat);
   if (planFormatBlock) inputBlocks.push(`  ${planFormatBlock.replace(/\n/g, '\n  ')}`);
   if (beatSlotsBlock) inputBlocks.push(`  ${beatSlotsBlock.replace(/\n/g, '\n  ')}`);
-  const planModeSection = buildActiveModeSection(narrative, 'scene-plan');
+  const planModeSection = buildActivePhaseSection(narrative, 'scene-plan');
   if (planModeSection) inputBlocks.push(`  ${planModeSection.replace(/\n/g, '\n  ')}`);
   if (completedBeatsBlock) inputBlocks.push(`  <completed-beats>\n${completedBeatsBlock}\n  </completed-beats>`);
   if (adjacentBlock) inputBlocks.push(`  <previous-scene-tail>${adjacentBlock}</previous-scene-tail>`);
@@ -1772,7 +1772,7 @@ ${b.propositions.map(p => `      <proposition>${p.content}</proposition>`).join(
   const inputBlocks: string[] = [];
   if (paradigmShapeBlock) inputBlocks.push(`  ${paradigmShapeBlock.replace(/\n/g, '\n  ')}`);
   if (profileSection.trim()) inputBlocks.push(`  <prose-profile hint="The world view's authorial voice. Always law — rules in <instructions> apply only when this is silent on a given dimension.">${profileSection}\n  </prose-profile>`);
-  const proseProseModeSection = buildActiveModeSection(narrative, 'scene-prose');
+  const proseProseModeSection = buildActivePhaseSection(narrative, 'scene-prose');
   if (proseProseModeSection) inputBlocks.push(`  ${proseProseModeSection.replace(/\n/g, '\n  ')}`);
   if (adjacentProseBlock) inputBlocks.push(`  ${adjacentProseBlock.replace(/\n/g, '\n  ')}`);
   if (planBlock) inputBlocks.push(`  ${planBlock.replace(/\n/g, '\n  ')}`);

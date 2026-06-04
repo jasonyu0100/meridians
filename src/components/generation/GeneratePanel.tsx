@@ -29,7 +29,7 @@ import {
   PACING_PRESETS,
   samplePacingSequence,
   type PacingSequence,
-} from "@/lib/pacing-profile";
+} from "@/lib/pacing-markov";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
 import type { CubeCornerKey, NarrativeState, TimeUnit } from "@/types/narrative";

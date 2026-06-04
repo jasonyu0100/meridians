@@ -7,7 +7,7 @@
  * and anywhere reasoning surfaces in the app.
  *
  * Replaces three duplicated `ExpandableField` definitions previously
- * scattered across ReasoningNodeDetail, ModeNodeDetail, and VariablesView.
+ * scattered across ReasoningNodeDetail, PhaseNodeDetail, and CompassView.
  * Renders the same shape with the same glyphs (× / ! / ⇒) and carries
  * legend tooltips on every label so the visual taxonomy is learnable.
  */
@@ -25,7 +25,7 @@ export const INFERENCE_LEGEND = {
 } as const;
 
 /** Single collapsible field. Exposed so callers can render bespoke labels
- *  alongside the canonical four (e.g. VariablesView's "Reasoning" alias
+ *  alongside the canonical four (e.g. CompassView's "Reasoning" alias
  *  for `detail`). */
 export function ExpandableField({
   label,

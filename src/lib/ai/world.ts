@@ -21,7 +21,7 @@ import {
   buildExpandWorldSystem,
   workIdentityFor,
 } from '@/lib/prompts/paradigm';
-import { buildActiveModeSection } from './mode-graph';
+import { buildActivePhaseSection } from './phase-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext } from './context';
@@ -291,7 +291,7 @@ export async function expandWorld(
     sourceText,
     size,
     entityFilterBlock,
-    modeSection: buildActiveModeSection(narrative, "expand"),
+    modeSection: buildActivePhaseSection(narrative, "expand"),
     existingCharList,
     existingLocList,
     existingRelList,
