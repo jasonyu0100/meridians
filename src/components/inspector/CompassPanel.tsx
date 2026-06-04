@@ -15,7 +15,7 @@ type CompassReading = {
 };
 
 /**
- * Sidebar pane: arc-anchored Compass readings. Mirrors the Investigations
+ * Sidebar pane: arc-anchored Compass readings. Mirrors the Maps
  * pane in shape — a stream of compact cards, one per arc that carries a
  * compass reading (Present variables and/or a Compass direction cohort).
  * Opening one navigates the canvas to that arc's last scene and switches
@@ -58,7 +58,7 @@ export default function CompassPanel() {
   }, [narrative, state.resolvedEntryKeys]);
 
   // Scene-only range per arc (EXCLUDING world commits) for the card's
-  // narrative-position label — parallel to InvestigationPanel.
+  // narrative-position label — parallel to MapPanel.
   const arcSceneRange = useMemo(() => {
     const map = new Map<string, { start: number; end: number }>();
     if (!narrative) return map;

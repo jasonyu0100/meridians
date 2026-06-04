@@ -4,7 +4,7 @@ import { Modal, ModalBody, ModalHeader, StreamingStatus } from "@/components/Mod
 import { generateReasoningGraph } from "@/lib/ai/reasoning-graph";
 import { useStore } from "@/lib/store";
 import { logError } from "@/lib/system-logger";
-import type { ArcInvestigation } from "@/types/narrative";
+import type { ReasoningMap } from "@/types/narrative";
 import { useMemo, useState } from "react";
 import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
 import { ThinkingSettings } from "@/components/generation/ThinkingPicker";
@@ -13,16 +13,16 @@ type Props = {
   /** Pre-selected arc. Defaults to the arc of the currently-viewed scene. */
   initialArcId?: string;
   onClose: () => void;
-  onCreate: (investigation: ArcInvestigation) => void;
+  onCreate: (investigation: ReasoningMap) => void;
 };
 
 /**
- * Investigation composer — picks a host arc, takes a direction prompt and
+ * Map composer — picks a host arc, takes a direction prompt and
  * thinking settings, then generates a reasoning graph against the narrative
  * state UP TO AND INCLUDING the arc's last scene. The resulting investigation
- * goes onto narrative.investigations; the panel opens the detail view.
+ * goes onto narrative.maps; the panel opens the detail view.
  */
-export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: Props) {
+export function MapComposerModal({ initialArcId, onClose, onCreate }: Props) {
   const { state } = useStore();
   const narrative = state.activeNarrative;
 
@@ -67,8 +67,8 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
 
   const selectedArc = arcs.find((a) => a.id === arcId);
   const existingCount = useMemo(
-    () => Object.values(narrative?.investigations ?? {}).filter((inv) => inv.arcId === arcId).length,
-    [narrative?.investigations, arcId],
+    () => Object.values(narrative?.maps ?? {}).filter((inv) => inv.arcId === arcId).length,
+    [narrative?.maps, arcId],
   );
 
   async function handleGenerate() {
@@ -86,12 +86,12 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
         selectedArc.name,
         (token) => setStreamText((prev) => prev + token),
         undefined,
-        // No reasoningLevel + no networkBias — investigations let the
+        // No reasoningLevel + no networkBias — maps let the
         // model size and target its own reasoning to the request.
         { thinkingResource, thinkingStyle },
       );
       const now = Date.now();
-      const investigation: ArcInvestigation = {
+      const investigation: ReasoningMap = {
         id: `investigation-${now}`,
         arcId: selectedArc.id,
         graph,
@@ -103,7 +103,7 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
       };
       onCreate(investigation);
     } catch (err) {
-      logError("Investigation generation failed", err, {
+      logError("Map generation failed", err, {
         source: "manual-generation",
         operation: "generate-investigation",
         details: { arcId: selectedArc.id },
@@ -120,7 +120,7 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
     <Modal onClose={loading ? () => {} : onClose} size="xl" maxHeight="90vh">
       <ModalHeader onClose={onClose} hideClose={loading}>
         <div>
-          <h2 className="text-sm font-semibold text-text-primary">New Investigation</h2>
+          <h2 className="text-sm font-semibold text-text-primary">New Map</h2>
           <p className="text-[10px] text-text-dim mt-0.5">
             Reasons about the world through the host arc&apos;s last scene.
           </p>
@@ -153,7 +153,7 @@ export function InvestigationComposerModal({ initialArcId, onClose, onCreate }: 
               {existingCount > 0 && (
                 <p className="text-[10px] text-text-dim/60 mt-1">
                   This arc already has {existingCount}{" "}
-                  {existingCount === 1 ? "investigation" : "investigations"}. A new one will be added.
+                  {existingCount === 1 ? "investigation" : "maps"}. A new one will be added.
                 </p>
               )}
             </div>

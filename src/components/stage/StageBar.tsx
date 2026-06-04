@@ -599,28 +599,28 @@ export function StageBar() {
     return id ? narrative?.phaseGraphs?.[id] : undefined;
   }, [narrative?.currentPhaseGraphId, narrative?.phaseGraphs]);
 
-  // Investigations attached to the current scene's arc — used for the
-  // Investigation tab's visibility + cycle UI.
-  const currentArcInvestigations = useMemo(() => {
+  // Maps attached to the current scene's arc — used for the
+  // Map tab's visibility + cycle UI.
+  const currentArcMaps = useMemo(() => {
     if (!narrative) return [];
     const key = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
     if (!key) return [];
     const scene = narrative.scenes[key];
     const arcId = scene?.arcId;
     if (!arcId) return [];
-    return Object.values(narrative.investigations ?? {})
+    return Object.values(narrative.maps ?? {})
       .filter((inv) => inv.arcId === arcId)
       .sort((a, b) => a.createdAt - b.createdAt);
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
 
-  const activeInvestigation = useMemo(() => {
-    if (currentArcInvestigations.length === 0) return null;
-    const selectedId = state.viewState.selectedInvestigationId;
+  const activeMap = useMemo(() => {
+    if (currentArcMaps.length === 0) return null;
+    const selectedId = state.viewState.selectedMapId;
     return (
-      currentArcInvestigations.find((inv) => inv.id === selectedId) ??
-      currentArcInvestigations[0]
+      currentArcMaps.find((inv) => inv.id === selectedId) ??
+      currentArcMaps[0]
     );
-  }, [currentArcInvestigations, state.viewState.selectedInvestigationId]);
+  }, [currentArcMaps, state.viewState.selectedMapId]);
 
   useEffect(() => {
     if (editField) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
@@ -711,7 +711,7 @@ export function StageBar() {
         canvasMode === 'prose' ||
         canvasMode === 'belief' ||
         canvasMode === 'search' ||
-        (canvasMode === 'reasoning' && (activeInvestigation || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
+        (canvasMode === 'reasoning' && (activeMap || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
       ) && <TopBarDivider />}
 
       {/* Export current graph view. Sits on the left rail after arc/scene
@@ -916,14 +916,14 @@ export function StageBar() {
         </div>
       )}
 
-      {canvasMode === 'reasoning' && activeInvestigation && (
+      {canvasMode === 'reasoning' && activeMap && (
         <div className="flex items-center gap-2 ml-3 min-w-0">
-          {/* Switching between investigations now lives in the bottom palette
+          {/* Switching between maps now lives in the bottom palette
               (active-investigation dropdown), matching the mode graph pattern.
               The top strip just shows the active graph's actions. */}
           <button
             onClick={() => {
-              navigator.clipboard.writeText(buildSequentialPath(activeInvestigation.graph));
+              navigator.clipboard.writeText(buildSequentialPath(activeMap.graph));
               setReasoningCopied(true);
               setTimeout(() => setReasoningCopied(false), 2000);
             }}
@@ -937,7 +937,7 @@ export function StageBar() {
             <span>{reasoningCopied ? "Copied!" : "Copy"}</span>
           </button>
           <button
-            onClick={() => downloadGraphAsJson(activeInvestigation.graph, `investigation-${activeInvestigation.id}`)}
+            onClick={() => downloadGraphAsJson(activeMap.graph, `investigation-${activeMap.id}`)}
             className={TOPBAR_ICON_BUTTON}
             title="Export graph as JSON"
           >
@@ -953,7 +953,7 @@ export function StageBar() {
               window.dispatchEvent(new CustomEvent('open-generate-panel', {
                 detail: {
                   continuationMode: true,
-                  storyDirection: buildSequentialPath(activeInvestigation.graph),
+                  storyDirection: buildSequentialPath(activeMap.graph),
                 },
               }));
             }}
@@ -967,7 +967,7 @@ export function StageBar() {
           </button>
         </div>
       )}
-      {canvasMode === 'reasoning' && !activeInvestigation && (currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph) && (
+      {canvasMode === 'reasoning' && !activeMap && (currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph) && (
         <GraphInfoStrip
           graph={(currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph)!}
           copied={reasoningCopied}
@@ -1114,7 +1114,7 @@ export function StageBar() {
         {inSceneMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'reasoning' as ScenePrimaryMode, Icon: IconReasoning, label: 'Investigation', hidden: currentArcInvestigations.length === 0 && !currentArcData.hasReasoningGraph && !currentWorldBuildData.hasReasoningGraph },
+              { mode: 'reasoning' as ScenePrimaryMode, Icon: IconReasoning, label: 'Map', hidden: currentArcMaps.length === 0 && !currentArcData.hasReasoningGraph && !currentWorldBuildData.hasReasoningGraph },
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },

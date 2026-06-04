@@ -16,7 +16,7 @@ import { generateScenes, type CoordinationPlanContext } from '@/lib/ai';
 import { FatalApiError } from '@/lib/ai/errors';
 import { logError, logInfo } from '@/lib/system-logger';
 import type {
-  ArcInvestigation,
+  ReasoningMap,
   CoordinationPlan,
   ReasoningGraphSnapshot,
   ReasoningNodeSnapshot,
@@ -33,7 +33,7 @@ import type {
  * detail both render them via the shared plan palette. The structural
  * anchors stay distinct from generic fate / reasoning nodes.
  */
-function buildCoordPlanInvestigationGraph(
+function buildCoordPlanMapGraph(
   plan: CoordinationPlan,
   arcIndex: number,
   arcLabel: string,
@@ -147,7 +147,7 @@ export function useAutoPlay() {
 
         // The coordination plan's per-arc reasoning (directive + forceMode)
         // flows directly into scene generation via coordinationPlanContext —
-        // no separate CRG step. Investigations are a user-driven surface and
+        // no separate CRG step. Maps are a user-driven surface and
         // are not produced by the auto pipeline.
         const { scenes, arc } = await generateScenes(
           activeNarrative, resolvedEntryKeys, headIndex, sceneCount, '', // Empty direction — context flows via coordinationPlanContext
@@ -183,16 +183,16 @@ export function useAutoPlay() {
         })();
 
         if (precedingArcId) {
-          const investigation: ArcInvestigation = {
+          const investigation: ReasoningMap = {
             id: `investigation-${Date.now()}-${precedingArcId}`,
             arcId: precedingArcId,
-            graph: buildCoordPlanInvestigationGraph(plan, executingArc, arcLabel, sceneCount),
+            graph: buildCoordPlanMapGraph(plan, executingArc, arcLabel, sceneCount),
             direction: directive,
             source: 'coordination-plan',
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
-          dispatch({ type: 'CREATE_INVESTIGATION', investigation });
+          dispatch({ type: 'CREATE_MAP', investigation });
         }
 
         // Advance to next arc

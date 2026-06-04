@@ -85,7 +85,7 @@ describe('store reducer', () => {
         inspectorHistory: [],
         selectedKnowledgeEntity: null,
         selectedThreadLog: null,
-        selectedInvestigationId: null,
+        selectedMapId: null,
         currentSearchQuery: null,
         currentResultIndex: 0,
         searchFocusMode: false,

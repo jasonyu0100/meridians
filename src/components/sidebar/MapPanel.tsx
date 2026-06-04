@@ -1,24 +1,24 @@
 "use client";
 
-import { InvestigationComposerModal } from "@/components/sidebar/investigations/InvestigationComposerModal";
+import { MapComposerModal } from "@/components/sidebar/maps/MapComposerModal";
 import { useStore } from "@/lib/store";
-import type { ArcInvestigation } from "@/types/narrative";
+import type { ReasoningMap } from "@/types/narrative";
 import { useMemo, useState } from "react";
 
 /**
- * Sidebar pane: arc-anchored Investigations. Each entry is a CRG attached
+ * Sidebar pane: arc-anchored Maps. Each entry is a CRG attached
  * to an arc; opening one navigates the canvas to that arc's last scene
- * and shows the graph. Multiple investigations per arc are supported.
+ * and shows the graph. Multiple maps per arc are supported.
  *
  * UX shape mirrors Surveys / Interviews: top "+ New" opens the composer
- * modal; the stream below shows past investigations as compact cards.
+ * modal; the stream below shows past maps as compact cards.
  *
  * Single combined view (no focused/all toggle): the current arc's
- * investigations are pulled to the top under a "This arc" divider, then a
+ * maps are pulled to the top under a "This arc" divider, then a
  * chronological list of every investigation follows below. When the cursor
  * is on a world commit (no arc), only the chronological list shows.
  */
-export default function InvestigationPanel() {
+export default function MapPanel() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const [composerOpen, setComposerOpen] = useState(false);
@@ -69,36 +69,36 @@ export default function InvestigationPanel() {
     return map;
   }, [narrative, state.resolvedEntryKeys]);
 
-  const allInvestigations = useMemo<ArcInvestigation[]>(() => {
-    const all = Object.values(narrative?.investigations ?? {});
-    // Show investigations whose host arc is in the current branch's resolved
-    // timeline, plus any coordination-plan-derivative investigations (those
+  const allMaps = useMemo<ReasoningMap[]>(() => {
+    const all = Object.values(narrative?.maps ?? {});
+    // Show maps whose host arc is in the current branch's resolved
+    // timeline, plus any coordination-plan-derivative maps (those
     // are always considered relevant since they originate from an executed plan).
     const visible = all.filter(
       (inv) => arcLastSceneIndex.has(inv.arcId) || inv.source === "coordination-plan",
     );
-    // Latest-first ordering — most recently created investigations bubble to
+    // Latest-first ordering — most recently created maps bubble to
     // the top regardless of host arc. The user's primary navigation pattern
     // is "what did I just generate?", so recency beats arc-chronology.
     return visible.sort((a, b) => b.createdAt - a.createdAt);
-  }, [narrative?.investigations, arcLastSceneIndex]);
+  }, [narrative?.maps, arcLastSceneIndex]);
 
   // Current-arc subset, pulled to the top for quick access.
-  const arcInvestigations = useMemo<ArcInvestigation[]>(() => {
+  const arcMaps = useMemo<ReasoningMap[]>(() => {
     if (!currentArcId) return [];
-    return allInvestigations.filter((inv) => inv.arcId === currentArcId);
-  }, [allInvestigations, currentArcId]);
+    return allMaps.filter((inv) => inv.arcId === currentArcId);
+  }, [allMaps, currentArcId]);
 
-  function openInvestigation(inv: ArcInvestigation) {
+  function openMap(inv: ReasoningMap) {
     const idx = arcLastSceneIndex.get(inv.arcId);
     if (idx !== undefined) {
       dispatch({ type: "SET_SCENE_INDEX", index: idx });
     }
-    dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: inv.id });
+    dispatch({ type: "SET_SELECTED_MAP", mapId: inv.id });
     dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "reasoning" });
   }
 
-  function renderCard(inv: ArcInvestigation) {
+  function renderCard(inv: ReasoningMap) {
     const arc = narrative?.arcs[inv.arcId];
     const nodes = inv.graph?.nodes?.length ?? 0;
     const edges = inv.graph?.edges?.length ?? 0;
@@ -113,7 +113,7 @@ export default function InvestigationPanel() {
     return (
       <div
         key={inv.id}
-        onClick={() => openInvestigation(inv)}
+        onClick={() => openMap(inv)}
         className="panel-card group w-full text-left p-3 cursor-pointer"
         style={{
           ['--card-accent']: inv.source === 'coordination-plan' ? 'var(--color-world)' : 'var(--accent)',
@@ -142,7 +142,7 @@ export default function InvestigationPanel() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              dispatch({ type: "DELETE_INVESTIGATION", investigationId: inv.id });
+              dispatch({ type: "DELETE_MAP", mapId: inv.id });
             }}
             className="ml-auto text-text-dim/40 hover:text-fate opacity-0 group-hover:opacity-100 transition-opacity text-[14px] leading-none shrink-0"
             title="Delete investigation"
@@ -192,9 +192,9 @@ export default function InvestigationPanel() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 px-3 pt-2.5 pb-2 border-b border-white/8 flex items-center gap-2">
-        <span className="text-[11px] text-text-primary">Investigations</span>
+        <span className="text-[11px] text-text-primary">Maps</span>
         <span className="text-[10px] uppercase tracking-wider text-text-dim/50 tabular-nums">
-          {allInvestigations.length}
+          {allMaps.length}
         </span>
         <button
           onClick={() => setComposerOpen(true)}
@@ -204,7 +204,7 @@ export default function InvestigationPanel() {
         </button>
       </div>
 
-      {allInvestigations.length === 0 ? (
+      {allMaps.length === 0 ? (
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center justify-center p-8 text-center gap-2">
           <svg className="w-8 h-8 text-text-dim/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <circle cx="11" cy="11" r="7" />
@@ -229,11 +229,11 @@ export default function InvestigationPanel() {
                 </span>
                 <div className="h-px flex-1 bg-white/8" />
               </div>
-              {arcInvestigations.length > 0 ? (
-                arcInvestigations.map(renderCard)
+              {arcMaps.length > 0 ? (
+                arcMaps.map(renderCard)
               ) : (
                 <p className="px-0.5 py-1 text-[10px] text-text-dim/50 leading-relaxed">
-                  No investigations on this arc yet. Tap{" "}
+                  No maps on this arc yet. Tap{" "}
                   <span className="text-text-secondary">+ New</span> to investigate it.
                 </p>
               )}
@@ -241,7 +241,7 @@ export default function InvestigationPanel() {
               {/* Divider into the full chronological list. */}
               <div className="flex items-center gap-2 px-0.5 pt-2 pb-0.5">
                 <span className="text-[9px] uppercase tracking-wider text-text-dim/50 shrink-0">
-                  All investigations
+                  All maps
                 </span>
                 <div className="h-px flex-1 bg-white/8" />
               </div>
@@ -249,19 +249,19 @@ export default function InvestigationPanel() {
           )}
 
           {/* Full chronological list (latest first). */}
-          {allInvestigations.map(renderCard)}
+          {allMaps.map(renderCard)}
         </div>
       )}
 
       {composerOpen && (
-        <InvestigationComposerModal
+        <MapComposerModal
           onClose={() => setComposerOpen(false)}
           onCreate={(investigation) => {
-            dispatch({ type: "CREATE_INVESTIGATION", investigation });
+            dispatch({ type: "CREATE_MAP", investigation });
             setComposerOpen(false);
             const idx = arcLastSceneIndex.get(investigation.arcId);
             if (idx !== undefined) dispatch({ type: "SET_SCENE_INDEX", index: idx });
-            dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: investigation.id });
+            dispatch({ type: "SET_SELECTED_MAP", mapId: investigation.id });
             dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "reasoning" });
           }}
         />

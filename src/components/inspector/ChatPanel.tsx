@@ -12,9 +12,9 @@ import {
   gameTheoryContext,
   hasCompassScenarios,
   hasGameTheory,
-  hasInvestigation,
+  hasMap,
   hasMode,
-  investigationContext,
+  mapContext,
   modeContext,
   narrativeContext,
   outlineContext,
@@ -25,7 +25,7 @@ import {
   buildFatePersonaPrompt,
   buildCompassChatPrompt,
   buildGameTheoryChatPrompt,
-  buildInvestigationChatPrompt,
+  buildMapChatPrompt,
   buildModeChatPrompt,
   buildNarrativeChatPrompt,
   buildOutlineChatPrompt,
@@ -319,13 +319,13 @@ export default function ChatPanel() {
     }
     if (contextMode === "investigation") {
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
-      const investigation = investigationContext(
+      const investigation = mapContext(
         n,
         state.resolvedEntryKeys,
         contextSceneIndex,
-        state.viewState.selectedInvestigationId,
+        state.viewState.selectedMapId,
       );
-      return buildInvestigationChatPrompt(n, sceneAnchor, outline, investigation);
+      return buildMapChatPrompt(n, sceneAnchor, outline, investigation);
     }
     if (contextMode === "mode") {
       const outline = outlineContext(n, state.resolvedEntryKeys, contextSceneIndex);
@@ -342,7 +342,7 @@ export default function ChatPanel() {
   }, [
     state.activeNarrative,
     state.resolvedEntryKeys,
-    state.viewState.selectedInvestigationId,
+    state.viewState.selectedMapId,
     contextSceneIndex,
     contextMode,
     activePersona,
@@ -876,8 +876,8 @@ export default function ChatPanel() {
             const compassAvailable = !!state.activeNarrative
               && hasCompassScenarios(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modeAvailable = !!state.activeNarrative && hasMode(state.activeNarrative);
-            const investigationAvailable = !!state.activeNarrative
-              && hasInvestigation(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
+            const mapAvailable = !!state.activeNarrative
+              && hasMap(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const gameTheoryAvailable = !!state.activeNarrative
               && hasGameTheory(state.activeNarrative, state.resolvedEntryKeys, contextSceneIndex);
             const modes: Array<{
@@ -903,10 +903,10 @@ export default function ChatPanel() {
                 hint: "Active Phase Reasoning Graph — the META machinery of the world.",
               });
             }
-            if (investigationAvailable) {
+            if (mapAvailable) {
               modes.push({
                 value: "investigation",
-                label: "Investigation",
+                label: "Map",
                 hint: "Active per-arc Causal Reasoning Graph — in-arc inference.",
               });
             }
@@ -917,9 +917,9 @@ export default function ChatPanel() {
                 hint: "Outline enriched with per-scene game decompositions + ELO rankings.",
               });
             }
-            // If the user had Compass / Mode / Investigation / Game theory
+            // If the user had Compass / Mode / Map / Game theory
             // selected and it's no longer available (world commit, active
-            // PRG cleared, navigated to an arc without investigations or
+            // PRG cleared, navigated to an arc without maps or
             // games), drop back to narrative on next render.
             if (contextMode === "compass" && !compassAvailable) {
               setContextMode("narrative");
@@ -927,7 +927,7 @@ export default function ChatPanel() {
             if (contextMode === "mode" && !modeAvailable) {
               setContextMode("narrative");
             }
-            if (contextMode === "investigation" && !investigationAvailable) {
+            if (contextMode === "investigation" && !mapAvailable) {
               setContextMode("narrative");
             }
             if (contextMode === "game-theory" && !gameTheoryAvailable) {

@@ -222,11 +222,11 @@ export function buildCompassChatPrompt(
 
 // ── Investigation ────────────────────────────────────────────────────────
 
-export function buildInvestigationChatPrompt(
+export function buildMapChatPrompt(
   narrative: NarrativeState,
   sceneAnchor: string,
   outlineBlock: string,
-  investigationBlock: string,
+  mapBlock: string,
 ): string {
   const work = workIdentityFor(narrative);
   return composeChatSystem(
@@ -244,7 +244,7 @@ export function buildInvestigationChatPrompt(
       sceneAnchor,
       contextBlocks: [
         { tag: 'outline', body: outlineBlock },
-        { tag: 'investigation', body: investigationBlock },
+        { tag: 'investigation', body: mapBlock },
       ],
       extraDiscipline: 'Paraphrase each node by its label and substance. When citing the analyst\'s rival readings, failure conditions, or downstream cascades, render them as prose ("the analyst considered routing this through X instead", "this would break if Y reverses", "this opens the path to Z") rather than naming the underlying field.',
     },

@@ -19,7 +19,7 @@ export type ReasoningNodeType =
   | "pattern"      // Positive pattern to reinforce (cooperative)
   | "warning"      // Anti-pattern risk to avoid (adversarial)
   | "chaos"        // Black-swan force — authorises departures from what the current agenda predicts. Two legitimate modes: (a) CREATIVE — spawn new characters/locations/artifacts/threads the existing state wouldn't have generated; (b) REVERSAL — flip a saturating or committed market against its current lean via a twist-grade event. Both are "not in the rulebook"; both re-price the portfolio.
-  | "conclusion";  // The investigation's load-bearing answer to its direction. Exactly one per graph when the direction is a question. `detail` carries the answer concretely — named instruments / actors / events / outcomes, not abstract states. `considered` lists alternative answers rejected and why; `breaks` is what would invalidate the answer; `opens` is what cascades from acting on it. Sits at the highest `index` with incoming `requires` edges from the reasoning chain that supports it. Continuation / freeform investigations may omit it.
+  | "conclusion";  // The investigation's load-bearing answer to its direction. Exactly one per graph when the direction is a question. `detail` carries the answer concretely — named instruments / actors / events / outcomes, not abstract states. `considered` lists alternative answers rejected and why; `breaks` is what would invalidate the answer; `opens` is what cascades from acting on it. Sits at the highest `index` with incoming `requires` edges from the reasoning chain that supports it. Continuation / freeform maps may omit it.
 
 export type ReasoningEdgeType =
   | "enables"      // A enables B

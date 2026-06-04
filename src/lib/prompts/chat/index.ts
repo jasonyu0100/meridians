@@ -29,7 +29,7 @@ export {
   buildOutlineChatPrompt,
   buildNarrativeChatPrompt,
   buildCompassChatPrompt,
-  buildInvestigationChatPrompt,
+  buildMapChatPrompt,
   buildModeChatPrompt,
   buildGameTheoryChatPrompt,
 } from './contexts';

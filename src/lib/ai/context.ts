@@ -1848,7 +1848,7 @@ export function hasMode(n: NarrativeState): boolean {
   return !!graph && Array.isArray(graph.nodes) && graph.nodes.length > 0;
 }
 
-// ── Investigation (active CRG) chat context ─────────────────────────────
+// ── Map (active CRG) chat context ─────────────────────────────
 //
 // Mirrors modeContext / compassContext shape but anchored on the active
 // investigation for the currently-viewed arc. The CRG is the work's
@@ -1858,41 +1858,41 @@ export function hasMode(n: NarrativeState): boolean {
 // reasoning about it.
 
 /** Resolve the active investigation for the arc at the current cursor.
- *  When `selectedInvestigationId` matches an investigation on that arc
+ *  When `selectedMapId` matches an investigation on that arc
  *  it wins; otherwise we fall back to the first investigation by
  *  createdAt, matching StageBar's resolution. Returns null when the
- *  cursor is on a world commit or the arc has no investigations. */
-function activeInvestigationAtIndex(
+ *  cursor is on a world commit or the arc has no maps. */
+function activeMapAtIndex(
   n: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
-  selectedInvestigationId: string | null | undefined,
+  selectedMapId: string | null | undefined,
 ) {
   const arc = arcAtIndex(n, resolvedKeys, currentIndex);
   if (!arc) return null;
-  const list = Object.values(n.investigations ?? {})
+  const list = Object.values(n.maps ?? {})
     .filter((inv) => inv.arcId === arc.id)
     .sort((a, b) => a.createdAt - b.createdAt);
   if (list.length === 0) return null;
-  if (selectedInvestigationId) {
-    const sel = list.find((inv) => inv.id === selectedInvestigationId);
+  if (selectedMapId) {
+    const sel = list.find((inv) => inv.id === selectedMapId);
     if (sel) return sel;
   }
   return list[0];
 }
 
-/** Build the XML context for the Investigation chat surface. Renders the
+/** Build the XML context for the Map chat surface. Renders the
  *  active investigation's CRG — direction, every node's universal
  *  inference-shape, and the sequential-path the downstream pipeline reads
  *  — wrapped in an `<investigation>` root. Returns an empty string when
  *  no investigation is available for the current arc. */
-export function investigationContext(
+export function mapContext(
   n: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
-  selectedInvestigationId: string | null | undefined,
+  selectedMapId: string | null | undefined,
 ): string {
-  const inv = activeInvestigationAtIndex(n, resolvedKeys, currentIndex, selectedInvestigationId);
+  const inv = activeMapAtIndex(n, resolvedKeys, currentIndex, selectedMapId);
   if (!inv) return '';
   const graph = inv.graph;
   if (!graph || !graph.nodes || graph.nodes.length === 0) return '';
@@ -1934,15 +1934,15 @@ ${sequentialPath}
 
 /** Lightweight gate — true when the current arc has at least one
  *  investigation. ChatPanel uses this to conditionally show the
- *  Investigation option. */
-export function hasInvestigation(
+ *  Map option. */
+export function hasMap(
   n: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
 ): boolean {
   const arc = arcAtIndex(n, resolvedKeys, currentIndex);
   if (!arc) return false;
-  return Object.values(n.investigations ?? {}).some((inv) => inv.arcId === arc.id);
+  return Object.values(n.maps ?? {}).some((inv) => inv.arcId === arc.id);
 }
 
 // ── Game-theory chat context ──────────────────────────────────────────

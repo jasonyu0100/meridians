@@ -104,25 +104,25 @@ export default function Stage() {
     return Object.values(narrative.arcs).find((a) => a.sceneIds.includes(currentSceneKey))?.id ?? null;
   }, [narrative, currentSceneKey]);
 
-  // Investigations attached to the current scene's arc, ordered oldest → newest
+  // Maps attached to the current scene's arc, ordered oldest → newest
   // so the cycle UI reads chronologically.
-  const arcInvestigations = useMemo(() => {
+  const arcMaps = useMemo(() => {
     if (!narrative || !activeArcId) return [];
-    return Object.values(narrative.investigations ?? {})
+    return Object.values(narrative.maps ?? {})
       .filter((inv) => inv.arcId === activeArcId)
       .sort((a, b) => a.createdAt - b.createdAt);
   }, [narrative, activeArcId]);
 
-  // Currently-selected investigation: honor viewState.selectedInvestigationId
+  // Currently-selected investigation: honor viewState.selectedMapId
   // when it belongs to the visible arc, otherwise fall back to the first.
-  const activeInvestigation = useMemo(() => {
-    if (arcInvestigations.length === 0) return null;
-    const selectedId = state.viewState.selectedInvestigationId;
+  const activeMap = useMemo(() => {
+    if (arcMaps.length === 0) return null;
+    const selectedId = state.viewState.selectedMapId;
     return (
-      arcInvestigations.find((inv) => inv.id === selectedId) ??
-      arcInvestigations[0]
+      arcMaps.find((inv) => inv.id === selectedId) ??
+      arcMaps[0]
     );
-  }, [arcInvestigations, state.viewState.selectedInvestigationId]);
+  }, [arcMaps, state.viewState.selectedMapId]);
 
   // Legacy arc/world-build CRG snapshots — kept for coordination-plan visuals
   // even though the per-arc CRG generation path is being retired.
@@ -1611,10 +1611,10 @@ export default function Stage() {
         // Scene investigation takes priority. Falls back to legacy arc / world-
         // build CRGs (still produced via the coordination plan path) when the
         // current scene has no investigation of its own.
-        activeInvestigation ? (
+        activeMap ? (
           <ReasoningGraphView
-            graph={activeInvestigation.graph}
-            arcId={activeInvestigation.arcId}
+            graph={activeMap.graph}
+            arcId={activeMap.arcId}
           />
         ) : currentWorldBuildWithReasoning ? (
           <ReasoningGraphView
@@ -1628,7 +1628,7 @@ export default function Stage() {
           />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No investigation on this scene. Create one from the Investigations sidebar.</p>
+            <p className="text-text-dim text-sm italic">No investigation on this scene. Create one from the Maps sidebar.</p>
           </div>
         )
       ) : graphViewMode === 'system-scene' || graphViewMode === 'system-arc' || graphViewMode === 'system-full' ? (

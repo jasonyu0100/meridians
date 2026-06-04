@@ -1283,7 +1283,7 @@ export type ReasoningNodeSnapshot = {
     | "chaos"        // Creative agent — introduces new entities (characters/locations/artifacts/threads)
     | "conclusion"   // Load-bearing terminal answer to the investigation's direction. Uses the universal inference-shape: `detail` carries the concrete answer, `considered` / `breaks` / `opens` carry alternatives / falsification / cascades. Exactly one per graph when the direction is a question.
     // Plan-spine types — only produced by coordination-plan-derived
-    // investigations. Manual investigations never emit these. Kept in the
+    // maps. Manual maps never emit these. Kept in the
     // shared union so the sidebar + canvas can render both kinds of
     // investigation through one code path.
     | "peak"
@@ -1740,12 +1740,12 @@ export type NarrativeState = {
   surveys?: Record<string, Survey>;
   /** Research interviews — many questions for one subject; see Interview types below. */
   interviews?: Record<string, Interview>;
-  /** Arc-anchored causal investigations. Each entry hosts a reasoning graph
-   *  attached to an arc. An arc may have many investigations; the canvas
-   *  cycles between them. Investigations come from two sources: (a) the user
+  /** Arc-anchored causal maps. Each entry hosts a reasoning graph
+   *  attached to an arc. An arc may have many maps; the canvas
+   *  cycles between them. Maps come from two sources: (a) the user
    *  explicitly creates one via the sidebar composer, or (b) the auto-mode
    *  coordination plan saves the CRG it built for that arc. */
-  investigations?: Record<string, ArcInvestigation>;
+  maps?: Record<string, ReasoningMap>;
   /**
    * Modes — historical collection of working models of reality. Keyed
    * by mode id. Immutable once stored; new phase graphs are added
@@ -1939,7 +1939,7 @@ export type Interview = {
 };
 
 /** Arc-anchored causal investigation — a reasoning graph attached to an arc,
- *  optionally steered by a user-provided direction. Multiple investigations
+ *  optionally steered by a user-provided direction. Multiple maps
  *  per arc are supported; the canvas cycles between them. The graph can be
  *  copied back into the GeneratePanel as guidance for subsequent generation.
  *
@@ -1948,9 +1948,9 @@ export type Interview = {
  *    - Auto-mode coordination plan generates a CRG for an arc and saves the
  *      result here.
  */
-export type ArcInvestigation = {
+export type ReasoningMap = {
   id: string;
-  /** Host arc id. An arc may have many investigations. */
+  /** Host arc id. An arc may have many maps. */
   arcId: string;
   /** The reasoning graph this investigation produced. Reuses the same
    *  snapshot shape as the legacy per-arc CRG so visualisation is shared. */
@@ -2715,10 +2715,10 @@ export type NarrativeViewState = {
   inspectorHistory: InspectorContext[];
   selectedKnowledgeEntity: string | null;
   selectedThreadLog: string | null;
-  /** Currently-selected investigation when the Investigation tab is active.
+  /** Currently-selected investigation when the Map tab is active.
    *  The canvas falls back to the first investigation on the current scene
    *  if this id doesn't belong to the visible scene. */
-  selectedInvestigationId: string | null;
+  selectedMapId: string | null;
   currentSearchQuery: SearchQuery | null;
   currentResultIndex: number;
   searchFocusMode: boolean;

@@ -3,7 +3,7 @@
 import ChatPanel from "@/components/inspector/ChatPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
-import InvestigationPanel from "@/components/sidebar/InvestigationPanel";
+import MapPanel from "@/components/sidebar/MapPanel";
 import CompassPanel from "@/components/inspector/CompassPanel";
 import FilesPanel from "@/components/inspector/FilesPanel";
 import ThreadsPanel from "@/components/inspector/ThreadsPanel";
@@ -53,7 +53,7 @@ type Tab =
   | "knowledge"
   | "surveys"
   | "interviews"
-  | "investigations"
+  | "maps"
   | "compass"
   | "eval";
 
@@ -65,7 +65,7 @@ const TAB_LABELS: Record<Tab, string> = {
   knowledge: "Knowledge",
   surveys: "Surveys",
   interviews: "Interviews",
-  investigations: "Investigations",
+  maps: "Maps",
   compass: "Compass",
   eval: "Review",
 };
@@ -135,7 +135,7 @@ const TAB_ICONS: Record<Tab, IconCmp> = {
   knowledge: IconLightbulb,
   surveys: IconList,
   interviews: IconUser,
-  investigations: IconReasoning,
+  maps: IconReasoning,
   compass: IconCompass,
   eval: IconScorecard,
 };
@@ -148,7 +148,7 @@ const TAB_ORDER: Tab[] = [
   "knowledge",
   "surveys",
   "interviews",
-  "investigations",
+  "maps",
   "compass",
   "eval",
 ];
@@ -421,9 +421,9 @@ export default function InspectorPanel() {
             <InterviewPanel />
           </div>
         )}
-        {tab === "investigations" && (
+        {tab === "maps" && (
           <div className="flex-1 min-h-0 flex flex-col">
-            <InvestigationPanel />
+            <MapPanel />
           </div>
         )}
         {tab === "compass" && (

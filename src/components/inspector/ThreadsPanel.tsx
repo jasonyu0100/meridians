@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ThreadsPanel — sidebar pane mirroring SurveyPanel / InvestigationPanel
+ * ThreadsPanel — sidebar pane mirroring SurveyPanel / MapPanel
  * shape: top bar with a count, then a stream of thread cards.
  *
  * Top-level grouping matches BeliefView's "In focus" / "Out of focus"
@@ -73,7 +73,7 @@ function VolumeBar({ volume, scale }: { volume: number; scale: number }) {
 
 /** Single thread expressed as a group-box card — shared `.panel-card`
  *  surface (top-lit gradient + content-keyed left spine) used by Survey,
- *  Investigation, Knowledge, Compass, and File panels. The spine is keyed
+ *  Map, Knowledge, Compass, and File panels. The spine is keyed
  *  to the thread's lifecycle category colour. */
 function ThreadCard({
   row,

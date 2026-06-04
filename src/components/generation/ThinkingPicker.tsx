@@ -429,7 +429,7 @@ export function ThinkingSettings({
   onForceChange: (f: ThinkingResource) => void;
   /** Density preset (small/medium/large). Omit to hide the Density row —
    *  callers that want the model to size its own reasoning dynamically
-   *  (e.g. investigations) skip this knob. */
+   *  (e.g. maps) skip this knob. */
   size?: ReasoningSize;
   onSizeChange?: (s: ReasoningSize) => void;
   /** Network bias (inside/outside/neutral). Omit to hide the Network row. */

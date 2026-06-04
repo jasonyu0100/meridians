@@ -45,7 +45,7 @@ const TYPE_DESCRIPTIONS: Record<ReasoningNodeType, string> = {
   chaos: "Outside force — spawns a new character, location, artifact, or thread into the arc",
   conclusion: "Definitive answer — the load-bearing terminal that resolves the investigation's question, concrete and named",
   // Plan-spine types — only appear in coordination-plan-derived
-  // investigations; tells the operator this node anchors a structural beat.
+  // maps; tells the operator this node anchors a structural beat.
   peak: "Arc-anchor peak — where forces converge and a thread culminates",
   valley: "Arc-anchor valley — turning point where tension is seeded and the arc pivots",
   moment: "Plan-level beat — thread escalation, setpiece, reveal, or setup between anchors",
@@ -72,18 +72,18 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
     let sourceName: string | null = null;
 
     if (arcId) {
-      const arcInvestigations = Object.values(narrative.investigations ?? {})
+      const arcMaps = Object.values(narrative.maps ?? {})
         .filter((inv) => inv.arcId === arcId)
         .sort((a, b) => a.createdAt - b.createdAt);
-      if (arcInvestigations.length > 0) {
-        const selectedId = state.viewState.selectedInvestigationId;
+      if (arcMaps.length > 0) {
+        const selectedId = state.viewState.selectedMapId;
         const active =
-          arcInvestigations.find((inv) => inv.id === selectedId) ?? arcInvestigations[0];
+          arcMaps.find((inv) => inv.id === selectedId) ?? arcMaps[0];
         // Only use this investigation's graph if it actually contains the
         // node we're looking for — otherwise fall through to legacy sources.
         if (active.graph.nodes.some((n) => n.id === nodeId)) {
           graph = active.graph;
-          sourceName = narrative.arcs[arcId]?.name ?? "Investigation";
+          sourceName = narrative.arcs[arcId]?.name ?? "Map";
         }
       }
     }
@@ -109,7 +109,7 @@ export default function ReasoningNodeDetail({ arcId, worldBuildId, nodeId }: Pro
     const node = graph.nodes.find((n) => n.id === nodeId);
     const connectedEdges = graph.edges.filter((e) => e.from === nodeId || e.to === nodeId);
     return { node, sourceName, graph, connectedEdges };
-  }, [narrative, arcId, worldBuildId, nodeId, state.viewState.selectedInvestigationId]);
+  }, [narrative, arcId, worldBuildId, nodeId, state.viewState.selectedMapId]);
 
   if (!node || !graph) {
     return (

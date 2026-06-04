@@ -15,7 +15,7 @@ import {
   IconTrash,
 } from "@/components/icons";
 import type { InspectorContext } from "@/types/narrative";
-import { InvestigationComposerModal } from "@/components/sidebar/investigations/InvestigationComposerModal";
+import { MapComposerModal } from "@/components/sidebar/maps/MapComposerModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useStore } from "@/lib/store";
 import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/narrative-utils";
@@ -60,18 +60,18 @@ export default function StagePalette({
   // and persisting across modes lets the user keep their selection while
   // jumping between bulk passes.
   const [bulkRange, setBulkRange] = useState<SceneRange>(null);
-  // Investigation composer mount — opened from the reasoning palette's
+  // Map composer mount — opened from the reasoning palette's
   // Generate/Regenerate affordances. Pre-seeds the host arc.
-  const [investigationComposerArcId, setInvestigationComposerArcId] = useState<
+  const [mapComposerArcId, setMapComposerArcId] = useState<
     string | null
   >(null);
-  // Dropdown that lists all investigations on the current arc — opens above
+  // Dropdown that lists all maps on the current arc — opens above
   // the bottom pill when the active-investigation indicator is clicked.
-  const [investigationListOpen, setInvestigationListOpen] = useState(false);
+  const [mapListOpen, setMapListOpen] = useState(false);
 
   // Resolve the current scene's arc + its investigation list once for the
   // reasoning palette controls (Generate / Regenerate / Clear / indicator).
-  const currentArcInvestigationCtx = useMemo(() => {
+  const currentArcMapCtx = useMemo(() => {
     if (!narrative) return null;
     const sceneKey = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
     const scene = sceneKey ? narrative.scenes[sceneKey] : null;
@@ -79,10 +79,10 @@ export default function StagePalette({
     if (!arcId) return null;
     const arc = narrative.arcs[arcId];
     if (!arc) return null;
-    const list = Object.values(narrative.investigations ?? {})
+    const list = Object.values(narrative.maps ?? {})
       .filter((inv) => inv.arcId === arcId)
       .sort((a, b) => a.createdAt - b.createdAt);
-    const selectedId = state.viewState.selectedInvestigationId;
+    const selectedId = state.viewState.selectedMapId;
     const active = list.length > 0
       ? (list.find((inv) => inv.id === selectedId) ?? list[0])
       : null;
@@ -92,7 +92,7 @@ export default function StagePalette({
     narrative,
     state.resolvedEntryKeys,
     state.viewState.currentSceneIndex,
-    state.viewState.selectedInvestigationId,
+    state.viewState.selectedMapId,
   ]);
 
   const isAutoActive = !!state.viewState.autoRunState?.isRunning;
@@ -172,13 +172,13 @@ export default function StagePalette({
       // renderer in Stage. Fall back to legacy world-build / arc CRGs
       // when a historical narrative has them.
       if (arcId) {
-        const arcInvestigations = Object.values(narrative.investigations ?? {})
+        const arcMaps = Object.values(narrative.maps ?? {})
           .filter((inv) => inv.arcId === arcId)
           .sort((a, b) => a.createdAt - b.createdAt);
-        if (arcInvestigations.length > 0) {
-          const selectedId = state.viewState.selectedInvestigationId;
+        if (arcMaps.length > 0) {
+          const selectedId = state.viewState.selectedMapId;
           const active =
-            arcInvestigations.find((inv) => inv.id === selectedId) ?? arcInvestigations[0];
+            arcMaps.find((inv) => inv.id === selectedId) ?? arcMaps[0];
           if (active.graph.nodes.length) {
             const sorted = [...active.graph.nodes].sort((a, b) => a.index - b.index);
             const ctx = state.viewState.inspectorContext;
@@ -235,7 +235,7 @@ export default function StagePalette({
     isReasoningMode,
     state.viewState.inspectorContext,
     state.viewState.currentSceneIndex,
-    state.viewState.selectedInvestigationId,
+    state.viewState.selectedMapId,
     state.resolvedEntryKeys,
   ]);
 
@@ -644,25 +644,25 @@ export default function StagePalette({
   //    composer with current arc), Clear (deletes active investigation),
   //    and an active-investigation indicator showing N/M for the arc.
   if (isReasoningMode) {
-    const arcCtx = currentArcInvestigationCtx;
+    const arcCtx = currentArcMapCtx;
     const activeInv = arcCtx?.active ?? null;
     const totalInv = arcCtx?.list.length ?? 0;
     const canCompose = !!arcCtx?.arcId;
     return (
       <>
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
-          {/* Investigation switcher overlay — opens above the pill when the
+          {/* Map switcher overlay — opens above the pill when the
               user clicks the active-investigation indicator. Mirrors the
               mode graph's history overlay so the bottom pill stays the
               single source of switching. */}
-          {investigationListOpen && arcCtx && arcCtx.list.length > 0 && (
+          {mapListOpen && arcCtx && arcCtx.list.length > 0 && (
             <div className="w-80 max-h-[40vh] flex flex-col rounded-xl glass overflow-hidden">
               <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
                 <span className="text-[10px] uppercase tracking-wider text-text-secondary">
-                  Investigations · {arcCtx.arcName}
+                  Maps · {arcCtx.arcName}
                 </span>
                 <button
-                  onClick={() => setInvestigationListOpen(false)}
+                  onClick={() => setMapListOpen(false)}
                   className="text-[10px] text-text-dim/40 hover:text-text-dim transition"
                 >
                   &times;
@@ -675,8 +675,8 @@ export default function StagePalette({
                     <button
                       key={inv.id}
                       onClick={() => {
-                        dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: inv.id });
-                        setInvestigationListOpen(false);
+                        dispatch({ type: "SET_SELECTED_MAP", mapId: inv.id });
+                        setMapListOpen(false);
                       }}
                       className={`w-full px-3 py-2 flex items-start gap-2 text-left transition-colors ${
                         isActive ? "bg-white/6" : "hover:bg-white/4"
@@ -763,7 +763,7 @@ export default function StagePalette({
                   ? "text-world bg-world/10 hover:bg-world/20"
                   : "text-text-dim/40 bg-white/3 cursor-not-allowed"
               }`}
-              onClick={() => arcCtx && setInvestigationComposerArcId(arcCtx.arcId)}
+              onClick={() => arcCtx && setMapComposerArcId(arcCtx.arcId)}
               title="Generate a new investigation on this arc"
             >
               Generate
@@ -775,8 +775,8 @@ export default function StagePalette({
                 type="button"
                 className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
                 onClick={() => {
-                  dispatch({ type: "DELETE_INVESTIGATION", investigationId: activeInv.id });
-                  dispatch({ type: "SET_SELECTED_INVESTIGATION", investigationId: null });
+                  dispatch({ type: "DELETE_MAP", mapId: activeInv.id });
+                  dispatch({ type: "SET_SELECTED_MAP", mapId: null });
                 }}
                 aria-label="Delete active investigation"
                 title="Delete active investigation"
@@ -793,13 +793,13 @@ export default function StagePalette({
             <button
               type="button"
               disabled={!arcCtx || arcCtx.list.length === 0}
-              onClick={() => setInvestigationListOpen((v) => !v)}
+              onClick={() => setMapListOpen((v) => !v)}
               className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md transition-colors ${
-                investigationListOpen ? "bg-white/10" : "hover:bg-white/6"
+                mapListOpen ? "bg-white/10" : "hover:bg-white/6"
               } ${(!arcCtx || arcCtx.list.length === 0) ? "cursor-default" : ""}`}
               title={
                 activeInv
-                  ? `Investigation ${arcCtx!.activeIndex + 1} of ${totalInv} on ${arcCtx!.arcName} — click to switch`
+                  ? `Map ${arcCtx!.activeIndex + 1} of ${totalInv} on ${arcCtx!.arcName} — click to switch`
                   : arcCtx
                     ? `No investigation on ${arcCtx.arcName}`
                     : "No arc"
@@ -819,17 +819,17 @@ export default function StagePalette({
             </button>
           </div>
         </div>
-        {investigationComposerArcId && (
-          <InvestigationComposerModal
-            initialArcId={investigationComposerArcId}
-            onClose={() => setInvestigationComposerArcId(null)}
+        {mapComposerArcId && (
+          <MapComposerModal
+            initialArcId={mapComposerArcId}
+            onClose={() => setMapComposerArcId(null)}
             onCreate={(investigation) => {
-              dispatch({ type: "CREATE_INVESTIGATION", investigation });
+              dispatch({ type: "CREATE_MAP", investigation });
               dispatch({
-                type: "SET_SELECTED_INVESTIGATION",
-                investigationId: investigation.id,
+                type: "SET_SELECTED_MAP",
+                mapId: investigation.id,
               });
-              setInvestigationComposerArcId(null);
+              setMapComposerArcId(null);
             }}
           />
         )}

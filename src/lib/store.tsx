@@ -84,7 +84,7 @@ import type {
   RelationshipDelta,
   Scene,
   SceneGameAnalysis,
-  ArcInvestigation,
+  ReasoningMap,
   SearchQuery,
   SourceFile,
   StorySettings,
@@ -763,7 +763,7 @@ const defaultViewState: NarrativeViewState = {
   inspectorHistory: [],
   selectedKnowledgeEntity: null,
   selectedThreadLog: null,
-  selectedInvestigationId: null,
+  selectedMapId: null,
   currentSearchQuery: null,
   currentResultIndex: 0,
   searchFocusMode: false,
@@ -1100,11 +1100,11 @@ export type Action =
   | { type: "DELETE_INTERVIEW"; interviewId: string }
   | { type: "UPDATE_INTERVIEW"; interviewId: string; updates: Partial<Interview> }
   | { type: "SET_INTERVIEW_ANSWER"; interviewId: string; answer: InterviewAnswer }
-  // Investigations — arc-anchored CRGs
-  | { type: "CREATE_INVESTIGATION"; investigation: ArcInvestigation }
-  | { type: "UPDATE_INVESTIGATION"; investigationId: string; updates: Partial<ArcInvestigation> }
-  | { type: "DELETE_INVESTIGATION"; investigationId: string }
-  | { type: "SET_SELECTED_INVESTIGATION"; investigationId: string | null }
+  // Maps — arc-anchored CRGs
+  | { type: "CREATE_MAP"; investigation: ReasoningMap }
+  | { type: "UPDATE_MAP"; mapId: string; updates: Partial<ReasoningMap> }
+  | { type: "DELETE_MAP"; mapId: string }
+  | { type: "SET_SELECTED_MAP"; mapId: string | null }
   // Coordination plan
   | { type: "SET_COORDINATION_PLAN"; branchId: string; plan: BranchPlan | undefined }
   | { type: "CLEAR_COORDINATION_PLAN"; branchId: string }
@@ -3658,37 +3658,37 @@ function reducer(state: AppState, action: Action): AppState {
         };
       });
 
-    // ── Investigations ────────────────────────────────────────────────────
-    case "CREATE_INVESTIGATION":
+    // ── Maps ────────────────────────────────────────────────────
+    case "CREATE_MAP":
       return updateNarrative(state, (n) => ({
         ...n,
-        investigations: { ...(n.investigations ?? {}), [action.investigation.id]: action.investigation },
+        maps: { ...(n.maps ?? {}), [action.investigation.id]: action.investigation },
       }));
 
-    case "UPDATE_INVESTIGATION":
+    case "UPDATE_MAP":
       return updateNarrative(state, (n) => {
-        const prev = n.investigations?.[action.investigationId];
+        const prev = n.maps?.[action.mapId];
         if (!prev) return n;
         return {
           ...n,
-          investigations: {
-            ...(n.investigations ?? {}),
-            [action.investigationId]: { ...prev, ...action.updates, updatedAt: Date.now() },
+          maps: {
+            ...(n.maps ?? {}),
+            [action.mapId]: { ...prev, ...action.updates, updatedAt: Date.now() },
           },
         };
       });
 
-    case "DELETE_INVESTIGATION":
+    case "DELETE_MAP":
       return updateNarrative(state, (n) => {
-        if (!n.investigations?.[action.investigationId]) return n;
-        const { [action.investigationId]: _removed, ...rest } = n.investigations;
-        return { ...n, investigations: rest };
+        if (!n.maps?.[action.mapId]) return n;
+        const { [action.mapId]: _removed, ...rest } = n.maps;
+        return { ...n, maps: rest };
       });
 
-    case "SET_SELECTED_INVESTIGATION":
+    case "SET_SELECTED_MAP":
       return {
         ...state,
-        viewState: { ...state.viewState, selectedInvestigationId: action.investigationId },
+        viewState: { ...state.viewState, selectedMapId: action.mapId },
       };
 
     // ── Coordination Plan ─────────────────────────────────────────────────
