@@ -985,9 +985,11 @@ export type Action =
     }
   | { type: "SET_SCENE_AUDIO"; sceneId: string; audioUrl: string }
   | { type: "CLEAR_SCENE_AUDIO"; sceneId: string }
-  | { type: "SET_CHARACTER_IMAGE"; characterId: string; imageUrl: string }
-  | { type: "SET_LOCATION_IMAGE"; locationId: string; imageUrl: string }
-  | { type: "SET_ARTIFACT_IMAGE"; artifactId: string; imageUrl: string }
+  // imageUrl is optional so the same action clears the image (undefined) as well
+  // as sets it — uploaded media and "Clear" both route through here.
+  | { type: "SET_CHARACTER_IMAGE"; characterId: string; imageUrl?: string }
+  | { type: "SET_LOCATION_IMAGE"; locationId: string; imageUrl?: string }
+  | { type: "SET_ARTIFACT_IMAGE"; artifactId: string; imageUrl?: string }
   | { type: "SET_CHARACTER_IMAGE_PROMPT"; characterId: string; imagePrompt: string }
   | { type: "SET_LOCATION_IMAGE_PROMPT"; locationId: string; imagePrompt: string }
   | { type: "REBUILD_LOCATION_HIERARCHY"; parents: Record<string, string | null> }

@@ -4,11 +4,11 @@
 
 import { useState } from 'react';
 import { useStore } from '@/lib/state/store';
-import { useImageUrl } from '@/hooks/useAssetUrl';
 import { resolveEntityName } from '@/lib/forces/narrative-utils';
 import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene } from '@/lib/graph/scene-filter';
 import { CollapsibleSection, Paginator, paginateRecent } from './CollapsibleSection';
 import ImagePromptEditor from './ImagePromptEditor';
+import MediaField from './MediaField';
 import { InlineText, InlineSelect } from './InlineEdit';
 import { AttributionsSection } from './AttributionsSection';
 import type { ArtifactSignificance } from '@/types/narrative';
@@ -40,7 +40,6 @@ export default function ArtifactDetail({ artifactId }: Props) {
   if (!narrative) return null;
 
   const artifact = narrative.artifacts[artifactId];
-  const imageUrl = useImageUrl(artifact?.imageUrl);
   if (!artifact) return <p className="p-4 text-xs text-text-dim">Artifact not found.</p>;
 
   // Resolve owner AT THE CURRENT SCENE via ownership delta history.
@@ -95,14 +94,15 @@ export default function ArtifactDetail({ artifactId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Object study */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={artifact.name}
-          className="w-full aspect-square object-cover rounded-lg border border-border"
-        />
-      )}
+      {/* Object study — generated or uploaded; uploads keep their natural ratio */}
+      <MediaField
+        label="Image"
+        alt={artifact.name}
+        imageRef={artifact.imageUrl}
+        narrativeId={narrative.id}
+        onSet={(imageUrl) => dispatch({ type: 'SET_ARTIFACT_IMAGE', artifactId, imageUrl })}
+        onClear={() => dispatch({ type: 'SET_ARTIFACT_IMAGE', artifactId, imageUrl: undefined })}
+      />
 
       {/* Name + ID + significance — name & significance inline-editable */}
       <div className="flex flex-col gap-0.5">

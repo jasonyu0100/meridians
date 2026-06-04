@@ -2,7 +2,6 @@
 
 // CharacterDetail — inspector view for a character: role, inner world graph, threads, and image.
 
-import { useImageUrl } from "@/hooks/useAssetUrl";
 import {
   getWorldNodesAtScene,
   getRelationshipsAtScene,
@@ -15,6 +14,7 @@ import type { CharacterRole } from "@/types/narrative";
 import React, { useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
 import ImagePromptEditor from "./ImagePromptEditor";
+import MediaField from "./MediaField";
 import { InlineText, InlineSelect } from "./InlineEdit";
 import { AttributionsSection } from "./AttributionsSection";
 
@@ -49,8 +49,6 @@ export default function CharacterDetail({ characterId }: Props) {
 
   const character = narrative.characters[characterId];
   if (!character) return null;
-
-  const imageUrl = useImageUrl(character.imageUrl);
 
   const sceneKeysUpToCurrent = state.resolvedEntryKeys.slice(
     0,
@@ -146,14 +144,15 @@ export default function CharacterDetail({ characterId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Portrait */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={character.name}
-          className="w-full aspect-3/4 object-cover rounded-lg border border-border"
-        />
-      )}
+      {/* Portrait — generated or uploaded; uploads keep their natural ratio */}
+      <MediaField
+        label="Portrait"
+        alt={character.name}
+        imageRef={character.imageUrl}
+        narrativeId={narrative.id}
+        onSet={(imageUrl) => dispatch({ type: "SET_CHARACTER_IMAGE", characterId, imageUrl })}
+        onClear={() => dispatch({ type: "SET_CHARACTER_IMAGE", characterId, imageUrl: undefined })}
+      />
 
       {/* Name + ID + role — name & role inline-editable (id · dropdown pattern) */}
       <div className="flex flex-col gap-0.5">

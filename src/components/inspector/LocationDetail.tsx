@@ -4,10 +4,11 @@
 
 import { useState } from 'react';
 import { useStore } from '@/lib/state/store';
-import { useImageUrl } from '@/hooks/useAssetUrl';
+import { buildMapScope } from '@/lib/map/map-layout';
 import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
 import { CollapsibleSection, Paginator, paginateRecent } from './CollapsibleSection';
 import ImagePromptEditor from './ImagePromptEditor';
+import MediaField from './MediaField';
 import { InlineText, InlineSelect } from './InlineEdit';
 import { AttributionsSection } from './AttributionsSection';
 import type { LocationProminence } from '@/types/narrative';
@@ -41,7 +42,8 @@ export default function LocationDetail({ locationId }: Props) {
   const location = narrative.locations[locationId];
   if (!location) return null;
 
-  const imageUrl = useImageUrl(location.imageUrl);
+  // The map (UI: "board") rooted at this location, if one has been generated or uploaded.
+  const board = Object.values(narrative.boards ?? {}).find((b) => b.rootLocationId === locationId);
 
   const parent = location.parentId ? narrative.locations[location.parentId] : null;
 
@@ -80,14 +82,58 @@ export default function LocationDetail({ locationId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Establishing shot */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={location.name}
-          className="w-full aspect-video object-cover rounded-lg border border-border"
-        />
-      )}
+      {/* Establishing shot — generated or uploaded; uploads keep their natural ratio */}
+      <MediaField
+        label="Image"
+        alt={location.name}
+        imageRef={location.imageUrl}
+        narrativeId={narrative.id}
+        onSet={(imageUrl) => dispatch({ type: 'SET_LOCATION_IMAGE', locationId, imageUrl })}
+        onClear={() => dispatch({ type: 'SET_LOCATION_IMAGE', locationId, imageUrl: undefined })}
+      />
+
+      {/* Board — the map rooted at this location, shown beneath the establishing
+          shot. Uploadable/clearable on its own; uploading when no board exists
+          mints one over the location's 1-depth scope so it joins the map tree. */}
+      <MediaField
+        label="Board"
+        alt={`${location.name} board`}
+        imageRef={board?.imageUrl}
+        narrativeId={narrative.id}
+        onSet={(imageUrl) => {
+          const now = Date.now();
+          if (board) {
+            dispatch({ type: 'SAVE_BOARD', board: { ...board, imageUrl, updatedAt: now } });
+          } else {
+            const scope = buildMapScope(narrative.locations, locationId, 1);
+            dispatch({
+              type: 'SAVE_BOARD',
+              board: {
+                id: `map-${locationId}-${now}`,
+                rootLocationId: locationId,
+                name: location.name,
+                locationIds: scope.memberIds,
+                edges: scope.edges,
+                signature: scope.signature,
+                depth: 1,
+                imageUrl,
+                createdAt: now,
+                updatedAt: now,
+              },
+            });
+          }
+        }}
+        onClear={() => {
+          if (!board) return;
+          // Keep a board that carries hand-placed labels (just drop its image);
+          // remove an upload-only board outright so no empty shell lingers.
+          if ((board.labels?.length ?? 0) > 0) {
+            dispatch({ type: 'SAVE_BOARD', board: { ...board, imageUrl: undefined, updatedAt: Date.now() } });
+          } else {
+            dispatch({ type: 'DELETE_BOARD', boardId: board.id });
+          }
+        }}
+      />
 
       {/* Name + ID — name + prominence inline-editable */}
       <div className="flex flex-col gap-0.5">
