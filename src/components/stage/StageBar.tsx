@@ -46,10 +46,13 @@ const GRAPH_DOMAINS: GraphDomain[] = [
     description: 'System knowledge & rules',
   },
   {
-    label: 'Threads',
+    // Fate is the high-level force; threads are the components that measure
+    // it. The view still operates on the thread graph (threads-* modes) — only
+    // the label reflects the force it rolls up into.
+    label: 'Fate',
     scopes: { scene: 'threads-scene', arc: 'threads-arc', full: 'threads-full' },
     Icon: IconThread,
-    description: 'Narrative threads & tensions',
+    description: 'Fate — threads & tensions',
   },
   {
     label: 'Network',

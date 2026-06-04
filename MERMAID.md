@@ -58,40 +58,39 @@ flowchart TB
 
 ## 3. Center views (StageBar clusters → graphViewMode → component)
 
-`Stage.tsx` is a render switch keyed on `state.graphViewMode`; `StageBar.tsx` groups modes into 5 clusters.
+`Stage.tsx` is a render switch keyed on `state.graphViewMode`; `StageBar.tsx` groups modes into **4 clusters: Capture · State · Mind · Scene**. (graphViewMode values are unchanged — the clusters/labels are the UI grouping.)
 
 ```mermaid
 flowchart LR
     CTB["StageBar"]
-    CTB --> Capture & Graph & Board & Mind & Scene
+    CTB --> Capture & State & Mind & Scene
 
     subgraph Capture["CAPTURE"]
-        d1["driver → CaptureView (Queue/Priors)"]
+        d1["driver → CaptureView (Priors)"]
         d2["search → SearchView"]
     end
-    subgraph Graph["GRAPH (domain × scene/arc/full)"]
+    subgraph State["STATE — Board + graph domains (scope Scene/Arc/Full)"]
+        b1["board → BoardView (nested maps + avatars)"]
         g1["world-* → WorldGraphView / inline D3"]
         g2["system-* → SystemGraphView"]
         g3["threads-* → ThreadGraphView / ThreadLogGraphView"]
         g4["network-* → NetworkView"]
     end
-    subgraph Board["BOARD"]
-        b1["board → BoardView (maps + avatars)"]
-    end
     subgraph Mind["MIND"]
         c1["belief → BeliefView"]
-        c2["present → CompassView"]
-        c3["compass → CompassView (Compass)"]
-        c4["mode → PhaseGraphView (PRG)"]
-        c5["decision → DecisionView"]
-        c6["map → ReasoningGraphView (Maps; was Investigations)"]
+        c2["compass → CompassView (merges current 'present' + forward cohort)"]
+        c3["mode → PhaseGraphView (Phase / PRG)"]
+        c4["decision → DecisionView"]
+        c5["map → ReasoningGraphView (Maps; was Investigations)"]
     end
     subgraph Scene["SCENE"]
-        s2["plan → ScenePlanView"]
-        s3["prose → SceneProseView"]
-        s4["audio → SceneAudioView"]
+        s1["plan → ScenePlanView"]
+        s2["prose → SceneProseView"]
+        s3["audio → SceneAudioView"]
     end
 ```
+
+> Cluster membership lives in `StageBar` (`inCaptureMode` / `inStateMode` / `inMindMode` / `inSceneMode`). The `present` graphViewMode still exists but is surfaced under the **Compass** tab (the merged variable surface); `board` + the graph domains share the **State** cluster.
 
 Adding a view = a `GraphViewMode` literal (`types/narrative.ts`) + a `StageBar` button + a `Stage` branch (copy `mode`).
 

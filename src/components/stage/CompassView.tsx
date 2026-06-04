@@ -822,9 +822,40 @@ function VariablesTopBar({
               <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
               <path d="M10 11v6M14 11v6"/>
             </svg>
-            <span>Clear</span>
           </button>
         </>
+      )}
+
+      {/* Projection toggle — far right. Current (this arc's live variable
+          disposition) vs Forward (the cohort of next-arc directions). The
+          merge of the old Present + Compass tabs into a single in-view
+          switch. */}
+      {onViewChange && (
+        <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+          {([
+            { m: 'present' as Mode, label: 'Current', title: 'Current projection — this arc’s live variable disposition' },
+            { m: 'compass' as Mode, label: 'Forward', title: 'Forward projection — the cohort of feasible next-arc directions' },
+          ]).map(({ m, label, title }, idx) => {
+            const isActive = mode === m;
+            return (
+              <div key={m} className="flex items-center">
+                {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                <button
+                  onClick={() => onViewChange(m)}
+                  disabled={busy}
+                  title={title}
+                  className={`px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-40 ${
+                    isActive
+                      ? 'bg-white/10 text-text-primary'
+                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                  }`}
+                >
+                  {label}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
