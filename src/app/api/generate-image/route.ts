@@ -4,41 +4,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveKey } from '@/lib/core/resolve-api-key';
 import { DEFAULT_MODEL } from '@/lib/constants';
 import { logError, logInfo, logWarning } from '@/lib/core/system-logger';
+import { buildMapImagePrompts, type MapRegion, type MapScale } from '@/lib/prompts/image/map';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const REPLICATE_URL = 'https://api.replicate.com/v1/models/bytedance/seedream-4.5/predictions';
-
-/** One region of a map — a location, its place in the containment tree, and
- *  its own visual description (image prompt) used to paint its terrain. */
-type MapRegion = { name: string; prominence: string; parentName?: string; imagePrompt?: string };
 
 type ImageRequest =
   | { type: 'character'; name: string; role: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string }
   | { type: 'location'; name: string; parentName?: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string }
   | { type: 'artifact'; name: string; significance: string; ownerName?: string; worldSummary: string; continuityHints: string[]; imagePrompt?: string; imageStyle?: string }
-  | { type: 'map'; name: string; regions: MapRegion[]; imagePrompt?: string; imageStyle?: string };
+  | { type: 'map'; name: string; regions: MapRegion[]; imagePrompt?: string; imageStyle?: string; scale?: MapScale };
 
-/** The map treatment. Meridians supports exactly two map types: the RAW GRAPH
- *  map (the Stage — drawn live from the substrate, never image-generated)
- *  and this BOARD-GAME STYLE map. Every generated map — a world, a region, a
- *  settlement, a building — renders as ONE cohesive board-game board: a
- *  hand-painted top-down strategy board whose sub-regions are distinct,
- *  clearly-bordered territories nested inside their parent and joined into one
- *  continuous whole. Nesting is handled by the map tree (drilling into a child
- *  opens that child's own board); within a single board, sub-regions are bounded
- *  areas. Labels are overlaid by hand afterward, so the board is rendered fully
- *  textless and every sub-region must stay individually identifiable. */
-const MAP_BOARD_VIEW = {
-  /** The ONE cartographer directive (the style line is appended after it). The
-   *  textless + distinct-coverage rules are restated in the final image prompt
-   *  (see POST), so they live there once. */
-  system: "You write one image-gen prompt (3-4 sentences) for a BOARD-GAME STYLE MAP BOARD in the specified art style: one cohesive hand-painted top-down board, like a tabletop strategy game map laid flat — a single unified board, no perspective tiles, no standing 3D clutter, no shadows, no horizon, no sky. Open by naming it a flat top-down board-game style map board in the art style. Draw every sub-region as a distinct, clearly-bordered TERRITORY with its own fill/texture, each nested inside its parent's bounds and joined to its neighbours by borders, paths and water into ONE seamless board (no gaps, panels or floating tiles). Use each region's description ONLY for its terrain/character — discard its camera/lighting words. Arrange the territories for a balanced, readable board. Output ONLY the prompt.",
-  /** Per-instance note for the user prompt (how to read each sub-region). */
-  userGuidance: () => `Draw each sub-region as a distinct bordered territory nested inside its parent; use each region's description only for its look, not its camera/lighting.`,
-};
-
-/** Composition guidance per image type (maps use the board-game directive baked
- *  into `MAP_BOARD_VIEW`; this entry is the short final-prompt fallback). */
+/** Composition guidance per image type (maps use the flat-map directive baked
+ *  into the shared `buildMapImagePrompts`; this entry is the short final-prompt
+ *  fallback). */
 const COMPOSITION: Record<ImageRequest['type'], string> = {
   character: 'Single character portrait, head and shoulders, one subject only',
   location: 'Wide establishing shot, architectural or landscape composition',
@@ -55,75 +34,13 @@ const ASPECT_RATIO: Record<ImageRequest['type'], string> = {
   map: '4:3',
 };
 
-const REGION_KIND: Record<string, string> = {
-  domain: 'major territory',
-  place: 'region',
-  margin: 'minor locale',
-};
-
-/** Map label = the English/Latin portion of a name. Strips a trailing
- *  parenthetical translation ("White Stone Pass (白石关)" → "White Stone Pass")
- *  so every map label renders in English, never CJK. Names with no Latin part
- *  are kept verbatim (nothing better to show). */
-function displayLabel(name: string): string {
-  const m = name.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
-  if (m && /[A-Za-z]/.test(m[1])) return m[1].trim();
-  return name.trim();
-}
-
-/** Render the containment structure as an indented natural-language outline:
- *  the root territory, with its sub-regions nested under it (recursively), each
- *  carrying its own visual description so the model paints the right terrain.
- *  No coordinates — the model lays the board out for visual appeal; we only fix
- *  the nesting (what sits inside what) and the look of each place. */
-function describeMapStructure(regions: MapRegion[]): string {
-  const childrenOf = new Map<string | undefined, MapRegion[]>();
-  for (const r of regions) {
-    const key = r.parentName;
-    const bucket = childrenOf.get(key);
-    if (bucket) bucket.push(r);
-    else childrenOf.set(key, [r]);
-  }
-
-  const render = (region: MapRegion, depth: number): string[] => {
-    const indent = '  '.repeat(depth);
-    const kind = REGION_KIND[region.prominence] ?? 'locale';
-    const look = region.imagePrompt?.trim() ? ` — ${region.imagePrompt.trim()}` : '';
-    const kids = childrenOf.get(region.name) ?? [];
-    const kidCount = `${kids.length} sub-region${kids.length > 1 ? 's' : ''}`;
-    const label = displayLabel(region.name);
-    // Containment is visual and recursive: every region that has children is
-    // drawn as a CLOSED bounded territory physically enclosing those children,
-    // all the way down. The root (depth 0) is the outermost extent of the whole
-    // board.
-    const role = depth === 0
-      ? `THE WHOLE MAP — outermost extent enclosing every other region; its edge frames the entire map, with all ${kidCount} nested inside it`
-      : kids.length > 0
-        ? `${kind} — a distinct bounded area drawn INSIDE its parent, itself enclosing its own ${kidCount}`
-        : `${kind} — a small distinct area inside its parent`;
-    const lines = [`${indent}- "${label}" (${role})${look}`];
-    for (const kid of kids) lines.push(...render(kid, depth + 1));
-    return lines;
-  };
-
-  // Roots = regions with no in-scope parent (normally just the territory root).
-  const names = new Set(regions.map((r) => r.name));
-  const roots = regions.filter((r) => !r.parentName || !names.has(r.parentName));
-  return roots.flatMap((r) => render(r, 0)).join('\n');
-}
-
-/** Count the real sub-regions (the root frames the board, not a sub-region) so
- *  the prompt can demand distinct coverage of all of them. */
-function countSubRegions(regions: MapRegion[]): number {
-  const names = new Set(regions.map((r) => r.name));
-  return regions.filter((r) => r.parentName && names.has(r.parentName)).length;
-}
-
-/** Use LLM to craft a rich visual description for image generation. Maps always
- *  render as the single board-game style board (`MAP_BOARD_VIEW`). Returns the
+/** Use LLM to craft a rich visual description for image generation. Returns the
  *  crafted `prompt` plus the `systemPrompt` / `userPrompt` that produced it, so
  *  callers can surface the real prompts in the API log (the request body alone
- *  hides the actual image-gen instructions). */
+ *  hides the actual image-gen instructions). Maps are normally crafted on the
+ *  client through the trackable callGenerate path and arrive here as a ready
+ *  `imagePrompt`; the map branch below is the fallback when none rides in (it
+ *  reuses the shared `buildMapImagePrompts` so there's no prompt drift). */
 async function describeVisually(
   openrouterKey: string,
   request: ImageRequest,
@@ -133,38 +50,30 @@ async function describeVisually(
     return { prompt: request.imagePrompt };
   }
 
-  const styleDirective = request.imageStyle
-    ? `\nIMPORTANT: The entire image MUST be rendered in this visual style, applied consistently to every element: ${request.imageStyle}.`
-    : '';
-
-  // Maps are rendered fully textless — image models garble baked text (and
-  // invent nonsense calligraphy in stylised work). The title and every region
-  // label are HTML overlays placed afterward, so the prompt forbids ALL text.
-  const systemPrompt = request.type === 'map'
-    ? `${MAP_BOARD_VIEW.system}${styleDirective}`
-    : `You are a visual description specialist. Given narrative context, produce a single concise image generation prompt (2-3 sentences max). Focus on visual details: appearance, clothing, atmosphere, lighting, color palette. Never include text, words, or watermarks in the description. Output ONLY the prompt, nothing else.${styleDirective}
+  let systemPrompt: string;
+  let userPrompt: string;
+  if (request.type === 'map') {
+    // Fallback only — the board prompt is normally crafted client-side. Maps are
+    // rendered fully textless (image models garble baked text); the shared
+    // builder bakes that in and the final image prompt re-states the guards.
+    ({ system: systemPrompt, user: userPrompt } = buildMapImagePrompts(request));
+  } else {
+    const styleDirective = request.imageStyle
+      ? `\nIMPORTANT: The entire image MUST be rendered in this visual style, applied consistently to every element: ${request.imageStyle}.`
+      : '';
+    systemPrompt = `You are a visual description specialist. Given narrative context, produce a single concise image generation prompt (2-3 sentences max). Focus on visual details: appearance, clothing, atmosphere, lighting, color palette. Never include text, words, or watermarks in the description. Output ONLY the prompt, nothing else.${styleDirective}
 
 COMPOSITION: ${COMPOSITION[request.type]}`;
 
-  let userPrompt: string;
-  if (request.type === 'character') {
-    userPrompt = `Create a character portrait prompt for "${request.name}" (role: ${request.role}) in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
-  } else if (request.type === 'location') {
-    const parent = request.parentName ? ` (inside ${request.parentName})` : '';
-    userPrompt = `Create an establishing shot prompt for the location "${request.name}"${parent} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
-  } else if (request.type === 'map') {
-    const subRegionCount = countSubRegions(request.regions);
-    // The SPECIFICS: this place, its sub-regions, how to read their descriptions,
-    // and the two hard rules (distinct coverage + no text). The high-level view
-    // rules live in the system prompt.
-    userPrompt = `Map of "${displayLabel(request.name)}" and its ${subRegionCount} sub-regions. ${MAP_BOARD_VIEW.userGuidance()}
-Sub-regions (names are for YOUR layout reasoning only — NEVER write them on the image):
-${describeMapStructure(request.regions)}
-CRITICAL: render ONE cohesive, continuous map (a single unified scene, not separate tiles or panels) that contains all ${subRegionCount} sub-regions — each present and identifiable in its own area, yet flowing together into one coherent whole; none omitted.
-CRITICAL: ABSOLUTELY NO TEXT anywhere (no names, labels, letters, numbers, calligraphy) and no pins, markers or symbols — a clean illustration; labels are added by hand afterward.`;
-  } else {
-    const owner = request.ownerName ? ` (owned by ${request.ownerName})` : '';
-    userPrompt = `Create an object study prompt for the artifact "${request.name}" (${request.significance})${owner} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
+    if (request.type === 'character') {
+      userPrompt = `Create a character portrait prompt for "${request.name}" (role: ${request.role}) in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
+    } else if (request.type === 'location') {
+      const parent = request.parentName ? ` (inside ${request.parentName})` : '';
+      userPrompt = `Create an establishing shot prompt for the location "${request.name}"${parent} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
+    } else {
+      const owner = request.ownerName ? ` (owned by ${request.ownerName})` : '';
+      userPrompt = `Create an object study prompt for the artifact "${request.name}" (${request.significance})${owner} in this world: ${request.worldSummary}. Context clues: ${request.continuityHints.join('; ') || 'none'}.`;
+    }
   }
 
   const res = await fetch(OPENROUTER_URL, {
@@ -201,12 +110,14 @@ export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   try {
     const body = await req.json() as ImageRequest;
-    // Maps always render as the single board-game style board.
+    // Every map is a flat, top-down map; `scale` only picks the cartographic
+    // vocabulary (world / region / settlement / site).
     const isMap = body.type === 'map';
+    const mapScale = body.type === 'map' ? (body.scale ?? null) : null;
     logInfo(`Image generation request received`, {
       source: 'image-generation',
       operation: 'request',
-      details: { type: body.type, hasCustomStyle: !!body.imageStyle, ...(isMap ? { mapView: 'board' } : {}) },
+      details: { type: body.type, hasCustomStyle: !!body.imageStyle, ...(isMap ? { mapScale } : {}) },
     });
 
     // Step 1: Get or craft the visual prompt
@@ -221,17 +132,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Build prompt: style → subject → guard. Style ALWAYS leads.
-    // For maps the full view directives are already baked into `visualPrompt` by
-    // the cartographer prompts, but the image model still needs the two hard
-    // guards re-stated directly in the FINAL prompt or it ignores them:
-    // (1) ONE cohesive map that still contains every sub-region, (2) NO text.
-    // Kept short so the prompt stays well under the image API's 4000-char cap.
+    // For maps the style directives are already baked into `visualPrompt` by the
+    // cartographer prompts, but the image model still needs the two hard guards
+    // re-stated directly in the FINAL prompt or it drifts: (1) flat, top-down,
+    // one cohesive map, (2) NO text. Kept short so the prompt stays well under
+    // the image API's 4000-char cap.
     const parts: string[] = [];
     if (body.imageStyle) parts.push(body.imageStyle);
     parts.push(visualPrompt);
     if (isMap) {
-      parts.push('ONE single cohesive, continuous board-game style map board — a unified board, NOT a grid of tiles, panels, insets or vignettes, no gaps or seams. All the named sub-regions are present within that one board, each identifiable in its own bordered territory but flowing naturally into its neighbours as part of the same whole');
-      parts.push('ABSOLUTELY NO TEXT anywhere on the image — no labels, place names, titles, letters, numbers, calligraphy or CJK characters; no pins, markers, dots or symbols either. A clean, completely textless illustration — every label is overlaid by hand afterward');
+      parts.push('One flat map seen from directly overhead — no perspective, no tilt, no 3D, no raised buildings, no cast shadows, no horizon, no sky. It is one continuous, seamless surface: regions flow into one another through soft natural transitions, not hard outlines, separate tiles, panels or insets');
+      parts.push('No text anywhere on the image — no labels, place names, letters, numbers or calligraphy; every label is added by hand afterward');
     } else {
       parts.push(COMPOSITION[body.type]);
       parts.push('No text, no letters, no watermarks');
@@ -328,13 +239,13 @@ export async function POST(req: NextRequest) {
     logInfo(`Image generated successfully`, {
       source: 'image-generation',
       operation: 'success',
-      details: { type: body.type, durationMs: Date.now() - startedAt, attempts, ...(isMap ? { mapView: 'board' } : {}) },
+      details: { type: body.type, durationMs: Date.now() - startedAt, attempts, ...(isMap ? { mapScale } : {}) },
     });
     // Return the Replicate URL directly - client will download and store in
     // IndexedDB. The constructed prompts ride along so the client can log the
     // REAL image-gen instructions (system + cartographer + final image prompt),
     // not just the request body.
-    return NextResponse.json({ imageUrl: replicateUrl, visualPrompt, systemPrompt, userPrompt, finalPrompt, mapView: isMap ? 'board' : null });
+    return NextResponse.json({ imageUrl: replicateUrl, visualPrompt, systemPrompt, userPrompt, finalPrompt, mapView: mapScale });
   } catch (err) {
     logError('Image generation failed', err, {
       source: 'image-generation',

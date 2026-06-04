@@ -11,7 +11,7 @@ import { logApiCall, updateApiLog } from '@/lib/core/api-logger';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { assetManager } from '@/lib/storage/asset-manager';
 import MediaPreview from '@/components/sidebar/MediaPreview';
-import { IconSpinner, IconImage, IconSettings, IconMapPin, IconLocationPin, IconTrash } from '@/components/icons';
+import { IconSpinner, IconImage, IconSettings, IconMapPin, IconLocationPin } from '@/components/icons';
 import type { MediaItem } from '@/components/sidebar/MediaPreview';
 import type { Scene, Character, Location, Artifact, ImageRef, Board, MapEdge } from '@/types/narrative';
 import {
@@ -22,6 +22,7 @@ import {
   type LocationCluster,
 } from '@/lib/graph/location-clusters';
 import { computeMapScope, buildMapScope } from '@/lib/map/map-layout';
+import { classifyMapScale, craftMapImagePrompt } from '@/lib/ai/image-prompt';
 import { BoardAnnotator } from '@/components/sidebar/BoardAnnotator';
 import { HierarchyModal } from '@/components/sidebar/HierarchyModal';
 
@@ -512,10 +513,18 @@ export default function MediaDrive() {
         };
       });
     }
+    // Detect the best flat map scale for these locations, then craft the prompt
+    // for it — both through the trackable LLM path (logged in the API trace).
+    // The crafted prompt rides to the route as `imagePrompt` so the route only
+    // generates the image — no untracked in-route prompt-crafting call.
+    const scale = await classifyMapScale({ name: displayName, regions, isGlobal, prominence: root?.prominence });
+    const imagePrompt = await craftMapImagePrompt({ name: displayName, regions, imageStyle: narrative.imageStyle, scale });
     const { imageUrl, visualPrompt } = await generateImage('map', {
       name: displayName,
       regions,
       imageStyle: narrative.imageStyle,
+      imagePrompt,
+      scale,
     }, narrative.id);
     const existing = Object.values(narrative.boards ?? {}).find((m) => m.rootLocationId === rootId);
     const keptLabels = (existing?.labels ?? []).filter((lb) => memberIds.includes(lb.locationId));
@@ -879,36 +888,26 @@ export default function MediaDrive() {
               )}
               <div className="flex-1 text-left min-w-0">
                 <p className="text-xs text-text-primary truncate">{GLOBAL_MAP_TITLE}</p>
-                <p className="text-[10px] text-text-dim truncate flex items-center gap-1">
+                <p className="text-[10px] text-text-dim truncate">
                   {topLevelLocs.length} top-level {topLevelLocs.length === 1 ? 'territory' : 'territories'}
-                  {status ? (
-                    <span className={status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}>
-                      · {status === 'current' ? 'up to date' : 'outdated'}
-                    </span>
-                  ) : (
-                    <span className="text-text-dim/50">· not generated</span>
-                  )}
                 </p>
+                {status ? (
+                  <p className={`text-[10px] truncate ${status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}`}>
+                    {status === 'current' ? 'up to date' : 'outdated'}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-text-dim/50 truncate">not generated</p>
+                )}
               </div>
               {globalMap && (
-                <>
-                  <button
-                    onClick={() => setAnnotateMap(globalMap)}
-                    disabled={busy}
-                    title="Label this map"
-                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <IconLocationPin size={11} />
-                  </button>
-                  <button
-                    onClick={() => dispatch({ type: 'DELETE_BOARD', boardId: globalMap.id })}
-                    disabled={busy}
-                    title="Delete map"
-                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-red-300 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <IconTrash size={11} />
-                  </button>
-                </>
+                <button
+                  onClick={() => setAnnotateMap(globalMap)}
+                  disabled={busy}
+                  title="Label this map"
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-white/6 text-text-dim hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <IconLocationPin size={11} />
+                </button>
               )}
               <GenerateButton
                 onClick={() => generateMapImage(GLOBAL_MAP_ROOT)}
@@ -949,36 +948,26 @@ export default function MediaDrive() {
                 className="flex-1 text-left min-w-0"
               >
                 <p className="text-xs text-text-primary truncate">{parent.name}</p>
-                <p className="text-[10px] text-text-dim truncate flex items-center gap-1">
+                <p className="text-[10px] text-text-dim truncate">
                   {childCount} {childCount === 1 ? 'location' : 'locations'}
-                  {status ? (
-                    <span className={status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}>
-                      · {status === 'current' ? 'up to date' : 'outdated'}
-                    </span>
-                  ) : (
-                    <span className="text-text-dim/50">· not generated</span>
-                  )}
                 </p>
+                {status ? (
+                  <p className={`text-[10px] truncate ${status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}`}>
+                    {status === 'current' ? 'up to date' : 'outdated'}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-text-dim/50 truncate">not generated</p>
+                )}
               </button>
               {map && (
-                <>
-                  <button
-                    onClick={() => setAnnotateMap(map)}
-                    disabled={busy}
-                    title="Label this map"
-                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <IconLocationPin size={11} />
-                  </button>
-                  <button
-                    onClick={() => dispatch({ type: 'DELETE_BOARD', boardId: map.id })}
-                    disabled={busy}
-                    title="Delete map"
-                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-red-300 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <IconTrash size={11} />
-                  </button>
-                </>
+                <button
+                  onClick={() => setAnnotateMap(map)}
+                  disabled={busy}
+                  title="Label this map"
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-white/6 text-text-dim hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <IconLocationPin size={11} />
+                </button>
               )}
               <GenerateButton
                 onClick={() => generateMapImage(parent.id)}

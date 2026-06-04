@@ -10,8 +10,89 @@ import { parseJson } from './json';
 import { MAX_TOKENS_SMALL } from '@/lib/constants';
 import { logError, logInfo } from '@/lib/core/system-logger';
 import { buildImagePromptUserPrompt, IMAGE_PROMPT_SYSTEM, type ImagePromptEntityKind } from '@/lib/prompts/image';
+import {
+  buildMapImagePrompts,
+  buildMapScaleClassifierPrompt,
+  mapScaleFromRoot,
+  MAP_SCALES,
+  type MapRegion,
+  type MapScale,
+} from '@/lib/prompts/image/map';
 
 export type { ImagePromptEntityKind };
+export type { MapScale };
+
+/** Pick the id that appears EARLIEST in the classifier reply (the model may add
+ *  stray words despite instructions); null if none of the scale ids appear. */
+function parseMapScale(raw: string): MapScale | null {
+  const lower = raw.toLowerCase();
+  let best: { id: MapScale; idx: number } | null = null;
+  for (const id of MAP_SCALES) {
+    const idx = lower.indexOf(id);
+    if (idx >= 0 && (!best || idx < best.idx)) best = { id, idx };
+  }
+  return best?.id ?? null;
+}
+
+/** Intelligently detect which flat map scale best represents a place and its
+ *  sub-regions (world / region / settlement / site). A cheap, trackable LLM
+ *  pass (temp 0, tiny output, logged in the API trace) reads the structure and
+ *  picks the scale; `mapScaleFromRoot` (the root's prominence) is the heuristic
+ *  fallback, so a flaky model never blocks generation. Global is the whole
+ *  world by definition, so it skips the call. */
+export async function classifyMapScale(
+  args: { name: string; regions: MapRegion[]; isGlobal: boolean; prominence?: string },
+): Promise<MapScale> {
+  const heuristic = mapScaleFromRoot({ isGlobal: args.isGlobal, prominence: args.prominence });
+  if (args.isGlobal) return heuristic;
+
+  const { system, user } = buildMapScaleClassifierPrompt(args);
+  try {
+    const raw = await callGenerate(user, system, 16, 'classifyMapScale', undefined, 0, false, 0);
+    const picked = parseMapScale(raw);
+    logInfo('Classified map scale', {
+      source: 'image-generation',
+      operation: 'classify-map-scale',
+      details: { name: args.name, picked: picked ?? heuristic, fellBack: !picked },
+    });
+    return picked ?? heuristic;
+  } catch (err) {
+    logError('classifyMapScale call failed — using heuristic', err, {
+      source: 'image-generation',
+      operation: 'classify-map-scale',
+    });
+    return heuristic;
+  }
+}
+
+/** Craft the image-gen prompt for a flat top-down map through the trackable LLM
+ *  path (callGenerate → logged in the API trace), instead of the untracked
+ *  in-route fetch that used to run server-side. The `scale` (from
+ *  `classifyMapScale`) picks the cartographic style. Returns the prompt the
+ *  caller passes to /api/generate-image as `imagePrompt`, so the route skips
+ *  its own prompt-crafting and only generates the image. Plain text out
+ *  (jsonMode off), no reasoning, warm temperature for varied phrasing. */
+export async function craftMapImagePrompt(
+  args: { name: string; regions: MapRegion[]; imageStyle?: string; scale: MapScale },
+): Promise<string> {
+  const { system, user } = buildMapImagePrompts(args);
+  logInfo('Crafting map image prompt', {
+    source: 'image-generation',
+    operation: 'craft-map-prompt',
+    details: { name: args.name, scale: args.scale, regionCount: args.regions.length, hasCustomStyle: !!args.imageStyle },
+  });
+  let raw: string;
+  try {
+    raw = await callGenerate(user, system, 300, 'craftMapImagePrompt', undefined, 0, false, 0.8);
+  } catch (err) {
+    logError('craftMapImagePrompt call failed', err, {
+      source: 'image-generation',
+      operation: 'craft-map-prompt',
+    });
+    throw err;
+  }
+  return raw.trim();
+}
 
 export async function suggestImagePrompt(
   kind: ImagePromptEntityKind,
