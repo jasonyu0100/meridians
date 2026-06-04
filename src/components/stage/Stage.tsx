@@ -161,7 +161,7 @@ export default function Stage() {
       if (art.imageUrl) refs.push(art.imageUrl);
     }
     // Map images — needed so the map-tree overlay can paint board backdrops.
-    for (const map of Object.values(narrative.maps ?? {})) {
+    for (const map of Object.values(narrative.boards ?? {})) {
       if (map.imageUrl) refs.push(map.imageUrl);
     }
     return refs;
@@ -602,7 +602,7 @@ export default function Stage() {
     // the force layout resumes from the preserved positions.
     const mapTree = showMapTree && narrative
       ? buildMapTreeLayout({
-          maps: narrative.maps ?? {},
+          maps: narrative.boards ?? {},
           locations: narrative.locations,
           presentLocationIds: new Set(nodes.filter((n) => n.kind === 'location').map((n) => n.id)),
         })

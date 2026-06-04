@@ -1639,7 +1639,7 @@ export type MapLabel = {
 
 /**
  * A generated map of a location cluster. A cluster is a connected component of
- * the location parent/child graph (see lib/location-clusters.ts); a LocationMap
+ * the location parent/child graph (see lib/location-clusters.ts); a Board
  * is the Replicate-rendered image of one such cluster plus the snapshot of the
  * cluster membership it was generated from.
  *
@@ -1647,7 +1647,7 @@ export type MapLabel = {
  * the live cluster's signature drifts (a location was added to / removed from
  * the cluster), the map is considered outdated and prime to regenerate.
  */
-export type LocationMap = {
+export type Board = {
   id: string;
   /** Cluster anchor — the top-most ancestor location id of the cluster. A map
    *  is matched to a live cluster by this root id. */
@@ -1716,7 +1716,7 @@ export type NarrativeState = {
   priors?: Record<string, Prior>;
   /** Location maps keyed by map ID — Replicate-rendered images of location
    *  clusters (connected components of the location parent/child graph). */
-  maps?: Record<string, LocationMap>;
+  boards?: Record<string, Board>;
   /** Branch evaluations keyed by branch ID — most recent eval per branch */
   structureReviews?: Record<string, StructureReview>;
   /** Prose evaluations keyed by branch ID — most recent prose eval per branch */

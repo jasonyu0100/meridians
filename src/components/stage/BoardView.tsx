@@ -5,7 +5,7 @@ import { useStore } from '@/lib/store';
 import { useImageUrl, useImageUrlMap } from '@/hooks/useAssetUrl';
 import { computeCumulativePositions } from '@/lib/positions';
 import { GLOBAL_MAP_ROOT, GLOBAL_MAP_TITLE } from '@/lib/location-clusters';
-import type { Character, LocationMap, NarrativeState } from '@/types/narrative';
+import type { Character, Board, NarrativeState } from '@/types/narrative';
 import { IconMapPin } from '@/components/icons';
 
 /** How many avatars a cluster shows before collapsing behind a "+N" toggle. */
@@ -21,7 +21,7 @@ function displayLabel(name: string): string {
 
 /** Resolve the map rooted at a given location id (GLOBAL_MAP_ROOT → the
  *  synthetic global map). */
-function mapByRoot(maps: Record<string, LocationMap>, rootId: string): LocationMap | undefined {
+function mapByRoot(maps: Record<string, Board>, rootId: string): Board | undefined {
   return Object.values(maps).find((m) => m.rootLocationId === rootId);
 }
 
@@ -44,7 +44,7 @@ function isWithin(locations: NarrativeState['locations'], locId: string, ancesto
  *  Returns null when there's no parent map (already at the top). */
 function parentMapRoot(
   narrative: NarrativeState,
-  maps: Record<string, LocationMap>,
+  maps: Record<string, Board>,
   rootId: string,
 ): string | null {
   if (rootId === GLOBAL_MAP_ROOT) return null;
@@ -60,7 +60,7 @@ function parentMapRoot(
 
 /** Build the path of map roots from the top down to `start`, so the back
  *  button ascends the real hierarchy even when the user opens mid-tree. */
-function buildPath(narrative: NarrativeState, maps: Record<string, LocationMap>, start: string): string[] {
+function buildPath(narrative: NarrativeState, maps: Record<string, Board>, start: string): string[] {
   const path = [start];
   let cur = start;
   const seen = new Set([start]);
@@ -96,7 +96,7 @@ function locDepth(locations: NarrativeState['locations'], locId: string): number
  *  3. the global map, else any map with an image. */
 function pickStartRoot(
   narrative: NarrativeState,
-  maps: Record<string, LocationMap>,
+  maps: Record<string, Board>,
   currentLocId: string | null,
 ): string | null {
   const all = Object.values(maps);
@@ -156,7 +156,7 @@ function Avatar({ char, url, onClick, active }: { char: Character; url: string |
 export function BoardView() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
-  const maps = useMemo(() => narrative?.maps ?? {}, [narrative]);
+  const maps = useMemo(() => narrative?.boards ?? {}, [narrative]);
 
   const currentScene = useMemo(() => {
     if (!narrative) return null;

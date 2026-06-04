@@ -7,7 +7,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch, IconMapPin } from '@/components/icons';
+import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch, IconMapPin } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
@@ -1182,7 +1182,7 @@ export function StageBar() {
             { mode: 'driver' as const, Icon: IconList, label: 'Capture', activeWhen: inCaptureMode },
             { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', activeWhen: canvasMode === 'graph' },
             { mode: 'board' as const, Icon: IconMapPin, label: 'Board', activeWhen: canvasMode === 'board' },
-            { mode: 'control' as const, Icon: IconBelief, label: 'Mind', activeWhen: inMindMode },
+            { mode: 'control' as const, Icon: IconMind, label: 'Mind', activeWhen: inMindMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', activeWhen: inSceneMode },
           ]
             .map(({ mode, Icon, label, activeWhen }, idx) => {

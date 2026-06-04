@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { useImageUrl } from '@/hooks/useAssetUrl';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
-import type { LocationMap, MapLabel } from '@/types/narrative';
+import type { Board, MapLabel } from '@/types/narrative';
 
 /** Label text = the English/Latin portion of a name. Strips a trailing
  *  parenthetical translation ("White Stone Pass (白石关)" → "White Stone Pass")
@@ -16,15 +16,15 @@ function displayLabel(name: string): string {
 }
 
 /**
- * MapAnnotator — drag-and-drop label editor for a generated map.
+ * BoardAnnotator — drag-and-drop label editor for a generated map.
  *
  * The map image is rendered textless except its baked-in parent title. Here the
  * user drags one label per child location onto its region; positions are stored
- * as normalized [0..1] coordinates on `LocationMap.labels`, so they hold up at
+ * as normalized [0..1] coordinates on `Board.labels`, so they hold up at
  * any display size. Unplaced labels sit in a tray; drag one onto the map to
  * place it, drag a placed label to move it, or ✕ to return it to the tray.
  */
-export function MapAnnotator({ map, onClose }: { map: LocationMap; onClose: () => void }) {
+export function BoardAnnotator({ map, onClose }: { map: Board; onClose: () => void }) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const url = useImageUrl(map.imageUrl);
@@ -107,7 +107,7 @@ export function MapAnnotator({ map, onClose }: { map: LocationMap; onClose: () =
   const save = useCallback(() => {
     // Keep only labels for members still in scope.
     const kept = labels.filter((l) => childIds.has(l.locationId));
-    dispatch({ type: 'SAVE_MAP', map: { ...map, labels: kept, updatedAt: Date.now() } });
+    dispatch({ type: 'SAVE_BOARD', board: { ...map, labels: kept, updatedAt: Date.now() } });
     onClose();
   }, [labels, childIds, dispatch, map, onClose]);
 

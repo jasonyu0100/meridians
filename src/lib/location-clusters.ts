@@ -5,18 +5,18 @@
  * location reachable from another via `parentId` links (treated as undirected).
  * Each cluster has a single anchor *root* — the top-most ancestor (the member
  * with no parent inside the component) — which is also how a persisted
- * `LocationMap` is matched back to a live cluster.
+ * `Board` is matched back to a live cluster.
  *
  * Maps are generated per cluster; the cluster's `signature` (sorted member-id
  * fingerprint) lets the Maps tab detect when a cluster has drifted (a location
  * added or removed) so the corresponding map can be flagged outdated.
  */
 
-import type { Location, LocationMap, MapEdge } from '@/types/narrative';
+import type { Location, Board, MapEdge } from '@/types/narrative';
 
 /**
  * The synthetic top-of-tree "Global" map — it has no backing location; its
- * members are every top-level (parentless) location. Keyed in `narrative.maps`
+ * members are every top-level (parentless) location. Keyed in `narrative.boards`
  * by this root id. Shared so map generation (MediaDrive) and the map-tree
  * overlay (map-tree-layout) agree on the identifier and title.
  */
@@ -155,8 +155,8 @@ export type MapStatus = 'none' | 'current' | 'outdated';
 /** Find the persisted map for a cluster, matched by root id. */
 export function mapForCluster(
   cluster: LocationCluster,
-  maps: Record<string, LocationMap> | undefined,
-): LocationMap | null {
+  maps: Record<string, Board> | undefined,
+): Board | null {
   if (!maps) return null;
   return Object.values(maps).find((m) => m.rootLocationId === cluster.rootId) ?? null;
 }
@@ -164,7 +164,7 @@ export function mapForCluster(
 /** Status of a cluster's map: never generated, current, or drifted (outdated). */
 export function clusterMapStatus(
   cluster: LocationCluster,
-  map: LocationMap | null,
+  map: Board | null,
 ): MapStatus {
   if (!map || !map.imageUrl) return 'none';
   return map.signature === cluster.signature ? 'current' : 'outdated';

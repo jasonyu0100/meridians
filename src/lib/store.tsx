@@ -71,7 +71,7 @@ import type {
   NarrativeState,
   NarrativeViewState,
   Prior,
-  LocationMap,
+  Board,
   OwnershipDelta,
   PlanEvaluation,
   PlanningScenario,
@@ -1088,8 +1088,8 @@ export type Action =
   // become no-ops on these entries thereafter.
   | { type: "MARK_PRIORS_USED"; entryIds: string[]; fileId: string }
   // Location maps — Replicate-rendered images of location clusters.
-  | { type: "SAVE_MAP"; map: LocationMap }
-  | { type: "DELETE_MAP"; mapId: string }
+  | { type: "SAVE_BOARD"; board: Board }
+  | { type: "DELETE_BOARD"; boardId: string }
   // Surveys
   | { type: "CREATE_SURVEY"; survey: Survey }
   | { type: "DELETE_SURVEY"; surveyId: string }
@@ -3557,17 +3557,17 @@ function reducer(state: AppState, action: Action): AppState {
       });
 
     // ── Location maps ─────────────────────────────────────────────────────
-    case "SAVE_MAP":
+    case "SAVE_BOARD":
       // Upsert by id — generation and regeneration both flow through here.
       return updateNarrative(state, (n) => ({
         ...n,
-        maps: { ...(n.maps ?? {}), [action.map.id]: action.map },
+        boards: { ...(n.boards ?? {}), [action.board.id]: action.board },
       }));
 
-    case "DELETE_MAP":
+    case "DELETE_BOARD":
       return updateNarrative(state, (n) => {
-        const { [action.mapId]: _removed, ...rest } = n.maps ?? {};
-        return { ...n, maps: rest };
+        const { [action.boardId]: _removed, ...rest } = n.boards ?? {};
+        return { ...n, boards: rest };
       });
 
     // ── Surveys ───────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@
  * computed from each map's hand-placed labels (normalized 0..1 over the image).
  */
 
-import type { Location, LocationMap } from '@/types/narrative';
+import type { Location, Board } from '@/types/narrative';
 import { GLOBAL_MAP_ROOT } from '@/lib/location-clusters';
 
 /** Board geometry, in graph coordinates. 640×480 is 4:3 — matches the aspect
@@ -28,7 +28,7 @@ export const BOARD_V_GAP = 260; // vertical gap between tiers (depth)
 export const BOARD_TITLE_Y = 28;
 
 export type MapBoard = {
-  map: LocationMap;
+  map: Board;
   /** map.rootLocationId — GLOBAL_MAP_ROOT for the synthetic global board. */
   rootId: string;
   /** Tier from the top (0 = forest root / global). */
@@ -72,7 +72,7 @@ function isTopLevel(locations: Record<string, Location>, id: string): boolean {
  * pin them to); they don't disqualify the whole board.
  */
 function isApplicable(
-  map: LocationMap,
+  map: Board,
   presentLocationIds: Set<string>,
 ): boolean {
   if (!map.imageUrl) return false;
@@ -88,14 +88,14 @@ function isApplicable(
  * apply.
  */
 export function buildMapTreeLayout(args: {
-  maps: Record<string, LocationMap>;
+  maps: Record<string, Board>;
   locations: Record<string, Location>;
   presentLocationIds: Set<string>;
 }): MapTreeLayout {
   const { maps, locations, presentLocationIds } = args;
 
   // 1. Applicable maps, keyed by root.
-  const applicable = new Map<string, LocationMap>();
+  const applicable = new Map<string, Board>();
   for (const m of Object.values(maps ?? {})) {
     if (isApplicable(m, presentLocationIds)) applicable.set(m.rootLocationId, m);
   }

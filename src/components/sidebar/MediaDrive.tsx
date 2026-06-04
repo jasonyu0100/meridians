@@ -11,7 +11,7 @@ import { assetManager } from '@/lib/asset-manager';
 import MediaPreview from '@/components/sidebar/MediaPreview';
 import { IconSpinner, IconImage, IconSettings, IconMapPin, IconLocationPin, IconTrash } from '@/components/icons';
 import type { MediaItem } from '@/components/sidebar/MediaPreview';
-import type { Scene, Character, Location, Artifact, ImageRef, LocationMap, MapEdge } from '@/types/narrative';
+import type { Scene, Character, Location, Artifact, ImageRef, Board, MapEdge } from '@/types/narrative';
 import {
   computeLocationClusters,
   clusterSignature,
@@ -20,7 +20,7 @@ import {
   type LocationCluster,
 } from '@/lib/location-clusters';
 import { computeMapScope, buildMapScope } from '@/lib/map-layout';
-import { MapAnnotator } from '@/components/sidebar/MapAnnotator';
+import { BoardAnnotator } from '@/components/sidebar/BoardAnnotator';
 import { HierarchyModal } from '@/components/sidebar/HierarchyModal';
 
 type AssetTab = 'characters' | 'locations' | 'artifacts' | 'maps';
@@ -135,7 +135,7 @@ export default function MediaDrive() {
   const [styleDraft, setStyleDraft] = useState(narrative?.imageStyle ?? '');
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   // The map currently open in the drag-drop label annotator (null = closed).
-  const [annotateMap, setAnnotateMap] = useState<LocationMap | null>(null);
+  const [annotateMap, setAnnotateMap] = useState<Board | null>(null);
   const [batchState, setBatchState] = useState<BatchState | null>(null);
   const batchCancelRef = useRef(false);
   const batchBusy = batchState !== null;
@@ -184,9 +184,9 @@ export default function MediaDrive() {
 
 
   // Saved maps, newest first. A map is keyed by its root location.
-  const savedMaps = useMemo<LocationMap[]>(() => {
-    if (!narrative?.maps) return [];
-    return Object.values(narrative.maps).sort((a, b) => b.updatedAt - a.updatedAt);
+  const savedMaps = useMemo<Board[]>(() => {
+    if (!narrative?.boards) return [];
+    return Object.values(narrative.boards).sort((a, b) => b.updatedAt - a.updatedAt);
   }, [narrative]);
 
   // Top-level (parentless) locations = the sub-regions of the GLOBAL map and the
@@ -206,7 +206,7 @@ export default function MediaDrive() {
   // A saved map is outdated when its parent's direct children (maps are one
   // layer deep) no longer match the snapshot it was generated from — i.e. a
   // child was added or removed under the parent.
-  const savedMapStatus = useCallback((map: LocationMap): 'current' | 'outdated' => {
+  const savedMapStatus = useCallback((map: Board): 'current' | 'outdated' => {
     if (!narrative) return 'current';
     // The Global map's membership is every top-level location, not a subtree.
     const current = map.rootLocationId === GLOBAL_MAP_ROOT
@@ -242,7 +242,7 @@ export default function MediaDrive() {
       parent: Location;
       childCount: number;
       depth: number;
-      map: LocationMap | undefined;
+      map: Board | undefined;
       status: 'current' | 'outdated' | null;
     }[] = [];
     const seen = new Set<string>();
@@ -515,10 +515,10 @@ export default function MediaDrive() {
       regions,
       imageStyle: narrative.imageStyle,
     }, narrative.id);
-    const existing = Object.values(narrative.maps ?? {}).find((m) => m.rootLocationId === rootId);
+    const existing = Object.values(narrative.boards ?? {}).find((m) => m.rootLocationId === rootId);
     const keptLabels = (existing?.labels ?? []).filter((lb) => memberIds.includes(lb.locationId));
     const now = Date.now();
-    const map: LocationMap = {
+    const map: Board = {
       id: existing?.id ?? `map-${rootId}-${now}`,
       rootLocationId: rootId,
       name: displayName,
@@ -532,7 +532,7 @@ export default function MediaDrive() {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    dispatch({ type: 'SAVE_MAP', map });
+    dispatch({ type: 'SAVE_BOARD', board: map });
   }, [narrative, dispatch]);
 
   // ── Single-call wrappers (click-driven). Guard against overlapping work.
@@ -899,7 +899,7 @@ export default function MediaDrive() {
                     <IconLocationPin size={11} />
                   </button>
                   <button
-                    onClick={() => dispatch({ type: 'DELETE_MAP', mapId: globalMap.id })}
+                    onClick={() => dispatch({ type: 'DELETE_BOARD', boardId: globalMap.id })}
                     disabled={busy}
                     title="Delete map"
                     className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-red-300 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -969,7 +969,7 @@ export default function MediaDrive() {
                     <IconLocationPin size={11} />
                   </button>
                   <button
-                    onClick={() => dispatch({ type: 'DELETE_MAP', mapId: map.id })}
+                    onClick={() => dispatch({ type: 'DELETE_BOARD', boardId: map.id })}
                     disabled={busy}
                     title="Delete map"
                     className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-text-dim hover:text-red-300 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -998,7 +998,7 @@ export default function MediaDrive() {
       )}
 
       {annotateMap && (
-        <MapAnnotator
+        <BoardAnnotator
           map={annotateMap}
           onClose={() => setAnnotateMap(null)}
         />

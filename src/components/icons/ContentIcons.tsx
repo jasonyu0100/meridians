@@ -230,6 +230,23 @@ export function IconBelief({ size, ...rest }: P) {
   );
 }
 
+export function IconMind({ size, ...rest }: P) {
+  // Abstract spark-of-thought glyph — a single four-point sparkle. Reads as
+  // "Mind" without the biology: the seat where belief / present / compass /
+  // mode converge.
+  return (
+    <svg {...defaults(size)} {...rest}>
+      <path
+        d="M12 3 Q13.2 10.8 21 12 Q13.2 13.2 12 21 Q10.8 13.2 3 12 Q10.8 10.8 12 3 Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 export function IconWaveform({ size, ...rest }: P) {
   return (
     <svg {...defaults(size)} {...rest}>
