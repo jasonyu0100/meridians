@@ -2839,7 +2839,7 @@ export type GraphViewMode =
   | "threads-full"
   | "search"
   | "driver"
-  | "reasoning"
+  | "map"
   | "network-scene"
   | "network-arc"
   | "network-full"

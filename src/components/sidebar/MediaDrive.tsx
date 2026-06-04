@@ -23,7 +23,7 @@ import { computeMapScope, buildMapScope } from '@/lib/map-layout';
 import { BoardAnnotator } from '@/components/sidebar/BoardAnnotator';
 import { HierarchyModal } from '@/components/sidebar/HierarchyModal';
 
-type AssetTab = 'characters' | 'locations' | 'artifacts' | 'maps';
+type AssetTab = 'characters' | 'locations' | 'artifacts' | 'boards';
 
 type BatchItem =
   | { kind: 'character'; char: Character }
@@ -303,7 +303,7 @@ export default function MediaDrive() {
       ];
     }
 
-    if (tab === 'maps') {
+    if (tab === 'boards') {
       // Every map in ascending map-tree depth (D0 Global first, then mapRows
       // which are already depth-sorted) so a batch fills in top-to-bottom.
       const all: { rootId: string; depth: number; status: 'current' | 'outdated' | null }[] = [];
@@ -362,7 +362,7 @@ export default function MediaDrive() {
         };
       });
     }
-    if (tab === 'maps') {
+    if (tab === 'boards') {
       return savedMaps
         .filter((m) => m.imageUrl)
         .map((m) => ({
@@ -669,7 +669,7 @@ export default function MediaDrive() {
           ['characters', 'Characters'],
           ['locations', 'Locations'],
           ['artifacts', 'Artifacts'],
-          ['maps', 'Maps'],
+          ['boards', 'Boards'],
         ] as [AssetTab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -819,7 +819,7 @@ export default function MediaDrive() {
         {/* Rebuild-hierarchy — AI re-parents every location into a balanced map
             tree. The map tree IS the location containment tree, so this reshapes
             every map at once. */}
-        {tab === 'maps' && Object.keys(narrative.locations).length > 0 && (
+        {tab === 'boards' && Object.keys(narrative.locations).length > 0 && (
           <div className="mb-2 rounded-lg border border-border bg-white/3 px-2.5 py-2">
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0">
@@ -840,7 +840,7 @@ export default function MediaDrive() {
           </div>
         )}
 
-        {tab === 'maps' && mapParents.length === 0 && !showGlobal && (
+        {tab === 'boards' && mapParents.length === 0 && !showGlobal && (
           <div className="px-3 py-8 text-center">
             <p className="text-[11px] text-text-dim/85 mb-1">No parent locations yet.</p>
             <p className="text-[10px] text-text-dim/55 leading-relaxed">
@@ -854,7 +854,7 @@ export default function MediaDrive() {
             top-level territory. Only shown with ≥2 top-level locations (one root
             is already its own top map). Its sub-regions are those top-level
             locations; the rows below are one depth tier deeper (D1+). */}
-        {tab === 'maps' && showGlobal && (() => {
+        {tab === 'boards' && showGlobal && (() => {
           const busy = generating !== null || batchBusy;
           const status = globalMap ? savedMapStatus(globalMap) : null;
           return (
@@ -917,7 +917,7 @@ export default function MediaDrive() {
           );
         })()}
 
-        {tab === 'maps' && mapRows.map(({ parent, childCount, depth, map, status }) => {
+        {tab === 'boards' && mapRows.map(({ parent, childCount, depth, map, status }) => {
           const busy = generating !== null || batchBusy;
           return (
             <div

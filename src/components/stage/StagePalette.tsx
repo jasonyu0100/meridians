@@ -138,7 +138,7 @@ export default function StagePalette({
     graphViewMode === "audio" ||
     graphViewMode === "decision";
   const isPhaseMode = graphViewMode === "mode";
-  const isReasoningMode = graphViewMode === "reasoning";
+  const isMapMode = graphViewMode === "map";
 
   // ── Node navigation for graph modes (phase / reasoning) ──────────────
   // Resolves the active graph + selection from store state and exposes
@@ -163,7 +163,7 @@ export default function StagePalette({
       return { sortedNodes: sorted, selectedIdx, buildContext };
     }
 
-    if (isReasoningMode) {
+    if (isMapMode) {
       const sceneKey = state.resolvedEntryKeys[state.viewState.currentSceneIndex];
       const scene = sceneKey ? narrative.scenes[sceneKey] : null;
       const arcId = scene?.arcId ?? null;
@@ -232,7 +232,7 @@ export default function StagePalette({
   }, [
     narrative,
     isPhaseMode,
-    isReasoningMode,
+    isMapMode,
     state.viewState.inspectorContext,
     state.viewState.currentSceneIndex,
     state.viewState.selectedMapId,
@@ -643,7 +643,7 @@ export default function StagePalette({
   //    palette: node nav, Generate (opens composer), Regenerate (seeds
   //    composer with current arc), Clear (deletes active investigation),
   //    and an active-investigation indicator showing N/M for the arc.
-  if (isReasoningMode) {
+  if (isMapMode) {
     const arcCtx = currentArcMapCtx;
     const activeInv = arcCtx?.active ?? null;
     const totalInv = arcCtx?.list.length ?? 0;

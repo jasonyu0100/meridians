@@ -7,7 +7,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch, IconMapPin } from '@/components/icons';
+import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconList, IconSearch, IconMapPin } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
@@ -93,9 +93,9 @@ export const GRAPH_MODES = new Set<GraphViewMode>([
   'network-scene', 'network-arc', 'network-full',
 ]);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
-type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio';
-const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio'];
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
+type ScenePrimaryMode = 'plan' | 'prose' | 'audio';
+const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio'];
 
 // Module-level state shared with SceneProseView
 let beatPlanLinkedModeGlobal = false;
@@ -344,7 +344,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'decision') return 'decision';
   if (graphViewMode === 'search') return 'search';
   if (graphViewMode === 'driver') return 'driver';
-  if (graphViewMode === 'reasoning') return 'reasoning';
+  if (graphViewMode === 'map') return 'map';
   if (graphViewMode === 'belief') return 'belief';
   if (graphViewMode === 'present') return 'present';
   if (graphViewMode === 'compass') return 'compass';
@@ -390,7 +390,7 @@ export function StageBar() {
   // Present (the realized variables disposition), Compass (the cohort of
   // feasible next directions), and Phase (the working-machinery graph).
   const inMindMode = (
-    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision'
+    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map'
   );
   // "Driver" bundles Entry (the daily-ingest queue + note workspace) and
   // Search (vector search over the narrative). Both render through
@@ -403,14 +403,25 @@ export function StageBar() {
     }
   }, [graphViewMode]);
 
-  const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode' | 'decision'>('belief');
+  const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode' | 'decision' | 'map'>('belief');
   useEffect(() => {
     if (
-      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision'
+      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map'
     ) {
       lastMindSubModeRef.current = graphViewMode;
     }
   }, [graphViewMode]);
+
+  // "State" bundles Board (the nested-map board) and the graph domains
+  // (World / System / Threads / Network). Board is the first sub-tab; the
+  // graph domains follow, carrying their own Scene / Arc / Full scope toggle.
+  const inStateMode = canvasMode === 'graph' || canvasMode === 'board';
+  const lastStateSubModeRef = useRef<GraphViewMode>('board');
+  useEffect(() => {
+    if (canvasMode === 'graph' || canvasMode === 'board') {
+      lastStateSubModeRef.current = graphViewMode;
+    }
+  }, [graphViewMode, canvasMode]);
 
   // ── Current scene ──────────────────────────────────────────────────────
   const currentScene = useMemo<Scene | null>(() => {
@@ -711,7 +722,7 @@ export function StageBar() {
         canvasMode === 'prose' ||
         canvasMode === 'belief' ||
         canvasMode === 'search' ||
-        (canvasMode === 'reasoning' && (activeMap || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
+        (canvasMode === 'map' && (activeMap || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
       ) && <TopBarDivider />}
 
       {/* Export current graph view. Sits on the left rail after arc/scene
@@ -916,7 +927,7 @@ export function StageBar() {
         </div>
       )}
 
-      {canvasMode === 'reasoning' && activeMap && (
+      {canvasMode === 'map' && activeMap && (
         <div className="flex items-center gap-2 ml-3 min-w-0">
           {/* Switching between maps now lives in the bottom palette
               (active-investigation dropdown), matching the mode graph pattern.
@@ -967,7 +978,7 @@ export function StageBar() {
           </button>
         </div>
       )}
-      {canvasMode === 'reasoning' && !activeMap && (currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph) && (
+      {canvasMode === 'map' && !activeMap && (currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph) && (
         <GraphInfoStrip
           graph={(currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph)!}
           copied={reasoningCopied}
@@ -1003,12 +1014,14 @@ export function StageBar() {
 
       {/* Right — Mode toggles */}
       <div className="flex items-center gap-2">
-        {/* Graph sub-controls: scope + domain */}
-        {canvasMode === 'graph' && (
+        {/* State sub-controls: scope + Board / domain sub-tabs */}
+        {inStateMode && (
           <>
-            {/* Scope toggle — Scene / Arc / Full, only for scoped domains
-                (World / System / Threads). Each segment dispatches the mode
-                for its scope from the active domain's triple. */}
+            {/* Scope toggle — Scene / Arc / Full, only for scoped graph domains
+                (World / System / Threads). Hidden on Board (scopeTriple is
+                null) and on the scopeless Network domain. Each segment
+                dispatches the mode for its scope from the active domain's
+                triple. */}
             {scopeTriple && (
               <div className="flex items-center rounded-md overflow-hidden border border-white/10">
                 {(['scene', 'arc', 'full'] as const).map((scope, idx) => {
@@ -1033,9 +1046,23 @@ export function StageBar() {
               </div>
             )}
 
-            {/* Domain tabs */}
+            {/* Sub-tabs — Board first, then the graph domains */}
             <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-              {GRAPH_DOMAINS.map(({ label, scopes, Icon, scopeless }, idx) => {
+              {/* Board — scopeless nested-map board, the first State sub-tab */}
+              <div className="flex items-center">
+                <button
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    canvasMode === 'board'
+                      ? 'bg-white/10 text-text-primary'
+                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                  }`}
+                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'board' })}
+                >
+                  <IconMapPin size={12} />
+                  Board
+                </button>
+              </div>
+              {GRAPH_DOMAINS.map(({ label, scopes, Icon, scopeless }) => {
                 const isActive = graphViewMode === scopes.scene
                   || graphViewMode === scopes.arc
                   || graphViewMode === scopes.full;
@@ -1046,7 +1073,7 @@ export function StageBar() {
                 const preferredScope: Scope = currentScope ?? lastScopeRef.current;
                 return (
                   <div key={label} className="flex items-center">
-                    {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                    <div className="w-px h-4 bg-white/10" />
                     <button
                       className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
                         isActive
@@ -1069,23 +1096,29 @@ export function StageBar() {
           </>
         )}
 
-        {/* Control sub-mode toggle — Belief · Present · Compass · Mode.
+        {/* Control sub-mode toggle — Belief · Compass · Mode.
             Belief is the world view's aggregated belief, built from the
-            stances each thread carries; Present is the realized variables
-            disposition; Compass is the cohort of feasible next directions
-            (precision prediction in simulation, recommendation otherwise);
-            Mode is the working-machinery graph — a graphical context that
-            permeates downstream planning. */}
+            stances each thread carries; Compass is the variable surface —
+            it carries BOTH the current projection (this arc's live variable
+            disposition, formerly "Present") and the forward projection (the
+            cohort of feasible next directions), flipped via an in-view
+            toggle; Mode is the working-machinery graph — a graphical context
+            that permeates downstream planning. */}
         {inMindMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
               { mode: 'belief' as const, label: 'Belief' },
-              { mode: 'present' as const, label: 'Present' },
               { mode: 'compass' as const, label: 'Compass' },
               { mode: 'mode' as const, label: 'Phase' },
               { mode: 'decision' as const, label: 'Decision' },
+              { mode: 'map' as const, label: 'Map' },
             ].map(({ mode, label }, idx) => {
-              const isActive = graphViewMode === mode;
+              // Compass owns the merged variable surface — highlight it for
+              // both the forward (compass) and current (present) projections,
+              // including any state persisted under the old "present" value.
+              const isActive = mode === 'compass'
+                ? (graphViewMode === 'compass' || graphViewMode === 'present')
+                : graphViewMode === mode;
               return (
                 <div key={mode} className="flex items-center">
                   {idx > 0 && <div className="w-px h-4 bg-white/10" />}
@@ -1114,7 +1147,6 @@ export function StageBar() {
         {inSceneMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'reasoning' as ScenePrimaryMode, Icon: IconReasoning, label: 'Map', hidden: currentArcMaps.length === 0 && !currentArcData.hasReasoningGraph && !currentWorldBuildData.hasReasoningGraph },
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
@@ -1172,16 +1204,16 @@ export function StageBar() {
           </div>
         )}
 
-        {/* Main canvas mode selector. Plan/Prose/Audio collapse into "Scene";
-            Belief/Variables/Phase collapse into "Control". The sub-mode
-            toggles render to the left for each cluster. All four tabs stay
-            visible regardless of commit type — Scene on a world commit
-            falls back to the canvas's "No scene selected." empty state. */}
+        {/* Main canvas mode selector. Board/Graph collapse into "State";
+            Plan/Prose/Audio collapse into "Scene"; Belief/Variables/Phase
+            collapse into "Mind". The sub-mode toggles render to the left for
+            each cluster. All tabs stay visible regardless of commit type —
+            Scene on a world commit falls back to the canvas's "No scene
+            selected." empty state. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
             { mode: 'driver' as const, Icon: IconList, label: 'Capture', activeWhen: inCaptureMode },
-            { mode: 'graph' as const, Icon: IconNetwork, label: 'Graph', activeWhen: canvasMode === 'graph' },
-            { mode: 'board' as const, Icon: IconMapPin, label: 'Board', activeWhen: canvasMode === 'board' },
+            { mode: 'state' as const, Icon: IconNetwork, label: 'State', activeWhen: inStateMode },
             { mode: 'control' as const, Icon: IconMind, label: 'Mind', activeWhen: inMindMode },
             { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', activeWhen: inSceneMode },
           ]
@@ -1200,6 +1232,12 @@ export function StageBar() {
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastSceneModeRef.current });
                       } else if (mode === 'control') {
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastMindSubModeRef.current });
+                      } else if (mode === 'state') {
+                        // Already in a State sub-tab → no-op; otherwise jump to
+                        // whichever sub-tab the operator was last on (Board by
+                        // default — the first State sub-tab).
+                        if (inStateMode) return;
+                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastStateSubModeRef.current });
                       } else if (mode === 'driver') {
                         // Already in driver/search → no-op; otherwise jump to
                         // whichever sub-tab the operator was last on.

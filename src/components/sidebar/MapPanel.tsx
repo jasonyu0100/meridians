@@ -95,7 +95,7 @@ export default function MapPanel() {
       dispatch({ type: "SET_SCENE_INDEX", index: idx });
     }
     dispatch({ type: "SET_SELECTED_MAP", mapId: inv.id });
-    dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "reasoning" });
+    dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "map" });
   }
 
   function renderCard(inv: ReasoningMap) {
@@ -262,7 +262,7 @@ export default function MapPanel() {
             const idx = arcLastSceneIndex.get(investigation.arcId);
             if (idx !== undefined) dispatch({ type: "SET_SCENE_INDEX", index: idx });
             dispatch({ type: "SET_SELECTED_MAP", mapId: investigation.id });
-            dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "reasoning" });
+            dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "map" });
           }}
         />
       )}

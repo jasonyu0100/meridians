@@ -1607,7 +1607,7 @@ export default function Stage() {
         <PhaseGraphView />
       ) : graphViewMode === 'board' ? (
         <BoardView />
-      ) : graphViewMode === 'reasoning' ? (
+      ) : graphViewMode === 'map' ? (
         // Scene investigation takes priority. Falls back to legacy arc / world-
         // build CRGs (still produced via the coordination plan path) when the
         // current scene has no investigation of its own.
@@ -1628,7 +1628,7 @@ export default function Stage() {
           />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No investigation on this scene. Create one from the Maps sidebar.</p>
+            <p className="text-text-dim text-sm italic">No map yet. Generate one from the palette.</p>
           </div>
         )
       ) : graphViewMode === 'system-scene' || graphViewMode === 'system-arc' || graphViewMode === 'system-full' ? (

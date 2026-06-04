@@ -143,6 +143,13 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   );
   const isHeadArc = !!headArc && focusedArc.id === headArc.id;
 
+  // Merged Present/Compass surface. `mode` is the entry projection; the user
+  // flips between the CURRENT projection (this arc's live variable
+  // disposition, formerly the standalone "Present" tab) and the FORWARD
+  // projection (the cohort of next-arc directions) via the topbar toggle,
+  // without leaving the view. State persists across arc navigation.
+  const [view, setView] = useState<Mode>(mode);
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [direction, setDirection] = useState<string>(focusedArc.scenarioDirection ?? '');
@@ -477,7 +484,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   // switching to the Compass view; consuming it here covers the render gap
   // (a custom event would fire before this component mounts).
   useEffect(() => {
-    if (mode !== 'compass') return;
+    if (view !== 'compass') return;
     let pending = false;
     try {
       pending = sessionStorage.getItem('meridians:pending-generate-compass') === '1';
@@ -486,10 +493,11 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       // sessionStorage unavailable — skip
     }
     if (pending && !busy) generateCompass();
-    // Run once per mount in compass mode; generateCompass / busy intentionally
-    // omitted from deps to avoid retriggering on every closure change.
+    // Run once per entry into the forward (compass) projection; generateCompass /
+    // busy intentionally omitted from deps to avoid retriggering on every
+    // closure change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [view]);
 
   const removeActiveScenario = () => {
     if (!activeScenario) return;
@@ -506,27 +514,28 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
 
   // The topbar always renders; the fresh-page seed form just replaces the
   // body when there's nothing to display.
-  const isEmpty = mode === 'present'
+  const isEmpty = view === 'present'
     ? presentVariables.length === 0
     : scenarios.length === 0;
 
-  const accent = mode === 'present' ? PRESENT_TRACE_COLOR : COMPASS_TRACE_COLOR;
+  const accent = view === 'present' ? PRESENT_TRACE_COLOR : COMPASS_TRACE_COLOR;
 
-  const onRegenerate = mode === 'present' ? generatePresent : generateCompass;
-  const regenerateLabel = mode === 'present' ? 'Regenerate Present' : 'Regenerate Compass';
+  const onRegenerate = view === 'present' ? generatePresent : generateCompass;
+  const regenerateLabel = view === 'present' ? 'Regenerate Current' : 'Regenerate Forward';
 
-  const canExperiment = mode === 'compass'
+  const canExperiment = view === 'compass'
     && isHeadArc
     && scenarios.some((s) => Array.isArray(s.variables) && s.variables.length > 0);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <VariablesTopBar
-        mode={mode}
+        mode={view}
+        onViewChange={busy ? undefined : setView}
         arcName={focusedArc.name}
         isHeadArc={isHeadArc}
-        variableCount={mode === 'present' ? presentVariables.length : undefined}
-        scenariosCount={mode === 'compass' ? scenarios.length : undefined}
+        variableCount={view === 'present' ? presentVariables.length : undefined}
+        scenariosCount={view === 'compass' ? scenarios.length : undefined}
         error={error}
         busy={busy}
         directionSet={direction.trim().length > 0}
@@ -543,9 +552,9 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         {/* Empty state is suppressed while generating — its centered message
             collides with the streaming overlay's top-flowing reasoning, and
             there's no underlying context worth preserving when empty. */}
-        {isEmpty && !busy && <EmptyState mode={mode} />}
+        {isEmpty && !busy && <EmptyState mode={view} />}
         {!isEmpty && !busy && (
-          mode === 'present' ? (
+          view === 'present' ? (
             <PresentBento
               variables={presentVariables}
               paradigm={focusedArc.presentParadigm}
@@ -587,7 +596,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
         {busy && (
           <ReasoningOverlay
             accent={accent}
-            label={mode === 'present' ? 'Extracting present variables…' : 'Generating compass…'}
+            label={view === 'present' ? 'Extracting current variables…' : 'Generating forward cohort…'}
             reasoning={streamingReasoning}
           />
         )}
@@ -595,7 +604,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
 
       {directionModalOpen && (
         <DirectionModal
-          mode={mode}
+          mode={view}
           arcName={focusedArc.name}
           direction={direction}
           onDirectionChange={setDirection}

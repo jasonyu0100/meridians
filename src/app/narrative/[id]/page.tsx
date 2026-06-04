@@ -303,7 +303,7 @@ export default function NarrativeWorkspace() {
               state.graphViewMode === 'audio' ||
               state.graphViewMode === 'decision' ||
               state.graphViewMode === 'mode' ||
-              state.graphViewMode === 'reasoning') && (
+              state.graphViewMode === 'map') && (
               <StagePalette
                 isBulkActive={!!(bulk.runState?.isRunning || bulk.runState?.isPaused)}
                 isBulkAudioActive={!!(bulkAudio.runState?.isRunning || bulkAudio.runState?.isPaused)}
