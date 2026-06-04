@@ -56,74 +56,63 @@ npm run lint     # ESLint
 ## Architecture
 
 - **Frontend:** Next.js App Router, React 19, Tailwind CSS v4, D3.js
-- **AI:** OpenRouter API (streaming) — raw HTTP, no SDK. Model: DeepSeek v4 Flash across the pipeline (default, analysis, generation, writing)
+- **AI:** OpenRouter API (streaming) — raw HTTP, no SDK. Two-model split (`src/lib/constants.ts`): **DeepSeek v4 Flash** for generation/writing (default, scenes, prose, chat, surveys, game theory) + **Gemini 2.5 Flash** for planning (beat plans, CRG, PRG), the analysis pipeline, and the variable/predictive model
 - **Embeddings:** OpenAI API (text-embedding-3-small, 1536 dimensions) — semantic search over scenes, beats, propositions
 - **Images:** Replicate API (Seedream 4.5) via `/api/generate-image`, `/api/generate-cover`
-- **State:** React Context + useReducer in `src/lib/store.tsx`
-- **Persistence:** IndexedDB (narratives, embeddings) + localStorage (meta) via `src/lib/persistence.ts`, `src/lib/idb.ts`
+- **State:** React Context + useReducer in `src/lib/state/store.tsx`
+- **Persistence:** a single IndexedDB database `meridians-main` (v4; stores: narratives, meta, apiLogs, embeddings, audio, images, texts) + localStorage (active id, prefs) via `src/lib/storage/{db,idb,persistence}.ts`
 - **Types:** Domain model in `src/types/narrative.ts`, scenarios types in `src/types/scenarios.ts`, config in `src/lib/constants.ts`
 
 ## Key Directories
 
+> **[TREE.md](TREE.md) is the authoritative, auto-generated file map** (run `node scripts/gen-tree.mjs` to refresh; each entry's description is derived from the file's own header comment). **[MERMAID.md](MERMAID.md)** is the authoritative connection map (navigation → shell → views → pipeline). The summary below is orientation only — when it disagrees with TREE/MERMAID, trust those.
+
+`src/lib/` is organised by **domain folder**, not flat:
+
 ```
 src/
 ├── app/                    # Next.js routes & API endpoints
-│   ├── series/[id]/        # Main story editor workspace
+│   ├── narrative/[id]/     # THE workspace — main story editor (stage, timeline, inspector, generation)
+│   ├── analysis/           # Text-to-narrative extraction pipeline (kind: create)
+│   ├── extensions/[id]/    # World-scoped file-conversion / extension jobs
 │   ├── manifesto/          # Vision + theory: forces, formulas, validation, GTM
-│   ├── analysis/           # Text-to-narrative extraction pipeline
-│   └── api/                # generate, chat, generate-image, generate-cover, random-idea, suggest-premise, analyze-chapter
-├── components/             # React UI (organized by feature area)
-│   ├── story/              # StoryReader — prose reading/grading/rewriting
-│   ├── canvas/             # WorldGraph — interactive entity/knowledge graph
-│   ├── inspector/          # SidePanel — entity detail views (vertical tab rail)
-│   ├── timeline/           # TimelineStrip, ForceCharts, NarrativeCubeViewer, BranchEval
-│   ├── topbar/             # TopBar, CubeExplorer, FormulaModal, ApiKeyModal
-│   ├── generation/         # GeneratePanel, BranchModal, PacingStrip, MarkovGraph
-│   ├── analytics/          # ForceTracker — stock-type force analysis
-│   ├── auto/               # AutoControlBar, AutoSettingsPanel
-│   ├── scenarios/          # ScenariosPanel, ScenariosControlBar, ScenarioAnalytics
-│   ├── apilogs/            # ApiLogsViewer, ErrorDiagnosis (shared diagnostic + Repair UI)
-│   ├── driver/             # DriverCanvas — daily-ingest workspace (Queue + Search)
-│   ├── slides/             # SlidesPlayer + individual slide components
-│   ├── sidebar/            # SeriesPicker, ThreadPortfolio, MediaDrive
-│   ├── layout/             # AppShell, RulesPanel
-│   ├── wizard/             # CreationWizard — new story flow
-│   └── chat/               # ChatPanel
-├── lib/                    # Core logic
-│   ├── ai/                 # LLM calls (modularised)
-│   │   ├── api.ts          # callGenerate, callGenerateStream
-│   │   ├── context.ts      # branchContext, sceneContext — LLM context building
-│   │   ├── scenes.ts       # generateScenes, generateScenePlan
-│   │   ├── prose.ts        # rewriteSceneProse
-│   │   ├── world.ts        # expandWorld, suggestDirection, generateNarrative
-│   │   ├── review.ts       # reviewBranch, reviewProseQuality, reviewPlanQuality — branch evaluation with guided feedback
-│   │   ├── reconstruct.ts  # reconstructBranch — versioned branch reconstruction from verdicts
-│   │   ├── prompts.ts      # Modular prompt sections (force standards, pacing, deltas, POV, world)
-│   │   ├── json.ts         # JSON parsing utilities + JsonRepairableError
-│   │   ├── repair.ts       # LLM-assisted JSON repair (shares output schemas with generators)
-│   │   └── diagnose.ts     # Pure error → {severity, summary, suggestion, repairHint}
-│   ├── beat-profiles.ts    # Beat Markov matrices, profile presets, sampleBeatSequence
-│   ├── narrative-utils.ts  # Force calculation formulas, cube logic, graph algorithms
-│   ├── pacing-profile.ts           # Markov chain pacing — transition matrices, sequence sampling, presets, prompt generation
-│   ├── store.tsx           # State management + reducer actions
-│   ├── text-analysis.ts    # Corpus → NarrativeState extraction (scene-first: plans → structure → arcs)
-│   ├── auto-engine.ts      # Automated story generation — phase-aware force management
-│   ├── positions.ts        # computeCumulativePositions — participation-derived entity locations
-│   ├── scenarios-engine.ts # Parallel scenario batch — direction builder + virtual state + pool
-│   ├── scenarios-state.ts  # Virtual narrative-state helpers for in-flight runs
-│   ├── scenarios-remap.ts  # Comprehensive ID remap for parallel commits
-│   ├── slides-data.ts      # Slide generation logic
-│   ├── constants.ts        # All tunable config values
-│   ├── persistence.ts      # IndexedDB + localStorage read/write
-│   ├── idb.ts              # IndexedDB wrapper with stores for narratives, embeddings, API logs
-│   ├── search.ts           # Semantic search via cosine similarity over embeddings
-│   ├── embeddings.ts       # Embedding generation, storage, retrieval via OpenAI API
-│   ├── epub-export.ts      # EPUB export
-│   └── api-logger.ts       # API call logging & token tracking
-├── types/
-│   ├── narrative.ts        # Domain types: Scene, Character, Location, Thread, Arc, StructureEvaluation, etc.
-│   └── scenarios.ts        # Scenario-batch run state types
-├── hooks/                  # useAutoPlay, useScenarios, useFeatureAccess
+│   ├── dashboard/ · case-analysis/   # Story picker · seed-work walkthrough
+│   └── api/                # generate, chat, embeddings, generate-image, -cover, -audio
+├── components/             # React UI (by feature area)
+│   ├── stage/              # Center-view surfaces (board, graphs, scene, compass, decision, …) + stage/variables/
+│   ├── inspector/          # Right inspector — entity/thread/scene/node detail views + ChatPanel
+│   ├── timeline/           # TimelineStrip, ForceLineChart, BranchEval, Plan/ProseEval
+│   ├── topbar/             # TopBar + modals (Formula, Definitions, GameTheoryDashboard, ApiLogs, …)
+│   ├── generation/         # GeneratePanel, BranchModal, Reasoning/Coordination modals, Thinking*
+│   ├── capture/            # CaptureView / CapturePalette — daily-ingest (Priors) workspace
+│   ├── scenarios/          # ScenariosPanel, ScenariosBar, ScenarioAnalytics
+│   ├── slides/             # SlidesPlayer (Review deck) + individual slide components
+│   ├── sidebar/            # SurveyPanel, InterviewPanel, MapPanel, MediaDrive, composers
+│   ├── analytics/ · apilogs/ · auto/ · settings/ · wizard/ · shared/ · icons/ · ui/
+├── lib/                    # Core logic (domain-foldered)
+│   ├── ai/                 # LLM calls + prompts boundary (api, context, scenes, prose, world,
+│   │                       #   review, reconstruct, variables, phase-graph, reasoning-graph,
+│   │                       #   surveys, interviews, game-analysis, json, repair, diagnose, …)
+│   ├── prompts/            # All prompt text + output schemas, scoped by domain
+│   │                       #   (core, scenes, world, reasoning, phase, review, paradigm,
+│   │                       #    calibration, principles, analysis, chat, surveys, …)
+│   ├── forces/             # narrative-utils (force formulas), thread-log, thread-category,
+│   │                       #   positions, time-deltas, attribution
+│   ├── graph/              # world-graph, system-graph, network-graph, phase-graph,
+│   │                       #   scene-filter, location-clusters, styling
+│   ├── game-theory/        # game-theory (Nash/ELO/margin), game-theory-player, glossary
+│   ├── pacing/             # pacing-markov, pacing-profiles, beat-profiles, mechanism-profiles
+│   ├── analysis/           # text-analysis, analysis-runner, proposition-classify, portfolio-analytics
+│   ├── scenarios/          # scenarios-engine, scenarios-state, scenarios-remap
+│   ├── search/             # search (cosine similarity), embeddings
+│   ├── state/              # store.tsx (reducer), logs-context, theme-context, wizard-context
+│   ├── storage/            # db.ts (single meridians-main IndexedDB), idb, persistence,
+│   │                       #   asset-manager, audio-store, bulk-stream-store
+│   ├── io/                 # epub-export, package-export/import, graph/scene/research/belief export
+│   ├── map/ · core/ · utils/   # map layout · api-logger/loggers/key-resolve · clipboard/ui
+│   ├── auto-engine.ts · constants.ts · slides-data.ts · priors-compact.ts · branch-tree.ts
+├── types/                  # narrative.ts (domain model), scenarios.ts (scenario-batch run state)
+├── hooks/                  # useAutoPlay, useScenarios, useBulk*, useResolvedScene, useFeatureAccess, …
 └── data/                   # Seed narratives (HP, LOTR, Star Wars, GoT, Reverend Insanity)
 ```
 
@@ -183,10 +172,10 @@ Per-scene strategic decomposition. Purely additive — writes only to `scene.gam
 - **Behavioural tags** derived from trajectory + outcome mix: *extractor* (mostly zero-sum wins), *dominant* (high ELO + Nash rate), *schemer* (asymmetric-info game wins), *responder* (mostly reactive), *steady* (low variance), *rival: X* (recurrent opponent)
 
 ### Files
-- `src/lib/game-theory.ts` — pure math (Nash, stake rank, ELO updates, trajectory history)
+- `src/lib/game-theory/game-theory.ts` — pure math (Nash, stake rank, ELO updates, trajectory history)
 - `src/lib/ai/game-analysis.ts` — LLM decomposition of scenes into games
 - `src/components/topbar/GameTheoryDashboard.tsx` — player rankings, trajectories, outcome mix
-- `src/components/canvas/SceneGameTheoryView.tsx` — per-scene payoff matrix with NASH / REALIZED highlights
+- `src/components/stage/DecisionView.tsx` — per-scene payoff matrix with NASH / REALIZED highlights (the Decision Matrix)
 
 ## Reasoning Graphs & Thinking Modes (src/lib/ai/reasoning-graph.ts, reasoning-graph/)
 
@@ -208,10 +197,10 @@ Each arc's generation sees the **previous arc's reasoning graph** fed in via `fi
 
 ### Files
 - `src/lib/ai/reasoning-graph.ts` — generators (`generateReasoningGraph`, `generateExpansionReasoningGraph`, `generateCoordinationPlan`)
-- `src/lib/ai/reasoning-graph/mode-blocks.ts` — per-mode prompt blocks (anchor discipline, branch-set quality checks)
-- `src/lib/ai/reasoning-graph/sequential-path.ts` — LLM-readable graph rendering + pattern/warning directive extraction
+- `src/lib/prompts/reasoning/mode-blocks.ts` — per-mode prompt blocks (anchor discipline, branch-set quality checks)
+- `src/lib/prompts/reasoning/sequential-path.ts` — LLM-readable graph rendering + pattern/warning directive extraction
 - `src/components/generation/ThinkingAnimation.tsx` — D3 visualisation of the four thinking modes (3-phase: collection → objective → building)
-- `src/components/{canvas/ReasoningGraphView,generation/ReasoningGraphModal}.tsx` — arc graph visualisations
+- `src/components/{stage/ReasoningGraphView,generation/ReasoningGraphModal}.tsx` — arc graph visualisations
 
 ## Phase Reasoning Graph (src/lib/ai/phase-graph.ts, src/lib/prompts/phase/)
 
@@ -236,8 +225,8 @@ The same PRG data block + scope-tailored directive ride into every gen prompt th
 - `src/lib/ai/phase-graph.ts` — `generatePhaseGraph` (LLM mining) + `buildActivePhaseGraphSection` (resolves and renders the current PRG)
 - `src/lib/prompts/phase/generate.ts` — PRG generation prompt
 - `src/lib/prompts/phase/application.ts` — data block, application directive, scoped priority entry, prior-graph rendering
-- `src/lib/phase-graph.ts` — `getActivePhaseGraph`, `prunePhaseGraphs` (reference-counted GC)
-- `src/components/canvas/PhaseGraphView.tsx`, `src/components/inspector/PhaseNodeDetail.tsx` — UI
+- `src/lib/graph/phase-graph.ts` — `getActivePhaseGraph`, `prunePhaseGraphs` (reference-counted GC)
+- `src/components/stage/PhaseGraphView.tsx`, `src/components/inspector/PhaseNodeDetail.tsx` — UI
 
 ## Variable Scenario Modelling (src/lib/ai/variables.ts)
 
@@ -264,14 +253,14 @@ PriorLogit ∈ [-4, +4] log-odds units, scored relative to siblings. Cohort prob
 `rescoreScenario` re-evaluates a single scenario's priorLogit after user edits, anchored against sibling scenarios. Applies the same disciplines.
 
 ### Pipeline integration
-Scenarios feed the **Branch Scenarios** flow (`src/lib/scenarios-engine.ts`, `src/hooks/useScenarios.ts`): one parallel arc continuation per scenario, with the scenario's coordination as primary generation guidance (via `buildDirectionFromScenario`). On commit, every scenario attaches as a sister branch off the same fork; the softmax-top scenario's branch becomes active. The committed branch carries the variable fingerprint (`stampScenarioVariables` writes the scenario's variables onto the new arc's `presentVariables`). Per-scenario failures surface in the panel with Retry / Repair (LLM-assisted JSON fix) / Copy diagnostic — no auto-retry; each failed run is a manual decision point.
+Scenarios feed the **Branch Scenarios** flow (`src/lib/scenarios/scenarios-engine.ts`, `src/hooks/useScenarios.ts`): one parallel arc continuation per scenario, with the scenario's coordination as primary generation guidance (via `buildDirectionFromScenario`). On commit, every scenario attaches as a sister branch off the same fork; the softmax-top scenario's branch becomes active. The committed branch carries the variable fingerprint (`stampScenarioVariables` writes the scenario's variables onto the new arc's `presentVariables`). Per-scenario failures surface in the panel with Retry / Repair (LLM-assisted JSON fix) / Copy diagnostic — no auto-retry; each failed run is a manual decision point.
 
 ### Files
 - `src/lib/ai/variables.ts` — `extractArcPresent`, `generatePlanningScenarios`, `rescoreScenario`, `scenarioProbabilities`, `renderVariablesContextBlock`, `VARIABLE_INTENSITY_LEVELS`, `SCENARIO_COLORS`
-- `src/components/canvas/VariablesView.tsx` — Present + Future surface (Compass)
-- `src/components/canvas/variables/{DispositionEditor,VariableParallelCoords,BentoTile}.tsx` — editing rack, parallel-coords visualisation, layout primitives
+- `src/components/stage/CompassView.tsx` — Present + Future surface (Compass); `src/components/inspector/CompassPanel.tsx` — inspector mirror
+- `src/components/stage/variables/{DispositionEditor,VariableParallelCoords,BentoTile,…}.tsx` — editing rack, parallel-coords visualisation, layout primitives
 - `src/components/scenarios/ScenariosPanel.tsx`, `ScenariosControlBar.tsx`, `ScenarioAnalytics.tsx` — multi-scenario parallel branch generation UI
-- `src/lib/scenarios-engine.ts`, `src/hooks/useScenarios.ts` — runs scenarios as parallel arc continuations
+- `src/lib/scenarios/scenarios-engine.ts`, `src/hooks/useScenarios.ts` — runs scenarios as parallel arc continuations
 - `src/types/scenarios.ts` — `ScenarioRun` (incl. `failedRaw` + `failedHint` for iterative repair)
 
 ## Semantic Search & Embeddings
@@ -295,7 +284,7 @@ Every scene, beat, and proposition is embedded as a **1536-dimensional vector** 
 
 Future capabilities: plot hole detection (missing causal links), tone drift analysis (semantic clustering), automated continuity checks.
 
-Files: `src/lib/search.ts`, `src/lib/embeddings.ts`, `src/lib/ai/search-synthesis.ts`, `src/components/canvas/SearchView.tsx`
+Files: `src/lib/search/search.ts`, `src/lib/search/embeddings.ts`, `src/lib/ai/search-synthesis.ts`, `src/components/stage/SearchView.tsx`
 
 ## Scene Deltas
 
@@ -328,9 +317,9 @@ Derived metrics:
 
 Reference means (calibrated across three meridians works — HP fate-dominant, Alice world-dominant, *Quantifying Narrative Force* system-dominant): `{ fate: 1.4, world: 14, system: 6 }`. Grading curve `g(x̃) = 25 − 17·exp(−k·x̃)` with `k = ln(17/4)`; HP grades 22/23/17, QNF 12/14/25.
 
-Formulas in `src/lib/narrative-utils.ts`. The **cube** model maps forces into 3D space for trajectory analysis.
+Formulas in `src/lib/forces/narrative-utils.ts`. The **cube** model maps forces into 3D space for trajectory analysis.
 
-## Markov Chain Pacing (src/lib/pacing-profile.ts)
+## Markov Chain Pacing (src/lib/pacing/pacing-markov.ts)
 
 Scene generation is guided by **Markov chain sequences** sampled as per-scene directions. This separates *what happens* (LLM) from *how intense it is* (math).
 
@@ -347,7 +336,7 @@ Scene generation is guided by **Markov chain sequences** sampled as per-scene di
 - 5-scene: Classic Arc, Unravelling, Pressure Cooker, Inversion, Deep Dive
 - 8-scene: Introduction, Full Arc, Slow Burn, Roller Coaster, Revelation Arc, Gauntlet
 
-## Prose Profiles & Beat Plans (src/lib/beat-profiles.ts, scripts/analyze-prose.js)
+## Prose Profiles & Beat Plans (src/lib/pacing/beat-profiles.ts, src/lib/ai/ingest.ts)
 
 Prose generation is guided by **beat plans** — structured blueprints that decompose each scene into typed beats before any prose is written. Plans are reverse-engineered from published works by having an LLM analyze existing prose against a fixed taxonomy, then building statistical profiles from the extracted plans.
 
@@ -373,7 +362,7 @@ Prose generation is guided by **beat plans** — structured blueprints that deco
 - **document** — embedded text (letter, newspaper, sign, excerpt)
 - **comic** — humor, irony, absurdity, bathos
 
-**Analysis pipeline** (`scripts/analyze-prose.js`):
+**Analysis pipeline** (runtime, during corpus analysis — `src/lib/ai/ingest.ts` + the analysis pipeline, profiles built in `src/lib/pacing/beat-profiles.ts`):
 1. LLM extracts beat plans from existing prose scenes (fn + mechanism + what + anchor per beat)
 2. Count beat function and mechanism distributions across all scenes
 3. Build **Markov transition matrices** over beat functions (fn→fn probabilities)
@@ -397,7 +386,7 @@ Plan generation also receives a `<rendering-format>` block (`src/lib/prompts/sce
 
 Stories are divided into **phases** with objectives and scene allocations. When a phase activates, direction and constraint vectors are generated. After every arc, a **course correction** pass rewrites the vectors based on thread tension, character cost, rhythm, freshness, and momentum. At phase boundaries, world expansion introduces new entities seeded with knowledge asymmetries.
 
-## Iterative Revision (src/lib/ai/evaluate.ts, reconstruct.ts)
+## Iterative Revision (src/lib/ai/review.ts, reconstruct.ts)
 
 **Evaluation** reads scene summaries and assigns per-scene verdicts:
 - **ok** — structurally sound, continuity intact
@@ -447,12 +436,13 @@ Some in-app concepts have shorter UI labels than their code identifiers — they
 
 | UI label | Code identifier | Where |
 | --- | --- | --- |
-| **Mode Graph** | Phase Reasoning Graph (PRG) | `lib/mode-graph.ts`, `lib/ai/phase-graph.ts`, `components/canvas/ModeGraphView.tsx` |
-| **Compass** | Variable Scenarios (the cohort) | `components/canvas/VariablesView.tsx` |
+| **Mode Graph** | Phase Reasoning Graph (PRG) | `lib/graph/phase-graph.ts`, `lib/ai/phase-graph.ts`, `components/stage/PhaseGraphView.tsx` |
+| **Compass** | Variable Scenarios (the cohort) | `components/stage/CompassView.tsx`, `components/inspector/CompassPanel.tsx` |
 | **Branch Scenarios** | Scenarios batch (formerly Experimentation) | `hooks/useScenarios.ts`, `components/scenarios/ScenariosPanel.tsx` |
-| **Decision Matrix** | Game-theory `scene.gameAnalysis` | `lib/ai/game-analysis.ts`, `components/canvas/SceneGameTheoryView.tsx` |
-| **Driver** / **Driver Queue** | DriverEntry queue + Search workspace | `components/driver/DriverCanvas.tsx`, `lib/ai/driver.ts` |
-| **Network** | Aggregate connection graph | `lib/network-graph.ts`, `components/canvas/NetworkView.tsx` |
+| **Decision Matrix** | Game-theory `scene.gameAnalysis` | `lib/ai/game-analysis.ts`, `components/stage/DecisionView.tsx` |
+| **Priors** / **Capture** (was Driver / Queue) | queued ingest entries + Search workspace | `components/capture/CaptureView.tsx`, `lib/ai/capture.ts`, `lib/priors-compact.ts` |
+| **Maps** | Causal reasoning graph (CRG) view | `components/stage/ReasoningGraphView.tsx` |
+| **Network** | Aggregate connection graph | `lib/graph/network-graph.ts`, `components/stage/NetworkView.tsx` |
 
 When writing prompts, comments, or copy that's user-facing, use the UI label. When referencing code, use the code identifier.
 
@@ -527,11 +517,12 @@ NEXT_PUBLIC_USER_API_KEYS=  # Optional — allow user-provided keys
 ## Constants (src/lib/constants.ts)
 
 Key tuning values:
-- `PROSE_CONCURRENCY = 10` — parallel prose generation
-- `PLAN_CONCURRENCY = 10` — parallel plan generation
+- `PROSE_CONCURRENCY = 10` / `PLAN_CONCURRENCY = 10` — parallel prose / plan generation
 - `ANALYSIS_CONCURRENCY = 20` — parallel text analysis chunks
-- `DEFAULT_CONTEXT_SCENES = 50` — default branch time horizon (overridden per-story in settings)
+- `NEAR_RECENCY_ZONE = 5` / `MID_RECENCY_ZONE = 15` — tiered context resolution: recent scenes get full delta detail, mid get transitions, far get summary + POV/location only
+- `FORCE_WINDOW_SIZE = 10` — rolling window for force computation/normalization
 - `AUTO_STOP_CYCLE_LENGTH = 25` — auto-engine arc limit
+- `STANCE_TAU_CLOSE = 3`, `STANCE_EVIDENCE_SENSITIVITY = 2`, `STANCE_VOLUME_DECAY = 0.9` — thread-stance math (close threshold, evidence→logit sensitivity, attention decay)
 
 ---
 

@@ -49,7 +49,7 @@ This section is the **grounded** value prop — features that ship in the curren
 
 **Semantic retrieval.** Every proposition, beat, and scene is embedded as a 1536-dim vector via OpenAI's `text-embedding-3-small`. Cosine similarity surfaces meaning, not keywords. AI-synthesized overviews cite back to source spans.
 
-**Strategic interrogation.** Surveys (one question × N entities, each answering in-character), interviews (one entity × N questions), per-scene decision matrix (game-theoretic decomposition along 14 axes × 19 game shapes), ELO rankings derived from per-scene stake deltas.
+**Strategic interrogation.** Surveys (one question × N entities, each answering in-character), interviews (one entity × N questions), per-scene decision matrix (game-theoretic decomposition along 11 axes × 16 game shapes), ELO rankings derived from per-scene stake deltas.
 
 ---
 
@@ -111,9 +111,9 @@ This section may be wrong about specifics. The grounded sections above are what 
 - **`src/types/narrative.ts`** — the domain model.
 - **`src/lib/ai/`** — the LLM call surface. All generation routes through `callGenerate` / `callGenerateStream`.
 - **`src/lib/prompts/`** — every prompt, modular and scoped. Phase-graph application, scene generation, beat planning, prose rendering, world expansion all live here.
-- **`src/lib/narrative-utils.ts`** — force formulas, cube logic, graph algorithms.
+- **`src/lib/forces/narrative-utils.ts`** — force formulas, cube logic, graph algorithms.
 
-State: React Context + `useReducer` (`src/lib/store.tsx`). Persistence: IndexedDB (narratives, embeddings, audio, images) + localStorage (active id, prefs). No backend, no auth — your data stays in your browser.
+State: React Context + `useReducer` (`src/lib/state/store.tsx`). Persistence: IndexedDB (narratives, embeddings, audio, images) + localStorage (active id, prefs). No backend, no auth — your data stays in your browser.
 
 ---
 
