@@ -1,3 +1,5 @@
+// Tests for lib/ai/review — branch evaluation (reviewBranch / prose / plan quality) producing per-scene verdicts.
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NarrativeState, Scene, Arc, Thread, Character, Location, BeatPlan } from '@/types/narrative';
 // Mock the AI module

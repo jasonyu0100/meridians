@@ -15,7 +15,7 @@
  */
 
 import type { NarrativeState } from "@/types/narrative";
-import { logWarning, type LogContext } from "@/lib/system-logger";
+import { logWarning, type LogContext } from "@/lib/core/system-logger";
 import type { ReasoningNode } from "./types";
 
 export function validateNodeReferences(

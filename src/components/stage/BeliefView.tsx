@@ -20,7 +20,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { NarrativeState, Thread } from '@/types/narrative';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import {
   buildPortfolioRows,
   buildPortfolioTrajectory,
@@ -33,15 +33,15 @@ import {
   type PortfolioTrajectoryPoint,
   type ThreadMovement,
   type ThreadTrajectoryPoint,
-} from '@/lib/portfolio-analytics';
+} from '@/lib/analysis/portfolio-analytics';
 import {
   THREAD_CATEGORY_HEX,
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
   outcomeColourHex,
   type ThreadCategory,
-} from '@/lib/thread-category';
-import { getThreadStance, getStanceMargin, getStanceProbs, countScenes, sceneOrdinalAt } from '@/lib/narrative-utils';
+} from '@/lib/forces/thread-category';
+import { getThreadStance, getStanceMargin, getStanceProbs, countScenes, sceneOrdinalAt } from '@/lib/forces/narrative-utils';
 
 // ── Category filter chips ──────────────────────────────────────────────────
 

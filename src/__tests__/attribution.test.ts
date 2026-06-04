@@ -1,3 +1,5 @@
+// Tests for attribution derivation — scene/expansion attribution nodes and edges from deltas.
+
 import { describe, expect, it } from "vitest";
 import {
   deriveSceneAttributions,
@@ -5,7 +7,7 @@ import {
   deriveExpansionAttributionEdges,
   ensureSceneAttributions,
   ensureExpansionAttributions,
-} from "@/lib/attribution";
+} from "@/lib/forces/attribution";
 import type {
   AttributionEdge,
   Scene,

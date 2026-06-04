@@ -16,7 +16,7 @@ import {
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
   type ThreadCategory,
-} from '@/lib/thread-category';
+} from '@/lib/forces/thread-category';
 import {
   getStanceMargin,
   getStanceProbs,
@@ -25,7 +25,7 @@ import {
   isThreadClosed,
   softmax,
   updateLogits,
-} from '@/lib/narrative-utils';
+} from '@/lib/forces/narrative-utils';
 import type {
   Artifact,
   Character,

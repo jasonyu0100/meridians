@@ -1,11 +1,12 @@
 'use client';
+// StoryCard — series picker tile rendering a narrative's cover, title, and quick stats.
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useImageUrl } from '@/hooks/useAssetUrl';
 import { ArchetypeIcon } from '@/components/ArchetypeIcon';
-import { scoreColor, timeAgo } from '@/lib/ui-utils';
-import { useStore, narrativeToEntry } from '@/lib/store';
+import { scoreColor, timeAgo } from '@/lib/utils/ui-utils';
+import { useStore, narrativeToEntry } from '@/lib/state/store';
 import type { NarrativeEntry } from '@/types/narrative';
 
 export interface StoryCardProps {

@@ -1,9 +1,11 @@
 'use client';
 
+// LocationDetail — inspector view for a location: prominence, accumulated history graph, threads, and image.
+
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { useImageUrl } from '@/hooks/useAssetUrl';
-import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/scene-filter';
+import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
 import { CollapsibleSection, Paginator, paginateRecent } from './CollapsibleSection';
 import ImagePromptEditor from './ImagePromptEditor';
 import { InlineText, InlineSelect } from './InlineEdit';

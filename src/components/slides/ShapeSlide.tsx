@@ -1,4 +1,5 @@
 'use client';
+// Shape slide — D3 rendering of the work's overall narrative shape (activity arc across scenes).
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

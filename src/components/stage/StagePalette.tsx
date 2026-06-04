@@ -1,4 +1,5 @@
 "use client";
+// StagePalette — command-palette / picker for selecting which Stage center-view surface to display.
 
 import {
   IconAutoLoop,
@@ -17,8 +18,8 @@ import {
 import type { InspectorContext } from "@/types/narrative";
 import { MapComposerModal } from "@/components/sidebar/maps/MapComposerModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
-import { useStore } from "@/lib/store";
-import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/narrative-utils";
+import { useStore } from "@/lib/state/store";
+import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/forces/narrative-utils";
 import SceneRangeSelector, { type SceneRange } from "@/components/timeline/SceneRangeSelector";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

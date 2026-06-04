@@ -1,11 +1,12 @@
 'use client';
+// BeliefSystem slide — shows the work's belief system as thread stances priced across their outcomes.
 
 import React, { useMemo } from 'react';
 import type { SlidesData, BeliefSnapshot } from '@/lib/slides-data';
 import {
   THREAD_CATEGORY_HEX,
   THREAD_CATEGORY_LABEL,
-} from '@/lib/thread-category';
+} from '@/lib/forces/thread-category';
 import { SlideShell, SlideStatStrip } from './SlideShell';
 
 // Outcome palette — matches the belief market view so a thread's outcome

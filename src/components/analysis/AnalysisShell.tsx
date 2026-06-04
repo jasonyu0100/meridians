@@ -1,18 +1,19 @@
 'use client';
+// AnalysisShell — workspace shell for the text-to-narrative extraction pipeline (upload, chunk, analyze, review).
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useLogs } from '@/lib/logs-context';
-import { useStore } from '@/lib/store';
-import { splitCorpusIntoScenes, type AssembleStage } from '@/lib/text-analysis';
-import { analysisRunner } from '@/lib/analysis-runner';
+import { useLogs } from '@/lib/state/logs-context';
+import { useStore } from '@/lib/state/store';
+import { splitCorpusIntoScenes, type AssembleStage } from '@/lib/analysis/text-analysis';
+import { analysisRunner } from '@/lib/analysis/analysis-runner';
 import type { AnalysisJob, AnalysisChunkResult, ApiLogEntry } from '@/types/narrative';
 import { BEAT_FN_LIST } from '@/types/narrative';
 import { ANALYSIS_MAX_CORPUS_WORDS } from '@/lib/constants';
 import { IconSpinner, IconChevronLeft, IconDollar } from '@/components/icons';
 import { IconCheck } from '@/components/icons/EvalIcons';
-import { calculateTotalCost } from '@/lib/api-logger';
-import { loadAnalysisApiLogs, saveAnalysisApiLogs } from '@/lib/persistence';
+import { calculateTotalCost } from '@/lib/core/api-logger';
+import { loadAnalysisApiLogs, saveAnalysisApiLogs } from '@/lib/storage/persistence';
 import { ApiLogsViewer } from '@/components/apilogs/ApiLogsViewer';
 import { detectTitleFromText } from '@/lib/title-detect';
 
@@ -522,7 +523,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                   setAssembling(true);
                   setAssembleStage('Assembling narrative...');
                   try {
-                    const { assembleNarrative } = await import('@/lib/text-analysis');
+                    const { assembleNarrative } = await import('@/lib/analysis/text-analysis');
                     const completedResults = liveJob.results.filter((r): r is AnalysisChunkResult => r !== null);
                     const narrative = await assembleNarrative(
                       liveJob.title,
@@ -1797,7 +1798,7 @@ export function AnalysisPageInner({
   // Load source text from IndexedDB for new analysis jobs
   useEffect(() => {
     if (!isNew || initialJobId) return;
-    import('@/lib/analysis-transfer').then(({ getAnalysisSource }) =>
+    import('@/lib/storage/analysis-transfer').then(({ getAnalysisSource }) =>
       getAnalysisSource().then((text) => {
         if (text) {
           setSourceText(text);
@@ -1863,7 +1864,7 @@ export function AnalysisPageInner({
             onCreated={(id) => {
               setSelectedJobId(id);
               setShowNewSetup(false);
-              import('@/lib/analysis-transfer').then(({ removeAnalysisSource }) => removeAnalysisSource());
+              import('@/lib/storage/analysis-transfer').then(({ removeAnalysisSource }) => removeAnalysisSource());
             }}
           />
         ) : showNewSetup && !sourceText ? (

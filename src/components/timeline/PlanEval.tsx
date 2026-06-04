@@ -1,12 +1,13 @@
 'use client';
+// PlanEval — evaluates beat-plan quality via reviewPlanQuality and shows guided feedback.
 
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { reviewPlanQuality } from '@/lib/ai/review';
 import { editScenePlan } from '@/lib/ai/scenes';
 import { resolveEntry, isScene } from '@/types/narrative';
 import type { PlanEvaluation, PlanSceneEval, PlanVerdict, Scene, Arc } from '@/types/narrative';
-import { resolvePlanForBranch } from '@/lib/narrative-utils';
+import { resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { PLAN_CONCURRENCY } from '@/lib/constants';
 import { IconCheck, IconTilde, IconRunning, IconCross, IconDot, IconReset, IconSparkle, IconPlus } from '@/components/icons/EvalIcons';
 import SceneRangeSelector, { filterKeysBySceneRange, type SceneRange } from './SceneRangeSelector';

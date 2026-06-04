@@ -1,3 +1,5 @@
+// Tests for lib/auto-engine — automated generation: force-mode derivation, directive building, end conditions.
+
 import {
   applyDerivedForceModes,
   buildOutlineDirective,

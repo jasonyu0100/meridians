@@ -1,10 +1,11 @@
 'use client';
+// BoardView — Stage board surface: board-game style map with nested location maps and participant avatars.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { useImageUrl, useImageUrlMap } from '@/hooks/useAssetUrl';
-import { computeCumulativePositions } from '@/lib/positions';
-import { GLOBAL_MAP_ROOT, GLOBAL_MAP_TITLE } from '@/lib/location-clusters';
+import { computeCumulativePositions } from '@/lib/forces/positions';
+import { GLOBAL_MAP_ROOT, GLOBAL_MAP_TITLE } from '@/lib/graph/location-clusters';
 import type { Character, Board, NarrativeState } from '@/types/narrative';
 import { IconMapPin } from '@/components/icons';
 

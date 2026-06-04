@@ -1,3 +1,4 @@
+// Branch-tree primitives — shared layout + ordering for surfaces that render the branch hierarchy.
 import type { Branch } from '@/types/narrative';
 
 /**

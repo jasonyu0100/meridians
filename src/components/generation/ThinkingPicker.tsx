@@ -1,4 +1,5 @@
 "use client";
+// ThinkingPicker — selector for thinking mode/style and resources, with live ThinkingAnimation preview.
 
 import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";
 import { ThinkingAnimation } from "./ThinkingAnimation";

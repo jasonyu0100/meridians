@@ -1,9 +1,11 @@
+// Tests for lib/io/graph-export — graph view export, mode labels, and exportable-mode detection.
+
 import { describe, expect, it } from "vitest";
 import {
   exportGraphView,
   graphViewLabel,
   isExportableGraphMode,
-} from "@/lib/graph-export";
+} from "@/lib/io/graph-export";
 import type {
   Character,
   Location,

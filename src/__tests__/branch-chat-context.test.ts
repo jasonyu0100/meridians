@@ -1,6 +1,8 @@
+// Tests for lib/ai/branch-chat — buildBranchChatContext assembling chat context from branch state.
+
 import { describe, expect, it } from 'vitest';
 import { buildBranchChatContext } from '@/lib/ai/branch-chat';
-import { EMPTY_SYSTEM_GRAPH } from '@/lib/system-graph';
+import { EMPTY_SYSTEM_GRAPH } from '@/lib/graph/system-graph';
 import type {
   Arc,
   Branch,

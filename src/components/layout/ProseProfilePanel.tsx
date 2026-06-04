@@ -1,9 +1,10 @@
 'use client';
+// ProseProfilePanel — modal showing the narrative's prose profile: voice, beat Markov chains, mechanism mix.
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { BEAT_PROFILE_PRESETS } from '@/lib/beat-profiles';
+import { BEAT_PROFILE_PRESETS } from '@/lib/pacing/beat-profiles';
 import {
   ingestProseProfile,
   refineProseProfile,

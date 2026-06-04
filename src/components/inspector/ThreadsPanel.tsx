@@ -14,20 +14,20 @@
  */
 
 import { useMemo, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import {
   buildPortfolioRows,
   currentFocusIds,
   replayThreadsAtIndex,
   type PortfolioRow,
-} from '@/lib/portfolio-analytics';
+} from '@/lib/analysis/portfolio-analytics';
 import {
   THREAD_CATEGORY_HEX,
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
   outcomeColourBg,
   type ThreadCategory,
-} from '@/lib/thread-category';
+} from '@/lib/forces/thread-category';
 
 // ── Probability bar ────────────────────────────────────────────────────────
 

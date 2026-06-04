@@ -1,4 +1,5 @@
 'use client';
+// GasMeter — topbar pill showing accumulated API token spend/cost from the log.
 
 import { useMemo, useState } from 'react';
 import { MODEL_PRICING, DEFAULT_PRICING } from '@/lib/constants';

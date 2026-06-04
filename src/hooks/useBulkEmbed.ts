@@ -9,10 +9,10 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useStore } from '@/lib/store';
-import { generateEmbeddingsBatch, embedPropositions, computeCentroid, resolveEmbedding } from '@/lib/embeddings';
-import { assetManager } from '@/lib/asset-manager';
-import { logInfo, logError } from '@/lib/system-logger';
+import { useStore } from '@/lib/state/store';
+import { generateEmbeddingsBatch, embedPropositions, computeCentroid, resolveEmbedding } from '@/lib/search/embeddings';
+import { assetManager } from '@/lib/storage/asset-manager';
+import { logInfo, logError } from '@/lib/core/system-logger';
 
 export type EmbedMode = 'summaries' | 'propositions' | 'prose';
 

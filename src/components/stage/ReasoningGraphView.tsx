@@ -1,6 +1,7 @@
 "use client";
+// ReasoningGraphView — Stage surface rendering an arc's causal reasoning graph (CRG) nodes and typed edges.
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type {
   ReasoningGraphSnapshot,
   ReasoningNodeSnapshot,
@@ -29,7 +30,7 @@ function ordinalSuffix(n: number): string {
   return "th";
 }
 
-import { REASONING_NODE_COLORS_PLAN, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS_PLAN, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/graph/reasoning-node-colors";
 
 const NODE_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
   ...REASONING_NODE_COLORS_PLAN,

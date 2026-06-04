@@ -1,4 +1,6 @@
-import { apiHeaders } from '@/lib/api-headers';
+// Core LLM call layer — callGenerate / callGenerateStream against /api/generate, plus reasoning/websearch resolvers.
+
+import { apiHeaders } from '@/lib/core/api-headers';
 import { DEFAULT_MODEL, API_TIMEOUT_MS, API_STREAM_TIMEOUT_MS } from '@/lib/constants';
 import { FatalApiError, isFatalStatus } from '@/lib/ai/errors';
 import { REASONING_BUDGETS, WEBSEARCH_MAX_RESULTS, WEBSEARCH_DEFAULT_MAX_TOTAL, type NarrativeState, type WebsearchConfig } from '@/types/narrative';
@@ -41,7 +43,7 @@ export async function callGenerateStream(
   websearch?: WebsearchConfig | null,
 ): Promise<string> {
   const resolvedModel = model ?? DEFAULT_MODEL;
-  const { logApiCall, updateApiLog } = await import('@/lib/api-logger');
+  const { logApiCall, updateApiLog } = await import('@/lib/core/api-logger');
   const logId = logApiCall(caller, prompt.length + (systemPrompt?.length ?? 0), prompt, resolvedModel, systemPrompt);
   const start = performance.now();
 
@@ -155,7 +157,7 @@ export async function callGenerateStream(
 
 export async function callGenerate(prompt: string, systemPrompt: string, maxTokens?: number, caller = 'callGenerate', model?: string, reasoningBudget?: number, jsonMode = true, temperature?: number, websearch?: WebsearchConfig | null): Promise<string> {
   const resolvedModel = model ?? DEFAULT_MODEL;
-  const { logApiCall, updateApiLog } = await import('@/lib/api-logger');
+  const { logApiCall, updateApiLog } = await import('@/lib/core/api-logger');
   const logId = logApiCall(caller, prompt.length + (systemPrompt?.length ?? 0), prompt, resolvedModel, systemPrompt);
   const start = performance.now();
 

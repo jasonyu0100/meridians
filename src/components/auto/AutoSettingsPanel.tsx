@@ -1,7 +1,8 @@
 'use client';
+// AutoSettingsPanel — settings UI for the auto-generation engine (direction, constraints, pacing).
 
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { GuidanceFields } from '@/components/generation/GuidanceFields';
 import type { AutoConfig, AutoEndCondition } from '@/types/narrative';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';

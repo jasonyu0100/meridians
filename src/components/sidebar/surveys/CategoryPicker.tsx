@@ -1,5 +1,7 @@
 "use client";
 
+// CategoryPicker — selector for the eight research-lens categories used by surveys and interviews.
+
 import { useState } from "react";
 import { RESEARCH_CATEGORIES } from "@/lib/research-categories";
 

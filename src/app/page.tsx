@@ -1,4 +1,5 @@
 "use client";
+// Landing / home page — hero, seed-work showcase, creation wizard, mobile-aware layout.
 
 import { StoryCard } from "@/components/cards/StoryCard";
 import { StarField } from "@/components/effects/StarField";
@@ -9,8 +10,8 @@ import {
   ANALYSIS_NARRATIVE_IDS,
   PLAYGROUND_NARRATIVE_IDS,
   useStore,
-} from "@/lib/store";
-import { useWizard } from "@/lib/wizard-context";
+} from "@/lib/state/store";
+import { useWizard } from "@/lib/state/wizard-context";
 import type { NarrativeEntry } from "@/types/narrative";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -380,7 +381,7 @@ export default function HomePage() {
                           setApiKeysOpen(true);
                           return;
                         }
-                        import("@/lib/analysis-transfer").then(
+                        import("@/lib/storage/analysis-transfer").then(
                           ({ setAnalysisSource }) =>
                             setAnalysisSource(analysisText).then(() =>
                               router.push("/analysis?new=1"),

@@ -1,3 +1,5 @@
+// Tests for branch scope control — resolveScopes and default scope state over branch sequence info.
+
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SCOPE_STATE,

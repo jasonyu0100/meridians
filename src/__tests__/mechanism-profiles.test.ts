@@ -8,7 +8,7 @@ import {
   computeMechanismDist,
   resolveMechanismDist,
   DEFAULT_MECHANISM_DIST,
-} from '@/lib/mechanism-profiles';
+} from '@/lib/pacing/mechanism-profiles';
 import type { NarrativeState, Scene, BeatMechanism } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS } from '@/types/narrative';
 // ── Test Fixtures ────────────────────────────────────────────────────────────

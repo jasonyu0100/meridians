@@ -1,7 +1,8 @@
 "use client";
+// MarkovChainModal — visualises the cube-mode transition matrix and pacing fingerprint of the narrative.
 
 import { Modal, ModalHeader } from "@/components/Modal";
-import { computeForceSnapshots, detectCubeCorner } from "@/lib/narrative-utils";
+import { computeForceSnapshots, detectCubeCorner } from "@/lib/forces/narrative-utils";
 import type {
   CubeCornerKey,
   ForceSnapshot,

@@ -8,7 +8,7 @@
  * Modes are immutable once stored. Regeneration produces a new graph
  * (optionally seeded by a prior one); the prior is preserved in storage as
  * long as it is current OR an arc references it (reference-counted GC in
- * `@/lib/phase-graph`).
+ * `@/lib/graph/phase-graph`).
  */
 
 import type { NarrativeState, Phase, PhaseNodeSnapshot, PhaseEdgeSnapshot, PhaseNodeType } from "@/types/narrative";
@@ -17,7 +17,7 @@ import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext } from "./context";
 import { parseJson } from "./json";
-import { logError, logWarning } from "@/lib/system-logger";
+import { logError, logWarning } from "@/lib/core/system-logger";
 import {
   buildPhaseGraphSystem,
   buildModePrompt,
@@ -28,7 +28,7 @@ import {
 import { workIdentityFor } from "@/lib/prompts/paradigm";
 import { VALID_EDGE_TYPES } from "./reasoning-graph/shared";
 import type { ReasoningEdgeType } from "./reasoning-graph/types";
-import { getActivePhaseGraph } from "@/lib/phase-graph";
+import { getActivePhaseGraph } from "@/lib/graph/phase-graph";
 
 /**
  * Render the active phase graph for injection into a downstream prompt:

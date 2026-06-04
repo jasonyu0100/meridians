@@ -1,10 +1,11 @@
 'use client';
+// AppShell — top-level app frame: TopBar, starfield background, and main content slot.
 
 import { type ReactNode, useState, useCallback, useRef } from 'react';
 import TopBar from '@/components/topbar/TopBar';
 import { StarField } from '@/components/effects/StarField';
 import { IconChevronLeft, IconChevronRight } from '@/components/icons';
-import { useTheme } from '@/lib/theme-context';
+import { useTheme } from '@/lib/state/theme-context';
 
 type AppShellProps = {
   children: ReactNode;

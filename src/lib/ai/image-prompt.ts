@@ -8,7 +8,7 @@ import type { NarrativeState } from '@/types/narrative';
 import { callGenerate, resolveReasoningBudget } from './api';
 import { parseJson } from './json';
 import { MAX_TOKENS_SMALL } from '@/lib/constants';
-import { logError, logInfo } from '@/lib/system-logger';
+import { logError, logInfo } from '@/lib/core/system-logger';
 import { buildImagePromptUserPrompt, IMAGE_PROMPT_SYSTEM, type ImagePromptEntityKind } from '@/lib/prompts/image';
 
 export type { ImagePromptEntityKind };

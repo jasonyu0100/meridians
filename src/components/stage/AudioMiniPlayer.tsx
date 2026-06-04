@@ -1,8 +1,9 @@
 'use client';
+// AudioMiniPlayer — compact persistent audio playback control for generated scene narration.
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { IconChevronLeft, IconChevronRight } from '@/components/icons';
 
 export function NowPlayingPill() {

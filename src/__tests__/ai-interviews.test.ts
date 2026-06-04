@@ -1,3 +1,5 @@
+// Tests for lib/ai/interviews — single-subject interview question coercion and subject resolution.
+
 import { describe, expect, it } from "vitest";
 import { coerceQuestion, resolveSubject } from "@/lib/ai/interviews";
 import type {

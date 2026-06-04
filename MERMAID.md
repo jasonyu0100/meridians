@@ -113,7 +113,7 @@ flowchart LR
     SP --> T8["maps → MapPanel"]
     SP --> T9["compass → CompassPanel"]
     SP --> T10["eval (Review) → BranchEval"]
-    T1 --> D["CharacterDetail · LocationDetail · ArtifactDetail<br/>ThreadDetail · ArcDetail · SceneDetail<br/>WorldNodeDetail · KnowledgeDetail · ThreadLogNodeDetail<br/>ReasoningNodeDetail · ModeNodeDetail"]
+    T1 --> D["CharacterDetail · LocationDetail · ArtifactDetail<br/>ThreadDetail · ArcDetail · SceneDetail<br/>WorldNodeDetail · KnowledgeDetail · ThreadLogNodeDetail<br/>ReasoningNodeDetail · PhaseNodeDetail"]
 ```
 
 ---
@@ -174,7 +174,7 @@ flowchart TB
     subgraph UI["UI (components + hooks)"]
         Views["views / panels / modals"]
     end
-    subgraph State["State (lib/store.tsx)"]
+    subgraph State["State (lib/state/store.tsx)"]
         Store["useStore() · AppState · ~110 actions"]
         Derive["withDerivedEntities (manifests + deltas → entities/threads/system)"]
     end
@@ -182,7 +182,7 @@ flowchart TB
         Forces["narrative-utils — Fate=KL · World/System=ΔN+√ΔE · rank-Gaussian"]
         ThreadLog["thread-log.applyThreadDelta — stances · KL infoGain"]
         GT["game-theory — Nash · ELO · margin"]
-        Graphs["world/system/network-graph · positions · mode-graph (PRG)"]
+        Graphs["world/system/network-graph · positions · phase-graph (PRG)"]
         SearchE["embeddings · search"]
     end
     subgraph AI["AI (lib/ai + lib/prompts)"]

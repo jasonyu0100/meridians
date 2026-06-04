@@ -1,9 +1,11 @@
+// Tests for lib/scenarios/scenarios-remap — ID remapping of scenario commits to avoid collisions on merge.
+
 import { describe, it, expect } from 'vitest';
 import {
   buildTakenFromNarrative,
   remapScenarioCommit,
   type TakenIds,
-} from '@/lib/scenarios-remap';
+} from '@/lib/scenarios/scenarios-remap';
 import type {
   Arc,
   Scene,
@@ -14,8 +16,8 @@ import type {
   NarrativeState,
 } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
-import { newNarratorStance } from '@/lib/thread-log';
-import { EMPTY_THREAD_LOG } from '@/lib/thread-log';
+import { newNarratorStance } from '@/lib/forces/thread-log';
+import { EMPTY_THREAD_LOG } from '@/lib/forces/thread-log';
 
 // Every parallel scenario worker mints IDs from the same root narrative, so
 // without remapping every commit collides on `S-1`, `C-1`, `L-1` etc.

@@ -1,10 +1,11 @@
 'use client';
+// ThreadGraphView — Stage surface mapping threads to their participant entities as a D3 force graph.
 
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import type { NarrativeState, Scene } from '@/types/narrative';
 import { resolveEntry, NARRATOR_AGENT_ID } from '@/types/narrative';
-import { resolveEntityName } from '@/lib/narrative-utils';
+import { resolveEntityName } from '@/lib/forces/narrative-utils';
 import {
   classifyThreadCategory,
   THREAD_CATEGORY_HEX,
@@ -12,12 +13,12 @@ import {
   THREAD_CATEGORY_DESCRIPTION,
   THREAD_CATEGORY_ORDER,
   type ThreadCategory,
-} from '@/lib/thread-category';
-import { replayThreadsAtIndex } from '@/lib/portfolio-analytics';
+} from '@/lib/forces/thread-category';
+import { replayThreadsAtIndex } from '@/lib/analysis/portfolio-analytics';
 import { computeGroups } from './graph-utils';
 import { IconChevronLeft, IconChevronRight, IconRefresh } from '@/components/icons';
 import EvalBar from '@/components/timeline/EvalBar';
-import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph-styling';
+import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph/graph-styling';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

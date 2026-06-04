@@ -1,11 +1,12 @@
 'use client';
+// SceneRangeSelector — draggable selector for picking a contiguous scene range on the timeline.
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene } from '@/types/narrative';
 import type { Scene } from '@/types/narrative';
-import { resolvePlanForBranch, resolveProseForBranch } from '@/lib/narrative-utils';
+import { resolvePlanForBranch, resolveProseForBranch } from '@/lib/forces/narrative-utils';
 
 export type SceneRange = { start: number; end: number } | null;
 

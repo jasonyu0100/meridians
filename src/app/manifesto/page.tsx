@@ -1,9 +1,10 @@
 "use client";
+// Manifesto page — long-form vision/theory: forces, formulas, validation, GTM, with LaTeX + D3 visuals.
 
 import { ARCHETYPE_COLORS, ArchetypeIcon } from "@/components/ArchetypeIcon";
 import { StarField } from "@/components/effects/StarField";
 import { ThinkingAnimation } from "@/components/generation/ThinkingAnimation";
-import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS } from "@/lib/graph/reasoning-node-colors";
 import type { ThinkingStyle } from "@/lib/ai/reasoning-graph/types";
 import * as d3 from "d3";
 import dagre from "dagre";

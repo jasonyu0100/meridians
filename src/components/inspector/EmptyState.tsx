@@ -1,5 +1,7 @@
 'use client';
 
+// EmptyState — placeholder shown in the inspector when no entity is selected.
+
 export default function EmptyState() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3">

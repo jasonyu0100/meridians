@@ -1,10 +1,12 @@
+// Branch/prose/plan review — LLM evaluation passes that produce per-scene verdicts and quality critiques.
+
 import type { NarrativeState, StructureReview, ProseEvaluation, ProseSceneEval, PlanEvaluation, PlanSceneEval, SceneEval, SceneVerdict, Scene, Arc } from '@/types/narrative';
 import { resolveEntry, isScene } from '@/types/narrative';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
-import { logInfo } from '@/lib/system-logger';
-import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
+import { logInfo } from '@/lib/core/system-logger';
+import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import {
   buildBranchReviewPrompt,
   buildProseReviewPrompt,

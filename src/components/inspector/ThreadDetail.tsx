@@ -1,5 +1,7 @@
 "use client";
 
+// ThreadDetail — inspector view for a thread: stance across outcomes, lifecycle status, and delta log.
+
 import {
   classifyThreadKind,
   computeBranchArcCoverage,
@@ -9,24 +11,24 @@ import {
   getStanceProbs,
   normalizedEntropy,
   scenesSinceTouched,
-} from "@/lib/narrative-utils";
+} from "@/lib/forces/narrative-utils";
 import {
   classifyThreadCategory,
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_TEXT,
   THREAD_CATEGORY_DESCRIPTION,
-} from "@/lib/thread-category";
-import { buildThreadTrajectory } from "@/lib/portfolio-analytics";
-import { getThreadLogAtScene } from "@/lib/scene-filter";
+} from "@/lib/forces/thread-category";
+import { buildThreadTrajectory } from "@/lib/analysis/portfolio-analytics";
+import { getThreadLogAtScene } from "@/lib/graph/scene-filter";
 import { STANCE_TAU_CLOSE, STANCE_ABANDON_VOLUME } from "@/lib/constants";
 import type { NarrativeState, Thread, ThreadLogNodeType, ThreadParticipant } from "@/types/narrative";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { useMemo, useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
 import { InlineText } from "./InlineEdit";
 import { AttributionsSection } from "./AttributionsSection";
 
-import { outcomeColourHex } from "@/lib/thread-category";
+import { outcomeColourHex } from "@/lib/forces/thread-category";
 
 type Props = {
   threadId: string;

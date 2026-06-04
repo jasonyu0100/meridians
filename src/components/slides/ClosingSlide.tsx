@@ -1,4 +1,5 @@
 'use client';
+// Closing slide — final deck slide with summary takeaway and call-to-action link.
 
 import Link from 'next/link';
 import type { SlidesData } from '@/lib/slides-data';

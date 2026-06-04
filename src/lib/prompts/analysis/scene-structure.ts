@@ -9,7 +9,7 @@
  */
 
 import type { BeatPlan } from '@/types/narrative';
-import { FORCE_REFERENCE_MEANS } from '@/lib/narrative-utils';
+import { FORCE_REFERENCE_MEANS } from '@/lib/forces/narrative-utils';
 import { PROMPT_STANCE_PRINCIPLES } from '../core/belief-calibration';
 
 export const SCENE_STRUCTURE_SYSTEM = `You are a world-view structure extractor. Given a scene's exact prose and its beat plan, extract all entities, deltas, and structural data accurately. The scene may carry narrative events, argued claims, chronicled changes, classified attributes, contest moves, or rule-driven state transitions — extract whichever the paradigm presents. Dense content deserves rich extraction; sparse content deserves minimal extraction. Return only valid JSON.`;

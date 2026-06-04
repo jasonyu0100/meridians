@@ -1,11 +1,13 @@
 "use client";
 
+// SurveyDetailModal — modal displaying a completed survey's aggregated response distribution.
+
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/Modal";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { runSurvey } from "@/lib/ai/surveys";
-import { logError } from "@/lib/system-logger";
-import { surveyToMarkdown } from "@/lib/research-export";
+import { logError } from "@/lib/core/system-logger";
+import { surveyToMarkdown } from "@/lib/io/research-export";
 import type { NarrativeState, Survey, SurveyResponse, SurveyRespondentKind } from "@/types/narrative";
 import { SurveyResultsView } from "./SurveyResults";
 import { CopyButton } from "./CopyButton";

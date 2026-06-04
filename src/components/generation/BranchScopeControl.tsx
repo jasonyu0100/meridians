@@ -1,4 +1,5 @@
 "use client";
+// BranchScopeControl — picker for the context scope (time horizon) a branch operation sees.
 
 import { useEffect, useMemo, useState } from "react";
 import type { BranchScope } from "@/lib/ai/branch-chat";

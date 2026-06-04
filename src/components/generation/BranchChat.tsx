@@ -1,4 +1,5 @@
 "use client";
+// BranchChat — conversational interface for querying and steering a branch's timeline.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -6,9 +7,9 @@ import {
   streamBranchChatTurn,
   type BranchScope,
 } from "@/lib/ai/branch-chat";
-import { resolveEntrySequence } from "@/lib/narrative-utils";
-import { useStore } from "@/lib/store";
-import { logError } from "@/lib/system-logger";
+import { resolveEntrySequence } from "@/lib/forces/narrative-utils";
+import { useStore } from "@/lib/state/store";
+import { logError } from "@/lib/core/system-logger";
 import type {
   Branch,
   BranchChatThread,

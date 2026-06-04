@@ -1,3 +1,5 @@
+// LLM-assisted JSON repair — fixes malformed generation output using the caller's own output schema spec.
+
 import { callGenerate } from './api';
 import { ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_SMALL } from '@/lib/constants';
 import { cleanJson } from './json';

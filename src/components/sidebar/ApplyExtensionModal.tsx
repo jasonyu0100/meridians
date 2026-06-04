@@ -21,13 +21,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import {
   prepareExtensionApply,
   commitPreparedApply,
   type MergeSummary,
   type PreparedApply,
-} from '@/lib/file-conversion';
+} from '@/lib/io/file-conversion';
 import type { SourceFile } from '@/types/narrative';
 
 type Props = {

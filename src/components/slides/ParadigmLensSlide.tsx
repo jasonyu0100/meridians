@@ -1,4 +1,5 @@
 'use client';
+// ParadigmLens slide — D3 view framing the work through its dominant-force paradigm (Classic/Show/Paper/Opus).
 
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';

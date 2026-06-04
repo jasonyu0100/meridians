@@ -1,9 +1,11 @@
 "use client";
 
+// MapComposerModal — modal for composing and generating a board/map image for a location subtree.
+
 import { Modal, ModalBody, ModalHeader, StreamingStatus } from "@/components/Modal";
 import { generateReasoningGraph } from "@/lib/ai/reasoning-graph";
-import { useStore } from "@/lib/store";
-import { logError } from "@/lib/system-logger";
+import { useStore } from "@/lib/state/store";
+import { logError } from "@/lib/core/system-logger";
 import type { ReasoningMap } from "@/types/narrative";
 import { useMemo, useState } from "react";
 import type { ThinkingResource, ThinkingStyle } from "@/lib/ai";

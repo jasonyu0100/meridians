@@ -1,4 +1,5 @@
 'use client';
+// VariableGridChart — grid/heatmap view of variable intensities across the scenario cohort.
 
 import { useMemo } from 'react';
 import { categoryColor } from '@/lib/ai/variables';

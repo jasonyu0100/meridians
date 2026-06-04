@@ -1,3 +1,5 @@
+// Tests for lib/analysis/portfolio-analytics — thread portfolio snapshots, rows, trajectories, and focus ids.
+
 import { describe, it, expect } from 'vitest';
 import type { NarrativeState, Thread, Scene } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
@@ -6,7 +8,7 @@ import {
   buildPortfolioRows,
   buildThreadTrajectory,
   currentFocusIds,
-} from '@/lib/portfolio-analytics';
+} from '@/lib/analysis/portfolio-analytics';
 
 function mkThread(id: string, overrides: Partial<Thread> = {}): Thread {
   const outcomes = overrides.outcomes ?? ['yes', 'no'];

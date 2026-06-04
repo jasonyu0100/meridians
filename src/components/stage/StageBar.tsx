@@ -1,18 +1,19 @@
 'use client';
+// StageBar — top toolbar for the Stage: switches the active center-view surface and exposes per-surface actions.
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene, type Scene, type ProseVersion, type PlanVersion } from '@/types/narrative';
 import type { GraphViewMode } from '@/types/narrative';
-import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
+import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
 import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconList, IconSearch, IconMapPin } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
-import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
-import { exportBeliefSnapshot } from '@/lib/belief-export';
-import { exportScenePlan, exportSceneProse } from '@/lib/scene-export';
+import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/io/graph-export';
+import { exportBeliefSnapshot } from '@/lib/io/belief-export';
+import { exportScenePlan, exportSceneProse } from '@/lib/io/scene-export';
 
 type Scope = 'scene' | 'arc' | 'full';
 

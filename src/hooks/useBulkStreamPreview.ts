@@ -1,4 +1,5 @@
 'use client';
+// useBulkStreamPreview — cross-scene bulk stream subscription for the plan/prose/audio scene views.
 
 import { useEffect, useState } from 'react';
 

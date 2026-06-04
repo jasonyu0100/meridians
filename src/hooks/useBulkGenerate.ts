@@ -1,15 +1,16 @@
 'use client';
+// useBulkGenerate — manages parallel plan/prose/game generation across a scene range with progress.
 
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { generateScenePlan, generateSceneProse, reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { FatalApiError } from '@/lib/ai/errors';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
 import { PLAN_CONCURRENCY, PROSE_CONCURRENCY, GAME_CONCURRENCY } from '@/lib/constants';
-import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
+import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { filterKeysBySceneRange, type SceneRange } from '@/components/timeline/SceneRangeSelector';
-import { logError } from '@/lib/system-logger';
+import { logError } from '@/lib/core/system-logger';
 
 type BulkMode = 'plan' | 'prose' | 'game';
 

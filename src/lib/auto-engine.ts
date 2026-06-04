@@ -1,9 +1,11 @@
+// Auto-engine — narrative-pressure analysis across the three forces; builds phase-aware generation directives.
+
 import { AUTO_STOP_CYCLE_LENGTH } from "@/lib/constants";
 import {
   computeForceSnapshots,
   FORCE_WINDOW_SIZE,
-} from "@/lib/narrative-utils";
-import { logInfo } from "@/lib/system-logger";
+} from "@/lib/forces/narrative-utils";
+import { logInfo } from "@/lib/core/system-logger";
 import type {
   AutoConfig,
   AutoEndCondition,
@@ -23,7 +25,7 @@ import {
   getThreadStance,
   normalizedEntropy,
   getStanceProbs,
-} from "@/lib/narrative-utils";
+} from "@/lib/forces/narrative-utils";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

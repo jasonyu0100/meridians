@@ -12,9 +12,9 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { generateSceneGameAnalysis } from "@/lib/ai";
-import { useSceneBulkStream } from "@/lib/bulk-stream-store";
+import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 import {
   arcCost,
   isSolo,
@@ -24,8 +24,8 @@ import {
   realizedOutcome,
   resolvePlayerName,
   stakeRank,
-} from "@/lib/game-theory";
-import { GT_TIPS } from "@/lib/game-theory-glossary";
+} from "@/lib/game-theory/game-theory";
+import { GT_TIPS } from "@/lib/game-theory/game-theory-glossary";
 import {
   ACTION_AXIS_LABELS,
   GAME_TYPE_LABELS,

@@ -1,3 +1,5 @@
+// Tests for sentence tokenization — splitting prose into sentences while respecting abbreviations.
+
 import { describe, it, expect } from 'vitest';
 // Import the function - we'll need to export it from scenes.ts
 // For now, we'll duplicate the implementation for testing

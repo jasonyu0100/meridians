@@ -1,3 +1,5 @@
+// Tests for lib/forces/thread-category — thread category thresholds, logit energy, and volatile/developing splits.
+
 import { describe, it, expect } from 'vitest';
 import type { Thread, ThreadLogNode } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
@@ -5,7 +7,7 @@ import {
   classifyThreadCategory,
   computeRecentLogitEnergy,
   CATEGORY_THRESHOLDS,
-} from '@/lib/thread-category';
+} from '@/lib/forces/thread-category';
 
 // Thread category = the single surface-level vocabulary every view renders.
 // These tests lock the cross-sectional thresholds (saturating / contested /

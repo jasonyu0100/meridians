@@ -18,7 +18,7 @@
 import type { NarrativeState } from '@/types/narrative';
 import { callGenerate, resolveWebsearch } from './api';
 import { parseJson } from './json';
-import { logError, logInfo } from '@/lib/system-logger';
+import { logError, logInfo } from '@/lib/core/system-logger';
 
 const PRIOR_ENTRY_SYSTEM = `You produce a single Driver ENTRY — a short, structured fragment of thought captured into an operator's daily-ingest workspace.
 

@@ -4,7 +4,7 @@
  * Tests for IndexedDB-based asset storage (embeddings, images, audio)
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { assetManager } from '@/lib/asset-manager';
+import { assetManager } from '@/lib/storage/asset-manager';
 // Helper to compare vectors with Float32 precision tolerance
 function expectVectorsClose(actual: number[] | null, expected: number[], tolerance = 1e-6) {
   expect(actual).toBeTruthy();

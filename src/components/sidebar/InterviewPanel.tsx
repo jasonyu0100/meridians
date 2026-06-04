@@ -1,7 +1,9 @@
 "use client";
 
+// InterviewPanel — sidebar panel for running and browsing one-subject-many-questions interviews.
+
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type { Interview } from "@/types/narrative";
 import { InterviewDetailModal } from "./surveys/InterviewDetailModal";
 import { InterviewComposerModal } from "./surveys/InterviewComposerModal";

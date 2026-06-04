@@ -1,4 +1,5 @@
 'use client';
+// BranchContextModal — inspect the LLM context (narrative/scene/outline) assembled for the active branch.
 
 import React, { useMemo, useState, useCallback } from 'react';
 import type { NarrativeState } from '@/types/narrative';

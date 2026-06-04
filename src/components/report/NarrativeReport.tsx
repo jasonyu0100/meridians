@@ -1,15 +1,16 @@
 "use client";
+// NarrativeReport — AI-generated analytical report over the narrative's propositions and structure.
 
 import { IconClose, IconRefresh } from "@/components/icons";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
 import { generateReportAnalysis, type ReportAnalysis } from "@/lib/ai/report";
 import { MOMENT_SPARKLINE_WINDOW } from "@/lib/constants";
-import { detectCubeCorner } from "@/lib/narrative-utils";
+import { detectCubeCorner } from "@/lib/forces/narrative-utils";
 import {
   ALL_PROFILE_LABELS,
   BASE_COLORS,
   classificationLabel,
-} from "@/lib/proposition-classify";
+} from "@/lib/analysis/proposition-classify";
 import { computeSlidesData, type SlidesData } from "@/lib/slides-data";
 import type {
   CubeCornerKey,

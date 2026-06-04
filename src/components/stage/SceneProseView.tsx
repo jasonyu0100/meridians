@@ -1,14 +1,15 @@
 "use client";
+// SceneProseView — Stage surface rendering a scene's prose with generate/rewrite controls and version history.
 
 import { generateSceneProse, rewriteSceneProse, reverseEngineerScenePlan } from "@/lib/ai";
 import { useResolvedProse, useResolvedPlan } from "@/hooks/useResolvedScene";
-import { getResolvedPlanVersion } from "@/lib/narrative-utils";
-import { useStore } from "@/lib/store";
+import { getResolvedPlanVersion } from "@/lib/forces/narrative-utils";
+import { useStore } from "@/lib/state/store";
 import type { NarrativeState, Scene } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSceneBulkStream } from "@/lib/bulk-stream-store";
+import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
-import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
+import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/analysis/proposition-classify";
 import { Markdown } from "@/components/ui/Markdown";
 
 // Persistent state that survives component unmounts (scene navigation, world commits)

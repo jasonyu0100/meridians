@@ -16,7 +16,7 @@ import * as jsonModule from '@/lib/ai/json';
 // Mock modules
 vi.mock('@/lib/ai/api');
 vi.mock('@/lib/ai/json');
-vi.mock('@/lib/system-logger');
+vi.mock('@/lib/core/system-logger');
 describe('synthesizeSearchResults', () => {
   let mockNarrative: NarrativeState;
   let mockResults: SearchResult[];

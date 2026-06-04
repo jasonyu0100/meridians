@@ -4,7 +4,7 @@
  */
 
 import type { BeatPlan, BeatProseMap, Beat } from '@/types/narrative';
-import { logWarning, logError, logInfo, type LogContext } from '@/lib/system-logger';
+import { logWarning, logError, logInfo, type LogContext } from '@/lib/core/system-logger';
 
 export interface ValidationResult {
   valid: boolean;

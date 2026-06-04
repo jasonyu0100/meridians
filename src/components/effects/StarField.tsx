@@ -1,4 +1,5 @@
 "use client";
+// StarField — canvas-rendered animated twinkling starfield background effect.
 
 import { useEffect, useRef } from "react";
 

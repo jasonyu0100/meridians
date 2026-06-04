@@ -1,8 +1,9 @@
 'use client';
+// ActivityLineChart — D3 line chart of per-scene Activity (weighted force aggregate) over the timeline.
 
 import { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
-import type { ActivityPoint } from '@/lib/narrative-utils';
+import type { ActivityPoint } from '@/lib/forces/narrative-utils';
 import type { ChartStyle } from './ForceLineChart';
 
 // Orange above the zero line = high-activity scenes; light blue below =

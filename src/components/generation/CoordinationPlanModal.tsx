@@ -1,4 +1,5 @@
 "use client";
+// CoordinationPlanModal — view and regenerate a branch's coordination plan.
 
 import { IconRefresh } from "@/components/icons";
 import type {
@@ -9,7 +10,7 @@ import type {
   InspectorContext,
 } from "@/types/narrative";
 import type { ReasoningEdgeType } from "@/lib/ai";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { buildPlanPathForArc } from "@/lib/ai";
 import * as d3 from "d3";
 import dagre from "dagre";
@@ -18,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // ── Styling Constants ────────────────────────────────────────────────────────
 
 // Extended color language for coordination node types
-import { REASONING_NODE_COLORS_PLAN } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS_PLAN } from "@/lib/graph/reasoning-node-colors";
 
 const NODE_COLORS: Record<CoordinationNodeType, { fill: string; stroke: string; text: string }> = REASONING_NODE_COLORS_PLAN;
 

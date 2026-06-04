@@ -1,3 +1,5 @@
+// Tests for lib/store reducer — state transitions over narratives, scenes, branches, and prose/plan versions.
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { AppState, NarrativeState, Scene, Branch, ProseVersion, PlanVersion } from '@/types/narrative';
 // Import the reducer logic - we'll test the reducer directly

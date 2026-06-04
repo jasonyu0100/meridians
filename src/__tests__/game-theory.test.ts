@@ -1,3 +1,5 @@
+// Tests for lib/game-theory — Nash equilibria, margin scoring, ELO updates, and rating trajectories.
+
 import {
   actionNames,
   arcCost,
@@ -19,7 +21,7 @@ import {
   resolvePlayerName,
   rowOutcomes,
   stakeRank,
-} from "@/lib/game-theory";
+} from "@/lib/game-theory/game-theory";
 import {
   ACTION_AXIS_LABELS,
   GAME_TYPE_LABELS,

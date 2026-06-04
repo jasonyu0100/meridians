@@ -1,9 +1,10 @@
 'use client';
+// Providers — composes Store, Theme, Wizard, and narrative-scoped Logs context providers.
 
-import { LogsProvider } from '@/lib/logs-context';
-import { StoreProvider, useStore } from '@/lib/store';
-import { ThemeProvider } from '@/lib/theme-context';
-import { WizardProvider } from '@/lib/wizard-context';
+import { LogsProvider } from '@/lib/state/logs-context';
+import { StoreProvider, useStore } from '@/lib/state/store';
+import { ThemeProvider } from '@/lib/state/theme-context';
+import { WizardProvider } from '@/lib/state/wizard-context';
 import type { ReactNode } from 'react';
 
 // Bridge component that reads activeNarrativeId from store and passes to LogsProvider

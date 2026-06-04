@@ -10,7 +10,7 @@
 
 import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { DEFAULT_MODEL } from '../constants';
-import { logInfo, logError } from '../system-logger';
+import { logInfo, logError } from '@/lib/core/system-logger';
 import { buildSearchSynthesisPrompt } from '@/lib/prompts/search';
 import { buildSearchSynthesisSystem, workIdentityFor } from '@/lib/prompts/paradigm';
 import type { NarrativeState, SearchResult, SearchSynthesis } from '@/types/narrative';

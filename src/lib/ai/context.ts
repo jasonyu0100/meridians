@@ -1,14 +1,16 @@
+// LLM context builders — assembles narrative/branch/scene context blocks fed into generation prompts.
+
 import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
 import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS, WORLD_NODE_CATEGORY } from '@/types/narrative';
-import { buildCumulativeSystemGraph, getThreadStance, getStanceMargin, getStanceProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/narrative-utils';
+import { buildCumulativeSystemGraph, getThreadStance, getStanceMargin, getStanceProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/forces/narrative-utils';
 import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
-import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/thread-category';
+import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/forces/thread-category';
 import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@/lib/constants';
-import { getIntroducedIds } from '@/lib/scene-filter';
-import { computeCumulativePositions } from '@/lib/positions';
-import { describeTimeGap, formatTimeDelta } from '@/lib/time-deltas';
-import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/network-graph';
-import { getActivePhaseGraph } from '@/lib/phase-graph';
+import { getIntroducedIds } from '@/lib/graph/scene-filter';
+import { computeCumulativePositions } from '@/lib/forces/positions';
+import { describeTimeGap, formatTimeDelta } from '@/lib/forces/time-deltas';
+import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/graph/network-graph';
+import { getActivePhaseGraph } from '@/lib/graph/phase-graph';
 import { buildSequentialPath } from '@/lib/prompts/reasoning/sequential-path';
 import {
   ELO_INITIAL,
@@ -23,7 +25,7 @@ import {
   realizedIsNash,
   realizedOutcome,
   stakeRank,
-} from '@/lib/game-theory';
+} from '@/lib/game-theory/game-theory';
 
 // ── Prose Profile Builder ─────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 "use client";
+// BeatProfile slide — shows the work's beat-function distribution and Markov transition profile.
 
 import type { SlidesData } from "@/lib/slides-data";
 import type { BeatFn } from "@/types/narrative";

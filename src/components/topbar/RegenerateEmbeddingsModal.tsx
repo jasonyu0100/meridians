@@ -1,4 +1,5 @@
 'use client';
+// RegenerateEmbeddingsModal — trigger bulk re-embedding of scenes/beats/propositions with mode selection.
 
 import { useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';

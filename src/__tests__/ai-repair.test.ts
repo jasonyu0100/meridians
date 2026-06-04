@@ -1,3 +1,5 @@
+// Tests for lib/ai/repair — repairJsonOutput LLM-assisted JSON fix with per-caller schema specs (callGenerate mocked).
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { repairJsonOutput, type RepairPlan } from '@/lib/ai/repair';
 import { callGenerate } from '@/lib/ai/api';

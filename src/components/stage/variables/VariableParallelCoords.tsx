@@ -1,4 +1,5 @@
 'use client';
+// VariableParallelCoords — parallel-coordinates plot of scenarios as paths across the shared variable pool.
 
 import { useMemo } from 'react';
 import { categoryColor } from '@/lib/ai/variables';

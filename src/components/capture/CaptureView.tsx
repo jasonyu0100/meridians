@@ -24,13 +24,13 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import type { Prior } from '@/types/narrative';
 import { SearchView } from '@/components/stage/SearchView';
 import { CompactPreviewModal } from './CompactPreviewModal';
 import { CapturePalette } from './CapturePalette';
 import { generatePrior } from '@/lib/ai';
-import { logError } from '@/lib/system-logger';
+import { logError } from '@/lib/core/system-logger';
 
 function isLocked(entry: Prior): boolean {
   return !!entry.usedInFileIds && entry.usedInFileIds.length > 0;

@@ -1,14 +1,16 @@
 'use client';
 
+// NarrativeRail — left vertical rail navigating between narrative views and tools.
+
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import { useImageUrl } from '@/hooks/useAssetUrl';
-import { useStore } from '@/lib/store';
-import { useWizard } from '@/lib/wizard-context';
+import { useStore } from '@/lib/state/store';
+import { useWizard } from '@/lib/state/wizard-context';
 import { ArchetypeIcon } from '@/components/ArchetypeIcon';
 import { IconPlus } from '@/components/icons';
-import { scoreColor, timeAgo } from '@/lib/ui-utils';
+import { scoreColor, timeAgo } from '@/lib/utils/ui-utils';
 import type { NarrativeEntry } from '@/types/narrative';
 
 const TILE_BG = 'rgba(255,255,255,0.06)';

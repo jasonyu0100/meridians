@@ -1,5 +1,7 @@
 'use client';
 
+// CollapsibleSection — reusable expand/collapse inspector section with optional paginated item list.
+
 import { useState } from 'react';
 import { INSPECTOR_PAGE_SIZE } from '@/lib/constants';
 

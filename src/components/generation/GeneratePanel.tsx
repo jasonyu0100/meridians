@@ -1,4 +1,5 @@
 "use client";
+// GeneratePanel — main scene/arc generation controls with expand-world and error-repair surfacing.
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
 import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
@@ -19,7 +20,7 @@ import {
   getArcSceneCount,
   isPlanComplete,
 } from "@/lib/auto-engine";
-import { nextId } from "@/lib/narrative-utils";
+import { nextId } from "@/lib/forces/narrative-utils";
 import {
   buildPresetSequence,
   buildSequenceFromModes,
@@ -29,9 +30,9 @@ import {
   PACING_PRESETS,
   samplePacingSequence,
   type PacingSequence,
-} from "@/lib/pacing-markov";
-import { useStore } from "@/lib/store";
-import { logError } from "@/lib/system-logger";
+} from "@/lib/pacing/pacing-markov";
+import { useStore } from "@/lib/state/store";
+import { logError } from "@/lib/core/system-logger";
 import type { CubeCornerKey, NarrativeState, TimeUnit } from "@/types/narrative";
 import {
   DEFAULT_STORY_SETTINGS,

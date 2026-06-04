@@ -1,3 +1,5 @@
+// Tests for lib/ai/reconstruct — reconstructBranch versioned branch rebuild from review verdicts (AI deps mocked).
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reconstructBranch, type ReconstructionProgress, type ReconstructionCallbacks } from '@/lib/ai/reconstruct';
 import type { NarrativeState, Scene, Branch, StructureReview, WorldBuild } from '@/types/narrative';

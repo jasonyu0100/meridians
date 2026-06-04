@@ -1,7 +1,8 @@
 "use client";
+// ThemeModal — pick the app colour theme from preview swatches.
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
-import { THEMES, useTheme, type Theme } from "@/lib/theme-context";
+import { THEMES, useTheme, type Theme } from "@/lib/state/theme-context";
 
 type ThemeOption = {
   id: Theme;

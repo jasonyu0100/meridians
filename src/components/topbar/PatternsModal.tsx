@@ -1,7 +1,8 @@
 'use client';
+// PatternsModal — detect and display recurring narrative patterns under a selected paradigm.
 
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter, StreamingStatus } from '@/components/Modal';
 import { detectPatterns } from '@/lib/ai';
 import { IconRefresh } from '@/components/icons';

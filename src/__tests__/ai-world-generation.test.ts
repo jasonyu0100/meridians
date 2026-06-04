@@ -1,3 +1,5 @@
+// Tests for lib/ai/world — world generation/expansion (generateNarrative, expandWorld) with the AI layer mocked.
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NarrativeState, Character, Location, Thread } from '@/types/narrative';
 // Mock the AI API layer
@@ -25,7 +27,7 @@ vi.mock('@/lib/ai/prompts', () => ({
   buildForceStandardsPrompt: vi.fn().mockReturnValue('Mock force standards prompt'),
 }));
 // Mock pacing-profile to avoid unrelated markov chain logic
-vi.mock('@/lib/pacing-markov', () => ({
+vi.mock('@/lib/pacing/pacing-markov', () => ({
   buildSequencePrompt: vi.fn().mockReturnValue('Mock sequence prompt'),
   buildIntroductionSequence: vi.fn().mockReturnValue({
     steps: [],
@@ -33,12 +35,12 @@ vi.mock('@/lib/pacing-markov', () => ({
   }),
 }));
 // Mock embeddings — they hit a network endpoint that isn't available in tests.
-vi.mock('@/lib/embeddings', () => ({
+vi.mock('@/lib/search/embeddings', () => ({
   generateEmbeddingsBatch: vi.fn().mockResolvedValue([]),
   computeCentroid: vi.fn().mockReturnValue([]),
   resolveEmbedding: vi.fn().mockResolvedValue(null),
 }));
-vi.mock('@/lib/asset-manager', () => ({
+vi.mock('@/lib/storage/asset-manager', () => ({
   assetManager: {
     storeEmbedding: vi.fn().mockResolvedValue('emb-1'),
   },

@@ -1,11 +1,12 @@
 "use client";
+// CoordinationPlanSetupModal — configure thinking style/resources and generate a coordination plan.
 
 import { Modal, ModalBody, ModalHeader, StreamingStatus } from "@/components/Modal";
 import { generateCoordinationPlan, type ThinkingResource, type PlanGuidance, type ThinkingStyle, type ThreadTarget } from "@/lib/ai";
-import { useStore } from "@/lib/store";
-import { logError } from "@/lib/system-logger";
+import { useStore } from "@/lib/state/store";
+import { logError } from "@/lib/core/system-logger";
 import type { CoordinationPlan, Thread } from "@/types/narrative";
-import { isThreadAbandoned, isThreadClosed } from "@/lib/narrative-utils";
+import { isThreadAbandoned, isThreadClosed } from "@/lib/forces/narrative-utils";
 import { useCallback, useMemo, useState } from "react";
 import { GuidanceFields } from "./GuidanceFields";
 import { CoordinationPlanModal } from "./CoordinationPlanModal";

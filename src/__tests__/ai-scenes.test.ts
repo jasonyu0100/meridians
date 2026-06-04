@@ -1,3 +1,5 @@
+// Tests for lib/ai/scenes — scene-structure generation with deltas, paced by Markov sequence.
+
 import type {
   BeatPlan,
   Character,
@@ -63,7 +65,7 @@ vi.mock("@/lib/markov", () => ({
   DEFAULT_TRANSITION_MATRIX: {},
 }));
 // Mock beat profiles
-vi.mock("@/lib/beat-profiles", () => ({
+vi.mock("@/lib/pacing/beat-profiles", () => ({
   resolveProfile: vi.fn().mockReturnValue({
     register: "literary",
     stance: "close_third",
@@ -98,7 +100,7 @@ vi.mock("@/lib/beat-profiles", () => ({
 // hit a real fetch('/api/embeddings') which fails with Invalid URL in the
 // Node test env. Stub returns 1536-dim zero vectors so downstream code is
 // happy.
-vi.mock("@/lib/embeddings", () => ({
+vi.mock("@/lib/search/embeddings", () => ({
   generateEmbeddings: vi.fn(async (texts: string[]) =>
     texts.map(() => new Array(1536).fill(0)),
   ),
@@ -114,7 +116,7 @@ vi.mock("@/lib/embeddings", () => ({
 // AssetManager reads from IndexedDB and must be init()'d before use. Scene
 // generation stores every embedding through it — stub storage so the assertions
 // don't require a running DB.
-vi.mock("@/lib/asset-manager", () => {
+vi.mock("@/lib/storage/asset-manager", () => {
   let counter = 0;
   return {
     assetManager: {

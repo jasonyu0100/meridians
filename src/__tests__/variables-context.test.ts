@@ -1,3 +1,5 @@
+// Tests for lib/ai/variables — variables context block rendering and inheritance of prior-arc Present annotations.
+
 import { describe, it, expect } from 'vitest';
 import { renderVariablesContextBlock, type VariablesContextSource } from '@/lib/ai/variables';
 import type { Arc, Scene, Character, Location, Artifact, Thread } from '@/types/narrative';

@@ -1,8 +1,10 @@
 'use client';
 
+// ArcDetail — inspector view for an arc: force snapshots, activity curve, and current narrative position.
+
 import { useMemo } from 'react';
-import { useStore } from '@/lib/store';
-import { computeForceSnapshots, computeActivityCurve, classifyCurrentPosition, getEffectivePovId } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { computeForceSnapshots, computeActivityCurve, classifyCurrentPosition, getEffectivePovId } from '@/lib/forces/narrative-utils';
 import type { Scene } from '@/types/narrative';
 import { InlineText } from './InlineEdit';
 

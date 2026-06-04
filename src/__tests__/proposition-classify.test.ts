@@ -16,7 +16,7 @@ import {
   BASE_COLORS_GLOBAL,
   ALL_PROFILE_LABELS,
   propKey,
-} from '@/lib/proposition-classify';
+} from '@/lib/analysis/proposition-classify';
 // ── propKey ──────────────────────────────────────────────────────────────────
 describe('propKey', () => {
   it('creates correct key format', () => {

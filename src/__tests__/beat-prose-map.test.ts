@@ -1,3 +1,5 @@
+// Tests for buildBeatProseMapFromCounts (lib/ai/scenes) — mapping beat counts to prose-section assignments.
+
 import { describe, it, expect } from 'vitest';
 import { buildBeatProseMapFromCounts } from '@/lib/ai/scenes';
 import type { Beat } from '@/types/narrative';

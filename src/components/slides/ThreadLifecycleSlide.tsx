@@ -1,4 +1,5 @@
 'use client';
+// ThreadLifecycle slide — shows thread arcs from setup through escalation to payoff/closure, coloured by logType.
 
 import type { SlidesData } from '@/lib/slides-data';
 import { SlideShell } from './SlideShell';

@@ -1,3 +1,5 @@
+// Slides data — assembles the analysis walkthrough deck (force/cube/entity stats) from a narrative.
+
 import type {
   NarrativeState, Scene, ForceSnapshot, CubeCornerKey,
   Character, Location, Artifact, Thread,
@@ -7,7 +9,7 @@ import type {
   SystemNodeType,
 } from '@/types/narrative';
 import { NARRATIVE_CUBE, isScene, resolveEntry } from '@/types/narrative';
-import { computeSamplerFromPlans } from '@/lib/beat-profiles';
+import { computeSamplerFromPlans } from '@/lib/pacing/beat-profiles';
 import {
   computeForceSnapshots,
   computeRawForceTotals,
@@ -34,9 +36,9 @@ import {
   type NarrativeArchetype,
   type NarrativeScale,
   type WorldDensity,
-} from '@/lib/narrative-utils';
-import { classifyThreadCategory, type ThreadCategory } from '@/lib/thread-category';
-import { buildThreadTrajectory } from '@/lib/portfolio-analytics';
+} from '@/lib/forces/narrative-utils';
+import { classifyThreadCategory, type ThreadCategory } from '@/lib/forces/thread-category';
+import { buildThreadTrajectory } from '@/lib/analysis/portfolio-analytics';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

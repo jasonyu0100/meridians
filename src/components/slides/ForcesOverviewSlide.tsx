@@ -1,4 +1,5 @@
 'use client';
+// ForcesOverview slide — D3 overview of the three force curves (Fate/World/System) over the work.
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

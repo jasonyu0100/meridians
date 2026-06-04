@@ -1,6 +1,8 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+// CompassPanel — inspector surface for an arc's Present/Future variable scenarios (the Compass).
+
+import { useStore } from "@/lib/state/store";
 import type { Arc } from "@/types/narrative";
 import { useMemo } from "react";
 

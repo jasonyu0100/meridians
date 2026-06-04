@@ -1,5 +1,7 @@
 "use client";
 
+// SurveyResults — renders a survey's response distribution as charts/tables by question type.
+
 import { useMemo, useState } from "react";
 import type { NarrativeState, Survey, SurveyResponse } from "@/types/narrative";
 

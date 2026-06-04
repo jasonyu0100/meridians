@@ -1,7 +1,8 @@
 'use client';
+// ApiLogsModal — modal wrapper around ApiLogsViewer with Narrative/Analysis/Misc scope selector.
 
-import { useLogs } from '@/lib/logs-context';
-import { useStore } from '@/lib/store';
+import { useLogs } from '@/lib/state/logs-context';
+import { useStore } from '@/lib/state/store';
 import { ApiLogsViewer } from '@/components/apilogs/ApiLogsViewer';
 import { useState } from 'react';
 

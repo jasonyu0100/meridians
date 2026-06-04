@@ -1,8 +1,10 @@
 'use client';
 
+// WorldNodeDetail — inspector view for an entity world-graph node: content, type, and edges.
+
 import { useMemo } from 'react';
-import { useStore } from '@/lib/store';
-import { getWorldNodesAtScene } from '@/lib/scene-filter';
+import { useStore } from '@/lib/state/store';
+import { getWorldNodesAtScene } from '@/lib/graph/scene-filter';
 import { WORLD_FILL } from '@/components/stage/graph-utils';
 import { WORLD_NODE_TYPES, type WorldNodeType } from '@/types/narrative';
 import { InlineText, InlineSelect } from './InlineEdit';

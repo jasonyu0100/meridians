@@ -1,16 +1,17 @@
 "use client";
+// SearchView — Stage semantic-search surface: embedding query with AI-synthesized overview and inline citations.
 
 import { synthesizeSearchResults } from "@/lib/ai/search-synthesis";
 import {
   resolvePlanForBranch,
   resolveProseForBranch,
-} from "@/lib/narrative-utils";
-import { searchNarrative } from "@/lib/search";
-import { useStore } from "@/lib/store";
+} from "@/lib/forces/narrative-utils";
+import { searchNarrative } from "@/lib/search/search";
+import { useStore } from "@/lib/state/store";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
-import { classificationColor, classificationLabel } from "@/lib/proposition-classify";
+import { classificationColor, classificationLabel } from "@/lib/analysis/proposition-classify";
 
 type QueryResponse = {
   question: string;

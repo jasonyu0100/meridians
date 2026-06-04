@@ -26,10 +26,10 @@ import { callGenerate, callGenerateStream, resolveWebsearch } from "./api";
 import { PLANNING_MODEL } from "@/lib/constants";
 import { narrativeContext, getStateAtIndex } from "./context";
 import { parseJson } from "./json";
-import { buildCumulativeSystemGraph, getStanceProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/narrative-utils";
-import { classifyThreadCategory, computeRecentLogitEnergy, THREAD_CATEGORY_GUIDANCE, formatThreadGuidance } from "@/lib/thread-category";
+import { buildCumulativeSystemGraph, getStanceProbs, isThreadAbandoned, isThreadClosed, resolveEntityName, scenesSinceTouched } from "@/lib/forces/narrative-utils";
+import { classifyThreadCategory, computeRecentLogitEnergy, THREAD_CATEGORY_GUIDANCE, formatThreadGuidance } from "@/lib/forces/thread-category";
 import { applyDerivedForceModes } from "@/lib/auto-engine";
-import { logError, logWarning } from "@/lib/system-logger";
+import { logError, logWarning } from "@/lib/core/system-logger";
 
 /** Inference-tier node types — the ones the universal inference-shape
  *  applies to. Priors (character/location/artifact/system/fate) are
@@ -37,7 +37,7 @@ import { logError, logWarning } from "@/lib/system-logger";
  *  commitments, not inferences. Anything else is inference-tier and the
  *  prompt requires `considered` on it. */
 const INFERENCE_TIER_TYPES = new Set(["reasoning", "pattern", "warning", "chaos", "conclusion"]);
-import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/network-graph";
+import { aggregateNetworkGraph, summarizeNetworkState } from "@/lib/graph/network-graph";
 import type { CoordinationPlanContext } from "./scenes";
 import { buildActivePhaseSection } from "./phase-graph";
 

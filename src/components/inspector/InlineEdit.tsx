@@ -1,4 +1,5 @@
 'use client';
+// InlineEdit — inline click-to-edit primitives for the inspector.
 
 import { useEffect, useRef, useState } from 'react';
 

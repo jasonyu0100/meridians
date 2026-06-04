@@ -1,4 +1,5 @@
 "use client";
+// VersionHistoryTree — renders the semantic v1.2.3 version tree of a scene's prose/plan for selection and diffing.
 
 import { useState, useMemo } from "react";
 import type { ProseVersion, PlanVersion } from "@/types/narrative";

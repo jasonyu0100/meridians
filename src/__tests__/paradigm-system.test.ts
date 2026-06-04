@@ -47,8 +47,8 @@ import {
   type WorldBuild,
 } from "@/types/narrative";
 import { resolveWebsearch } from "@/lib/ai/api";
-import { withDerivedEntities } from "@/lib/store";
-import { getRelationshipsAtScene } from "@/lib/scene-filter";
+import { withDerivedEntities } from "@/lib/state/store";
+import { getRelationshipsAtScene } from "@/lib/graph/scene-filter";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 

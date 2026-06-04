@@ -1,4 +1,6 @@
-import { computeCumulativePositions } from "@/lib/positions";
+// Tests for lib/forces/positions — participation-derived cumulative entity locations across scenes.
+
+import { computeCumulativePositions } from "@/lib/forces/positions";
 import type { NarrativeState, Scene } from "@/types/narrative";
 import { describe, expect, it } from "vitest";
 

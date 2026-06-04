@@ -1,7 +1,8 @@
 'use client';
+// Mechanism slide — shows the prose delivery-mechanism distribution (dialogue, thought, action, etc.).
 
 import type { SlidesData } from '@/lib/slides-data';
-import { flattenFnMechDist } from '@/lib/mechanism-profiles';
+import { flattenFnMechDist } from '@/lib/pacing/mechanism-profiles';
 import { SlideShell } from './SlideShell';
 
 const MECH_COLORS: Record<string, string> = {

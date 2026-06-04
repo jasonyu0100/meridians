@@ -1,14 +1,15 @@
 "use client";
+// ScenePanel — Stage scene detail container: header, POV/location, and the plan/prose/audio sub-views for a scene.
 
 import { useCallback, useRef, useState } from "react";
 import { IconEye, IconLocationPin } from "@/components/icons";
-import { getEffectivePovId } from "@/lib/narrative-utils";
-import { useStore } from "@/lib/store";
+import { getEffectivePovId } from "@/lib/forces/narrative-utils";
+import { useStore } from "@/lib/state/store";
 import {
   computeSceneOffsets,
   formatCumulative,
   formatTimeDelta,
-} from "@/lib/time-deltas";
+} from "@/lib/forces/time-deltas";
 import { resolveEntry, type Scene } from "@/types/narrative";
 import { InlineText } from "@/components/inspector/InlineEdit";
 

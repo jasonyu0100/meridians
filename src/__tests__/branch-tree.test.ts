@@ -1,3 +1,5 @@
+// Tests for branch-tree — entry origins, parent resolution, and layout of the git-like branch tree.
+
 import { describe, expect, it } from 'vitest';
 import {
   buildEntryOrigin,

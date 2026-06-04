@@ -1,9 +1,10 @@
 'use client';
+// PacingStrip — horizontal strip showing the sampled cube-mode pacing sequence for an arc.
 
 import { useState, useEffect, useRef } from 'react';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import type { CubeCornerKey } from '@/types/narrative';
-import type { PacingSequence } from '@/lib/pacing-markov';
+import type { PacingSequence } from '@/lib/pacing/pacing-markov';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

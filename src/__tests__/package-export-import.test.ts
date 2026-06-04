@@ -4,9 +4,9 @@
  * Tests for .meridians ZIP package export and import
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { exportAsPackage, estimateExportSize } from '@/lib/package-export';
-import { importFromPackage, validatePackage, getPackageInfo, formatBytes } from '@/lib/package-import';
-import { assetManager } from '@/lib/asset-manager';
+import { exportAsPackage, estimateExportSize } from '@/lib/io/package-export';
+import { importFromPackage, validatePackage, getPackageInfo, formatBytes } from '@/lib/io/package-import';
+import { assetManager } from '@/lib/storage/asset-manager';
 import type { NarrativeState, Scene, Character, Location } from '@/types/narrative';
 // Helper to convert Blob to File (with ArrayBuffer for Node.js compatibility)
 async function blobToFile(blob: Blob, filename: string): Promise<File> {

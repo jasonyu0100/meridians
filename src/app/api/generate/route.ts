@@ -1,7 +1,9 @@
+// POST /api/generate — proxy to OpenRouter for LLM generation (streaming + non-streaming).
+
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveKey } from '@/lib/resolve-api-key';
+import { resolveKey } from '@/lib/core/resolve-api-key';
 import { DEFAULT_MODEL, MAX_TOKENS_DEFAULT, DEFAULT_TEMPERATURE } from '@/lib/constants';
-import { logError } from '@/lib/system-logger';
+import { logError } from '@/lib/core/system-logger';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 

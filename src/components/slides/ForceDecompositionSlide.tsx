@@ -1,4 +1,5 @@
 'use client';
+// ForceDecomposition slide — D3 breakdown of Fate/World/System contributions across the work.
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

@@ -1,8 +1,10 @@
 'use client';
 
+// KnowledgeDetail — inspector view for a system knowledge-graph node: content, type, and edges.
+
 import { useMemo, useCallback } from 'react';
-import { useStore } from '@/lib/store';
-import { buildCumulativeSystemGraph, scoreSystemNodes } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { buildCumulativeSystemGraph, scoreSystemNodes } from '@/lib/forces/narrative-utils';
 import { SYSTEM_NODE_TYPES, type SystemNodeType } from '@/types/narrative';
 import { CollapsibleSection } from './CollapsibleSection';
 import { InlineText, InlineSelect } from './InlineEdit';

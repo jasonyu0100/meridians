@@ -1,7 +1,9 @@
 "use client";
 
+// SurveyPanel — sidebar panel for running and browsing one-question-many-respondents surveys.
+
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type { Survey, SurveyResponse } from "@/types/narrative";
 import { SurveyDetailModal } from "./surveys/SurveyDetailModal";
 import { SurveyComposerModal } from "./surveys/SurveyComposerModal";

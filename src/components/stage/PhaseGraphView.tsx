@@ -8,13 +8,13 @@
  * mirrors the ScenePlanView pattern.
  */
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type { Phase, ReasoningGraphSnapshot } from "@/types/narrative";
-import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
+import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/graph/reasoning-node-colors";
 import { ReasoningGraphView } from "./ReasoningGraphView";
 import { generatePhaseGraph } from "@/lib/ai/phase-graph";
-import { nextId } from "@/lib/narrative-utils";
-import { logError } from "@/lib/system-logger";
+import { nextId } from "@/lib/forces/narrative-utils";
+import { logError } from "@/lib/core/system-logger";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const resolveModeNodeColor = (type: string) => {

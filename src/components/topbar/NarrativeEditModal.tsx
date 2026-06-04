@@ -1,9 +1,10 @@
 'use client';
+// NarrativeEditModal — edit narrative meta (title, premise, cover) with AI-assisted refinement.
 
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
-import { apiHeaders } from '@/lib/api-headers';
-import { assetManager } from '@/lib/asset-manager';
+import { useStore } from '@/lib/state/store';
+import { apiHeaders } from '@/lib/core/api-headers';
+import { assetManager } from '@/lib/storage/asset-manager';
 import { useImageUrl } from '@/hooks/useAssetUrl';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import { refineNarrativeMeta } from '@/lib/ai/premise';

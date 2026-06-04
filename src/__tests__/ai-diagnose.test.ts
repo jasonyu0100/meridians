@@ -1,3 +1,5 @@
+// Tests for lib/ai/diagnose — error pattern-matcher driving the Repair / Retry diagnostics.
+
 import { describe, expect, it } from 'vitest';
 import { diagnoseError } from '@/lib/ai/diagnose';
 import { JsonRepairableError } from '@/lib/ai/json';

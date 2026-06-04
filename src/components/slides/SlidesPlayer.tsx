@@ -1,4 +1,5 @@
 'use client';
+// SlidesPlayer — Review deck driver: computes slides data and steps through the slide sequence.
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { NarrativeState } from '@/types/narrative';

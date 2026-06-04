@@ -19,8 +19,8 @@ import {
   realizedOutcome,
   resolvePlayerName,
   stakeRank,
-} from "@/lib/game-theory";
-import { GT_TIPS } from "@/lib/game-theory-glossary";
+} from "@/lib/game-theory/game-theory";
+import { GT_TIPS } from "@/lib/game-theory/game-theory-glossary";
 import { resolveEntry, isScene } from "@/types/narrative";
 import type {
   ActionAxis,

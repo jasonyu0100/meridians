@@ -1,9 +1,10 @@
 'use client';
+// Narrative editor page — main story workspace: stage, timeline, inspector, generation, auto/bulk play.
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useStore } from '@/lib/store';
-import { useWizard } from '@/lib/wizard-context';
+import { useStore } from '@/lib/state/store';
+import { useWizard } from '@/lib/state/wizard-context';
 import { IconChevronDown } from '@/components/icons';
 import AppShell from '@/components/layout/AppShell';
 import Sidebar from '@/components/layout/DrivePanel';

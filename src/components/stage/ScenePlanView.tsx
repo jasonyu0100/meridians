@@ -1,9 +1,10 @@
 "use client";
+// ScenePlanView — Stage surface showing a scene's beat-by-beat plan with generate/rewrite/reverse-engineer controls.
 
 import { IconClose, IconPlus } from "@/components/icons";
 import { generateScenePlan, rewriteScenePlan, reverseEngineerScenePlan } from "@/lib/ai";
 import { useResolvedPlan, useResolvedProse } from "@/hooks/useResolvedScene";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type {
   Beat,
   BeatFn,
@@ -18,8 +19,8 @@ import { BEAT_FN_LIST, BEAT_MECHANISM_LIST } from "@/types/narrative";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlanCandidatesModal } from "./PlanCandidatesModal";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
-import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/proposition-classify";
-import { useSceneBulkStream } from "@/lib/bulk-stream-store";
+import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/analysis/proposition-classify";
+import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 
 const FN_COLORS: Record<string, string> = {
   breathe: "#6b7280",

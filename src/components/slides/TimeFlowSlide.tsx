@@ -1,4 +1,5 @@
 'use client';
+// TimeFlow slide — D3 view of how narrative time flows across scenes (chronology, jumps, pacing).
 
 import React, { useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
@@ -9,7 +10,7 @@ import {
   computeSceneOffsets,
   formatCumulative,
   timeDeltaToSeconds,
-} from '@/lib/time-deltas';
+} from '@/lib/forces/time-deltas';
 import { SlideShell, SlideCard, SlideStatStrip } from './SlideShell';
 
 const FORWARD = '#fbbf24';

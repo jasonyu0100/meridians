@@ -1,5 +1,7 @@
+// Tests for lib/core/system-logger — error/warning log entries, subscription callbacks, and narrative scoping.
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { logError, logWarning, onSystemLog, setSystemLoggerNarrativeId, type LogContext } from '@/lib/system-logger';
+import { logError, logWarning, onSystemLog, setSystemLoggerNarrativeId, type LogContext } from '@/lib/core/system-logger';
 describe('system-logger', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;

@@ -1,3 +1,5 @@
+// Tests for lib/pacing/pacing-markov — transition matrices, sequence sampling, presets, and pacing prompts.
+
 import {
   buildIntroductionSequence,
   buildPresetSequence,
@@ -12,7 +14,7 @@ import {
   PACING_PRESETS,
   samplePacingSequence,
   type TransitionMatrix,
-} from "@/lib/pacing-markov";
+} from "@/lib/pacing/pacing-markov";
 import type { CubeCornerKey, NarrativeState, Scene } from "@/types/narrative";
 import { describe, expect, it } from "vitest";
 // ── Test Fixtures ────────────────────────────────────────────────────────────

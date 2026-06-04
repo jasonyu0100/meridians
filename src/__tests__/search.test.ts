@@ -9,13 +9,13 @@
  * - Top arc/scene/beat identification
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { searchNarrative } from '@/lib/search';
+import { searchNarrative } from '@/lib/search/search';
 import type { NarrativeState, Scene, BeatPlan } from '@/types/narrative';
-import * as embeddingsModule from '@/lib/embeddings';
+import * as embeddingsModule from '@/lib/search/embeddings';
 import { SEARCH_TOP_K_SCENES, SEARCH_TOP_K_PROPOSITIONS } from '@/lib/constants';
 // Mock embeddings module
-vi.mock('@/lib/embeddings');
-vi.mock('@/lib/system-logger');
+vi.mock('@/lib/search/embeddings');
+vi.mock('@/lib/core/system-logger');
 describe('searchNarrative', () => {
   let mockNarrative: NarrativeState;
   let mockResolvedKeys: string[];

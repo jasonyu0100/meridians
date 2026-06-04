@@ -1,13 +1,15 @@
 'use client';
 
+// MediaDrive — sidebar gallery of generated images and media assets for the narrative.
+
 import { useMemo, useState, useCallback, useRef } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { useImageUrl } from '@/hooks/useAssetUrl';
 import { resolveEntry } from '@/types/narrative';
-import { apiHeaders } from '@/lib/api-headers';
-import { logApiCall, updateApiLog } from '@/lib/api-logger';
+import { apiHeaders } from '@/lib/core/api-headers';
+import { logApiCall, updateApiLog } from '@/lib/core/api-logger';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
-import { assetManager } from '@/lib/asset-manager';
+import { assetManager } from '@/lib/storage/asset-manager';
 import MediaPreview from '@/components/sidebar/MediaPreview';
 import { IconSpinner, IconImage, IconSettings, IconMapPin, IconLocationPin, IconTrash } from '@/components/icons';
 import type { MediaItem } from '@/components/sidebar/MediaPreview';
@@ -18,8 +20,8 @@ import {
   GLOBAL_MAP_ROOT,
   GLOBAL_MAP_TITLE,
   type LocationCluster,
-} from '@/lib/location-clusters';
-import { computeMapScope, buildMapScope } from '@/lib/map-layout';
+} from '@/lib/graph/location-clusters';
+import { computeMapScope, buildMapScope } from '@/lib/map/map-layout';
 import { BoardAnnotator } from '@/components/sidebar/BoardAnnotator';
 import { HierarchyModal } from '@/components/sidebar/HierarchyModal';
 

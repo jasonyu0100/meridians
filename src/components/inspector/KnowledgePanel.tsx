@@ -16,8 +16,8 @@
  */
 
 import { useMemo } from 'react';
-import { useStore } from '@/lib/store';
-import { scoreSystemNodes } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { scoreSystemNodes } from '@/lib/forces/narrative-utils';
 import type { SystemNodeType } from '@/types/narrative';
 
 /** Per-type accent — used on the type chip + the score bar. */

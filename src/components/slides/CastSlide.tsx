@@ -1,4 +1,5 @@
 'use client';
+// Cast slide — shows the narrative's principal characters by role and prominence.
 
 import React from 'react';
 import type { SlidesData } from '@/lib/slides-data';

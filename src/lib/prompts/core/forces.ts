@@ -6,7 +6,7 @@
  * calibration changes.
  */
 
-import { FORCE_REFERENCE_MEANS } from '@/lib/narrative-utils';
+import { FORCE_REFERENCE_MEANS } from '@/lib/forces/narrative-utils';
 
 const R = FORCE_REFERENCE_MEANS;
 

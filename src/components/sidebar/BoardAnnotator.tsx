@@ -1,7 +1,9 @@
 'use client';
 
+// BoardAnnotator — overlays HTML labels/annotations onto a generated board/map image.
+
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { useImageUrl } from '@/hooks/useAssetUrl';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import type { Board, MapLabel } from '@/types/narrative';

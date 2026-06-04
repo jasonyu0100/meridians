@@ -1,3 +1,5 @@
+// Tests for lib/narrative-utils — force snapshots, swing, archetype/shape/scale classification, and cube logic.
+
 import {
   averageSwing,
   buildCumulativeSystemGraph,
@@ -22,7 +24,7 @@ import {
   rankSystemNodes,
   resolveEntrySequence,
   zScoreNormalize,
-} from "@/lib/narrative-utils";
+} from "@/lib/forces/narrative-utils";
 import type {
   Branch,
   ForceSnapshot,

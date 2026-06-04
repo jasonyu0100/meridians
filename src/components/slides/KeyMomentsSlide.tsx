@@ -1,4 +1,5 @@
 'use client';
+// KeyMoments slide — highlights the work's peak-activity scenes on a D3 timeline.
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

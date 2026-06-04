@@ -1,8 +1,9 @@
 'use client';
+// CastAnalytics — per-entity participation and development analytics across the cast.
 
 import { useMemo, useState } from 'react';
-import { useStore } from '@/lib/store';
-import { resolveEntityName } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { resolveEntityName } from '@/lib/forces/narrative-utils';
 import { resolveEntry, isScene } from '@/types/narrative';
 import type { Scene } from '@/types/narrative';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';

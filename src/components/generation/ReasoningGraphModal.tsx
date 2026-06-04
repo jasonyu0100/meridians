@@ -1,4 +1,5 @@
 "use client";
+// ReasoningGraphModal — view and regenerate an arc's causal reasoning graph (CRG).
 
 import { IconRefresh } from "@/components/icons";
 import type {
@@ -12,8 +13,8 @@ import * as d3 from "d3";
 import dagre from "dagre";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { REASONING_NODE_COLORS } from "@/lib/reasoning-node-colors";
-import { useStore } from "@/lib/store";
+import { REASONING_NODE_COLORS } from "@/lib/graph/reasoning-node-colors";
+import { useStore } from "@/lib/state/store";
 import type { InspectorContext } from "@/types/narrative";
 
 // ── Styling Constants ────────────────────────────────────────────────────────

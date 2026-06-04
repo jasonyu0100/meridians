@@ -1,4 +1,5 @@
 'use client';
+// BentoTile — layout primitive: a bento-grid tile with optional sticky header for the variables surface.
 
 interface Props {
   /** Optional header content (title + actions). Stays sticky at the top of

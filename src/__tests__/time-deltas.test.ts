@@ -1,3 +1,5 @@
+// Tests for lib/forces/time-deltas — time-delta normalization, scene offsets, gap descriptions, and formatting.
+
 import { describe, expect, test } from "vitest";
 import {
   SECONDS_PER_UNIT,
@@ -7,7 +9,7 @@ import {
   formatTimeDelta,
   normalizeTimeDelta,
   timeDeltaToSeconds,
-} from "@/lib/time-deltas";
+} from "@/lib/forces/time-deltas";
 import type { Scene, TimeDelta } from "@/types/narrative";
 
 // Minimal scene factory — only the fields required by time-delta logic.

@@ -16,12 +16,12 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { SourceFileModal } from '@/components/sidebar/SourceFileModal';
 import { FileComposerModal } from '@/components/sidebar/FileComposerModal';
 import { ApplyExtensionModal } from '@/components/sidebar/ApplyExtensionModal';
-import { convertFile } from '@/lib/file-conversion';
-import { assetManager } from '@/lib/asset-manager';
+import { convertFile } from '@/lib/io/file-conversion';
+import { assetManager } from '@/lib/storage/asset-manager';
 import type { AnalysisJob, AnalysisPhase, SourceFile } from '@/types/narrative';
 
 function formatCount(n: number): string {

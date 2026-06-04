@@ -1,6 +1,8 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+// ReasoningNodeDetail — inspector view for a CRG node: type, content, tier, and typed edges.
+
+import { useStore } from "@/lib/state/store";
 import type { ReasoningNodeSnapshot, ReasoningEdgeSnapshot } from "@/types/narrative";
 import { useMemo } from "react";
 import { InferenceFields } from "@/components/shared/InferenceFields";
@@ -8,7 +10,7 @@ import { InferenceFields } from "@/components/shared/InferenceFields";
 type ReasoningNodeType = ReasoningNodeSnapshot["type"];
 type ReasoningEdgeType = ReasoningEdgeSnapshot["type"];
 
-import { REASONING_NODE_COLORS_PLAN } from "@/lib/reasoning-node-colors";
+import { REASONING_NODE_COLORS_PLAN } from "@/lib/graph/reasoning-node-colors";
 
 const NODE_COLORS: Record<ReasoningNodeType, { fill: string; stroke: string; text: string }> = REASONING_NODE_COLORS_PLAN;
 

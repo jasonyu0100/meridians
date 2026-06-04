@@ -1,5 +1,7 @@
+// Tests for lib/io/epub-export — verifies EPUB export output, filename derivation, and browser API usage.
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { exportEpub } from '@/lib/epub-export';
+import { exportEpub } from '@/lib/io/epub-export';
 import type { NarrativeState, Arc } from '@/types/narrative';
 // Capture the filename when exportEpub is called
 let capturedFilename: string | null = null;

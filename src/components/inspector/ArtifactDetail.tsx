@@ -1,10 +1,12 @@
 'use client';
 
+// ArtifactDetail — inspector view for an artifact: significance, provenance world graph, threads, and image.
+
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { useImageUrl } from '@/hooks/useAssetUrl';
-import { resolveEntityName } from '@/lib/narrative-utils';
-import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene } from '@/lib/scene-filter';
+import { resolveEntityName } from '@/lib/forces/narrative-utils';
+import { getWorldNodesAtScene, getThreadIdsAtScene, getOwnershipAtScene } from '@/lib/graph/scene-filter';
 import { CollapsibleSection, Paginator, paginateRecent } from './CollapsibleSection';
 import ImagePromptEditor from './ImagePromptEditor';
 import { InlineText, InlineSelect } from './InlineEdit';

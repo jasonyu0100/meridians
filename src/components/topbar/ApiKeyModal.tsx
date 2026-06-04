@@ -1,4 +1,5 @@
 'use client';
+// ApiKeyModal — enter and manage user-provided API keys, gated by feature access.
 
 import { useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';

@@ -1,13 +1,14 @@
 'use client';
+// ThreadLogGraphView — Stage surface tracing a thread's perceptual-primitive log (stance movement) scene by scene.
 
 import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { THREAD_LOG_FILL } from './graph-utils';
-import { getThreadLogAtScene } from '@/lib/scene-filter';
+import { getThreadLogAtScene } from '@/lib/graph/scene-filter';
 import type { ThreadLog, Scene } from '@/types/narrative';
 import { THREAD_LOG_NODE_TYPES } from '@/types/narrative';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph/graph-styling';
 
 type TLNode = d3.SimulationNodeDatum & { id: string; content: string; type: string; degree: number };
 type TLLink = d3.SimulationLinkDatum<TLNode> & { relation: string };

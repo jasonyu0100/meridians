@@ -1,6 +1,8 @@
 'use client';
 
-import { useStore } from '@/lib/store';
+// AttributionsSection — collapsible inspector section listing source attributions for an entity.
+
+import { useStore } from '@/lib/state/store';
 import { CollapsibleSection } from './CollapsibleSection';
 
 /**

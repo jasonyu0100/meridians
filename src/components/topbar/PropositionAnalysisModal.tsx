@@ -1,12 +1,13 @@
 'use client';
+// PropositionAnalysisModal — classifies and visualises embedded propositions by base category and reach.
 
 import React, { useState, useMemo } from 'react';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { usePropositionClassification } from '@/hooks/usePropositionClassification';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene } from '@/types/narrative';
 import type { NarrativeState, PropositionBaseCategory, PropositionReach } from '@/types/narrative';
-import { BASE_COLORS, classificationColor, classificationLabel, ALL_PROFILE_LABELS } from '@/lib/proposition-classify';
+import { BASE_COLORS, classificationColor, classificationLabel, ALL_PROFILE_LABELS } from '@/lib/analysis/proposition-classify';
 
 type Props = {
   narrative: NarrativeState;

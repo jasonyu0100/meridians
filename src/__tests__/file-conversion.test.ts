@@ -13,8 +13,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { commitPreparedApply, type PreparedApply, type ExtensionMergePlan } from '@/lib/file-conversion';
-import type { Action } from '@/lib/store';
+import { commitPreparedApply, type PreparedApply, type ExtensionMergePlan } from '@/lib/io/file-conversion';
+import type { Action } from '@/lib/state/store';
 import type {
   Arc,
   Character,
@@ -25,7 +25,7 @@ import type {
   Thread,
 } from '@/types/narrative';
 
-vi.mock('@/lib/asset-manager', () => ({
+vi.mock('@/lib/storage/asset-manager', () => ({
   assetManager: {
     getText: vi.fn(),
     storeText: vi.fn(),
@@ -33,14 +33,14 @@ vi.mock('@/lib/asset-manager', () => ({
   },
 }));
 
-vi.mock('@/lib/text-analysis', () => ({
+vi.mock('@/lib/analysis/text-analysis', () => ({
   splitCorpusIntoScenes: vi.fn(),
   reconcileEntities: vi.fn(),
   reconcileSemantic: vi.fn(),
   integrateSliceThreadsIntoExisting: vi.fn(),
 }));
 
-vi.mock('@/lib/analysis-runner', () => ({
+vi.mock('@/lib/analysis/analysis-runner', () => ({
   analysisRunner: { start: vi.fn() },
 }));
 

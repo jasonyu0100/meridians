@@ -1,4 +1,5 @@
 "use client";
+// TimelineStrip — bottom timeline: scene strip, force totals, branch switcher, and eval entry points.
 
 import { IconChevronDown, IconFork } from "@/components/icons";
 import {
@@ -8,9 +9,9 @@ import {
   gradeForces,
   resolveCanonBranchId,
   resolveEntrySequence,
-} from "@/lib/narrative-utils";
-import { useStore } from "@/lib/store";
-import { useTheme } from "@/lib/theme-context";
+} from "@/lib/forces/narrative-utils";
+import { useStore } from "@/lib/state/store";
+import { useTheme } from "@/lib/state/theme-context";
 import type { Arc, Scene, Branch } from "@/types/narrative";
 import { isScene, resolveEntry } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

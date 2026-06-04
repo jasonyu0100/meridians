@@ -1,4 +1,5 @@
 'use client';
+// ScenarioCard — card summarising one Future planning scenario: name, tagline, activations, and probability.
 
 import { categoryColor } from '@/lib/ai/variables';
 import type { PlanningScenario } from '@/types/narrative';

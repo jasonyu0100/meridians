@@ -1,10 +1,12 @@
+// Scene generation — scene structures+deltas, beat plans, and plan reverse-engineering; Markov-paced.
+
 import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence, TimeUnit } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import type { WorldNodeType } from '@/types/narrative';
-import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/narrative-utils';
-import { nextId, nextIds } from '@/lib/narrative-utils';
-import { newNarratorStance } from '@/lib/thread-log';
-import { normalizeTimeDelta } from '@/lib/time-deltas';
+import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/forces/narrative-utils';
+import { nextId, nextIds } from '@/lib/forces/narrative-utils';
+import { newNarratorStance } from '@/lib/forces/thread-log';
+import { normalizeTimeDelta } from '@/lib/forces/time-deltas';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { buildGenerateScenesSystem } from '@/lib/prompts/scenes/generate';
 import { workIdentityFor } from '@/lib/prompts/paradigm';
@@ -28,16 +30,16 @@ import {
   buildProseInstructionsFreeform,
   buildSceneProseUserPrompt,
 } from '@/lib/prompts/scenes/prose-instructions';
-import { samplePacingSequence, buildSequencePrompt, detectCurrentMode, MATRIX_PRESETS, DEFAULT_TRANSITION_MATRIX, type PacingSequence } from '@/lib/pacing-markov';
-import { resolveProfile, resolveSampler, sampleBeatSequence } from '@/lib/beat-profiles';
+import { samplePacingSequence, buildSequencePrompt, detectCurrentMode, MATRIX_PRESETS, DEFAULT_TRANSITION_MATRIX, type PacingSequence } from '@/lib/pacing/pacing-markov';
+import { resolveProfile, resolveSampler, sampleBeatSequence } from '@/lib/pacing/beat-profiles';
 import { FORMAT_INSTRUCTIONS } from '@/lib/prompts';
-import { logWarning, logError, logInfo } from '@/lib/system-logger';
+import { logWarning, logError, logInfo } from '@/lib/core/system-logger';
 import type { ReasoningGraph, ArcSettings } from './reasoning-graph';
 import { buildSequentialPath, extractPatternWarningDirectives } from './reasoning-graph';
 import { buildActivePhaseSection } from './phase-graph';
 import { retryWithValidation, validateBeatPlan, validateBeatProseMap } from './validation';
-import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/system-graph';
-import { ensureSceneAttributions } from '@/lib/attribution';
+import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/graph/system-graph';
+import { ensureSceneAttributions } from '@/lib/forces/attribution';
 
 /**
  * Split text into sentences, handling edge cases like abbreviations, decimals, and ellipsis.
@@ -745,8 +747,8 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   });
 
   // ── Generate embeddings for scene summaries ──────────────────────────────
-  const { generateEmbeddingsBatch, computeCentroid, resolveEmbedding } = await import('@/lib/embeddings');
-  const { assetManager } = await import('@/lib/asset-manager');
+  const { generateEmbeddingsBatch, computeCentroid, resolveEmbedding } = await import('@/lib/search/embeddings');
+  const { assetManager } = await import('@/lib/storage/asset-manager');
 
   if (scenes.length > 0) {
     // Batch 1: Embed scene summaries
@@ -1101,8 +1103,8 @@ export async function generateScenePlan(
   // ── Generate embeddings for all propositions (skipped for candidates) ────
   if (skipEmbeddings) return result;
 
-  const { embedPropositions, computeCentroid, resolveEmbedding } = await import('@/lib/embeddings');
-  const { assetManager } = await import('@/lib/asset-manager');
+  const { embedPropositions, computeCentroid, resolveEmbedding } = await import('@/lib/search/embeddings');
+  const { assetManager } = await import('@/lib/storage/asset-manager');
 
   // Collect all propositions from beats
   const allPropositions: Array<{ content: string; type?: string }> = [];
@@ -1850,7 +1852,7 @@ ${b.propositions.map(p => `      <proposition>${p.content}</proposition>`).join(
   });
 
   // ── Generate prose embedding ─────────────────────────────────────────────
-  const { generateEmbeddings } = await import('@/lib/embeddings');
+  const { generateEmbeddings } = await import('@/lib/search/embeddings');
 
   let proseEmbedding: number[] | undefined;
   if (result.prose && result.prose.length > 0) {

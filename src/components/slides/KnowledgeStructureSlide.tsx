@@ -1,4 +1,5 @@
 'use client';
+// KnowledgeStructure slide — shows the system knowledge graph's node-type composition and density.
 
 import React from 'react';
 import type { SlidesData } from '@/lib/slides-data';

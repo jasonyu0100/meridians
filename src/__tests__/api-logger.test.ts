@@ -1,3 +1,5 @@
+// Tests for lib/api-logger — API call logging, subscriptions, and narrative-scoped token tracking.
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   onApiLog,
@@ -5,7 +7,7 @@ import {
   setLoggerNarrativeId,
   logApiCall,
   updateApiLog,
-} from '@/lib/api-logger';
+} from '@/lib/core/api-logger';
 import type { ApiLogEntry } from '@/types/narrative';
 // ── Setup ────────────────────────────────────────────────────────────────────
 describe('api-logger', () => {

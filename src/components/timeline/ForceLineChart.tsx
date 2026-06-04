@@ -1,4 +1,5 @@
 'use client';
+// ForceLineChart — D3 multi-line chart of Fate/World/System force curves across the timeline.
 
 import { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';

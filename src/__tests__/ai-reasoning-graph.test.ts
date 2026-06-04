@@ -1,3 +1,5 @@
+// Tests for lib/ai/reasoning-graph — buildSequentialPath cross-arc graph rendering and divergence directives.
+
 import { describe, it, expect } from 'vitest';
 import { buildSequentialPath, type ReasoningGraph, type ExpansionReasoningGraph } from '@/lib/ai/reasoning-graph';
 import type { ReasoningGraphSnapshot, WorldBuild, NarrativeState } from '@/types/narrative';

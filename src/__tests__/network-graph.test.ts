@@ -1,3 +1,5 @@
+// Tests for lib/graph/network-graph — aggregate connection graph, tier/topology classification, and summaries.
+
 import { describe, expect, test } from "vitest";
 import {
   aggregateNetworkGraph,
@@ -9,7 +11,7 @@ import {
   type NetworkEdge,
   type NetworkNode,
   type NetworkNodeKind,
-} from "@/lib/network-graph";
+} from "@/lib/graph/network-graph";
 import type {
   AttributionEdge,
   Character,

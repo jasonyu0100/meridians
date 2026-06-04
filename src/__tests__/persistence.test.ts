@@ -21,7 +21,7 @@ const mockIdbPut = vi.fn();
 const mockIdbDelete = vi.fn();
 const mockIdbGetAll = vi.fn();
 // Mock the idb module
-vi.mock('@/lib/idb', () => ({
+vi.mock('@/lib/storage/idb', () => ({
   NARRATIVES_STORE: 'narratives',
   META_STORE: 'meta',
   API_LOGS_STORE: 'apiLogs',
@@ -48,7 +48,7 @@ import {
   loadDiscoveryInquiries,
   saveDiscoveryInquiry,
   deleteDiscoveryInquiry,
-} from '@/lib/persistence';
+} from '@/lib/storage/persistence';
 // ── Test Fixtures ────────────────────────────────────────────────────────────
 function createMinimalNarrative(id: string): NarrativeState {
   return {

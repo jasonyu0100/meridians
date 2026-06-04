@@ -1,14 +1,15 @@
 'use client';
+// useBulkAudioGenerate — manages parallel TTS generation across a scene range with progress tracking.
 
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
-import { saveAudioBlob } from '@/lib/audio-store';
-import { apiHeaders } from '@/lib/api-headers';
+import { saveAudioBlob } from '@/lib/storage/audio-store';
+import { apiHeaders } from '@/lib/core/api-headers';
 import { AUDIO_CONCURRENCY } from '@/lib/constants';
-import { resolveProseForBranch } from '@/lib/narrative-utils';
+import { resolveProseForBranch } from '@/lib/forces/narrative-utils';
 import { filterKeysBySceneRange, type SceneRange } from '@/components/timeline/SceneRangeSelector';
-import { logError } from '@/lib/system-logger';
+import { logError } from '@/lib/core/system-logger';
 
 type AudioProgress = {
   completed: number;

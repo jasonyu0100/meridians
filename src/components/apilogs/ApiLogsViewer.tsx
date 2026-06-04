@@ -1,8 +1,9 @@
 'use client';
+// ApiLogsViewer — live API call log table with cost/token tallies and pending-call indicators.
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { calculateApiCost, calculateTotalCost } from '@/lib/api-logger';
+import { calculateApiCost, calculateTotalCost } from '@/lib/core/api-logger';
 import type { ApiLogEntry } from '@/types/narrative';
 
 /** Re-renders on a regular interval while the viewer is open so both the

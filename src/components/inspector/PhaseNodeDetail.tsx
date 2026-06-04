@@ -9,9 +9,9 @@
  * discharge pressure, past-but-anchoring landmark).
  */
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type { PhaseEdgeSnapshot, PhaseNodeType } from "@/types/narrative";
-import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/reasoning-node-colors";
+import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/graph/reasoning-node-colors";
 import { useMemo } from "react";
 import { InferenceFields } from "@/components/shared/InferenceFields";
 

@@ -1,15 +1,16 @@
 'use client';
+// Dashboard page — story library + new-analysis entry point with creation wizard and API-key gating.
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStore, SEED_NARRATIVE_IDS } from '@/lib/store';
-import { useWizard } from '@/lib/wizard-context';
+import { useStore, SEED_NARRATIVE_IDS } from '@/lib/state/store';
+import { useWizard } from '@/lib/state/wizard-context';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { CreationWizard } from '@/components/wizard/CreationWizard';
 import ApiKeyModal from '@/components/topbar/ApiKeyModal';
 import { StoryCard } from '@/components/cards/StoryCard';
 import { StarField } from '@/components/effects/StarField';
-import { timeAgo } from '@/lib/ui-utils';
+import { timeAgo } from '@/lib/utils/ui-utils';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -105,7 +106,7 @@ export default function DashboardPage() {
                   onClick={() => {
                     if (!analysisText.trim()) return;
                     if (needsKeys) { setApiKeysOpen(true); return; }
-                    import('@/lib/analysis-transfer').then(({ setAnalysisSource }) =>
+                    import('@/lib/storage/analysis-transfer').then(({ setAnalysisSource }) =>
                       setAnalysisSource(analysisText).then(() => router.push('/analysis?new=1'))
                     );
                   }}

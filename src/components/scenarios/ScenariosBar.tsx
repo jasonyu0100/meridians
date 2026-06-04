@@ -1,4 +1,5 @@
 'use client';
+// ScenariosBar — compact status/control bar for an in-flight Branch Scenarios parallel run.
 
 import { useState, useEffect } from 'react';
 import { IconSpinner, IconStop, IconExpand } from '@/components/icons';

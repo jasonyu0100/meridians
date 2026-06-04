@@ -1,12 +1,14 @@
+// World-view report generation — LLM synthesis of the narrative into a structured analysis report.
+
 import type { SlidesData } from '@/lib/slides-data';
 import type { NarrativeState, Scene } from '@/types/narrative';
 import { NARRATIVE_CUBE, type CubeCornerKey, resolveEntry, isScene } from '@/types/narrative';
-import { detectCubeCorner, resolveEntityName } from '@/lib/narrative-utils';
+import { detectCubeCorner, resolveEntityName } from '@/lib/forces/narrative-utils';
 import { callGenerate, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { DEFAULT_MODEL, MAX_TOKENS_SMALL, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { REPORT_SYSTEM, REPORT_ANALYSIS_PROMPT, REPORT_SECTIONS } from '@/lib/prompts';
-import { logError, logInfo } from '@/lib/system-logger';
+import { logError, logInfo } from '@/lib/core/system-logger';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

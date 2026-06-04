@@ -1,5 +1,7 @@
 "use client";
 
+// CharacterDetail — inspector view for a character: role, inner world graph, threads, and image.
+
 import { useImageUrl } from "@/hooks/useAssetUrl";
 import {
   getWorldNodesAtScene,
@@ -7,8 +9,8 @@ import {
   getThreadIdsAtScene,
   getOwnershipAtScene,
   getTiesAtScene,
-} from "@/lib/scene-filter";
-import { useStore } from "@/lib/store";
+} from "@/lib/graph/scene-filter";
+import { useStore } from "@/lib/state/store";
 import type { CharacterRole } from "@/types/narrative";
 import React, { useState } from "react";
 import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSection";
@@ -17,7 +19,7 @@ import { InlineText, InlineSelect } from "./InlineEdit";
 import { AttributionsSection } from "./AttributionsSection";
 
 const CHARACTER_ROLES: readonly CharacterRole[] = ["anchor", "recurring", "transient"];
-import { buildPlayerGameSummary } from "@/lib/game-theory-player";
+import { buildPlayerGameSummary } from "@/lib/game-theory/game-theory-player";
 
 type Props = {
   characterId: string;

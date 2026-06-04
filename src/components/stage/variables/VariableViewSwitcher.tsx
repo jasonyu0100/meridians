@@ -1,4 +1,5 @@
 'use client';
+// VariableViewSwitcher — toggle control choosing the variables visualisation mode (radar / parallel / grid).
 
 export type VariableViewMode = 'radar' | 'parallel' | 'grid';
 

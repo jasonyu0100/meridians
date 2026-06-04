@@ -1,7 +1,8 @@
 'use client';
+// GuidanceFields — direction/constraint input fields with AI direction suggestion.
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { suggestAutoDirection } from '@/lib/ai';
 
 type Props = {

@@ -28,8 +28,8 @@ import {
   isThreadAbandoned,
   isThreadClosed,
   scenesSinceTouched,
-} from '@/lib/narrative-utils';
-import { classifyThreadCategory, THREAD_CATEGORY_GUIDANCE, type ThreadCategory } from '@/lib/thread-category';
+} from '@/lib/forces/narrative-utils';
+import { classifyThreadCategory, THREAD_CATEGORY_GUIDANCE, type ThreadCategory } from '@/lib/forces/thread-category';
 import {
   PROMPT_STANCE_PRINCIPLES,
   PROMPT_BELIEF_PRINCIPLES,

@@ -1,10 +1,12 @@
+// Prose generation/rewrite — renders a scene's beat plan into formatted prose; critique-guided rewrites.
+
 import type { NarrativeState, Scene, ProseFormat } from '@/types/narrative';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { WRITING_MODEL, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import { parseJson } from './json';
 import { sceneContext, buildProseProfile } from './context';
-import { resolveProfile } from '@/lib/beat-profiles';
-import { logInfo } from '@/lib/system-logger';
+import { resolveProfile } from '@/lib/pacing/beat-profiles';
+import { logInfo } from '@/lib/core/system-logger';
 import { FORMAT_INSTRUCTIONS } from '@/lib/prompts';
 import {
   buildRewriteSystemPrompt,
@@ -225,7 +227,7 @@ export async function rewriteSceneProse(
   });
 
   // ── Generate prose embedding ─────────────────────────────────────────────
-  const { generateEmbeddings } = await import('@/lib/embeddings');
+  const { generateEmbeddings } = await import('@/lib/search/embeddings');
 
   let proseEmbedding: number[] | undefined;
   if (prose && prose.length > 0) {

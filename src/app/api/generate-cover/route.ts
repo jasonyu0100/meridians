@@ -1,6 +1,8 @@
+// POST /api/generate-cover — proxy to Replicate (Seedream) for story cover image generation.
+
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveKey } from '@/lib/resolve-api-key';
-import { logError, logInfo, logWarning } from '@/lib/system-logger';
+import { resolveKey } from '@/lib/core/resolve-api-key';
+import { logError, logInfo, logWarning } from '@/lib/core/system-logger';
 
 export async function POST(req: NextRequest) {
   const apiToken = resolveKey(req, 'x-replicate-key', 'REPLICATE_API_TOKEN');

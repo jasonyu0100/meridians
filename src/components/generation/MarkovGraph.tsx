@@ -1,9 +1,10 @@
 'use client';
+// MarkovGraph — visualises the cube-mode Markov transition matrix driving pacing.
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import type { CubeCornerKey } from '@/types/narrative';
-import type { PacingSequence } from '@/lib/pacing-markov';
+import type { PacingSequence } from '@/lib/pacing/pacing-markov';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

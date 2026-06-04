@@ -9,8 +9,8 @@
  * without hand-rolling error UX.
  */
 
-import { apiHeaders } from '@/lib/api-headers';
-import { logApiCall, updateApiLog } from '@/lib/api-logger';
+import { apiHeaders } from '@/lib/core/api-headers';
+import { logApiCall, updateApiLog } from '@/lib/core/api-logger';
 import { DEFAULT_MODEL } from '@/lib/constants';
 
 const SYSTEM_PROMPT =

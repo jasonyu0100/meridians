@@ -1,10 +1,11 @@
 'use client';
+// FormulaModal — KaTeX-rendered reference of the Fate/World/System force formulas and reference means.
 
 import React, { useMemo, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { FORCE_REFERENCE_MEANS } from '@/lib/narrative-utils';
+import { FORCE_REFERENCE_MEANS } from '@/lib/forces/narrative-utils';
 
 type Props = { onClose: () => void };
 

@@ -1,7 +1,8 @@
 'use client';
+// BranchEval — branch evaluation UI: runs reviewBranch and surfaces per-scene verdicts for reconstruction.
 
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { reviewBranch } from '@/lib/ai/review';
 import { reconstructBranch, type ReconstructionProgress } from '@/lib/ai/reconstruct';
 import { resolveEntry, isScene } from '@/types/narrative';

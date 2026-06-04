@@ -59,8 +59,8 @@ export async function synthesisePriorsCompact(
     compactTitle,
   });
 
-  const { apiHeaders } = await import('@/lib/api-headers');
-  const { logApiCall, updateApiLog } = await import('@/lib/api-logger');
+  const { apiHeaders } = await import('@/lib/core/api-headers');
+  const { logApiCall, updateApiLog } = await import('@/lib/core/api-logger');
   const logId = logApiCall(
     'priorsSynthesis',
     prompt.length + DRIVER_SYNTHESIS_SYSTEM.length,

@@ -1,4 +1,5 @@
 'use client';
+// ProbabilityBar — stacked bar showing the softmax cohort probabilities across planning scenarios.
 
 import { useMemo } from 'react';
 import type { PlanningScenario } from '@/types/narrative';

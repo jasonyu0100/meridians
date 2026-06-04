@@ -1,3 +1,5 @@
+// Tests for buildGrid (components/generation/BranchModal) — laying branches into the BranchModal grid.
+
 import { describe, expect, it } from 'vitest';
 import { buildGrid } from '@/components/generation/BranchModal';
 import type { Branch } from '@/types/narrative';

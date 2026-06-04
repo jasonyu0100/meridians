@@ -1,6 +1,8 @@
+// POST /api/generate-audio — proxy to OpenAI TTS, chunking long text into speech audio.
+
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveKey } from '@/lib/resolve-api-key';
-import { logError, logInfo } from '@/lib/system-logger';
+import { resolveKey } from '@/lib/core/resolve-api-key';
+import { logError, logInfo } from '@/lib/core/system-logger';
 
 const OPENAI_TTS_URL = 'https://api.openai.com/v1/audio/speech';
 const CHUNK_SIZE = 4000; // leave headroom under 4096

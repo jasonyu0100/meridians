@@ -1,4 +1,5 @@
 'use client';
+// ArchetypeIcon — unique SVG shape per narrative archetype, mapping force-dominance profiles to icons.
 
 import React from 'react';
 

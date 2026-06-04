@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { assetManager } from '@/lib/asset-manager';
+import { assetManager } from '@/lib/storage/asset-manager';
 import type { ImageRef, AudioRef } from '@/types/narrative';
 
 /**

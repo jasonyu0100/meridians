@@ -1,4 +1,5 @@
 'use client';
+// DispositionEditor — editing rack for a scenario's variable activations (per-variable intensity levels).
 
 import { useMemo, useState } from 'react';
 import { categoryColor, VARIABLE_INTENSITY_LEVELS } from '@/lib/ai/variables';

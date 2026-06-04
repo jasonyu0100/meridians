@@ -1,8 +1,9 @@
 'use client';
+// NarrativesScreen — library screen listing saved narratives with the new-story wizard entry.
 
-import { useStore } from '@/lib/store';
-import { useWizard } from '@/lib/wizard-context';
-import { timeAgo } from '@/lib/ui-utils';
+import { useStore } from '@/lib/state/store';
+import { useWizard } from '@/lib/state/wizard-context';
+import { timeAgo } from '@/lib/utils/ui-utils';
 import type { NarrativeEntry } from '@/types/narrative';
 
 function NarrativeCard({ entry }: { entry: NarrativeEntry }) {

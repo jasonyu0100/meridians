@@ -1,6 +1,8 @@
+// useResolvedScene — resolves a scene's branch-specific prose/plan/score versions for the current branch.
+
 import { useMemo } from 'react';
-import { useStore } from '@/lib/store';
-import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import type { Scene, BeatPlan, BeatProseMap, ProseScore } from '@/types/narrative';
 
 export type ResolvedScene = Scene & {

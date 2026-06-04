@@ -1,7 +1,8 @@
 'use client';
+// useAutoPlay — drives the auto-engine generation loop: evaluate state, build directives, generate arcs.
 
 import { useRef, useCallback, useEffect } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import {
   evaluateNarrativeState,
   checkEndConditions,
@@ -14,7 +15,7 @@ import {
 } from '@/lib/auto-engine';
 import { generateScenes, type CoordinationPlanContext } from '@/lib/ai';
 import { FatalApiError } from '@/lib/ai/errors';
-import { logError, logInfo } from '@/lib/system-logger';
+import { logError, logInfo } from '@/lib/core/system-logger';
 import type {
   ReasoningMap,
   CoordinationPlan,

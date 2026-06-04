@@ -1,8 +1,9 @@
 'use client';
+// PropositionOverview slide — shows the work's embedded propositions classified by profile/category.
 
 import React, { useMemo } from 'react';
 import type { SlidesData } from '@/lib/slides-data';
-import { BASE_COLORS, BASE_COLORS_GLOBAL, classificationLabel, ALL_PROFILE_LABELS } from '@/lib/proposition-classify';
+import { BASE_COLORS, BASE_COLORS_GLOBAL, classificationLabel, ALL_PROFILE_LABELS } from '@/lib/analysis/proposition-classify';
 import { usePropositionClassification } from '@/hooks/usePropositionClassification';
 import type { PropositionBaseCategory } from '@/types/narrative';
 import { resolveEntry, isScene } from '@/types/narrative';

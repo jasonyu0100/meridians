@@ -1,5 +1,7 @@
 'use client';
 
+// MediaPreview — full-screen portal lightbox for previewing a media asset.
+
 import { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useImageUrl } from '@/hooks/useAssetUrl';

@@ -1,11 +1,12 @@
 'use client';
+// NetworkView — Stage Network surface: aggregate connection graph across all entities, rendered with D3.
 
 import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
-import { useStore } from '@/lib/store';
-import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/network-graph';
+import { useStore } from '@/lib/state/store';
+import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/graph/network-graph';
 import { heatColor } from './graph-utils';
-import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph-styling';
+import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph/graph-styling';
 import type { AttributionEdgeRelation } from '@/types/narrative';
 
 type NNode = d3.SimulationNodeDatum & NetworkNode & { degree: number };

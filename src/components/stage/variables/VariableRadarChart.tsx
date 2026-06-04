@@ -1,4 +1,5 @@
 'use client';
+// VariableRadarChart — radar/spider chart plotting variable intensities for one or more scenarios.
 
 import { useMemo } from 'react';
 import { categoryColor } from '@/lib/ai/variables';

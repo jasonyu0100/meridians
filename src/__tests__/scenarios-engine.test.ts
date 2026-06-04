@@ -1,9 +1,11 @@
+// Tests for lib/scenarios/scenarios-engine — scenario direction building, virtual state, and variable stamping.
+
 import { describe, it, expect } from 'vitest';
 import {
   buildDirectionFromScenario,
   buildVirtualState,
   stampScenarioVariables,
-} from '@/lib/scenarios-engine';
+} from '@/lib/scenarios/scenarios-engine';
 import type {
   Arc,
   NarrativeState,

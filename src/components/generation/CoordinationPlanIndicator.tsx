@@ -1,4 +1,5 @@
 "use client";
+// CoordinationPlanIndicator — compact badge showing the active coordination plan on a branch.
 
 import type { BranchPlan } from "@/types/narrative";
 

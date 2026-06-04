@@ -1,3 +1,5 @@
+// Prose-profile ingestion — LLM extraction/refinement of authorial voice profiles from sample prose.
+
 import { callGenerate } from './api';
 import { DEFAULT_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
@@ -10,7 +12,7 @@ import {
   REFINE_PROSE_PROFILE_SYSTEM,
   PROSE_SAMPLE_SYSTEM,
 } from '@/lib/prompts';
-import { logError, logInfo } from '@/lib/system-logger';
+import { logError, logInfo } from '@/lib/core/system-logger';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normaliseProfileJson(parsed: any): ProseProfile {

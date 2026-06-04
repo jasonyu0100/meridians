@@ -1,4 +1,5 @@
 "use client";
+// TopBar — main workspace top bar: navigation, story controls, and entry points to the topbar modals.
 
 import { ArchetypeIcon } from "@/components/ArchetypeIcon";
 import { NowPlayingPill } from "@/components/stage/AudioMiniPlayer";
@@ -37,8 +38,8 @@ import {
 } from "@/components/topbar/GasMeter";
 import { UsageModal } from "@/components/topbar/UsageModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
-import { assetManager } from "@/lib/asset-manager";
-import { exportEpub } from "@/lib/epub-export";
+import { assetManager } from "@/lib/storage/asset-manager";
+import { exportEpub } from "@/lib/io/epub-export";
 import {
   FORCE_REFERENCE_MEANS,
   classifyArchetype,
@@ -54,7 +55,7 @@ import {
   resolveEntrySequence,
   resolvePlanForBranch,
   resolveProseForBranch,
-} from "@/lib/narrative-utils";
+} from "@/lib/forces/narrative-utils";
 import {
   isSolo,
   nashEquilibria,
@@ -62,19 +63,19 @@ import {
   realizedIsNash,
   realizedOutcome,
   stakeRank,
-} from "@/lib/game-theory";
+} from "@/lib/game-theory/game-theory";
 import {
   ACTION_AXIS_LABELS,
   GAME_TYPE_LABELS,
 } from "@/types/narrative";
-import { useLogs } from "@/lib/logs-context";
-import { useTheme } from "@/lib/theme-context";
+import { useLogs } from "@/lib/state/logs-context";
+import { useTheme } from "@/lib/state/theme-context";
 import {
   ANALYSIS_NARRATIVE_IDS,
   PLAYGROUND_NARRATIVE_IDS,
   useStore,
-} from "@/lib/store";
-import { useWizard } from "@/lib/wizard-context";
+} from "@/lib/state/store";
+import { useWizard } from "@/lib/state/wizard-context";
 import type { Branch, NarrativeEntry, NarrativeState } from "@/types/narrative";
 import { isScene, resolveEntry, type Scene } from "@/types/narrative";
 import Image from "next/image";

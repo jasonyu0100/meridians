@@ -1,4 +1,5 @@
 'use client';
+// SwingAnalysis slide — D3 view of scene-to-scene force contrast (breathing vs flatline dynamics).
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

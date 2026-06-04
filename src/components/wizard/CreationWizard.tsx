@@ -7,8 +7,8 @@
 // keeps the home-page's transitive set tight.
 import { generateNarrative } from "@/lib/ai/world";
 import { suggestPremise } from "@/lib/ai/premise";
-import { useStore } from "@/lib/store";
-import { useWizard } from "@/lib/wizard-context";
+import { useStore } from "@/lib/state/store";
+import { useWizard } from "@/lib/state/wizard-context";
 import { Modal } from "@/components/Modal";
 import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
 import { diagnoseError } from "@/lib/ai/diagnose";

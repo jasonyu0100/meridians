@@ -1,9 +1,10 @@
 'use client';
+// SystemLogModal — browse the in-app system event log with filtering.
 
 import { useState, useMemo } from 'react';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { useLogs } from '@/lib/logs-context';
-import { useStore } from '@/lib/store';
+import { useLogs } from '@/lib/state/logs-context';
+import { useStore } from '@/lib/state/store';
 import type { SystemLogEntry } from '@/types/narrative';
 
 type Props = {

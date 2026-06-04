@@ -1,4 +1,5 @@
 'use client';
+// LandingTopbar — top navigation bar for the public landing/marketing pages.
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';

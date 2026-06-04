@@ -1,4 +1,5 @@
 'use client';
+// ErrorDiagnosis — renders a generation error as severity dot + summary + suggestion, with copy-trace button.
 
 import { diagnoseError, type ErrorDiagnosis as Diagnosis } from '@/lib/ai/diagnose';
 import { useMemo, useState } from 'react';

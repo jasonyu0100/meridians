@@ -1,3 +1,5 @@
+// Tests for lib/ai/json — JSON parsing and deterministic repair (cleanJson, unquoted/unescaped fixes, parseJson).
+
 import { describe, it, expect } from 'vitest';
 import { cleanJson, repairUnescapedQuotes, repairUnquotedValues, parseJson, JsonRepairableError } from '@/lib/ai/json';
 // ── cleanJson ────────────────────────────────────────────────────────────────

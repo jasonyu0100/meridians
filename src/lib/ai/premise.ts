@@ -12,7 +12,7 @@ import {
   buildRefineNarrativeMetaPrompt,
   type RefineKind,
 } from '@/lib/prompts/premise/refine';
-import { logError, logInfo } from '@/lib/system-logger';
+import { logError, logInfo } from '@/lib/core/system-logger';
 import type { NarrativeState } from '@/types/narrative';
 
 /**

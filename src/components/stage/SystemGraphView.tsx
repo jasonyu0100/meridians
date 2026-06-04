@@ -1,13 +1,14 @@
 'use client';
+// SystemGraphView — Stage surface visualising the system knowledge graph (laws, systems, concepts, tensions) via D3.
 
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
-import { useStore } from '@/lib/store';
-import { buildCumulativeSystemGraph } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { buildCumulativeSystemGraph } from '@/lib/forces/narrative-utils';
 import type { NarrativeState, SystemNode } from '@/types/narrative';
 import EvalBar from '@/components/timeline/EvalBar';
 import { computeGroups, SYS_TYPE_COLORS, type SysNode, type SysLink } from './graph-utils';
-import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph-styling';
+import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph/graph-styling';
 
 // ── Fullscreen button ────────────────────────────────────────────────────────
 

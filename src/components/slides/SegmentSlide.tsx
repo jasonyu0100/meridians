@@ -1,4 +1,5 @@
 'use client';
+// Segment slide — D3 view of one narrative segment's force profile and key beats.
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

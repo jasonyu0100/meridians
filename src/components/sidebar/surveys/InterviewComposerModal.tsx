@@ -1,10 +1,12 @@
 "use client";
 
+// InterviewComposerModal — modal for composing a single-subject interview (subject, category, questions).
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/Modal";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { generateInterviewBatch, resolveSubject } from "@/lib/ai/interviews";
-import { logError } from "@/lib/system-logger";
+import { logError } from "@/lib/core/system-logger";
 import type {
   Interview,
   InterviewQuestion,

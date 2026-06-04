@@ -1,10 +1,12 @@
+// Tests for prose/plan versioning — resolving the prose/plan version each branch sees via lineage.
+
 import { describe, it, expect } from 'vitest';
 import {
   resolveProseForBranch,
   resolvePlanForBranch,
   getResolvedProseVersion,
   getResolvedPlanVersion,
-} from '@/lib/narrative-utils';
+} from '@/lib/forces/narrative-utils';
 import type { Scene, Branch, ProseVersion, PlanVersion, BeatPlan } from '@/types/narrative';
 // Helper to create a minimal scene with versions
 function createScene(

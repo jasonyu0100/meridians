@@ -1,9 +1,10 @@
 'use client';
+// ForceTimeline — scrollable scene-by-scene timeline strip with force snapshots per scene.
 
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
-import { computeForceSnapshots, computeWindowedForces, computeRawForceTotals, computeActivityCurve, movingAverage, FORCE_WINDOW_SIZE, classifyCurrentPosition, detectCubeCorner } from '@/lib/narrative-utils';
+import { computeForceSnapshots, computeWindowedForces, computeRawForceTotals, computeActivityCurve, movingAverage, FORCE_WINDOW_SIZE, classifyCurrentPosition, detectCubeCorner } from '@/lib/forces/narrative-utils';
 import ForceLineChart, { type ChartStyle } from './ForceLineChart';
 import ActivityLineChart from './ActivityLineChart';
 import { FORCE_TIMELINE_WINDOW_DEFAULT } from '@/lib/constants';

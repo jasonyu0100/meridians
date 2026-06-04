@@ -1,3 +1,5 @@
+// Tests for lib/text-analysis — corpus chunking and extraction pipeline (with mocked AI calls and constants).
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AnalysisChunkResult } from '@/types/narrative';
 // Mock fetch globally
@@ -32,16 +34,16 @@ vi.mock('@/lib/constants', () => ({
   STANCE_FOCUS_K: 6,
 }));
 // Mock api-logger
-vi.mock('@/lib/api-logger', () => ({
+vi.mock('@/lib/core/api-logger', () => ({
   logApiCall: vi.fn(() => 'log-id'),
   updateApiLog: vi.fn(),
 }));
 // Mock api-headers
-vi.mock('@/lib/api-headers', () => ({
+vi.mock('@/lib/core/api-headers', () => ({
   apiHeaders: vi.fn(() => ({ 'Content-Type': 'application/json' })),
 }));
 // Mock system-logger
-vi.mock('@/lib/system-logger', () => ({
+vi.mock('@/lib/core/system-logger', () => ({
   logError: vi.fn(),
   logWarning: vi.fn(),
   logInfo: vi.fn(),
@@ -53,7 +55,7 @@ vi.mock('@/lib/ai/validation', () => ({
   validateExtractionResult: vi.fn(() => []),
   validateSystemDelta: vi.fn(() => []),
 }));
-import { splitCorpusIntoScenes, extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, assembleNarrative, reextractFateWithLifecycle } from '@/lib/text-analysis';
+import { splitCorpusIntoScenes, extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, assembleNarrative, reextractFateWithLifecycle } from '@/lib/analysis/text-analysis';
 import { callGenerate } from '@/lib/ai/api';
 // ── Test Fixtures ────────────────────────────────────────────────────────────
 function createMockAnalysisResult(index: number, overrides: Partial<AnalysisChunkResult> = {}): AnalysisChunkResult {

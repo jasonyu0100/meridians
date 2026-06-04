@@ -1,7 +1,9 @@
+// POST /api/generate-image — proxy to OpenRouter (prompt) + Replicate (Seedream) for map/region images.
+
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveKey } from '@/lib/resolve-api-key';
+import { resolveKey } from '@/lib/core/resolve-api-key';
 import { DEFAULT_MODEL } from '@/lib/constants';
-import { logError, logInfo, logWarning } from '@/lib/system-logger';
+import { logError, logInfo, logWarning } from '@/lib/core/system-logger';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const REPLICATE_URL = 'https://api.replicate.com/v1/models/bytedance/seedream-4.5/predictions';

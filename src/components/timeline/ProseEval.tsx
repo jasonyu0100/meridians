@@ -1,12 +1,13 @@
 'use client';
+// ProseEval — evaluates scene prose quality via reviewProseQuality and shows guided feedback.
 
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { reviewProseQuality } from '@/lib/ai/review';
 import { rewriteSceneProse } from '@/lib/ai';
 import { resolveEntry, isScene } from '@/types/narrative';
 import type { ProseEvaluation, ProseSceneEval, ProseVerdict, Scene, Arc } from '@/types/narrative';
-import { resolveProseForBranch } from '@/lib/narrative-utils';
+import { resolveProseForBranch } from '@/lib/forces/narrative-utils';
 import { PROSE_CONCURRENCY } from '@/lib/constants';
 import { IconCheck, IconPencil, IconRunning, IconCross, IconDot, IconReset, IconSparkle, IconPlus } from '@/components/icons/EvalIcons';
 import SceneRangeSelector, { filterKeysBySceneRange, type SceneRange } from './SceneRangeSelector';

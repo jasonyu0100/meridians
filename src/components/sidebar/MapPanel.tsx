@@ -1,7 +1,9 @@
 "use client";
 
+// MapPanel — sidebar panel listing generated board/maps and launching the map composer.
+
 import { MapComposerModal } from "@/components/sidebar/maps/MapComposerModal";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type { ReasoningMap } from "@/types/narrative";
 import { useMemo, useState } from "react";
 

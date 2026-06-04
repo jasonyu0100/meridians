@@ -6,7 +6,7 @@
  * thread-lifecycle.ts — this file doesn't restate them.
  */
 
-import { FORCE_BANDS, fmtBand } from '@/lib/narrative-utils';
+import { FORCE_BANDS, fmtBand } from '@/lib/forces/narrative-utils';
 
 const W = FORCE_BANDS.world;
 const S = FORCE_BANDS.system;

@@ -1,11 +1,12 @@
 'use client';
+// Stage — center-view workspace shell that routes between the active Stage surfaces (board, graphs, scene, etc.).
 
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
-import { useStore } from '@/lib/store';
-import { getEffectivePovId } from '@/lib/narrative-utils';
-import { computeCumulativePositions } from '@/lib/positions';
-import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/scene-filter';
+import { useStore } from '@/lib/state/store';
+import { getEffectivePovId } from '@/lib/forces/narrative-utils';
+import { computeCumulativePositions } from '@/lib/forces/positions';
+import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
 import type {
   Character,
   Location,
@@ -45,10 +46,10 @@ import {
   resolveGraphNeutrals,
   roleFill,
 } from './graph-utils';
-import { useTheme } from '@/lib/theme-context';
+import { useTheme } from '@/lib/state/theme-context';
 import { useImageUrlMap } from '@/hooks/useAssetUrl';
-import { buildMapTreeLayout } from '@/lib/map-tree-layout';
-import { edgeWidthFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM } from '@/lib/graph-styling';
+import { buildMapTreeLayout } from '@/lib/map/map-tree-layout';
+import { edgeWidthFor, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM } from '@/lib/graph/graph-styling';
 
 export default function Stage() {
   const { state, dispatch } = useStore();

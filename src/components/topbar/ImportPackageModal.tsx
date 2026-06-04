@@ -1,12 +1,13 @@
 'use client';
+// ImportPackageModal — import a narrative from a package file or directory, with validation and options.
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { importFromPackage, importFromDirectory, getPackageInfo, getDirectoryInfo, validatePackage, validateDirectory, formatBytes, type ImportOptions } from '@/lib/package-import';
-import type { PackageManifest } from '@/lib/package-export';
+import { importFromPackage, importFromDirectory, getPackageInfo, getDirectoryInfo, validatePackage, validateDirectory, formatBytes, type ImportOptions } from '@/lib/io/package-import';
+import type { PackageManifest } from '@/lib/io/package-export';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
-import { useStore, narrativeToEntry } from '@/lib/store';
-import { saveNarrative } from '@/lib/persistence';
+import { useStore, narrativeToEntry } from '@/lib/state/store';
+import { saveNarrative } from '@/lib/storage/persistence';
 
 type Props = {
   onClose: () => void;

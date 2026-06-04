@@ -1,3 +1,5 @@
+// Tests for lib/ai/context — LLM context building: state-at-index, story-settings block, tier classification.
+
 import { describe, it, expect } from 'vitest';
 import {
   getStateAtIndex,

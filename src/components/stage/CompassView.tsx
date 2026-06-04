@@ -1,7 +1,8 @@
 'use client';
+// CompassView — Stage Compass surface: arc Present + Future variable scenarios (the softmax-ranked cohort).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { narrativeContext } from '@/lib/ai/context';
 import { resolveReasoningBudget } from '@/lib/ai/api';
 import { buildActivePhaseSection } from '@/lib/ai/phase-graph';

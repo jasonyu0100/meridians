@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
-import { assetManager } from '@/lib/asset-manager';
+import { assetManager } from '@/lib/storage/asset-manager';
 import { Markdown } from '@/components/ui/Markdown';
 import type { SourceFile } from '@/types/narrative';
 

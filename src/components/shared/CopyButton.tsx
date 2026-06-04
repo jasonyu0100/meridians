@@ -1,7 +1,8 @@
 "use client";
+// CopyButton — button that copies text to the clipboard with transient confirmation state.
 
 import { useState } from "react";
-import { copyToClipboard } from "@/lib/clipboard";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 
 /**
  * Copy-to-clipboard button with a brief "Copied" confirmation. Used by

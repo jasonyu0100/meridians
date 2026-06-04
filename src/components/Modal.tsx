@@ -1,8 +1,9 @@
 'use client';
+// Modal — reusable modal shell (header/body/streaming-status) with starfield backdrop.
 
 import { useEffect, type ReactNode } from 'react';
 import { StarField } from '@/components/effects/StarField';
-import { useTheme } from '@/lib/theme-context';
+import { useTheme } from '@/lib/state/theme-context';
 
 type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl' | 'full';
 

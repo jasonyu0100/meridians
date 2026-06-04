@@ -1,14 +1,15 @@
 'use client';
+// EvalBar — timeline bar surfacing per-scene structural evaluation verdicts.
 
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
 import {
   computeForceSnapshots,
   computeActivityCurve,
   computeRawForceTotals,
   computeForceSignature,
-} from '@/lib/narrative-utils';
+} from '@/lib/forces/narrative-utils';
 
 /**
  * Floating vertical activity bar. Grows from centre: orange gradient

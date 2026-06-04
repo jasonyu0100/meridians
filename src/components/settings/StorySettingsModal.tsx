@@ -1,18 +1,19 @@
 'use client';
+// StorySettingsModal — edit per-story settings: POV, world focus, reasoning/websearch levels, prose format.
 
 import { useState, useRef, useCallback } from 'react';
-import { apiHeaders } from '@/lib/api-headers';
+import { apiHeaders } from '@/lib/core/api-headers';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import type { StorySettings, POVMode, WorldFocusMode, ReasoningLevel, WebsearchLevel, NarrativeState, ProseFormat, PlanExtractionSource } from '@/types/narrative';
 import { WEBSEARCH_MAX_RESULTS, WEBSEARCH_DEFAULT_MAX_TOTAL } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, REASONING_BUDGETS } from '@/types/narrative';
 import { NARRATIVE_CUBE } from '@/types/narrative';
 import type { CubeCornerKey } from '@/types/narrative';
-import { MATRIX_PRESETS, STORYTELLER_PRESET, computeMatrixFromNarrative, type TransitionMatrix } from '@/lib/pacing-markov';
-import { DEFAULT_BEAT_SAMPLER, BEAT_PROFILE_PRESETS, computeSamplerFromResolvedScenes } from '@/lib/beat-profiles';
-import { MECHANISM_PROFILE_PRESETS, computeMechanismDist, DEFAULT_MECHANISM_DIST } from '@/lib/mechanism-profiles';
+import { MATRIX_PRESETS, STORYTELLER_PRESET, computeMatrixFromNarrative, type TransitionMatrix } from '@/lib/pacing/pacing-markov';
+import { DEFAULT_BEAT_SAMPLER, BEAT_PROFILE_PRESETS, computeSamplerFromResolvedScenes } from '@/lib/pacing/beat-profiles';
+import { MECHANISM_PROFILE_PRESETS, computeMechanismDist, DEFAULT_MECHANISM_DIST } from '@/lib/pacing/mechanism-profiles';
 import { IconChevronDown } from '@/components/icons';
 
 type Tab = 'direction' | 'style' | 'pov' | 'audio' | 'thinking' | 'other';

@@ -1,4 +1,5 @@
 'use client';
+// SlideShell — shared layout wrapper providing title/subtitle chrome for every Review deck slide.
 
 import React from 'react';
 

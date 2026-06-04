@@ -1,10 +1,11 @@
 'use client';
+// useAudioPlayer — manages scene TTS playback state, audio caching, and the player context.
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
-import { assetManager } from '@/lib/asset-manager';
-import { useStore } from '@/lib/store';
+import { assetManager } from '@/lib/storage/asset-manager';
+import { useStore } from '@/lib/state/store';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
-import { apiHeaders } from '@/lib/api-headers';
+import { apiHeaders } from '@/lib/core/api-headers';
 
 type AudioPlayerState = {
   sceneId: string | null;

@@ -1,8 +1,10 @@
+// Tests for lib/forces/thread-log — applying thread deltas to stances, stance decay, and stance/log invariants.
+
 import { describe, it, expect } from 'vitest';
-import { applyThreadDelta, decayUntouchedStance, newNarratorStance, EMPTY_THREAD_LOG } from '@/lib/thread-log';
+import { applyThreadDelta, decayUntouchedStance, newNarratorStance, EMPTY_THREAD_LOG } from '@/lib/forces/thread-log';
 import type { Thread, ThreadDelta } from '@/types/narrative';
 import { NARRATOR_AGENT_ID } from '@/types/narrative';
-import { getStanceProbs } from '@/lib/narrative-utils';
+import { getStanceProbs } from '@/lib/forces/narrative-utils';
 
 // Each thread carries a stance — a probability distribution over named
 // outcomes — and each scene's threadDelta shifts the stance's logits;

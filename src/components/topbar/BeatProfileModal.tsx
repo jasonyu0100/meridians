@@ -1,9 +1,10 @@
 "use client";
+// BeatProfileModal — visualises beat-function/mechanism distributions and Markov sampler from scene plans.
 
 import { Modal, ModalHeader } from "@/components/Modal";
-import { computeSamplerFromPlans } from "@/lib/beat-profiles";
-import { flattenFnMechDist } from "@/lib/mechanism-profiles";
-import { resolvePlanForBranch } from "@/lib/narrative-utils";
+import { computeSamplerFromPlans } from "@/lib/pacing/beat-profiles";
+import { flattenFnMechDist } from "@/lib/pacing/mechanism-profiles";
+import { resolvePlanForBranch } from "@/lib/forces/narrative-utils";
 import type {
   BeatFn,
   BeatMechanism,

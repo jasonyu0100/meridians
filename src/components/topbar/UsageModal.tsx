@@ -1,4 +1,5 @@
 'use client';
+// UsageModal — detailed API usage breakdown: per-model token spend and cost over the log.
 
 import { useMemo, useState } from 'react';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';

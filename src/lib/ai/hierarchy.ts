@@ -1,8 +1,10 @@
+// Location-hierarchy LLM helpers — builds the nested location/map tree with target fan-out per node.
+
 import type { NarrativeState } from '@/types/narrative';
 import { callGenerateStream, resolveReasoningBudget } from './api';
 import { parseJson } from './json';
 import { MAX_TOKENS_DEFAULT } from '@/lib/constants';
-import { logInfo } from '@/lib/system-logger';
+import { logInfo } from '@/lib/core/system-logger';
 
 /** The sweet-spot number of DIRECT children per node (incl. the top level): a
  *  single map legibly shows roughly this many distinct regions. The prompt aims

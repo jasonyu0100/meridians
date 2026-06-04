@@ -17,7 +17,7 @@ import {
   gradeForces,
   computeSwingMagnitudes,
   FORCE_REFERENCE_MEANS,
-} from '@/lib/narrative-utils';
+} from '@/lib/forces/narrative-utils';
 import type { Scene, ForceSnapshot, NarrativeState, ScenarioRun } from '@/types/narrative';
 import { IconLocationPin, IconEye } from '@/components/icons';
 

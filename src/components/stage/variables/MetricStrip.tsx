@@ -1,4 +1,5 @@
 'use client';
+// MetricStrip — horizontal row of labelled metric values for the variables/scenario surface.
 
 interface Metric {
   label: string;

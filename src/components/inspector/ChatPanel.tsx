@@ -1,5 +1,7 @@
 "use client";
 
+// ChatPanel — in-character chat with an entity, grounded in its world-graph continuity.
+
 import {
   IconChevronDown,
   IconEdit,
@@ -40,7 +42,7 @@ import {
   ReasoningCollapsed,
   ReasoningInline,
 } from "@/components/generation/ReasoningStream";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type {
   Artifact,
   Character,

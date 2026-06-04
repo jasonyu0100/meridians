@@ -1,7 +1,9 @@
+// Tests for the analysis runner — scene-first text-to-narrative extraction pipeline (analysis deps mocked).
+
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import type { AnalysisJob, AnalysisChunkResult, NarrativeState } from '@/types/narrative';
 // Mock dependencies — new scene-first pipeline
-vi.mock('@/lib/text-analysis', () => ({
+vi.mock('@/lib/analysis/text-analysis', () => ({
   extractSceneStructure: vi.fn(),
   groupScenesIntoArcs: vi.fn(),
   reconcileResults: vi.fn(),
@@ -19,7 +21,7 @@ vi.mock('@/lib/constants', () => ({
   ANALYSIS_CONCURRENCY: 3,
   ANALYSIS_STAGGER_DELAY_MS: 10,
 }));
-vi.mock('@/lib/system-logger', () => ({
+vi.mock('@/lib/core/system-logger', () => ({
   logError: vi.fn(),
   logWarning: vi.fn(),
   logInfo: vi.fn(),
@@ -27,27 +29,27 @@ vi.mock('@/lib/system-logger', () => ({
   setSystemLoggerAnalysisId: vi.fn(),
   onSystemLog: vi.fn(),
 }));
-vi.mock('@/lib/api-logger', () => ({
+vi.mock('@/lib/core/api-logger', () => ({
   setLoggerAnalysisId: vi.fn(),
   onApiLog: vi.fn(),
   onApiLogUpdate: vi.fn(),
 }));
 // Mock embedding modules (dynamically imported in runner)
-vi.mock('@/lib/embeddings', () => ({
+vi.mock('@/lib/search/embeddings', () => ({
   embedPropositions: vi.fn(async (props: any[]) => props.map((p: any) => ({ ...p }))),
   generateEmbeddingsBatch: vi.fn(async (texts: string[]) => texts.map(() => new Array(1536).fill(0))),
   computeCentroid: vi.fn(() => new Array(1536).fill(0)),
 }));
-vi.mock('@/lib/asset-manager', () => ({
+vi.mock('@/lib/storage/asset-manager', () => ({
   assetManager: {
     getEmbedding: vi.fn(async () => new Array(1536).fill(0)),
     storeEmbedding: vi.fn(async () => 'emb-ref-123'),
   },
 }));
-import { extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, reextractFateWithLifecycle, assembleNarrative } from '@/lib/text-analysis';
+import { extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeThreading, reextractFateWithLifecycle, assembleNarrative } from '@/lib/analysis/text-analysis';
 import { reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
-import { analysisRunner } from '@/lib/analysis-runner';
+import { analysisRunner } from '@/lib/analysis/analysis-runner';
 const mockNarrative: NarrativeState = {
   id: 'narrative-1',
   title: 'Test Narrative',

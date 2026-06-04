@@ -1,3 +1,5 @@
+// Tests for lib/ai/errors — FatalApiError subclass and isFatalStatus status-code classification.
+
 import { describe, expect, it } from "vitest";
 import { FatalApiError, isFatalStatus } from "@/lib/ai/errors";
 

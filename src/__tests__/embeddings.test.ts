@@ -13,12 +13,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { generateScenePlan, generateScenes, generateSceneProse } from '@/lib/ai/scenes';
 import { rewriteSceneProse } from '@/lib/ai/prose';
 import { runPlanCandidates } from '@/lib/ai/candidates';
-import { searchNarrative } from '@/lib/search';
-import { generateEmbeddings, cosineSimilarity, computeCentroid, embedPropositions } from '@/lib/embeddings';
+import { searchNarrative } from '@/lib/search/search';
+import { generateEmbeddings, cosineSimilarity, computeCentroid, embedPropositions } from '@/lib/search/embeddings';
 import type { NarrativeState, Scene, BeatPlan } from '@/types/narrative';
 import { EMBEDDING_DIMENSIONS } from '@/lib/constants';
 import { TEST_EMBEDDINGS } from './fixtures/test-embeddings';
-import { assetManager } from '@/lib/asset-manager';
+import { assetManager } from '@/lib/storage/asset-manager';
 // Mock fetch for embedding API
 global.fetch = vi.fn();
 const mockNarrative: NarrativeState = {
@@ -632,7 +632,7 @@ describe('Batch Embedding Generation', () => {
   });
   it('should split large batches into multiple requests', async () => {
     const texts = Array.from({ length: 150 }, (_, i) => `Text ${i}`);
-    const { generateEmbeddingsBatch } = await import('@/lib/embeddings');
+    const { generateEmbeddingsBatch } = await import('@/lib/search/embeddings');
     const embeddings = await generateEmbeddingsBatch(texts, mockNarrative.id);
     expect(embeddings).toHaveLength(150);
     // Should be split into 3 batches (50 each)
@@ -645,7 +645,7 @@ describe('Batch Embedding Generation', () => {
   it('should report progress for batch operations', async () => {
     const texts = Array.from({ length: 100 }, (_, i) => `Text ${i}`);
     const progressUpdates: Array<{ completed: number; total: number }> = [];
-    const { generateEmbeddingsBatch } = await import('@/lib/embeddings');
+    const { generateEmbeddingsBatch } = await import('@/lib/search/embeddings');
     await generateEmbeddingsBatch(texts, mockNarrative.id, (completed, total) => {
       progressUpdates.push({ completed, total });
     });

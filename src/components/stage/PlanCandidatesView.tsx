@@ -1,11 +1,12 @@
 'use client';
+// PlanCandidatesView — side-by-side comparison and selection UI for alternative generated scene-plan candidates.
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { NarrativeState, Scene, PlanCandidates } from '@/types/narrative';
 import { runPlanCandidates } from '@/lib/ai/candidates';
-import { assetManager } from '@/lib/asset-manager';
-import { classificationColor } from '@/lib/proposition-classify';
+import { assetManager } from '@/lib/storage/asset-manager';
+import { classificationColor } from '@/lib/analysis/proposition-classify';
 
 type Props = {
   narrative: NarrativeState;

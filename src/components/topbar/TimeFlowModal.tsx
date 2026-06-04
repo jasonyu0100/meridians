@@ -1,9 +1,10 @@
 'use client';
+// TimeFlowModal — visualises cumulative in-story time offsets and per-scene time deltas across the branch.
 
 import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import {
   computeSceneOffsets,
   formatCumulative,
@@ -11,7 +12,7 @@ import {
   SECONDS_PER_UNIT,
   TIME_UNITS_ASCENDING,
   timeDeltaToSeconds,
-} from '@/lib/time-deltas';
+} from '@/lib/forces/time-deltas';
 import { isScene, resolveEntry, type Scene, type TimeUnit } from '@/types/narrative';
 
 type Props = { onClose: () => void };

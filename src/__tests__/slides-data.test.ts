@@ -1,3 +1,5 @@
+// Tests for lib/slides-data — computing slide deck data from narrative state.
+
 import { describe, it, expect } from 'vitest';
 import { computeSlidesData } from '@/lib/slides-data';
 import type { NarrativeState, Scene } from '@/types/narrative';

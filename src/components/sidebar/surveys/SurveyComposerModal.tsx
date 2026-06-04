@@ -1,10 +1,12 @@
 "use client";
 
+// SurveyComposerModal — modal for composing a survey (question, type, category, respondent filters).
+
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/Modal";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { generateSurveyProposal, resolveRespondents, toggleRespondentTier } from "@/lib/ai/surveys";
-import { logError } from "@/lib/system-logger";
+import { logError } from "@/lib/core/system-logger";
 import type {
   CharacterRole,
   Survey,

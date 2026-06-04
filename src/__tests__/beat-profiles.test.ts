@@ -1,3 +1,5 @@
+// Tests for lib/beat-profiles — beat Markov matrices, profile presets, and beat-sequence sampling.
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   DEFAULT_BEAT_MATRIX,
@@ -11,9 +13,9 @@ import {
   resolveProfile,
   resolveSampler,
   BEAT_PROFILE_PRESETS,
-} from '@/lib/beat-profiles';
+} from '@/lib/pacing/beat-profiles';
 import { BEATS_PER_KWORD } from '@/lib/constants';
-import { DEFAULT_MECHANISM_DIST } from '@/lib/mechanism-profiles';
+import { DEFAULT_MECHANISM_DIST } from '@/lib/pacing/mechanism-profiles';
 import type { Scene, NarrativeState, BeatSampler, BeatFn, BeatMechanism } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS } from '@/types/narrative';
 // ── Test Fixtures ────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 'use client';
+// ThinkingAnimation — D3 visualisation of the four thinking modes (collection → objective → building).
 
 import { useEffect, useMemo, useRef } from 'react';
 import * as d3 from 'd3';

@@ -1,6 +1,8 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+// ThreadLogNodeDetail — inspector view for a single thread-log node: perceptual primitive, evidence, and stance shift.
+
+import { useStore } from "@/lib/state/store";
 import type { ThreadLogNode, ThreadLogNodeType } from "@/types/narrative";
 import { useMemo } from "react";
 import { InlineText, InlineSelect } from "./InlineEdit";

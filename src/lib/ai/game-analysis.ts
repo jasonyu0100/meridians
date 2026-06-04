@@ -10,7 +10,7 @@ import { callGenerateStream, resolveReasoningBudget } from "./api";
 import { parseJson } from "./json";
 import { buildGameTheorySystemPrompt, buildGameTheoryUserPrompt } from "@/lib/prompts/scenes/game-theory";
 import { GAME_THEORY_MODEL } from "@/lib/constants";
-import { logError, logInfo } from "@/lib/system-logger";
+import { logError, logInfo } from "@/lib/core/system-logger";
 import {
   ACTION_AXIS_LABELS,
   GAME_TYPE_LABELS,

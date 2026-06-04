@@ -1,3 +1,5 @@
+// graph-utils — shared helpers for Stage graph surfaces: node/edge derivation, colors, and layout utilities.
+
 import type {
   Arc,
   Artifact,

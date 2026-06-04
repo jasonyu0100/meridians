@@ -1,13 +1,14 @@
 'use client';
+// WorldGraphView — Stage surface rendering an entity's inner world knowledge graph (raw graph substrate) via D3.
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import { useStore } from '@/lib/store';
-import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/scene-filter';
+import { useStore } from '@/lib/state/store';
+import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/graph/scene-filter';
 import { WORLD_FILL } from './graph-utils';
 import type { WorldNode, WorldEdge, World, WorldNodeType } from '@/types/narrative';
 import { WORLD_NODE_TYPES, WORLD_NODE_CATEGORY } from '@/types/narrative';
-import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph-styling';
+import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph/graph-styling';
 
 type CNode = d3.SimulationNodeDatum & { id: string; content: string; type: string; degree: number };
 type CLink = d3.SimulationLinkDatum<CNode> & { relation: string };

@@ -1,14 +1,16 @@
+// World generation — full narrative bootstrap, world expansion, and post-arc direction course-correction.
+
 import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm, WebsearchConfig } from '@/types/narrative';
 import { REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { resolveReasoningBudget, resolveWebsearch } from './api';
-import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/narrative-utils';
-import { nextId, nextIds } from '@/lib/narrative-utils';
-import { normalizeTimeDelta } from '@/lib/time-deltas';
+import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/forces/narrative-utils';
+import { nextId, nextIds } from '@/lib/forces/narrative-utils';
+import { normalizeTimeDelta } from '@/lib/forces/time-deltas';
 import type { ThreadLogNodeType } from '@/types/narrative';
-import { applyThreadDelta, newNarratorStance } from '@/lib/thread-log';
-import { applyWorldDelta } from '@/lib/world-graph';
-import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/system-graph';
-import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/attribution';
+import { applyThreadDelta, newNarratorStance } from '@/lib/forces/thread-log';
+import { applyWorldDelta } from '@/lib/graph/world-graph';
+import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/graph/system-graph';
+import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/forces/attribution';
 import { callGenerate, callGenerateStream } from './api';
 import {
   buildGenerateNarrativeSystem,
@@ -25,7 +27,7 @@ import { buildActivePhaseSection } from './phase-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext } from './context';
-import { logInfo } from '@/lib/system-logger';
+import { logInfo } from '@/lib/core/system-logger';
 import {
   buildSuggestArcDirectionPrompt,
   buildSuggestAutoDirectionPrompt,
@@ -769,8 +771,8 @@ export async function generateNarrative(
 
   // Generate embeddings for scene summaries
   if (sceneList.length > 0) {
-    const { generateEmbeddingsBatch } = await import('@/lib/embeddings');
-    const { assetManager } = await import('@/lib/asset-manager');
+    const { generateEmbeddingsBatch } = await import('@/lib/search/embeddings');
+    const { assetManager } = await import('@/lib/storage/asset-manager');
     const summaries = sceneList.map(s => s.summary);
     const embeddings = await generateEmbeddingsBatch(summaries, id);
     for (let i = 0; i < sceneList.length; i++) {

@@ -1,8 +1,9 @@
 'use client';
+// BranchModal — modal for creating and managing story timeline branches.
 
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
-import { useStore } from '@/lib/store';
-import { resolveEntrySequence, resolveCanonBranchId } from '@/lib/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { resolveEntrySequence, resolveCanonBranchId } from '@/lib/forces/narrative-utils';
 import { buildEntryOrigin } from '@/lib/branch-tree';
 import { Modal } from '@/components/Modal';
 import { BranchChat } from './BranchChat';

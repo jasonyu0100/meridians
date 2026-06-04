@@ -1,5 +1,7 @@
 "use client";
 
+// InspectorPanel — right-side inspector shell routing selected entities to their detail/research views.
+
 import ChatPanel from "@/components/inspector/ChatPanel";
 import SurveyPanel from "@/components/sidebar/SurveyPanel";
 import InterviewPanel from "@/components/sidebar/InterviewPanel";
@@ -12,7 +14,7 @@ import BranchEval from "@/components/timeline/BranchEval";
 import PlanEval from "@/components/timeline/PlanEval";
 import ProseEval from "@/components/timeline/ProseEval";
 import { type SceneRange } from "@/components/timeline/SceneRangeSelector";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import type { WorldBuild } from "@/types/narrative";
 import { isScene, type TimelineEntry } from "@/types/narrative";
 import { useCallback, useEffect, useRef, useState } from "react";

@@ -1,13 +1,15 @@
+// Branch reconstruction — applies per-scene verdicts (edit/merge/insert/cut) into a new versioned branch.
+
 import type { NarrativeState, StructureReview, SceneEval, SceneVerdict, Scene, Arc, Branch } from '@/types/narrative';
 import { resolveEntry, isScene, isWorldBuild } from '@/types/narrative';
-import { nextId } from '@/lib/narrative-utils';
-import { normalizeTimeDelta } from '@/lib/time-deltas';
+import { nextId } from '@/lib/forces/narrative-utils';
+import { normalizeTimeDelta } from '@/lib/forces/time-deltas';
 import { callGenerate, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
 import { sanitizeScenes } from './scenes';
 import { GENERATE_MODEL, PROSE_CONCURRENCY, MAX_TOKENS_SMALL } from '@/lib/constants';
 import { narrativeContext } from './context';
-import { logError, logWarning, logInfo } from '@/lib/system-logger';
+import { logError, logWarning, logInfo } from '@/lib/core/system-logger';
 import {
   buildEditScenePrompt,
   buildMergeScenesPrompt,

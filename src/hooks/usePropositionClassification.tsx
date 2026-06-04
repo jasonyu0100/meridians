@@ -8,7 +8,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from 'react';
-import { propKey, type NarrativeClassification, type PropConnection } from '@/lib/proposition-classify';
+import { propKey, type NarrativeClassification, type PropConnection } from '@/lib/analysis/proposition-classify';
 import type { NarrativeState, PropositionClassification } from '@/types/narrative';
 import { resolveEntry, isScene } from '@/types/narrative';
 
@@ -63,7 +63,7 @@ export function PropositionClassificationProvider({
     if (!narrative || resolvedKeys.length === 0) return;
 
     // Dynamic import to avoid loading classification code on initial bundle
-    const { classifyPropositions } = await import('@/lib/proposition-classify');
+    const { classifyPropositions } = await import('@/lib/analysis/proposition-classify');
     const res = await classifyPropositions(narrative, resolvedKeys);
     setResult(res);
   }, [narrative, resolvedKeys]);

@@ -12,20 +12,20 @@
  */
 
 import { useRef, useCallback, useState, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { generateScenes } from '@/lib/ai';
 import { FatalApiError } from '@/lib/ai/errors';
-import { logError } from '@/lib/system-logger';
+import { logError } from '@/lib/core/system-logger';
 import {
   buildDirectionFromScenario,
   buildVirtualState,
   runWithPool,
   stampScenarioVariables,
-} from '@/lib/scenarios-engine';
+} from '@/lib/scenarios/scenarios-engine';
 import {
   buildTakenFromNarrative,
   remapScenarioCommit,
-} from '@/lib/scenarios-remap';
+} from '@/lib/scenarios/scenarios-remap';
 import { scenarioProbabilities } from '@/lib/ai/variables';
 import {
   DEFAULT_SCENARIOS_CONFIG,

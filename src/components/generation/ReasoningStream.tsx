@@ -1,4 +1,5 @@
 "use client";
+// ReasoningStream — reasoning display primitives (inline + collapsible) shared by BranchChat and ChatPanel.
 
 import { useState } from "react";
 

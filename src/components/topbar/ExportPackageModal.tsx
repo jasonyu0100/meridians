@@ -1,8 +1,9 @@
 'use client';
+// ExportPackageModal — configure and export the current narrative as a portable package with size estimate.
 
 import { useState, useEffect } from 'react';
-import { exportAsPackage, calculateExactExportSize, type ExportOptions } from '@/lib/package-export';
-import { formatBytes } from '@/lib/package-import';
+import { exportAsPackage, calculateExactExportSize, type ExportOptions } from '@/lib/io/package-export';
+import { formatBytes } from '@/lib/io/package-import';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import type { NarrativeState } from '@/types/narrative';
 

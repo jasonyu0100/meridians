@@ -1,4 +1,5 @@
 "use client";
+// DefinitionsModal — glossary of core concepts: archetypes, cube corners, forces, and entity types.
 
 import type { ArchetypeKey } from "@/components/ArchetypeIcon";
 import { ARCHETYPE_COLORS, ArchetypeIcon } from "@/components/ArchetypeIcon";
@@ -9,7 +10,7 @@ import {
   IconLocationPin,
 } from "@/components/icons/ContentIcons";
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
-import { SHAPES as NARRATIVE_SHAPES } from "@/lib/narrative-utils";
+import { SHAPES as NARRATIVE_SHAPES } from "@/lib/forces/narrative-utils";
 import { NARRATIVE_CUBE, type CubeCornerKey } from "@/types/narrative";
 import { useState } from "react";
 

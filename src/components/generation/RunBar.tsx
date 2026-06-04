@@ -1,4 +1,5 @@
 'use client';
+// RunBar — controls and status for an in-progress scenarios/generation run.
 
 import { useState, useEffect } from 'react';
 import { IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';

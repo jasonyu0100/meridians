@@ -1,10 +1,12 @@
+// Tests for lib/graph/scene-filter — entity/world-node/relationship/thread visibility resolved at a given scene.
+
 import { describe, it, expect } from 'vitest';
 import {
   getIntroducedIds,
   getWorldNodesAtScene,
   getRelationshipsAtScene,
   getThreadIdsAtScene,
-} from '@/lib/scene-filter';
+} from '@/lib/graph/scene-filter';
 import type { WorldBuild, Scene, WorldNode, WorldNodeType, NarrativeState, Thread } from '@/types/narrative';
 // ── Test Fixtures ────────────────────────────────────────────────────────────
 function createWorldBuild(

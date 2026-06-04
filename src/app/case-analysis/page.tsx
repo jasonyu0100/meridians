@@ -1,10 +1,11 @@
 "use client";
+// Case Analysis page — loads a seed work and plays it through the SlidesPlayer walkthrough.
 
 import { SlidesPlayer } from "@/components/slides/SlidesPlayer";
 import { PropositionClassificationProvider } from "@/hooks/usePropositionClassification";
-import { assetManager } from "@/lib/asset-manager";
-import { resolveEntrySequence } from "@/lib/narrative-utils";
-import { useStore, withDerivedEntities } from "@/lib/store";
+import { assetManager } from "@/lib/storage/asset-manager";
+import { resolveEntrySequence } from "@/lib/forces/narrative-utils";
+import { useStore, withDerivedEntities } from "@/lib/state/store";
 import type { NarrativeState } from "@/types/narrative";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

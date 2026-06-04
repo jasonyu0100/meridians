@@ -1,7 +1,9 @@
 'use client';
 
+// HierarchyModal — edit the location hierarchy (the map tree) of nested places.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import { IconSpinner } from '@/components/icons';
 import { ReasoningInline } from '@/components/generation/ReasoningStream';

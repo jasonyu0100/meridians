@@ -1,8 +1,10 @@
 "use client";
 
-import { computeForceSnapshots, detectCubeCorner, getEffectivePovId, resolveEntityName } from "@/lib/narrative-utils";
-import { useStore } from "@/lib/store";
-import { formatTimeDelta } from "@/lib/time-deltas";
+// SceneDetail — inspector view for a scene: forces, cube mode, participants, and structural deltas.
+
+import { computeForceSnapshots, detectCubeCorner, getEffectivePovId, resolveEntityName } from "@/lib/forces/narrative-utils";
+import { useStore } from "@/lib/state/store";
+import { formatTimeDelta } from "@/lib/forces/time-deltas";
 import { isScene, resolveEntry, type InspectorContext, type NarrativeState, type Scene } from "@/types/narrative";
 import { useMemo, useState } from "react";
 import { InlineText } from "./InlineEdit";

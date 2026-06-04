@@ -1,10 +1,11 @@
 'use client';
+// ForceAnalytics — D3 charts analysing Fate/World/System force activity across the timeline.
 
 import { useMemo, useState, useRef, useEffect, useCallback, useId } from 'react';
 import * as d3 from 'd3';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene, type Scene, type ForceSnapshot, type CubeCornerKey } from '@/types/narrative';
-import { computeForceSnapshots, computeWindowedForces, computeRawForceTotals, computeSwingMagnitudes, detectCubeCorner, gradeForces, FORCE_REFERENCE_MEANS, zScoreNormalize, movingAverage, FORCE_WINDOW_SIZE, computeActivityCurve, classifyCurrentPosition, type ActivityPoint } from '@/lib/narrative-utils';
+import { computeForceSnapshots, computeWindowedForces, computeRawForceTotals, computeSwingMagnitudes, detectCubeCorner, gradeForces, FORCE_REFERENCE_MEANS, zScoreNormalize, movingAverage, FORCE_WINDOW_SIZE, computeActivityCurve, classifyCurrentPosition, type ActivityPoint } from '@/lib/forces/narrative-utils';
 import { IconLineChart, IconPencilDraw } from '@/components/icons';
 
 type ForceKey = 'fate' | 'world' | 'system' | 'swing' | 'activity';

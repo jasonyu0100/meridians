@@ -1,4 +1,5 @@
 'use client';
+// useFeatureAccess — reads/writes user-provided API keys (localStorage) and reports key availability.
 
 import { useState, useEffect, useCallback } from 'react';
 

@@ -1,7 +1,9 @@
 'use client';
 
+// ImagePromptEditor — inline editor for an entity's image prompt with AI suggestion.
+
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { suggestImagePrompt, type ImagePromptEntityKind } from '@/lib/ai';
 import { IconSparkle, IconSpinner } from '@/components/icons';
 import { InlineText } from './InlineEdit';

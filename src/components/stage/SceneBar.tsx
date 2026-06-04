@@ -1,7 +1,8 @@
 'use client';
+// SceneBar — horizontal scene navigator strip for the Stage; selects and scrolls through the branch's scenes.
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene } from '@/types/narrative';
 
 export default function SceneBar() {

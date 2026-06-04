@@ -1,5 +1,7 @@
+// POST /api/chat — proxy to OpenRouter for character/entity chat completions.
+
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveKey } from '@/lib/resolve-api-key';
+import { resolveKey } from '@/lib/core/resolve-api-key';
 import { INTERACTION_MODEL } from '@/lib/constants';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';

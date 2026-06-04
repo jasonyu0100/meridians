@@ -1,3 +1,5 @@
+// Tests for lib/graph/system-graph — system delta sanitizing/application, edge keys, and concept id resolution.
+
 import { describe, it, expect } from 'vitest';
 import type { Scene, SystemDelta, SystemGraph, SystemNode, SystemNodeType } from '@/types/narrative';
 import {
@@ -10,7 +12,7 @@ import {
   makeSystemIdAllocator,
   resolveSystemConceptIds,
   getSceneSystemAttributions,
-} from '@/lib/system-graph';
+} from '@/lib/graph/system-graph';
 // ── Fixture helpers ──────────────────────────────────────────────────────────
 function node(id: string, concept: string, type: SystemNodeType = 'concept'): SystemNode {
   return { id, concept, type };

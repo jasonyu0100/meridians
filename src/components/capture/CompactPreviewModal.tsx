@@ -21,13 +21,13 @@
  */
 
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import type { Prior } from '@/types/narrative';
 import {
   synthesisePriorsCompact,
   deriveCompactFilename,
 } from '@/lib/priors-compact';
-import { stageFile, convertFile } from '@/lib/file-conversion';
+import { stageFile, convertFile } from '@/lib/io/file-conversion';
 import { Markdown } from '@/components/ui/Markdown';
 
 type Stage = 'setup' | 'synthesising' | 'preview' | 'staging' | 'error';

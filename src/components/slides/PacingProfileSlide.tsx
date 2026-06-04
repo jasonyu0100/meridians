@@ -1,6 +1,7 @@
 "use client";
+// PacingProfile slide — shows the work's scene-mode pacing fingerprint via cube-corner transitions.
 
-import { detectCubeCorner } from "@/lib/narrative-utils";
+import { detectCubeCorner } from "@/lib/forces/narrative-utils";
 import type { SlidesData } from "@/lib/slides-data";
 import type { CubeCornerKey, ForceSnapshot } from "@/types/narrative";
 import { NARRATIVE_CUBE } from "@/types/narrative";

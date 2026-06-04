@@ -1,3 +1,5 @@
+// Tests for lib/constants — validates tunable config values, model ids, timeouts, and concurrency limits.
+
 import {
   // Analysis & Extraction
   ANALYSIS_CONCURRENCY,

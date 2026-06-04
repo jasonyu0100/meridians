@@ -1,3 +1,5 @@
+// Icon barrel — re-exports the icon set.
+
 export { IconCheck, IconTilde, IconPencil, IconMerge, IconCross, IconPlus as IconPlusSmall, IconArrowRight, IconSlashCircle, IconRunning, IconDot, IconReset, IconSparkle, IconDash } from './EvalIcons';
 export { IconChevronLeft, IconChevronRight, IconChevronDown, IconHome, IconExpand, IconArrowLeft } from './NavigationIcons';
 export { IconEdit, IconTrash, IconClose, IconSend, IconRefresh, IconFork, IconImport, IconDownload, IconShare, IconPlus, IconUndo, IconPencilDraw, IconMinus } from './ActionIcons';

@@ -1,3 +1,5 @@
+// Tests for lib/ai/surveys — survey prompt building, proposal coercion, and response parsing.
+
 import { describe, expect, it } from "vitest";
 import {
   buildSurveyUserPrompt,

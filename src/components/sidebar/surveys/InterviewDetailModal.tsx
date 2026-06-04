@@ -1,11 +1,13 @@
 "use client";
 
+// InterviewDetailModal — modal displaying a completed interview's question-by-question responses.
+
 import { useCallback, useMemo, useRef } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/Modal";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/state/store";
 import { runInterview } from "@/lib/ai/interviews";
-import { logError } from "@/lib/system-logger";
-import { interviewToMarkdown } from "@/lib/research-export";
+import { logError } from "@/lib/core/system-logger";
+import { interviewToMarkdown } from "@/lib/io/research-export";
 import type { Interview, InterviewQuestion, NarrativeState, SurveyResponse } from "@/types/narrative";
 import { CopyButton } from "./CopyButton";
 

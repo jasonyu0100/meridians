@@ -1,3 +1,5 @@
+// Tests for lib/ai/validation — beat-plan/prose-map/extraction/system-delta validators and retryWithValidation.
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { validateBeatPlan, validateBeatProseMap, validateExtractionResult, validateSystemDelta, retryWithValidation } from '@/lib/ai/validation';
 import type { BeatPlan } from '@/types/narrative';

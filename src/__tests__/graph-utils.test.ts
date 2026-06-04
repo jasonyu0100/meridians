@@ -1,3 +1,5 @@
+// Tests for graph utils — graph/overview data building, character positions, grouping, and color/size scales.
+
 import {
   buildGraphData,
   buildOverviewGraphData,

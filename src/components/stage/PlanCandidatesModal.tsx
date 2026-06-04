@@ -1,4 +1,5 @@
 'use client';
+// PlanCandidatesModal — modal wrapper hosting PlanCandidatesView for picking among generated scene-plan candidates.
 
 import { useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';

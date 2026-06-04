@@ -1,4 +1,5 @@
 'use client';
+// Title slide — opening deck slide with the work's title, byline, and D3 hero visual.
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';

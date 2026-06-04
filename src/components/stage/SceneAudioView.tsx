@@ -1,10 +1,11 @@
 'use client';
+// SceneAudioView — Stage surface for generating and playing back audio narration of a scene's prose.
 
 import { useEffect, useRef, useMemo } from 'react';
 import type { NarrativeState, Scene } from '@/types/narrative';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/lib/state/store';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
-import { resolveProseForBranch } from '@/lib/narrative-utils';
+import { resolveProseForBranch } from '@/lib/forces/narrative-utils';
 
 export function SceneAudioView({
   narrative,

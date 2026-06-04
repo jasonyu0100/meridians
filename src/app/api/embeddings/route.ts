@@ -1,6 +1,8 @@
+// POST /api/embeddings — proxy to OpenAI text-embedding-3-small for vector embeddings.
+
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveKey } from '@/lib/resolve-api-key';
-import { logError, logInfo } from '@/lib/system-logger';
+import { resolveKey } from '@/lib/core/resolve-api-key';
+import { logError, logInfo } from '@/lib/core/system-logger';
 
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 const EMBEDDING_MODEL = 'text-embedding-3-small';

@@ -18,9 +18,9 @@
 
 import { useEffect, useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
-import { useStore } from '@/lib/store';
-import { stageFile, convertFile } from '@/lib/file-conversion';
-import { splitCorpusIntoScenes } from '@/lib/text-analysis';
+import { useStore } from '@/lib/state/store';
+import { stageFile, convertFile } from '@/lib/io/file-conversion';
+import { splitCorpusIntoScenes } from '@/lib/analysis/text-analysis';
 import { detectTitleFromText } from '@/lib/title-detect';
 import { ANALYSIS_MAX_CORPUS_WORDS } from '@/lib/constants';
 
