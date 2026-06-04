@@ -1,7 +1,7 @@
 /**
  * Contextual Markdown exporters for the canvas graph views. The top bar
- * exposes six graph modes composed of a scope (Scene | Full) and a
- * domain (World | System | Threads); plus a seventh overlay view when
+ * exposes graph modes composed of a scope (Scene | Arc | Full) and a
+ * domain (World | System | Threads | Network); plus an overlay view when
  * the user drills into an entity's inner world graph. This module:
  *
  *  1. Gives each mode a canonical "Scope · Domain" label so UI chrome
@@ -15,6 +15,14 @@
 
 import { getRelationshipsAtScene } from "@/lib/graph/scene-filter";
 import { getEffectivePovId, getStanceProbs, isThreadAbandoned, isThreadClosed } from "@/lib/forces/narrative-utils";
+import {
+  aggregateNetworkGraph,
+  summarizeNetworkState,
+  forceOfKind,
+  formatTierLabel,
+  type Force,
+  type NetworkGraph,
+} from "@/lib/graph/network-graph";
 import { NARRATOR_AGENT_ID } from "@/types/narrative";
 import type {
   Artifact,
@@ -34,7 +42,7 @@ export type GraphViewLabel = {
   /** Scope half (for composite UI use). */
   scope: "Scene" | "Full" | "Entity";
   /** Domain half. */
-  domain: "World" | "System" | "Threads" | "Inner World";
+  domain: "World" | "System" | "Threads" | "Network" | "Inner World";
 };
 
 // Note: the GraphViewLabel.scope union is Scene / Full / Entity — arc
@@ -51,6 +59,9 @@ const LABELS: Partial<Record<GraphViewMode, GraphViewLabel>> = {
   "threads-scene": { full: "Scene · Threads", scope: "Scene", domain: "Threads" },
   "threads-arc":   { full: "Arc · Threads",   scope: "Scene", domain: "Threads" },
   "threads-full":  { full: "Full · Threads",  scope: "Full",  domain: "Threads" },
+  "network-scene": { full: "Scene · Network", scope: "Scene", domain: "Network" },
+  "network-arc":   { full: "Arc · Network",   scope: "Scene", domain: "Network" },
+  "network-full":  { full: "Full · Network",  scope: "Full",  domain: "Network" },
 };
 
 export function graphViewLabel(
@@ -75,6 +86,7 @@ const EXPORTABLE_MODES = new Set<GraphViewMode>([
   "world-scene", "world-arc", "world-full",
   "system-scene", "system-arc", "system-full",
   "threads-scene", "threads-arc", "threads-full",
+  "network-scene", "network-arc", "network-full",
 ]);
 
 export function isExportableGraphMode(mode: GraphViewMode): boolean {
@@ -109,6 +121,9 @@ export function exportGraphView(ctx: GraphExportContext): string {
     case "threads-scene":
     case "threads-arc":  return exportSceneThreads(ctx);
     case "threads-full": return exportFullThreads(narrative);
+    case "network-scene":
+    case "network-arc":
+    case "network-full": return exportNetwork(ctx);
     default:
       return `# ${narrative.title}\n\n*No export defined for mode \`${mode}\`.*`;
   }
@@ -336,6 +351,88 @@ function threadLine(t: Thread): string {
           return `top=${t.outcomes[topIdx]} (${(probs[topIdx] ?? 0).toFixed(2)})`;
         })();
   return `- **[${state}]** ${t.description}${t.id ? ` · \`${t.id}\`` : ""}`;
+}
+
+// ── Network ───────────────────────────────────────────────────────────────
+
+/** Build the network graph for the active scope, mirroring NetworkView:
+ *  full = cumulative up to the current scene; scene = just the current scene's
+ *  attribution step; arc = the current arc's scenes. The full timeline is
+ *  always the entity-existence source so cross-scope references keep their
+ *  origin nodes. */
+function buildNetworkForScope(
+  narrative: NarrativeState,
+  mode: GraphViewMode,
+  resolvedKeys: string[],
+  currentIndex: number,
+): NetworkGraph {
+  if (mode === "network-full") {
+    return aggregateNetworkGraph(narrative, resolvedKeys, currentIndex);
+  }
+  if (mode === "network-scene") {
+    const key = resolvedKeys[currentIndex];
+    if (!key) return aggregateNetworkGraph(narrative, [], -1);
+    return aggregateNetworkGraph(narrative, resolvedKeys, currentIndex, { scopeKeys: new Set([key]) });
+  }
+  // network-arc — restrict attribution to the current arc's scenes.
+  const currentKey = resolvedKeys[currentIndex];
+  const currentScene = currentKey ? narrative.scenes[currentKey] : undefined;
+  const arcId = currentScene?.arcId;
+  if (!arcId) return aggregateNetworkGraph(narrative, [], -1);
+  const arcScopeKeys = new Set(
+    resolvedKeys.slice(0, currentIndex + 1).filter((k) => {
+      const s = narrative.scenes[k];
+      return s && s.arcId === arcId;
+    }),
+  );
+  return aggregateNetworkGraph(narrative, resolvedKeys, currentIndex, { scopeKeys: arcScopeKeys });
+}
+
+function exportNetwork(ctx: GraphExportContext): string {
+  const { narrative, mode, resolvedKeys, currentSceneIndex } = ctx;
+  const lines: string[] = [header(narrative, graphViewLabel(mode).full)];
+
+  const network = buildNetworkForScope(narrative, mode, resolvedKeys, currentSceneIndex);
+  if (network.nodes.length === 0) {
+    lines.push("*No network activity in scope.*");
+    return lines.join("\n");
+  }
+
+  // Lead with the per-force cohort summary (heat + topology read).
+  lines.push("", summarizeNetworkState(network));
+
+  // Active nodes (referenced in scope), grouped by force cohort, each
+  // annotated with its heat tier, attribution count, and topology.
+  const labelOf = new Map(network.nodes.map((n) => [n.id, n.label]));
+  const active = network.nodes.filter((n) => n.attributions > 0);
+  const cohorts: { force: Force; title: string }[] = [
+    { force: "fate", title: "Fate — threads" },
+    { force: "world", title: "World — characters, locations, artifacts" },
+    { force: "system", title: "System — rules & concepts" },
+  ];
+  for (const { force, title } of cohorts) {
+    const cohort = active
+      .filter((n) => forceOfKind(n.kind) === force)
+      .sort((a, b) => b.attributions - a.attributions);
+    if (cohort.length === 0) continue;
+    lines.push("", `## ${title} (${cohort.length})`);
+    for (const n of cohort) lines.push(`- **${n.label}** ${formatTierLabel(n)}`);
+  }
+
+  // Connections — heaviest first; show relation labels when present (scene scope).
+  if (network.edges.length > 0) {
+    const sorted = [...network.edges].sort((a, b) => b.weight - a.weight);
+    lines.push("", `## Connections (${sorted.length})`);
+    for (const e of sorted) {
+      const a = labelOf.get(e.from) ?? e.from;
+      const b = labelOf.get(e.to) ?? e.to;
+      const rel = e.relations && e.relations.length > 0 ? ` [${e.relations.join(", ")}]` : "";
+      const w = e.weight > 1 ? ` ×${e.weight}` : "";
+      lines.push(`- ${a} — ${b}${rel}${w}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function exportEntityInner(narrative: NarrativeState, entityId: string): string {

@@ -416,11 +416,13 @@ export function StageBar() {
     }
   }, [graphViewMode]);
 
-  // "State" bundles Board (the nested-map board) and the graph domains
-  // (World / System / Threads / Network). Board is the first sub-tab; the
-  // graph domains follow, carrying their own Scene / Arc / Full scope toggle.
+  // "State" bundles the graph domains (World / System / Threads / Network)
+  // and Board (the nested-map board). World is the default sub-tab and the
+  // graph domains lead, carrying their own Scene / Arc / Full scope toggle;
+  // Board sits after them.
   const inStateMode = canvasMode === 'graph' || canvasMode === 'board';
-  const lastStateSubModeRef = useRef<GraphViewMode>('board');
+  // World is the default State sub-tab; Board sits after the graph domains.
+  const lastStateSubModeRef = useRef<GraphViewMode>('world-scene');
   useEffect(() => {
     if (canvasMode === 'graph' || canvasMode === 'board') {
       lastStateSubModeRef.current = graphViewMode;
@@ -1050,23 +1052,9 @@ export function StageBar() {
               </div>
             )}
 
-            {/* Sub-tabs — Board first, then the graph domains */}
+            {/* Sub-tabs — graph domains first (World default), then Board */}
             <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-              {/* Board — scopeless nested-map board, the first State sub-tab */}
-              <div className="flex items-center">
-                <button
-                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
-                    canvasMode === 'board'
-                      ? 'bg-white/10 text-text-primary'
-                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
-                  }`}
-                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'board' })}
-                >
-                  <IconMapPin size={12} />
-                  Board
-                </button>
-              </div>
-              {GRAPH_DOMAINS.map(({ label, scopes, Icon, scopeless }) => {
+              {GRAPH_DOMAINS.map(({ label, scopes, Icon, scopeless }, idx) => {
                 const isActive = graphViewMode === scopes.scene
                   || graphViewMode === scopes.arc
                   || graphViewMode === scopes.full;
@@ -1077,7 +1065,7 @@ export function StageBar() {
                 const preferredScope: Scope = currentScope ?? lastScopeRef.current;
                 return (
                   <div key={label} className="flex items-center">
-                    <div className="w-px h-4 bg-white/10" />
+                    {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                     <button
                       className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
                         isActive
@@ -1095,6 +1083,21 @@ export function StageBar() {
                   </div>
                 );
               })}
+              {/* Board — scopeless nested-map board, after the graph domains */}
+              <div className="flex items-center">
+                <div className="w-px h-4 bg-white/10" />
+                <button
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    canvasMode === 'board'
+                      ? 'bg-white/10 text-text-primary'
+                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                  }`}
+                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'board' })}
+                >
+                  <IconMapPin size={12} />
+                  Board
+                </button>
+              </div>
             </div>
 
           </>
