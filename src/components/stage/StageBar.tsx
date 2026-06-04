@@ -7,7 +7,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconDice, IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch, IconMapPin } from '@/components/icons';
+import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconNotepad, IconDocument, IconWaveform, IconReasoning, IconList, IconSearch, IconMapPin } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/graph-export';
@@ -94,8 +94,8 @@ export const GRAPH_MODES = new Set<GraphViewMode>([
 ]);
 
 type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'reasoning' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
-type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio' | 'decision';
-const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio', 'decision'];
+type ScenePrimaryMode = 'reasoning' | 'plan' | 'prose' | 'audio';
+const SCENE_MODES: ScenePrimaryMode[] = ['reasoning', 'plan', 'prose', 'audio'];
 
 // Module-level state shared with SceneProseView
 let beatPlanLinkedModeGlobal = false;
@@ -390,7 +390,7 @@ export function StageBar() {
   // Present (the realized variables disposition), Compass (the cohort of
   // feasible next directions), and Phase (the working-machinery graph).
   const inMindMode = (
-    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
+    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision'
   );
   // "Driver" bundles Entry (the daily-ingest queue + note workspace) and
   // Search (vector search over the narrative). Both render through
@@ -403,10 +403,10 @@ export function StageBar() {
     }
   }, [graphViewMode]);
 
-  const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode'>('belief');
+  const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode' | 'decision'>('belief');
   useEffect(() => {
     if (
-      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode'
+      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision'
     ) {
       lastMindSubModeRef.current = graphViewMode;
     }
@@ -1083,6 +1083,7 @@ export function StageBar() {
               { mode: 'present' as const, label: 'Present' },
               { mode: 'compass' as const, label: 'Compass' },
               { mode: 'mode' as const, label: 'Phase' },
+              { mode: 'decision' as const, label: 'Decision' },
             ].map(({ mode, label }, idx) => {
               const isActive = graphViewMode === mode;
               return (
@@ -1117,7 +1118,6 @@ export function StageBar() {
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
-              { mode: 'decision' as ScenePrimaryMode, Icon: IconDice, label: 'Decision', hidden: false },
             ]
               .filter(({ hidden }) => !hidden)
               .map(({ mode, Icon, label }, idx) => {
