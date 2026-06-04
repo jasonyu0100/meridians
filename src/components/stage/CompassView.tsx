@@ -768,41 +768,6 @@ function VariablesTopBar({
         <span className="text-[11px] text-text-dim/60 italic">no arc in scope</span>
       )}
 
-      {/* Projection toggle — Current (this arc's live variable disposition)
-          vs Forward (the cohort of next-arc directions). The merge of the
-          old Present + Compass tabs into a single in-view switch. */}
-      {onViewChange && (
-        <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-          {([
-            { m: 'present' as Mode, label: 'Current', color: PRESENT_TRACE_COLOR, title: 'Current projection — this arc’s live variable disposition' },
-            { m: 'compass' as Mode, label: 'Forward', color: COMPASS_TRACE_COLOR, title: 'Forward projection — the cohort of feasible next-arc directions' },
-          ]).map(({ m, label, color, title }, idx) => {
-            const isActive = mode === m;
-            return (
-              <div key={m} className="flex items-center">
-                {idx > 0 && <div className="w-px h-4 bg-white/10" />}
-                <button
-                  onClick={() => onViewChange(m)}
-                  disabled={busy}
-                  title={title}
-                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-40 ${
-                    isActive
-                      ? 'bg-white/10 text-text-primary'
-                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
-                  }`}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: color, opacity: isActive ? 1 : 0.35 }}
-                  />
-                  {label}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {variableCount !== undefined && variableCount > 0 && (
         <span className="text-[9px] text-text-dim/60 font-mono tabular-nums">{variableCount} variables</span>
       )}

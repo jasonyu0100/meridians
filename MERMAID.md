@@ -90,7 +90,6 @@ flowchart LR
         s2["plan → ScenePlanView"]
         s3["prose → SceneProseView"]
         s4["audio → SceneAudioView"]
-        s5["decision → DecisionView"]
     end
 ```
 
