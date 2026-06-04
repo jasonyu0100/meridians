@@ -634,8 +634,8 @@ function DirectionModal({
 }) {
   const placeholder = mode === 'present'
     ? "What should the variable extraction emphasise?"
-    : "What should the compass cohort bias toward?";
-  const title = mode === 'present' ? 'Regenerate Present' : 'Regenerate Compass';
+    : "What should the forward cohort bias toward?";
+  const title = mode === 'present' ? 'Regenerate Current' : 'Regenerate Forward';
 
   // Style mirrors GeneratePanel.tsx — same Modal size, same uppercase
   // section labels, same `bg-bg-elevated border border-border rounded-lg`
@@ -734,11 +734,15 @@ function VariablesShell({
  *  page they're on. Action buttons are gated on `canRegenerate`/`canWipe`
  *  flags — callers without an arc pass neither and get the minimal label. */
 function VariablesTopBar({
-  mode, arcName, isHeadArc, variableCount, scenariosCount, error, busy,
+  mode, onViewChange, arcName, isHeadArc, variableCount, scenariosCount, error, busy,
   directionSet, regenerateLabel, canRegenerate, canWipe, showExperiment,
   onOpenRegenerateModal, onOpenExperiment, onWipe,
 }: {
   mode: Mode;
+  /** Flip between the current (present) and forward (compass) projection.
+   *  Omitted in the early-return shells (no arc) so the toggle only shows
+   *  when there's a variable surface to operate on. */
+  onViewChange?: (m: Mode) => void;
   arcName?: string;
   isHeadArc?: boolean;
   variableCount?: number;
@@ -754,8 +758,6 @@ function VariablesTopBar({
   onOpenExperiment?: () => void;
   onWipe?: () => void;
 }) {
-  const accent = mode === 'present' ? PRESENT_TRACE_COLOR : COMPASS_TRACE_COLOR;
-  const modeLabel = mode === 'present' ? 'Present' : 'Compass';
   return (
     <div className="h-9 shrink-0 flex items-center px-2 gap-2 glass-panel border-b border-border">
       {arcName ? (
@@ -765,6 +767,42 @@ function VariablesTopBar({
       ) : (
         <span className="text-[11px] text-text-dim/60 italic">no arc in scope</span>
       )}
+
+      {/* Projection toggle — Current (this arc's live variable disposition)
+          vs Forward (the cohort of next-arc directions). The merge of the
+          old Present + Compass tabs into a single in-view switch. */}
+      {onViewChange && (
+        <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+          {([
+            { m: 'present' as Mode, label: 'Current', color: PRESENT_TRACE_COLOR, title: 'Current projection — this arc’s live variable disposition' },
+            { m: 'compass' as Mode, label: 'Forward', color: COMPASS_TRACE_COLOR, title: 'Forward projection — the cohort of feasible next-arc directions' },
+          ]).map(({ m, label, color, title }, idx) => {
+            const isActive = mode === m;
+            return (
+              <div key={m} className="flex items-center">
+                {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                <button
+                  onClick={() => onViewChange(m)}
+                  disabled={busy}
+                  title={title}
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-40 ${
+                    isActive
+                      ? 'bg-white/10 text-text-primary'
+                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                  }`}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ background: color, opacity: isActive ? 1 : 0.35 }}
+                  />
+                  {label}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {variableCount !== undefined && variableCount > 0 && (
         <span className="text-[9px] text-text-dim/60 font-mono tabular-nums">{variableCount} variables</span>
       )}
@@ -871,12 +909,12 @@ function EmptyState({
   message?: string;
 }) {
   const primary = message ?? (
-    mode === 'present' ? 'No Present variables yet for this arc.' :
-    mode === 'compass' ? 'No Compass directions yet for this arc.' :
+    mode === 'present' ? 'No current variables yet for this arc.' :
+    mode === 'compass' ? 'No forward directions yet for this arc.' :
     'Nothing to show.'
   );
   const hint = mode && !message
-    ? `Use the Regenerate ${mode === 'present' ? 'Present' : 'Compass'} action above to generate one.`
+    ? `Use the Regenerate ${mode === 'present' ? 'Current' : 'Forward'} action above to generate one.`
     : null;
   return (
     <div className="h-full flex flex-col items-center justify-center py-20 gap-3 px-8 text-center">

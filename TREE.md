@@ -234,8 +234,8 @@
         <file name="InferenceFields.tsx" desc="inference (considered/breaks/opens) fields"/>
       </dir>
       <dir name="sidebar">
-        <dir name="investigations">
-          <file name="InvestigationComposerModal.tsx" desc="investigations sub-UI: InvestigationComposerModal"/>
+        <dir name="maps">
+          <file name="MapComposerModal.tsx" desc="investigations sub-UI: MapComposerModal"/>
         </dir>
         <dir name="surveys">
           <file name="CategoryPicker.tsx" desc="surveys/interviews sub-UI: CategoryPicker"/>
@@ -247,11 +247,11 @@
           <file name="SurveyResults.tsx" desc="surveys/interviews sub-UI: SurveyResults"/>
         </dir>
         <file name="ApplyExtensionModal.tsx" desc="apply an extension slice"/>
+        <file name="BoardAnnotator.tsx" desc="map annotation editor"/>
         <file name="FileComposerModal.tsx" desc="compose a source file"/>
         <file name="HierarchyModal.tsx" desc="location-hierarchy reorg"/>
         <file name="InterviewPanel.tsx" desc="interviews instrument panel"/>
-        <file name="InvestigationPanel.tsx" desc="investigations panel"/>
-        <file name="MapAnnotator.tsx" desc="map annotation editor"/>
+        <file name="MapPanel.tsx" desc="investigations panel"/>
         <file name="MediaDrive.tsx" desc="the Drive: images/audio"/>
         <file name="MediaPreview.tsx" desc="media preview"/>
         <file name="NarrativeRail.tsx" desc="LEFT RAIL: narrative thumbnails (navigate stories)"/>
