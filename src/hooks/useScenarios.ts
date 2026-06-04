@@ -34,8 +34,11 @@ import {
   type ScenariosConfig,
   type ScenariosRunState,
   type ScenarioRun,
-} from '@/types/scenarios';
-import type { Arc, NarrativeState, PlanningScenario, Scene } from '@/types/narrative';
+  type Arc,
+  type NarrativeState,
+  type PlanningScenario,
+  type Scene,
+} from '@/types/narrative';
 
 /**
  * Resolve the "head arc" of the active branch — the arc containing the
@@ -635,7 +638,7 @@ export type {
   ScenariosConfig,
   ScenariosRunState,
   ScenarioRun,
-} from '@/types/scenarios';
+} from '@/types/narrative';
 // We previously exported a placeholder Scene-typed result; downstream
 // callers (panel, control bar) reference fields off ScenarioRun.result.
 export type ScenariosResultScene = Scene;

@@ -4,12 +4,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { useStore } from '@/lib/store';
 import { findHeadArc, type ScenariosHook } from '@/hooks/useScenarios';
-import {
-  type ScenariosConfig,
-  type ScenarioRun,
-} from '@/types/scenarios';
 import { VARIABLE_INTENSITY_LEVELS, categoryColor, scenarioProbabilities } from '@/lib/ai/variables';
-import type { PlanningScenario } from '@/types/narrative';
+import type { PlanningScenario, ScenariosConfig, ScenarioRun } from '@/types/narrative';
 import {
   ActivityChart,
   CubeSequence,

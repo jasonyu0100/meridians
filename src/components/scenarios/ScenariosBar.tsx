@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { IconSpinner, IconStop, IconExpand } from '@/components/icons';
-import type { ScenariosRunState } from '@/types/scenarios';
-import { runDoneCount, runFailedCount, runRunningCount } from '@/types/scenarios';
+import type { ScenariosRunState } from '@/types/narrative';
+import { runDoneCount, runFailedCount, runRunningCount } from '@/types/narrative';
 
 type Props = {
   runState: ScenariosRunState;

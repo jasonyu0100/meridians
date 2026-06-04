@@ -18,8 +18,7 @@ import {
   computeSwingMagnitudes,
   FORCE_REFERENCE_MEANS,
 } from '@/lib/narrative-utils';
-import type { Scene, ForceSnapshot, NarrativeState } from '@/types/narrative';
-import type { ScenarioRun } from '@/types/scenarios';
+import type { Scene, ForceSnapshot, NarrativeState, ScenarioRun } from '@/types/narrative';
 import { IconLocationPin, IconEye } from '@/components/icons';
 
 // ── Score colouring (ported from legacy MCTSPanel) ───────────────────────

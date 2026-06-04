@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
-import type { ScenariosRunState } from '@/types/scenarios';
+import type { ScenariosRunState } from '@/types/narrative';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
 
