@@ -8,7 +8,7 @@ The measurable spine is the three force fields — **System** (rules and structu
 
 No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key and run locally — your data stays in your browser.
 
-**[Try it →](https://meridians-sourcenovel.vercel.app/)** · **[Read the manifesto →](https://meridians-sourcenovel.vercel.app/manifesto)** · **[Architecture reference →](CLAUDE.md)** · **[Shared vocabulary →](LANGUAGE.md)**
+**[Try it →](https://meridians.global/)** · **[Read the manifesto →](https://meridians.global/manifesto)** · **[Architecture reference →](CLAUDE.md)** · **[Shared vocabulary →](LANGUAGE.md)**
 
 ---
 
@@ -107,7 +107,7 @@ This section may be wrong about specifics. The grounded sections above are what 
 
 - **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference. Every major subsystem (forces, threads, mode graph, CRG, scenes, plans, prose, embeddings, surveys, game theory, auto-engine, scenarios, repair / diagnose) documented with file pointers.
 - **[`LANGUAGE.md`](LANGUAGE.md)** — canonical glossary for the recurring vocabulary.
-- **[`/manifesto`](https://meridians-sourcenovel.vercel.app/manifesto)** — the long-form vision and theory: force formulas, validation against published works, calibration, GTM, the War Room product surface.
+- **[`/manifesto`](https://meridians.global/manifesto)** — the long-form vision and theory: force formulas, validation against published works, calibration, GTM, the War Room product surface.
 - **`src/types/narrative.ts`** — the domain model.
 - **`src/lib/ai/`** — the LLM call surface. All generation routes through `callGenerate` / `callGenerateStream`.
 - **`src/lib/prompts/`** — every prompt, modular and scoped. Phase-graph application, scene generation, beat planning, prose rendering, world expansion all live here.
