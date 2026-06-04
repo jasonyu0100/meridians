@@ -868,6 +868,7 @@ export default function MediaDrive() {
         {tab === 'boards' && showGlobal && (() => {
           const busy = generating !== null || batchBusy;
           const status = globalMap ? savedMapStatus(globalMap) : null;
+          const annotated = !!globalMap?.labels?.length;
           return (
             <div className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-bg-elevated transition-colors">
               {/* Global is the synthetic top of the map tree → depth 0. */}
@@ -892,8 +893,14 @@ export default function MediaDrive() {
                   {topLevelLocs.length} top-level {topLevelLocs.length === 1 ? 'territory' : 'territories'}
                 </p>
                 {status ? (
-                  <p className={`text-[10px] truncate ${status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}`}>
-                    {status === 'current' ? 'up to date' : 'outdated'}
+                  <p className="text-[10px] truncate flex items-center gap-1">
+                    <span className={status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}>
+                      {status === 'current' ? 'up to date' : 'outdated'}
+                    </span>
+                    <span className="text-text-dim/40">·</span>
+                    <span className={annotated ? 'text-emerald-300/80' : 'text-text-dim/50'}>
+                      {annotated ? 'annotated' : 'not annotated'}
+                    </span>
                   </p>
                 ) : (
                   <p className="text-[10px] text-text-dim/50 truncate">not generated</p>
@@ -920,6 +927,7 @@ export default function MediaDrive() {
 
         {tab === 'boards' && mapRows.map(({ parent, childCount, depth, map, status }) => {
           const busy = generating !== null || batchBusy;
+          const annotated = !!map?.labels?.length;
           return (
             <div
               key={parent.id}
@@ -952,8 +960,14 @@ export default function MediaDrive() {
                   {childCount} {childCount === 1 ? 'location' : 'locations'}
                 </p>
                 {status ? (
-                  <p className={`text-[10px] truncate ${status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}`}>
-                    {status === 'current' ? 'up to date' : 'outdated'}
+                  <p className="text-[10px] truncate flex items-center gap-1">
+                    <span className={status === 'outdated' ? 'text-amber-300/90' : 'text-emerald-300/80'}>
+                      {status === 'current' ? 'up to date' : 'outdated'}
+                    </span>
+                    <span className="text-text-dim/40">·</span>
+                    <span className={annotated ? 'text-emerald-300/80' : 'text-text-dim/50'}>
+                      {annotated ? 'annotated' : 'not annotated'}
+                    </span>
                   </p>
                 ) : (
                   <p className="text-[10px] text-text-dim/50 truncate">not generated</p>
