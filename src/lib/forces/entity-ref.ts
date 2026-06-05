@@ -68,18 +68,27 @@ export function entityRefRegex(): RegExp {
 
 /**
  * Scan a message body and assign each distinct bracketed id a stable citation
- * number in order of first appearance — Perplexity style. Repeated references
- * to the same entity reuse the same number, so `[C-12] … [C-12]` both render
- * as `1`. The returned map is keyed by the trimmed inner id token.
+ * number in order of first appearance. Repeated references to the same entity
+ * reuse the same number, so `[C-12] … [C-12]` both render as `1`. The returned
+ * map is keyed by the trimmed inner id token.
+ *
+ * Only ids that resolve to a real entity in the active narrative are numbered —
+ * invalid / hallucinated ids are skipped entirely (and `EntityRef` renders
+ * nothing for them), so the visible numbering stays contiguous.
  */
-export function buildCitationNumbers(text: string): Map<string, number> {
+export function buildCitationNumbers(
+  text: string,
+  narrative: NarrativeState | null | undefined,
+): Map<string, number> {
   const numbers = new Map<string, number>();
   const re = entityRefRegex();
   let next = 1;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const id = m[1].trim();
-    if (!numbers.has(id)) numbers.set(id, next++);
+    if (numbers.has(id)) continue;
+    if (!resolveEntityRef(narrative, id)) continue;
+    numbers.set(id, next++);
   }
   return numbers;
 }

@@ -16,6 +16,7 @@ import ReactMarkdown, {
 } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { buildCitationNumbers, entityRefRegex } from '@/lib/forces/entity-ref';
+import { useStore } from '@/lib/state/store';
 import { CitationNumberContext, EntityRef } from './EntityRef';
 
 /** URL scheme used to smuggle a detected entity annotation through markdown
@@ -47,12 +48,15 @@ export function Markdown({
    *  EntityRef chips (hover for detail, click to open in the inspector). */
   entities?: boolean;
 }) {
+  const { state } = useStore();
   const isReading = variant === 'reading';
   const components = isReading ? READING_COMPONENTS : COMPACT_COMPONENTS;
   const body = entities ? linkifyEntityRefs(text) : text;
-  // Number distinct entity refs in order of first appearance (Perplexity
-  // style) so every EntityRef chip can render its citation number, not the id.
-  const citations = entities ? buildCitationNumbers(text) : null;
+  // Number distinct entity refs in order of first appearance so every EntityRef
+  // chip can render its citation number, not the id. Resolved against the active
+  // narrative — invalid ids are skipped here and hidden by EntityRef, keeping
+  // the numbering contiguous.
+  const citations = entities ? buildCitationNumbers(text, state.activeNarrative) : null;
   return (
     <CitationNumberContext.Provider value={citations}>
       <div

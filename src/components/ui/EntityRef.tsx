@@ -6,18 +6,17 @@
  *
  * The assistant writes the entity's natural name followed by its bracketed
  * id (`Aragorn [C-12]`). Rather than print the id, each reference renders as
- * a type-tinted citation number — Perplexity style: distinct entities are
- * numbered in order of first appearance across the message (the mapping comes
- * from `CitationNumberContext`, populated by `Markdown`), and repeat mentions
- * of the same entity reuse the same number. The marker's colour signals the
- * entity kind. The id still resolves against the
- * active narrative (deterministic keyed lookup, no LLM); hovering reveals a
- * card with the entity's full name, type, id, and detail, and a click
- * navigates the inspector to its detail view (the inspector auto-reveals on a
- * new context — see InspectorPanel).
+ * a type-tinted citation number: distinct entities are numbered in order of
+ * first appearance across the message (the mapping comes from
+ * `CitationNumberContext`, populated by `Markdown`), and repeat mentions of the
+ * same entity reuse the same number. The marker's colour signals the entity
+ * kind. The id resolves against the active narrative (deterministic keyed
+ * lookup, no LLM); hovering reveals a card with the entity's full name, type,
+ * id, and detail, and a click navigates the inspector to its detail view (the
+ * inspector auto-reveals on a new context — see InspectorPanel).
  *
- * Unresolvable ids render as an inert muted marker so a hallucinated id can
- * never pose as a real entity.
+ * Unresolvable ids render nothing at all — only the entity's natural name is
+ * left in the prose — so a hallucinated id never appears as a citation.
  */
 
 import { createContext, useContext, useRef, useState, useLayoutEffect } from 'react';
@@ -27,8 +26,8 @@ import { resolveEntityRef, type EntityRefInfo, type EntityRefKind } from '@/lib/
 
 /**
  * Citation numbering for the message currently being rendered: maps each
- * distinct bracket id to its Perplexity-style ordinal (1, 2, 3 …). Provided by
- * `Markdown` after a one-pass scan; null when entity annotation is disabled.
+ * distinct bracket id to its ordinal (1, 2, 3 …). Provided by `Markdown` after
+ * a one-pass scan; null when entity annotation is disabled.
  */
 export const CitationNumberContext = createContext<Map<string, number> | null>(null);
 
@@ -127,22 +126,16 @@ export function EntityRef({ id }: { id: string }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
 
-  // Perplexity-style ordinal for this reference; fall back to the raw id only
-  // if the scan didn't see it (shouldn't happen — both read the same text).
+  if (!info) {
+    // Unknown / unresolvable id — render nothing so a hallucinated id never
+    // appears as a citation; the entity's natural name stays in the prose.
+    return null;
+  }
+
+  // Ordinal for this reference; fall back to the raw id only if the scan didn't
+  // see it (shouldn't happen — both read the same text and resolve identically).
   const number = citations?.get(id.trim());
   const marker = number != null ? String(number) : id;
-
-  if (!info) {
-    // Unknown / unresolvable id — inert muted badge.
-    return (
-      <span
-        className={`${BADGE_BASE} bg-white/5 text-text-dim/50`}
-        title={`Unknown reference ${id}`}
-      >
-        {marker}
-      </span>
-    );
-  }
 
   const showCard = () => {
     const r = btnRef.current?.getBoundingClientRect();
