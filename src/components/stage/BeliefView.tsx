@@ -1207,7 +1207,12 @@ export default function BeliefView() {
 
   const rows = useMemo(() => {
     if (!scrubbedNarrative) return [];
-    return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex);
+    // Most volatile stances first — the ones that have moved the most this far
+    // into the story surface at the top. Tiebreak by focus, then volume so
+    // dormant / not-yet-opened threads (volatility 0) settle to the bottom.
+    return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex)
+      .slice()
+      .sort((a, b) => (b.volatility - a.volatility) || (b.focus - a.focus) || (b.volume - a.volume));
   }, [scrubbedNarrative, resolvedKeys, currentIndex]);
 
   const snapshot = useMemo(() => {
@@ -1220,20 +1225,20 @@ export default function BeliefView() {
     return currentFocusIds(scrubbedNarrative, resolvedKeys, currentIndex);
   }, [scrubbedNarrative, resolvedKeys, currentIndex]);
 
-  // Featured thread — local to this view. Seeded once from the focus set; the
-  // selection then sticks across scene changes (scrubber moves data, not the
-  // picked stance). Re-seeds only when the prior selection becomes invalid.
+  // Featured thread — local to this view. The explicit user pick sticks across
+  // scene changes (scrubber moves data, not the picked stance); when no valid
+  // pick exists we derive a seed from the focus set. Derived rather than stored
+  // so there's no setState-in-effect re-seed loop.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  useEffect(() => {
-    if (selectedThreadId && scrubbedNarrative?.threads[selectedThreadId]) return;
-    const seed =
+  const featuredId = useMemo(() => {
+    if (selectedThreadId && scrubbedNarrative?.threads[selectedThreadId]) return selectedThreadId;
+    return (
       rows.find((r) => focusIds.has(r.thread.id))?.thread.id ??
       rows.find((r) => r.category !== 'resolved' && r.category !== 'abandoned')?.thread.id ??
-      rows[0]?.thread.id;
-    if (seed) setSelectedThreadId(seed);
+      rows[0]?.thread.id ??
+      null
+    );
   }, [selectedThreadId, scrubbedNarrative, rows, focusIds]);
-
-  const featuredId = selectedThreadId && scrubbedNarrative?.threads[selectedThreadId] ? selectedThreadId : null;
 
   const featuredThread = featuredId ? scrubbedNarrative?.threads[featuredId] : null;
   const featuredRow = rows.find((r) => r.thread.id === featuredId);

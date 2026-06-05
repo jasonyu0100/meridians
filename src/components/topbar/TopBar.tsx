@@ -16,6 +16,8 @@ import {
 } from "@/components/icons";
 import { NarrativeReport } from "@/components/report/NarrativeReport";
 import { SlidesPlayer } from "@/components/slides/SlidesPlayer";
+import { SlideRegionsModal } from "@/components/topbar/SlideRegionsModal";
+import { resolveRegionKeys, regionSceneSpan } from "@/lib/slides-data";
 import ApiKeyModal from "@/components/topbar/ApiKeyModal";
 import { ApiLogsModal } from "@/components/topbar/ApiLogsModal";
 import { BeatProfileModal } from "@/components/topbar/BeatProfileModal";
@@ -30,7 +32,7 @@ import { NarrativeEditModal } from "@/components/topbar/NarrativeEditModal";
 import { PatternsModal } from "@/components/topbar/PatternsModal";
 import { PropositionAnalysisModal } from "@/components/topbar/PropositionAnalysisModal";
 import SystemLogModal from "@/components/topbar/SystemLogModal";
-import { ThemeModal } from "@/components/topbar/ThemeModal";
+import { ThemeMenu } from "@/components/topbar/ThemeModal";
 import { GameTheoryDashboard } from "@/components/topbar/GameTheoryDashboard";
 import {
   GasMeter,
@@ -77,7 +79,7 @@ import {
 } from "@/lib/state/store";
 import { useWizard } from "@/lib/state/wizard-context";
 import type { Branch, NarrativeEntry, NarrativeState } from "@/types/narrative";
-import { isScene, resolveEntry, type Scene } from "@/types/narrative";
+import { isScene, resolveEntry, type Scene, type WorldBuild } from "@/types/narrative";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, {
@@ -355,8 +357,13 @@ export default function TopBar() {
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [timeFlowOpen, setTimeFlowOpen] = useState(false);
   const [definitionsOpen, setDefinitionsOpen] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(false);
-  const [slidesOpen, setSlidesOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  // The slide deck currently open, scoped to a key-slice (+ optional region
+  // label). `cumulativeKeys` (start → window-end) lets the belief system
+  // accumulate prior arcs for a region deck. Null = closed.
+  const [slidesDeck, setSlidesDeck] = useState<{ keys: string[]; cumulativeKeys?: string[]; label?: string } | null>(null);
+  const [slidesMenuOpen, setSlidesMenuOpen] = useState(false);
+  const [regionsModalOpen, setRegionsModalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [markovOpen, setMarkovOpen] = useState(false);
   const [beatProfileOpen, setBeatProfileOpen] = useState(false);
@@ -377,15 +384,20 @@ export default function TopBar() {
   const scorecardRef = useRef<HTMLDivElement>(null);
   const usageRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
+  const slidesRef = useRef<HTMLDivElement>(null);
+  const themeRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auto-open slides when ?slides=1 is in the URL (fresh analysis or works seed)
+  // Auto-open slides when ?slides=1 is in the URL (fresh analysis or works seed).
+  // Legitimate external-system sync (URL → state), then we consume the param by
+  // replacing the URL — not a derived-state loop.
   useEffect(() => {
     if (searchParams.get("slides") === "1" && narrative) {
-      setSlidesOpen(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSlidesDeck({ keys: state.resolvedEntryKeys });
       router.replace(`/narrative/${narrative.id}`, { scroll: false });
     }
-  }, [searchParams, narrative, router]);
+  }, [searchParams, narrative, router, state.resolvedEntryKeys]);
 
   useEffect(() => {
     function handleOpenApiKeys() {
@@ -417,9 +429,9 @@ export default function TopBar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [selectorOpen]);
 
-  // Close scorecard / usage / export on outside click
+  // Close scorecard / usage / export / slides on outside click
   useEffect(() => {
-    if (!scorecardOpen && !usageOpen && !exportOpen) return;
+    if (!scorecardOpen && !usageOpen && !exportOpen && !slidesMenuOpen && !themeMenuOpen) return;
     function handleClick(e: MouseEvent) {
       if (
         scorecardOpen &&
@@ -442,10 +454,24 @@ export default function TopBar() {
       ) {
         setExportOpen(false);
       }
+      if (
+        slidesMenuOpen &&
+        slidesRef.current &&
+        !slidesRef.current.contains(e.target as Node)
+      ) {
+        setSlidesMenuOpen(false);
+      }
+      if (
+        themeMenuOpen &&
+        themeRef.current &&
+        !themeRef.current.contains(e.target as Node)
+      ) {
+        setThemeMenuOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [scorecardOpen, usageOpen, exportOpen]);
+  }, [scorecardOpen, usageOpen, exportOpen, slidesMenuOpen, themeMenuOpen]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -736,7 +762,7 @@ export default function TopBar() {
     }
 
     // Otherwise, find the most recent world build
-    let worldBuild: any = null;
+    let worldBuild: WorldBuild | null = null;
     for (let i = state.resolvedEntryKeys.length - 1; i >= 0; i--) {
       const key = state.resolvedEntryKeys[i];
       const entry = resolveEntry(narrative, key);
@@ -1307,7 +1333,7 @@ export default function TopBar() {
           items={[
             {
               label: "Slides",
-              onClick: () => setSlidesOpen(true),
+              onClick: () => setSlidesDeck({ keys: state.resolvedEntryKeys }),
               disabled: !hasNarrative,
             },
             {
@@ -1435,6 +1461,12 @@ export default function TopBar() {
                   ? `$${usageCost.toFixed(3)}`
                   : `$${usageCost.toFixed(4)}`}
             </span>
+            <svg
+              className={`w-2.5 h-2.5 transition-transform ${usageOpen ? "rotate-180" : ""}`}
+              viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M1 2.5 L4 5.5 L7 2.5" />
+            </svg>
           </button>
           {usageOpen && (
             <GasMeter
@@ -1475,6 +1507,12 @@ export default function TopBar() {
               >
                 {scorecard.grades.overall}
               </span>
+              <svg
+                className={`w-2.5 h-2.5 transition-transform ${scorecardOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <path d="M1 2.5 L4 5.5 L7 2.5" />
+              </svg>
             </button>
           )}
           {scorecardOpen && !scorecard && (
@@ -2065,27 +2103,40 @@ export default function TopBar() {
             </div>
           )}
         </div>
-        {/* Theme switcher */}
-        <button
-          onClick={() => setThemeOpen(true)}
-          className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border text-text-dim hover:text-text-primary hover:bg-white/5 border-white/8"
-          title="Theme"
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {/* Theme switcher — dropdown */}
+        <div className="relative" ref={themeRef}>
+          <button
+            onClick={() => setThemeMenuOpen((v) => !v)}
+            className={`px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border ${
+              themeMenuOpen
+                ? "text-text-primary bg-white/10 border-white/15"
+                : "text-text-dim hover:text-text-primary hover:bg-white/5 border-white/8"
+            }`}
+            title="Theme"
           >
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
-          </svg>
-          <span className="capitalize">{theme}</span>
-        </button>
+            <svg
+              width={14}
+              height={14}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
+            </svg>
+            <span className="capitalize">{theme}</span>
+            <svg
+              className={`w-2.5 h-2.5 transition-transform ${themeMenuOpen ? "rotate-180" : ""}`}
+              viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M1 2.5 L4 5.5 L7 2.5" />
+            </svg>
+          </button>
+          {themeMenuOpen && <ThemeMenu onClose={() => setThemeMenuOpen(false)} />}
+        </div>
 
 
 
@@ -2107,10 +2158,12 @@ export default function TopBar() {
               >
                 <IconDownload size={14} />
                 <span>Export</span>
-                <IconChevronDown
-                  size={10}
-                  className={`transition-transform ${exportOpen ? "rotate-180" : ""}`}
-                />
+                <svg
+                  className={`w-2.5 h-2.5 transition-transform ${exportOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <path d="M1 2.5 L4 5.5 L7 2.5" />
+                </svg>
               </button>
               {exportOpen && (
                 <div className="absolute top-full right-0 mt-1 min-w-52 rounded-lg glass py-1 z-50">
@@ -2278,7 +2331,7 @@ export default function TopBar() {
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
-                    Analysis Report
+                    Report
                   </button>
                   <button
                     onClick={handleExportEpub}
@@ -2312,26 +2365,103 @@ export default function TopBar() {
               )}
             </div>
 
-            <button
-              onClick={() => setSlidesOpen(true)}
-              className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border border-white/8 text-text-secondary hover:text-text-primary hover:bg-white/5 hover:border-white/15"
-              title="View slides"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="relative" ref={slidesRef}>
+              <button
+                onClick={() => setSlidesMenuOpen((v) => !v)}
+                className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border border-white/8 text-text-secondary hover:text-text-primary hover:bg-white/5 hover:border-white/15"
+                title="View slides"
               >
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8" />
-                <path d="M12 17v4" />
-              </svg>
-              <span>Slides</span>
-            </button>
+                <svg
+                  className="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8" />
+                  <path d="M12 17v4" />
+                </svg>
+                <span>Slides</span>
+                <svg
+                  className={`w-2.5 h-2.5 transition-transform ${slidesMenuOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <path d="M1 2.5 L4 5.5 L7 2.5" />
+                </svg>
+              </button>
+
+              {slidesMenuOpen && (
+                <div className="absolute top-full right-0 mt-1.5 z-[100] min-w-[240px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
+                  {/* Full narrative — the summative deck, the primary CTA */}
+                  <button
+                    onClick={() => {
+                      setSlidesDeck({ keys: state.resolvedEntryKeys });
+                      setSlidesMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium bg-accent text-bg-base hover:bg-accent/90 transition-colors shadow-sm"
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <span>Play full narrative</span>
+                  </button>
+
+                  {/* Saved regions */}
+                  {(narrative?.regions?.length ?? 0) > 0 && (
+                    <>
+                      <div className="px-3 pt-2 pb-1 text-[9px] uppercase tracking-wider text-text-dim/50">Regions</div>
+                      {(narrative?.regions ?? []).map((region) => {
+                        const span = regionSceneSpan(narrative!, state.resolvedEntryKeys, region);
+                        return (
+                          <button
+                            key={region.id}
+                            onClick={() => {
+                              const regionKeys = resolveRegionKeys(narrative!, state.resolvedEntryKeys, region);
+                              // Cumulative window: narrative start → end of the
+                              // region, so the belief system carries prior arcs.
+                              const lastKey = regionKeys[regionKeys.length - 1];
+                              const endIdx = lastKey ? state.resolvedEntryKeys.indexOf(lastKey) : -1;
+                              const cumulativeKeys = endIdx >= 0
+                                ? state.resolvedEntryKeys.slice(0, endIdx + 1)
+                                : regionKeys;
+                              setSlidesDeck({ keys: regionKeys, cumulativeKeys, label: region.name });
+                              setSlidesMenuOpen(false);
+                            }}
+                            disabled={span.count === 0}
+                            className="w-full text-left px-3 py-1.5 rounded-md hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex flex-col"
+                          >
+                            <span className="text-[12px] text-text-primary truncate">{region.name}</span>
+                            <span className="text-[10px] text-text-dim/60 font-mono tabular-nums">
+                              {span.count === 0
+                                ? "no scenes in this branch"
+                                : `${span.firstNum === span.lastNum ? `scene ${span.firstNum}` : `scenes ${span.firstNum}–${span.lastNum}`} · ${span.count}`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  <div className="my-1 h-px bg-white/8" />
+                  <button
+                    onClick={() => {
+                      setRegionsModalOpen(true);
+                      setSlidesMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-md text-[12px] text-text-dim hover:text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    Configure regions…
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -2363,7 +2493,6 @@ export default function TopBar() {
       {definitionsOpen && (
         <DefinitionsModal onClose={() => setDefinitionsOpen(false)} />
       )}
-      {themeOpen && <ThemeModal onClose={() => setThemeOpen(false)} />}
       {propositionAnalysisOpen && narrative && (
         <PropositionAnalysisModal
           narrative={narrative}
@@ -2416,11 +2545,20 @@ export default function TopBar() {
           onClose={() => setBranchContextOpen(false)}
         />
       )}
-      {slidesOpen && narrative && (
+      {slidesDeck && narrative && (
         <SlidesPlayer
           narrative={narrative}
+          resolvedKeys={slidesDeck.keys}
+          cumulativeKeys={slidesDeck.cumulativeKeys}
+          scopeLabel={slidesDeck.label}
+          onClose={() => setSlidesDeck(null)}
+        />
+      )}
+      {regionsModalOpen && narrative && (
+        <SlideRegionsModal
+          narrative={narrative}
           resolvedKeys={state.resolvedEntryKeys}
-          onClose={() => setSlidesOpen(false)}
+          onClose={() => setRegionsModalOpen(false)}
         />
       )}
       {reportOpen && narrative && (

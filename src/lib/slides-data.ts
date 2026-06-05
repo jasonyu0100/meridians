@@ -7,6 +7,8 @@ import type {
   PropositionBaseCategory,
   NarrativeParadigm,
   SystemNodeType,
+  Arc,
+  Region,
 } from '@/types/narrative';
 import { NARRATIVE_CUBE, isScene, resolveEntry } from '@/types/narrative';
 import { computeSamplerFromPlans } from '@/lib/pacing/beat-profiles';
@@ -38,7 +40,7 @@ import {
   type WorldDensity,
 } from '@/lib/forces/narrative-utils';
 import { classifyThreadCategory, type ThreadCategory } from '@/lib/forces/thread-category';
-import { buildThreadTrajectory } from '@/lib/analysis/portfolio-analytics';
+import { buildThreadTrajectory, replayThreadsAtIndex, introducedThreadIdsAtIndex } from '@/lib/analysis/portfolio-analytics';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -123,9 +125,11 @@ export type BeliefSnapshot = {
   /** Full distribution over outcomes — name + softmax probability. */
   outcomes: { name: string; p: number }[];
   /** Per-scene probability trajectory over the resolved timeline. One sample
-   *  per scene the thread is alive on; `probs[k]` aligns 1:1 with `outcomes`.
+   *  per scene the thread is alive on; `probs[k]` aligns 1:1 with that point's
+   *  own `outcomes` (NOT the live snapshot's — mid-narrative addOutcomes can
+   *  reorder/grow the set, so each point carries the outcomes its probs match).
    *  Populated for the top-N beliefs only (heavy to compute for all). */
-  trajectory: { sceneOrdinal: number; probs: number[] }[];
+  trajectory: { sceneOrdinal: number; probs: number[]; outcomes: string[] }[];
 };
 
 /** The work's knowledge structure — the System force made visible. Snapshots
@@ -242,6 +246,11 @@ function dominantForce(f: number, w: number, s: number): 'fate' | 'world' | 'sys
 export function computeSlidesData(
   narrative: NarrativeState,
   resolvedEntryKeys: string[],
+  /** Narrative-start → end-of-window keys, for analyses that must accumulate
+   *  prior context (the belief system). Defaults to `resolvedEntryKeys` (the
+   *  whole-narrative deck). A region deck passes start → region-end here while
+   *  `resolvedEntryKeys` stays the region's own scenes for period analyses. */
+  cumulativeEntryKeys: string[] = resolvedEntryKeys,
 ): SlidesData {
   // Resolve ordered scenes
   const scenes: Scene[] = resolvedEntryKeys
@@ -516,9 +525,72 @@ export function computeSlidesData(
     // ── World-view-specific fields ──────────────────────────────────────────
     paradigm: narrative.paradigm ?? null,
     signature: sig,
-    beliefs: buildBeliefSnapshots(narrative, resolvedEntryKeys),
+    beliefs: buildBeliefSnapshots(narrative, cumulativeEntryKeys, resolvedEntryKeys),
     knowledgeStructure: buildKnowledgeStructure(narrative, resolvedEntryKeys),
   };
+}
+
+// ── Slide regions ──────────────────────────────────────────────────────────────
+//
+// A Region is composed of whole arcs; its scene slice is resolved from the
+// arcs' sceneIds against the current branch's resolved timeline. computeSlidesData
+// then runs unchanged over that slice — a region deck IS the summative deck,
+// just over fewer scenes.
+
+/** Resolve a region to the slice of `resolvedEntryKeys` it covers — the scenes
+ *  belonging to any of the region's arcs, in timeline order. Robust to branch
+ *  gaps (arcs whose scenes aren't in this branch simply contribute nothing). */
+export function resolveRegionKeys(
+  narrative: NarrativeState,
+  resolvedEntryKeys: string[],
+  region: Region,
+): string[] {
+  const sceneIds = new Set<string>();
+  for (const arcId of region.arcIds) {
+    for (const sid of narrative.arcs[arcId]?.sceneIds ?? []) sceneIds.add(sid);
+  }
+  return resolvedEntryKeys.filter((k) => sceneIds.has(k));
+}
+
+/** Scene-number span of a region within the resolved timeline, for labels:
+ *  `{ count, firstNum, lastNum }` where numbers are 1-based positions among the
+ *  scenes in `resolvedEntryKeys` (world commits and gaps don't count). */
+export function regionSceneSpan(
+  narrative: NarrativeState,
+  resolvedEntryKeys: string[],
+  region: Region,
+): { count: number; firstNum: number; lastNum: number } {
+  // Position of each scene key among scenes-only, 1-based.
+  const sceneNum = new Map<string, number>();
+  let n = 0;
+  for (const k of resolvedEntryKeys) {
+    if (narrative.scenes[k]) sceneNum.set(k, ++n);
+  }
+  const keys = resolveRegionKeys(narrative, resolvedEntryKeys, region);
+  const nums = keys.map((k) => sceneNum.get(k)).filter((x): x is number => x !== undefined);
+  if (nums.length === 0) return { count: 0, firstNum: 0, lastNum: 0 };
+  return { count: nums.length, firstNum: Math.min(...nums), lastNum: Math.max(...nums) };
+}
+
+/** Arcs in timeline order — ordered by the first resolved scene that belongs to
+ *  each arc. Arcs with no scene in the current branch are dropped. Used by the
+ *  region-config modal's arc checklist. */
+export function arcsInTimelineOrder(
+  narrative: NarrativeState,
+  resolvedEntryKeys: string[],
+): Arc[] {
+  const arcs = Object.values(narrative.arcs);
+  const firstPos = new Map<string, number>();
+  for (let i = 0; i < resolvedEntryKeys.length; i++) {
+    const key = resolvedEntryKeys[i];
+    if (!narrative.scenes[key]) continue;
+    for (const arc of arcs) {
+      if (!firstPos.has(arc.id) && arc.sceneIds.includes(key)) firstPos.set(arc.id, i);
+    }
+  }
+  return arcs
+    .filter((a) => firstPos.has(a.id))
+    .sort((a, b) => firstPos.get(a.id)! - firstPos.get(b.id)!);
 }
 
 // ── World-view helpers ────────────────────────────────────────────────────────
@@ -530,16 +602,53 @@ export function computeSlidesData(
  *  questions. The rest get an empty trajectory and render as stance-only. */
 const BELIEF_TRAJECTORY_CAP = 8;
 
-/** Snapshot every LIVE belief (open thread) as a stance + per-scene
- *  trajectory (top-N by volume). Drops closed / abandoned threads — the
- *  belief system carries only what's still in flux. Sorted by volume desc so
- *  the load-bearing questions lead. */
+/** How much a belief's distribution MOVED across its (period-scoped) trajectory
+ *  — summed total-variation distance between consecutive scenes. This is the
+ *  "volatility in this period": a question whose lean swung hard scores high; a
+ *  flat one scores ~0. Outcome arrays can grow mid-trajectory (addOutcomes), so
+ *  compare over the longer length with missing entries treated as 0. */
+function trajectoryMovement(points: { probs: number[] }[]): number {
+  let tv = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1].probs;
+    const b = points[i].probs;
+    const len = Math.max(a.length, b.length);
+    let d = 0;
+    for (let k = 0; k < len; k++) d += Math.abs((b[k] ?? 0) - (a[k] ?? 0));
+    tv += d / 2; // total-variation distance ∈ [0,1] per step
+  }
+  return tv;
+}
+
+/** Snapshot the belief system as of the END of the deck's window, built
+ *  CUMULATIVELY from the narrative's start — every prior arc's evidence shapes
+ *  each stance, so a region deck shows the same outcomes the reader would hold
+ *  arriving at the region's end (not a stance re-seeded from the region alone).
+ *
+ *  `cumulativeKeys` runs narrative-start → end-of-window (full timeline for the
+ *  whole-narrative deck; start → region-end for a region deck). `periodKeys` is
+ *  the deck's own window (the region's scenes; === cumulativeKeys for the full
+ *  deck) — used only to rank by VOLATILITY IN THIS PERIOD (how much each lean
+ *  moved within the window) so the slide features the questions that churned
+ *  most here. Threads not yet introduced by window-end, or closed/abandoned by
+ *  then, are dropped. Trajectories (cumulative) attach to the top-N. */
 function buildBeliefSnapshots(
   narrative: NarrativeState,
-  resolvedEntryKeys: string[],
+  cumulativeKeys: string[],
+  periodKeys: string[],
 ): BeliefSnapshot[] {
+  if (cumulativeKeys.length === 0) return [];
+  // Replay every thread to its state at window-end, and the set actually in
+  // play by then — so outcomes reflect all prior arcs, and not-yet-introduced
+  // threads (backfilled at prior by the replay) are excluded.
+  const lastIdx = cumulativeKeys.length - 1;
+  const asOf = replayThreadsAtIndex(narrative, cumulativeKeys, lastIdx);
+  const introduced = introducedThreadIdsAtIndex(narrative, cumulativeKeys, lastIdx);
+  const periodSet = new Set(periodKeys);
+
   const snapshots: BeliefSnapshot[] = [];
-  for (const thread of Object.values(narrative.threads)) {
+  for (const thread of Object.values(asOf)) {
+    if (!introduced.has(thread.id)) continue; // not in play yet at window-end
     if (isThreadClosed(thread) || isThreadAbandoned(thread)) continue;
     const stance = getThreadStance(thread);
     if (!stance) continue;
@@ -566,20 +675,22 @@ function buildBeliefSnapshots(
       trajectory: [],
     });
   }
-  snapshots.sort((a, b) => b.volume - a.volume);
 
-  // Attach trajectories to the top-N beliefs only. Trajectory replay is the
-  // expensive bit; the rest get an empty array so the slide can opt out of
-  // rendering a chart for them.
-  for (let i = 0; i < Math.min(BELIEF_TRAJECTORY_CAP, snapshots.length); i++) {
-    const snap = snapshots[i];
-    const points = buildThreadTrajectory(narrative, snap.threadId, resolvedEntryKeys);
-    snap.trajectory = points.map((p) => ({
-      sceneOrdinal: p.sceneOrdinal,
-      probs: p.probs,
-    }));
-  }
-  return snapshots;
+  // Cumulative trajectory per belief; rank by how much it moved WITHIN this
+  // period (total variation over the window's points), tiebreak by volume.
+  const withTraj = snapshots.map((snap) => {
+    const points = buildThreadTrajectory(narrative, snap.threadId, cumulativeKeys);
+    const periodPoints = points.filter((p) => periodSet.has(p.sceneId));
+    return { snap, points, movement: trajectoryMovement(periodPoints) };
+  });
+  withTraj.sort((a, b) => (b.movement - a.movement) || (b.snap.volume - a.snap.volume));
+
+  return withTraj.map(({ snap, points }, i) => {
+    snap.trajectory = i < BELIEF_TRAJECTORY_CAP
+      ? points.map((p) => ({ sceneOrdinal: p.sceneOrdinal, probs: p.probs, outcomes: p.outcomes }))
+      : [];
+    return snap;
+  });
 }
 
 /** Summarise the system graph — counts per node type, edge count, and the

@@ -531,7 +531,7 @@ export function GasMeter({ logs, onOpenHistory }: { logs: ApiLogEntry[]; onOpenH
       {onOpenHistory && (
         <button
           onClick={onOpenHistory}
-          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 hover:border-emerald-500/50 text-emerald-300 text-[12px] font-medium transition-colors"
+          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-bg-base text-[12px] font-semibold shadow-sm transition-colors"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="20" x2="18" y2="10" />
@@ -539,7 +539,7 @@ export function GasMeter({ logs, onOpenHistory }: { logs: ApiLogEntry[]; onOpenH
             <line x1="6" y1="20" x2="6" y2="14" />
           </svg>
           <span>Open historical usage</span>
-          <span aria-hidden className="text-emerald-400/70">→</span>
+          <span aria-hidden className="text-bg-base/60">→</span>
         </button>
       )}
     </div>

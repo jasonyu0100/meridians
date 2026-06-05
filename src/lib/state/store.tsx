@@ -87,6 +87,7 @@ import type {
   SceneGameAnalysis,
   ReasoningMap,
   SearchQuery,
+  Region,
   SourceFile,
   StorySettings,
   Survey,
@@ -1008,6 +1009,7 @@ export type Action =
   | { type: "SET_ARTIFACT_IMAGE_PROMPT"; artifactId: string; imagePrompt: string }
   | { type: "SET_IMAGE_STYLE"; style: string }
   | { type: "SET_STORY_SETTINGS"; settings: StorySettings }
+  | { type: "SET_REGIONS"; regions: Region[] }
   | { type: "SET_PROSE_PROFILE"; profile: ProseProfile | undefined }
   | { type: "ADD_SAVED_PROSE_PROFILE"; saved: SavedProseProfile }
   | { type: "RENAME_SAVED_PROSE_PROFILE"; id: string; name: string }
@@ -3109,6 +3111,12 @@ function reducer(state: AppState, action: Action): AppState {
       return updateNarrative(state, (n) => ({
         ...n,
         storySettings: action.settings,
+      }));
+
+    case "SET_REGIONS":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        regions: action.regions,
       }));
 
     case "SET_PROSE_PROFILE":

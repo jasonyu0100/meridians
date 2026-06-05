@@ -214,14 +214,27 @@ export function BoardView() {
   const currentMap = currentRoot ? (currentRoot === GLOBAL_MAP_ROOT ? mapByRoot(maps, GLOBAL_MAP_ROOT) : mapByRoot(maps, currentRoot)) : undefined;
   const imageUrl = useImageUrl(currentMap?.imageUrl);
 
-  const push = useCallback((rootId: string) => setStack((s) => [...s, rootId]), []);
+  // Navigating between location boards updates the right inspector to the
+  // location we land on (skip the synthetic Global root — it has no entity).
+  const inspectLocation = useCallback((rootId: string) => {
+    if (rootId === GLOBAL_MAP_ROOT || !narrative?.locations[rootId]) return;
+    dispatch({ type: 'SET_INSPECTOR', context: { type: 'location', locationId: rootId } });
+  }, [dispatch, narrative]);
+
+  const push = useCallback((rootId: string) => {
+    setStack((s) => [...s, rootId]);
+    inspectLocation(rootId);
+  }, [inspectLocation]);
 
   // The map directly above the current one (nearest ancestor with its own map,
   // or the Global board). Clicking the title ascends to it.
   const parentRoot = currentRoot && narrative ? parentMapRoot(narrative, maps, currentRoot) : null;
   const goToParent = useCallback(() => {
-    if (parentRoot && narrative) setStack(buildPath(narrative, maps, parentRoot));
-  }, [parentRoot, narrative, maps]);
+    if (parentRoot && narrative) {
+      setStack(buildPath(narrative, maps, parentRoot));
+      inspectLocation(parentRoot);
+    }
+  }, [parentRoot, narrative, maps, inspectLocation]);
 
   // The board is the largest 4:3 box (maps are generated 4:3) that fits the
   // available area. Measuring the area and sizing the box explicitly keeps the
@@ -358,11 +371,10 @@ export function BoardView() {
                   className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
                 >
                   <button
-                    onClick={() => drillRoot && push(drillRoot)}
-                    disabled={!drillRoot}
-                    title={drillRoot ? `Open ${name} map` : name}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
-                      drillRoot ? 'ring-accent/40 hover:ring-accent cursor-pointer' : 'ring-black/10 cursor-default'
+                    onClick={() => drillRoot ? push(drillRoot) : inspectLocation(lb.locationId)}
+                    title={drillRoot ? `Open ${name} map` : `Inspect ${name}`}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 cursor-pointer transition-all ${
+                      drillRoot ? 'ring-accent/40 hover:ring-accent' : 'ring-black/10 hover:ring-accent/50'
                     }`}
                   >
                     {name}
@@ -384,9 +396,9 @@ export function BoardView() {
               return (
                 <div key={lb.locationId} className="flex items-center gap-2 rounded-lg border border-border bg-white/3 px-3 py-2">
                   <button
-                    onClick={() => drillRoot && push(drillRoot)}
-                    disabled={!drillRoot}
-                    className={`flex items-center gap-1.5 text-xs flex-1 text-left ${drillRoot ? 'text-accent hover:underline cursor-pointer' : 'text-text-primary cursor-default'}`}
+                    onClick={() => drillRoot ? push(drillRoot) : inspectLocation(lb.locationId)}
+                    title={drillRoot ? `Open ${name} map` : `Inspect ${name}`}
+                    className={`flex items-center gap-1.5 text-xs flex-1 text-left cursor-pointer hover:underline ${drillRoot ? 'text-accent' : 'text-text-primary'}`}
                   >
                     {drillRoot && <IconMapPin size={12} />}
                     {name}

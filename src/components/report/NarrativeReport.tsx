@@ -1181,7 +1181,7 @@ export function NarrativeReport({
             <IconClose className="w-3.5 h-3.5" />
           </button>
           <span className="text-[11px] text-white/40">
-            Analysis Report
+            Report
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -1255,7 +1255,7 @@ export function NarrativeReport({
             />
             <div className="relative">
               <p className="text-[10px] uppercase tracking-[0.3em] text-text-dim mb-6 font-mono">
-                Analysis Report
+                Report
               </p>
               <h1 className="text-[40px] font-bold text-text-primary leading-tight tracking-tight mb-5 max-w-2xl mx-auto">
                 {data.title}

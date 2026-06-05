@@ -1,7 +1,7 @@
 "use client";
-// ThemeModal — pick the app colour theme from preview swatches.
+// ThemeMenu — compact dropdown to pick the app colour theme from preview
+// swatches. Styled like the other top-bar pill dropdowns (usage, slides).
 
-import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
 import { THEMES, useTheme, type Theme } from "@/lib/state/theme-context";
 
 type ThemeOption = {
@@ -33,83 +33,45 @@ const OPTIONS: Record<Theme, ThemeOption> = {
   },
 };
 
-export function ThemeModal({ onClose }: { onClose: () => void }) {
+export function ThemeMenu({ onClose }: { onClose: () => void }) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <Modal onClose={onClose} size="md">
-      <ModalHeader onClose={onClose}>
-        <h2 className="text-sm font-semibold text-text-primary">Theme</h2>
-      </ModalHeader>
-      <ModalBody>
-        <p className="text-[11px] text-text-dim mb-4">
-          Choose the workspace appearance. Your choice is saved on this device
-          and applied everywhere.
-        </p>
-        <div className="space-y-2.5">
-          {THEMES.map((id) => {
-            const o = OPTIONS[id];
-            const active = theme === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setTheme(id)}
-                className={`w-full flex items-center gap-3.5 rounded-xl border p-3 text-left transition-colors ${
-                  active
-                    ? "border-violet-300/60 bg-white/5"
-                    : "border-border hover:bg-white/5"
-                }`}
-              >
-                {/* Preview swatch — mini window of the theme */}
-                <div
-                  className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-border"
-                  style={{ background: o.swatch.bg }}
-                >
-                  <div
-                    className="absolute left-1.5 top-1.5 h-3 w-9 rounded"
-                    style={{ background: o.swatch.panel }}
-                  />
-                  <div
-                    className="absolute left-1.5 bottom-1.5 h-1.5 w-7 rounded-full"
-                    style={{ background: o.swatch.text }}
-                  />
-                  <div
-                    className="absolute right-1.5 bottom-1.5 h-2.5 w-2.5 rounded-full"
-                    style={{ background: o.swatch.accent }}
-                  />
-                </div>
+    <div className="absolute top-full right-0 mt-1.5 z-[100] min-w-[256px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
+      {THEMES.map((id) => {
+        const o = OPTIONS[id];
+        const active = theme === id;
+        return (
+          <button
+            key={id}
+            onClick={() => { setTheme(id); onClose(); }}
+            className={`w-full flex items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors ${
+              active ? "bg-white/8" : "hover:bg-white/5"
+            }`}
+          >
+            {/* Preview swatch — mini window of the theme */}
+            <div
+              className="relative h-8 w-11 shrink-0 overflow-hidden rounded border border-border"
+              style={{ background: o.swatch.bg }}
+            >
+              <div className="absolute left-1 top-1 h-2 w-6 rounded" style={{ background: o.swatch.panel }} />
+              <div className="absolute left-1 bottom-1 h-1 w-5 rounded-full" style={{ background: o.swatch.text }} />
+              <div className="absolute right-1 bottom-1 h-1.5 w-1.5 rounded-full" style={{ background: o.swatch.accent }} />
+            </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold text-text-primary">
-                      {o.name}
-                    </span>
-                    {active && (
-                      <span className="text-[9px] uppercase tracking-wide text-violet-300 font-semibold">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-text-dim mt-0.5 leading-snug">
-                    {o.desc}
-                  </p>
-                </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[12px] font-medium text-text-primary">{o.name}</span>
+              <p className="text-[10px] text-text-dim/70 leading-snug line-clamp-1">{o.desc}</p>
+            </div>
 
-                {/* Radio indicator */}
-                <div
-                  className={`shrink-0 h-4 w-4 rounded-full border flex items-center justify-center ${
-                    active ? "border-violet-300" : "border-border"
-                  }`}
-                >
-                  {active && (
-                    <div className="h-2 w-2 rounded-full bg-violet-300" />
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </ModalBody>
-    </Modal>
+            {active && (
+              <svg className="w-3.5 h-3.5 shrink-0 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }

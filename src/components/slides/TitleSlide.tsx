@@ -17,7 +17,7 @@ const gradeColor = (v: number) => {
   return '#EF4444';
 };
 
-export function TitleSlide({ data }: { data: SlidesData }) {
+export function TitleSlide({ data, scopeLabel }: { data: SlidesData; scopeLabel?: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -104,6 +104,11 @@ export function TitleSlide({ data }: { data: SlidesData }) {
       />
 
       {/* Title */}
+      {scopeLabel && (
+        <p className="text-sm uppercase tracking-[0.2em] text-accent font-semibold mb-3 relative">
+          {scopeLabel}
+        </p>
+      )}
       <h1 className="text-5xl font-bold text-text-primary mb-6 leading-tight max-w-2xl text-center relative">
         {data.title}
       </h1>

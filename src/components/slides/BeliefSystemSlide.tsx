@@ -55,9 +55,9 @@ function BeliefTrajectoryChart({
   const plotH = Math.max(0, height - padT - padB);
 
   const points = belief.trajectory;
-  const numOutcomes = belief.outcomes.length;
 
   if (points.length === 0) {
+    const numOutcomes = belief.outcomes.length;
     // No trajectory replay — render flat lines at the current stance so
     // the visual shape is consistent across the grid.
     return (
@@ -99,10 +99,22 @@ function BeliefTrajectoryChart({
   const n = points.length;
   const xAt = (i: number) => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
   const yAt = (p: number) => padT + (1 - p) * plotH;
+
+  // Index against the trajectory's OWN outcomes (last point — outcomes only
+  // grow via addOutcomes, never shrink) so `pt.probs[k]` aligns 1:1 and the
+  // per-scene values sum to 100%. Colour-key each line off its position in the
+  // live snapshot's outcome list (by name) so a line matches its legend swatch
+  // — mirrors BeliefView. Indexing against `belief.outcomes` instead silently
+  // misaligns when mid-narrative expansion reorders the set, flattening lines.
+  const chartOutcomes = points[points.length - 1].outcomes;
+  const numOutcomes = chartOutcomes.length;
+  const liveIdxByName = new Map<string, number>();
+  belief.outcomes.forEach((o, i) => liveIdxByName.set(o.name, i));
+  const colourIdxOf = (k: number) => liveIdxByName.get(chartOutcomes[k]) ?? k;
   const lineOffset = (k: number) => (k - (numOutcomes - 1) / 2) * 2.5;
 
   // One polyline per outcome
-  const lines = belief.outcomes.map((_, k) => {
+  const lines = chartOutcomes.map((_, k) => {
     const off = lineOffset(k);
     const d = points
       .map((pt, i) => {
@@ -154,7 +166,7 @@ function BeliefTrajectoryChart({
           key={k}
           d={d}
           fill="none"
-          stroke={outcomeColor(k)}
+          stroke={outcomeColor(colourIdxOf(k))}
           strokeWidth={1.5}
           opacity={0.85}
           strokeLinecap="round"
@@ -162,7 +174,7 @@ function BeliefTrajectoryChart({
         />
       ))}
       {/* Endpoint dots */}
-      {belief.outcomes.map((_, k) => {
+      {chartOutcomes.map((_, k) => {
         const p = points[points.length - 1].probs[k] ?? 0;
         return (
           <circle
@@ -170,7 +182,7 @@ function BeliefTrajectoryChart({
             cx={xAt(points.length - 1)}
             cy={yAt(p) + lineOffset(k)}
             r={2}
-            fill={outcomeColor(k)}
+            fill={outcomeColor(colourIdxOf(k))}
             opacity={0.95}
           />
         );

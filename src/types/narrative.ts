@@ -1674,6 +1674,17 @@ export type Board = {
   updatedAt: number;
 };
 
+/** A named region of the narrative — one or more whole arcs grouped together.
+ *  Its scene slice is resolved from the arcs' sceneIds at view time, so it
+ *  survives branch / version differences. Currently used to scope slide decks
+ *  ("quarterly reports"), and reusable for any future range-based feature. */
+export type Region = {
+  id: string;
+  name: string;
+  /** Arcs composing this region (timeline order). */
+  arcIds: string[];
+};
+
 // ── Narrative State ──────────────────────────────────────────────────────────
 
 export type NarrativeState = {
@@ -1702,6 +1713,10 @@ export type NarrativeState = {
   /** User-saved prose profiles, narrative-scoped. The active profile is mirrored
    *  in `proseProfile`; this is the library for one-click switching. */
   savedProseProfiles?: SavedProseProfile[];
+  /** User-defined regions — sets of arcs. Used by the slide dropdown to offer
+   *  scoped ("quarterly") decks alongside the full-narrative deck; generic
+   *  enough to drive other range-based features later. */
+  regions?: Region[];
   coverImageUrl?: ImageRef;
   /** Style directive appended to all image generation prompts for visual consistency */
   imageStyle?: string;

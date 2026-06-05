@@ -238,8 +238,10 @@ export function buildPortfolioRows(
  *  touch fires — whichever comes first. The touch fallback covers
  *  threads with stale or off-branch `openedAt` (e.g. data produced
  *  before file-conversion remapped `openedAt`); they still surface
- *  when actual evidence appears in this branch's scenes. Threads
- *  with no observable presence on this branch never enter the map.
+ *  when actual evidence appears in this branch's scenes. Threads with no
+ *  observable presence on this branch (or not yet introduced by `targetIndex`)
+ *  are backfilled at their prior at the end, so EVERY narrative thread appears
+ *  — not-yet-introduced ones at uniform prior with opening volume.
  *
  *  Not for generation paths — those read live state. Use this for timeline
  *  visualisations and portfolio scrubbing only. */
@@ -295,6 +297,15 @@ export function replayThreadsAtIndex(
     for (const [id, t] of Object.entries(decayed)) {
       threads[id] = t;
     }
+  }
+
+  // Backfill every remaining thread at its prior — threads not yet introduced
+  // by `targetIndex`, or with no observable presence on this branch at all,
+  // surface at uniform prior with opening volume (they land "out of focus").
+  // The belief / thread-graph / portfolio views all document "include every
+  // thread, not-yet-introduced ones at uniform prior"; this delivers that.
+  for (const t of Object.values(narrative.threads)) {
+    if (!threads[t.id]) threads[t.id] = seedThreadCopy(t);
   }
 
   return threads;

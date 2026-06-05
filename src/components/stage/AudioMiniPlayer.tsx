@@ -8,7 +8,7 @@ import { IconChevronLeft, IconChevronRight } from '@/components/icons';
 
 export function NowPlayingPill() {
   const { state: player, toggle, seek, stop, play } = useAudioPlayer();
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -90,6 +90,12 @@ export function NowPlayingPill() {
         ) : (
           <span>Audio</span>
         )}
+        <svg
+          className={`w-2.5 h-2.5 transition-transform ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <path d="M1 2.5 L4 5.5 L7 2.5" />
+        </svg>
       </button>
 
       {/* Dropdown */}
@@ -118,13 +124,26 @@ export function NowPlayingPill() {
                   <p className="text-[11px] text-text-secondary line-clamp-1 flex-1 mr-2">{currentScene.summary.slice(0, 60)}</p>
                   <button
                     onClick={() => play(currentScene.id, currentScene.audioUrl!)}
-                    className="shrink-0 w-7 h-7 rounded-full bg-violet-500/15 text-violet-400 flex items-center justify-center hover:bg-violet-500/25 transition"
+                    title="Play current scene"
+                    className="shrink-0 w-7 h-7 rounded-full bg-violet-500 text-bg-base flex items-center justify-center hover:bg-violet-400 shadow-sm transition-colors"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5"><polygon points="6,3 20,12 6,21" /></svg>
                   </button>
                 </div>
               ) : (
-                <p className="text-[10px] text-text-dim/50 text-center py-1">No audio for current scene</p>
+                <div className="py-1">
+                  <p className="text-[10px] text-text-dim/50 mb-2 text-center">No audio for current scene</p>
+                  <button
+                    onClick={() => { dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'audio' }); setOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-bg-base text-[12px] font-semibold shadow-sm transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 10v4M7.5 6v12M12 3v18M16.5 6v12M21 10v4" />
+                    </svg>
+                    <span>Generate audio</span>
+                    <span aria-hidden className="text-bg-base/60">&rarr;</span>
+                  </button>
+                </div>
               )
             )}
 
