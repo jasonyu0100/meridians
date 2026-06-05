@@ -22,6 +22,7 @@
 import { createContext, useContext, useRef, useState, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '@/lib/state/store';
+import { useTheme } from '@/lib/state/theme-context';
 import { resolveEntityRef, type EntityRefInfo, type EntityRefKind } from '@/lib/forces/entity-ref';
 
 /**
@@ -32,7 +33,11 @@ import { resolveEntityRef, type EntityRefInfo, type EntityRefKind } from '@/lib/
 export const CitationNumberContext = createContext<Map<string, number> | null>(null);
 
 /** Per-kind citation styling — a faint type-tinted fill + tinted number, so the
- *  marker's colour signals what kind of entity it cites; brighter on hover. */
+ *  marker's colour signals what kind of entity it cites; brighter on hover.
+ *  Dark themes (astral/dark) use light -300 text on a faint fill; the light
+ *  theme needs darker -700 text or the numbers wash out (see KIND_BADGE_LIGHT).
+ *  The app themes via CSS-variable remaps, not Tailwind `dark:`, so the variant
+ *  is chosen at runtime from `useTheme()`. */
 const KIND_BADGE: Record<EntityRefKind, string> = {
   character: 'bg-sky-400/15 text-sky-300 hover:bg-sky-400/25 hover:text-sky-200',
   location: 'bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/25 hover:text-emerald-200',
@@ -41,6 +46,18 @@ const KIND_BADGE: Record<EntityRefKind, string> = {
   scene: 'bg-rose-400/15 text-rose-300 hover:bg-rose-400/25 hover:text-rose-200',
   arc: 'bg-fuchsia-400/15 text-fuchsia-300 hover:bg-fuchsia-400/25 hover:text-fuchsia-200',
   knowledge: 'bg-teal-400/15 text-teal-300 hover:bg-teal-400/25 hover:text-teal-200',
+};
+
+/** Light-theme citation styling — darker -700 text on a soft tint, so the
+ *  numbers read clearly against a light background instead of washing out. */
+const KIND_BADGE_LIGHT: Record<EntityRefKind, string> = {
+  character: 'bg-sky-500/12 text-sky-700 hover:bg-sky-500/20 hover:text-sky-800',
+  location: 'bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/20 hover:text-emerald-800',
+  artifact: 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 hover:text-amber-800',
+  thread: 'bg-violet-500/12 text-violet-700 hover:bg-violet-500/20 hover:text-violet-800',
+  scene: 'bg-rose-500/12 text-rose-700 hover:bg-rose-500/20 hover:text-rose-800',
+  arc: 'bg-fuchsia-500/12 text-fuchsia-700 hover:bg-fuchsia-500/20 hover:text-fuchsia-800',
+  knowledge: 'bg-teal-500/12 text-teal-700 hover:bg-teal-500/20 hover:text-teal-800',
 };
 
 /** Per-kind dot used in the hover-card header. */
@@ -121,6 +138,7 @@ function HoverCard({ info, anchor }: { info: EntityRefInfo; anchor: AnchorRect }
 
 export function EntityRef({ id }: { id: string }) {
   const { state, dispatch } = useStore();
+  const { theme } = useTheme();
   const info = resolveEntityRef(state.activeNarrative, id);
   const citations = useContext(CitationNumberContext);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -152,7 +170,7 @@ export function EntityRef({ id }: { id: string }) {
         }
         onMouseEnter={showCard}
         onMouseLeave={() => setAnchor(null)}
-        className={`${BADGE_BASE} cursor-pointer transition-colors ${KIND_BADGE[info.kind]}`}
+        className={`${BADGE_BASE} cursor-pointer transition-colors ${(theme === 'light' ? KIND_BADGE_LIGHT : KIND_BADGE)[info.kind]}`}
       >
         {marker}
       </button>
