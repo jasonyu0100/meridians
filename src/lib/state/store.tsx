@@ -1915,8 +1915,17 @@ function reducer(state: AppState, action: Action): AppState {
           newState.activeNarrative,
           action.branch.id,
         );
+        // Re-derive against the new branch's resolved keys, same as
+        // SWITCH_BRANCH. Without this, activeNarrative keeps the prior
+        // branch's derived entities while resolvedEntryKeys already points
+        // at the new (often empty) branch — leaving consumers that read
+        // activeNarrative.characters directly (e.g. the Apply-extension
+        // merge guard) to see a populated target on an empty branch and
+        // run a reconcile that should have been skipped.
+        const derived = withDerivedEntities(newState.activeNarrative, resolved);
         return {
           ...newState,
+          activeNarrative: derived,
           resolvedEntryKeys: resolved,
           viewState: {
             ...newState.viewState,
