@@ -15,8 +15,8 @@ import ReactMarkdown, {
   defaultUrlTransform,
 } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { entityRefRegex } from '@/lib/forces/entity-ref';
-import { EntityRef } from './EntityRef';
+import { buildCitationNumbers, entityRefRegex } from '@/lib/forces/entity-ref';
+import { CitationNumberContext, EntityRef } from './EntityRef';
 
 /** URL scheme used to smuggle a detected entity annotation through markdown
  *  link parsing so the `a` renderer can swap in an EntityRef chip. */
@@ -50,22 +50,27 @@ export function Markdown({
   const isReading = variant === 'reading';
   const components = isReading ? READING_COMPONENTS : COMPACT_COMPONENTS;
   const body = entities ? linkifyEntityRefs(text) : text;
+  // Number distinct entity refs in order of first appearance (Perplexity
+  // style) so every EntityRef chip can render its citation number, not the id.
+  const citations = entities ? buildCitationNumbers(text) : null;
   return (
-    <div
-      className={
-        isReading
-          ? 'text-[14px] text-text-secondary leading-relaxed flex flex-col gap-4'
-          : 'text-[13.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5'
-      }
-    >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={components}
-        urlTransform={entities ? entityUrlTransform : undefined}
+    <CitationNumberContext.Provider value={citations}>
+      <div
+        className={
+          isReading
+            ? 'text-[14px] text-text-secondary leading-relaxed flex flex-col gap-4'
+            : 'text-[13.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5'
+        }
       >
-        {body}
-      </ReactMarkdown>
-    </div>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={components}
+          urlTransform={entities ? entityUrlTransform : undefined}
+        >
+          {body}
+        </ReactMarkdown>
+      </div>
+    </CitationNumberContext.Provider>
   );
 }
 

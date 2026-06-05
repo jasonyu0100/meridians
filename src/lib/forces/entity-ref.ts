@@ -66,6 +66,24 @@ export function entityRefRegex(): RegExp {
   return new RegExp(ENTITY_REF_REGEX_SOURCE, "g");
 }
 
+/**
+ * Scan a message body and assign each distinct bracketed id a stable citation
+ * number in order of first appearance — Perplexity style. Repeated references
+ * to the same entity reuse the same number, so `[C-12] … [C-12]` both render
+ * as `1`. The returned map is keyed by the trimmed inner id token.
+ */
+export function buildCitationNumbers(text: string): Map<string, number> {
+  const numbers = new Map<string, number>();
+  const re = entityRefRegex();
+  let next = 1;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const id = m[1].trim();
+    if (!numbers.has(id)) numbers.set(id, next++);
+  }
+  return numbers;
+}
+
 function capitalize(s: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
