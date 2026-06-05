@@ -1562,7 +1562,7 @@ export default function Stage() {
         )
       ) : graphViewMode === 'learning' ? (
         currentScene ? (
-          <SceneLearningView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
+          <SceneLearningView narrative={narrative} scene={currentScene} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-text-dim text-sm italic">No scene selected.</p>

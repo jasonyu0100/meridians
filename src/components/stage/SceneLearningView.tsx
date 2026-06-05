@@ -49,11 +49,9 @@ const DIFFICULTY_LABEL: Record<DifficultyBand, string> = {
 export function SceneLearningView({
   narrative,
   scene,
-  resolvedKeys,
 }: {
   narrative: NarrativeState;
   scene: Scene;
-  resolvedKeys: string[];
 }) {
   const { dispatch } = useStore();
   const questions = scene.questions ?? [];
@@ -79,7 +77,7 @@ export function SceneLearningView({
       setError(null);
       window.dispatchEvent(new CustomEvent("bulk:questions-start", { detail: { sceneId: scene.id } }));
       try {
-        const result = await generateSceneQuestions(narrative, scene, resolvedKeys, {
+        const result = await generateSceneQuestions(narrative, scene, {
           prose: resolvedProse ?? undefined,
           guidance: guidance || undefined,
           onReasoning: (_token, accumulated) => {
@@ -108,7 +106,7 @@ export function SceneLearningView({
       window.removeEventListener("canvas:generate-questions", handleGenerate);
       window.removeEventListener("canvas:clear-questions", handleClear);
     };
-  }, [narrative, scene, resolvedKeys, resolvedProse, dispatch, isGenerating]);
+  }, [narrative, scene, resolvedProse, dispatch, isGenerating]);
 
   const deleteQuestion = useCallback(
     (id: string) => {

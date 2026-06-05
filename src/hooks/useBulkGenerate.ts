@@ -155,7 +155,7 @@ export function useBulkGenerate() {
         } else if (mode === 'questions') {
           window.dispatchEvent(new CustomEvent('bulk:questions-start', { detail: { sceneId } }));
           const questions = await generateSceneQuestions(
-            activeNarrative, scene, resolvedEntryKeys,
+            activeNarrative, scene,
             {
               prose: resolvedProse ?? undefined,
               onReasoning: (_token, accumulated) => window.dispatchEvent(new CustomEvent('bulk:questions-reasoning', { detail: { sceneId, token: accumulated } })),

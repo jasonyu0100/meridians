@@ -1,20 +1,21 @@
 /**
  * Learning (Quiz) generation — a purely additive, post-hoc layer.
  *
- * Given a scene (its structure, summary, and optionally its prose) plus
- * full context on the surrounding world view, extract an exhaustive bank of
- * multiple-choice questions testing the general concepts and ideas a reader
- * should take from the scene. Writes only to scene.questions; never mutates
- * deltas, threadLogs, or forces.
+ * Given a scene (its structure, summary, and optionally its prose), extract
+ * an exhaustive bank of multiple-choice questions testing the general
+ * concepts and ideas a reader should take from the scene. Writes only to
+ * scene.questions; never mutates deltas, threadLogs, or forces.
  *
- * The context is deliberately whole-narrative aware: the world summary, the
- * cast/place roster, and the full timeline of scene summaries ride in so the
- * extractor can build plausible distractors from the world's own material and
- * frame questions correctly relative to everything that came before.
+ * Extraction is scene-specific: the context comes from `learningContext`,
+ * which wraps the canonical `sceneContext` XML (the same structural surface
+ * plan / prose / game read) plus the scene's prose and a light world-view
+ * framing line — so questions stay anchored to THIS scene rather than the
+ * whole narrative.
  */
 
 import { nanoid } from "nanoid";
 import { callGenerateStream, resolveReasoningBudget } from "./api";
+import { learningContext } from "./context";
 import { parseJson } from "./json";
 import {
   buildLearningSystemPrompt,
@@ -22,7 +23,7 @@ import {
 } from "@/lib/prompts/learning";
 import { QUESTION_MODEL } from "@/lib/constants";
 import { logError, logInfo } from "@/lib/core/system-logger";
-import { resolveEntry, isScene, BLOOM_LEVELS, DIFFICULTY_BANDS } from "@/types/narrative";
+import { BLOOM_LEVELS, DIFFICULTY_BANDS } from "@/types/narrative";
 import type {
   BloomLevel,
   DifficultyBand,
@@ -65,133 +66,6 @@ function shuffleOptions(
     options: tagged.map((t) => t.opt),
     correctIndex: Math.max(0, tagged.findIndex((t) => t.correct)),
   };
-}
-
-function entityName(narrative: NarrativeState, id: string): string {
-  return (
-    narrative.characters[id]?.name ??
-    narrative.locations[id]?.name ??
-    narrative.artifacts[id]?.name ??
-    id
-  );
-}
-
-/**
- * Build the context block the extractor reads: world framing + cast/place
- * roster + the full timeline of scene summaries (target marked) + the
- * target scene's structural surface and prose when available.
- */
-function buildLearningContext(
-  narrative: NarrativeState,
-  scene: Scene,
-  resolvedKeys: string[],
-  prose?: string,
-): string {
-  const parts: string[] = [];
-
-  // ── World framing ──
-  parts.push("WORLD VIEW");
-  parts.push(`Title: ${narrative.title}`);
-  const genre = [narrative.genre, narrative.subgenre].filter(Boolean).join(" / ");
-  if (genre) parts.push(`Genre: ${genre}`);
-  if (narrative.worldSummary) {
-    parts.push(`Summary: ${narrative.worldSummary}`);
-  }
-  parts.push("");
-
-  // ── Roster — names only, so distractors can be built from real entities ──
-  const chars = Object.values(narrative.characters);
-  const locs = Object.values(narrative.locations);
-  const arts = Object.values(narrative.artifacts);
-  if (chars.length) {
-    parts.push(
-      `CHARACTERS: ${chars.map((c) => c.name).slice(0, 60).join(", ")}`,
-    );
-  }
-  if (locs.length) {
-    parts.push(
-      `LOCATIONS: ${locs.map((l) => l.name).slice(0, 60).join(", ")}`,
-    );
-  }
-  if (arts.length) {
-    parts.push(
-      `ARTIFACTS: ${arts.map((a) => a.name).slice(0, 60).join(", ")}`,
-    );
-  }
-  parts.push("");
-
-  // ── Full timeline of scene summaries (whole-narrative awareness) ──
-  parts.push(
-    "NARRATIVE TIMELINE — every scene's summary, in order. The target scene is marked >>> . Use surrounding scenes for context and as a source of plausible distractors; extract questions ONLY from the target scene.",
-  );
-  let idx = 0;
-  for (const key of resolvedKeys) {
-    const entry = resolveEntry(narrative, key);
-    if (!entry || !isScene(entry)) continue;
-    idx += 1;
-    const s = entry as Scene;
-    const summary = (s.summary ?? "").slice(0, 200);
-    const marker = s.id === scene.id ? ">>> " : "    ";
-    parts.push(`${marker}S${idx}: ${summary}`);
-  }
-  parts.push("");
-
-  // ── Target scene structural surface ──
-  parts.push("TARGET SCENE — extract questions from this scene's content.");
-  parts.push(`Summary: ${scene.summary}`);
-  if (scene.povId) {
-    parts.push(`POV: ${entityName(narrative, scene.povId)}`);
-  }
-  if (scene.locationId) {
-    parts.push(`Setting: ${entityName(narrative, scene.locationId)}`);
-  }
-  if (scene.participantIds?.length) {
-    parts.push(
-      `Participants: ${scene.participantIds.map((p) => entityName(narrative, p)).join(", ")}`,
-    );
-  }
-  if (scene.events?.length) {
-    parts.push(`Events: ${scene.events.join("; ")}`);
-  }
-  if (scene.threadDeltas?.length) {
-    parts.push("Thread movements (questions of consequence the scene advances):");
-    for (const td of scene.threadDeltas) {
-      const desc = narrative.threads[td.threadId]?.description ?? td.threadId;
-      parts.push(`  - ${desc}`);
-    }
-  }
-  if (scene.worldDeltas?.length) {
-    parts.push("Revealed about entities (their inner state / history / properties):");
-    for (const wd of scene.worldDeltas) {
-      const name = entityName(narrative, wd.entityId);
-      for (const node of wd.addedNodes ?? []) {
-        parts.push(`  - ${name}: ${node.content}`);
-      }
-    }
-  }
-  if (scene.systemDeltas?.addedNodes?.length) {
-    parts.push("Revealed about how the world works (rules, systems, concepts):");
-    for (const node of scene.systemDeltas.addedNodes) {
-      parts.push(`  - ${node.concept}`);
-    }
-  }
-  if (scene.relationshipDeltas?.length) {
-    parts.push("Relationship shifts:");
-    for (const rd of scene.relationshipDeltas) {
-      const fromName = entityName(narrative, rd.from);
-      const toName = entityName(narrative, rd.to);
-      parts.push(`  - ${fromName} → ${toName}: ${rd.type}`);
-    }
-  }
-
-  // ── Prose — the richest extraction surface when it exists ──
-  if (prose?.trim()) {
-    parts.push("");
-    parts.push("TARGET SCENE PROSE — the authoritative text. Read it closely; the questions test what a reader of this prose should understand.");
-    parts.push(prose.trim());
-  }
-
-  return parts.join("\n");
 }
 
 /**
@@ -268,7 +142,6 @@ function sanitiseQuestion(
 export async function generateSceneQuestions(
   narrative: NarrativeState,
   scene: Scene,
-  resolvedKeys: string[],
   opts: {
     prose?: string;
     guidance?: string;
@@ -283,7 +156,7 @@ export async function generateSceneQuestions(
 
   const systemPrompt = buildLearningSystemPrompt();
   const userPrompt = buildLearningUserPrompt(
-    buildLearningContext(narrative, scene, resolvedKeys, opts.prose),
+    learningContext(narrative, scene, { prose: opts.prose }),
     opts.guidance,
   );
 

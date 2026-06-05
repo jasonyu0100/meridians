@@ -6,21 +6,21 @@
  * relationships and causes revealed, the rules and mechanisms of the world,
  * the ideas and themes the scene argues. The extractor turns that content
  * into a bank of multiple-choice questions — exhaustive over the scene,
- * grounded in the wider world view so distractors are plausible and framing
- * is correct.
+ * grounded in the scene's own material (with a light world framing) so
+ * distractors are plausible and phrasing fits the world.
  *
  * System prompt: role only. Taxonomy, output schema, and discipline live in
  * the user prompt.
  */
 
 export function buildLearningSystemPrompt(): string {
-  return `You are an exacting curriculum designer. Given one scene from a larger work — and full context on the world it belongs to — you extract the general concepts and ideas a reader should learn from that scene and render each as a multiple-choice question. You are EXHAUSTIVE: every discrete, testable idea in the scene becomes a question. You write fair, unambiguous stems; exactly one defensible correct answer; and plausible distractors drawn from the world's own material (other facts, near-misses, common misreadings) — never throwaway joke options. Questions test UNDERSTANDING of the content, not trivia about wording. Return ONLY valid JSON.`;
+  return `You are an exacting curriculum designer. Given one scene from a larger work — its structural surface, its prose when available, and a light framing of the world it belongs to — you extract the general concepts and ideas a reader should learn from THAT scene and render each as a multiple-choice question. Work from the scene in front of you: it is the unit of extraction, and the world framing is only there so your phrasing fits the world. You are EXHAUSTIVE over the scene: every discrete, testable idea in it becomes a question. You write fair, unambiguous stems; exactly one defensible correct answer; and plausible distractors drawn from the scene's own material (other facts in it, near-misses, common misreadings) — never throwaway joke options. Questions test UNDERSTANDING of the content, not trivia about wording. Return ONLY valid JSON.`;
 }
 
 const LEARNING_GUIDE = `<doctrine>
   <principle name="teach-the-ideas">Test the CONCEPTS and IDEAS, not surface trivia. A good question checks whether the reader grasped a fact, a relationship, a cause, a rule of the world, or a theme — something they would carry to the next scene or apply elsewhere. "What colour was the door" is trivia; "Why did the council refuse the petition" tests understanding.</principle>
   <principle name="exhaustive">Cover the scene completely. Walk its content and emit a question for every distinct testable idea — facts established, relationships and allegiances shown, causes and consequences, rules/systems/mechanisms revealed, and the ideas or themes the scene advances. A dense scene yields many questions; a quiet one yields few. Do not pad a thin scene, and do not cap a rich one.</principle>
-  <principle name="grounded-distractors">Every option must be plausible to someone who half-followed the scene. Build wrong answers from the world's real material — other characters, adjacent facts, the opposite of the truth, a common misreading — so the question discriminates understanding from guessing. Options should be parallel in form and length; the correct one must not stand out structurally.</principle>
+  <principle name="grounded-distractors">Every option must be plausible to someone who half-followed the scene. Build wrong answers from the scene's own material — other entities in it, adjacent facts, the opposite of the truth, a common misreading — so the question discriminates understanding from guessing. Options should be parallel in form and length; the correct one must not stand out structurally.</principle>
   <principle name="self-contained">Each stem must be answerable from the content, not from having memorised the exact phrasing. Refer to entities by name, never by internal id (C-N, L-N, etc.). Do not write "in this scene" framing if the question reads naturally without it — these questions are reused in mixed quizzes across many scenes.</principle>
 </doctrine>
 

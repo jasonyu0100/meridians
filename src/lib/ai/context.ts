@@ -1192,6 +1192,38 @@ ${tieDeltaLines.length > 0 ? `\n<tie-changes>\n${tieDeltaLines.join('\n')}\n</ti
 </scene>`;
 }
 
+/**
+ * Scene-scoped context for Learning question extraction.
+ *
+ * Deliberately built ON TOP of `sceneContext` rather than as a parallel
+ * builder: questions are extracted from the SAME structural surface the
+ * plan / prose / game passes read, so they never drift from the rest of the
+ * pipeline. Extraction is scene-specific by design — no cumulative roster
+ * or prior-scene continuity, which would pull questions toward the whole
+ * narrative. Layered on top:
+ *   - a light <world-view> framing line so phrasing is correct for the world,
+ *   - the authoritative <source-prose> when it exists (the richest surface).
+ */
+export function learningContext(
+  narrative: NarrativeState,
+  scene: Scene,
+  opts: { prose?: string } = {},
+): string {
+  const esc = (s: string) => s.replace(/"/g, '&quot;');
+  const genre = [narrative.genre, narrative.subgenre].filter(Boolean).join(' / ');
+  const genreAttr = genre ? ` genre="${esc(genre)}"` : '';
+  const worldView = `<world-view title="${esc(narrative.title)}"${genreAttr} hint="Framing only — phrase questions correctly for this world, but extract them from the scene below, not from the world at large.">${
+    narrative.worldSummary ? `\n  <summary>${narrative.worldSummary}</summary>\n` : ''
+  }</world-view>`;
+  const proseBlock = opts.prose?.trim()
+    ? `\n<source-prose hint="Authoritative text of the scene. When present this is the primary extraction surface — test what a reader of this prose should understand.">\n${opts.prose.trim()}\n</source-prose>`
+    : '';
+  return `<learning-context>
+${worldView}
+${sceneContext(narrative, scene)}${proseBlock}
+</learning-context>`;
+}
+
 /** Deterministically derive logical rules from the scene graph — no LLM needed.
  *  Returns structured XML string with categorized constraints the prose must obey. */
 export function deriveLogicRules(
