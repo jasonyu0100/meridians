@@ -178,7 +178,7 @@ export default function CompassPanel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 pt-2.5 pb-2 border-b border-white/8 flex items-center gap-2">
+      <div className="shrink-0 h-9 px-3 border-b border-white/8 flex items-center gap-2">
         <span className="text-[11px] text-text-primary">Compass</span>
         <span className="text-[10px] uppercase tracking-wider text-text-dim/50 tabular-nums">
           {allReadings.length}

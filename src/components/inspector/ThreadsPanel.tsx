@@ -248,7 +248,7 @@ export default function ThreadsPanel() {
   if (rows.length === 0) {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
+        <div className="shrink-0 h-9 px-3 border-b border-white/8 flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-text-dim/70">0 threads</span>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center justify-center p-8 text-center gap-2">
@@ -304,7 +304,7 @@ export default function ThreadsPanel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
+      <div className="shrink-0 h-9 px-3 border-b border-white/8 flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-text-dim/70">
           {rows.length} {rows.length === 1 ? 'thread' : 'threads'}
         </span>

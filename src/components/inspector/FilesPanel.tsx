@@ -241,7 +241,7 @@ export default function FilesPanel() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Top bar — mirrors SurveyPanel's count + "+ New" pattern. */}
-      <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
+      <div className="shrink-0 h-9 px-3 border-b border-white/8 flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-text-dim/70">
           {files.length} {files.length === 1 ? 'file' : 'files'}
         </span>

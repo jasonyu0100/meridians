@@ -377,7 +377,7 @@ export default function InspectorPanel() {
         {tab === "inspector" && (
           <div className="flex-1 overflow-y-auto min-h-0">
             {state.viewState.inspectorHistory.length > 0 && (
-              <div className="sticky top-0 z-10 flex items-center gap-1 px-3 py-1.5 border-b border-border bg-bg-base/90 backdrop-blur-sm">
+              <div className="sticky top-0 z-10 h-9 flex items-center gap-1 px-3 border-b border-white/8 bg-bg-base/90 backdrop-blur-sm">
                 <button
                   onClick={() => dispatch({ type: "INSPECTOR_BACK" })}
                   className="text-[10px] text-text-dim hover:text-text-secondary transition-colors flex items-center gap-1"
@@ -446,12 +446,12 @@ export default function InspectorPanel() {
         )}
         {tab === "eval" && (
           <div className="flex-1 min-h-0 flex flex-col">
-            <div className="shrink-0 flex border-b border-white/5">
+            <div className="shrink-0 h-9 flex border-b border-white/8">
               {(["branch", "plan", "prose"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setEvalMode(m)}
-                  className={`flex-1 text-[10px] py-1.5 font-medium transition-colors ${evalMode === m ? "text-text-primary border-b border-accent" : "text-text-dim hover:text-text-secondary"}`}
+                  className={`flex-1 flex items-center justify-center text-[10px] font-medium transition-colors ${evalMode === m ? "text-text-primary border-b border-accent" : "text-text-dim hover:text-text-secondary"}`}
                 >
                   {
                     {

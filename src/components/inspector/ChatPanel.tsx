@@ -544,7 +544,7 @@ export default function ChatPanel() {
     <div className="flex flex-col h-full">
       {/* Thread header */}
       <div
-        className="shrink-0 border-b border-border px-3 py-2 flex items-center gap-2 relative"
+        className="shrink-0 h-9 border-b border-white/8 px-3 flex items-center gap-2 relative"
         ref={threadPickerRef}
       >
         <button

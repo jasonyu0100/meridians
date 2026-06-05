@@ -42,7 +42,7 @@ export default function SurveyPanel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center gap-2">
+      <div className="shrink-0 h-9 px-3 border-b border-white/8 flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-text-dim/70">
           {surveys.length} {surveys.length === 1 ? "survey" : "surveys"}
         </span>
