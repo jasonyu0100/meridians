@@ -2,6 +2,7 @@
 // GeneratePanel — main scene/arc generation controls with expand-world and error-repair surfacing.
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
+import { Segmented } from "@/components/ui/Segmented";
 import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
 import { diagnoseError } from "@/lib/ai/diagnose";
 import { IconChevronRight, IconDice } from "@/components/icons";
@@ -522,29 +523,19 @@ export function GeneratePanel({
       </ModalHeader>
       <ModalBody className="p-6 space-y-4">
         {/* Mode tabs */}
-        <div className="flex gap-1 bg-bg-elevated rounded-lg p-0.5">
-          {[
-            { label: "Continuation", value: "continuation" as Mode },
-            { label: "Expand World", value: "world" as Mode },
-          ].map((m) => (
-            <button
-              key={m.value}
-              onClick={() => {
-                setMode(m.value);
-                setError("");
-                setPreviewSequence(null);
-              }}
-              disabled={loading}
-              className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors rounded-md ${
-                mode === m.value
-                  ? "bg-bg-overlay text-text-primary"
-                  : "text-text-dim hover:text-text-secondary"
-              } disabled:opacity-50`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <Segmented<Mode>
+          options={[
+            { label: "Continuation", value: "continuation" },
+            { label: "Expand World", value: "world" },
+          ]}
+          value={mode}
+          onChange={(v) => {
+            setMode(v);
+            setError("");
+            setPreviewSequence(null);
+          }}
+          disabled={loading}
+        />
 
         {loading ? (
           <StreamingOutput
@@ -743,7 +734,7 @@ export function GeneratePanel({
                       value={arcName}
                       onChange={(e) => setArcName(e.target.value)}
                       placeholder="e.g. The Reckoning"
-                      className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full outline-none placeholder:text-text-dim"
+                      className="bg-bg-field border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full outline-none placeholder:text-text-dim"
                     />
                   </div>
                 ) : currentArc ? (
@@ -824,7 +815,7 @@ export function GeneratePanel({
                                 setFirstSceneTimeValue(e.target.value)
                               }
                               placeholder="auto"
-                              className="w-14 rounded-md px-2 py-1 text-[11px] bg-white/2 border border-white/6 text-text-primary placeholder:text-text-dim focus:bg-white/6 focus:border-white/16 outline-none"
+                              className="w-14 rounded-md px-2 py-1 text-[11px] bg-white/2 border border-white/6 text-text-primary placeholder:text-text-dim focus:bg-bg-field focus:border-white/16 outline-none"
                             />
                           )}
                           {(
@@ -1013,7 +1004,7 @@ export function GeneratePanel({
                     value={worldDirective}
                     onChange={(e) => setWorldDirective(e.target.value)}
                     placeholder="Describe what to add to the world..."
-                    className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full h-28 resize-none outline-none placeholder:text-text-dim"
+                    className="bg-bg-field border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full h-28 resize-none outline-none placeholder:text-text-dim"
                   />
                 </div>
                 <div>

@@ -6,6 +6,7 @@ import { apiHeaders } from '@/lib/core/api-headers';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useStore } from '@/lib/state/store';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
+import { Segmented } from '@/components/ui/Segmented';
 import type { StorySettings, POVMode, WorldFocusMode, ReasoningLevel, WebsearchLevel, NarrativeState, ProseFormat, PlanExtractionSource } from '@/types/narrative';
 import { WEBSEARCH_MAX_RESULTS, WEBSEARCH_DEFAULT_MAX_TOTAL } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, REASONING_BUDGETS } from '@/types/narrative';
@@ -227,21 +228,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
       </ModalHeader>
       <ModalBody className="p-6">
         {/* Tabs */}
-        <div className="flex gap-1 bg-bg-elevated rounded-lg p-0.5 mb-4">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
-              className={`flex-1 text-[11px] py-1.5 rounded-md transition-colors ${
-                tab === t.value
-                  ? 'bg-white/10 text-text-primary font-semibold'
-                  : 'text-text-dim hover:text-text-secondary'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Segmented<Tab> options={TABS} value={tab} onChange={setTab} className="mb-4" />
 
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1">
@@ -255,7 +242,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   value={settings.storyDirection}
                   onChange={(e) => update({ storyDirection: e.target.value })}
                   placeholder="e.g. &quot;Build toward a confrontation between the two factions, with the protagonist forced to choose sides&quot;..."
-                  className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
+                  className="w-full bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
                 />
                 <p className="text-[9px] text-text-dim/50 mt-1">
                   High-level guidance for where the world view should go. Steers every arc.
@@ -270,7 +257,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   value={settings.worldDirection}
                   onChange={(e) => update({ worldDirection: e.target.value })}
                   placeholder="e.g. &quot;Build out the merchant guild as a hidden faction with rival cells. Add a port location and the artifact ledger that ties the cells together&quot;..."
-                  className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
+                  className="w-full bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
                 />
                 <p className="text-[9px] text-text-dim/50 mt-1">
                   High-level guidance for the next world expansion. Pre-fills the world directive in the generation panel.
@@ -285,7 +272,7 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                   value={settings.storyConstraints}
                   onChange={(e) => update({ storyConstraints: e.target.value })}
                   placeholder="e.g. &quot;No deus ex machina resolutions. Don't kill off the protagonist's mentor yet. Avoid romance subplots between the leads&quot;..."
-                  className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
+                  className="w-full bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
                 />
                 <p className="text-[9px] text-text-dim/50 mt-1">
                   What the AI should avoid. Negative guardrails that steer generation away from unwanted directions.

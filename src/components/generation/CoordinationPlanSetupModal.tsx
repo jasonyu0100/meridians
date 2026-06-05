@@ -2,6 +2,7 @@
 // CoordinationPlanSetupModal — configure thinking style/resources and generate a coordination plan.
 
 import { Modal, ModalBody, ModalHeader, StreamingStatus } from "@/components/Modal";
+import { Segmented } from "@/components/ui/Segmented";
 import { generateCoordinationPlan, type ThinkingResource, type PlanGuidance, type ThinkingStyle, type ThreadTarget } from "@/lib/ai";
 import { useStore } from "@/lib/state/store";
 import { logError } from "@/lib/core/system-logger";
@@ -128,6 +129,7 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
   const [constraints, setConstraints] = useState("");
   const [arcTarget, setArcTarget] = useState(3);
   const [threadConfigs, setThreadConfigs] = useState<Record<string, ThreadConfig>>({});
+  const activeThreadCount = Object.values(threadConfigs).filter((c) => c.status !== "auto").length;
   const [thinkingResource, setThinkingResource] = useState<ThinkingResource>("freeform");
   const [thinkingStyle, setThinkingStyle] = useState<ThinkingStyle>("abduction");
 
@@ -282,30 +284,27 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
           ) : (
             <>
               {/* Tab buttons */}
-              <div className="flex gap-1 p-1 rounded-lg bg-white/5">
-                {[
-                  { label: "General", value: "general" as Tab },
-                  { label: "Threads", value: "threads" as Tab, count: Object.values(threadConfigs).filter(c => c.status !== "auto").length },
-                  { label: "Advanced", value: "advanced" as Tab },
-                ].map((tab) => (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                      activeTab === tab.value
-                        ? "bg-bg-overlay text-text-primary"
-                        : "text-text-dim hover:text-text-secondary"
-                    }`}
-                  >
-                    {tab.label}
-                    {tab.count !== undefined && tab.count > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] tabular-nums">
-                        {tab.count}
+              <Segmented<Tab>
+                value={activeTab}
+                onChange={setActiveTab}
+                options={[
+                  { label: "General", value: "general" },
+                  {
+                    label: (
+                      <span className="flex items-center justify-center gap-1.5">
+                        Threads
+                        {activeThreadCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] tabular-nums">
+                            {activeThreadCount}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+                    ),
+                    value: "threads",
+                  },
+                  { label: "Advanced", value: "advanced" },
+                ]}
+              />
 
               {/* General tab */}
               {activeTab === "general" && (

@@ -429,13 +429,13 @@ export function BranchModal({ onClose }: { onClose: () => void }) {
               value={newBranchName}
               onChange={(e) => setNewBranchName(e.target.value)}
               placeholder={`Branch ${allBranches.length + 1}`}
-              className="bg-bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none placeholder:text-text-dim mb-2"
+              className="bg-bg-field border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none placeholder:text-text-dim mb-2"
             />
             <label className="text-[9px] uppercase tracking-widest text-text-dim block mb-1">Fork after</label>
             <select
               value={effectiveForkEntryId ?? ''}
               onChange={(e) => setForkEntryId(e.target.value || null)}
-              className="bg-bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none mb-2"
+              className="bg-bg-field border border-border rounded-md px-2 py-1.5 text-xs text-text-primary w-full outline-none mb-2"
             >
               {viewingSequence.map((key, idx) => {
                 const label = narrative.worldBuilds[key]

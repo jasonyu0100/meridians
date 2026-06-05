@@ -159,7 +159,7 @@ export function HierarchyModal({ onClose }: { onClose: () => void }) {
           <select
             value={proposed[id] ?? ''}
             onChange={(e) => setParent(id, e.target.value || null)}
-            className="shrink-0 max-w-[44%] text-[10px] bg-bg-elevated border border-white/10 rounded-md px-1.5 py-1 text-text-secondary hover:border-white/20 outline-none transition-colors"
+            className="shrink-0 max-w-[44%] text-[10px] bg-bg-field border border-white/10 rounded-md px-1.5 py-1 text-text-secondary hover:border-white/20 outline-none transition-colors"
             title="Set parent (containing location)"
           >
             <option value="">— Top level —</option>

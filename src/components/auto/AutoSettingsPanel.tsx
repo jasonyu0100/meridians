@@ -6,6 +6,7 @@ import { useStore } from '@/lib/state/store';
 import { GuidanceFields } from '@/components/generation/GuidanceFields';
 import type { AutoConfig, AutoEndCondition } from '@/types/narrative';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
+import { Segmented } from '@/components/ui/Segmented';
 
 type Tab = 'end' | 'direction';
 
@@ -71,21 +72,14 @@ export function AutoSettingsPanel({ onClose, onStart }: { onClose: () => void; o
       </ModalHeader>
       <ModalBody className="p-6 space-y-4">
         {/* Tabs */}
-        <div className="flex gap-1 bg-bg-elevated rounded-lg p-0.5 shrink-0">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
-              className={`flex-1 px-2 py-1.5 text-[10px] font-medium transition-colors rounded-md uppercase tracking-wider ${
-                tab === t.value
-                  ? 'bg-bg-overlay text-text-primary'
-                  : 'text-text-dim hover:text-text-secondary'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Segmented<Tab>
+          options={TABS}
+          value={tab}
+          onChange={setTab}
+          size="sm"
+          uppercase
+          className="shrink-0"
+        />
 
         <div className="flex flex-col gap-4">
           {tab === 'end' && (
@@ -116,7 +110,7 @@ export function AutoSettingsPanel({ onClose, onStart }: { onClose: () => void; o
                         onChange={(e) =>
                           updateEndCondition('scene_count', () => ({ type: 'scene_count', target: Number(e.target.value) }))
                         }
-                        className="bg-bg-elevated border border-border rounded px-2 py-1 text-xs text-text-primary w-20 outline-none"
+                        className="bg-bg-field border border-border rounded px-2 py-1 text-xs text-text-primary w-20 outline-none"
                       />
                       <span className="text-[10px] text-text-dim ml-2">scenes</span>
                     </div>
@@ -142,7 +136,7 @@ export function AutoSettingsPanel({ onClose, onStart }: { onClose: () => void; o
                         onChange={(e) =>
                           updateEndCondition('arc_count', () => ({ type: 'arc_count', target: Number(e.target.value) }))
                         }
-                        className="bg-bg-elevated border border-border rounded px-2 py-1 text-xs text-text-primary w-20 outline-none"
+                        className="bg-bg-field border border-border rounded px-2 py-1 text-xs text-text-primary w-20 outline-none"
                       />
                       <span className="text-[10px] text-text-dim ml-2">arcs</span>
                     </div>

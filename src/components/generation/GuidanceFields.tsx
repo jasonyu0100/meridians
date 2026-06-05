@@ -96,7 +96,7 @@ export function GuidanceFields({
           value={direction}
           onChange={(e) => { onDirectionChange(e.target.value); setUseStoryDir(false); }}
           placeholder="What should the world view focus on?"
-          className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-14 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
+          className="bg-bg-field border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-14 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
         />
       </Field>
 
@@ -110,7 +110,7 @@ export function GuidanceFields({
           value={constraints}
           onChange={(e) => { onConstraintsChange(e.target.value); setUseStoryCon(false); }}
           placeholder="What should NOT happen..."
-          className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-12 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
+          className="bg-bg-field border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-12 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
         />
       </Field>
     </div>

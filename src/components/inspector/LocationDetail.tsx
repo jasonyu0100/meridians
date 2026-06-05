@@ -175,7 +175,7 @@ export default function LocationDetail({ locationId }: Props) {
               value={location.parentId ?? ''}
               onChange={(e) => dispatch({ type: 'UPDATE_LOCATION', id: locationId, patch: { parentId: e.target.value || null } })}
               title="Set containing location"
-              className="cursor-pointer bg-bg-elevated border border-white/10 rounded px-1.5 py-0.5 text-text-secondary hover:border-accent/50 outline-none transition-colors max-w-[70%] truncate"
+              className="cursor-pointer bg-bg-field border border-white/10 rounded px-1.5 py-0.5 text-text-secondary hover:border-accent/50 outline-none transition-colors max-w-[70%] truncate"
             >
               <option value="">— top level —</option>
               {options.map((l) => (

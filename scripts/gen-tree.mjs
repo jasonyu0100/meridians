@@ -25,6 +25,7 @@ const DOC_LABELS = {
   "MERMAID.md": "whole-app connection diagrams (top-down)",
   "TREE.md": "this file — generated XML file-structure map",
   "ROADMAP.md": "build spec — iterative features → platform changes",
+  "CONCEPT.md": "Conviction — the rehearsal card game spec (ROADMAP A4)",
   "LANGUAGE.md": "canonical glossary / vocabulary",
   "DEFINITIONS.md": "game-theory + technical taxonomy definitions",
   "NAMING.md": "naming convention + rename plan",

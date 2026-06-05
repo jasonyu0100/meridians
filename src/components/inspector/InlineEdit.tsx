@@ -73,7 +73,7 @@ export function InlineText({
     );
   }
 
-  const cls = `w-full bg-bg-elevated border border-accent/50 rounded px-1.5 py-0.5 text-text-primary outline-none ${inputClassName}`;
+  const cls = `w-full bg-bg-field border border-accent/50 rounded px-1.5 py-0.5 text-text-primary outline-none ${inputClassName}`;
   return multiline ? (
     <textarea
       ref={areaRef}

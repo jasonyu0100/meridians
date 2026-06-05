@@ -661,7 +661,7 @@ function DirectionModal({
             placeholder={placeholder}
             rows={6}
             autoFocus
-            className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full resize-none outline-none placeholder:text-text-dim focus:border-white/20"
+            className="bg-bg-field border border-border rounded-lg px-3 py-2 text-sm text-text-primary w-full resize-none outline-none placeholder:text-text-dim focus:border-white/20"
           />
         </div>
 

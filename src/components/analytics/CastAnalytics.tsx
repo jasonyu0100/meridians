@@ -7,6 +7,7 @@ import { resolveEntityName } from '@/lib/forces/narrative-utils';
 import { resolveEntry, isScene } from '@/types/narrative';
 import type { Scene } from '@/types/narrative';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
+import { Segmented } from '@/components/ui/Segmented';
 
 type Props = { onClose: () => void };
 type View = 'cast' | 'locations' | 'tools';
@@ -342,17 +343,16 @@ export function CastAnalytics({ onClose }: Props) {
       </ModalHeader>
       <ModalBody className="p-6 space-y-4">
         {/* View tabs */}
-        <div className="flex gap-1 bg-bg-elevated rounded-lg p-0.5 shrink-0">
-          <button onClick={() => setView('cast')} className={`flex-1 text-[11px] py-1.5 rounded-md transition-colors ${view === 'cast' ? 'bg-white/10 text-text-primary font-semibold' : 'text-text-dim hover:text-text-secondary'}`}>
-            Characters
-          </button>
-          <button onClick={() => setView('locations')} className={`flex-1 text-[11px] py-1.5 rounded-md transition-colors ${view === 'locations' ? 'bg-white/10 text-text-primary font-semibold' : 'text-text-dim hover:text-text-secondary'}`}>
-            Locations
-          </button>
-          <button onClick={() => setView('tools')} className={`flex-1 text-[11px] py-1.5 rounded-md transition-colors ${view === 'tools' ? 'bg-white/10 text-text-primary font-semibold' : 'text-text-dim hover:text-text-secondary'}`}>
-            Artifacts
-          </button>
-        </div>
+        <Segmented<View>
+          options={[
+            { label: 'Characters', value: 'cast' },
+            { label: 'Locations', value: 'locations' },
+            { label: 'Artifacts', value: 'tools' },
+          ]}
+          value={view}
+          onChange={setView}
+          className="shrink-0"
+        />
 
         {/* Summary strip */}
         {view === 'cast' && castSummary && (

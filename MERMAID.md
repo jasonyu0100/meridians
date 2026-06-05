@@ -125,7 +125,7 @@ flowchart TB
     TB["TopBar"]
     TB --> View & Analyze & Profiles & Reference & Debug & Right
 
-    View["View menu"] --> Slides["SlidesPlayer"] & ThemeM["ThemeModal"] & TimeFlow["TimeFlowModal"]
+    View["View menu"] --> Slides["SlidesPlayer"] & SlideRegions["SlideRegionsModal (scoped decks)"] & ThemeM["ThemeModal"] & TimeFlow["TimeFlowModal"]
     Analyze["Analyze menu"] --> GTD["GameTheoryDashboard"] & PropAn["PropositionAnalysisModal"] & ForceAn["ForceAnalytics"] & Markov["MarkovChainModal"]
     Profiles["Profiles menu"] --> Prose["ProseProfilePanel"] & Beat["BeatProfileModal"] & Patterns["PatternsModal"] & Settings["StorySettingsModal"]
     Reference["Reference menu"] --> Formula["FormulaModal"] & Defs["DefinitionsModal"]
@@ -163,7 +163,7 @@ flowchart TB
     end
 ```
 
-> Roadmap note: **per-perspective seats (A1)**, **Butterfly (A6)**, deck scoping (A7), encryption/PIN (A8), and ngrok/multi-user (B1) are **not yet built**. Rehearse (`useScenarios`/`scenarios-engine`) and the deck (`SlidesPlayer`/`slides-data`) are the shipped bases. See [ROADMAP.md](ROADMAP.md).
+> Roadmap note: the **Model → Capture → Rehearsal** loop — capture-as-perspective-PRs (ROADMAP A0–A3) and the **Conviction** card game (A4, [CONCEPT.md](CONCEPT.md)) — plus encryption/PIN (A5), WhatsApp (A6), and ngrok/multi-user (B1) are **not yet built**. Shipped bases they build on: `useScenarios`/`scenarios-engine` (Rehearse), `SlidesPlayer`/`slides-data` + **SlideRegionsModal** (scoped decks), `ai/review`+`reconstruct` (the engine's branch review). *Review-as-a-loop-phase and Butterfly were dropped.* See [ROADMAP.md](ROADMAP.md).
 
 ---
 

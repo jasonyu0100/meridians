@@ -414,7 +414,7 @@ export function SearchView() {
                   }
                 }}
                 placeholder="Search this text..."
-                className="w-full px-6 py-3.5 bg-bg-elevated border border-border rounded-full text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sky-500/50 transition-all shadow-sm"
+                className="w-full px-6 py-3.5 bg-bg-field border border-border rounded-full text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sky-500/50 transition-all shadow-sm"
                 disabled={isSearching}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">

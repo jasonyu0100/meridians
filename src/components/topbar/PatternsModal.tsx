@@ -129,7 +129,7 @@ function CommandmentList({
                           setEditingText('');
                         }
                       }}
-                      className="flex-1 bg-bg-elevated border border-white/20 rounded px-2 py-1 text-[11px] text-text-primary outline-none"
+                      className="flex-1 bg-bg-field border border-white/20 rounded px-2 py-1 text-[11px] text-text-primary outline-none"
                       autoFocus
                     />
                     <button
@@ -172,7 +172,7 @@ function CommandmentList({
           onChange={(e) => setNewItem(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-white/20 transition-colors"
+          className="flex-1 bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-white/20 transition-colors"
         />
         <button
           onClick={handleAdd}

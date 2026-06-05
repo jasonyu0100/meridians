@@ -192,7 +192,7 @@ export function NarrativeEditModal({ entry, onClose }: { entry: NarrativeEntry; 
                   value={coverPrompt}
                   onChange={(e) => setCoverPrompt(e.target.value)}
                   placeholder="Image prompt — leave empty to auto-generate from the world view"
-                  className="flex-1 bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none transition-colors"
+                  className="flex-1 bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none transition-colors"
                 />
                 <button
                   onClick={handleGenerateCover}
@@ -234,7 +234,7 @@ export function NarrativeEditModal({ entry, onClose }: { entry: NarrativeEntry; 
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary outline-none focus:border-blue-500/40 transition-colors"
+              className="w-full bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary outline-none focus:border-blue-500/40 transition-colors"
             />
             <p className="text-[9px] text-text-dim/50 mt-1">
               Short name for this world view. Suggest pulls from the world&rsquo;s own content.
@@ -256,7 +256,7 @@ export function NarrativeEditModal({ entry, onClose }: { entry: NarrativeEntry; 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none transition-colors"
+              className="w-full bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none transition-colors"
             />
             <p className="text-[9px] text-text-dim/50 mt-1">
               One or two sentences capturing the world view. Suggest pulls from entities, threads, and recent scenes.

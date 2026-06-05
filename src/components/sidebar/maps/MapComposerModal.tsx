@@ -140,7 +140,7 @@ export function MapComposerModal({ initialArcId, onClose, onCreate }: Props) {
               <select
                 value={arcId}
                 onChange={(e) => setArcId(e.target.value)}
-                className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-xs text-text-primary w-full outline-none focus:border-white/16 transition"
+                className="bg-bg-field border border-border rounded-lg px-3 py-2 text-xs text-text-primary w-full outline-none focus:border-white/16 transition"
               >
                 {arcs.length === 0 ? (
                   <option value="">No arcs available</option>
@@ -169,7 +169,7 @@ export function MapComposerModal({ initialArcId, onClose, onCreate }: Props) {
                 onChange={(e) => setDirection(e.target.value)}
                 placeholder="What should the reasoning explore? Leave blank for an open-ended graph."
                 rows={3}
-                className="bg-bg-elevated border border-border rounded-lg px-3 py-2 text-xs text-text-primary w-full outline-none focus:border-white/16 transition resize-none"
+                className="bg-bg-field border border-border rounded-lg px-3 py-2 text-xs text-text-primary w-full outline-none focus:border-white/16 transition resize-none"
               />
             </div>
 

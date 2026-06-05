@@ -1435,9 +1435,10 @@ export default function PaperPage() {
               measured substrate, where a <em>team</em> sits
               around the same board and plays one phased turn at
               a time. The product is built for teams that
-              institute the room on a regular cadence &mdash;
-              weekly for what moves fast, monthly for what moves
-              slow. Talk is cheap; a card is a binding commitment, so
+              institute the room on a cadence that fits them &mdash;
+              dynamic, not fixed: weekly to quarterly, shifting by
+              season, often <em>per-thread</em> rather than one global
+              clock. Talk is cheap; a card is a binding commitment, so
               cooperation and defection are first-class moves &mdash;
               you defect by playing against what you said. Most operator
               time lives on two surfaces &mdash; the{" "}
@@ -1475,7 +1476,11 @@ export default function PaperPage() {
               &mdash; better decisions made in the open, and behavioural
               change as a team learns to see itself decide. (Forecasting
               lives on the substrate, but as a byproduct &mdash; never
-              the pitch.)
+              the pitch.) Calibration <em>compounds</em> &mdash; it's
+              the slow payoff, not the entry value: week one buys{" "}
+              <B>transparency and rehearsal</B> (the room sees how it
+              decides, and practises), felt long before the model is
+              calibrated.
             </P>
             <P>
               <B>Vision is humanity&apos;s edge over AI.</B> Models
@@ -4769,6 +4774,19 @@ export default function PaperPage() {
               their priors were wrong.
             </P>
             <P>
+              <B>Same resolver, two triggers &mdash; and only confirmed
+              outcomes are fact.</B> Capture and Conviction share the
+              resolver but trigger differently: Capture on{" "}
+              <B>certainty</B> (it measures what reality <em>is</em>),
+              Conviction on <B>conviction-forcing</B> (how committed
+              actors make it <em>evolve</em>). Merges carry provenance &mdash;
+              <B>confirmed</B> (reality-verified, the only thing the
+              resolver treats as fact) vs <B>believed</B> (the
+              room&apos;s conviction, tagged, never silently promoted) &mdash;
+              and the wall is enforced in software, not discipline:
+              it&apos;s what stops the substrate self-confirming.
+            </P>
+            <P>
               <B>A seat with no human still has a stance.</B> Because
               Capture is per-perspective, an empty or quiet seat is not
               a hole in the loop: the engine can simulate its priors
@@ -5108,8 +5126,13 @@ export default function PaperPage() {
               the operator&apos;s: versioned encrypted{" "}
               <code className="text-white/70">.meridian</code> copies,
               plus an optional in-app online drive for off-device
-              ones. The game master holds the truth &mdash; and the
-              duty of keeping it.
+              ones. The game master holds the truth &mdash; the
+              <B>defender of the room&apos;s model of reality</B>, judge
+              of what merges. But the role is <B>one writer at a time,
+              not one person forever</B>: the encrypted{" "}
+              <code className="text-white/70">.meridian</code> (+ drive)
+              hands off to a backup, so a holiday or departure
+              doesn&apos;t freeze or lose the room.
             </P>
             <P>
               <B>Two ways in: live and dark.</B> The console is the
@@ -5288,8 +5311,11 @@ export default function PaperPage() {
               cadence is{" "}
               <span className="font-mono tabular-nums text-white/70">$1.50&ndash;$2.00</span>
               {" "}per private room per month. That is the easy
-              part. Once customer success, facilitation, and
-              amortised CAC are folded in, contribution margin on
+              part. The binding constraint is a <em>person</em>, not
+              code &mdash; the <B>game master</B> &mdash; so Meridians is{" "}
+              <B>services-led</B>: we supply or train the GM and price
+              the service, not just the seat. Once customer success,
+              facilitation, and amortised CAC are folded in, contribution margin on
               facilitated engagements sits in the{" "}
               <span className="font-mono tabular-nums text-white/70">35&ndash;60%</span>
               {" "}band &mdash; respectable, but not the

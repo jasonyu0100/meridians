@@ -795,7 +795,7 @@ export default function ChatPanel() {
               <div
                 className={`rounded-lg px-3 py-2 ${
                   msg.role === "user"
-                    ? "bg-accent/20 text-text-primary"
+                    ? "bg-text-primary/16 text-text-primary"
                     : "bg-white/5 text-text-secondary"
                 }`}
               >

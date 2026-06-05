@@ -258,7 +258,7 @@ export function CreationWizard() {
                 value={wd.title}
                 onChange={(e) => update({ title: e.target.value })}
                 placeholder="e.g. The Gilded Cage"
-                className="bg-bg-elevated/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full outline-none placeholder:text-text-dim focus:border-white/16 transition"
+                className="bg-bg-field backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full outline-none placeholder:text-text-dim focus:border-white/16 transition"
               />
               {isDuplicate && (
                 <p className="text-[11px] text-fate mt-1.5">
@@ -369,7 +369,7 @@ export function CreationWizard() {
                 value={wd.premise}
                 onChange={(e) => update({ premise: e.target.value })}
                 placeholder="Describe your world…"
-                className="bg-bg-elevated/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full h-32 resize-y outline-none placeholder:text-text-dim focus:border-white/16 transition"
+                className="bg-bg-field backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full h-32 resize-y outline-none placeholder:text-text-dim focus:border-white/16 transition"
               />
             </section>
 
@@ -382,7 +382,7 @@ export function CreationWizard() {
                 value={wd.sourceText ?? ""}
                 onChange={(e) => update({ sourceText: e.target.value })}
                 placeholder="Paste reference material…"
-                className="bg-bg-elevated/60 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full h-44 resize-y outline-none placeholder:text-text-dim focus:border-white/16 transition font-mono"
+                className="bg-bg-field backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2.5 text-sm text-text-primary w-full h-44 resize-y outline-none placeholder:text-text-dim focus:border-white/16 transition font-mono"
               />
               {wd.sourceText && wd.sourceText.length > 0 && (
                 <p className="text-[10px] text-text-dim/60 mt-1.5 font-mono">

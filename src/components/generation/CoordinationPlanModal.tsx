@@ -916,7 +916,7 @@ export function CoordinationPlanModal({
                     }
                   }}
                   placeholder="Additional guidance (optional)..."
-                  className="text-xs px-3 py-2 rounded-lg bg-white/6 border border-border text-text-primary placeholder:text-text-dim w-64 focus:outline-none focus:border-white/20"
+                  className="text-xs px-3 py-2 rounded-lg bg-bg-field border border-border text-text-primary placeholder:text-text-dim w-64 focus:outline-none focus:border-white/20"
                   autoFocus
                 />
                 <button

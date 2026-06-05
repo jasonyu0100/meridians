@@ -2,7 +2,7 @@
 
 > **Generated** by `scripts/gen-tree.mjs` — structure is read from the filesystem and each file's description is derived from its own leading comment (else a name-based heuristic). No hand-maintained map; re-run after adding files: `node scripts/gen-tree.mjs`. Companion to [MERMAID.md](MERMAID.md). Stack: Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3 · IndexedDB.
 >
-> 467 files · 459 described from their own header comment, the rest from filename heuristics.
+> 471 files · 462 described from their own header comment, the rest from filename heuristics.
 
 ```xml
 <repo name="meridians">
@@ -12,6 +12,7 @@
     <file name="MERMAID.md" desc="whole-app connection diagrams (top-down)"/>
     <file name="TREE.md" desc="this file — generated XML file-structure map"/>
     <file name="ROADMAP.md" desc="build spec — iterative features → platform changes"/>
+    <file name="CONCEPT.md" desc="Conviction — the rehearsal card game spec (ROADMAP A4)"/>
     <file name="LANGUAGE.md" desc="canonical glossary / vocabulary"/>
     <file name="DEFINITIONS.md" desc="game-theory + technical taxonomy definitions"/>
     <file name="NAMING.md" desc="naming convention + rename plan"/>
@@ -200,6 +201,7 @@
         <file name="KnowledgeDetail.tsx" desc="KnowledgeDetail — inspector view for a system knowledge-graph node: content, type, and edges"/>
         <file name="KnowledgePanel.tsx" desc="KnowledgePanel — ranked directory of system-graph nodes"/>
         <file name="LocationDetail.tsx" desc="LocationDetail — inspector view for a location: prominence, accumulated history graph, threads, and image"/>
+        <file name="MediaField.tsx" desc="MediaField — display + upload + clear for a single entity/board image"/>
         <file name="PhaseNodeDetail.tsx" desc="PhaseNodeDetail — inspector for a single Phase Reasoning Graph (PRG) node"/>
         <file name="ReasoningNodeDetail.tsx" desc="ReasoningNodeDetail — inspector view for a CRG node: type, content, tier, and typed edges"/>
         <file name="SceneDetail.tsx" desc="SceneDetail — inspector view for a scene: forces, cube mode, participants, and structural deltas"/>
@@ -349,8 +351,9 @@
         <file name="PatternsModal.tsx" desc="PatternsModal — detect and display recurring narrative patterns under a selected paradigm"/>
         <file name="PropositionAnalysisModal.tsx" desc="PropositionAnalysisModal — classifies and visualises embedded propositions by base category and reach"/>
         <file name="RegenerateEmbeddingsModal.tsx" desc="RegenerateEmbeddingsModal — trigger bulk re-embedding of scenes/beats/propositions with mode selection"/>
+        <file name="SlideRegionsModal.tsx" desc="SlideRegionsModal — configure named regions (sets of arcs) to view scoped"/>
         <file name="SystemLogModal.tsx" desc="SystemLogModal — browse the in-app system event log with filtering"/>
-        <file name="ThemeModal.tsx" desc="ThemeModal — pick the app colour theme from preview swatches"/>
+        <file name="ThemeModal.tsx" desc="ThemeMenu — compact dropdown to pick the app colour theme from preview"/>
         <file name="TimeFlowModal.tsx" desc="TimeFlowModal — visualises cumulative in-story time offsets and per-scene time deltas across the branch"/>
         <file name="TopBar.tsx" desc="TopBar — main workspace top bar: navigation, story controls, and entry points to the topbar modals"/>
         <file name="UsageModal.tsx" desc="UsageModal — detailed API usage breakdown: per-model token spend and cost over the log"/>
@@ -514,6 +517,7 @@
         </dir>
         <dir name="image">
           <file name="index.ts" desc="Image-prompt suggestion — distill an entity's world-graph continuity into a concise, literal visual…"/>
+          <file name="map.ts" desc="Map prompt — turn a location and its containment tree into a single image-gen prompt for one flat, top-down…"/>
         </dir>
         <dir name="ingest">
           <file name="index.ts" desc="Ingestion Prompts Prompts for parsing pasted text into structured world data and for generating short prose…"/>

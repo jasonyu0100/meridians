@@ -14,6 +14,7 @@
   --color-bg-panel: var(--bg-panel);
   --color-bg-elevated: var(--bg-elevated);
   --color-bg-overlay: var(--bg-overlay);
+  --color-bg-field: var(--bg-field);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-dim: var(--text-dim);
@@ -28,6 +29,25 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ── UI surface standard ────────────────────────────────────────────────────
+ * Chrome (tabs, toggles, segmented controls, pills, hovers, fields) is built
+ * from ONE neutral overlay scale, never from the violet `--bg-elevated` /
+ * `--bg-overlay` surface tokens (those are for raised PANELS/cards only). The
+ * scale is transparent ink and is theme-correct everywhere because the light
+ * theme remaps `--color-white` to a dark ink, so `white/x` overlays invert:
+ *
+ *   bg-white/4    resting control track  (segmented groove, subtle fill)
+ *   bg-white/6    text-field fill        (also `--bg-field`, tunable)
+ *   bg-white/8    hover
+ *   bg-white/10   active / selected segment
+ *   bg-white/16   strong hover / soft primary button
+ *
+ * Active text → text-text-primary; idle → text-text-dim (hover text-secondary).
+ * The shared <Segmented> component (components/ui/Segmented.tsx) bakes this in;
+ * reach for it instead of hand-rolling a tab bar. Reserve the violet --accent
+ * for genuine semantic emphasis, not plain control chrome.
+ * ────────────────────────────────────────────────────────────────────────── */
+
 /* Astral — luminous deep-space violet with cosmos (the aesthetic default).
  * Deliberately lifted and more saturated than the flat Dark theme: the base is
  * an illuminated indigo-violet, not near-black, so the cosmos reads as ambient
@@ -38,6 +58,10 @@
   --bg-panel: #181036;
   --bg-elevated: #221945;
   --bg-overlay: #2b2153;
+  /* Input/field fill — a neutral grey overlay, deliberately desaturated so form
+     controls read as grey rather than picking up the violet elevated surface.
+     Single source of truth for every text field / select / textarea. */
+  --bg-field: rgba(255, 255, 255, 0.06);
   --text-primary: #ededf2;
   --text-secondary: #9a93ad;
   --text-dim: #6f6886;
@@ -86,6 +110,7 @@
   --bg-panel: #141416;
   --bg-elevated: #1c1c1f;
   --bg-overlay: #242427;
+  --bg-field: rgba(255, 255, 255, 0.06);
   --text-primary: #ededed;
   --text-secondary: #8a8a8f;
   --text-dim: #5c5c61;
@@ -133,6 +158,8 @@
   --bg-panel: #ffffff;
   --bg-elevated: #ffffff;
   --bg-overlay: #ffffff;
+  /* Light theme: a soft grey ink fill so fields are visible against white. */
+  --bg-field: rgba(20, 20, 35, 0.05);
   --text-primary: #14141c;
   --text-secondary: #44444f;
   --text-dim: #70707c;
