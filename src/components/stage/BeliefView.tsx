@@ -18,7 +18,7 @@
  * operators to influence stances directly.
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { NarrativeState, Thread } from '@/types/narrative';
 import { useStore } from '@/lib/state/store';
 import {
@@ -39,6 +39,7 @@ import {
   THREAD_CATEGORY_LABEL,
   THREAD_CATEGORY_DESCRIPTION,
   outcomeColourHex,
+  outcomeColourIndices,
   type ThreadCategory,
 } from '@/lib/forces/thread-category';
 import { getThreadStance, getStanceMargin, getStanceProbs, countScenes, sceneOrdinalAt } from '@/lib/forces/narrative-utils';
@@ -100,9 +101,13 @@ function CategoryFilterBar({
 function FeaturedTrajectory({
   thread,
   points,
+  liveOutcomes,
 }: {
   thread: Thread;
   points: ThreadTrajectoryPoint[];
+  /** LIVE outcome ordering — line hues key off this (by name) so the chart
+   *  matches the outcome list, the sidebar, and the inspector. */
+  liveOutcomes?: string[];
 }) {
   // Measure the container so viewBox maps 1:1 to pixels. Without this,
   // preserveAspectRatio="none" stretches glyphs non-uniformly and text looks
@@ -139,6 +144,7 @@ function FeaturedTrajectory({
     // the distribution shape spatially, with a "not yet introduced"
     // annotation that makes the temporal status clear.
     const priorProbs = getStanceProbs(thread);
+    const priorColourIdx = outcomeColourIndices(liveOutcomes ?? thread.outcomes, thread.outcomes);
     return (
       <div ref={containerRef} className="w-full h-72">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none">
@@ -181,7 +187,7 @@ function FeaturedTrajectory({
                 x2={W - PAD_R}
                 y1={y}
                 y2={y}
-                stroke={outcomeColourHex(k)}
+                stroke={outcomeColourHex(priorColourIdx[k] ?? k)}
                 strokeWidth={1.5}
                 strokeDasharray="3 4"
                 opacity={0.5}
@@ -204,14 +210,11 @@ function FeaturedTrajectory({
   // scene percentages sum to 100%.
   const chartOutcomes = points[points.length - 1].outcomes;
   const numOutcomes = chartOutcomes.length;
-  // Colour-key each chart outcome off its position in the LIVE thread's
-  // outcomes — same convention the portfolio sidebar uses — so any view
-  // showing this outcome paints it the same hue. If the trajectory's
-  // outcome isn't in the live list (rare race), fall back to its tail
-  // index.
-  const liveIdxByName = new Map<string, number>();
-  thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
-  const colourIdxOf = (k: number) => liveIdxByName.get(chartOutcomes[k]) ?? k;
+  // Colour-key each chart outcome off the LIVE thread's outcome ordering (by
+  // name) via the shared helper — same convention the portfolio sidebar and
+  // the inspector use — so any view showing this outcome paints it the same hue.
+  const chartColourIdx = outcomeColourIndices(liveOutcomes ?? thread.outcomes, chartOutcomes);
+  const colourIdxOf = (k: number) => chartColourIdx[k] ?? k;
   // Per-outcome vertical nudge so tied probabilities render as parallel strokes
   // rather than collapsing onto each other. 3.5px keeps tied lines legible
   // without falsifying the data meaningfully (≈1.4pp on a 0–100% axis).
@@ -306,29 +309,31 @@ function FeaturedStance({
   thread,
   points,
   category,
+  liveOutcomes,
 }: {
   thread: Thread;
   points: ThreadTrajectoryPoint[];
   category: ThreadCategory;
+  /** The thread's LIVE outcome ordering — outcome hues key off this (by name)
+   *  so the featured panel matches the sidebar and the inspector. */
+  liveOutcomes?: string[];
 }) {
-  // The trajectory's tail point is the canonical source for both the
-  // outcome labels and their probabilities at the current scene index —
-  // they're snapshotted together from the same softmax distribution, so the
-  // displayed percentages always sum to 100% and match what the chart
-  // plots. Fall back to the live thread only when no scenes have replayed
-  // for this stance yet.
-  const tail = points.length > 0 ? points[points.length - 1] : null;
-  const tailOutcomes = tail ? tail.outcomes : thread.outcomes;
-  const tailProbs = tail ? tail.probs : getStanceProbs(thread);
+  // `thread` here is the point-in-time replay snapshot (from scrubbedNarrative,
+  // i.e. `replayThreadsAtIndex` at the current scene) — the SAME source the
+  // portfolio sidebar and the thread inspector read. Taking the headline
+  // distribution straight off it keeps the featured panel, the sidebar list,
+  // and ThreadDetail in agreement on outcomes + probabilities at the current
+  // scene. (`points` still drives the historical chart below.)
+  const tailOutcomes = thread.outcomes;
+  const tailProbs = getStanceProbs(thread);
   const belief = getThreadStance(thread);
   const { margin } = getStanceMargin(thread);
-  // Colour-key off the live thread's outcome ordering — matches the
-  // portfolio sidebar and the inspector so a given outcome paints the
-  // same hue in every view.
-  const liveIdxByName = new Map<string, number>();
-  thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
+  // Colour-key off the LIVE thread's outcome ordering (by name) via the shared
+  // helper — matches the portfolio sidebar and the inspector so a given outcome
+  // paints the same hue in every view.
+  const colourIdxByPos = outcomeColourIndices(liveOutcomes ?? thread.outcomes, tailOutcomes);
   const ranked = tailOutcomes
-    .map((o, i) => ({ outcome: o, idx: i, colourIdx: liveIdxByName.get(o) ?? i, prob: tailProbs[i] ?? 0 }))
+    .map((o, i) => ({ outcome: o, idx: i, colourIdx: colourIdxByPos[i], prob: tailProbs[i] ?? 0 }))
     .sort((a, b) => b.prob - a.prob);
   const catColor = THREAD_CATEGORY_HEX[category];
 
@@ -418,7 +423,7 @@ function FeaturedStance({
 
         {/* Trajectory */}
         <div className="min-w-0">
-          <FeaturedTrajectory thread={thread} points={points} />
+          <FeaturedTrajectory thread={thread} points={points} liveOutcomes={liveOutcomes} />
         </div>
       </div>
     </div>
@@ -436,7 +441,7 @@ function StanceCard({
   inFocus: boolean;
   onSelect: () => void;
 }) {
-  const { thread, probs, topIdx, margin, volume, category } = row;
+  const { thread, probs, topIdx, margin, volume, category, colourIdx } = row;
   const catColor = THREAD_CATEGORY_HEX[category];
   const dimmed = category === 'resolved' || category === 'abandoned';
 
@@ -489,7 +494,7 @@ function StanceCard({
             key={i}
             style={{
               width: `${p * 100}%`,
-              background: outcomeColourHex(i),
+              background: outcomeColourHex(colourIdx[i] ?? i),
               opacity: i === topIdx ? 1 : 0.5,
             }}
           />
@@ -1210,10 +1215,10 @@ export default function BeliefView() {
     // Most volatile stances first — the ones that have moved the most this far
     // into the story surface at the top. Tiebreak by focus, then volume so
     // dormant / not-yet-opened threads (volatility 0) settle to the bottom.
-    return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex)
+    return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex, narrative?.threads)
       .slice()
       .sort((a, b) => (b.volatility - a.volatility) || (b.focus - a.focus) || (b.volume - a.volume));
-  }, [scrubbedNarrative, resolvedKeys, currentIndex]);
+  }, [scrubbedNarrative, narrative, resolvedKeys, currentIndex]);
 
   const snapshot = useMemo(() => {
     if (!scrubbedNarrative) return null;
@@ -1336,6 +1341,7 @@ export default function BeliefView() {
                 thread={featuredThread}
                 points={featuredTrajectory}
                 category={featuredRow.category}
+                liveOutcomes={featuredId ? narrative?.threads[featuredId]?.outcomes : undefined}
               />
             ) : (
               <div className="rounded-xl border border-white/8 p-6 text-[11px] text-text-dim">

@@ -46,7 +46,7 @@ export function exportBeliefSnapshot(ctx: BeliefExportContext): string {
     ...narrative,
     threads: replayThreadsAtIndex(narrative, resolvedKeys, currentSceneIndex),
   };
-  const rows = buildPortfolioRows(scrubbed, resolvedKeys, currentSceneIndex);
+  const rows = buildPortfolioRows(scrubbed, resolvedKeys, currentSceneIndex, narrative.threads);
   const snapshot = computePortfolioSnapshot(scrubbed);
   const focusIds = currentFocusIds(scrubbed, resolvedKeys, currentSceneIndex);
 

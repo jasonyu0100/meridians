@@ -36,11 +36,16 @@ function ProbabilityBar({
   probs,
   topIdx,
   dimmed,
+  colourIdx,
 }: {
   outcomes: string[];
   probs: number[];
   topIdx: number;
   dimmed?: boolean;
+  /** Per-segment palette index, keyed to the LIVE outcome ordering so a given
+   *  outcome gets the same hue here as in the ThreadDetail bars. Falls back to
+   *  the segment's own position when absent. */
+  colourIdx?: number[];
 }) {
   return (
     <div
@@ -50,7 +55,7 @@ function ProbabilityBar({
       {probs.map((p, i) => (
         <div
           key={`${outcomes[i]}-${i}`}
-          className={`${outcomeColourBg(i)} ${i === topIdx ? '' : 'opacity-50'}`}
+          className={`${outcomeColourBg(colourIdx?.[i] ?? i)} ${i === topIdx ? '' : 'opacity-50'}`}
           style={{ width: `${p * 100}%` }}
         />
       ))}
@@ -84,7 +89,7 @@ function ThreadCard({
   maxVolume: number;
   onClick: () => void;
 }) {
-  const { thread, probs, topIdx, margin, entropy, volume, category } = row;
+  const { thread, probs, topIdx, margin, entropy, volume, category, colourIdx } = row;
   const dimmed = category === 'resolved' || category === 'abandoned';
   const closeLabel = thread.closedAt
     ? `resolved → ${thread.outcomes[thread.closeOutcome ?? 0]}`
@@ -98,19 +103,19 @@ function ThreadCard({
       className={`panel-card w-full text-left p-3 flex flex-col gap-1.5${dimmed ? ' opacity-65' : ''}`}
       style={{ ['--card-accent']: catColor } as React.CSSProperties}
     >
-      {/* Meta row — id on the left, lifecycle category on the right, mirrors
-          the SurveyCard's questionType / status header. Focus state is now
+      {/* Header — a lifecycle chip (category-coloured dot + neutral label, so
+          it reads in any theme) with the thread id opposite. Focus state is
           conveyed by the parent group, so the in-row badge is gone. */}
-      <div className="flex items-baseline gap-2">
-        <span className="text-[9px] uppercase tracking-wider text-text-dim/70 font-mono">
-          {thread.id}
-        </span>
+      <div className="flex items-center gap-2">
         <span
-          className="text-[9px] uppercase tracking-wider font-mono ml-auto"
-          style={{ color: catColor }}
+          className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-white/5 text-[9px] uppercase tracking-wider font-mono text-text-dim/75"
           title={THREAD_CATEGORY_DESCRIPTION[category]}
         >
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: catColor }} />
           {THREAD_CATEGORY_LABEL[category]}
+        </span>
+        <span className="text-[9px] uppercase tracking-wider text-text-dim/45 font-mono ml-auto">
+          {thread.id}
         </span>
       </div>
 
@@ -133,7 +138,7 @@ function ThreadCard({
         </span>
       </div>
 
-      <ProbabilityBar outcomes={thread.outcomes} probs={probs} topIdx={topIdx} dimmed={dimmed} />
+      <ProbabilityBar outcomes={thread.outcomes} probs={probs} topIdx={topIdx} dimmed={dimmed} colourIdx={colourIdx} />
 
       {/* Volume + entropy / quality */}
       <div className="flex items-center gap-2 mt-0.5">
@@ -228,9 +233,9 @@ export default function ThreadsPanel() {
   }, [narrative, resolvedKeys, currentIndex]);
 
   const rows = useMemo(() => {
-    if (!scrubbedNarrative) return [];
-    return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex);
-  }, [scrubbedNarrative, resolvedKeys, currentIndex]);
+    if (!scrubbedNarrative || !narrative) return [];
+    return buildPortfolioRows(scrubbedNarrative, resolvedKeys, currentIndex, narrative.threads);
+  }, [scrubbedNarrative, narrative, resolvedKeys, currentIndex]);
 
   const focusIds = useMemo(() => {
     if (!scrubbedNarrative) return new Set<string>();

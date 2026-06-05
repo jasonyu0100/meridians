@@ -18,7 +18,7 @@ import {
   THREAD_CATEGORY_TEXT,
   THREAD_CATEGORY_DESCRIPTION,
 } from "@/lib/forces/thread-category";
-import { buildThreadTrajectory } from "@/lib/analysis/portfolio-analytics";
+import { buildThreadTrajectory, replayThreadsAtIndex } from "@/lib/analysis/portfolio-analytics";
 import { getThreadLogAtScene } from "@/lib/graph/scene-filter";
 import { STANCE_TAU_CLOSE, STANCE_ABANDON_VOLUME } from "@/lib/constants";
 import type { NarrativeState, Thread, ThreadLogNodeType, ThreadParticipant } from "@/types/narrative";
@@ -28,7 +28,7 @@ import { CollapsibleSection, Paginator, paginateRecent } from "./CollapsibleSect
 import { InlineText } from "./InlineEdit";
 import { AttributionsSection } from "./AttributionsSection";
 
-import { outcomeColourHex } from "@/lib/forces/thread-category";
+import { outcomeColourHex, outcomeColourIndices } from "@/lib/forces/thread-category";
 
 type Props = {
   threadId: string;
@@ -351,6 +351,20 @@ export default function ThreadDetail({ threadId }: Props) {
     state.viewState.currentSceneIndex,
   ]);
 
+  // Point-in-time stance at the current scene — the SAME replay the threads
+  // list and BeliefView dashboard use (`replayThreadsAtIndex`). The headline
+  // distribution reads off this so the detail, the side-panel, and Belief all
+  // agree on outcomes + probabilities at the scrubbed scene. (The trajectory
+  // above still drives the historical sparkline + movement deltas.)
+  const snapshotThread = useMemo(() => {
+    if (!narrative) return undefined;
+    return replayThreadsAtIndex(
+      narrative,
+      state.resolvedEntryKeys,
+      state.viewState.currentSceneIndex,
+    )[threadId];
+  }, [narrative, threadId, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
+
   if (!narrative || !thread) return null;
 
   // Resolve anchor names
@@ -431,30 +445,28 @@ export default function ThreadDetail({ threadId }: Props) {
 
       {/* Stance — up-to-scene probability distribution + trajectory */}
       {(() => {
-        const tailPoint =
-          trajectory.length > 0 ? trajectory[trajectory.length - 1] : null;
-        const tailProbs = tailPoint ? tailPoint.probs : getStanceProbs(thread);
-        const tailOutcomes = tailPoint ? tailPoint.outcomes : thread.outcomes;
-        // Colour-key the outcomes off the LIVE narrative state's ordering
+        // Headline distribution comes from the point-in-time replay snapshot
+        // (`snapshotThread`) — the SAME source the threads list and Belief
+        // dashboard use — so all three agree on outcomes + probabilities at
+        // the current scene. (Previously this read the trajectory tail with a
+        // live-thread fallback, which diverged: the list showed the replayed
+        // 3-outcome state while the detail fell back to the live 5-outcome one.)
+        const stanceThread = snapshotThread ?? thread;
+        const tailProbs = getStanceProbs(stanceThread);
+        const tailOutcomes = stanceThread.outcomes;
+        // Colour-key the outcomes off the LIVE narrative ordering
         // (`thread.outcomes`) so the inspector and the portfolio bar always
-        // paint the same outcome with the same hue. The trajectory and the
-        // store-replayed thread may diverge in outcome ORDER if their
-        // addOutcomes-application paths disagree subtly; matching by name
-        // sidesteps that — the colour follows the outcome string, not its
-        // position in whichever array. Probs still come from the trajectory
-        // tail (so 100%-sum is preserved across mid-narrative expansions);
-        // tail-only outcomes (not yet in the live thread) fall through to
-        // their tail index.
-        const liveIdxByName = new Map<string, number>();
-        thread.outcomes.forEach((o, i) => liveIdxByName.set(o, i));
-        const belief = getThreadStance(thread);
-        const { margin } = getStanceMargin(thread);
+        // paint the same outcome with the same hue — the colour follows the
+        // outcome string, not its position in whichever replayed array.
+        const colourIdxByPos = outcomeColourIndices(thread.outcomes, tailOutcomes);
+        const belief = getThreadStance(stanceThread);
+        const { margin } = getStanceMargin(stanceThread);
         const currentEntropy = normalizedEntropy(tailProbs);
         const ranked = tailOutcomes
           .map((outcome, idx) => ({
             outcome,
             idx,
-            colourIdx: liveIdxByName.get(outcome) ?? idx,
+            colourIdx: colourIdxByPos[idx],
             prob: tailProbs[idx] ?? 0,
           }))
           .sort((a, b) => b.prob - a.prob);
@@ -485,11 +497,15 @@ export default function ThreadDetail({ threadId }: Props) {
         const priorTopProb = priorPoint ? priorPoint.probs[topIdx] ?? 0 : 0;
         const priorVolume = priorPoint?.volume ?? 0;
         const priorEntropy = priorPoint?.entropy ?? currentEntropy;
-        const deltaTopProb = tailPoint
-          ? (tailPoint.probs[topIdx] ?? 0) - priorTopProb
-          : 0;
-        const deltaVolume = tailPoint ? (tailPoint.volume ?? 0) - priorVolume : 0;
-        const deltaEntropy = tailPoint ? currentEntropy - priorEntropy : 0;
+        // Current values come from the snapshot stance (the headline source);
+        // priors come from the trajectory lookback point. Movement is only
+        // meaningful once some history has replayed.
+        const hasHistory = trajectory.length > 0;
+        const currentTopProb = tailProbs[topIdx] ?? 0;
+        const currentVolume = belief?.volume ?? 0;
+        const deltaTopProb = hasHistory ? currentTopProb - priorTopProb : 0;
+        const deltaVolume = hasHistory ? currentVolume - priorVolume : 0;
+        const deltaEntropy = hasHistory ? currentEntropy - priorEntropy : 0;
         // Evidence-type mix — aggregate counts across the thread log.
         const logCounts: Record<ThreadLogNodeType, number> = {
           pulse: 0,
@@ -610,7 +626,7 @@ export default function ThreadDetail({ threadId }: Props) {
             {trajectory.length > 1 && (
               <div
                 className="flex items-center gap-3 text-[10px] rounded-md bg-white/2 border border-white/5 px-2 py-1.5 cursor-help"
-                title={`MOVEMENT — change in the leading outcome vs. ${LOOKBACK} scenes ago.\n\n"${ranked[0]?.outcome}" moved from ${Math.round(priorTopProb * 100)}% to ${Math.round((tailPoint?.probs[topIdx] ?? 0) * 100)}%. Volume ${priorVolume.toFixed(1)} → ${(tailPoint?.volume ?? 0).toFixed(1)}.\n\nUse this to tell whether the stance is actively moving or has stalled.`}
+                title={`MOVEMENT — change in the leading outcome vs. ${LOOKBACK} scenes ago.\n\n"${ranked[0]?.outcome}" moved from ${Math.round(priorTopProb * 100)}% to ${Math.round(currentTopProb * 100)}%. Volume ${priorVolume.toFixed(1)} → ${currentVolume.toFixed(1)}.\n\nUse this to tell whether the stance is actively moving or has stalled.`}
               >
                 <span className="text-text-dim uppercase tracking-wider">
                   Last {Math.min(LOOKBACK, trajectory.length - 1)} scn

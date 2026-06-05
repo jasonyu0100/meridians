@@ -166,6 +166,31 @@ export function outcomeColourBg(idx: number): string {
   return OUTCOME_PALETTE_BG_RAW[((idx % OUTCOME_PALETTE_BG_RAW.length) + OUTCOME_PALETTE_BG_RAW.length) % OUTCOME_PALETTE_BG_RAW.length];
 }
 
+/** Map each `rendered` outcome to a palette index, keyed by name off the
+ *  `live` ordering so a given outcome gets the same hue across every view
+ *  (sidebar bar, inspector bars, belief chart). Outcomes not present in the
+ *  live ordering (e.g. tail-only outcomes from a trajectory snapshot that
+ *  predates an `addOutcomes`) are assigned FRESH indices continuing past the
+ *  live set rather than reusing their positional index — the positional
+ *  fallback collides with live-mapped indices and silently paints distinct
+ *  outcomes the same colour. Distinct names always get distinct indices (up to
+ *  the palette wrap at 12); repeated names share one. */
+export function outcomeColourIndices(live: readonly string[], rendered: readonly string[]): number[] {
+  const idxByName = new Map<string, number>();
+  live.forEach((o, i) => {
+    if (!idxByName.has(o)) idxByName.set(o, i);
+  });
+  let next = live.length;
+  return rendered.map((o) => {
+    let idx = idxByName.get(o);
+    if (idx === undefined) {
+      idx = next++;
+      idxByName.set(o, idx);
+    }
+    return idx;
+  });
+}
+
 /** Tailwind token classes (background). For React components that compose
  *  with rounded-full / etc. The `/N` suffix is intentionally absent so the
  *  caller picks an opacity if they need one. */

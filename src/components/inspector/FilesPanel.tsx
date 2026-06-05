@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/state/store';
+import { useTheme } from '@/lib/state/theme-context';
 import { SourceFileModal } from '@/components/sidebar/SourceFileModal';
 import { FileComposerModal } from '@/components/sidebar/FileComposerModal';
 import { ApplyExtensionModal } from '@/components/sidebar/ApplyExtensionModal';
@@ -54,10 +55,13 @@ const STATUS_STYLE: Record<SourceFile['status'], { label: string; chip: string }
   failed: { label: 'failed', chip: 'bg-red-400/12 text-red-300/90' },
 };
 
-function statusColor(status: SourceFile['status']): string {
-  if (status === 'ready') return 'text-emerald-300/90';
+// Status label colour. The world-green / fate-red tints need a darker shade in
+// the light theme or they wash out against the pale card; the accent and dim
+// tokens already remap per theme.
+function statusColor(status: SourceFile['status'], isLight: boolean): string {
+  if (status === 'ready') return isLight ? 'text-emerald-600' : 'text-emerald-300/90';
   if (status === 'converting') return 'text-accent';
-  if (status === 'failed') return 'text-red-300/90';
+  if (status === 'failed') return isLight ? 'text-red-600' : 'text-red-300/90';
   return 'text-text-dim/75';
 }
 
@@ -189,6 +193,8 @@ function ConvertingProgress({ job, fallbackLabel }: { job?: AnalysisJob; fallbac
 
 export default function FilesPanel() {
   const { state, dispatch } = useStore();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const router = useRouter();
   const narrative = state.activeNarrative;
   const branchId = state.viewState.activeBranchId;
@@ -284,15 +290,17 @@ export default function FilesPanel() {
                 className="panel-card group p-3.5"
                 style={{ ['--card-accent']: statusAccentVar(f.status) } as React.CSSProperties}
               >
-                {/* Meta row: kind on the left, status on the right. */}
-                <div className="flex items-baseline justify-between mb-2 text-[9px] uppercase tracking-wider font-mono">
-                  <span className="flex items-center gap-1 text-text-dim/65">
+                {/* Header — a kind chip (status-coloured dot + neutral label,
+                    so it reads in any theme) with the status word opposite. */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-white/5 text-[9px] uppercase tracking-wider font-mono text-text-dim/75">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: statusAccentVar(f.status) }} />
                     {f.mode}
                     {isAnalysisOrigin && (
                       <span
                         title="Created from text analysis"
                         aria-label="Created from text analysis"
-                        className="text-amber-300/80"
+                        className="text-amber-400"
                       >
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
                           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26" />
@@ -300,23 +308,25 @@ export default function FilesPanel() {
                       </span>
                     )}
                   </span>
-                  <span className={statusColor(f.status)}>{STATUS_STYLE[f.status].label}</span>
+                  <span className={`text-[9px] uppercase tracking-wider font-mono ${statusColor(f.status, isLight)}`}>
+                    {STATUS_STYLE[f.status].label}
+                  </span>
                 </div>
 
                 {/* Title — the click target for source-view. Single line of
                     visual weight; everything else hangs off it. */}
                 <button
                   onClick={() => setOpenId(f.id)}
-                  className="block text-[13px] text-text-primary font-medium leading-snug text-left hover:underline underline-offset-2 truncate w-full"
+                  className="block text-[13.5px] text-text-primary font-semibold leading-snug text-left hover:underline underline-offset-2 truncate w-full"
                   title="View source text"
                 >
                   {f.name}
                 </button>
 
-                {/* Stats — one line, no dividers, right-aligned date. */}
-                <div className="mt-1 flex items-baseline justify-between text-[10px] text-text-dim/60 font-mono tabular-nums">
+                {/* Stats — one compact mono line, right-aligned date. */}
+                <div className="mt-1 flex items-baseline justify-between text-[10px] text-text-dim/55 font-mono tabular-nums">
                   <span>
-                    {formatCount(f.wordCount)} words&nbsp;&nbsp;·&nbsp;&nbsp;{formatCount(f.charCount)} chars
+                    {formatCount(f.wordCount)} words&nbsp;·&nbsp;{formatCount(f.charCount)} chars
                   </span>
                   <span>{formatDate(f.createdAt)}</span>
                 </div>
@@ -331,22 +341,23 @@ export default function FilesPanel() {
                   </p>
                 )}
 
-                {/* Action row — circular icon buttons. Primary action
-                    (convert / apply) sits left; secondary affordances
-                    (remove, open job) hug the right edge. Labels live
-                    in the `title` tooltip so the row stays uncluttered. */}
+                {/* Action row — a single labelled primary pill (convert /
+                    extend) on the left; secondary affordances (open job,
+                    remove) grouped as light ghost icons on the right. The
+                    label makes the primary action legible instead of a lone
+                    mystery circle. */}
                 {(primary || removable || f.analysisJobId) && (
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 pt-2.5 border-t border-white/6 flex items-center gap-1.5">
                     {primary?.kind === 'convert' && (
                       <button
                         onClick={() => handleConvert(f)}
                         title={primary.label}
-                        aria-label={primary.label}
-                        className="w-8 h-8 rounded-full border border-white/15 bg-white/8 hover:bg-white/15 hover:border-white/30 text-text-primary transition flex items-center justify-center"
+                        className="inline-flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-full text-[11px] font-medium border border-white/12 bg-white/8 text-text-secondary hover:bg-white/15 hover:text-text-primary hover:border-white/22 transition"
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                           <polygon points="6 4 20 12 6 20 6 4" />
                         </svg>
+                        <span className="truncate max-w-40">{primary.label}</span>
                       </button>
                     )}
                     {primary?.kind === 'apply' && (
@@ -354,48 +365,52 @@ export default function FilesPanel() {
                         onClick={() => setApplyFileId(f.id)}
                         disabled={!branchId}
                         title={branchId ? 'Extend the current branch with this file' : 'Select a branch first'}
-                        aria-label={primary.label}
-                        className="w-8 h-8 rounded-full border border-emerald-400/35 bg-emerald-400/12 hover:bg-emerald-400/20 hover:border-emerald-400/55 text-emerald-300 transition flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-400/12 disabled:hover:border-emerald-400/35"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 5v14M6 13l6 6 6-6" />
-                        </svg>
-                      </button>
-                    )}
-                    {f.analysisJobId && (
-                      <button
-                        onClick={() =>
-                          router.push(`/extensions/${narrative.id}?job=${f.analysisJobId}`)
-                        }
-                        title="Open analysis job"
-                        aria-label="Open analysis job"
-                        className="ml-auto w-8 h-8 rounded-full border border-white/10 bg-transparent hover:bg-white/10 hover:border-white/25 text-text-dim/65 hover:text-text-primary transition flex items-center justify-center"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </button>
-                    )}
-                    {removable && (
-                      <button
-                        onClick={() => void handleRemove(f)}
-                        title="Remove file"
-                        aria-label="Remove file"
-                        className={`w-8 h-8 rounded-full border border-white/10 bg-transparent hover:bg-red-500/15 hover:border-red-400/45 text-text-dim/55 hover:text-red-400 transition flex items-center justify-center ${
-                          f.analysisJobId ? '' : 'ml-auto'
+                        className={`inline-flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-full text-[11px] font-medium border transition disabled:opacity-45 disabled:cursor-not-allowed ${
+                          isLight
+                            ? 'border-emerald-500/30 bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-500/45'
+                            : 'border-emerald-400/30 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/20 hover:border-emerald-400/50'
                         }`}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <line x1="10" y1="11" x2="10" y2="17" />
-                          <line x1="14" y1="11" x2="14" y2="17" />
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 5v14M6 13l6 6 6-6" />
                         </svg>
+                        <span className="truncate max-w-40">{primary.label}</span>
                       </button>
                     )}
+                    <div className="ml-auto flex items-center gap-1">
+                      {f.analysisJobId && (
+                        <button
+                          onClick={() =>
+                            router.push(`/extensions/${narrative.id}?job=${f.analysisJobId}`)
+                          }
+                          title="Open analysis job"
+                          aria-label="Open analysis job"
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-text-dim/55 hover:bg-white/10 hover:text-text-primary transition"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                        </button>
+                      )}
+                      {removable && (
+                        <button
+                          onClick={() => void handleRemove(f)}
+                          title="Remove file"
+                          aria-label="Remove file"
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-text-dim/45 hover:bg-red-500/12 hover:text-red-500 transition"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <line x1="10" y1="11" x2="10" y2="17" />
+                            <line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

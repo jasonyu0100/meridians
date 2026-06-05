@@ -90,10 +90,11 @@ export default function KnowledgePanel() {
             className="panel-card w-full text-left p-3"
             style={{ ['--card-accent']: accent.hex } as React.CSSProperties}
           >
-            {/* Header: type chip + impact badge (mirrors survey card's
-                "questionType · category · status" row). */}
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className={`text-[9px] uppercase tracking-wider font-mono ${accent.text}`}>
+            {/* Header — a type chip (accent-coloured dot + neutral label, so it
+                reads in any theme) with the impact score opposite. */}
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full bg-white/5 text-[9px] uppercase tracking-wider font-mono text-text-dim/75">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: accent.hex }} />
                 {node.type}
               </span>
               <span className="ml-auto text-[9px] uppercase tracking-wider font-mono text-text-secondary tabular-nums">

@@ -29,6 +29,7 @@ import {
 } from '@/lib/forces/narrative-utils';
 import {
   classifyThreadCategory,
+  outcomeColourIndices,
   type ThreadCategory,
 } from '@/lib/forces/thread-category';
 import { applyThreadDelta, decayUntouchedStancesForScene, newNarratorStance } from '@/lib/forces/thread-log';
@@ -181,6 +182,11 @@ export type PortfolioRow = {
   /** Market-state category (saturating / contested / volatile / committed /
    *  dormant / abandoned / resolved). Single source of truth for colouring. */
   category: ThreadCategory;
+  /** Per-rendered-outcome palette index, keyed to the LIVE thread's outcome
+   *  ordering (by name). Single source of truth for outcome hues — every
+   *  surface that paints `probs[i]` should use `colourIdx[i]` so a given
+   *  outcome is the same colour in the sidebar, Belief, and the inspector. */
+  colourIdx: number[];
 };
 
 /** Terminal tier for sorting. Open markets rank by focus score (volume ×
@@ -202,6 +208,11 @@ export function buildPortfolioRows(
   narrative: NarrativeState,
   resolvedEntryKeys: string[],
   currentSceneIndex: number,
+  /** The LIVE narrative's threads (when `narrative` is a point-in-time replay).
+   *  Outcome hues key off the live ordering by name, so a given outcome paints
+   *  the same colour in every view even when the replayed ordering diverges.
+   *  Omit when `narrative` is already the live state (keys off `t.outcomes`). */
+  liveThreads?: Record<string, Thread>,
 ): PortfolioRow[] {
   const rows: PortfolioRow[] = [];
   for (const t of Object.values(narrative.threads)) {
@@ -216,7 +227,8 @@ export function buildPortfolioRows(
     const idx = lastTouched ? resolvedEntryKeys.indexOf(lastTouched) : -1;
     const gap = idx < 0 ? Infinity : currentSceneIndex - idx;
     const category = classifyThreadCategory(t, { scenesSinceTouch: gap });
-    rows.push({ thread: t, probs, topIdx, margin, entropy, volume, volatility, gap, focus: f, category });
+    const colourIdx = outcomeColourIndices(liveThreads?.[t.id]?.outcomes ?? t.outcomes, t.outcomes);
+    rows.push({ thread: t, probs, topIdx, margin, entropy, volume, volatility, gap, focus: f, category, colourIdx });
   }
   rows.sort((a, b) => {
     if (TERMINAL_TIER[a.category] !== TERMINAL_TIER[b.category]) {
