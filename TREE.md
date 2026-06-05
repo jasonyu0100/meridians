@@ -2,7 +2,7 @@
 
 > **Generated** by `scripts/gen-tree.mjs` — structure is read from the filesystem and each file's description is derived from its own leading comment (else a name-based heuristic). No hand-maintained map; re-run after adding files: `node scripts/gen-tree.mjs`. Companion to [MERMAID.md](MERMAID.md). Stack: Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3 · IndexedDB.
 >
-> 471 files · 462 described from their own header comment, the rest from filename heuristics.
+> 480 files · 471 described from their own header comment, the rest from filename heuristics.
 
 ```xml
 <repo name="meridians">
@@ -254,6 +254,7 @@
         <file name="FileComposerModal.tsx" desc="FileComposerModal — two-phase composer for extending the current world"/>
         <file name="HierarchyModal.tsx" desc="HierarchyModal — edit the location hierarchy (the map tree) of nested places"/>
         <file name="InterviewPanel.tsx" desc="InterviewPanel — sidebar panel for running and browsing one-subject-many-questions interviews"/>
+        <file name="LearningPanel.tsx" desc="LearningPanel — sidebar surface for browsing a world view's question banks"/>
         <file name="MapPanel.tsx" desc="MapPanel — sidebar panel listing generated board/maps and launching the map composer"/>
         <file name="MediaDrive.tsx" desc="MediaDrive — sidebar gallery of generated images and media assets for the narrative"/>
         <file name="MediaPreview.tsx" desc="MediaPreview — full-screen portal lightbox for previewing a media asset"/>
@@ -310,6 +311,7 @@
         <file name="ReasoningGraphView.tsx" desc="ReasoningGraphView — Stage surface rendering an arc's causal reasoning graph (CRG) nodes and typed edges"/>
         <file name="SceneAudioView.tsx" desc="SceneAudioView — Stage surface for generating and playing back audio narration of a scene's prose"/>
         <file name="SceneBar.tsx" desc="SceneBar — horizontal scene navigator strip for the Stage; selects and scrolls through the branch's scenes"/>
+        <file name="SceneLearningView.tsx" desc="SceneLearningView — scene-level learning question bank"/>
         <file name="ScenePanel.tsx" desc="ScenePanel — Stage scene detail container: header, POV/location, and the plan/prose/audio sub-views for a…"/>
         <file name="ScenePlanView.tsx" desc="ScenePlanView — Stage surface showing a scene's beat-by-beat plan with generate/rewrite/reverse-engineer…"/>
         <file name="SceneProseView.tsx" desc="SceneProseView — Stage surface rendering a scene's prose with generate/rewrite controls and version history"/>
@@ -346,6 +348,7 @@
         <file name="GameTheoryDashboard.tsx" desc="GameTheoryDashboard — a focused, high-level view of the narrative's strategic structure"/>
         <file name="GasMeter.tsx" desc="GasMeter — topbar pill showing accumulated API token spend/cost from the log"/>
         <file name="ImportPackageModal.tsx" desc="ImportPackageModal — import a narrative from a package file or directory, with validation and options"/>
+        <file name="LearnModal.tsx" desc="LearnModal — fullscreen quiz runner for reinforcing the concepts and ideas captured across a world view's…"/>
         <file name="MarkovChainModal.tsx" desc="MarkovChainModal — visualises the cube-mode transition matrix and pacing fingerprint of the narrative"/>
         <file name="NarrativeEditModal.tsx" desc="NarrativeEditModal — edit narrative meta (title, premise, cover) with AI-assisted refinement"/>
         <file name="PatternsModal.tsx" desc="PatternsModal — detect and display recurring narrative patterns under a selected paradigm"/>
@@ -359,7 +362,9 @@
         <file name="UsageModal.tsx" desc="UsageModal — detailed API usage breakdown: per-model token spend and cost over the log"/>
       </dir>
       <dir name="ui">
+        <file name="EntityRef.tsx" desc="EntityRef — inline citation badge rendered in chat for a `[C-12]`-style annotation, academic-essay style"/>
         <file name="Markdown.tsx" desc="Markdown renderer — full CommonMark + GitHub-flavored markdown (tables, strikethrough, task lists,…"/>
+        <file name="Segmented.tsx" desc="Segmented — the canonical tab / toggle / segmented-control for the app"/>
       </dir>
       <dir name="wizard">
         <file name="CreationWizard.tsx" desc="Direct sub-module imports rather than the @/lib/ai barrel"/>
@@ -402,6 +407,7 @@
         <file name="ingest.ts" desc="Prose-profile ingestion — LLM extraction/refinement of authorial voice profiles from sample prose"/>
         <file name="interviews.ts" desc="Interview executor — ask one subject many questions in parallel using its world-graph continuity"/>
         <file name="json.ts" desc="Clean common LLM JSON quirks: code fences, trailing commas, single-quoted keys"/>
+        <file name="learning.ts" desc="Learning (Quiz) generation — a purely additive, post-hoc layer"/>
         <file name="phase-graph.ts" desc="Phase generator — mines narrative context (with optional user guidance and optional seed graph) to produce a…"/>
         <file name="premise.ts" desc="Premise suggestion for the creation wizard"/>
         <file name="prompts.ts" desc="Re-export wrapper for backward compatibility"/>
@@ -432,6 +438,7 @@
       </dir>
       <dir name="forces">
         <file name="attribution.ts" desc="Attribution derivation — defensive helper that walks a scene's (or world-build's) typed structural fields…"/>
+        <file name="entity-ref.ts" desc="Entity-reference resolution for chat annotations"/>
         <file name="narrative-utils.ts" desc="Force formulas + graph/cube/stance algorithms — the deterministic math deriving Fate/World/System from deltas"/>
         <file name="positions.ts" desc="Entity positions — derives each character's current location from scene participation history"/>
         <file name="thread-category.ts" desc="Thread category classification — a single vocabulary derived from a thread's current MARKET STATE…"/>
@@ -462,6 +469,9 @@
         <file name="package-import.ts" desc="Package Import - Import .meridians packages Supports two formats: 1"/>
         <file name="research-export.ts" desc="Markdown formatters for surveys and interviews"/>
         <file name="scene-export.ts" desc="Markdown exporters for the currently-viewed scene plan and prose"/>
+      </dir>
+      <dir name="learning">
+        <file name="quiz.ts" desc="Quiz aggregation + scoping helpers"/>
       </dir>
       <dir name="map">
         <file name="map-layout.ts" desc="map-layout — resolve the location subtree a map covers"/>
@@ -610,6 +620,7 @@
         </dir>
         <file name="CORE_LANGUAGE.md" desc="Core Language"/>
         <file name="index.ts" desc="Centralized Prompts Single source of truth for all LLM prompts, schemas, and prompt builders"/>
+        <file name="learning.ts" desc="Learning (Quiz) prompts. Thesis: a scene is not just events — it carries TEACHABLE CONTENT. The concepts a…"/>
       </dir>
       <dir name="scenarios">
         <file name="scenarios-engine.ts" desc="Scenarios engine — parallel scenario-driven batch generator"/>
