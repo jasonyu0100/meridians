@@ -1437,9 +1437,9 @@ export default function PaperPage() {
               a time. The product is built for teams that
               institute the room on a regular cadence &mdash;
               weekly for what moves fast, monthly for what moves
-              slow. Cards signal intent in public; private logs
-              hold actual intent. Cooperation and defection are
-              first-class moves, not side effects. Most operator
+              slow. Talk is cheap; a card is a binding commitment, so
+              cooperation and defection are first-class moves &mdash;
+              you defect by playing against what you said. Most operator
               time lives on two surfaces &mdash; the{" "}
               <B>map / board</B> the room is playing on, and the{" "}
               <B>raw graph substrate</B> underneath. The room is
@@ -4501,10 +4501,15 @@ export default function PaperPage() {
               <B>The console shows the board; everyone joins the same
               instance.</B> A War Room renders the world view on the
               shared screen &mdash; the laptop console everyone reads at
-              a glance &mdash; while each player works the full
-              interface on their own device, joined over the tunnel to
-              the same live state. The render is one of two surfaces,
-              the same two the app is built around:
+              a glance &mdash; while each player works their{" "}
+              <B>perspective interface</B> on their own device: a
+              controller scoped to their seat (its feed, hand, and
+              history &mdash; how far back is GM-configurable), joined
+              over the tunnel to the same live state. The GM keeps the
+              full console; players get their vantage, not everyone
+              else&apos;s &mdash; which is what keeps the asymmetry
+              honest. The render is one of two surfaces, the same two
+              the app is built around:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
@@ -4538,7 +4543,13 @@ export default function PaperPage() {
               a card game called <B>Conviction</B> &mdash; about belief
               made visible: holding conviction, demonstrating it, and
               showing it to others is what lets a team coordinate in
-              chaos. (Rehearsal is a pluggable layer over the shared
+              chaos. It is rehearsal, not entertainment &mdash; capture's
+              peer-stance reading, gamified and accelerated into a
+              high-feedback drill for deciding under uncertainty and
+              reading the room. With a full table of players and agents
+              the play is <em>emergent, not scripted</em>: sometimes
+              there is no best move, sometimes you commit and signal,
+              sometimes you go covert and trust the team. (Rehearsal is a pluggable layer over the shared
               resolver; more modes can ride the same substrate later
               &mdash; Conviction is where we start.) It is{" "}
               <B>information-asymmetry driven</B>: strategy is about what
@@ -4546,17 +4557,18 @@ export default function PaperPage() {
               which signals are worth sending. The War Room makes this
               structural.
               Every operator drives one or more <em>entities</em>;
-              every entity keeps a <B>private log</B> &mdash; its
-              hidden state, actual intent, secret information
-              &mdash; and emits <B>public summaries</B> the global
-              tracker reads. Cards are the channel between the
-              two: every card is a <em>signal of intent</em> played
-              in the open while <em>actual</em> intent stays
-              private until the player chooses to disclose, leak,
-              or never reveal. Cooperate by tabling a card that
-              matches your private log; defect by playing one that
-              doesn&apos;t. The cost of the gap is what reveals
-              charge.
+              each keeps a <B>private log</B> (its hidden state) and
+              reads a <B>perspective feed</B> &mdash; the world retold
+              from its vantage, refreshed each step, and all it (or the
+              AI playing it) knows. The talk is <em>cheap</em>:
+              negotiate, propose, threaten, mislead &mdash; words cost
+              and bind nothing. A card is the opposite &mdash; a{" "}
+              <B>paid, binding commitment</B> (face-up to show it,
+              face-down to hide it), which is what makes it a credible
+              signal, not cheap talk. So you <B>cooperate</B> by backing
+              your words with cards and <B>defect</B> by playing against
+              them; the gap between what you say and what you play shows
+              at the reveal and costs you the table&apos;s trust.
             </P>
             <P>
               <B>What you do on your turn.</B> One action, poker&apos;s
@@ -4574,30 +4586,22 @@ export default function PaperPage() {
             </P>
             <P>
               <B>Conviction is the scarce resource &mdash; and it
-              accumulates.</B> Playing a card{" "}
-              <em>spends conviction priced by improbability</em>: the
-              likely outcome is cheap, forcing a long-shot is dear, and
-              a thread left unplayed is <em>sampled from the
-              distribution</em> &mdash; so the table tracks reality by
-              default and conviction is what bends it. You draw an
-              allowance each round and <em>unspent conviction banks</em>,
-              so the real game is <em>when</em> to spend: back cheap
-              likely calls now, or hoard a war chest to force the
-              improbable future you believe in when it matters. You
-              can&apos;t back everything &mdash; that scarcity is the
-              tension (the GM sets the allowance: the difficulty dial).
-              In the commit-to-reveal window
-              players negotiate &mdash; disclosing, trading information,
-              proposing deals, threatening defections. Empty seats fill
-              with AI agents from configurable profiles (<em>compete</em>{" "}
-              / <em>cooperate</em> / <em>extract</em> / <em>spoil</em>;
-              an adversarial one red-teams). At resolution the
-              round&apos;s played cards <B>build a causal reasoning
-              graph that generates the continuation</B> &mdash; the same
-              resolver the weekly merge uses &mdash; and the world steps
-              forward one tick: new threads surface, old ones decay,
-              hands redeal. <B>A deck dealt against a moving world, one
-              step at a time.</B>
+              decays.</B> Playing a card <em>spends conviction priced by
+              improbability</em>: the likely outcome is cheap, a
+              long-shot dear. Leave a stance unplayed and you{" "}
+              <em>cede</em> it &mdash; <B>certainty is an aggregate of
+              conviction</B>, the world is what the room commits to, not
+              a backdrop. An allowance comes in each round; unspent
+              conviction banks but <em>decays</em> (inflation on idle
+              capital), so a war chest is real yet costs you to hold.
+              Empty seats fill with AI agents on configurable profiles
+              (<em>compete / cooperate / extract / spoil</em>; an
+              adversarial one red-teams). At resolution the round&apos;s
+              played cards <B>build a causal reasoning graph that
+              generates the continuation</B> &mdash; the same resolver
+              the weekly merge uses &mdash; and the world steps forward a
+              tick. <B>A deck dealt against a moving world, one step at a
+              time.</B>
             </P>
             <P>
               Every commitment becomes a thread delta. Every reveal
@@ -4623,15 +4627,19 @@ export default function PaperPage() {
             </P>
             <P>
               <B>Multiple play-throughs.</B> The room plays the
-              future several ways &mdash; the high-mass{" "}
-              <em>compass</em> scenarios first, then{" "}
-              <em>free-form</em> branches operators want to test on
-              instinct. Each play-through is a fork; the substrate
-              keeps them all and learns from each as reality unfolds
-              between this session and the next. Operators learn which of their reflexive
-              hypotheses align with the calibrated cohort and
-              which don&apos;t &mdash; one of the loops by which
-              the room compounds.
+              future several ways &mdash; high-mass <em>compass</em>{" "}
+              scenarios first, then <em>free-form</em> branches tested
+              on instinct. Each play-through is a kept fork, so you can
+              <B>replay a scenario under different conditions</B> and,
+              because the graph <em>reasons</em> the outcome rather than
+              scripting it, get a different continuation that tests
+              whether you understood why. <B>Disclosure:</B> that
+              reasoning is the engine&apos;s subjective reading, not the
+              real world &mdash; an LLM walking a causal graph. It is{" "}
+              <B>regenerable</B> with a custom guidance vector or
+              thinking mode (as Maps already are; freeform by default),
+              so a resolution is <em>a</em> reasoned reading, never{" "}
+              <em>the</em> answer.
             </P>
             <P>
               <B>Eyes on the board, eyes on the graph.</B> Most
@@ -5435,9 +5443,9 @@ export default function PaperPage() {
               What Meridians does is <B>convene a room to play the
               future before it arrives</B>, on a measured
               substrate that learns from every committed move.
-              Cards signal intent in public. Private logs hold
-              actual intent. The substrate keeps the ledger. The
-              next room inherits the priors. Any coherent text
+              Talk is cheap; cards are binding commitments. The
+              substrate keeps the ledger. The next room inherits the
+              priors. Any coherent text
               can seed the first session &mdash; a history, a
               paper, a novel, a doctrine, a market brief. After
               that, the room authors its own world. The same holds
