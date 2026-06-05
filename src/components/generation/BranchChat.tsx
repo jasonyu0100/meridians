@@ -421,7 +421,7 @@ export function BranchChat({
               <ReasoningInline text={reasoningText} active={!streamText} />
             )}
             {streamText ? (
-              <Markdown text={streamText} />
+              <Markdown text={streamText} entities />
             ) : !reasoningText ? (
               <div className="text-[13.5px] inline-flex gap-1 items-center text-text-dim/50">
                 <span className="w-1 h-1 rounded-full bg-text-dim/40 animate-pulse" />
@@ -491,7 +491,7 @@ function Message({ message }: { message: BranchChatMessage }) {
           You
         </div>
         <div className="text-text-primary/90">
-          <Markdown text={message.content} />
+          <Markdown text={message.content} entities />
         </div>
       </div>
     );
@@ -506,7 +506,7 @@ function Message({ message }: { message: BranchChatMessage }) {
       {message.reasoning && (
         <ReasoningCollapsed text={message.reasoning} durationMs={message.durationMs} />
       )}
-      <Markdown text={message.content} />
+      <Markdown text={message.content} entities />
     </div>
   );
 }

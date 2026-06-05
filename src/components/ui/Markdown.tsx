@@ -10,18 +10,46 @@
  *   - 'reading' — generous, designed for document-style content
  */
 
-import ReactMarkdown, { type Components } from 'react-markdown';
+import ReactMarkdown, {
+  type Components,
+  defaultUrlTransform,
+} from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { entityRefRegex } from '@/lib/forces/entity-ref';
+import { EntityRef } from './EntityRef';
+
+/** URL scheme used to smuggle a detected entity annotation through markdown
+ *  link parsing so the `a` renderer can swap in an EntityRef chip. */
+const ENTITY_HREF_PREFIX = 'entity:';
+
+/** Rewrite bracketed entity annotations (`[C-12]`, `[SYS-4]`, …) into links
+ *  with the `entity:` scheme. The `a` renderer detects that scheme and
+ *  renders the interactive chip. Real markdown links are left untouched (the
+ *  pattern skips tokens already followed by `(`). */
+function linkifyEntityRefs(text: string): string {
+  return text.replace(entityRefRegex(), (_m, id) => `[${id}](${ENTITY_HREF_PREFIX}${id})`);
+}
+
+/** Preserve `entity:` links (default transform would strip the unknown
+ *  scheme); defer to the default sanitiser for everything else. */
+function entityUrlTransform(url: string): string {
+  return url.startsWith(ENTITY_HREF_PREFIX) ? url : defaultUrlTransform(url);
+}
 
 export function Markdown({
   text,
   variant = 'compact',
+  entities = false,
 }: {
   text: string;
   variant?: 'compact' | 'reading';
+  /** Detect `[C-12]`-style entity annotations and render them as interactive
+   *  EntityRef chips (hover for detail, click to open in the inspector). */
+  entities?: boolean;
 }) {
   const isReading = variant === 'reading';
   const components = isReading ? READING_COMPONENTS : COMPACT_COMPONENTS;
+  const body = entities ? linkifyEntityRefs(text) : text;
   return (
     <div
       className={
@@ -30,8 +58,12 @@ export function Markdown({
           : 'text-[13.5px] text-text-secondary leading-relaxed flex flex-col gap-2.5'
       }
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {text}
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={components}
+        urlTransform={entities ? entityUrlTransform : undefined}
+      >
+        {body}
       </ReactMarkdown>
     </div>
   );
@@ -66,16 +98,23 @@ const SHARED_COMPONENTS: Components = {
       {children}
     </pre>
   ),
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer noopener"
-      className="text-sky-400 hover:text-sky-300 underline decoration-sky-400/40 hover:decoration-sky-300 underline-offset-2"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    // Entity annotations smuggled through as `entity:<id>` links render as
+    // interactive chips instead of anchors.
+    if (href && href.startsWith(ENTITY_HREF_PREFIX)) {
+      return <EntityRef id={href.slice(ENTITY_HREF_PREFIX.length)} />;
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="text-sky-400 hover:text-sky-300 underline decoration-sky-400/40 hover:decoration-sky-300 underline-offset-2"
+      >
+        {children}
+      </a>
+    );
+  },
   blockquote: ({ children }) => (
     <blockquote className="border-l-2 border-white/15 pl-3 text-text-secondary/85 italic">
       {children}

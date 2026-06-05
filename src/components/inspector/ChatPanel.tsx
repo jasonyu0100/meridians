@@ -799,7 +799,7 @@ export default function ChatPanel() {
                     : "bg-white/5 text-text-secondary"
                 }`}
               >
-                <Markdown text={msg.content} />
+                <Markdown text={msg.content} entities />
               </div>
             </div>
           </div>
@@ -816,7 +816,7 @@ export default function ChatPanel() {
                   bubble appearing alongside the reasoning stream. */}
               {streamText ? (
                 <div className="bg-white/5 rounded-lg px-3 py-2">
-                  <Markdown text={streamText} />
+                  <Markdown text={streamText} entities />
                 </div>
               ) : !reasoningText ? (
                 <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-text-dim">
