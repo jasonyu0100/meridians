@@ -862,7 +862,9 @@ export default function ThreadDetail({ threadId }: Props) {
 
       {/* Connected Threads — bidirectional: what this thread converges with + what depends on it */}
       {(() => {
-        const convergesWith = thread.dependents.filter(
+        // Dedupe — `dependents` can list the same thread id more than once,
+        // which would collide on the React key below.
+        const convergesWith = [...new Set(thread.dependents)].filter(
           (id) => narrative.threads[id],
         );
         const dependedOnBy = Object.values(narrative.threads).filter(
