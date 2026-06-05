@@ -85,6 +85,7 @@ import type {
   RelationshipDelta,
   Scene,
   SceneGameAnalysis,
+  LearningQuestion,
   ReasoningMap,
   SearchQuery,
   Region,
@@ -933,6 +934,15 @@ export type Action =
     }
   | {
       type: "CLEAR_GAME_ANALYSIS";
+      sceneId: string;
+    }
+  | {
+      type: "SET_SCENE_QUESTIONS";
+      sceneId: string;
+      questions: LearningQuestion[];
+    }
+  | {
+      type: "CLEAR_SCENE_QUESTIONS";
       sceneId: string;
     }
   // Bulk AI-generated content
@@ -2228,6 +2238,30 @@ function reducer(state: AppState, action: Action): AppState {
         const scene = n.scenes[action.sceneId];
         if (!scene) return n;
         const { gameAnalysis: _removed, ...rest } = scene;
+        return {
+          ...n,
+          scenes: { ...n.scenes, [action.sceneId]: rest },
+        };
+      });
+
+    case "SET_SCENE_QUESTIONS":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene) return n;
+        return {
+          ...n,
+          scenes: {
+            ...n.scenes,
+            [action.sceneId]: { ...scene, questions: action.questions },
+          },
+        };
+      });
+
+    case "CLEAR_SCENE_QUESTIONS":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene) return n;
+        const { questions: _removed, ...rest } = scene;
         return {
           ...n,
           scenes: { ...n.scenes, [action.sceneId]: rest },

@@ -51,6 +51,11 @@ export const GAME_THEORY_MODEL = "deepseek/deepseek-v4-flash";
 /** Model for interactive / conversational calls — chat, surveys, interviews. */
 export const INTERACTION_MODEL = "deepseek/deepseek-v4-flash";
 
+/** Model for Learning question extraction (per-scene multiple-choice banks).
+ *  Gemini — the extraction is analytical and structured, like the planning
+ *  and analysis passes, and benefits from the same model's reasoning. */
+export const QUESTION_MODEL = "google/gemini-2.5-flash";
+
 // ── AI Pricing (per million tokens) ──────────────────────────────────────────
 
 export const MODEL_PRICING: Record<string, { input: number; output: number }> =

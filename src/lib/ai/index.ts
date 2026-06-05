@@ -7,6 +7,9 @@ export { generateScenes, generateScenePlan, rewriteScenePlan, generateSceneProse
 // Game-theoretic analysis (opt-in, post-hoc layer)
 export { generateSceneGameAnalysis } from './game-analysis';
 
+// Learning question extraction (opt-in, post-hoc layer)
+export { generateSceneQuestions } from './learning';
+
 // Plan candidates
 export { runPlanCandidates } from './candidates';
 

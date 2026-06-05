@@ -164,15 +164,18 @@ export default function NarrativeWorkspace() {
     function handleBulkPlan(e: Event) { bulk.start('plan', readRange(e)); }
     function handleBulkProse(e: Event) { bulk.start('prose', readRange(e)); }
     function handleBulkGame(e: Event) { bulk.start('game', readRange(e)); }
+    function handleBulkQuestions(e: Event) { bulk.start('questions', readRange(e)); }
     function handleBulkAudio(e: Event) { bulkAudio.start(readRange(e)); }
     window.addEventListener('canvas:bulk-plan', handleBulkPlan);
     window.addEventListener('canvas:bulk-prose', handleBulkProse);
     window.addEventListener('canvas:bulk-game', handleBulkGame);
+    window.addEventListener('canvas:bulk-questions', handleBulkQuestions);
     window.addEventListener('canvas:bulk-audio', handleBulkAudio);
     return () => {
       window.removeEventListener('canvas:bulk-plan', handleBulkPlan);
       window.removeEventListener('canvas:bulk-prose', handleBulkProse);
       window.removeEventListener('canvas:bulk-game', handleBulkGame);
+      window.removeEventListener('canvas:bulk-questions', handleBulkQuestions);
       window.removeEventListener('canvas:bulk-audio', handleBulkAudio);
     };
   }, [bulk, bulkAudio]);
@@ -261,6 +264,7 @@ export default function NarrativeWorkspace() {
                 mode={
                   bulk.runState.mode === 'plan' ? 'bulk-plan' :
                   bulk.runState.mode === 'prose' ? 'bulk-prose' :
+                  bulk.runState.mode === 'questions' ? 'bulk-questions' :
                   'bulk-game'
                 }
                 isRunning={bulk.runState.isRunning}
@@ -302,6 +306,7 @@ export default function NarrativeWorkspace() {
               state.graphViewMode === 'plan' ||
               state.graphViewMode === 'prose' ||
               state.graphViewMode === 'audio' ||
+              state.graphViewMode === 'learning' ||
               state.graphViewMode === 'decision' ||
               state.graphViewMode === 'mode' ||
               state.graphViewMode === 'map') && (

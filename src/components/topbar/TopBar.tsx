@@ -10,6 +10,7 @@ import {
   IconDollar,
   IconDownload,
   IconImport,
+  IconLightbulb,
   IconPlus,
   IconScorecard,
   IconSettings,
@@ -34,6 +35,8 @@ import { PropositionAnalysisModal } from "@/components/topbar/PropositionAnalysi
 import SystemLogModal from "@/components/topbar/SystemLogModal";
 import { ThemeMenu } from "@/components/topbar/ThemeModal";
 import { GameTheoryDashboard } from "@/components/topbar/GameTheoryDashboard";
+import { LearnModal } from "@/components/topbar/LearnModal";
+import type { ScopeSelection } from "@/lib/learning/quiz";
 import {
   GasMeter,
   computeTotalCost,
@@ -369,6 +372,20 @@ export default function TopBar() {
   const [beatProfileOpen, setBeatProfileOpen] = useState(false);
   const [propositionAnalysisOpen, setPropositionAnalysisOpen] = useState(false);
   const [gameTheoryOpen, setGameTheoryOpen] = useState(false);
+  const [learnOpen, setLearnOpen] = useState(false);
+  const [learnInitial, setLearnInitial] = useState<ScopeSelection | undefined>(undefined);
+
+  // Open the Learn modal pre-scoped from anywhere (scene Learn tab,
+  // Learning sidebar). detail carries an optional ScopeSelection.
+  useEffect(() => {
+    function handleOpenLearn(e: Event) {
+      const detail = (e as CustomEvent).detail as ScopeSelection | undefined;
+      setLearnInitial(detail && detail.scope ? detail : undefined);
+      setLearnOpen(true);
+    }
+    window.addEventListener("open-learn-modal", handleOpenLearn);
+    return () => window.removeEventListener("open-learn-modal", handleOpenLearn);
+  }, []);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [usageHistoryOpen, setUsageHistoryOpen] = useState(false);
@@ -2462,6 +2479,19 @@ export default function TopBar() {
                 </div>
               )}
             </div>
+
+            {/* Learn — fullscreen quiz runner. Neutral badge, far right. */}
+            <button
+              onClick={() => {
+                setLearnInitial(undefined);
+                setLearnOpen(true);
+              }}
+              className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border text-text-secondary hover:text-text-primary hover:bg-white/5 border-white/8 hover:border-white/15"
+              title="Practice this world view's questions"
+            >
+              <IconLightbulb size={14} />
+              <span>Learn</span>
+            </button>
           </>
         )}
 
@@ -2516,6 +2546,14 @@ export default function TopBar() {
           onSelectScene={(index) => {
             dispatch({ type: "SET_SCENE_INDEX", index });
           }}
+        />
+      )}
+      {learnOpen && narrative && (
+        <LearnModal
+          narrative={narrative}
+          resolvedKeys={state.resolvedEntryKeys}
+          initial={learnInitial}
+          onClose={() => setLearnOpen(false)}
         />
       )}
       {markovOpen && narrative && (

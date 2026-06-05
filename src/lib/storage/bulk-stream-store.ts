@@ -25,13 +25,14 @@
 
 import { useSyncExternalStore } from "react";
 
-export type BulkMode = "plan" | "prose" | "game";
+export type BulkMode = "plan" | "prose" | "game" | "questions";
 
 type ModeEvents = { start: string; token: string; complete: string };
 const EVENTS: Record<BulkMode, ModeEvents> = {
   plan:  { start: "bulk:plan-start",  token: "bulk:plan-reasoning",  complete: "bulk:plan-complete"  },
   prose: { start: "bulk:prose-start", token: "bulk:prose-token",     complete: "bulk:prose-complete" },
   game:  { start: "bulk:game-start",  token: "bulk:game-reasoning",  complete: "bulk:game-complete"  },
+  questions: { start: "bulk:questions-start", token: "bulk:questions-reasoning", complete: "bulk:questions-complete" },
 };
 
 type Entry = { text: string; active: boolean };
@@ -41,6 +42,7 @@ const stores: Record<BulkMode, Map<string, Entry>> = {
   plan:  new Map(),
   prose: new Map(),
   game:  new Map(),
+  questions: new Map(),
 };
 
 // Subscribers keyed by `${mode}:${sceneId}` — components register one

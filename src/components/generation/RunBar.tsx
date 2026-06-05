@@ -7,7 +7,7 @@ import type { ScenariosRunState } from '@/types/narrative';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
 
-type ModeType = 'auto' | 'scenarios' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game';
+type ModeType = 'auto' | 'scenarios' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game' | 'bulk-questions';
 
 // Pause/resume apply to auto + bulk modes (which manage queues we can
 // genuinely pause between iterations). Scenarios runs are pure
@@ -71,7 +71,15 @@ type BulkGameProps = PausableProps & {
   statusMessage: string;
 };
 
-type Props = AutoModeProps | ScenariosModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps;
+type BulkQuestionsProps = PausableProps & {
+  mode: 'bulk-questions';
+  isRunning: boolean;
+  isPaused: boolean;
+  progress: { completed: number; total: number };
+  statusMessage: string;
+};
+
+type Props = AutoModeProps | ScenariosModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps | BulkQuestionsProps;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +98,7 @@ const MODE_CONFIG: Record<ModeType, { label: string; color: string; bgColor: str
   'bulk-prose': { label: 'Prose', color: 'text-emerald-400', bgColor: 'bg-emerald-400' },
   'bulk-audio': { label: 'Audio', color: 'text-violet-400', bgColor: 'bg-violet-400' },
   'bulk-game': { label: 'Games', color: 'text-amber-400', bgColor: 'bg-amber-400' },
+  'bulk-questions': { label: 'Questions', color: 'text-emerald-400', bgColor: 'bg-emerald-400' },
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -242,7 +251,7 @@ export function RunBar(props: Props) {
           </>
         )}
 
-        {(props.mode === 'bulk-plan' || props.mode === 'bulk-prose' || props.mode === 'bulk-audio' || props.mode === 'bulk-game') && (
+        {(props.mode === 'bulk-plan' || props.mode === 'bulk-prose' || props.mode === 'bulk-audio' || props.mode === 'bulk-game' || props.mode === 'bulk-questions') && (
           <>
             <span className="text-[10px] text-text-secondary font-mono tabular-nums">
               {props.progress.completed}
@@ -257,7 +266,8 @@ export function RunBar(props: Props) {
                 className={`h-full transition-all duration-300 ${
                   props.mode === 'bulk-plan' ? 'bg-sky-400' :
                   props.mode === 'bulk-prose' ? 'bg-emerald-400' :
-                  props.mode === 'bulk-audio' ? 'bg-violet-400' : 'bg-amber-400'
+                  props.mode === 'bulk-audio' ? 'bg-violet-400' :
+                  props.mode === 'bulk-questions' ? 'bg-emerald-400' : 'bg-amber-400'
                 }`}
                 style={{ width: `${(props.progress.completed / Math.max(props.progress.total, 1)) * 100}%` }}
               />
@@ -360,7 +370,7 @@ export function RunBar(props: Props) {
       })()}
 
       {/* Bulk mode status */}
-      {(props.mode === 'bulk-plan' || props.mode === 'bulk-prose' || props.mode === 'bulk-audio' || props.mode === 'bulk-game') && props.statusMessage && (
+      {(props.mode === 'bulk-plan' || props.mode === 'bulk-prose' || props.mode === 'bulk-audio' || props.mode === 'bulk-game' || props.mode === 'bulk-questions') && props.statusMessage && (
         <div className="mt-1 text-[9px] text-text-dim/70 text-center max-w-72 truncate">
           {props.statusMessage}
         </div>

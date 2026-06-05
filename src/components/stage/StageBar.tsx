@@ -8,7 +8,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconList, IconSearch, IconMapPin } from '@/components/icons';
+import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconList, IconSearch, IconMapPin, IconQuestion } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/io/graph-export';
@@ -97,9 +97,9 @@ export const GRAPH_MODES = new Set<GraphViewMode>([
   'network-scene', 'network-arc', 'network-full',
 ]);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'decision' | 'search' | 'driver' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
-type ScenePrimaryMode = 'plan' | 'prose' | 'audio';
-const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio'];
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'decision' | 'search' | 'driver' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
+type ScenePrimaryMode = 'plan' | 'prose' | 'audio' | 'learning';
+const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio', 'learning'];
 
 // Module-level state shared with SceneProseView
 let beatPlanLinkedModeGlobal = false;
@@ -345,6 +345,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'plan') return 'plan';
   if (graphViewMode === 'prose') return 'prose';
   if (graphViewMode === 'audio') return 'audio';
+  if (graphViewMode === 'learning') return 'learning';
   if (graphViewMode === 'decision') return 'decision';
   if (graphViewMode === 'search') return 'search';
   if (graphViewMode === 'driver') return 'driver';
@@ -1157,6 +1158,7 @@ export function StageBar() {
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
+              { mode: 'learning' as ScenePrimaryMode, Icon: IconQuestion, label: 'Learn', hidden: false },
             ]
               .filter(({ hidden }) => !hidden)
               .map(({ mode, Icon, label }, idx) => {

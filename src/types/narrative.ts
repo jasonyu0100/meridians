@@ -950,6 +950,12 @@ export type Scene = {
   planVersions?: PlanVersion[];
   /** Game-theoretic analysis — opt-in, additive layer derived from the beat plan. Single current analysis; regenerate to replace. */
   gameAnalysis?: SceneGameAnalysis;
+  /** Learning question bank — opt-in, additive layer of multiple-choice
+   *  questions testing the concepts and ideas a reader should take away from
+   *  this scene. Extracted exhaustively from the scene with full-narrative
+   *  context; like gameAnalysis it never mutates deltas and regenerating
+   *  replaces the bank. Tags drive cross-scene quiz assembly. */
+  questions?: LearningQuestion[];
   /** Estimated time elapsed since the prior scene in the branch. Required
    *  via prompting going forward — the LLM commits to a best-guess based on
    *  prose cues, even when the gap is fuzzy. Optional in the type for
@@ -2182,6 +2188,83 @@ export type SceneGameAnalysis = {
   summary?: string;
 };
 
+// ── Learning (Quiz) ────────────────────────────────────────────────────────
+// A per-scene bank of multiple-choice questions testing the general concepts
+// and ideas a reader should take from a scene. Purely additive (lives on
+// scene.questions), context-aware of the wider world view, and tagged so the
+// Learn surface can assemble quizzes scoped by tag, scene, arc, or the whole
+// narrative.
+
+/** Cognitive level a question targets — Bloom's Revised Taxonomy, ascending.
+ *  remember (recall a fact) → understand (grasp a relationship/cause) →
+ *  apply (use the idea in a new situation) → analyse (break down, compare,
+ *  infer structure) → evaluate (judge, justify, critique) → create
+ *  (synthesise something new from the material). */
+export type BloomLevel =
+  | "remember"
+  | "understand"
+  | "apply"
+  | "analyse"
+  | "evaluate"
+  | "create";
+
+export const BLOOM_LEVELS: BloomLevel[] = [
+  "remember",
+  "understand",
+  "apply",
+  "analyse",
+  "evaluate",
+  "create",
+];
+
+/** Independent difficulty rating — 7 bands from very-easy to very-hard.
+ *  Orthogonal to Bloom level: a "remember" question can still be very-hard
+ *  (an obscure detail) and a "create" question can be easy (an obvious
+ *  synthesis). */
+export type DifficultyBand =
+  | "very-easy"
+  | "easy"
+  | "easy-medium"
+  | "medium"
+  | "medium-hard"
+  | "hard"
+  | "very-hard";
+
+export const DIFFICULTY_BANDS: DifficultyBand[] = [
+  "very-easy",
+  "easy",
+  "easy-medium",
+  "medium",
+  "medium-hard",
+  "hard",
+  "very-hard",
+];
+
+export type LearningQuestion = {
+  id: string;
+  /** Scene this question was extracted from. */
+  sceneId: string;
+  /** The question stem. */
+  prompt: string;
+  /** 2–6 answer options the reader chooses between. */
+  options: string[];
+  /** Index into `options` of the correct answer. */
+  correctIndex: number;
+  /** Why the correct answer is right — shown after the reader answers. */
+  explanation?: string;
+  /** Concept tags (Title Case) — the unit cross-scene quizzes group by. */
+  tags: string[];
+  /** Cognitive level the question targets (Bloom's Revised Taxonomy). */
+  bloom: BloomLevel;
+  /** Independent difficulty rating (7 bands). */
+  difficulty: DifficultyBand;
+  /** ms since epoch when generated. */
+  createdAt: number;
+};
+
+/** Scope a quiz is assembled over — drives the Learn surface's question pool. */
+export type QuizScope = "scene" | "arc" | "tag" | "narrative";
+
 /** Look up a timeline entry (scene or world build) by ID */
 export function resolveEntry(
   n: NarrativeState,
@@ -2846,6 +2929,7 @@ export type GraphViewMode =
   | "plan"
   | "audio"
   | "decision"
+  | "learning"
   | "system-scene"
   | "system-arc"
   | "system-full"

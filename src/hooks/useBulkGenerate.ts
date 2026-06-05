@@ -5,6 +5,7 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { generateScenePlan, generateSceneProse, reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
+import { generateSceneQuestions } from '@/lib/ai/learning';
 import { FatalApiError } from '@/lib/ai/errors';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
 import { PLAN_CONCURRENCY, PROSE_CONCURRENCY, GAME_CONCURRENCY } from '@/lib/constants';
@@ -12,7 +13,7 @@ import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrat
 import { filterKeysBySceneRange, type SceneRange } from '@/components/timeline/SceneRangeSelector';
 import { logError } from '@/lib/core/system-logger';
 
-type BulkMode = 'plan' | 'prose' | 'game';
+type BulkMode = 'plan' | 'prose' | 'game' | 'questions';
 
 type BulkProgress = {
   completed: number;
@@ -57,6 +58,7 @@ export function useBulkGenerate() {
       mode === 'plan' ? PLAN_CONCURRENCY :
       mode === 'prose' ? PROSE_CONCURRENCY :
       GAME_CONCURRENCY;
+    // (questions share the game/analysis concurrency tier)
     const total = sceneIds.length;
     let completed = 0;
     let nextIndex = 0;
@@ -96,10 +98,16 @@ export function useBulkGenerate() {
       // would just overwrite. Users can Clear + Generate per-scene to
       // force regeneration.
       if (mode === 'game' && scene.gameAnalysis) return;
+      // Questions read prose → scene structure, so every scene is eligible.
+      // Skip scenes that already have a bank — like game analyses, question
+      // banks aren't versioned, so re-running would just overwrite. Users can
+      // Clear + Generate per-scene to force regeneration.
+      if (mode === 'questions' && scene.questions?.length) return;
 
       const statusVerb =
         mode === 'plan' ? (planSource === 'prose' ? 'Reverse-engineering plan for' : 'Planning') :
         mode === 'prose' ? 'Writing' :
+        mode === 'questions' ? 'Extracting questions from' :
         'Analysing games in';
       updateRunState({
         statusMessage: `${statusVerb} "${scene.summary.slice(0, 40)}..."`,
@@ -144,6 +152,17 @@ export function useBulkGenerate() {
               );
           window.dispatchEvent(new CustomEvent('bulk:plan-complete', { detail: { sceneId } }));
           dispatch({ type: 'REVISE_SCENE', sceneId, updates: { plan }, versionType: 'generate' });
+        } else if (mode === 'questions') {
+          window.dispatchEvent(new CustomEvent('bulk:questions-start', { detail: { sceneId } }));
+          const questions = await generateSceneQuestions(
+            activeNarrative, scene, resolvedEntryKeys,
+            {
+              prose: resolvedProse ?? undefined,
+              onReasoning: (_token, accumulated) => window.dispatchEvent(new CustomEvent('bulk:questions-reasoning', { detail: { sceneId, token: accumulated } })),
+            },
+          );
+          window.dispatchEvent(new CustomEvent('bulk:questions-complete', { detail: { sceneId } }));
+          dispatch({ type: 'SET_SCENE_QUESTIONS', sceneId, questions });
         } else {
           window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId } }));
           // Prose mode + 'prose' source: generate prose without a plan so it flows free,
@@ -272,6 +291,13 @@ export function useBulkGenerate() {
         // have an analysis — unlike plan/prose, game analyses aren't
         // versioned.
         if (!scene.gameAnalysis) {
+          scenesToProcess.push(scene.id);
+        }
+      } else if (mode === 'questions') {
+        // Questions read prose → scene structure, so every scene is
+        // eligible. Skip scenes that already have a bank — like game
+        // analyses, question banks aren't versioned.
+        if (!scene.questions?.length) {
           scenesToProcess.push(scene.id);
         }
       }

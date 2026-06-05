@@ -20,6 +20,7 @@ import ThreadGraphView from './ThreadGraphView';
 import ThreadLogGraphView from './ThreadLogGraphView';
 import { ScenePlanView } from './ScenePlanView';
 import { SceneProseView } from './SceneProseView';
+import { SceneLearningView } from './SceneLearningView';
 import { SceneAudioView } from './SceneAudioView';
 import { DecisionView } from './DecisionView';
 import { CaptureView } from '@/components/capture/CaptureView';
@@ -1554,6 +1555,14 @@ export default function Stage() {
       ) : graphViewMode === 'audio' ? (
         currentScene ? (
           <SceneAudioView narrative={narrative} scene={currentScene} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-text-dim text-sm italic">No scene selected.</p>
+          </div>
+        )
+      ) : graphViewMode === 'learning' ? (
+        currentScene ? (
+          <SceneLearningView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-text-dim text-sm italic">No scene selected.</p>

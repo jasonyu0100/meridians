@@ -137,7 +137,8 @@ export default function StagePalette({
     graphViewMode === "plan" ||
     graphViewMode === "prose" ||
     graphViewMode === "audio" ||
-    graphViewMode === "decision";
+    graphViewMode === "decision" ||
+    graphViewMode === "learning";
   const isPhaseMode = graphViewMode === "mode";
   const isMapMode = graphViewMode === "map";
 
@@ -318,7 +319,9 @@ export default function StagePalette({
     const event =
       graphViewMode === "plan"
         ? "canvas:generate-plan"
-        : "canvas:generate-prose";
+        : graphViewMode === "learning"
+          ? "canvas:generate-questions"
+          : "canvas:generate-prose";
     window.dispatchEvent(
       new CustomEvent(event, { detail: { guidance: generateText.trim() } }),
     );
@@ -850,7 +853,7 @@ export default function StagePalette({
                 <span
                   className={`text-[10px] uppercase tracking-wider text-emerald-400/70`}
                 >
-                  Generate {graphViewMode === "plan" ? "Plan" : "Prose"}
+                  Generate {graphViewMode === "plan" ? "Plan" : graphViewMode === "learning" ? "Questions" : "Prose"}
                 </span>
                 <button
                   onClick={() => setGenerateOpen(false)}
@@ -872,7 +875,9 @@ export default function StagePalette({
                   placeholder={
                     graphViewMode === "plan"
                       ? 'Optional direction... e.g. "focus on the power struggle" or "open with a quiet moment"'
-                      : 'Optional direction... e.g. "write it sparse and clipped" or "lean into sensory detail"'
+                      : graphViewMode === "learning"
+                        ? 'Optional direction... e.g. "emphasise the magic-system rules" or "more analyse/evaluate questions"'
+                        : 'Optional direction... e.g. "write it sparse and clipped" or "lean into sensory detail"'
                   }
                   className="w-full h-20 bg-black/30 border border-border rounded text-[11px] text-text-secondary p-2 resize-none outline-none focus:border-violet-300/30 transition-colors placeholder:text-text-dim/30"
                 />
@@ -1237,6 +1242,54 @@ export default function StagePalette({
                         )
                       }
                       startLabel="Start audio generation"
+                    />
+                  </>
+                )}
+
+                {/* Learning palette actions */}
+                {graphViewMode === "learning" && (
+                  <>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider text-world bg-world/10 hover:bg-world/20"
+                      onClick={() => {
+                        setGenerateOpen((v) => !v);
+                        setRewriteOpen(false);
+                      }}
+                    >
+                      Generate
+                    </button>
+                    {currentScene?.questions && currentScene.questions.length > 0 && (
+                      <button
+                        type="button"
+                        className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
+                        onClick={() =>
+                          window.dispatchEvent(
+                            new CustomEvent("canvas:clear-questions"),
+                          )
+                        }
+                        title="Clear questions"
+                      >
+                        <IconClose size={14} />
+                      </button>
+                    )}
+                    <div className="w-px h-4 bg-white/12 mx-0.5" />
+                    <SceneRangeSelector
+                      range={bulkRange}
+                      onChange={setBulkRange}
+                      placement="top"
+                      focus="questions"
+                      trigger={{
+                        icon: <IconAutoLoop size={14} />,
+                        className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
+                        title: "Extract questions across scenes — pick range (sliding-window parallel)",
+                      }}
+                      onStart={(r) =>
+                        window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-questions", { detail: { range: r } }),
+                        )
+                      }
+                      startLabel="Start question extraction"
                     />
                   </>
                 )}
