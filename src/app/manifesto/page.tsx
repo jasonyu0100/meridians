@@ -3526,6 +3526,20 @@ export default function PaperPage() {
               unresolved prisoner&rsquo;s dilemma, and that orthogonality
               is what makes the fourth layer informative.
             </P>
+            <P>
+              Where the four diagnostics read the world <em>out</em>, a
+              fifth instrument reps it <em>in</em>. <B>Learning</B>{" "}
+              extracts a multiple-choice question bank from each scene
+              &mdash; exhaustive over its concepts, aware of the whole
+              narrative so distractors are drawn from the world&rsquo;s
+              own material &mdash; and tags every question by concept,
+              Bloom level, and difficulty. The banks pool into quizzes
+              scoped by tag, scene, arc, or the full world view, and an
+              immediate-feedback runner cycles them flashcard-style. The
+              same substrate the room interrogates becomes the surface
+              its members practise on, so the world a team builds is also
+              the one they can drill until they hold it.
+            </P>
           </Section>
 
           {/* ── Causal Reasoning ──────────────────────────────────────── */}
