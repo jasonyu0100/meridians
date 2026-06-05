@@ -800,7 +800,7 @@ const MOTIONS: Motion[] = [
   {
     motion: "Workshop",
     price: "one-off · ~few hundred – $2K",
-    role: "First paid touch, priced like a team offsite. Leaves a seeded substrate + a generated deck — no setup fee, no recurring obligation.",
+    role: "First paid touch, priced like a team offsite. Leaves a seeded substrate — no setup fee, no recurring obligation.",
   },
   {
     motion: "Recurring",
@@ -1170,6 +1170,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
     items: [
       { id: "abstract", label: "Abstract" },
       { id: "problem", label: "Why Practice" },
+      { id: "narrative-origin", label: "Narrative Origin" },
       { id: "wedge", label: "The Wedge" },
       { id: "approach", label: "The Substrate" },
     ],
@@ -1180,7 +1181,6 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
       { id: "hierarchy", label: "Hierarchy" },
       { id: "forces", label: "Forces" },
       { id: "fate-engine", label: "Fate Engine" },
-      { id: "butterfly", label: "Butterfly" },
     ],
   },
   {
@@ -1457,21 +1457,25 @@ export default function PaperPage() {
             </P>
             <P>
               <B>The category, plainly: an evolving game that
-              codifies reality.</B> Meridians doesn&apos;t sit in
-              consulting, prediction markets, fantasy sports, or
-              educational software cleanly &mdash; it sits in the
-              unclaimed segment where{" "}
-              <em>gaming, education, and strategy converge</em>
-              &mdash; where the education is an organisation learning
-              to see itself decide, by playing in the open, not
-              courseware. Not a strategy tool dressed up as a game;
-              not a serious game pretending to be entertainment. An
-              evolving game that <em>adapts to its players&apos;
-              scenarios and turns their reality into playable
-              worlds</em>. The world view sharpens because the team
-              keeps updating it; it stays alive because the team keeps
-              playing it. Maintenance is the practice, and the
-              practice is the value.
+              codifies reality.</B> Not a strategy tool dressed up as a
+              game. Not a serious game pretending to be entertainment. A
+              game that turns any coherent text into a playable world
+              and sharpens the world view of everyone who plays it. The
+              world view sharpens because the team keeps updating it; it
+              stays alive because the team keeps playing it. Maintenance
+              is the practice, and the practice is the value.
+            </P>
+            <P>
+              <B>It is advisory, not predictive.</B> The superpower is{" "}
+              <em>calibrating beliefs with priors</em> &mdash; both{" "}
+              <em>locally</em> (each perspective&apos;s own stances) and{" "}
+              <em>globally</em> (the room&apos;s shared view) &mdash; so
+              an organisation understands its present and its history
+              clearly and sees, at most, <em>one step</em> ahead
+              &mdash; better decisions made in the open, and behavioural
+              change as a team learns to see itself decide. (Forecasting
+              lives on the substrate, but as a byproduct &mdash; never
+              the pitch.)
             </P>
             <P>
               <B>Vision is humanity&apos;s edge over AI.</B> Models
@@ -1498,7 +1502,11 @@ export default function PaperPage() {
               actors. <B>Fate</B> is the way reality lands on
               what the world view believed. LLM extraction at low
               temperature; deterministic formulas turn deltas
-              into scores. Same input, same score.
+              into scores. Same input, same score. Every organisation
+              already has a narrative &mdash; the decisions it
+              committed, the threats it saw and missed, the model that
+              produced both. The substrate reads it; the war room plays
+              it forward.
             </P>
             <P>
               <B>Private first; public is the open question.</B>{" "}
@@ -1626,6 +1634,56 @@ export default function PaperPage() {
             </P>
           </Section>
 
+          {/* ── The Narrative Origin ──────────────────────────────────── */}
+          <Section id="narrative-origin" label="Narrative Origin">
+            <P>
+              <B>Meridians began with stories, not strategy.</B> The
+              first substrate was a novel &mdash; and the discovery was
+              that any coherent text, read <em>structurally</em> rather
+              than literally, contains a measurable world model: the
+              rules that govern it (<B>System</B>), the actors who move
+              through it (<B>World</B>), and the open questions that
+              decide where it goes (<B>Fate</B>). The math that recovers
+              the dramatic shape of <em>Harry Potter</em> from delta
+              arithmetic is the same math that reads a company&apos;s
+              strategic position from its committed history.
+            </P>
+            <P>
+              <B>Every organisation already has a narrative</B> &mdash;
+              not the one in the annual report, but the one in the
+              decisions it actually made, the threats it saw coming and
+              the ones it didn&apos;t. It has a <em>signature</em>:
+              System-dominant (it runs on rules and process),
+              World-dominant (on relationships and people), or
+              Fate-dominant (on the open bets it lives and dies by). Most
+              companies have never read their own narrative structurally
+              &mdash; they remember outcomes and forget the model that
+              produced them.
+            </P>
+            <P>
+              This is where narrative is <em>predictive</em> in the only
+              sense that matters &mdash; not forecasting events, but
+              revealing the <B>shape of how an organisation moves</B>:
+              where it accelerates, where it hesitates, which surprises
+              it handles and which it has never rehearsed. A decade-long
+              System-dominant company has thin World priors &mdash;
+              fluent in its rules, lost the morning a key person walks.
+              Reading that shape is a <B>diagnostic</B>: the gap between
+              the future you&apos;re prepared for and the one you{" "}
+              <em>believe</em> you&apos;re prepared for is where surprise
+              lives.
+            </P>
+            <P>
+              Meridians starts there. <B>Model</B> reads the narrative
+              you&apos;ve already written and makes it playable;{" "}
+              <B>Capture</B> keeps it honest as the story continues;{" "}
+              <B>Rehearsal</B> plays the chapters that haven&apos;t
+              arrived. Every world view began as a narrative &mdash;
+              yours already exists; the question is whether you can read
+              it.
+            </P>
+          </Section>
+
           {/* ── The Wedge ─────────────────────────────────────────────── */}
           <Section id="wedge" label="The Wedge">
             <P>
@@ -1635,7 +1693,7 @@ export default function PaperPage() {
               the engine is built to honour it. A <B>game master</B>{" "}
               gathers the priors, calls, and disagreements of a room,
               every member represented, and AI-human tools (above all
-              the <em>thread-prediction views</em>) aggregate them
+              the <em>thread-stance / belief views</em>) aggregate them
               &mdash; divergence preserved, not averaged into
               consensus &mdash; into one living read of how the
               organisation believes and decides, disagreements and
@@ -1647,19 +1705,17 @@ export default function PaperPage() {
               scraped for.
             </P>
             <P>
-              <B>The board game is a trojan horse.</B> It enters
-              framed as a team-bonding exercise &mdash; low-friction,
-              no budget line, easy to say yes to &mdash; but the real
-              objective is organisational transformation: instituting
-              one new behaviour, the{" "}
-              <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">capture
-              → rehearse → review</a> loop, that makes
+              <B>The board game is the entry point.</B> It arrives as a
+              team session &mdash; easy to say yes to, no budget line
+              required &mdash; but the objective is organisational
+              transformation: instituting one new behaviour, the{" "}
+              <a href="#loop" className="text-white/70 underline-offset-2 hover:underline">Model
+              → Capture → Rehearsal</a> loop, that makes
               operating an organisation <em>transparent and
               queryable</em>. You cannot realign an organisation you
               cannot see deciding; run weekly, the loop becomes a
               running narrative update of how the place thinks &mdash;
-              an interface layer to the company&apos;s own context.
-              The game is the wrapper; the loop is the payload.
+              an interface layer to the organisation&apos;s own context.
             </P>
             <P>
               <B>Sold to leaders, as transformation.</B> Human-up
@@ -2654,166 +2710,6 @@ export default function PaperPage() {
             </P>
           </Section>
 
-          {/* ── Butterfly ───────────────────────────────────────────── */}
-          <Section id="butterfly" label="Butterfly">
-            <P>
-              Fate measures what reality does to what the world view{" "}
-              <em>believed</em>: it takes an open question, lets
-              reality land on it, and scores the belief.{" "}
-              <B>Butterfly</B> measures what reality does to what a
-              character <em>did</em>: it takes a pivotal decision,
-              traces its consequences forward, and reads the
-              decision&apos;s true effect as the set of Fate outcomes
-              on the threads downstream of it. Fate is reality landing
-              inward on a belief; Butterfly is consequence radiating
-              outward from a choice. They are the two arrows of the
-              same engine &mdash; what you believed and what you did,
-              each answered for by reality.
-            </P>
-            <P>
-              Butterfly is not a rating of a player&apos;s skill; that
-              is what{" "}
-              <a href="#research" className="underline hover:text-white/80">ELO</a>{" "}
-              already does, and it is left exactly as it is. Butterfly
-              is decision-anchored, not player-anchored. The question
-              is not &ldquo;is this actor good at winning?&rdquo; but
-              &ldquo;this specific pivotal choice &mdash; what did it
-              set in motion, and how did that ultimately land on the
-              character who made it?&rdquo; It borrows the fan-out
-              image of the butterfly effect &mdash; a small choice, a
-              wide divergent consequence &mdash; but not its
-              pop-science claim: consequence here is{" "}
-              <em>trackable in retrospect</em> and weighted by stake,
-              the opposite of unforeseeable.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
-              Sealed at commit &mdash; two kinds of opponent
-            </h3>
-            <P>
-              Butterfly&apos;s atom is a committed decision under
-              uncertainty, sealed at the moment of choice &mdash; the
-              option taken, the live alternatives, the stake, and the
-              stance held &mdash; and never edited, so hindsight
-              can&apos;t rewrite what the choice really was. Two
-              flavours, treated identically downstream. A{" "}
-              <B>strategic</B> decision&apos;s uncertainty is another
-              actor: it seals the{" "}
-              <a href="#research" className="underline hover:text-white/80">Decision Matrix</a>&apos;s
-              {" "}axis, shape, and both seats&apos; stake deltas, and
-              the stance is what the committer expected the others to
-              do. An <B>existential</B> decision&apos;s uncertainty is
-              the world: it seals the option set, the stake, and a
-              probability over how reality would land &mdash; a side
-              bet on a Fate thread, reality in the other seat. The
-              two-player game was never essential; it was just the
-              case where the uncertainty was an agent rather than the
-              world&apos;s indifference.
-            </P>
-            <P>
-              The seal binds <em>harder</em> on the existential case,
-              not softer: a game leaves external structure to check
-              your claimed belief, but a solo bet&apos;s only record is
-              the number you sealed &mdash; so capture the commit-time
-              probability as a number, non-editable, or process and
-              luck collapse into &ldquo;I knew it all along.&rdquo;
-              Making the existential case first-class is the correction
-              that matters: anchored only on the two-player matrix,
-              Butterfly would miss the decisions that don&apos;t look
-              adversarial &mdash; the relocation, the hold-or-fold, the
-              slow drift &mdash; which is exactly where operators get
-              hurt, and where the author-your-own-life mode lives.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
-              Causal reach, bounded by the graph
-            </h3>
-            <P>
-              A butterfly&apos;s reach is the subgraph causally
-              downstream of the sealed decision node, traced along the{" "}
-              <a href="#planning" className="underline hover:text-white/80">reasoning graph</a>&apos;s
-              {" "}existing causal edges &mdash; <em>causes</em>,{" "}
-              <em>enables</em>, <em>risks</em>, <em>requires</em>. Only
-              threads reachable from the decision by those edges count
-              as its butterfly, which bounds attribution structurally
-              rather than by storytelling and keeps the claim
-              &ldquo;this choice caused this downstream fate&rdquo;
-              falsifiable. The honest caveat: long-range causal
-              attribution is hard &mdash; when a thread resolves badly
-              several scenes later, many decisions sit between &mdash;
-              so Butterfly leans on the explicit subgraph rather than
-              claiming proof; reach past the edges is suggestive, not
-              certain. Only pivotal, high-stake decisions earn a
-              tracked, long-lived butterfly; routine moves decay out of
-              the ledger, the same curation Fate applies through volume.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
-              Read as Fate, revised over time
-            </h3>
-            <P>
-              Butterfly invents no new scoring rule. A decision&apos;s
-              effect is literally the fate that befell the threads in
-              its causal subgraph &mdash; how they ultimately resolved,
-              their stance closures and resolution quality. A choice
-              that looked small at commit and detonated an arc later
-              has a long reach; one that resolved locally and changed
-              nothing has a short one. The verdict does not close at
-              resolution: it revises as more downstream threads
-              resolve, and can reverse &mdash; a decision that looked
-              good early and aged badly, or the reverse. This is the
-              feature, not the flaw: a decision that only half-resolves,
-              or reverses years later, is not a scoring failure but a
-              butterfly whose causal subgraph has not finished
-              resolving.
-            </P>
-
-            <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-2">
-              The loop it closes
-            </h3>
-            <P>
-              A settled butterfly becomes a prior the next round of{" "}
-              <a href="#loop" className="underline hover:text-white/80">Capture</a>{" "}
-              inherits. Forward play without retrospective is rehearsal
-              you never audit; Butterfly is the audit, and the audit
-              feeds the next rehearsal. It is the answer to the
-              question proper scoring could not handle &mdash; not
-              &ldquo;was the probability calibrated?&rdquo; but
-              &ldquo;was the decision well-made, and what did it
-              ultimately cause?&rdquo;
-            </P>
-            <P>
-              <B>Closure works the way a Fate stance does.</B> A
-              butterfly is itself a belief &mdash; a distribution over
-              verdicts on the decision &mdash; and the downstream Fate
-              outcomes are the evidence that moves its logits. It
-              resolves when one verdict accumulates enough weight to
-              clear a margin over the others, the same closure rule a
-              thread obeys; until then it stays open and revisable. No
-              separate horizon primitive is needed &mdash; a butterfly
-              finishes when its downstream evidence is decisive, and
-              not before.
-            </P>
-            <P>
-              <B>What is built, and what is owed.</B> The structure is
-              symmetric to Fate and rests on machinery that exists
-              &mdash; the game-theoretic deconstruction, the reasoning
-              graph&apos;s causal edges, stake deltas, Fate&apos;s
-              thread resolutions, and Fate&apos;s own closure
-              arithmetic, which the verdict reuses. Owed: the
-              one-player decision record (option set, stake, sealed
-              commit-time stance) beside the two-player game; a worked
-              example; and a re-evaluation cadence. Named, not yet
-              shown.
-            </P>
-            <P>
-              Fate and Butterfly &mdash; what you believed and what you
-              did &mdash; each answered for by reality: one the
-              mind&apos;s bearing on the undecided, the other the long
-              causal shadow of the decided.
-            </P>
-          </Section>
-
           {/* ── Validation ──────────────────────────────────────────── */}
           <Section id="validation" label="Validation">
             <P>
@@ -3155,15 +3051,17 @@ export default function PaperPage() {
               average swing magnitude.
             </P>
             <P>
-              Forecast and decision evaluation is a separate ledger
-              from narrative grading, and it lives in{" "}
-              <a href="#butterfly" className="underline hover:text-white/80">Butterfly</a>
-              {" "}&mdash; which reads the Fate a sealed choice
-              actually caused rather than scoring a probability in
-              isolation; where a bare forecast must still be graded on
-              its own, the discipline stays a strictly proper rule.
+              Calibration feedback &mdash; how a committed stance fared
+              as reality resolved &mdash; is a separate ledger from
+              narrative grading. Where a stance is scored against the
+              record at all, the discipline stays a strictly proper
+              scoring rule
               <Cite id="brier1950" label="Brier 1950" />
               <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />
+              {" "}&mdash; but this is feedback that sharpens the room,
+              not a forecast product. (A per-decision causal audit of
+              what a sealed choice <em>caused</em> is a later, optional
+              layer, not the driver.)
             </P>
           </Section>
 
@@ -4635,10 +4533,18 @@ export default function PaperPage() {
               the room needs.
             </P>
             <P>
-              <B>Information-asymmetry driven card gameplay.</B>{" "}
-              Strategy is about what each player knows, what each
-              player thinks the others know, and which signals are
-              worth sending. The War Room makes this structural.
+              <B>Rehearsal mode one: <em>Conviction</em>.</B> The War
+              Room is played through a rehearsal mode, and the first is
+              a card game called <B>Conviction</B> &mdash; about belief
+              made visible: holding conviction, demonstrating it, and
+              showing it to others is what lets a team coordinate in
+              chaos. (Rehearsal is a pluggable layer over the shared
+              resolver; more modes can ride the same substrate later
+              &mdash; Conviction is where we start.) It is{" "}
+              <B>information-asymmetry driven</B>: strategy is about what
+              each player knows, what each thinks the others know, and
+              which signals are worth sending. The War Room makes this
+              structural.
               Every operator drives one or more <em>entities</em>;
               every entity keeps a <B>private log</B> &mdash; its
               hidden state, actual intent, secret information
@@ -4653,32 +4559,54 @@ export default function PaperPage() {
               charge.
             </P>
             <P>
-              <B>Phased turn-based play.</B> Each turn cycles through
-              ordered phases &mdash; intent, negotiation, commit,
-              reveal, resolution &mdash; with cooperation, defection,
-              and strategic-objective tracking layered on. The{" "}
-              <em>Compass</em> exposes the current decision space:
-              load-bearing variables and the activations they admit.
-              Each operator is dealt a hand from their entity&apos;s
-              available moves, commits a card against the space{" "}
-              &mdash; <B>face-up</B> to signal publicly, <B>face-down
-              </B> to commit privately &mdash; and during the
-              commit-to-reveal window negotiates: disclosing cards,
-              trading information, proposing deals, threatening
-              defections, withholding. Empty seats fill with AI
-              agents from configurable profiles (<em>compete</em>{" "}
-              / <em>cooperate</em> / <em>extract</em> / <em>spoil</em>)
-              playing the same hand against the same Compass.
-              Reveals resolve in declared order; the decision matrix
-              scores the round; the engine steps state forward one
-              tick. New variables surface, old ones decay, hands
-              redeal, the next turn opens. <B>A deck dealt against
-              a moving world, one step at a time.</B>
+              <B>What you do on your turn.</B> One action, poker&apos;s
+              grammar: <B>play</B> a card (commit to an outcome, pay its
+              cost), <B>raise</B> (pour more conviction into one
+              you&apos;ve already backed), <B>pass</B>, or <B>fold</B>{" "}
+              (out for the round). A card is a <em>concrete claim about
+              the near future</em> &mdash; &ldquo;rates hold,&rdquo;
+              &ldquo;the rival cuts price,&rdquo; &ldquo;the regulator
+              opens a file&rdquo; &mdash; drawn from the threads your
+              entity cares about; you play it <B>face-up</B> to signal
+              or <B>face-down</B> to hide. That is the whole physical
+              move; the round wraps the turns in ordered phases (intent,
+              negotiation, commit, reveal, resolution).
+            </P>
+            <P>
+              <B>Conviction is the scarce resource &mdash; and it
+              accumulates.</B> Playing a card{" "}
+              <em>spends conviction priced by improbability</em>: the
+              likely outcome is cheap, forcing a long-shot is dear, and
+              a thread left unplayed is <em>sampled from the
+              distribution</em> &mdash; so the table tracks reality by
+              default and conviction is what bends it. You draw an
+              allowance each round and <em>unspent conviction banks</em>,
+              so the real game is <em>when</em> to spend: back cheap
+              likely calls now, or hoard a war chest to force the
+              improbable future you believe in when it matters. You
+              can&apos;t back everything &mdash; that scarcity is the
+              tension (the GM sets the allowance: the difficulty dial).
+              In the commit-to-reveal window
+              players negotiate &mdash; disclosing, trading information,
+              proposing deals, threatening defections. Empty seats fill
+              with AI agents from configurable profiles (<em>compete</em>{" "}
+              / <em>cooperate</em> / <em>extract</em> / <em>spoil</em>;
+              an adversarial one red-teams). At resolution the
+              round&apos;s played cards <B>build a causal reasoning
+              graph that generates the continuation</B> &mdash; the same
+              resolver the weekly merge uses &mdash; and the world steps
+              forward one tick: new threads surface, old ones decay,
+              hands redeal. <B>A deck dealt against a moving world, one
+              step at a time.</B>
             </P>
             <P>
               Every commitment becomes a thread delta. Every reveal
               updates priors. Every negotiated agreement is a new
-              system rule the next move either honors or breaks.
+              system rule the next move either honors or breaks. You
+              buy the <em>outcome</em> you commit, not its{" "}
+              <em>consequences</em> &mdash; the graph generates the
+              fallout, which can bite, and learning that fallout is the
+              point.
               Operators play the <em>shape</em> of the move; the
               prose layer renders the texture; the priors track
               what the move committed. The War Room is not a
@@ -4699,9 +4627,8 @@ export default function PaperPage() {
               <em>compass</em> scenarios first, then{" "}
               <em>free-form</em> branches operators want to test on
               instinct. Each play-through is a fork; the substrate
-              keeps them all and grades each against what actually
-              shows up in reality between this session and the
-              next. Operators learn which of their reflexive
+              keeps them all and learns from each as reality unfolds
+              between this session and the next. Operators learn which of their reflexive
               hypotheses align with the calibrated cohort and
               which don&apos;t &mdash; one of the loops by which
               the room compounds.
@@ -4716,19 +4643,21 @@ export default function PaperPage() {
               dialogue logs, settings) is fast plumbing. The two
               visual surfaces are <em>seeing</em> surfaces: the
               operator originates the <em>which world, which seat,
-              which move</em> the model&apos;s prediction is for.
+              which move</em> the model reasons over and plays out.
               Vision is the human contribution; the room renders
               it, the substrate records it.
             </P>
             <P>
               <B>Stakes &mdash; fictional, reality-anchored, or
               real.</B> Light: ELO, leaderboards, the satisfaction
-              of a calibrated call. Middle: forecast questions
-              graded against the record, with prize pools. Heavy:
+              of a calibrated call. Middle: calls graded against
+              the record as they resolve, with prize pools. Heavy:
               real trades and positions recorded as commitments.
               Stakes turn rehearsal into <em>skin-in-the-game
               rehearsal</em> &mdash; the cost of a dishonest
-              signal becomes structural.
+              signal becomes structural. (Grading is calibration
+              feedback, not a forecasting product &mdash; the point
+              is honest signals and a sharper room, not a score.)
             </P>
             <P>
               <B>Agency, not price.</B> Prediction markets reduce
@@ -4759,8 +4688,17 @@ export default function PaperPage() {
           {/* ── The Loop ─────────────────────────────────────────────── */}
           <Section id="loop" label="The Loop">
             <P>
-              <B>Three phases: Capture, Rehearsal, Review.</B>{" "}
-              Playing Meridians is one loop in three beats.{" "}
+              <B>The loop: Model &rarr; Capture &rarr; Rehearsal.</B>{" "}
+              Playing Meridians is a <em>feedback loop on dynamic
+              scenarios</em>, not a forecast you grade. There is an{" "}
+              <em>upfront cost</em> &mdash; <B>Model</B>, a one-off
+              setup of the room&apos;s model of reality (its rules,
+              actors, and the open threads that matter) &mdash; and then
+              a continual practice: <B>Capture</B> records priors and
+              commits them to the model, <B>Rehearsal</B> plays the
+              uncertain space forward, and what diverges feeds the next
+              capture. The practice refines participants&apos; decisions
+              and preparedness over time.{" "}
               <B>Capture</B> assembles the priors &mdash; and it is{" "}
               <em>per-perspective</em> by design. Every seat carries its
               own open threads, personal to the actor it models, and
@@ -4789,7 +4727,11 @@ export default function PaperPage() {
               plays the Compass&apos;s possible trajectories forward
               &mdash; board, card, and information dynamics, a
               compressed simulation of reality, to rehearse possible
-              futures. The discipline that earns it: a committed stance
+              futures. We don&apos;t pretend the game <em>is</em> reality
+              &mdash; reality is far more complex &mdash; but it is a
+              genuine <B>practice ground</B> for information, signalling,
+              cooperation, and multi-sided play. The discipline that
+              earns it: a committed stance
               is a <em>soft prior, not a constraint</em>; contested
               threads are protected from forced resolution and each
               play-through carries a divergence directive, so the room
@@ -4798,22 +4740,25 @@ export default function PaperPage() {
               quietly launders a prior into a target &mdash; the same
               way abduction can silently flip into deduction once a
               prior commits. Every play-through is a fork the substrate
-              keeps and grades against what reality actually returns.
+              keeps &mdash; feedback the room learns from as reality
+              unfolds, not a forecast it is scored on.
             </P>
             <P>
-              <B>Review</B> closes the loop. It shows how the
-              room&apos;s forward play varied against the predicted
-              state space &mdash; the Compass cohort the substrate
-              softmax-ranked &mdash; so the divergence becomes the next
-              thread to capture. It audits each committed decision for
-              what reality did to it (
-              <a href="#butterfly" className="underline hover:text-white/80">Butterfly</a>{" "}
-              &mdash; consequence radiating out along the causal graph).
-              And it ships the result as a generated slide deck: the
-              room&apos;s history and the decisions that shaped it,
-              delivered to members&apos; phones, current enough to bring
-              a newcomer up to speed or re-sync a returning one. Audit,
-              attribution, and playback are one phase.
+              <B>The feedback closes the loop.</B> Rehearsal isn&apos;t
+              graded to settle a forecast &mdash; it feeds the next
+              capture. The play shows how the room&apos;s exploration
+              diverged from the modelled state space (the Compass cohort
+              the substrate softmax-ranked), and that divergence becomes
+              the next thread to capture and calibrate. The question is
+              never &ldquo;was the call right?&rdquo; but &ldquo;is the
+              room&apos;s read sharper this cycle than last?&rdquo; &mdash;
+              practising dynamic scenarios is what calibrates beliefs over
+              time. A campaign team that modelled the opposition&apos;s
+              messaging strategy in March, rehearsed three response
+              scenarios in April, and watched one of them land in May has
+              a sharper model in June &mdash; not because they predicted
+              correctly, but because the divergence told them which of
+              their priors were wrong.
             </P>
             <P>
               <B>A seat with no human still has a stance.</B> Because
@@ -4832,7 +4777,7 @@ export default function PaperPage() {
             </P>
             <P>
               The War Room is the heaviest mode of engagement,
-              not the only one. Four surfaces share one
+              not the only one. Three surfaces share one
               substrate; the value of the product is the{" "}
               <em>loop</em> between them.
             </P>
@@ -4872,49 +4817,22 @@ export default function PaperPage() {
                   an operator exploring a fork on their own.
                 </span>
               </li>
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Onboard by playback.</B> Generated{" "}
-                  <B>slide decks</B> walk a newcomer through the
-                  room&apos;s history and the decisions that shaped it
-                  &mdash; the lightweight way to update your priors
-                  when you join a team, move between teams, or step
-                  into a new room. The decks regenerate as the
-                  substrate moves, so they stay current; no session to
-                  convene.
-                </span>
-              </li>
             </ul>
             <P>
               <B>You don&apos;t need to play the full war game to
-              benefit.</B> Building Priors, generating forward, and
-              onboarding from the decks each drive value on their own
-              &mdash; a solo operator can calibrate or run scenarios,
-              and a new hire can get up to speed, without convening
-              anyone. The team-weekly War Room is the deepest source
-              of new deltas; it isn&apos;t the only entry point.
+              benefit.</B> Capturing priors and generating forward each
+              drive value on their own &mdash; a solo operator can
+              calibrate or run scenarios without convening anyone. The
+              team-weekly War Room is the deepest source of new deltas;
+              it isn&apos;t the only entry point.
             </P>
             <P>
               <B>What makes it compound.</B> Each surface feeds the
               others. A scenario surfaces a gap that goes into Priors;
               a Priors update reweights the next play; a play lands new
-              decisions and threads; the next deck onboards a newcomer
-              with them, and that newcomer arrives with sharper priors
-              for the session after. Whichever surface the operator
-              engages, the work compounds.
-            </P>
-            <P>
-              <B>A life accumulates the same way.</B> Gameplay one
-              step at a time &mdash; and a life is the longest game
-              there is. The decisions that compound (what to build,
-              who to keep close, which bet to make) accumulate from
-              thousands of small thoughts and actions, the way a
-              narrative accumulates from scenes. The substrate that
-              holds a market regime holds a life: each observation
-              curated, each call committed, each outcome scored
-              &mdash; so a life authored deliberately is a working
-              model you decide against, not a past you remember.
+              decisions and threads that sharpen the priors for the
+              session after. Whichever surface the operator engages, the
+              work compounds.
             </P>
             <P>
               <B>Be honest about where the loop bites.</B> Play earns
@@ -5033,17 +4951,13 @@ export default function PaperPage() {
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
                   <B>Knowledge transfer.</B> The substrate is the
-                  team&apos;s institutional memory made playable, and
-                  the lightweight way in is <em>playback</em>:{" "}
-                  generated <B>slide decks</B> that walk a newcomer
-                  through the room&apos;s history and the decisions
-                  that shaped it, updating their priors without
-                  convening a session. Decks regenerate as the
-                  substrate moves, so a person joining, moving teams,
-                  or stepping into a new room gets a current read, not
-                  dead documentation. Heavier still: take a seat and
-                  play. Departing experts leave their committed calls
-                  and the threads they opened behind, where the
+                  team&apos;s institutional memory made playable. A
+                  newcomer reads the current model &mdash; board state,
+                  open threads, committed decisions &mdash; to update
+                  their priors without convening a session, then takes a
+                  seat and plays: a current read, not dead
+                  documentation. Departing experts leave their committed
+                  calls and the threads they opened behind, where the
                   substrate keeps them.
                 </span>
               </li>
@@ -5054,7 +4968,7 @@ export default function PaperPage() {
               not an archive. Curation, not capture. The
               fiftieth weekly War Room is qualitatively different
               from the tenth: fifty cycles of rehearsal, fifty
-              curated drops, fifty graded forecasts, and the
+              curated drops, fifty rounds of calibration, and the
               sharpened substrate that emerges from them. The team
               that practises earns the morning the surprise lands.
             </P>
@@ -5268,7 +5182,7 @@ export default function PaperPage() {
               no vendor can ship from cold.</B> A team running
               weekly War Rooms accumulates a working model of its
               own strategic position &mdash; priors, calibrated
-              reads, graded forecasts, and the committed decisions
+              reads, graded calls, and the committed decisions
               and threads the team has played out and named. That
               artefact
               lives in the substrate&apos;s history, on the
@@ -5411,7 +5325,7 @@ export default function PaperPage() {
               capped room is the no-friction taste; the first paid touch
               is a one-off <em>workshop</em>, priced like a team offsite
               (<span className="font-mono tabular-nums text-white/70">~few hundred&ndash;$2K</span>),
-              that leaves a seeded substrate and a generated deck behind
+              that leaves a seeded substrate behind
               &mdash; no setup fee, no recurring obligation, so the
               cheapness buys a foothold rather than a one-night stand.
               It is the validation motion, not the revenue line. The
