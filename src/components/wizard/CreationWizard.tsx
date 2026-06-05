@@ -229,7 +229,7 @@ export function CreationWizard() {
             </div>
             <div>
               <h2 className="text-base font-semibold bg-linear-to-r from-emerald-300 via-cyan-200 to-violet-300 bg-clip-text text-transparent tracking-tight">
-                Generate New World View
+                World View Wizard
               </h2>
               <p className="text-[11px] text-text-dim mt-0.5">
                 Pick the paradigm, write a premise, optionally seed with source material and details.

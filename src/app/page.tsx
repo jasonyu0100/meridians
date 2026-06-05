@@ -404,7 +404,7 @@ export default function HomePage() {
                   >
                     create a new world view
                   </button>{" "}
-                  from a premise
+                  from a wizard
                 </p>
               </>
             )}
