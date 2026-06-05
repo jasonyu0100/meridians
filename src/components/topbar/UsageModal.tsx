@@ -112,7 +112,9 @@ function bucketDaily(logs: ApiLogEntry[], start: Date, end: Date): DailyBucket[]
   const startMs = start.getTime();
   const endMs = end.getTime();
   for (const log of logs) {
-    if (log.status !== 'success') continue;
+    // Failed calls still incurred (billed) input-token cost; only exclude
+    // still-pending in-flight calls — consistent with the gas meter.
+    if (log.status === 'pending') continue;
     if (log.timestamp < startMs || log.timestamp > endMs) continue;
     const d = new Date(log.timestamp);
     const bucket = map.get(dayKey(d));
@@ -439,11 +441,13 @@ export function UsageModal({ logs, onClose }: Props) {
   const [metric, setMetric] = useState<MetricKey>('output');
   const [range, setRange] = useState<RangeKey>('1m');
 
-  const successLogs = useMemo(() => logs.filter((l) => l.status === 'success'), [logs]);
+  // Failed calls still incurred cost; exclude only still-pending in-flight
+  // calls — consistent with the gas meter and the live API-logs total.
+  const billableLogs = useMemo(() => logs.filter((l) => l.status !== 'pending'), [logs]);
 
-  const { start, end } = useMemo(() => rangeWindow(successLogs, range), [successLogs, range]);
+  const { start, end } = useMemo(() => rangeWindow(billableLogs, range), [billableLogs, range]);
 
-  const buckets = useMemo(() => bucketDaily(successLogs, start, end), [successLogs, start, end]);
+  const buckets = useMemo(() => bucketDaily(billableLogs, start, end), [billableLogs, start, end]);
 
   const totals = useMemo(() => {
     let inputTokens = 0;
@@ -538,7 +542,7 @@ export function UsageModal({ logs, onClose }: Props) {
 
         {/* Footnote */}
         <div className="mt-3 text-[10px] text-text-dim">
-          Aggregated from successful API calls. Reasoning tokens included in output. Image generations contribute to cost and call count only.
+          Aggregated from completed API calls (failed calls still incur input-token cost; pending calls excluded). Reasoning tokens included in output. Image generations contribute to cost and call count only.
         </div>
       </ModalBody>
     </Modal>

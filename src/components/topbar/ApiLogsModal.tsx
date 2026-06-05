@@ -2,22 +2,22 @@
 // ApiLogsModal — modal wrapper around ApiLogsViewer with Narrative/Analysis/Misc scope selector.
 
 import { useLogs } from '@/lib/state/logs-context';
-import { useStore } from '@/lib/state/store';
+import { analysisIdsForNarrative, useStore } from '@/lib/state/store';
 import { ApiLogsViewer } from '@/components/apilogs/ApiLogsViewer';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type Scope = 'narrative' | 'analysis' | 'misc';
 
 const SCOPES: { value: Scope; label: string; hint: string }[] = [
   { value: 'narrative', label: 'Narrative', hint: 'Calls tied to this narrative' },
-  { value: 'analysis',  label: 'Analysis',  hint: 'Calls run by text-analysis jobs' },
-  { value: 'misc',      label: 'Misc',      hint: 'Unassociated calls — world generation, suggestions, etc.' },
+  { value: 'analysis',  label: 'Analysis',  hint: 'Analysis & extension calls that built or extended this narrative' },
+  { value: 'misc',      label: 'Global',    hint: 'Global calls not tied to a narrative — wizard world generation, premise suggestions, etc.' },
 ];
 
 const EMPTY_MESSAGE: Record<Scope, string> = {
   narrative: 'No API calls yet. Generate or expand to see logs.',
   analysis:  'No analysis API calls yet.',
-  misc:      'No misc API calls. World-gen and one-off calls without a narrative show here.',
+  misc:      'No global API calls. Wizard world-gen and one-off calls without a narrative show here.',
 };
 
 /**
@@ -25,17 +25,32 @@ const EMPTY_MESSAGE: Record<Scope, string> = {
  * cost display) lives in `ApiLogsViewer`; this wrapper scopes the log set.
  * Three views:
  *  - Narrative — calls tagged with the active narrative
- *  - Analysis — calls produced by text-analysis (any narrative)
- *  - Misc — global / unassociated (world-gen during wizard, suggestPremise, etc.)
+ *  - Analysis — text-analysis / extension calls that built or extended the active narrative
+ *  - Global — unassociated calls (world-gen during wizard, suggestPremise, etc.)
  */
 export function ApiLogsModal({ onClose }: { onClose: () => void }) {
   const { state: logsState, dispatch: logsDispatch } = useLogs();
   const { state: appState } = useStore();
   const [scope, setScope] = useState<Scope>('narrative');
 
+  // Analysis/extension calls log under an `analysisId` scope; map the jobs that
+  // built or extended the active narrative back to it so the Analysis tab is
+  // narrative-scoped — and reconciles with the per-narrative gas meter.
+  const narrativeAnalysisIds = useMemo(
+    () => new Set(analysisIdsForNarrative(appState.analysisJobs, appState.activeNarrativeId)),
+    [appState.analysisJobs, appState.activeNarrativeId],
+  );
+
+  // Tabs must be DISJOINT so Narrative + Analysis sum to the gas meter total.
+  // An analysis/extension call can carry both a narrativeId (a narrative was
+  // active when it ran) and an analysisId — count it once, as Analysis, and
+  // exclude it from Narrative so the two tabs don't double-count the overlap.
+  const isTiedAnalysis = (log: { analysisId?: string }) =>
+    log.analysisId != null && narrativeAnalysisIds.has(log.analysisId);
+
   const filteredLogs = logsState.apiLogs.filter((log) => {
-    if (scope === 'narrative') return log.narrativeId === appState.activeNarrativeId;
-    if (scope === 'analysis') return !!log.analysisId;
+    if (scope === 'analysis') return isTiedAnalysis(log);
+    if (scope === 'narrative') return log.narrativeId === appState.activeNarrativeId && !isTiedAnalysis(log);
     return !log.narrativeId && !log.analysisId;
   });
 

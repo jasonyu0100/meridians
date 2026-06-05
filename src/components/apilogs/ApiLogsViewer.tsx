@@ -50,7 +50,10 @@ type Props = {
 export function ApiLogsViewer({ onClose, logs, title, headerActions, emptyMessage, onClear }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedId ? logs.find((l) => l.id === selectedId) ?? null : null;
-  const totalCost = calculateTotalCost(logs);
+  // Matches the gas meter pill and the historical Usage modal: failed calls
+  // still consumed (and were billed for) input tokens, so they count; only
+  // still-pending in-flight calls are excluded from the spend total.
+  const totalCost = calculateTotalCost(logs.filter((l) => l.status !== 'pending'));
   const hasPending = logs.some((l) => l.status === 'pending');
   const now = useLiveClock(hasPending);
 

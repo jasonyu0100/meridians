@@ -759,6 +759,23 @@ export const SEED_NARRATIVE_IDS = SEED_IDS;
 export const PLAYGROUND_NARRATIVE_IDS = PLAYGROUND_IDS;
 export const ANALYSIS_NARRATIVE_IDS = ANALYSIS_IDS;
 
+/**
+ * The analysis-job ids whose LLM usage belongs to a given narrative: text
+ * extension jobs (`targetNarrativeId`) and text-analysis create jobs
+ * (`narrativeId`, stamped on completion). Their API logs are stored under an
+ * `analysisId` scope, so this mapping is what lets the gas meter and the API
+ * Logs modal attribute that usage back to the narrative consistently.
+ */
+export function analysisIdsForNarrative(
+  jobs: AnalysisJob[],
+  narrativeId: string | null,
+): string[] {
+  if (!narrativeId) return [];
+  return jobs
+    .filter((j) => j.targetNarrativeId === narrativeId || j.narrativeId === narrativeId)
+    .map((j) => j.id);
+}
+
 const defaultViewState: NarrativeViewState = {
   activeBranchId: null,
   currentSceneIndex: 0,

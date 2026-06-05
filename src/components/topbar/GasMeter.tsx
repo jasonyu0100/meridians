@@ -35,11 +35,16 @@ function costForEntry(entry: ApiLogEntry): { input: number; output: number; reas
   return { input: inputCost, output: outputCost, reasoning: reasoningCost };
 }
 
+/** A call counts toward spend once it's a completed billable event. Failed
+ *  calls still consumed (and were billed for) input tokens, so they count;
+ *  only still-pending in-flight calls are excluded. */
+const isBillable = (log: ApiLogEntry) => log.status !== 'pending';
+
 /** Compute total cost for a list of logs */
 export function computeTotalCost(logs: ApiLogEntry[]): number {
   let total = 0;
   for (const log of logs) {
-    if (log.status !== 'success') continue;
+    if (!isBillable(log)) continue;
     const c = costForEntry(log);
     total += c.input + c.output + c.reasoning;
   }
@@ -69,7 +74,7 @@ function bucketByDay(logs: ApiLogEntry[]): { label: string; shortLabel: string; 
 
   const map = new Map<string, ApiLogEntry[]>();
   for (const log of logs) {
-    if (log.status !== 'success' || log.timestamp < windowStart) continue;
+    if (!isBillable(log) || log.timestamp < windowStart) continue;
     const d = new Date(log.timestamp);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     if (!map.has(key)) map.set(key, []);
@@ -97,7 +102,7 @@ function bucketByHour(logs: ApiLogEntry[]): { label: string; shortLabel: string;
 
   const map = new Map<string, ApiLogEntry[]>();
   for (const log of logs) {
-    if (log.status !== 'success' || log.timestamp < windowStart) continue;
+    if (!isBillable(log) || log.timestamp < windowStart) continue;
     const d = new Date(log.timestamp);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}`;
     if (!map.has(key)) map.set(key, []);
@@ -126,7 +131,7 @@ function bucketByMinute(logs: ApiLogEntry[]): { label: string; shortLabel: strin
 
   const map = new Map<string, ApiLogEntry[]>();
   for (const log of logs) {
-    if (log.status !== 'success' || log.timestamp < windowStart) continue;
+    if (!isBillable(log) || log.timestamp < windowStart) continue;
     const d = new Date(log.timestamp);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     if (!map.has(key)) map.set(key, []);
@@ -342,12 +347,12 @@ export function GasMeter({ logs, onOpenHistory }: { logs: ApiLogEntry[]; onOpenH
   const [view, setView] = useState<'cost' | 'tokens' | 'calls' | 'speed'>('cost');
   const [granularity, setGranularity] = useState<'minute' | 'hour' | 'day'>('day');
 
-  const successLogs = useMemo(() => logs.filter((l) => l.status === 'success'), [logs]);
+  const billableLogs = useMemo(() => logs.filter(isBillable), [logs]);
 
   const totals = useMemo(() => {
     let inputTokens = 0, outputTokens = 0, reasoningTokens = 0, inputCost = 0, outputCost = 0, reasoningCost = 0, imageCost = 0, imageCount = 0;
     let speedTokens = 0, speedMs = 0;
-    for (const log of successLogs) {
+    for (const log of billableLogs) {
       const c = costForEntry(log);
       if (isImageGenCall(log)) {
         imageCost += c.output;
@@ -366,12 +371,12 @@ export function GasMeter({ logs, onOpenHistory }: { logs: ApiLogEntry[]; onOpenH
       }
     }
     const avgSpeed = speedMs > 0 ? (speedTokens / speedMs) * 1000 : 0;
-    return { inputTokens, outputTokens, reasoningTokens, inputCost, outputCost, reasoningCost, imageCost, imageCount, totalCost: inputCost + outputCost + reasoningCost + imageCost, calls: successLogs.length, avgSpeed };
-  }, [successLogs]);
+    return { inputTokens, outputTokens, reasoningTokens, inputCost, outputCost, reasoningCost, imageCost, imageCount, totalCost: inputCost + outputCost + reasoningCost + imageCost, calls: billableLogs.length, avgSpeed };
+  }, [billableLogs]);
 
   const modelBreakdown = useMemo(() => {
     const map = new Map<string, { calls: number; inputTokens: number; outputTokens: number; reasoningTokens: number; cost: number }>();
-    for (const log of successLogs) {
+    for (const log of billableLogs) {
       if (isImageGenCall(log)) continue;
       const model = log.model ?? 'unknown';
       const existing = map.get(model) ?? { calls: 0, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cost: 0 };
@@ -386,7 +391,7 @@ export function GasMeter({ logs, onOpenHistory }: { logs: ApiLogEntry[]; onOpenH
     return [...map.entries()]
       .sort((a, b) => b[1].cost - a[1].cost)
       .map(([model, stats]) => ({ model, ...stats }));
-  }, [successLogs]);
+  }, [billableLogs]);
 
   const chartData = useMemo(() => {
     const buckets = granularity === 'minute' ? bucketByMinute(logs) : granularity === 'hour' ? bucketByHour(logs) : bucketByDay(logs);

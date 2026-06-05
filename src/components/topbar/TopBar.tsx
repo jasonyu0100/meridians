@@ -74,10 +74,12 @@ import {
   GAME_TYPE_LABELS,
 } from "@/types/narrative";
 import { useLogs } from "@/lib/state/logs-context";
+import { loadAnalysisApiLogs } from "@/lib/storage/persistence";
 import { useTheme } from "@/lib/state/theme-context";
 import {
   ANALYSIS_NARRATIVE_IDS,
   PLAYGROUND_NARRATIVE_IDS,
+  analysisIdsForNarrative,
   useStore,
 } from "@/lib/state/store";
 import { useWizard } from "@/lib/state/wizard-context";
@@ -338,7 +340,7 @@ export default function TopBar() {
   const searchParams = useSearchParams();
   const { state, dispatch } = useStore();
   const { dispatch: wizardDispatch } = useWizard();
-  const { state: logsState } = useLogs();
+  const { state: logsState, dispatch: logsDispatch } = useLogs();
   const { theme } = useTheme();
   const narrative = state.activeNarrative;
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -948,13 +950,44 @@ export default function TopBar() {
     }
   }, [narrative, state.viewState.activeBranchId]);
 
-  const narrativeLogs = useMemo(
-    () =>
-      state.activeNarrativeId
-        ? logsState.apiLogs.filter((l) => l.narrativeId === state.activeNarrativeId)
-        : logsState.apiLogs,
-    [logsState.apiLogs, state.activeNarrativeId],
+  // Analysis/extension jobs log their LLM calls to an `analysisId`-scoped
+  // store, not the narrative store — so text analysis (create) and text
+  // extension (extend) usage never reached the per-narrative gas meter.
+  // Map every job tied to the active narrative (extend → targetNarrativeId,
+  // create → narrativeId stamped on completion) back to that narrative so its
+  // usage counts toward the meter and historical usage.
+  const narrativeAnalysisIds = useMemo(
+    () => analysisIdsForNarrative(state.analysisJobs, state.activeNarrativeId),
+    [state.analysisJobs, state.activeNarrativeId],
   );
+
+  // Hydrate persisted analysis logs for this narrative's jobs so historical
+  // usage survives reloads (the LogsProvider only loads the narrative store).
+  useEffect(() => {
+    if (narrativeAnalysisIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(narrativeAnalysisIds.map((aid) => loadAnalysisApiLogs(aid)))
+      .then((batches) => {
+        if (cancelled) return;
+        const logs = batches.flat();
+        if (logs.length > 0) logsDispatch({ type: "HYDRATE_API_LOGS", logs });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [narrativeAnalysisIds, logsDispatch]);
+
+  const narrativeLogs = useMemo(() => {
+    const id = state.activeNarrativeId;
+    if (!id) return logsState.apiLogs;
+    const analysisIdSet = new Set(narrativeAnalysisIds);
+    return logsState.apiLogs.filter(
+      (l) =>
+        l.narrativeId === id ||
+        (l.analysisId != null && analysisIdSet.has(l.analysisId)),
+    );
+  }, [logsState.apiLogs, state.activeNarrativeId, narrativeAnalysisIds]);
   const usageCost = useMemo(
     () => computeTotalCost(narrativeLogs),
     [narrativeLogs],
