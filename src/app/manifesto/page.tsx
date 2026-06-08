@@ -3838,39 +3838,32 @@ export default function PaperPage() {
           {/* ── Prose Profiles ────────────────────────────────────────── */}
           <Section id="voice" label="Voice">
             <P>
-              The room ends each session with a record &mdash;
-              negotiated agreements, commitments, reveals, the
-              narration the substrate writes up. That record is
-              prose, and it deserves the same craft as any
-              authored work. Generation separates <B>content</B>{" "}
-              (what is written) from <B>accent</B> (how it
-              sounds). Content comes from beat plans &mdash;
-              blueprints specifying the work each paragraph
-              performs. Accent comes from <B>prose profiles</B>{" "}
-              &mdash; statistical fingerprints of authorial voice
-              reverse-engineered from published works the room
-              can choose to write in. Each beat is classified by
-              function (a 10-item taxonomy: breathe, inform,
-              advance, bond, turn, reveal, shift, expand,
-              foreshadow, resolve) and delivered through one of
-              8 mechanisms (dialogue, action, thought, narration,
-              environment, memory, document, comic). The payoff:{" "}
-              <B>structural control without stylistic
-              constraint</B>. Swap the profile and the same
-              session renders in a different accent.
+              The room ends each session with a record &mdash; negotiated
+              agreements, commitments, reveals, the narration the substrate
+              writes up &mdash; and that record is prose that deserves the
+              same craft as any authored work. Generation separates{" "}
+              <B>content</B> (what is written) from <B>accent</B> (how it
+              sounds). Content comes from beat plans, blueprints specifying
+              the work each paragraph performs; accent comes from <B>prose
+              profiles</B>, statistical fingerprints of authorial voice
+              reverse-engineered from published works. Each beat is
+              classified by function (10: breathe, inform, advance, bond,
+              turn, reveal, shift, expand, foreshadow, resolve) and delivered
+              through one of 8 mechanisms (dialogue, action, thought,
+              narration, environment, memory, document, comic). The payoff:{" "}
+              <B>structural control without stylistic constraint</B> &mdash;
+              swap the profile and the same session renders in a different
+              accent.
             </P>
             <P>
-              Pacing is controlled by <B>Markov chains</B> over
-              the same vocabulary
-              <Cite id="norris1998" label="Norris 1998" />.
-              Two layers, both derived the same way (classify
-              each unit, count consecutive transitions, normalise
-              rows). Layer 1 operates at the <em>scene level</em>{" "}
-              &mdash; an 8-state matrix sampling force profiles
-              for pacing. Layer 2 operates at the{" "}
-              <em>beat level</em> &mdash; a 10-state matrix over
-              beat functions controlling the texture of the
-              written record.
+              Pacing is controlled by <B>Markov chains</B> over the same
+              vocabulary
+              <Cite id="norris1998" label="Norris 1998" />. Two layers, both
+              derived the same way (classify each unit, count consecutive
+              transitions, normalise rows): Layer 1 at the <em>scene
+              level</em>, an 8-state matrix sampling force profiles for
+              pacing; Layer 2 at the <em>beat level</em>, a 10-state matrix
+              over beat functions controlling the texture of the record.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-8 mb-3">
@@ -4099,11 +4092,11 @@ export default function PaperPage() {
             </h3>
             <P>
               Pacing chains control <em>which force profile</em> a scene
-              hits. Within a scene, the prose itself has structure — a
-              sequence of discrete <strong>beats</strong>, each a specific
-              narrative function delivered through a specific mechanism. An
-              LLM decomposes scenes into beats classified against a fixed
-              taxonomy of 10 functions and 8 mechanisms.
+              hits. Within a scene, the prose has its own structure &mdash; a
+              sequence of discrete <strong>beats</strong>, each a narrative
+              function delivered through a mechanism &mdash; and an LLM
+              decomposes scenes into beats against the fixed taxonomy of 10
+              functions and 8 mechanisms.
             </P>
 
             <P>
@@ -4413,11 +4406,11 @@ export default function PaperPage() {
               Combining the Chains
             </h3>
             <P>
-              Two independent chains, orthogonal axes:{" "}
+              Two independent chains on orthogonal axes:{" "}
               <em>what happens</em> (LLM from narrative logic),{" "}
               <em>how intensely</em> (scene-level pacing chain), and{" "}
-              <em>how it reads</em> (beat-level prose chain). Both derived
-              empirically from published works.
+              <em>how it reads</em> (beat-level prose chain) &mdash; both
+              derived empirically from published works.
             </P>
           </Section>
 
@@ -4510,36 +4503,29 @@ export default function PaperPage() {
           <Section id="war-rooms" label="War Rooms">
             <P>
               The <B>War Room</B> is the product&apos;s <B>live</B> half,
-              where the team convenes and plays: the fast
-              counterpart to the asynchronous Capture that feeds it
-              between sessions. Give it a text
-              corpus with enough depth across{" "}
-              <B>System / World / Fate</B> (SWF), and it deploys
-              into a playable room: a vision-rendered board where
-              human operators and AI agents sit around the same
-              state, take turns, and move pieces against a shared
-              rulebook the engine arbitrates. Narrative was the
-              validation substrate; the room is what the
-              substrate is for. Same engine, same forces, same
-              fork-and-commit math underneath &mdash; nothing in
-              this section is speculative architecture. It is the
-              product running today.{" "}
+              the fast counterpart to the asynchronous Capture that feeds
+              it between sessions. Give it a text corpus with enough depth
+              across <B>System / World / Fate</B> (SWF) and it deploys into
+              a playable room: a vision-rendered board where human
+              operators and AI agents sit around the same state, take
+              turns, and move pieces against a shared rulebook the engine
+              arbitrates. Narrative was the validation substrate; the room
+              is what the substrate is for. Same engine, same forces, same
+              fork-and-commit math underneath: not speculative
+              architecture, the product running today.{" "}
               <Cite id="perla1990" label="Perla 1990" />
               <Cite id="schelling1960" label="Schelling 1960" />
             </P>
             <P>
               <B>The console shows the board; everyone joins the same
-              instance.</B> A War Room renders the world view on the
-              shared screen &mdash; the laptop console everyone reads at
-              a glance &mdash; while each player works their{" "}
-              <B>perspective interface</B> on their own device: a
-              controller scoped to their seat (its feed, hand, and
-              history &mdash; how far back is GM-configurable), joined
-              over the tunnel to the same live state. The GM keeps the
-              full console; players get their vantage, not everyone
-              else&apos;s &mdash; which is what keeps the asymmetry
-              honest. The render is one of two surfaces, the same two
-              the app is built around:
+              instance.</B> The shared screen renders the world view at a
+              glance; each player works their <B>perspective interface</B>{" "}
+              on their own device &mdash; a controller scoped to their seat
+              (its feed, hand, and history, depth GM-configurable), joined
+              over the tunnel to the same live state. The GM keeps the full
+              console; players get their vantage, not everyone else&apos;s,
+              which keeps the asymmetry honest. The render is one of two
+              surfaces, the same two the app is built around:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
@@ -4568,74 +4554,65 @@ export default function PaperPage() {
               the room needs.
             </P>
             <P>
-              <B>Rehearsal mode one: <em>Conviction</em>.</B> The War
-              Room is played through a rehearsal mode, and the first is
-              a card game called <B>Conviction</B> &mdash; about belief
-              made visible: holding conviction and showing it is what lets
-              a team coordinate in
-              chaos. It is rehearsal, not entertainment &mdash; capture&apos;s
-              peer-stance reading, gamified and accelerated into a
-              high-feedback drill for deciding under uncertainty and
-              reading the room. With a full table of players and agents
-              the play is <em>emergent, not scripted</em>: sometimes
-              there is no best move, sometimes you commit and signal,
-              sometimes you go covert and trust the team. (Rehearsal is a pluggable layer over the shared
-              resolver; more modes can ride the same substrate later
-              &mdash; Conviction is where we start.)
+              <B>Rehearsal mode one: <em>Conviction</em>.</B> The first
+              rehearsal mode is a card game called <B>Conviction</B>, about
+              belief made visible: holding conviction and showing it is
+              what lets a team coordinate in chaos. It is rehearsal, not
+              entertainment &mdash; capture&apos;s peer-stance reading,
+              gamified into a high-feedback drill for deciding under
+              uncertainty and reading the room. With a full table the play
+              is <em>emergent, not scripted</em>: sometimes there is no best
+              move, sometimes you commit and signal, sometimes you go covert
+              and trust the team. (Rehearsal is a pluggable layer over the
+              shared resolver; more modes can ride the same substrate later.)
             </P>
             <P>
               It is <B>information-asymmetry driven</B>: strategy is what
-              each player knows, what each thinks the others know, and
-              which signals are worth sending &mdash; and the War Room makes
-              that structural.
-              Every operator drives one or more <em>entities</em>;
-              each keeps a <B>private log</B> (its hidden state) and
-              reads a <B>perspective feed</B> &mdash; the world retold
-              from its vantage, refreshed each step, and all it (or the
-              AI playing it) knows. Talk is <em>cheap</em>:
-              negotiate, propose, threaten, mislead &mdash; words cost
-              and bind nothing. Even who you can talk to is a
-              position: seats sharing a place get a <B>private location
-              channel</B> where alliances form, and a seat travels the
-              map <em>node-to-node, one hop a round</em>, reshaping the
-              streams it holds. A card is the opposite &mdash; a{" "}
-              <B>paid, binding commitment</B> (face-up to show it,
-              face-down to hide it), which is what makes it a credible
-              signal. So you <B>cooperate</B> by backing
-              your words with cards and <B>defect</B> by playing against
-              them. What you said is free; what you played is on the
-              record, and the gap is where trust dies.
+              each player knows, what each thinks the others know, and which
+              signals are worth sending. Every operator drives one or more{" "}
+              <em>entities</em>; each keeps a <B>private log</B> (its hidden
+              state) and reads a <B>perspective feed</B> &mdash; the world
+              retold from its vantage, refreshed each step, and all it (or
+              the AI playing it) knows. Talk is <em>cheap</em>: negotiate,
+              propose, threaten, mislead &mdash; words bind nothing. Even who
+              you can talk to is a position: seats sharing a place get a{" "}
+              <B>private location channel</B> where alliances form, and a
+              seat travels the map <em>node-to-node, one hop a round</em>,
+              reshaping the streams it holds. A card is the opposite, a{" "}
+              <B>paid, binding commitment</B> (face-up to show it, face-down
+              to hide it), which makes it a credible signal. You{" "}
+              <B>cooperate</B> by backing your words with cards and{" "}
+              <B>defect</B> by playing against them. What you said is free;
+              what you played is on the record, and the gap is where trust
+              dies.
             </P>
             <P>
               <B>What you do on your turn.</B> One action, poker&apos;s
               grammar: <B>play</B> a card (commit to an outcome, pay its
-              cost), <B>raise</B> (pour more conviction into one
-              you&apos;ve already backed), <B>pass</B>, or <B>fold</B>{" "}
-              (out for the round). A card is a <em>concrete claim about
-              the near future</em> &mdash; &ldquo;rates hold,&rdquo;
-              &ldquo;the rival cuts price,&rdquo; &ldquo;the regulator
-              opens a file&rdquo; &mdash; drawn from the threads your
-              entity cares about; you play it <B>face-up</B> to signal
-              or <B>face-down</B> to hide. Cards are grouped by{" "}
-              <B>stream</B> &mdash; one open question and the outcomes you
-              can back &mdash; each carrying a <em>sparkline</em> of how
-              its belief moved as priors landed. That is the whole
-              physical move; the round wraps the turns in ordered phases
-              (intent, negotiation, commit, reveal, resolution).
+              cost), <B>raise</B> (pour more conviction into one already
+              backed), <B>pass</B>, or <B>fold</B>. A card is a{" "}
+              <em>concrete claim about the near future</em> &mdash;
+              &ldquo;rates hold,&rdquo; &ldquo;the rival cuts price,&rdquo;
+              &ldquo;the regulator opens a file&rdquo; &mdash; drawn from the
+              threads your entity cares about, played <B>face-up</B> to
+              signal or <B>face-down</B> to hide. Cards are grouped by{" "}
+              <B>stream</B> (one open question and the outcomes you can
+              back), each carrying a <em>sparkline</em> of how its belief
+              moved as priors landed. The round wraps the turns in ordered
+              phases (intent, negotiation, commit, reveal, resolution).
             </P>
             <P>
               <B>Conviction is the scarce resource &mdash; and it
               decays.</B> Playing a card <em>spends conviction priced by
-              improbability</em>: the likely call is cheap, a
-              long-shot dear. You grow your hand by <B>feeding priors to
-              your streams</B> &mdash; belief that genuinely shifts the
-              odds earns conviction and cheapens the call &mdash; but one
-              the engine reads as <em>implausible or over-biasing is
-              refused</em>, so you influence only within the plausible (no
-              fantasy, no junk in the shared model). Leave a stance
-              unplayed and you <em>cede</em> it; the question{" "}
-              <em>closes at round&apos;s end</em>. <B>Certainty is an
-              aggregate of conviction</B> &mdash; the world is what the
+              improbability</em>: the likely call is cheap, a long-shot
+              dear. You grow your hand by <B>feeding priors to your
+              streams</B> &mdash; belief that genuinely shifts the odds
+              earns conviction and cheapens the call, but one the engine
+              reads as <em>implausible or over-biasing is refused</em>, so
+              you influence only within the plausible (no junk in the shared
+              model). Leave a stance unplayed and you <em>cede</em> it; the
+              question <em>closes at round&apos;s end</em>. <B>Certainty is
+              an aggregate of conviction</B> &mdash; the world is what the
               room commits to. An allowance arrives each round; unspent
               conviction banks but <em>decays</em>, so hoarding costs you.
             </P>
@@ -4653,94 +4630,77 @@ export default function PaperPage() {
               dealt against a moving world, one step at a time.</B>
             </P>
             <P>
-              Every commitment becomes a thread delta. Every reveal
-              updates priors. Every negotiated agreement is a new
-              system rule the next move either honors or breaks. You
-              buy the <em>outcome</em> you commit, not its{" "}
-              <em>consequences</em> &mdash; the graph generates the
+              Every commitment becomes a thread delta, every reveal updates
+              priors, every negotiated agreement a new system rule the next
+              move honors or breaks. You buy the <em>outcome</em> you commit,
+              not its <em>consequences</em> &mdash; the graph generates the
               fallout, which can bite, and learning that fallout is the
-              point.
-              Operators play the <em>shape</em> of the move; the
-              prose layer renders the texture; the priors track
-              what the move committed. The War Room is not a
-              microsim &mdash; one card, one negotiation, one
-              resolution per phase &mdash; so the room moves at
-              the pace of strategic conversation, not tactical
-              execution. AI-dealt hands surface the plays the
-              priors say make sense now; operators can also{" "}
-              <em>author</em> their own &mdash; bespoke decisions,
-              side-channel proposals, disclosures not in the dealt
-              hand. AI keeps the game honest to the substrate; custom
-              cards keep it honest to real intuition.
+              point. The War Room is not a microsim (one card, one
+              negotiation, one resolution per phase), so it moves at the pace
+              of strategic conversation, not tactical execution. AI-dealt
+              hands surface the plays the priors say make sense now;
+              operators can also <em>author</em> their own &mdash;
+              side-channel proposals, disclosures not in the dealt hand. AI
+              keeps the game honest to the substrate; custom cards keep it
+              honest to real intuition.
             </P>
             <P>
-              <B>Multiple play-throughs.</B> The room plays the
-              future several ways &mdash; high-mass <em>compass</em>{" "}
-              scenarios first, then <em>free-form</em> branches tested
-              on instinct. Each play-through is a kept fork, so you can
-              <B>replay a scenario under different conditions</B> and,
-              because the graph <em>reasons</em> the outcome rather than
-              scripting it, get a different continuation that tests
-              whether you understood why. <B>Disclosure:</B> that
-              reasoning is the engine&apos;s subjective reading, not the
-              real world &mdash; an LLM walking a causal graph. It is{" "}
-              <B>regenerable</B> with a custom guidance vector or
-              thinking mode (as Maps already are; freeform by default),
-              so a resolution is <em>a</em> reasoned reading, never{" "}
+              <B>Multiple play-throughs.</B> The room plays the future
+              several ways &mdash; high-mass <em>compass</em> scenarios
+              first, then <em>free-form</em> branches tested on instinct.
+              Each is a kept fork, so you can <B>replay under different
+              conditions</B> and, because the graph <em>reasons</em> the
+              outcome rather than scripting it, get a different continuation
+              that tests whether you understood why. <B>Disclosure:</B> that
+              reasoning is the engine&apos;s subjective reading, an LLM
+              walking a causal graph, not the real world. It is{" "}
+              <B>regenerable</B> with a custom guidance vector or thinking
+              mode, so a resolution is <em>a</em> reasoned reading, never{" "}
               <em>the</em> answer.
             </P>
             <P>
-              <B>Eyes on the board, eyes on the graph.</B> Most
-              operator time lives on those two surfaces &mdash; board
-              and graph; everything else (cards, dialogue logs,
-              settings) is fast plumbing. They are <em>seeing</em>{" "}
-              surfaces: the operator originates the <em>which world,
-              which seat, which move</em> the model reasons over and
-              plays out. Vision is the human contribution; the room
-              renders it, the substrate records it.
+              <B>Eyes on the board, eyes on the graph.</B> Most operator
+              time lives on those two surfaces; everything else (cards,
+              dialogue logs, settings) is fast plumbing. They are{" "}
+              <em>seeing</em> surfaces: the operator originates the{" "}
+              <em>which world, which seat, which move</em> the model reasons
+              over. Vision is the human contribution; the room renders it,
+              the substrate records it.
             </P>
             <P>
               <B>Betting is the competitive layer &mdash; pari-mutuel,
               GM-run.</B> Conviction <em>shapes</em> the outcome; betting{" "}
               <em>wagers</em> on it &mdash; a side economy the game master
-              administers and toggles per room (<B>on</B>, competition and
-              alliances form around the pool; <B>off</B>, pure strategic
-              rehearsal). It is <B>off by default and consent-gated</B>
-              &mdash; GM and seated players opt in together &mdash; offered
-              only in fast-feedback rooms (markets, campaigns, live ops),
-              never long-horizon strategy, and <B>fully separable</B>: a
-              surface over stance pricing that never touches the Capture
+              toggles per room. It is <B>off by default and consent-gated</B>,
+              offered only in fast-feedback rooms (markets, campaigns, live
+              ops), never long-horizon strategy, and <B>fully separable</B>:
+              a surface over stance pricing that never touches the Capture
               loop or the substrate, so it switches off without a trace.
-              Stakes pool on each outcome and the pool, less
-              the GM&apos;s rake, splits among winners pro-rata &mdash; the
-              odds are the table&apos;s, not a book&apos;s &mdash; and
-              because the pool pays least on the favourite,
-              <em>forcing a long-shot you also backed</em> is the sharp
-              play. Stakes scale with it: <B>fictional</B> (chips, ELO,
+              Stakes pool on each outcome and split among winners pro-rata
+              less the GM&apos;s rake &mdash; the odds are the table&apos;s,
+              not a book&apos;s &mdash; and because the pool pays least on the
+              favourite, <em>forcing a long-shot you also backed</em> is the
+              sharp play. Stakes scale: <B>fictional</B> (chips, ELO,
               leaderboards), <B>reality-anchored</B> (calls graded against
-              the record, with prize pools), or <B>real</B> (trades and
-              positions recorded as commitments, only with legal sign-off)
-              &mdash; turning rehearsal
+              the record, with prize pools), or <B>real</B> (trades recorded
+              as commitments, only with legal sign-off) &mdash; turning it
               into <em>skin-in-the-game rehearsal</em> where a dishonest
               signal costs you. (Grading stays calibration feedback, not a
-              forecasting product &mdash; the point is honest signals and
-              a sharper room.)
+              forecasting product.)
             </P>
             <P>
               <B>Agency, not price.</B> Prediction markets reduce
               every participant to a price and a position size.
               <Cite id="hanson2003" label="Hanson 2003" />
               <Cite id="wolfers2004" label="Wolfers &amp; Zitzewitz 2004" />
-              {" "}A War Room asks you to <em>play the actor that
-              produces the outcome</em> &mdash; take a seat, hold
-              a private log, signal with cards, negotiate, commit
-              to a phased move. The market gives you a number; the
-              room gives you a role and a story you helped author
-              &mdash; calibrated probabilities <em>plus</em> the
-              causal chains that got there. Private rooms compound
-              one operator&apos;s edge; public rooms aggregate
-              played seats from anyone who joins (Operating Model
-              for the breakdown).
+              {" "}A War Room asks you to <em>play the actor that produces
+              the outcome</em> &mdash; take a seat, hold a private log,
+              signal with cards, negotiate, commit. The market gives you a
+              number; the room gives you a role and a story you helped author
+              &mdash; calibrated probabilities <em>plus</em> the causal
+              chains that got there. Private rooms compound one
+              operator&apos;s edge; public rooms aggregate played seats from
+              anyone who joins (Operating Model for the breakdown).
             </P>
             <P>
               The headline, plainly:{" "}
@@ -4777,80 +4737,46 @@ export default function PaperPage() {
             </P>
             <P>
               <B>The loop: Model &rarr; Capture &rarr; Rehearsal.</B>{" "}
-              Playing Meridians is a <em>feedback loop on dynamic
-              scenarios</em>, not a forecast you grade. There is an{" "}
-              <em>upfront cost</em> &mdash; <B>Model</B>, a one-off
-              setup of the room&apos;s model of reality (its rules,
-              actors, and the open threads that matter) &mdash; and then
-              a continual practice: <B>Capture</B> records priors and
-              commits them to the model, <B>Rehearsal</B> plays the
-              uncertain space forward, and what diverges feeds the next
-              capture. The practice refines participants&apos; decisions
-              and preparedness over time.{" "}
-              <B>Capture</B> assembles the priors &mdash; and it is{" "}
-              <em>per-perspective</em> by design. Every seat carries its
-              own open threads, personal to the actor it models, and
-              Capture sharpens <em>that seat&apos;s</em> stance as priors
-              accumulate. It is not a forecasting pool that averages the
-              room into one consensus &mdash; which is exactly what you
-              must not do when a seat models an adversary who should
-              surprise you. The adversary&apos;s seat keeps its own
-              deliberately hostile priors; what is shared is the board,
-              not the belief. The priors arrive two ways: live, each
-              member tends their own seat through the full interface;
-              dark, they message a <B>WhatsApp number paired to the
-              room</B> and the engine parses each member&apos;s notes
-              into priors on <em>their own</em> seat &mdash; updating its
-              streams, opening a new one when a note carries a genuinely
-              new question &mdash; under the same plausibility gate, the
-              game master curating the exceptions. A sparse
-              seat just holds a wider, less-settled stance &mdash; it is
-              never folded into someone else&apos;s. Threads are not
-              fixed either &mdash; new ones are added as the story turns,
-              so each perspective is an evolving decision system.
+              Playing Meridians is a feedback loop on dynamic scenarios,
+              not a forecast you grade. <B>Model</B> is the one-off setup
+              of the room&apos;s reality &mdash; its rules, actors, and
+              open threads. Then the practice: <B>Capture</B> records
+              priors and commits them; <B>Rehearsal</B> plays the
+              uncertain space forward; what diverges feeds the next
+              capture. Capture is <em>per-perspective</em>: every seat
+              sharpens <em>its own</em> stance, never pooled into
+              consensus &mdash; exactly what you must not do when a seat
+              models an adversary who should surprise you (its seat keeps
+              deliberately hostile priors; what&apos;s shared is the
+              board, not the belief). Priors arrive two ways: <em>live</em>,
+              each member tends their seat; <em>dark</em>, they message a
+              WhatsApp number paired to the room and the engine parses
+              each member&apos;s notes into priors on their own seat, the
+              game master curating exceptions. Threads aren&apos;t fixed
+              either &mdash; new ones open as the story turns, so each
+              perspective is an evolving decision system.
             </P>
             <P>
-              <B>Rehearsal</B> explores the uncertainty &mdash; and
-              must not re-enact the prior. When the captured priors
-              settle, only the moves the room has <em>committed to or
-              holds at high certainty</em> are played forward to advance
-              the simulation; everything still contested stays open.
-              Rehearsal takes that uncertain space into the War Room and
-              plays the Compass&apos;s possible trajectories forward
-              &mdash; board, card, and information dynamics, a
-              compressed simulation of reality, to rehearse possible
-              futures. We don&apos;t pretend the game <em>is</em> reality
-              &mdash; reality is far more complex &mdash; but it is a
-              genuine <B>practice ground</B> for information, signalling,
-              cooperation, and multi-sided play. The discipline that
-              earns it: a committed stance
-              is a <em>soft prior, not a constraint</em>; contested
-              threads are protected from forced resolution and each
-              play-through carries a divergence directive, so the room
-              explores the state space rather than confirming its own
-              read back to itself. Without that, capture-then-rehearse
-              quietly launders a prior into a target &mdash; the same
-              way abduction can silently flip into deduction once a
-              prior commits. Every play-through is a fork the substrate
-              keeps &mdash; feedback the room learns from as reality
-              unfolds, not a forecast it is scored on.
-            </P>
-            <P>
-              <B>The feedback closes the loop.</B> Rehearsal isn&apos;t
-              graded to settle a forecast &mdash; it feeds the next
-              capture. The play shows how the room&apos;s exploration
-              diverged from the modelled state space (the Compass cohort
-              the substrate softmax-ranked), and that divergence becomes
-              the next thread to capture and calibrate. The question is
-              never &ldquo;was the call right?&rdquo; but &ldquo;is the
-              room&apos;s read sharper this cycle than last?&rdquo; &mdash;
-              practising dynamic scenarios is what calibrates beliefs over
-              time. A campaign team that modelled the opposition&apos;s
-              messaging strategy in March, rehearsed three response
-              scenarios in April, and watched one of them land in May has
-              a sharper model in June &mdash; not because they predicted
-              correctly, but because the divergence told them which of
-              their priors were wrong.
+              <B>Rehearsal explores the uncertainty; it must not re-enact
+              the prior.</B> Only moves the room has committed or holds at
+              high certainty advance the simulation; the contested space
+              stays open and plays forward over the Compass &mdash; a
+              compressed simulation, not reality, but a genuine practice
+              ground for information, signalling, and multi-sided play.
+              The discipline that earns it: a committed stance is a{" "}
+              <em>soft prior, not a constraint</em>, contested threads are
+              protected, and each play-through carries a divergence
+              directive &mdash; so the room explores the state space
+              instead of confirming its own read. Every play-through is a
+              kept fork, and the gap between the room&apos;s exploration
+              and the modelled cohort becomes the next thread to capture.
+              The question is never &ldquo;was the call right?&rdquo; but
+              &ldquo;is the read sharper this cycle than last?&rdquo; A
+              campaign team that modelled the opposition in March,
+              rehearsed three responses in April, and watched one land in
+              May has a sharper model in June &mdash; not because it
+              predicted correctly, but because the divergence showed which
+              priors were wrong.
             </P>
             <P>
               <B>Same resolver, two triggers &mdash; and only confirmed
@@ -4866,79 +4792,27 @@ export default function PaperPage() {
               it&apos;s what stops the substrate self-confirming.
             </P>
             <P>
-              <B>A seat with no human still has a stance.</B> Because
-              Capture is per-perspective, an empty or quiet seat is not
-              a hole in the loop: the engine can simulate its priors
-              from the stances and open questions already on it, playing
-              the actor the way its recorded continuity says it would.
-              That keeps a thin-rostered team whole &mdash; an
-              underserved room missing a perspective has it filled
-              rather than going blind &mdash; and it composes upward: AI
-              agents take seats beside humans, and at the limit a fully
-              autonomous room runs every seat, narratives and war games
-              that simulate their own detailed priors. We mainly support
-              humans; the simulation is what lets the loop keep running
-              when a human is not there to run it.
+              <B>An empty seat still has a stance.</B> Because Capture is
+              per-perspective, the engine can simulate a quiet seat&apos;s
+              priors from its recorded continuity &mdash; keeping a
+              thin-rostered team whole, putting AI agents beside humans,
+              at the limit running a fully autonomous room. We mainly
+              support humans; simulation just keeps the loop running when
+              one isn&apos;t there.
             </P>
             <P>
-              The War Room is the heaviest mode of engagement,
-              not the only one. Three surfaces share one
-              substrate; the value of the product is the{" "}
-              <em>loop</em> between them.
-            </P>
-            <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Capture the priors.</B> Members collect
-                  observations against the room&apos;s open questions,
-                  filtering and structuring them (web search assists).{" "}
-                  <B>Priors</B> are per-perspective &mdash; each seat
-                  keeps its own, a general one by default &mdash; and
-                  read out a calibrated, running probability on how each
-                  thread resolves, a stance that moves as evidence
-                  accumulates. A seat&apos;s accumulating priors are its{" "}
-                  <B>stream</B>; fold a set of streams into the world view
-                  &mdash; a <B>merge</B> &mdash; and their stances commit,
-                  the read that guides move generation, the next N scenes
-                  that carry the story forward.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Play the future.</B> The full War Room
-                  &mdash; phased turns, cards, multi-seat
-                  negotiation, AI agents filling empty seats.
-                  Heaviest mode; richest source of new deltas.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white/25 shrink-0">·</span>
-                <span>
-                  <B>Generate forward.</B> The engine extends
-                  the substrate without a session &mdash;
-                  scenario cohorts, reasoning graphs, branch
-                  continuations. Solo prep before a meeting, or
-                  an operator exploring a fork on their own.
-                </span>
-              </li>
-            </ul>
-            <P>
-              <B>You don&apos;t need to play the full war game to
-              benefit.</B> Capturing priors and generating forward each
-              drive value on their own &mdash; a solo operator can
-              calibrate or run scenarios without convening anyone. The
-              team-weekly War Room is the deepest source of new deltas;
-              it isn&apos;t the only entry point.
-            </P>
-            <P>
-              <B>What makes it compound.</B> Each surface feeds the
-              others. A scenario surfaces a gap that goes into Priors;
-              a Priors update reweights the next play; a play lands new
-              decisions and threads that sharpen the priors for the
-              session after. Whichever surface the operator engages, the
-              work compounds.
+              <B>Three surfaces, one substrate.</B> <B>Capture</B> the
+              priors (each seat&apos;s running stance; fold a set of
+              streams into a <em>merge</em> and they commit, guiding the
+              next moves). <B>Play</B> the future (the full War Room: the
+              heaviest mode, the richest source of deltas). <B>Generate</B>{" "}
+              forward (scenario cohorts and continuations, solo, no
+              session). Each feeds the others &mdash; a scenario surfaces
+              a gap for Priors, a Priors update reweights the next play, a
+              play lands threads that sharpen the next. You don&apos;t
+              need the full war game to benefit; capturing and generating
+              earn their keep alone, and the team-weekly room is just the
+              deepest source of deltas.
             </P>
             <P>
               <B>Be honest about where the loop bites &mdash; and where
@@ -4948,125 +4822,105 @@ export default function PaperPage() {
               resolves once, ambiguously, years later &mdash; the
               partial, deferred outcomes the write-back handles worst.
               Name the tension plainly: <em>several of the highest-ACV
-              verticals sit where the loop is slowest</em>. That is not a
-              refutation &mdash; rehearsing a one-shot decision still
-              beats walking in cold, and the fast-feedback surfaces
-              inside any of those teams (the weekly read, the live file)
-              are where the reps accrue &mdash; but it sets the division
-              of labour: play to sharpen the reflexes you use weekly,
-              accumulate to face the few decisions you only get to make
-              once. We are clear-eyed that the slow, one-shot end is the
-              part still to prove.
+              verticals sit where the loop is slowest</em>, and that is
+              exactly where the brand points &mdash; strategic rehearsal,
+              the decisions that justify the price. The contradiction is
+              only apparent, and it dissolves once you are precise about
+              what is sold. We do not sell a <em>prediction</em> of the
+              one-shot outcome &mdash; no honest tool can grade an M&amp;A
+              bet before it resolves, and any that claims to is lying.
+              We sell the <em>calibrated team</em> that walks into it:
+              judgement sharpened on the fast loops nested inside every
+              slow domain (the weekly read, the live file, the deal in
+              flight &mdash; the slow decision is never a single event,
+              it sits atop months of fast ones), and priors compounded
+              between sessions into the artefact the room carries through
+              the door. Calibration is the product; it is proven on the
+              fast end and <em>transferred</em> to the slow one by the
+              same people. So the division of labour holds: play to
+              sharpen the reflexes you use weekly, accumulate to face the
+              few decisions you only get to make once. What stays
+              unproven is narrow and we say so &mdash; not that rehearsal
+              helps the one-shot call (a rehearsed team beating a cold one
+              is the oldest result there is), but that our write-back can
+              <em>score</em> a one-shot call cleanly enough to compound on
+              it. That is the slow, one-shot end still to prove; the value
+              proposition does not wait on it.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
               Practice
             </h3>
             <P>
-              The cadence that produces the richest substrate is the
-              team that institutes the War Room weekly or monthly. The
-              lighter surfaces above &mdash; calibrating Priors,
-              generating forward &mdash; need none of the discipline
-              below. What lives here is the heavy ritual: meeting
-              regularly to build reflexes for adversarial moves,
-              calibrated priors on which futures arrive, and doctrine
-              that survives the day a surprise lands.
+              <B>The maintenance is the practice.</B> The richest
+              substrate comes from the team that institutes the War Room
+              on a cadence (the lighter surfaces above need none of this
+              ritual). A world view decays the moment the team stops
+              updating it; every session is a maintenance pass &mdash;
+              walk the Priors, play the future forward, score the round
+              &mdash; that keeps the model honest to a world still moving.{" "}
+              <B>Weekly</B> for what moves fast (markets, current ops, a
+              campaign in flight): one to two hours, each operator walking
+              in with the week&apos;s signal. <B>Monthly</B> for what
+              moves slow (doctrine, portfolio, multi-year bets): two to
+              four hours, rehearsing strategic <em>shape</em> &mdash; the
+              kind of move you&apos;ll reach for under pressure six months
+              out.
             </P>
             <P>
-              <B>The substrate requires maintenance, and the
-              maintenance is the practice.</B> A world view is not
-              a one-time deliverable &mdash; it decays the moment the
-              team stops updating it. Every session is a maintenance
-              pass: the team walks its Priors, plays the future
-              forward, scores the round. Stop playing for a quarter
-              and the priors go stale. The maintenance loop is what
-              keeps the substrate honest to a world that is itself
-              still moving.
-            </P>
-            <P>
-              <B>Weekly War Rooms</B> &mdash; for what moves fast
-              (markets, current ops, competitive intel, a
-              campaign in flight, a live policy file). One to
-              two hours. Each operator walks in with the
-              week&apos;s fresh signal; the opening integrates
-              it; the rest plays the implications forward.
-            </P>
-            <P>
-              <B>Monthly War Rooms</B> &mdash; for what moves
-              slow (doctrine, portfolio composition,
-              organisational design, multi-year political bets).
-              Two to four hours. Players come with accumulated
-              reading; the room rehearses strategic{" "}
-              <em>shape</em> &mdash; not the next move but the
-              kind of move the operator reaches for under
-              pressure six months from now.
-            </P>
-            <P>
-              <B>Who it&apos;s for.</B> Five honest use cases:
+              <B>Who it&apos;s for.</B> Six honest use cases:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Personal simulation.</B> A career pivot,
-                  relocation, treatment plan. The solo operator
-                  takes their own seat plus the seats of
-                  consequential others (employer, market, family,
-                  regulator) and plays the move forward.
+                  <B>Personal simulation.</B> A career pivot or relocation:
+                  the solo operator takes their seat plus the seats of
+                  consequential others (employer, market, family) and plays
+                  the move forward.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Investment.</B> A portfolio committee plays
-                  positions against management response, competitor
-                  hunts, and macro regime. Calibrated priors on
-                  capital-structure stress and exit-path optionality
+                  <B>Investment.</B> A committee plays positions against
+                  management response, competitor hunts, and macro regime;
+                  calibrated priors on stress and exit-path optionality
                   become artefacts of the room.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Politics.</B> A campaign team plays the
-                  opposition&apos;s, regulator&apos;s, and
-                  media&apos;s next moves. The rehearsed campaign
-                  moves faster the morning of the leak than the
-                  unrehearsed one meeting it for the first time.
+                  <B>Politics.</B> A campaign plays the opposition&apos;s,
+                  regulator&apos;s, and media&apos;s next moves &mdash; and
+                  moves faster the morning of the leak than the one meeting
+                  it cold.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Strategy.</B> Executives convene with the
-                  seats of competitors, regulators, customers,
-                  channel partners staffed by operators or AI.
-                  Every committed move updates the substrate; the
-                  decision becomes a prior the next room inherits.
+                  <B>Strategy.</B> Executives convene the seats of
+                  competitors, regulators, and channel partners; every
+                  committed move becomes a prior the next room inherits.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Board game dynamics.</B> A tabletop group uses
-                  the room as a high-fidelity grand-strategy
-                  sandbox. Information asymmetry, faction-internal
-                  politics, diplomacy, multi-turn doctrine all
-                  native.
+                  <B>Board game dynamics.</B> A tabletop group uses the room
+                  as a grand-strategy sandbox &mdash; asymmetry, faction
+                  politics, diplomacy, multi-turn doctrine all native.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Knowledge transfer.</B> The substrate is the
-                  team&apos;s institutional memory made playable. A
-                  newcomer reads the current model &mdash; board state,
-                  open threads, committed decisions &mdash; to update
-                  their priors without convening a session, then takes a
-                  seat and plays: a current read, not dead
-                  documentation. Departing experts leave their committed
-                  calls and the threads they opened behind, where the
-                  substrate keeps them.
+                  <B>Knowledge transfer.</B> The substrate is institutional
+                  memory made playable: a newcomer reads the current model
+                  to update their priors, then takes a seat and plays;
+                  departing experts leave their committed calls behind.
                 </span>
               </li>
             </ul>
@@ -5094,13 +4948,11 @@ export default function PaperPage() {
               WhatsApp bridge, LLM-as-gateway, no central server.
             </p>
             <P>
-              The substrate ships as a single Next.js application
-              with React 19 on top, Tailwind for surface, and D3
-              for the map / board / graph views that own most of
-              an operator&apos;s screen. The backend is
-              essentially a pass-through to an LLM gateway;
-              everything that compounds lives on the
-              operator&apos;s machine.
+              The substrate ships as a single Next.js application with
+              React 19, Tailwind for surface, and D3 for the map / board /
+              graph views that own most of an operator&apos;s screen. The
+              backend is essentially a pass-through to an LLM gateway;
+              everything that compounds lives on the operator&apos;s machine.
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
@@ -5186,47 +5038,38 @@ export default function PaperPage() {
             </ul>
 
             <P>
-              <B>Local-first is the storage stance; privacy is a
-              setting, not a default win.</B> The substrate sits on
-              your machine as an encrypted file &mdash; no per-user
-              database on our side &mdash; but the AI has to read it,
-              so every call leaves through the gateway. We route
-              through <B>OpenRouter</B> for one reason: its{" "}
-              <B>Zero Data Retention</B> policy can be opted into, so
-              providers store nothing. Local models are theoretically
-              supportable, not productised. The honest residual,
-              named as a risk: ZDR stops storage, not processing
-              &mdash; where the provider itself is the objection,
-              only local inference clears it, and we don&apos;t ship
-              that yet.
+              <B>Local-first is the storage stance; privacy is a setting,
+              not a default win.</B> The substrate sits on your machine as
+              an encrypted file &mdash; no per-user database on our side
+              &mdash; but the AI has to read it, so every call leaves
+              through the gateway. We route through <B>OpenRouter</B> for
+              its opt-in <B>Zero Data Retention</B> policy, so providers
+              store nothing. The honest residual, named as a risk: ZDR stops
+              storage, not processing &mdash; where the provider itself is
+              the objection, only local inference clears it, and we
+              don&apos;t ship that yet.
             </P>
             <P>
-              <B>One sovereign host, one game master &mdash; and a
-              backup discipline.</B> Each room runs on a{" "}
-              <B>sovereign local host</B> (the OpenClaw model): one person
-              owns the machine and the room &mdash; the game master, its
-              sovereign operator &mdash; keeps the data safe, runs the
-              weekly session, refines the models, convenes the table.
-              Federation is only <em>connectivity</em>: everyone else
-              joins as a <B>guest seat</B> with no authority over the
-              host&apos;s truth. That custody is the risk too &mdash;
-              months of irreplaceable priors on one device is a bus
-              factor of one, and Electron stops browser eviction but
-              not disk failure or a departing custodian. The fix is an opt-in{" "}
+              <B>One sovereign host, one game master &mdash; and a backup
+              discipline.</B> Each room runs on a <B>sovereign local
+              host</B> (the OpenClaw model): one person owns the machine and
+              the room, keeps the data safe, runs the weekly session,
+              refines the models, convenes the table. Federation is only{" "}
+              <em>connectivity</em>: everyone else joins as a <B>guest
+              seat</B> with no authority over the host&apos;s truth. That
+              custody is the risk too &mdash; months of irreplaceable priors
+              on one device is a bus factor of one. The fix is an opt-in{" "}
               <B>Substrate Vault</B>: an inbuilt encrypted online backup
               (client-held key, so we hold only ciphertext) plus
               destinations the operator chooses (a second device, their own
-              cloud or S3). Redundancy that <em>deepens</em> custody rather
-              than ceding it. It has two tiers: <B>private storage</B> (the
-              client&apos;s own substrate) and <B>public storage</B> (worlds
-              a GM publishes). The public layer is <em>built on the
-              vault</em>, distributing worlds so players pull fresh copies
-              constantly. The GM holds the truth and judges what merges, but
-              the role is <B>one writer at a time, not one person
-              forever</B>: the encrypted{" "}
-              <code className="text-white/70">.meridian</code> hands off to
-              a backup, so a holiday or departure doesn&apos;t freeze or
-              lose the room.
+              cloud). Two tiers: <B>private storage</B> (the client&apos;s
+              own substrate) and <B>public storage</B> (worlds a GM
+              publishes, distributed so players pull fresh copies). The GM
+              holds the truth and judges what merges, but the role is{" "}
+              <B>one writer at a time, not one person forever</B>: the
+              encrypted <code className="text-white/70">.meridian</code>{" "}
+              hands off to a backup, so a holiday or departure doesn&apos;t
+              freeze or lose the room.
             </P>
             <P>
               <B>Two ways in: live and dark.</B> The console is the
@@ -5241,8 +5084,7 @@ export default function PaperPage() {
               </a>{" "}
               tunnel and the team plays their seat controllers together
               over it. <B>Dark</B>, the tunnel is down but the capture
-              channel is not &mdash; the two we primarily support, split by
-              audience: a{" "}
+              channel is not, split by audience: a{" "}
               <a
                 href="https://www.whatsapp.com"
                 className="text-white/70 underline-offset-2 hover:underline"
@@ -5251,45 +5093,35 @@ export default function PaperPage() {
               </a>{" "}
               bridge for everyday rooms (direct, informal) and a{" "}
               <B>Slack / Teams</B> connector for businesses that already
-              live there and trust it. Members keep messaging priors, the engine
-              parses them into their seats as the host processes them, and
-              the GM &mdash; a volunteer inside the organisation, or a
-              facilitator on our side &mdash; curates the exceptions when
-              the instance wakes. Capture below, curation-and-commit
-              above, the GM the gatekeeper of when the instance lives. Nothing we run sits between: a tunnel,
-              a group chat, and the substrate on one laptop. The
-              aggregate belief updating live as priors arrive is the
-              feature we most want next; high-end clients who need it
-              get custom security on top.
+              trust it. Members keep messaging priors, the engine parses
+              them into their seats, and the GM &mdash; a volunteer inside
+              the organisation, or a facilitator on our side &mdash; curates
+              the exceptions when the instance wakes. Capture below,
+              curation-and-commit above. Nothing we run sits between: a
+              tunnel, a group chat, and the substrate on one laptop.
             </P>
             <P>
               <B>The access path is its own risk, named.</B> A public
               tunnel URL plus a consumer messaging app as the standing
               channel is real exposure, and it belongs in the risk list
-              beside the inference path, not buried. The live instance
-              is <B>PIN-gated</B> and exists only while the game master
-              hosts &mdash; the tunnel closes when the machine sleeps
-              &mdash; but a leaked URL mid-session is a live door, so the
-              PIN is load-bearing and rotating it per session is the
-              discipline. WhatsApp is the other half: prior content
-              crosses Meta&apos;s servers before the GM ever curates it,
-              so the judgement that is supposed to be the moat transits
-              a third party in the clear &mdash; the capture channel is
-              convenient precisely because it is someone else&apos;s
-              infrastructure. For the named high-stakes buyers &mdash;
-              desks, funds, units &mdash; that is the line a security
+              beside the inference path. The live instance is{" "}
+              <B>PIN-gated</B> and exists only while the GM hosts, but a
+              leaked URL mid-session is a live door, so rotating the PIN per
+              session is the discipline. WhatsApp is the other half: prior
+              content crosses Meta&apos;s servers before the GM curates it,
+              so the judgement that is supposed to be the moat transits a
+              third party in the clear. For the named high-stakes buyers
+              &mdash; desks, funds, units &mdash; that is the line a security
               reviewer stops on. We don&apos;t dissolve the contradiction;
               we <em>sequence</em> it. The early book is bootstrapped on
-              clients who can run on the default &mdash; or on a
-              contained, lower-sensitivity room &mdash; and the hardened
-              posture (a private channel for WhatsApp, tighter gating or a
-              VPN for the public tunnel, local inference where the
-              provider is the objection) is built out <em>with and for the
-              clients who require it</em>, funded by the engagement that
-              needs it. <B>Security matures with the book, not ahead of
-              it.</B> That makes the high-stakes path services-shaped
-              early, by design &mdash; we don&apos;t pretend a fund or a
-              unit runs on the default on day one.
+              clients who can run on the default (or a contained,
+              lower-sensitivity room), and the hardened posture (a private
+              channel for WhatsApp, tighter gating or a VPN for the tunnel,
+              local inference where the provider is the objection) is built
+              out <em>with and for the clients who require it</em>, funded by
+              the engagement that needs it. <B>Security matures with the
+              book, not ahead of it</B> &mdash; the high-stakes path is
+              services-shaped early, by design.
             </P>
             <P>
               <B>Electron + daemon for the install.</B> An Electron
@@ -5317,23 +5149,17 @@ export default function PaperPage() {
           {/* ── Operating Model ─────────────────────────────────────── */}
           <Section id="operating-model" label="Operating Model">
             <P>
-              <B>The moat is client-owned compounding judgement
-              no vendor can ship from cold.</B> A team running
-              weekly War Rooms accumulates a working model of its
-              own strategic position &mdash; priors, calibrated
-              reads, graded calls, and the committed decisions
-              and threads the team has played out and named. That
-              artefact
-              lives in the substrate&apos;s history, on the
-              client&apos;s machine, authored by the people who
-              live inside the problem. A foundation-model vendor
-              cannot ship it; a competing tool cannot port it; we
-              cannot rebuild it for a different client. It is the
-              one thing in the product that compounds, and it
-              compounds for the team that built it. Everything
-              else &mdash; the engine, the prompts, the math,
-              even the facilitation playbook &mdash; is
-              commoditisable on a long enough horizon. This is.
+              <B>The moat is client-owned compounding judgement no vendor
+              can ship cold.</B> A team running weekly War Rooms
+              accumulates a working model of its own position &mdash;
+              priors, calibrated reads, graded calls, the decisions and
+              threads it has played out &mdash; living in the
+              substrate&apos;s history, on the client&apos;s machine,
+              authored by the people inside the problem. No foundation
+              model ships it, no competing tool ports it, and we
+              can&apos;t rebuild it for another client. Everything else
+              &mdash; engine, prompts, math, even the facilitation
+              playbook &mdash; commoditises eventually. This doesn&apos;t.
             </P>
             <P>
               <B>The honest shape: a boutique strategy practice that may
@@ -5385,30 +5211,19 @@ export default function PaperPage() {
               turnkey, and we don&apos;t pretend otherwise.
             </P>
             <P>
-              <B>Versus a foundation-model vendor.</B> A vendor will ship
-              a &ldquo;Strategy Mode&rdquo; chat in a quarter. <B>It
-              can&apos;t ship your room&apos;s history</B> &mdash; priors
-              compounded across months of sessions, a private substrate
-              the team owns, force-measured scoring instead of fluent
-              guesses. Foundation models commoditise <em>generation</em>;
-              they don&apos;t commoditise <em>compounded practice on
-              client-owned state</em>. The one thing that compounds is the
-              one thing no vendor can ship cold.
-            </P>
-            <P>
-              <B>Versus the alternatives.</B> Two real competitors,
-              neither a frontier model. The <em>stripped tool</em>{" "}
-              that delivers 70% of the value for 10% of the effort and
-              never asks anyone to maintain a substrate &mdash; the
-              behavioural moat is fragile against it, and our answer
-              is the compounding substrate of the team&apos;s own
-              judgement it can&apos;t ship cold. And the{" "}
-              <em>index-everything play</em> (Glean and its kind) that
-              searches what&apos;s already written &mdash; where
-              Meridians is the inverse, surfacing the judgement that
-              never reached a document. Connecting the humans is the
-              harder, more defensible layer; we keep proving it on
-              real engagements before either ships its v2.
+              <B>Versus the alternatives.</B> A foundation-model vendor
+              ships a &ldquo;Strategy Mode&rdquo; chat in a quarter, but
+              can&apos;t ship your room&apos;s history &mdash; months of
+              compounded priors, a private substrate you own,
+              force-measured scoring instead of fluent guesses; models
+              commoditise <em>generation</em>, not <em>compounded practice
+              on client-owned state</em>. The <em>stripped tool</em> (70%
+              of value for 10% of effort, no substrate to maintain) is the
+              fragile-moat threat, and that same compounding judgement is
+              the answer. The <em>index-everything</em> play (Glean) searches
+              what&apos;s written &mdash; Meridians is the inverse,
+              surfacing the judgement that never reached a document.
+              Connecting the humans is the harder, more defensible layer.
             </P>
             <P>
               <B>The bet is the practice.</B> The shape:{" "}
@@ -5449,20 +5264,16 @@ export default function PaperPage() {
               is services-shaped. We are not pretending otherwise.
             </P>
             <P>
-              <B>Client-led is the structural ceiling.</B> The
-              fastest path to true software margin is for the
-              organisation to graduate to running its own
-              sessions. When the client supplies the facilitator,
-              the heaviest line in COGS disappears and loaded
-              margin steps up sharply &mdash;{" "}
+              <B>Client-led is the structural ceiling.</B> The fastest
+              path to true software margin is the organisation graduating
+              to run its own sessions: when the client supplies the
+              facilitator, the heaviest COGS line disappears and loaded
+              margin steps up to{" "}
               <span className="font-mono tabular-nums text-white/70">~75%+</span>
-              {" "}on the recurring software line once the facilitation
-              retainer sunsets, comparable on Pilot once the priming
-              work is done. The product pitch to a serious
-              operator is to get up to speed inside the first 90 days
-              and run rooms internally thereafter; we keep
-              answering hard questions but stop being a
-              services line item.
+              {" "}once the facilitation retainer sunsets. The pitch to a
+              serious operator: get up to speed inside 90 days and run
+              rooms internally after &mdash; we keep answering hard
+              questions but stop being a services line item.
             </P>
             <P>
               <B>Public cost is hypothetical.</B> A cohort of
@@ -5477,34 +5288,27 @@ export default function PaperPage() {
             <BusinessModels />
 
             <P>
-              <B>Entry, then the high-end follow-through.</B> The
-              entry is the board-game bonding exercise (see{" "}
-              <a href="#wedge" className="text-white/70 underline-offset-2 hover:underline">The Wedge</a>)
-              &mdash; priced for the easiest yes, not to earn. A free
-              capped room is the no-friction taste; the first paid touch
-              is a one-off <em>workshop</em>, priced like a team offsite
-              (<span className="font-mono tabular-nums text-white/70">~few hundred&ndash;$2K</span>),
-              that leaves a seeded substrate behind
-              &mdash; no setup fee, no recurring obligation, so the
-              cheapness buys a foothold rather than a one-night stand.
-              It is the validation motion, not the revenue line. The
-              engagement it earns into is a{" "}
-              <em>6-month pilot partnership</em> with a single defence
-              contractor, hedge fund, or political-research shop
-              &mdash; targeted ACV in the{" "}
-              <span className="font-mono tabular-nums text-white/70">~$80&ndash;120K</span>
-              {" "}range, priming included, structured as
-              priors-accumulation against a real question and stepping
-              down to software + light facilitation on renewal.
-              Services-heavy on day one and we treat it that way: the
-              pilot funds itself, produces the case study the next ten
-              sales require, and seeds the substrate the client owns
-              afterwards. In parallel, the recurring line &mdash;
-              software at{" "}
+              <B>Entry, then the high-end follow-through.</B> The entry is
+              the board-game bonding exercise (see{" "}
+              <a href="#wedge" className="text-white/70 underline-offset-2 hover:underline">The Wedge</a>),
+              priced for the easiest yes: a free capped room as the taste,
+              then a one-off <em>workshop</em>
+              {" "}(<span className="font-mono tabular-nums text-white/70">~few hundred&ndash;$2K</span>)
+              that leaves a seeded substrate behind &mdash; validation
+              motion, not revenue. It earns into a{" "}
+              <em>6-month pilot</em> with a single defence contractor,
+              hedge fund, or political shop &mdash; ACV{" "}
+              <span className="font-mono tabular-nums text-white/70">~$80&ndash;120K</span>,
+              priming included, structured as priors-accumulation against
+              a real question and stepping down to software + light
+              facilitation on renewal. Services-heavy on day one by
+              design: the pilot funds itself, produces the case study the
+              next ten sales need, and seeds the substrate the client
+              keeps. In parallel, the recurring line &mdash; software at{" "}
               <span className="font-mono tabular-nums text-white/70">$99&ndash;299/mo per room</span>
               {" "}plus a sunsetting facilitation retainer &mdash; at
-              boutique investment committees, family offices, campaign
-              cells, M&amp;A teams, policy units.
+              boutique committees, family offices, campaign cells, M&amp;A
+              teams, policy units.
             </P>
             <P>
               <B>Scale math &mdash; scenarios.</B>{" "}
