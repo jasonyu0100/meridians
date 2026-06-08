@@ -2,6 +2,8 @@
 // ReasoningGraphView — Stage surface rendering an arc's causal reasoning graph (CRG) nodes and typed edges.
 
 import { useStore } from "@/lib/state/store";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { IconReasoning } from "@/components/icons";
 import type {
   ReasoningGraphSnapshot,
   ReasoningNodeSnapshot,
@@ -458,9 +460,11 @@ export function ReasoningGraphView({
 
   if (graph.nodes.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-text-dim">
-        No reasoning graph available
-      </div>
+      <EmptyState
+        icon={IconReasoning}
+        title="No reasoning graph available."
+        description="Generate a causal reasoning graph for this arc to map how it reasons toward its commitments."
+      />
     );
   }
 

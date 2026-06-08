@@ -10,7 +10,7 @@ import type { ThreadLogNodeType } from '@/types/narrative';
 import { applyThreadDelta, newNarratorStance } from '@/lib/forces/thread-log';
 import { applyWorldDelta } from '@/lib/graph/world-graph';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/graph/system-graph';
-import { ensureSceneAttributions, ensureExpansionAttributions } from '@/lib/forces/attribution';
+import { ensureSceneAttributions, ensureExpansionAttributions, flattenAttributions } from '@/lib/forces/attribution';
 import { callGenerate, callGenerateStream } from './api';
 import {
   buildGenerateNarrativeSystem,
@@ -440,9 +440,8 @@ export async function expandWorld(
     relationshipDeltas: f.relationshipDeltas ? mergedRelDeltas : [],
     ownershipDeltas: f.ownershipDeltas ? (parsed.ownershipDeltas ?? []) : [],
     tieDeltas: f.tieDeltas ? (parsed.tieDeltas ?? []) : [],
-    attributions: Array.isArray(parsed.attributions)
-      ? parsed.attributions.filter((id: unknown): id is string => typeof id === 'string')
-      : undefined,
+    // Flatten grouped multi-id attributions ([C-31, C-32] === C-31, C-32).
+    attributions: flattenAttributions(parsed.attributions),
     attributionEdges: Array.isArray(parsed.attributionEdges)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? parsed.attributionEdges.filter((e: any) =>
@@ -659,9 +658,8 @@ export async function generateNarrative(
       // Attribution skeleton — initial commit's contribution to the cumulative
       // network graph. Sanitisation is deferred to the consumer; here we just
       // pass the LLM's payload through.
-      attributions: Array.isArray(parsed.attributions)
-        ? parsed.attributions.filter((id: unknown): id is string => typeof id === 'string')
-        : undefined,
+      // Flatten grouped multi-id attributions ([C-31, C-32] === C-31, C-32).
+      attributions: flattenAttributions(parsed.attributions),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       attributionEdges: Array.isArray(parsed.attributionEdges)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

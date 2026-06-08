@@ -1471,6 +1471,16 @@ export default function PaperPage() {
               It runs human-up, not data-down.
             </P>
             <P>
+              You practise it at <B>two tempos</B>. <B>Playback</B> is{" "}
+              <em>live</em>: the room convenes and plays a high-feedback
+              session where seats commit, signal, and read each other under
+              pressure. <B>Capture</B> is <em>asynchronous</em>: between
+              sessions, on each member&apos;s own clock, every seat records
+              what it believes as the world moves, and the substrate
+              compounds it. Playback sells the room on day one; Capture is
+              why the team can&apos;t leave.
+            </P>
+            <P>
               Private rooms are the product today &mdash; closed tables on
               a local data model, compounding one team&apos;s edge with no
               vendor in the middle. Public rooms are the second-phase bet,
@@ -4481,7 +4491,10 @@ export default function PaperPage() {
           {/* ── Multiplayer Wargaming ────────────────────────────────── */}
           <Section id="war-rooms" label="War Rooms">
             <P>
-              The <B>War Room</B> is the product. Give it a text
+              The <B>War Room</B> is the product&apos;s <B>live</B> half
+              &mdash; where the team convenes and plays, the fast
+              counterpart to the asynchronous Capture that feeds it
+              between sessions. Give it a text
               corpus with enough depth across{" "}
               <B>System / World / Fate</B> (SWF), and it deploys
               into a playable room: a vision-rendered board where
@@ -4540,8 +4553,8 @@ export default function PaperPage() {
               <B>Rehearsal mode one: <em>Conviction</em>.</B> The War
               Room is played through a rehearsal mode, and the first is
               a card game called <B>Conviction</B> &mdash; about belief
-              made visible: holding conviction, demonstrating it, and
-              showing it to others is what lets a team coordinate in
+              made visible: holding conviction and showing it is what lets
+              a team coordinate in
               chaos. It is rehearsal, not entertainment &mdash; capture&apos;s
               peer-stance reading, gamified and accelerated into a
               high-feedback drill for deciding under uncertainty and
@@ -4550,25 +4563,27 @@ export default function PaperPage() {
               there is no best move, sometimes you commit and signal,
               sometimes you go covert and trust the team. (Rehearsal is a pluggable layer over the shared
               resolver; more modes can ride the same substrate later
-              &mdash; Conviction is where we start.) It is{" "}
-              <B>information-asymmetry driven</B>: strategy is about what
+              &mdash; Conviction is where we start.)
+            </P>
+            <P>
+              It is <B>information-asymmetry driven</B>: strategy is what
               each player knows, what each thinks the others know, and
-              which signals are worth sending. The War Room makes this
-              structural.
+              which signals are worth sending &mdash; and the War Room makes
+              that structural.
               Every operator drives one or more <em>entities</em>;
               each keeps a <B>private log</B> (its hidden state) and
               reads a <B>perspective feed</B> &mdash; the world retold
               from its vantage, refreshed each step, and all it (or the
-              AI playing it) knows. The talk is <em>cheap</em>:
+              AI playing it) knows. Talk is <em>cheap</em>:
               negotiate, propose, threaten, mislead &mdash; words cost
-              and bind nothing. Who you can even talk to is itself a
+              and bind nothing. Even who you can talk to is a
               position: seats sharing a place get a <B>private location
               channel</B> where alliances form, and a seat travels the
               map <em>node-to-node, one hop a round</em>, reshaping the
               streams it holds. A card is the opposite &mdash; a{" "}
               <B>paid, binding commitment</B> (face-up to show it,
               face-down to hide it), which is what makes it a credible
-              signal, not cheap talk. So you <B>cooperate</B> by backing
+              signal. So you <B>cooperate</B> by backing
               your words with cards and <B>defect</B> by playing against
               them. What you said is free; what you played is on the
               record, and the gap is where trust dies.
@@ -4719,19 +4734,25 @@ export default function PaperPage() {
           {/* ── The Loop ─────────────────────────────────────────────── */}
           <Section id="loop" label="The Loop & Practice">
             <P>
-              <B>Two hooks, two clocks. Playback sells the room; Capture
-              keeps it.</B> <B>Playback</B> is the fast side and the
-              day-one value: bring your team, and an <B>AI adversary</B>{" "}
-              takes the other side of the table (the competitor, the
-              regulator, the rival) and hunts the seams in how you
-              coordinate under information asymmetry. By the end of the
-              first session you know, under pressure, whether your team
+              <B>Two hooks, two clocks &mdash; one asynchronous, one live.
+              Playback sells the room; Capture keeps it.</B>{" "}
+              <B>Playback</B> is the fast, <em>live</em> side and the
+              day-one value: a real-time, high-feedback session the room
+              convenes and plays together. Bring your team, and an{" "}
+              <B>AI adversary</B> takes the other side of the table (the
+              competitor, the regulator, the rival) and hunts the seams in
+              how you coordinate under information asymmetry. By the end of
+              the first session you know, under pressure, whether your team
               holds together when something intelligent is pushing back.
               Not whether you agree in a calm room. <B>Capture</B> is the
-              slow side: track what your team believes and how it decides,
-              session after session, until the room is a{" "}
-              <em>cognitive operating system</em> that compounds. That is
-              why a team stays. Both exercise the one bet,{" "}
+              slow, <em>asynchronous</em> side: between sessions, on each
+              member&apos;s own clock, every seat records what it believes
+              and how it decides &mdash; session after session, until the
+              room is a <em>cognitive operating system</em> that compounds.
+              That is why a team stays. The split is one of tempo:{" "}
+              <B>Capture runs asynchronous</B> (priors recorded over time),{" "}
+              <B>Playback runs live</B> (a synchronous session played
+              together). Both exercise the one bet,{" "}
               <B>human vision is humanity&apos;s edge over AI</B>: Capture
               records the vision, Playback runs it. The loop below is how
               they feed each other.
@@ -5320,7 +5341,7 @@ export default function PaperPage() {
             </P>
             <P>
               <B>Value on day one; the moat takes months.</B> The two
-              clocks set the time-to-value. <B>Playback pays in session
+              tempos set the time-to-value. <B>Playback pays in session
               one.</B> A team faces an AI adversary that hunts the seams
               in how they coordinate, and the gaps show up, felt and
               undeniable, with no priming and no validity bet (a

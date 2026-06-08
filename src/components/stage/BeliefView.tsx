@@ -21,6 +21,8 @@
 import { useMemo, useState } from 'react';
 import type { NarrativeState, Thread } from '@/types/narrative';
 import { Sparkline, TrajectoryChart } from '@/components/shared/charts';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { IconBelief } from '@/components/icons';
 import { useStore } from '@/lib/state/store';
 import {
   buildPortfolioRows,
@@ -1087,17 +1089,17 @@ export default function BeliefView() {
 
   if (!narrative) {
     return (
-      <div className="h-full w-full flex items-center justify-center text-[11px] text-text-dim">
-        Select a narrative to view its belief.
-      </div>
+      <EmptyState icon={IconBelief} title="Select a narrative to view its belief." />
     );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="h-full w-full flex items-center justify-center text-[11px] text-text-dim">
-        No stances open yet — threads will appear here once scenes begin producing evidence.
-      </div>
+      <EmptyState
+        icon={IconBelief}
+        title="No stances open yet."
+        description="Threads will appear here once scenes begin producing evidence."
+      />
     );
   }
 

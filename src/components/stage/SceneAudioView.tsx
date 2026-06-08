@@ -5,6 +5,8 @@ import { useEffect, useRef, useMemo } from 'react';
 import type { NarrativeState, Scene } from '@/types/narrative';
 import { useStore } from '@/lib/state/store';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { IconWaveform } from '@/components/icons';
 import { resolveProseForBranch } from '@/lib/forces/narrative-utils';
 
 export function SceneAudioView({
@@ -148,30 +150,35 @@ export function SceneAudioView({
       )}
 
       {!hasAudio && !ps.loading && (
-        <div className="flex flex-col items-center gap-3">
-          {!hasVoice ? (
-            <>
-              <p className="text-[11px] text-text-dim">No voice configured.</p>
+        !hasVoice ? (
+          <EmptyState
+            icon={IconWaveform}
+            title="No voice configured."
+            action={
               <button onClick={() => window.dispatchEvent(new CustomEvent('open-world-view-settings'))}
                 className="text-[10px] text-violet-400/80 hover:text-violet-400 transition">
                 Open World View Settings
               </button>
-            </>
-          ) : !hasProse ? (
-            <>
-              <p className="text-[11px] text-text-dim">Generate prose first, then create audio.</p>
+            }
+          />
+        ) : !hasProse ? (
+          <EmptyState
+            icon={IconWaveform}
+            title="Generate prose first, then create audio."
+            action={
               <button onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'prose' })}
                 className="text-[10px] text-emerald-400/80 hover:text-emerald-400 transition">
                 Switch to Prose &rarr;
               </button>
-            </>
-          ) : (
-            <>
-              <p className="text-[11px] text-text-dim">No audio for this scene yet.</p>
-              <p className="text-[10px] text-text-dim/40">Use the palette below to generate audio.</p>
-            </>
-          )}
-        </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={IconWaveform}
+            title="No audio for this scene yet."
+            hint="Use the palette below to generate audio."
+          />
+        )
       )}
     </div>
   );

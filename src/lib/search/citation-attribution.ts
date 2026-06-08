@@ -11,7 +11,7 @@
  * renders both modes identically.
  */
 
-import { entityRefRegex, resolveEntityRef } from "@/lib/forces/entity-ref";
+import { entityRefRegex, resolveEntityRef, splitEntityRefIds } from "@/lib/forces/entity-ref";
 import type { NarrativeState } from "@/types/narrative";
 
 /** Distinct, valid (resolvable) entity ids cited in `text`, in order of first
@@ -26,11 +26,12 @@ export function citedEntityIds(
   const re = entityRefRegex();
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    const id = m[1].trim();
-    if (seen.has(id)) continue;
-    seen.add(id);
-    if (!resolveEntityRef(narrative, id)) continue;
-    out.push(id);
+    for (const id of splitEntityRefIds(m[1])) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (!resolveEntityRef(narrative, id)) continue;
+      out.push(id);
+    }
   }
   return out;
 }

@@ -17,6 +17,8 @@ import { useMemo, useState } from 'react';
 import type { Stream } from '@/types/narrative';
 import { useStore } from '@/lib/state/store';
 import { Sparkline, TrajectoryChart } from '@/components/shared/charts';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { IconBelief } from '@/components/icons';
 import {
   buildStreamRows,
   computeStreamSnapshot,
@@ -659,13 +661,15 @@ export default function StreamBeliefView() {
   const filteredRows = useMemo(() => (catFilter === 'all' ? rows : rows.filter((r) => r.category === catFilter)), [rows, catFilter]);
 
   if (!narrative) {
-    return <div className="h-full w-full flex items-center justify-center text-[11px] text-text-dim">Select a narrative to view its belief.</div>;
+    return <EmptyState icon={IconBelief} title="Select a narrative to view its belief." />;
   }
   if (rows.length === 0) {
     return (
-      <div className="h-full w-full flex items-center justify-center text-center text-[11px] text-text-dim px-6">
-        No streams open yet — open a stream against a perspective (Vision → Streams) to start gathering priors.
-      </div>
+      <EmptyState
+        icon={IconBelief}
+        title="No streams open yet."
+        description="Open a stream against a perspective (Vision → Streams) to start gathering priors."
+      />
     );
   }
 

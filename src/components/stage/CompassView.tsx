@@ -22,7 +22,8 @@ import VariableGridChart from './variables/VariableGridChart';
 import VariableViewSwitcher, { type VariableViewMode } from './variables/VariableViewSwitcher';
 import { TileLabel } from './variables/BentoTile';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { IconFork } from '@/components/icons';
+import { IconFork, IconCompass } from '@/components/icons';
+import { EmptyState as SharedEmptyState } from '@/components/shared/EmptyState';
 import { findHeadArc } from '@/hooks/useScenarios';
 import { InferenceFields } from '@/components/shared/InferenceFields';
 
@@ -912,13 +913,14 @@ function EmptyState({
   );
   const hint = mode && !message
     ? `Use the Regenerate ${mode === 'present' ? 'Current' : 'Forward'} action above to generate one.`
-    : null;
+    : undefined;
   return (
-    <div className="h-full flex flex-col items-center justify-center py-20 gap-3 px-8 text-center">
-      {title && <p className="text-sm text-text-secondary mb-1">{title}</p>}
-      <p className="text-[11px] text-text-dim max-w-md leading-relaxed">{primary}</p>
-      {hint && <p className="text-[10px] text-text-dim/40">{hint}</p>}
-    </div>
+    <SharedEmptyState
+      icon={IconCompass}
+      title={title ?? primary}
+      description={title ? primary : undefined}
+      hint={hint}
+    />
   );
 }
 

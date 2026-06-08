@@ -15,7 +15,7 @@ import ReactMarkdown, {
   defaultUrlTransform,
 } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { buildCitationNumbers, entityRefRegex } from '@/lib/forces/entity-ref';
+import { buildCitationNumbers, entityRefRegex, splitEntityRefIds } from '@/lib/forces/entity-ref';
 import { useStore } from '@/lib/state/store';
 import { CitationNumberContext, EntityRef } from './EntityRef';
 
@@ -28,7 +28,13 @@ const ENTITY_HREF_PREFIX = 'entity:';
  *  renders the interactive chip. Real markdown links are left untouched (the
  *  pattern skips tokens already followed by `(`). */
 function linkifyEntityRefs(text: string): string {
-  return text.replace(entityRefRegex(), (_m, id) => `[${id}](${ENTITY_HREF_PREFIX}${id})`);
+  // A bracket may hold one id or a comma-separated list (`[C-31, C-32]`);
+  // expand each into its own entity link so it renders as separate chips.
+  return text.replace(entityRefRegex(), (_m, body) =>
+    splitEntityRefIds(body)
+      .map((id) => `[${id}](${ENTITY_HREF_PREFIX}${id})`)
+      .join(' '),
+  );
 }
 
 /** Preserve `entity:` links (default transform would strip the unknown

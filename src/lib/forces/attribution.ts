@@ -23,6 +23,31 @@ import type {
   WorldExpansion,
 } from "@/types/narrative";
 
+/**
+ * Flatten raw LLM-emitted attributions into a flat, de-duplicated id list.
+ * An entry may be a single id OR a nested list: a grouped multi-id attribution
+ * like `[C-31, C-32]` is equivalent to `C-31, C-32` listed separately. So
+ * `["C-1", ["C-31", "C-32"], "T-5"]` flattens to `["C-1", "C-31", "C-32", "T-5"]`.
+ * Nested arrays flatten recursively; non-strings, blanks, and duplicates drop.
+ * Keeps the stored field a flat `string[]` so a grouped entry can never reach a
+ * consumer as a non-string and break an id check or a render key.
+ */
+export function flattenAttributions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (v: unknown): void => {
+    if (typeof v === "string") {
+      const id = v.trim();
+      if (id && !seen.has(id)) { seen.add(id); out.push(id); }
+    } else if (Array.isArray(v)) {
+      for (const x of v) add(x);
+    }
+  };
+  for (const e of raw) add(e);
+  return out;
+}
+
 /** Map the old systemDeltas edge vocabulary onto the CRG/attribution one. */
 function mapSysRelation(rel: string): AttributionEdgeRelation {
   switch (rel) {

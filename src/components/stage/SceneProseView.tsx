@@ -3,6 +3,8 @@
 
 import { generateSceneProse, rewriteSceneProse, reverseEngineerScenePlan } from "@/lib/ai";
 import { useResolvedProse, useResolvedPlan } from "@/hooks/useResolvedScene";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { IconDocument } from "@/components/icons";
 import { getResolvedPlanVersion } from "@/lib/forces/narrative-utils";
 import { useStore } from "@/lib/state/store";
 import type { NarrativeState, Scene } from "@/types/narrative";
@@ -661,21 +663,17 @@ export function SceneProseView({
 
           {/* Empty state */}
           {!hasProse && !isLoading && !hasError && (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              {resolvedPlan ? (
-                <>
-                  <p className="text-[11px] text-text-dim">
-                    This scene hasn&apos;t been written yet.
-                  </p>
-                  <p className="text-[10px] text-text-dim/40">
-                    Use the palette below to generate prose.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-[11px] text-text-dim">
-                    Create a plan first, then generate prose.
-                  </p>
+            resolvedPlan ? (
+              <EmptyState
+                icon={IconDocument}
+                title="This scene hasn't been written yet."
+                hint="Use the palette below to generate prose."
+              />
+            ) : (
+              <EmptyState
+                icon={IconDocument}
+                title="Create a plan first, then generate prose."
+                action={
                   <button
                     onClick={() =>
                       dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "plan" })
@@ -684,9 +682,9 @@ export function SceneProseView({
                   >
                     Switch to Plan &rarr;
                   </button>
-                </>
-              )}
-            </div>
+                }
+              />
+            )
           )}
         </div>
       )}

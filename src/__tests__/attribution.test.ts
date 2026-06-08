@@ -7,6 +7,7 @@ import {
   deriveExpansionAttributionEdges,
   ensureSceneAttributions,
   ensureExpansionAttributions,
+  flattenAttributions,
 } from "@/lib/forces/attribution";
 import type {
   AttributionEdge,
@@ -359,5 +360,39 @@ describe("merge invariants", () => {
     });
     ensureSceneAttributions(scene);
     expect(scene.attributionEdges).toHaveLength(1);
+  });
+});
+
+describe("flattenAttributions — multi-id (grouped) attributions", () => {
+  it("a grouped entry [C-31, C-32] is equivalent to C-31, C-32 listed separately", () => {
+    expect(flattenAttributions(["C-1", ["C-31", "C-32"], "T-5"])).toEqual([
+      "C-1", "C-31", "C-32", "T-5",
+    ]);
+  });
+
+  it("plain string entries pass through unchanged", () => {
+    expect(flattenAttributions(["C-1", "T-5"])).toEqual(["C-1", "T-5"]);
+  });
+
+  it("flattens nested arrays recursively", () => {
+    expect(flattenAttributions([["C-1", ["C-2", "C-3"]], "C-4"])).toEqual([
+      "C-1", "C-2", "C-3", "C-4",
+    ]);
+  });
+
+  it("de-duplicates across grouped and flat forms, preserving first-seen order", () => {
+    expect(flattenAttributions(["C-1", ["C-2", "C-1"], "C-2"])).toEqual(["C-1", "C-2"]);
+  });
+
+  it("drops blanks and non-strings, trims ids", () => {
+    expect(flattenAttributions(["C-1", "", "  ", null, 7, [" C-2 ", undefined]])).toEqual([
+      "C-1", "C-2",
+    ]);
+  });
+
+  it("returns an empty array for non-array / nullish input", () => {
+    expect(flattenAttributions(undefined)).toEqual([]);
+    expect(flattenAttributions(null)).toEqual([]);
+    expect(flattenAttributions("C-1")).toEqual([]);
   });
 });

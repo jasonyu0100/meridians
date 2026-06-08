@@ -61,9 +61,21 @@ const PREFIX_KIND: Record<string, EntityRefKind> = {
  */
 const REF_BODY = "(?:ARC|SYS|TOP|C|L|A|T|S|K|Q)-(?:[A-Za-z0-9]+-)*\\d+";
 
-/** Source for the bracketed-annotation pattern, e.g. `[C-12]`. The trailing
- *  `(?!\\()` skips tokens that are actually markdown link labels (`[x](url)`). */
-export const ENTITY_REF_REGEX_SOURCE = `\\[(${REF_BODY})\\](?!\\()`;
+/** A bracket may carry a comma-separated LIST of ids — e.g. `[C-31, C-32]` —
+ *  rendered as several chips, equivalent to listing each id on its own. */
+const REF_LIST = `${REF_BODY}(?:\\s*,\\s*${REF_BODY})*`;
+
+/** Source for the bracketed-annotation pattern, e.g. `[C-12]` or
+ *  `[C-31, C-32]`. The trailing `(?!\\()` skips tokens that are actually
+ *  markdown link labels (`[x](url)`). The captured group is the inner body —
+ *  one id or a comma-separated list; use `splitEntityRefIds` to break it up. */
+export const ENTITY_REF_REGEX_SOURCE = `\\[(${REF_LIST})\\](?!\\()`;
+
+/** Break a matched bracket body into individual ids. `"C-31, C-32"` →
+ *  `["C-31", "C-32"]`; a single id → `[id]`. */
+export function splitEntityRefIds(body: string): string[] {
+  return body.split(",").map((s) => s.trim()).filter(Boolean);
+}
 
 /** Fresh global RegExp for the bracketed-annotation pattern (stateful `g`
  *  flag — always mint a new one rather than sharing `lastIndex`). */
@@ -90,10 +102,11 @@ export function buildCitationNumbers(
   let next = 1;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    const id = m[1].trim();
-    if (numbers.has(id)) continue;
-    if (!resolveEntityRef(narrative, id)) continue;
-    numbers.set(id, next++);
+    for (const id of splitEntityRefIds(m[1])) {
+      if (numbers.has(id)) continue;
+      if (!resolveEntityRef(narrative, id)) continue;
+      numbers.set(id, next++);
+    }
   }
   return numbers;
 }

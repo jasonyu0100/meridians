@@ -40,7 +40,7 @@ import { buildSequentialPath, extractPatternWarningDirectives } from './reasonin
 import { buildActivePhaseSection } from './phase-graph';
 import { retryWithValidation, validateBeatPlan, validateBeatProseMap } from './validation';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/graph/system-graph';
-import { ensureSceneAttributions } from '@/lib/forces/attribution';
+import { ensureSceneAttributions, flattenAttributions } from '@/lib/forces/attribution';
 
 /**
  * Split text into sentences, handling edge cases like abbreviations, decimals, and ellipsis.
@@ -455,6 +455,9 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     arcId,
     summary: s.summary || `Scene ${i + 1} of arc "${arcName}"`,
     timeDelta: normalizeTimeDelta(s.timeDelta),
+    // Flatten grouped multi-id attributions ([C-31, C-32] === C-31, C-32)
+    // into a flat id list before the remap + sanitize passes below.
+    attributions: flattenAttributions(s.attributions),
     createdAt,
   }));
 

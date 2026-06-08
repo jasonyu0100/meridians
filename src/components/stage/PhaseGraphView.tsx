@@ -9,6 +9,8 @@
  */
 
 import { useStore } from "@/lib/state/store";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { IconSystem } from "@/components/icons";
 import type { Phase, ReasoningGraphSnapshot } from "@/types/narrative";
 import { PHASE_NODE_COLORS, REASONING_NODE_COLOR_UNKNOWN } from "@/lib/graph/reasoning-node-colors";
 import { ReasoningGraphView } from "./ReasoningGraphView";
@@ -66,12 +68,11 @@ export function ModeView({ graph }: Props) {
  */
 function ModeEmptyState() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center py-20 gap-3">
-      <p className="text-[11px] text-text-dim">No phase graph active.</p>
-      <p className="text-[10px] text-text-dim/40 max-w-md text-center">
-        A PRG describes the world&apos;s meta machinery — economic underpinnings, generic patterns, institutional pulls. Use the palette below to generate one and trickle that body into causal, plan, and prose generation.
-      </p>
-    </div>
+    <EmptyState
+      icon={IconSystem}
+      title="No phase graph active."
+      description="A PRG describes the world's meta machinery — economic underpinnings, generic patterns, institutional pulls. Use the palette below to generate one and trickle that body into causal, plan, and prose generation."
+    />
   );
 }
 

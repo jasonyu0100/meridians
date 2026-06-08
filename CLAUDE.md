@@ -534,6 +534,10 @@ Key tuning values:
 
 Meridians is being built as **an evolving game that codifies reality** — sitting in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. Maintenance is the practice, and the practice is the value.
 
+### Two practices, two tempos — Capture (async) & Playback (live)
+
+The practice runs at **two tempos**, the clean split that organises everything below: **Capture is the asynchronous practice** — each perspective records its priors over time, between sessions, on its own clock (no convening needed); it's the slow side that compounds into the moat. **Playback is the live practice** — a synchronous, high-feedback-loop session the room convenes and plays together (Conviction is the first form); it's the fast side and the day-one value. *Capture is what reality is; Playback is how it could go.* The async/live tempo split is the practice-level frame; the *live (ngrok) / dark (WhatsApp)* access model is a separate device-reach layer. See [LANGUAGE.md](LANGUAGE.md) (Vision thesis — Capture & Playback) for the canonical definitions.
+
 ### The War Room
 
 A vision-based, role-played, information-asymmetric game on the substrate. A team sits around the same board (rendered as a graph or a board with nested maps), holds private logs, signals intent through cards (AI-dealt or operator-authored), negotiates, commits to phased moves. The room is meant to function as two things at once:

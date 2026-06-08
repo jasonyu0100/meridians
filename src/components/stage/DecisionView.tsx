@@ -13,6 +13,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/state/store";
+import { EmptyState as SharedEmptyState } from "@/components/shared/EmptyState";
+import { IconDice } from "@/components/icons";
 import { generateSceneGameAnalysis } from "@/lib/ai";
 import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 import {
@@ -174,14 +176,11 @@ export function DecisionView({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <p className="text-[12px] text-text-dim">
-        No game analysis yet for this scene.
-      </p>
-      <p className="text-[10px] text-text-dim/65">
-        Use the palette below to generate one.
-      </p>
-    </div>
+    <SharedEmptyState
+      icon={IconDice}
+      title="No game analysis yet for this scene."
+      hint="Use the palette below to generate one."
+    />
   );
 }
 

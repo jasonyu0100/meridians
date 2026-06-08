@@ -4,6 +4,8 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { IconReasoning } from '@/components/icons';
 import { getEffectivePovId } from '@/lib/forces/narrative-utils';
 import { computeCumulativePositions } from '@/lib/forces/positions';
 import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
@@ -1647,9 +1649,11 @@ export default function Stage() {
             arcId={currentArcWithReasoning.arc.id}
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No map yet. Generate one from the palette.</p>
-          </div>
+          <EmptyState
+            icon={IconReasoning}
+            title="No map yet."
+            hint="Generate one from the palette."
+          />
         )
       ) : graphViewMode === 'system-scene' || graphViewMode === 'system-arc' || graphViewMode === 'system-full' ? (
         <SystemGraphView

@@ -87,6 +87,8 @@ Meridians's category position is **gaming + education + strategy** — an evolvi
 
 **Maintenance is the practice.** A world view is not a one-time deliverable; it requires the team to keep updating it, every session. The world evolves; the substrate keeps up; the priors stay sharp. Stop playing for a quarter and the substrate goes stale.
 
+**The practice runs at two tempos — Capture (async) and Playback (live).** *Capture* is the **asynchronous** practice: each perspective records its priors over time, between sessions, on its own clock — the slow side that compounds into the moat. *Playback* is the **live** practice: a synchronous, high-feedback-loop session the room convenes and plays together (the card game *Conviction* is the first form) — the fast side and the day-one value. *Capture is what reality is; Playback is how it could go.* Both run the same substrate; we hook a room with live Playback and keep it with async Capture.
+
 **Two product surfaces, planned in sequence — private first, public next.**
 
 - **Private rooms** run on the local data model (state + embeddings in IndexedDB, no backend, near-zero infrastructure cost on our side). The wedge: B2B-light subscriptions to investment committees, family offices, campaign cells, M&A teams, policy units — concentrated where war-gaming is already an informal practice with budget.

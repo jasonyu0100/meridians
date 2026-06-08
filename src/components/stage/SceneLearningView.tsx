@@ -21,6 +21,7 @@ import { useResolvedProse } from "@/hooks/useResolvedScene";
 import { topicPath } from "@/lib/learning/curriculum";
 import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 import { IconCheck, IconTrash, IconQuestion } from "@/components/icons";
+import { EmptyState } from "@/components/shared/EmptyState";
 import type {
   BloomLevel,
   DifficultyBand,
@@ -187,10 +188,11 @@ export function SceneLearningView({
 
         {/* Empty state — mirrors the Prose / Audio minimal style */}
         {!isStreaming && questions.length === 0 && !error && (
-          <div className="flex flex-col items-center justify-center gap-1 py-32 text-center">
-            <p className="text-[11px] text-text-dim">No questions for this scene yet.</p>
-            <p className="text-[10px] text-text-dim/40">Use the palette below to generate questions.</p>
-          </div>
+          <EmptyState
+            icon={IconQuestion}
+            title="No questions for this scene yet."
+            hint="Use the palette below to generate questions."
+          />
         )}
 
         {/* Question list */}
