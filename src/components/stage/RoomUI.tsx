@@ -15,7 +15,7 @@ import {
   type StreamPrior,
 } from '@/types/narrative';
 import { useImageUrl } from '@/hooks/useAssetUrl';
-import { agentPersonaLabel } from '@/lib/agents/personas';
+import { agentPersonaLabel, resolveAgentById } from '@/lib/agents/personas';
 
 export const uid = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -226,7 +226,7 @@ export function PerspectivePairBadge({
   size?: number;
 }) {
   const member = memberId ? n?.members?.[memberId] : undefined;
-  const agent = agentId ? n?.agents?.[agentId] : undefined;
+  const agent = resolveAgentById(n, agentId);
   const persp = perspectiveId ? n?.perspectives?.[perspectiveId] : undefined;
   return (
     <div className="flex items-center gap-1">

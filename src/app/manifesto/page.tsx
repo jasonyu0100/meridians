@@ -1471,13 +1471,13 @@ export default function PaperPage() {
               It runs human-up, not data-down.
             </P>
             <P>
-              You practise it at <B>two tempos</B>. <B>Playback</B> is{" "}
+              You practise it at <B>two tempos</B>. <B>Conviction</B> is{" "}
               <em>live</em>: the room convenes and plays a high-feedback
               session where seats commit, signal, and read each other under
               pressure. <B>Capture</B> is <em>asynchronous</em>: between
               sessions, on each member&apos;s own clock, every seat records
               what it believes as the world moves, and the substrate
-              compounds it. Playback sells the room on day one; Capture is
+              compounds it. Conviction sells the room on day one; Capture is
               why the team can&apos;t leave.
             </P>
             <P>
@@ -1517,12 +1517,17 @@ export default function PaperPage() {
             <P>
               <B>Accumulation and play fail in opposite directions;
               each corrects the other.</B> Pure accumulation has no
-              error signal &mdash; you can compound a coherent world
+              error signal: you can compound a coherent world
               view that is confidently wrong, and it drifts
-              comfortably. Pure play is sharp but shallow &mdash; fast
+              comfortably. Pure play is sharp but shallow: fast
               signal on what is in front of you, but nothing carries
               over, so you relearn the same lesson each time. A
               goldfish with good instincts; a scholar never tested.
+              This is why the practice runs at <B>two tempos</B>.{" "}
+              <B>Capture</B> is the accumulation: asynchronous,
+              and alone it drifts confidently wrong. <B>Conviction</B> is
+              the play: live, and alone it stays sharp but
+              shallow. Neither is the unit.
               The loop is the unit: feedback turns accumulation into
               judgment, accumulation lets feedback compound instead of
               evaporate, and the correction writes back so the next
@@ -1632,7 +1637,8 @@ export default function PaperPage() {
             <P>
               Meridians starts there. <B>Model</B> reads the narrative
               you&apos;ve already written and makes it playable;{" "}
-              <B>Capture</B> keeps it honest as the story continues;{" "}
+              <B>Capture</B> keeps it honest as the story continues
+              &mdash; recording the model, not just the outcomes;{" "}
               <B>Rehearsal</B> plays the chapters that haven&apos;t
               arrived. Every world view began as a narrative &mdash;
               yours already exists; the question is whether you can read
@@ -1657,6 +1663,18 @@ export default function PaperPage() {
               <B>models of reality with real social fabric</B>, and a Game
               Master keeps two things: the model, and the people who keep
               it true.
+            </P>
+            <P>
+              <B>Two value propositions, one growth engine.</B>{" "}
+              <B>Players</B> get Capture and Conviction: judgement
+              developed by battle-testing against AI-simulated teams.{" "}
+              <B>Game Masters</B> get the{" "}
+              <B>engine and a text-first surface</B>: infinite
+              customisability, expanding the world sandbox-style as an
+              admin, the creative and structural craft. Sharpening players&apos;
+              judgement <em>and</em> GMs&apos; authoring is what carries
+              Meridians from private rooms into public ones, where
+              at scale GMs curate both and the two reinforce each other.
             </P>
             <P>
               The Game Master is already a profession. Thousands run paid
@@ -4491,8 +4509,8 @@ export default function PaperPage() {
           {/* ── Multiplayer Wargaming ────────────────────────────────── */}
           <Section id="war-rooms" label="War Rooms">
             <P>
-              The <B>War Room</B> is the product&apos;s <B>live</B> half
-              &mdash; where the team convenes and plays, the fast
+              The <B>War Room</B> is the product&apos;s <B>live</B> half,
+              where the team convenes and plays: the fast
               counterpart to the asynchronous Capture that feeds it
               between sessions. Give it a text
               corpus with enough depth across{" "}
@@ -4608,33 +4626,31 @@ export default function PaperPage() {
             <P>
               <B>Conviction is the scarce resource &mdash; and it
               decays.</B> Playing a card <em>spends conviction priced by
-              improbability</em>: the likely outcome is cheap, a
+              improbability</em>: the likely call is cheap, a
               long-shot dear. You grow your hand by <B>feeding priors to
               your streams</B> &mdash; belief that genuinely shifts the
-              odds earns conviction and cheapens the call &mdash; but a
-              prior the engine reads as <em>implausible or
-              over-biasing is refused</em>, so you influence only within
-              the realm of the plausible (no fantasy, no grinding junk
-              into the shared model). Leave a stance unplayed and you{" "}
-              <em>cede</em> it &mdash; and that question{" "}
-              <em>closes at the round&apos;s end</em>; <B>certainty is an
-              aggregate of conviction</B>, the world is what the room
-              commits to, not a backdrop. An allowance comes in each
-              round; unspent conviction banks but <em>decays</em>
-              {" "}(inflation on idle capital), so a war chest is real yet
-              costs you to hold.
-              Empty seats fill with AI agents on configurable profiles
-              (<em>compete / cooperate / extract / spoil</em>; an
-              adversarial one red-teams). At resolution the round&apos;s
-              plays are <B>folded into a merge and the engine generates
-              the continuation from it</B> &mdash; the same
-              merge-and-generate path capture commits through. Contested
-              stances resolve <em>payment-weighted</em>; plural ones land
-              as a reconciled <em>multi-resolution</em>, never a blurred
-              average. (A causal-reasoning-graph resolver is the upgrade
-              path; the merge is where it starts.) The world steps
-              forward a tick. <B>A deck dealt against a moving world, one
-              step at a time.</B>
+              odds earns conviction and cheapens the call &mdash; but one
+              the engine reads as <em>implausible or over-biasing is
+              refused</em>, so you influence only within the plausible (no
+              fantasy, no junk in the shared model). Leave a stance
+              unplayed and you <em>cede</em> it; the question{" "}
+              <em>closes at round&apos;s end</em>. <B>Certainty is an
+              aggregate of conviction</B> &mdash; the world is what the
+              room commits to. An allowance arrives each round; unspent
+              conviction banks but <em>decays</em>, so hoarding costs you.
+            </P>
+            <P>
+              At resolution the round&apos;s plays <B>fold into a merge
+              and the engine generates the continuation</B> &mdash; the
+              same merge-and-generate path capture commits through.
+              Contested stances resolve <em>payment-weighted</em>; plural
+              ones land as a reconciled <em>multi-resolution</em>, never a
+              blurred average. (A causal-reasoning-graph resolver is the
+              upgrade path; the merge is where it starts.) Empty seats
+              fill with AI agents on set profiles &mdash;{" "}
+              <em>compete, cooperate, extract, spoil</em>; an adversarial
+              one red-teams. The world steps forward a tick. <B>A deck
+              dealt against a moving world, one step at a time.</B>
             </P>
             <P>
               Every commitment becomes a thread delta. Every reveal
@@ -4650,13 +4666,12 @@ export default function PaperPage() {
               microsim &mdash; one card, one negotiation, one
               resolution per phase &mdash; so the room moves at
               the pace of strategic conversation, not tactical
-              execution. AI-dealt hands surface the cohort of
-              plays the priors say make sense right now; operators
-              can also <em>author</em> their own cards &mdash;
-              bespoke decisions, side-channel proposals, disclosures
-              not in the dealt hand. AI keeps the game honest to
-              the substrate; custom cards keep it honest to real
-              intuition.
+              execution. AI-dealt hands surface the plays the
+              priors say make sense now; operators can also{" "}
+              <em>author</em> their own &mdash; bespoke decisions,
+              side-channel proposals, disclosures not in the dealt
+              hand. AI keeps the game honest to the substrate; custom
+              cards keep it honest to real intuition.
             </P>
             <P>
               <B>Multiple play-throughs.</B> The room plays the
@@ -4688,18 +4703,24 @@ export default function PaperPage() {
               <B>Betting is the competitive layer &mdash; pari-mutuel,
               GM-run.</B> Conviction <em>shapes</em> the outcome; betting{" "}
               <em>wagers</em> on it &mdash; a side economy the game master
-              administers and toggles per room (<B>on</B>, and competition,
-              hedging, and alliances form around the pool; <B>off</B>, and
-              it is pure strategic rehearsal). It is{" "}
-              <B>pari-mutuel</B>: stakes pool on each outcome and the pool
-              (less the GM&apos;s rake) splits among the winners
-              pro-rata, so the odds are the table&apos;s, not a book&apos;s
-              &mdash; and because the pool pays least on the favourite,
+              administers and toggles per room (<B>on</B>, competition and
+              alliances form around the pool; <B>off</B>, pure strategic
+              rehearsal). It is <B>off by default and consent-gated</B>
+              &mdash; GM and seated players opt in together &mdash; offered
+              only in fast-feedback rooms (markets, campaigns, live ops),
+              never long-horizon strategy, and <B>fully separable</B>: a
+              surface over stance pricing that never touches the Capture
+              loop or the substrate, so it switches off without a trace.
+              Stakes pool on each outcome and the pool, less
+              the GM&apos;s rake, splits among winners pro-rata &mdash; the
+              odds are the table&apos;s, not a book&apos;s &mdash; and
+              because the pool pays least on the favourite,
               <em>forcing a long-shot you also backed</em> is the sharp
               play. Stakes scale with it: <B>fictional</B> (chips, ELO,
               leaderboards), <B>reality-anchored</B> (calls graded against
               the record, with prize pools), or <B>real</B> (trades and
-              positions recorded as commitments) &mdash; turning rehearsal
+              positions recorded as commitments, only with legal sign-off)
+              &mdash; turning rehearsal
               into <em>skin-in-the-game rehearsal</em> where a dishonest
               signal costs you. (Grading stays calibration feedback, not a
               forecasting product &mdash; the point is honest signals and
@@ -4734,27 +4755,24 @@ export default function PaperPage() {
           {/* ── The Loop ─────────────────────────────────────────────── */}
           <Section id="loop" label="The Loop & Practice">
             <P>
-              <B>Two hooks, two clocks &mdash; one asynchronous, one live.
-              Playback sells the room; Capture keeps it.</B>{" "}
-              <B>Playback</B> is the fast, <em>live</em> side and the
+              <B>Two hooks, two clocks. One asynchronous, one live.
+              Conviction sells the room; Capture keeps it.</B>{" "}
+              <B>Conviction</B> is the fast, <em>live</em> side and the
               day-one value: a real-time, high-feedback session the room
-              convenes and plays together. Bring your team, and an{" "}
-              <B>AI adversary</B> takes the other side of the table (the
-              competitor, the regulator, the rival) and hunts the seams in
-              how you coordinate under information asymmetry. By the end of
-              the first session you know, under pressure, whether your team
-              holds together when something intelligent is pushing back.
-              Not whether you agree in a calm room. <B>Capture</B> is the
-              slow, <em>asynchronous</em> side: between sessions, on each
+              plays together. Bring your team, and an <B>AI adversary</B>{" "}
+              takes the other side of the table (the competitor, the
+              regulator, the rival) and hunts the seams in how you
+              coordinate under information asymmetry. By the first
+              session&apos;s end you know, under pressure, whether your team
+              holds when something intelligent pushes back, not
+              whether you agree in a calm room. <B>Capture</B> is the slow,{" "}
+              <em>asynchronous</em> side: between sessions, on each
               member&apos;s own clock, every seat records what it believes
-              and how it decides &mdash; session after session, until the
-              room is a <em>cognitive operating system</em> that compounds.
-              That is why a team stays. The split is one of tempo:{" "}
-              <B>Capture runs asynchronous</B> (priors recorded over time),{" "}
-              <B>Playback runs live</B> (a synchronous session played
-              together). Both exercise the one bet,{" "}
-              <B>human vision is humanity&apos;s edge over AI</B>: Capture
-              records the vision, Playback runs it. The loop below is how
+              and how it decides, until the room is a{" "}
+              <em>cognitive operating system</em> that compounds. That is
+              why a team stays. Both exercise the one bet:{" "}
+              <B>human vision is humanity&apos;s edge over AI</B>. Capture
+              records the vision, Conviction runs it. The loop below is how
               they feed each other.
             </P>
             <P>
@@ -5194,17 +5212,21 @@ export default function PaperPage() {
               host&apos;s truth. That custody is the risk too &mdash;
               months of irreplaceable priors on one device is a bus
               factor of one, and Electron stops browser eviction but
-              not disk failure or a departing custodian. The fix is
-              the operator&apos;s: versioned encrypted{" "}
-              <code className="text-white/70">.meridian</code> copies,
-              plus an optional in-app online drive for off-device
-              ones. The game master holds the truth &mdash; the
-              <B>defender of the room&apos;s model of reality</B>, judge
-              of what merges. But the role is <B>one writer at a time,
-              not one person forever</B>: the encrypted{" "}
-              <code className="text-white/70">.meridian</code> (+ drive)
-              hands off to a backup, so a holiday or departure
-              doesn&apos;t freeze or lose the room.
+              not disk failure or a departing custodian. The fix is an opt-in{" "}
+              <B>Substrate Vault</B>: an inbuilt encrypted online backup
+              (client-held key, so we hold only ciphertext) plus
+              destinations the operator chooses (a second device, their own
+              cloud or S3). Redundancy that <em>deepens</em> custody rather
+              than ceding it. It has two tiers: <B>private storage</B> (the
+              client&apos;s own substrate) and <B>public storage</B> (worlds
+              a GM publishes). The public layer is <em>built on the
+              vault</em>, distributing worlds so players pull fresh copies
+              constantly. The GM holds the truth and judges what merges, but
+              the role is <B>one writer at a time, not one person
+              forever</B>: the encrypted{" "}
+              <code className="text-white/70">.meridian</code> hands off to
+              a backup, so a holiday or departure doesn&apos;t freeze or
+              lose the room.
             </P>
             <P>
               <B>Two ways in: live and dark.</B> The console is the
@@ -5218,14 +5240,18 @@ export default function PaperPage() {
                 ngrok
               </a>{" "}
               tunnel and the team plays their seat controllers together
-              over it. <B>Dark</B>, the tunnel is down but the{" "}
+              over it. <B>Dark</B>, the tunnel is down but the capture
+              channel is not &mdash; the two we primarily support, split by
+              audience: a{" "}
               <a
                 href="https://www.whatsapp.com"
                 className="text-white/70 underline-offset-2 hover:underline"
               >
                 WhatsApp
               </a>{" "}
-              bridge is not: members keep messaging priors, the engine
+              bridge for everyday rooms (direct, informal) and a{" "}
+              <B>Slack / Teams</B> connector for businesses that already
+              live there and trust it. Members keep messaging priors, the engine
               parses them into their seats as the host processes them, and
               the GM &mdash; a volunteer inside the organisation, or a
               facilitator on our side &mdash; curates the exceptions when
@@ -5332,16 +5358,19 @@ export default function PaperPage() {
               <B>Two surfaces, sequenced.</B> Private rooms ship
               first &mdash; closed tables on the local data model,
               the surface we have conviction in and revenue
-              against. Public rooms are the phase-two ambition:
-              community games on substrates of broad interest,
-              maintained by admins or trusted curators. Whether
-              the public surface lands at scale is the open
-              question we are not pretending to have answered;
-              the base case in Economics treats it as zero.
+              against. Public rooms aren&apos;t a separate product: a host
+              opens a session to outsiders with a <B>guest pass</B>{" "}
+              (seat-scoped, private substrate never exposed), and the
+              vault&apos;s public storage distributes worlds &mdash; so the
+              public layer grows from private rooms opening a door, no
+              cold-start, no new infrastructure. At scale private and public
+              become <em>self-reinforcing</em>, GMs curating both. Whether
+              it lands at scale is still the open question; the base case in
+              Economics treats it as zero.
             </P>
             <P>
               <B>Value on day one; the moat takes months.</B> The two
-              tempos set the time-to-value. <B>Playback pays in session
+              tempos set the time-to-value. <B>Conviction pays in session
               one.</B> A team faces an AI adversary that hunts the seams
               in how they coordinate, and the gaps show up, felt and
               undeniable, with no priming and no validity bet (a
@@ -5503,7 +5532,13 @@ export default function PaperPage() {
               returned, that no foundation-model chat could produce
               from cold. Until both exist, the strongest part of the
               pitch is theoretical; once they exist, the moat
-              narrative is concrete.
+              narrative is concrete. The arguments (moat, cost stack,
+              wedge) are pushed as hard as they go; the evidence-gated
+              parts (margin past facilitation, the graduation, the GM as a
+              scaling unit, the{" "}
+              <span className="font-mono tabular-nums text-white/70">~$3.5M</span>{" "}
+              base) sit where the data leaves them. You can&apos;t
+              write your way to a retention curve.
             </P>
             <P>
               <B>Honest risks.</B> Eight we are watching, in rough
@@ -5575,15 +5610,25 @@ export default function PaperPage() {
             </P>
             <P>
               Three things we believe.{" "}
-              <B>Good strategists rehearse the future</B>, and
-              game-like environments are how that rehearsal
-              compounds. The pattern is visible in every serious
+              <B>Good strategists rehearse the future</B>, live,
+              with an opponent pushing back. What the practice has always
+              lacked is a place where the rehearsal <em>compounds</em>{" "}
+              instead of fading when the meeting ends; the substrate keeps
+              every committed move between sessions, so it does. The
+              pattern is visible in every serious
               military, hedge fund, and campaign that already runs
               the practice unstructured; the War Room is the
-              structured version. <B>Human vision is humanity&apos;s edge
-              over AI.</B> Models predict the future. They don&apos;t
-              choose which one to make. The map and graph surfaces are
-              visual because that is where the rehearsal happens.{" "}
+              structured version, the one with a memory. <B>Human
+              judgement, exercised as vision, is the one human edge that
+              doesn&apos;t go away.</B> Models predict the future; they
+              don&apos;t choose which one to make. We sharpen it the only
+              way judgement sharpens: by battle-testing it against
+              AI-simulated teams built to surprise. And it is{" "}
+              <B>defensible</B> because the moat is <B>structural</B>: the
+              substrate is the client&apos;s own rehearsed decisions, a
+              compounding asset no vendor can scrape, port, or rebuild,
+              theirs even as models improve. Human-up is the value;
+              client-owned is the defence.{" "}
               <B>Private rooms are the product; public rooms are
               the open question.</B> Private is what we are
               selling and what we have conviction in. Public is

@@ -23,7 +23,7 @@ import {
 } from "@/types/narrative";
 import { streamMargin } from "@/lib/forces/stream-stance";
 import { branchLineageIds } from "@/lib/branch-tree";
-import { agentPersonaLabel } from "@/lib/agents/personas";
+import { agentPersonaLabel, resolveAgentById } from "@/lib/agents/personas";
 
 // ── Branch-scoped visibility (ownership model) ───────────────────────────────
 // Streams and merges are global storage but visible only on their origin branch
@@ -197,7 +197,7 @@ function memberLabel(n: NarrativeState, memberId: string | undefined): string | 
  *  (Strategist)" — so the generation reads who held the belief. */
 function agentLabel(n: NarrativeState, agentId: string | undefined): string | null {
   if (!agentId) return null;
-  const a = n.agents?.[agentId];
+  const a = resolveAgentById(n, agentId);
   if (!a) return null;
   return `${a.name || "Agent"} (${agentPersonaLabel(a)})`;
 }

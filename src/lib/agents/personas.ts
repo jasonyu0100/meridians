@@ -5,7 +5,7 @@
 // unique players. An Agent may instead carry a free-text `customPersona`;
 // `resolveAgentPersona` returns whichever applies.
 
-import type { Agent, AgentPersonaKey } from "@/types/narrative";
+import type { Agent, AgentPersonaKey, NarrativeState } from "@/types/narrative";
 
 export interface AgentPersonaPreset {
   key: Exclude<AgentPersonaKey, "custom">;
@@ -133,4 +133,53 @@ export function resolveAgentPersona(agent: Agent | undefined): string {
   if (!agent) return "";
   if (agent.persona === "custom") return agent.customPersona?.trim() ?? "";
   return PRESET_BY_KEY[agent.persona]?.prompt ?? "";
+}
+
+// ── Built-in agents ──────────────────────────────────────────────────────────
+// One ready-made agent per preset persona, always available in every room
+// alongside the GM's custom agents. They aren't stored on the narrative — they
+// live here, resolved on demand — so they can't be edited or deleted and never
+// bloat the saved state. Custom agents (user-authored) live on `narrative.agents`.
+
+/** Prefix that marks a built-in agent id (distinct from user `agent-…` ids). */
+export const BUILTIN_AGENT_ID_PREFIX = "agent:builtin:";
+
+/** The hardcoded roster: one agent per preset persona. */
+export const BUILTIN_AGENTS: readonly Agent[] = AGENT_PERSONA_PRESETS.map((p) => ({
+  id: `${BUILTIN_AGENT_ID_PREFIX}${p.key}`,
+  name: p.name,
+  persona: p.key,
+}));
+
+const BUILTIN_BY_ID: Record<string, Agent> = Object.fromEntries(
+  BUILTIN_AGENTS.map((a) => [a.id, a]),
+);
+
+/** True for a built-in (hardcoded, read-only) agent id. */
+export function isBuiltinAgentId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith(BUILTIN_AGENT_ID_PREFIX);
+}
+
+/** Resolve an agent id against the built-in roster first, then the narrative's
+ *  custom agents. Returns undefined when neither holds it. */
+export function resolveAgentById(
+  narrative: NarrativeState | null | undefined,
+  id: string | null | undefined,
+): Agent | undefined {
+  if (!id) return undefined;
+  return BUILTIN_BY_ID[id] ?? narrative?.agents?.[id];
+}
+
+/** Every agent available in a room: built-ins first, then custom agents. */
+export function allAgents(narrative: NarrativeState | null | undefined): Agent[] {
+  return [...BUILTIN_AGENTS, ...Object.values(narrative?.agents ?? {})];
+}
+
+/** Short, human-readable persona text for a table/badge — the preset's
+ *  one-line description for a preset agent, or the custom prompt for a custom
+ *  one. (Distinct from `resolveAgentPersona`, which returns the full prompt.) */
+export function agentPersonaText(agent: Agent | undefined): string {
+  if (!agent) return "";
+  if (agent.persona === "custom") return agent.customPersona?.trim() ?? "";
+  return PRESET_BY_KEY[agent.persona]?.description ?? "";
 }

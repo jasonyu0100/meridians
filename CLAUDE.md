@@ -532,11 +532,15 @@ Key tuning values:
 
 ### Category positioning
 
-Meridians is being built as **an evolving game that codifies reality** — sitting in the unclaimed segment where *gaming, education, and strategy converge*. Not a strategy tool dressed up as a game; not a serious game pretending to be entertainment; not an educational platform with a strategy layer bolted on. An evolving game that adapts to its players' scenarios and turns their reality into playable worlds. Maintenance is the practice, and the practice is the value.
+Meridians is a **cognitive operating system for teams** — it *runs* a team's judgement (not its files), *holds the state* the meeting would lose, and *compounds* (the moat). *Most tools store what your team wrote down; Meridians runs what your team believes.* It sits in the unclaimed segment where *gaming, education, and strategy converge*: an evolving game that codifies reality and turns it into playable worlds — not a strategy tool dressed as a game, not a serious game pretending to be entertainment, not an edtech platform with a strategy layer bolted on. Maintenance is the practice, and the practice is the value.
 
-### Two practices, two tempos — Capture (async) & Playback (live)
+### Two practices, two tempos — Capture (async) & Conviction (live)
 
-The practice runs at **two tempos**, the clean split that organises everything below: **Capture is the asynchronous practice** — each perspective records its priors over time, between sessions, on its own clock (no convening needed); it's the slow side that compounds into the moat. **Playback is the live practice** — a synchronous, high-feedback-loop session the room convenes and plays together (Conviction is the first form); it's the fast side and the day-one value. *Capture is what reality is; Playback is how it could go.* The async/live tempo split is the practice-level frame; the *live (ngrok) / dark (WhatsApp)* access model is a separate device-reach layer. See [LANGUAGE.md](LANGUAGE.md) (Vision thesis — Capture & Playback) for the canonical definitions.
+The practice runs at **two tempos**. **Capture** (async) — each perspective records its priors between sessions, on its own clock; the slow side that compounds into the moat. **Conviction** (live, renamed from "Playback") — a synchronous, high-feedback session where judgement is battle-tested against AI-simulated teams, played as the Rehearsal card game; the fast side, day-one value. *Capture is what reality is; Conviction is how it could go.* Both exercise the Vision thesis: *human judgement-as-vision is the one human edge that doesn't go away.* (Tempo is the practice-level frame; *live (ngrok) / dark (WhatsApp + Slack)* is a separate device-reach layer.) Canonical defs: [LANGUAGE.md](LANGUAGE.md).
+
+### Dual value proposition — Players & GMs (the growth engine)
+
+Two co-equal value props drive growth. **Players** get Capture + Conviction (judgement). **GMs** get the **engine + text-first experience** — infinite customisability, sandbox world-expansion as an admin. Honing both carries Meridians **private → public**: at scale the public joins public rooms while GMs curate both, private and public becoming **self-reinforcing**. (Honest hedge: public is still the unproven phase-two bet.)
 
 ### The War Room
 
@@ -549,18 +553,20 @@ Most operator time in the planned UI lives on two visual surfaces: the **map / b
 
 ### Two product surfaces, sequenced
 
-- **Private rooms** — closed tables on the local data model (state + embeddings in IndexedDB, no backend, near-zero infrastructure cost on our side). The wedge: B2B-light subscriptions to investment committees, family offices, campaign cells, M&A teams, policy units.
+- **Private rooms** — closed tables on the local data model (state + embeddings in IndexedDB, no backend). The wedge: B2B-light subscriptions to investment committees, family offices, campaign cells, M&A teams, policy units. Bus factor removed by an opt-in **Substrate Vault** — an inbuilt encrypted online backup (client-held key, ciphertext only on our side) plus client-chosen destinations (second device / own cloud / S3); redundancy that deepens sovereignty rather than ceding it. The vault has **two tiers: private storage** (the client's own encrypted substrate) and **public storage** (worlds the GM publishes).
 
-- **Public rooms** — AI-centric community games hosted on a shared substrate, free to play, monetised by pro subscriptions (analytics, ELO history, ad-free), opt-in betting markets (3–5% rake, jurisdiction-gated), media and sponsorships. Framing: *fantasy sports applied to strategic worlds* — a more agentful alternative to prediction markets.
+- **Public rooms** — *not a separate build; built on the vault.* A private host issues a **guest pass** (time-limited, revocable, seat-scoped to board/graph, private substrate never exposed) over the existing tunnel + seat-scoping, and the vault's **public storage** distributes worlds so players pull **fresh copies of worlds and new experiences constantly**. The public layer grows from private rooms opening a door — no cold-start, no new infra, sovereignty intact — free to play, monetised by pro subscriptions and opt-in jurisdiction-gated betting. Framing: *fantasy sports applied to strategic worlds*.
 
-Sequencing is **private-first, then public**. Ship local-data private rooms, use that credibility to host public games on substrates of broad interest, layer betting markets / democratic voting / long-running multi-season games as participation justifies.
+Sequencing is **private-first, then public** (the guest pass is the bridge, not a rebuild). The **moat is structural** and reinforces the human edge rather than replacing it: vision is the enduring value, and the client-owned substrate of rehearsed decisions — unscrapeable, unportable by any vendor, theirs even as models improve — is what makes it defensible. Human-up is the value; client-owned is the defence.
 
 ### Stakes layer
 
 Optional, attached to plays:
 - **Fictional** — ELO, leaderboards, the satisfaction of a calibrated call
 - **Reality-anchored** — forecast questions graded against the public record, with prize pools
-- **Real** — actual trades and positions recorded as commitments
+- **Real** — actual trades and positions recorded as commitments (only with legal sign-off)
+
+**Betting** (the pool around reality-anchored/real stakes) is **off by default, consent-gated** (GM + seated players opt in), offered **only in fast-feedback rooms**, and **fully separable** — a surface over stance pricing that never touches the Capture loop or substrate, so it ships experimental and deprecates without a trace.
 
 ### Speculative upside
 

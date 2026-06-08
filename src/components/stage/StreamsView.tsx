@@ -20,7 +20,7 @@ import {
 } from './RoomUI';
 import { instantiateStream, scoreStreamPrior, suggestQuestion, suggestIntuition, suggestPrior, suggestBranchStream } from '@/lib/ai/streams';
 import { streamsForBranch, mergesForBranch } from '@/lib/merges';
-import { resolveAgentPersona, agentPersonaLabel } from '@/lib/agents/personas';
+import { resolveAgentPersona, agentPersonaLabel, allAgents, resolveAgentById } from '@/lib/agents/personas';
 import { openStream, applyStreamPrior, streamProbs, streamMargin, streamTrajectory, classifyStreamCategory } from '@/lib/forces/stream-stance';
 import { normalizedEntropy } from '@/lib/forces/narrative-utils';
 import { THREAD_CATEGORY_HEX, THREAD_CATEGORY_LABEL } from '@/lib/forces/thread-category';
@@ -64,7 +64,7 @@ export function StreamsView() {
   const [viewId, setViewId] = useState<string | null>(null);
 
   const members = useMemo(() => Object.values(n?.members ?? {}), [n?.members]);
-  const agents = useMemo(() => Object.values(n?.agents ?? {}), [n?.agents]);
+  const agents = useMemo(() => allAgents(n), [n]);
   // Branch-scoped: only streams visible on the active branch's lineage (owned
   // by it or an ancestor; legacy unstamped streams stay visible everywhere).
   const streams = useMemo(
@@ -86,7 +86,7 @@ export function StreamsView() {
   const selectedVantage = allVantages.find((v) => v.key === vantageKey);
   // The chosen contributor — a member or an agent (mutually exclusive). Picking
   // one clears the other so a stream is driven by exactly one actor.
-  const selectedAgent = agentId ? n?.agents?.[agentId] : undefined;
+  const selectedAgent = resolveAgentById(n, agentId);
   const pickMember = (id: string) => { setMemberId((cur) => (cur === id ? '' : id)); setAgentId(''); };
   const pickAgent = (id: string) => { setAgentId((cur) => (cur === id ? '' : id)); setMemberId(''); };
   const actorName = memberId ? memberName(n?.members?.[memberId]) : selectedAgent ? (selectedAgent.name || 'Agent') : '';
@@ -499,7 +499,7 @@ export function StreamsView() {
                 disabled={!vantageKey || !hasActor}
                 className="w-full py-2.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary font-semibold transition disabled:opacity-30 text-[12px]"
               >
-                Next — question &amp; intuition →
+                Next - Question & Intuition
               </button>
             </div>
             </>) : (<>
@@ -1075,7 +1075,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
         entityContext: innerWorldText(stream.perspectiveId, n),
         narrativeContext: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         // An agent-driven stream continues its priors with that player's persona.
-        personaContext: resolveAgentPersona(stream.agentId ? n?.agents?.[stream.agentId] : undefined) || undefined,
+        personaContext: resolveAgentPersona(resolveAgentById(n, stream.agentId)) || undefined,
       });
       if (text) setDraft(text);
     } finally {
@@ -1094,7 +1094,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
     try {
       const persp = n.perspectives?.[stream.perspectiveId];
       const label = perspectiveName(persp, n);
-      const persona = resolveAgentPersona(stream.agentId ? n.agents?.[stream.agentId] : undefined) || undefined;
+      const persona = resolveAgentPersona(resolveAgentById(n, stream.agentId)) || undefined;
       // Other open questions on this perspective — stay distinct from all of them.
       const existingQuestions = Object.values(n.streams ?? {})
         .filter((s) => s.perspectiveId === stream.perspectiveId && s.id !== stream.id && s.state === 'open' && s.title.trim())

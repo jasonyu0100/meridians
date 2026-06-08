@@ -63,13 +63,14 @@ Frame → differentiation → mechanic → moat → promise, in one breath:
 - Human-up, not data-down: we surface the judgement that never reached a document.
 - You bring the vision. The OS holds the ledger.
 
-## Two modes — Capture & Playback
+## Two modes — Capture & Conviction
 
 The vision thesis, exercised two ways — two sides of one coin:
 
-- Playback sells the room. Capture keeps it.
-- Capture is what reality *is*. Playback is how it *could go*.
-- Capture records the vision. Playback runs it.
+- Conviction sells the room. Capture keeps it.
+- Capture is what reality *is*. Conviction is how it *could go*.
+- Capture records the vision. Conviction runs it.
+- Capture is async; Conviction is live. Two tempos, one substrate.
 
 ## The day-one hook — the coordination drill
 

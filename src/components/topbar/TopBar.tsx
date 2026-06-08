@@ -96,7 +96,6 @@ import {
 import { useWizard } from "@/lib/state/wizard-context";
 import type { Branch, NarrativeEntry, NarrativeState } from "@/types/narrative";
 import { isScene, resolveEntry, type Scene, type WorldBuild } from "@/types/narrative";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, {
   useCallback,
@@ -105,6 +104,69 @@ import React, {
   useRef,
   useState,
 } from "react";
+
+/**
+ * Inline SWF logo. On hover the three force-arrows diverge outward along their
+ * own axes and pick up a soft colored glow — reinforcing the diverging-forces mark.
+ */
+function LogoMark() {
+  return (
+    <svg
+      width={30}
+      height={30}
+      viewBox="0 0 512 512"
+      aria-label="Meridians"
+      className="overflow-visible transition-[filter] duration-300 ease-out group-hover:[filter:drop-shadow(0_0_5px_rgba(96,165,250,0.35))]"
+    >
+      <defs>
+        <linearGradient id="logo-red" gradientUnits="userSpaceOnUse" x1="220" y1="290" x2="390" y2="130">
+          <stop offset="0%" stopColor="#dc2626" />
+          <stop offset="100%" stopColor="#f87171" />
+        </linearGradient>
+        <linearGradient id="logo-green" gradientUnits="userSpaceOnUse" x1="220" y1="290" x2="80" y2="225">
+          <stop offset="0%" stopColor="#16a34a" />
+          <stop offset="100%" stopColor="#4ade80" />
+        </linearGradient>
+        <linearGradient id="logo-blue" gradientUnits="userSpaceOnUse" x1="220" y1="290" x2="275" y2="420">
+          <stop offset="0%" stopColor="#2563eb" />
+          <stop offset="100%" stopColor="#60a5fa" />
+        </linearGradient>
+        <marker id="logo-arrow-red" markerWidth="3" markerHeight="3" refX="1.5" refY="1.5" orient="auto">
+          <polygon points="0,0 3,1.5 0,3" fill="#f87171" />
+        </marker>
+        <marker id="logo-arrow-green" markerWidth="3" markerHeight="3" refX="1.5" refY="1.5" orient="auto">
+          <polygon points="0,0 3,1.5 0,3" fill="#4ade80" />
+        </marker>
+        <marker id="logo-arrow-blue" markerWidth="3" markerHeight="3" refX="1.5" refY="1.5" orient="auto">
+          <polygon points="0,0 3,1.5 0,3" fill="#60a5fa" />
+        </marker>
+      </defs>
+      <g fill="none" strokeWidth={44} strokeLinecap="round" strokeLinejoin="round">
+        {/* Green — drifts left/up along its axis on hover */}
+        <path
+          d="M220 290 L80 225"
+          stroke="url(#logo-green)"
+          markerEnd="url(#logo-arrow-green)"
+          className="transition-transform duration-300 ease-out group-hover:[transform:translate(-22px,-10px)]"
+        />
+        {/* Blue — drifts down/right */}
+        <path
+          d="M220 290 L275 420"
+          stroke="url(#logo-blue)"
+          markerEnd="url(#logo-arrow-blue)"
+          className="transition-transform duration-300 ease-out group-hover:[transform:translate(9px,22px)]"
+        />
+        {/* Red — drifts up/right */}
+        <path
+          d="M220 290 L390 130"
+          stroke="url(#logo-red)"
+          markerEnd="url(#logo-arrow-red)"
+          className="transition-transform duration-300 ease-out group-hover:[transform:translate(17px,-16px)]"
+        />
+      </g>
+    </svg>
+  );
+}
 
 function downloadJson(data: object, filename: string) {
   const json = JSON.stringify(data, null, 2);
@@ -1197,10 +1259,10 @@ export default function TopBar() {
         {/* Home button with logo */}
         <button
           onClick={() => router.push("/")}
-          className="flex items-center justify-center w-14 shrink-0 rounded hover:bg-bg-elevated transition-colors"
+          className="group flex items-center justify-center w-14 shrink-0 rounded hover:bg-bg-elevated transition-colors"
           title="All series"
         >
-          <Image src="/logo.svg" alt="Meridians" width={30} height={30} />
+          <LogoMark />
         </button>
 
         {/* Narrative selector */}
