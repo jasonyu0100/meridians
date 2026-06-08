@@ -30,8 +30,12 @@ import LocationDetail from "./LocationDetail";
 import SceneDetail from "./SceneDetail";
 import ThreadDetail from "./ThreadDetail";
 import ThreadLogNodeDetail from "./ThreadLogNodeDetail";
+import StreamDetail from "./StreamDetail";
+import StreamPriorDetail from "./StreamPriorDetail";
 import ReasoningNodeDetail from "./ReasoningNodeDetail";
 import PhaseNodeDetail from "./PhaseNodeDetail";
+import TopicDetail from "./TopicDetail";
+import QuestionDetail from "./QuestionDetail";
 import {
   IconEye,
   IconChat,
@@ -72,7 +76,7 @@ const TAB_LABELS: Record<Tab, string> = {
   interviews: "Interviews",
   maps: "Maps",
   compass: "Compass",
-  learning: "Learning",
+  learning: "Coverage",
   eval: "Review",
 };
 
@@ -322,6 +326,10 @@ export default function InspectorPanel() {
         return <LocationDetail locationId={ctx.locationId} />;
       case "thread":
         return <ThreadDetail threadId={ctx.threadId} />;
+      case "stream":
+        return <StreamDetail streamId={ctx.streamId} />;
+      case "streamPrior":
+        return <StreamPriorDetail streamId={ctx.streamId} priorId={ctx.priorId} />;
       case "arc":
         return <ArcDetail arcId={ctx.arcId} />;
       case "knowledge":
@@ -344,6 +352,10 @@ export default function InspectorPanel() {
         return (
           <PhaseNodeDetail phaseGraphId={ctx.phaseGraphId} nodeId={ctx.nodeId} />
         );
+      case "topic":
+        return <TopicDetail topicId={ctx.topicId} />;
+      case "question":
+        return <QuestionDetail sceneId={ctx.sceneId} questionId={ctx.questionId} />;
       default:
         return <EmptyState />;
     }

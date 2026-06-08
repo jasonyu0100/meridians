@@ -18,8 +18,9 @@
  * operators to influence stances directly.
  */
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { NarrativeState, Thread } from '@/types/narrative';
+import { Sparkline, TrajectoryChart } from '@/components/shared/charts';
 import { useStore } from '@/lib/state/store';
 import {
   buildPortfolioRows,
@@ -109,197 +110,39 @@ function FeaturedTrajectory({
    *  matches the outcome list, the sidebar, and the inspector. */
   liveOutcomes?: string[];
 }) {
-  // Measure the container so viewBox maps 1:1 to pixels. Without this,
-  // preserveAspectRatio="none" stretches glyphs non-uniformly and text looks
-  // squished/elongated.
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dims, setDims] = useState({ W: 720, H: 280 });
-  useLayoutEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => {
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) {
-        setDims({ W: Math.round(r.width), H: Math.round(r.height) });
-      }
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const { W, H } = dims;
-  const PAD_L = 36;
-  const PAD_R = 56;
-  const PAD_T = 12;
-  const PAD_B = 24;
-  const plotW = Math.max(0, W - PAD_L - PAD_R);
-  const plotH = Math.max(0, H - PAD_T - PAD_B);
-
+  // Empty — thread not yet introduced on this timeline. Show flat dashed lines
+  // at the prior so the distribution shape still reads.
   if (points.length === 0) {
-    // Thread isn't introduced on the current timeline yet (no
-    // resolvable openedAt). Render flat horizontal lines at the
-    // thread's initial-prior probabilities so the operator still sees
-    // the distribution shape spatially, with a "not yet introduced"
-    // annotation that makes the temporal status clear.
     const priorProbs = getStanceProbs(thread);
-    const priorColourIdx = outcomeColourIndices(liveOutcomes ?? thread.outcomes, thread.outcomes);
+    const idx = outcomeColourIndices(liveOutcomes ?? thread.outcomes, thread.outcomes);
     return (
-      <div ref={containerRef} className="w-full h-72">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none">
-          <rect x={PAD_L} y={PAD_T} width={plotW} height={plotH} fill="transparent" />
-          {/* Grid */}
-          {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-            <g key={f}>
-              <line
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={PAD_T + (1 - f) * plotH}
-                y2={PAD_T + (1 - f) * plotH}
-                stroke="var(--color-text-dim)"
-                strokeWidth={0.5}
-                opacity={0.18}
-                strokeDasharray={f === 0 || f === 1 ? undefined : '2 4'}
-              />
-              <text
-                x={PAD_L - 6}
-                y={PAD_T + (1 - f) * plotH + 3}
-                textAnchor="end"
-                className="text-[9px] tabular-nums"
-                fill="#555"
-              >
-                {Math.round(f * 100)}%
-              </text>
-            </g>
-          ))}
-          {/* Flat lines at the prior — dashed to read as "not yet
-              priced", muted opacity. Per-outcome vertical nudge so
-              tied probabilities don't collapse onto each other. */}
-          {priorProbs.map((p, k) => {
-            const numOutcomes = priorProbs.length;
-            const off = (k - (numOutcomes - 1) / 2) * 3.5;
-            const y = PAD_T + (1 - p) * plotH + off;
-            return (
-              <line
-                key={k}
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={y}
-                y2={y}
-                stroke={outcomeColourHex(priorColourIdx[k] ?? k)}
-                strokeWidth={1.5}
-                strokeDasharray="3 4"
-                opacity={0.5}
-              />
-            );
-          })}
-        </svg>
-      </div>
+      <TrajectoryChart
+        points={[]}
+        outcomeCount={priorProbs.length}
+        colourOf={(k) => outcomeColourHex(idx[k] ?? k)}
+        axes
+        nudgeTies
+        emptyProbs={priorProbs}
+      />
     );
   }
-
-  const n = points.length;
-  const xAt = (i: number) => PAD_L + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
-  const yAt = (p: number) => PAD_T + (1 - p) * plotH;
-
-  // Use the trajectory's own outcomes list (last point — outcomes only grow
-  // via addOutcomes, never shrink). Renders against `pt.probs` 1:1, so a
-  // mid-narrative outcome expansion that diverges from the live
-  // narrative.threads[id].outcomes still renders correctly and the per-
-  // scene percentages sum to 100%.
+  // Colour-key each chart outcome off the LIVE thread's ordering (by name) so a
+  // given outcome paints the same hue here as in the sidebar + inspector. Use
+  // the trajectory's own (last) outcomes list — outcomes only grow, never
+  // shrink — so a mid-narrative expansion still renders 1:1 against pt.probs.
   const chartOutcomes = points[points.length - 1].outcomes;
-  const numOutcomes = chartOutcomes.length;
-  // Colour-key each chart outcome off the LIVE thread's outcome ordering (by
-  // name) via the shared helper — same convention the portfolio sidebar and
-  // the inspector use — so any view showing this outcome paints it the same hue.
   const chartColourIdx = outcomeColourIndices(liveOutcomes ?? thread.outcomes, chartOutcomes);
-  const colourIdxOf = (k: number) => chartColourIdx[k] ?? k;
-  // Per-outcome vertical nudge so tied probabilities render as parallel strokes
-  // rather than collapsing onto each other. 3.5px keeps tied lines legible
-  // without falsifying the data meaningfully (≈1.4pp on a 0–100% axis).
-  const lineOffset = (k: number) => (k - (numOutcomes - 1) / 2) * 3.5;
-
-  // Build one polyline per outcome — the probability of that outcome over
-  // time. Readers can trace which outcome surged when.
-  const lines = chartOutcomes.map((_, k) => {
-    const off = lineOffset(k);
-    const d = points
-      .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(pt.probs[k] ?? 0) + off}`)
-      .join(' ');
-    return { k, d };
-  });
-
   return (
-    <div ref={containerRef} className="w-full h-72">
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none">
-      {/* Plot background */}
-      <rect x={PAD_L} y={PAD_T} width={plotW} height={plotH} fill="transparent" />
-      {/* Horizontal grid at 0, 25, 50, 75, 100 */}
-      {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-        <g key={f}>
-          <line
-            x1={PAD_L}
-            x2={W - PAD_R}
-            y1={PAD_T + (1 - f) * plotH}
-            y2={PAD_T + (1 - f) * plotH}
-            stroke="var(--color-text-dim)"
-            strokeWidth={0.5}
-            opacity={0.18}
-            strokeDasharray={f === 0 || f === 1 ? undefined : '2 4'}
-          />
-          <text
-            x={PAD_L - 6}
-            y={PAD_T + (1 - f) * plotH + 3}
-            textAnchor="end"
-            className="text-[9px] tabular-nums"
-            fill="#555"
-          >
-            {Math.round(f * 100)}%
-          </text>
-        </g>
-      ))}
-      {/* Outcome lines */}
-      {lines.map(({ k, d }) => (
-        <path
-          key={k}
-          d={d}
-          fill="none"
-          stroke={outcomeColourHex(colourIdxOf(k))}
-          strokeWidth={1.75}
-          opacity={0.85}
-          strokeLinecap="round"
-        />
-      ))}
-      {/* Endpoint dots — labels live in the left-side outcome list, so we only
-          mark the current position here. Use the trajectory's own outcomes
-          for the same length-alignment guarantee as the polyline. */}
-      {chartOutcomes.map((_, k) => {
-        const p = points[points.length - 1].probs[k] ?? 0;
-        return (
-          <circle
-            key={k}
-            cx={xAt(points.length - 1)}
-            cy={yAt(p) + lineOffset(k)}
-            r={2.5}
-            fill={outcomeColourHex(colourIdxOf(k))}
-            opacity={0.9}
-          />
-        );
-      })}
-      {/* X axis labels — first label flags the introduction scene
-          explicitly so the chart's leftmost point reads as
-          "the stance opens HERE", not as the timeline origin. Last
-          label is the current scene cursor. Scene-only ordinals
-          throughout — world commits don't count. */}
-      <text x={PAD_L} y={H - 4} className="text-[9px]" fill="#7c7c8a">
-        introduced · scene {points[0].sceneOrdinal}
-      </text>
-      <text x={W - PAD_R} y={H - 4} textAnchor="end" className="text-[9px]" fill="#555">
-        scene {points[points.length - 1].sceneOrdinal}
-      </text>
-    </svg>
-    </div>
+    <TrajectoryChart
+      points={points}
+      outcomeCount={chartOutcomes.length}
+      colourOf={(k) => outcomeColourHex(chartColourIdx[k] ?? k)}
+      axes
+      nudgeTies
+      endpointDots
+      xLeft={`introduced · scene ${points[0].sceneOrdinal}`}
+      xRight={`scene ${points[points.length - 1].sceneOrdinal}`}
+    />
   );
 }
 
@@ -664,57 +507,6 @@ function StanceListSidebar({
   );
 }
 
-// ── Sparkline — lightweight SVG line chart for KPI trends ──────────────────
-
-function Sparkline({
-  values,
-  color,
-  fill,
-  yMin,
-  yMax,
-}: {
-  values: number[];
-  color: string;
-  fill?: string;
-  yMin?: number;
-  yMax?: number;
-}) {
-  if (values.length === 0) {
-    return (
-      <div className="h-10 w-full flex items-center justify-center text-[9px] text-text-dim/60">
-        no data
-      </div>
-    );
-  }
-  const W = 200;
-  const H = 40;
-  const pad = 2;
-  const minY = yMin ?? Math.min(...values);
-  const maxY = yMax ?? Math.max(...values);
-  const range = Math.max(1e-9, maxY - minY);
-  const n = values.length;
-  const xAt = (i: number) =>
-    n === 1 ? W / 2 : pad + (i / (n - 1)) * (W - pad * 2);
-  const yAt = (v: number) =>
-    pad + (1 - (v - minY) / range) * (H - pad * 2);
-  const linePath = values
-    .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`)
-    .join(' ');
-  const areaPath = `${linePath} L ${xAt(n - 1).toFixed(1)} ${H - pad} L ${xAt(0).toFixed(1)} ${H - pad} Z`;
-  const last = values[values.length - 1];
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      className="h-10 w-full"
-      aria-hidden="true"
-    >
-      {fill && <path d={areaPath} fill={fill} />}
-      <path d={linePath} fill="none" stroke={color} strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={xAt(n - 1)} cy={yAt(last)} r={1.6} fill={color} />
-    </svg>
-  );
-}
 
 // ── KPI trend card — current value + sparkline + delta vs. start ───────────
 

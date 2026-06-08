@@ -229,7 +229,7 @@ export function CompactPreviewModal({
 
         {stage === 'error' && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
-            <p className="text-[12px] text-red-400/90">Synthesis failed</p>
+            <p className="text-[12px] text-red-400/90">Combine failed</p>
             {error && (
               <p className="text-[11px] text-text-dim/70 max-w-md leading-relaxed">{error}</p>
             )}
@@ -287,7 +287,7 @@ function SetupPane({
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
         <p className="text-[12.5px] text-text-secondary leading-relaxed max-w-2xl">
           {mode === 'ai'
-            ? 'Synthesise the selected entries into a single markdown document. The output stages as a daily-log file and runs through the standard ingest pipeline — with the continuation-first thread-integration pass on reconcile.'
+            ? 'Combine the selected entries into a single markdown document. The output stages as a daily-log file and runs through the standard ingest pipeline — with the continuation-first thread-integration pass on reconcile.'
             : 'Concatenate the selected entries verbatim — no LLM rewrite. Each entry becomes its own H2 section using its title (or capture timestamp as fallback). The output stages as a daily-log file the same way.'}
         </p>
 
@@ -310,7 +310,7 @@ function SetupPane({
           </span>
           <div className="flex items-center gap-px rounded-md overflow-hidden border border-white/10 w-fit">
             <ModeOption
-              label="AI synthesis"
+              label="AI combine"
               hint="LLM rewrites the entries into a coherent document"
               active={mode === 'ai'}
               onClick={() => onModeChange('ai')}
@@ -406,7 +406,7 @@ function SetupPane({
           disabled={activeCount === 0}
           className="ml-auto text-[12px] px-4 py-2 rounded bg-emerald-400/15 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/25 hover:border-emerald-400/60 disabled:opacity-30 disabled:cursor-not-allowed transition"
         >
-          {mode === 'concat' ? 'Concatenate →' : 'Synthesise →'}
+          {mode === 'concat' ? 'Concatenate →' : 'Combine →'}
         </button>
       </footer>
     </>
@@ -468,7 +468,7 @@ function PreviewPane({
     <>
       <div className="shrink-0 flex items-center gap-3 px-6 py-2 border-b border-white/6">
         <span className="text-[10px] uppercase tracking-wider font-mono text-text-dim/70">
-          {stage === 'synthesising' && '⟳ Synthesising…'}
+          {stage === 'synthesising' && '⟳ Combining…'}
           {stage === 'preview' && '✓ Ready to stage'}
           {stage === 'staging' && '⟳ Staging file + starting conversion…'}
         </span>
@@ -484,7 +484,7 @@ function PreviewPane({
               <Markdown text={markdown} variant="reading" />
             ) : (
               <p className="text-[11px] text-text-dim/45 italic">
-                Synthesis output will appear here…
+                Combined output will appear here…
               </p>
             )}
           </div>
@@ -512,7 +512,7 @@ function PreviewPane({
             onClick={onReSynthesise}
             className="text-[11px] uppercase tracking-wider font-mono text-text-dim/70 hover:text-text-primary transition px-3 py-1.5"
           >
-            Re-synthesise
+            Re-combine
           </button>
         )}
         <button

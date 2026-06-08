@@ -22,6 +22,7 @@ import type {
   ReasoningGraphSnapshot,
   ReasoningNodeSnapshot,
 } from '@/types/narrative';
+import { DEFAULT_AUTO_CONFIG } from '@/types/narrative';
 
 /**
  * Package the coordination plan's visible-for-arc subgraph into a
@@ -76,9 +77,10 @@ export function useAutoPlay() {
   stateRef.current = state;
 
   const runCycle = useCallback(async () => {
-    const { activeNarrative, resolvedEntryKeys, autoConfig, viewState } = stateRef.current;
+    const { activeNarrative, resolvedEntryKeys, viewState } = stateRef.current;
     const { activeBranchId, autoRunState } = viewState;
     if (!activeNarrative || !activeBranchId || !autoRunState) return;
+    const autoConfig = activeNarrative.storySettings?.autoConfig ?? DEFAULT_AUTO_CONFIG;
 
     const headIndex = resolvedEntryKeys.length - 1;
     const branch = activeNarrative.branches[activeBranchId];

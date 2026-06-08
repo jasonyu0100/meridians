@@ -4,38 +4,36 @@
  * CapturePalette — floating bottom-center dock for the Queue sub-tab.
  * Visually identical to StagePalette (same glass-pill chrome).
  *
- * Three actions:
- *   - "+" mints an empty entry and focuses the editor.
+ * Two actions (minting an empty entry lives in the sidebar header):
  *   - sparkle opens a floating popover ABOVE the pill (Prose/Plan-style
  *     generate overlay) with a direction textarea and, when the
  *     narrative has web search enabled, a source URL input. Submitting
  *     generates a new entry via the LLM.
- *   - "Synthesise" opens the compact preview modal with the entire
+ *   - "Combine" opens the compact preview modal with the entire
  *     queue (the primary CTA, analogue of "Generate" in the scene
  *     palette).
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { IconSparkle } from '@/components/icons';
 
 export function CapturePalette({
   queueCount,
   websearchEnabled,
-  onCreate,
   onGenerate,
-  onSynthesiseAll,
+  onCombineAll,
 }: {
   queueCount: number;
   /** When true, the source-URL field is shown in the generate popover
    *  (and web_fetch is available to the LLM). When false, only the
    *  direction prompt is shown. */
   websearchEnabled: boolean;
-  onCreate: () => void;
   /** Generate an entry from a direction prompt + optional source URL.
    *  Resolves once the entry has been minted into the queue. */
   onGenerate: (direction: string, sourceUrl?: string) => Promise<void>;
-  onSynthesiseAll: () => void;
+  onCombineAll: () => void;
 }) {
-  const canSynthesise = queueCount > 0;
+  const canCombine = queueCount > 0;
   const [genOpen, setGenOpen] = useState(false);
   const [direction, setDirection] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -121,7 +119,9 @@ export function CapturePalette({
                 disabled={busy || (!direction.trim() && !sourceUrl.trim())}
                 className="text-[10px] px-3 py-1 rounded transition bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/15 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                {busy && <div className="w-2.5 h-2.5 border-2 border-violet-300/30 border-t-violet-300 rounded-full animate-spin" />}
+                {busy
+                  ? <div className="w-2.5 h-2.5 border-2 border-violet-300/30 border-t-violet-300 rounded-full animate-spin" />
+                  : <IconSparkle size={11} />}
                 {busy ? 'Generating…' : 'Generate'}
               </button>
             </div>
@@ -130,23 +130,9 @@ export function CapturePalette({
       )}
 
       <div className="glass-pill px-3 py-1.5 flex items-center gap-2 pointer-events-auto">
-        {/* New entry — sky-tinted circular icon button, paired in
-            hue with the emerald Synthesise CTA on the right edge. */}
-        <button
-          type="button"
-          onClick={onCreate}
-          aria-label="New entry"
-          title="New entry"
-          className="w-7 h-7 flex items-center justify-center rounded-full text-sky-300 bg-sky-500/15 hover:bg-sky-500/25 transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-
-        {/* Generate (sparkle) — toggles the popover above. Violet-tinted
-            to differentiate from new (sky) + synthesise (emerald). */}
+        {/* Generate (sparkle) — toggles the popover above. AI Generate Entry;
+            violet-tinted to differentiate from the emerald Combine CTA. New
+            (empty) entries are minted from the sidebar header, not here. */}
         <button
           type="button"
           onClick={() => (genOpen ? closeForm() : setGenOpen(true))}
@@ -158,9 +144,7 @@ export function CapturePalette({
               : 'text-violet-300 bg-violet-500/15 hover:bg-violet-500/25'
           }`}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
-          </svg>
+          <IconSparkle size={15} />
         </button>
 
         {/* Count chip — only when there's something in the queue. */}
@@ -177,16 +161,16 @@ export function CapturePalette({
 
         <button
           type="button"
-          onClick={onSynthesiseAll}
-          disabled={!canSynthesise}
-          title={canSynthesise ? 'Synthesise all queue entries into one file' : 'Add an entry first'}
+          onClick={onCombineAll}
+          disabled={!canCombine}
+          title={canCombine ? 'Combine all queue entries into one file' : 'Add an entry first'}
           className={`text-xs font-semibold px-3 py-1 rounded-md transition-colors uppercase tracking-wider ${
-            !canSynthesise
+            !canCombine
               ? 'text-text-dim/30 bg-white/3 cursor-not-allowed'
-              : 'text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25'
+              : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15'
           }`}
         >
-          Synthesise
+          Combine
         </button>
       </div>
     </div>

@@ -8,10 +8,12 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconList, IconSearch, IconMapPin, IconQuestion } from '@/components/icons';
+import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconMapPin, IconQuestion, IconEye, IconLineChart, IconGitBranch, IconBox } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/io/graph-export';
+import { exportCurriculum } from '@/lib/io/curriculum-export';
+import { exportBoardState } from '@/lib/io/board-export';
 import { exportBeliefSnapshot } from '@/lib/io/belief-export';
 import { exportScenePlan, exportSceneProse } from '@/lib/io/scene-export';
 
@@ -97,7 +99,7 @@ export const GRAPH_MODES = new Set<GraphViewMode>([
   'network-scene', 'network-arc', 'network-full',
 ]);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'decision' | 'search' | 'driver' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'board';
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'decision' | 'search' | 'vision' | 'streams' | 'merges' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'curriculum' | 'board';
 type ScenePrimaryMode = 'plan' | 'prose' | 'audio' | 'learning';
 const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio', 'learning'];
 
@@ -348,12 +350,15 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'learning') return 'learning';
   if (graphViewMode === 'decision') return 'decision';
   if (graphViewMode === 'search') return 'search';
-  if (graphViewMode === 'driver') return 'driver';
+  if (graphViewMode === 'vision') return 'vision';
+  if (graphViewMode === 'streams') return 'streams';
+  if (graphViewMode === 'merges') return 'merges';
   if (graphViewMode === 'map') return 'map';
   if (graphViewMode === 'belief') return 'belief';
   if (graphViewMode === 'present') return 'present';
   if (graphViewMode === 'compass') return 'compass';
   if (graphViewMode === 'mode') return 'mode';
+  if (graphViewMode === 'curriculum') return 'curriculum';
   if (graphViewMode === 'board') return 'board';
   return 'graph';
 }
@@ -361,7 +366,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
 export function StageBar() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
-  const graphViewMode = state.graphViewMode;
+  const graphViewMode = state.viewState.graphViewMode;
   const canvasMode = resolveCanvasMode(graphViewMode);
 
   const isGraphMode = GRAPH_MODES.has(graphViewMode);
@@ -395,23 +400,29 @@ export function StageBar() {
   // Present (the realized variables disposition), Compass (the cohort of
   // feasible next directions), and Phase (the working-machinery graph).
   const inMindMode = (
-    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map'
+    graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map' || graphViewMode === 'search'
   );
-  // "Driver" bundles Entry (the daily-ingest queue + note workspace) and
-  // Search (vector search over the narrative). Both render through
-  // CaptureView; the sub-tab toggle in the topbar flips between them.
-  const inCaptureMode = graphViewMode === 'driver' || graphViewMode === 'search';
-  const lastCaptureSubModeRef = useRef<'driver' | 'search'>('driver');
+  // The "Vision" cluster bundles Streams (perspective capture) / History
+  // (commit timeline) / Capture (the raw-note workspace + daily-ingest queue).
+  // All render through CaptureView / room views; the sub-tab toggle in the
+  // topbar flips between them.
+  const inCaptureMode =
+    graphViewMode === 'vision' || graphViewMode === 'streams' ||
+    graphViewMode === 'merges';
+  const lastCaptureSubModeRef = useRef<'vision' | 'streams' | 'merges'>('streams');
   useEffect(() => {
-    if (graphViewMode === 'driver' || graphViewMode === 'search') {
+    if (
+      graphViewMode === 'vision' || graphViewMode === 'streams' ||
+      graphViewMode === 'merges'
+    ) {
       lastCaptureSubModeRef.current = graphViewMode;
     }
   }, [graphViewMode]);
 
-  const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode' | 'decision' | 'map'>('belief');
+  const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode' | 'decision' | 'map' | 'search'>('belief');
   useEffect(() => {
     if (
-      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map'
+      graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map' || graphViewMode === 'search'
     ) {
       lastMindSubModeRef.current = graphViewMode;
     }
@@ -421,11 +432,11 @@ export function StageBar() {
   // and Board (the nested-map board). World is the default sub-tab and the
   // graph domains lead, carrying their own Scene / Arc / Full scope toggle;
   // Board sits after them.
-  const inStateMode = canvasMode === 'graph' || canvasMode === 'board';
+  const inStateMode = canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum';
   // World is the default State sub-tab; Board sits after the graph domains.
   const lastStateSubModeRef = useRef<GraphViewMode>('world-scene');
   useEffect(() => {
-    if (canvasMode === 'graph' || canvasMode === 'board') {
+    if (canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum') {
       lastStateSubModeRef.current = graphViewMode;
     }
   }, [graphViewMode, canvasMode]);
@@ -609,6 +620,13 @@ export function StageBar() {
 
   // ── Regenerate Embeddings modal ────────────────────────────────────────
   const [showEmbeddingsModal, setShowEmbeddingsModal] = useState(false);
+  // Search's coverage warning can request the embeddings dashboard directly
+  // (content present but not yet embedded).
+  useEffect(() => {
+    const open = () => setShowEmbeddingsModal(true);
+    window.addEventListener("embeddings:open", open);
+    return () => window.removeEventListener("embeddings:open", open);
+  }, []);
   const [reasoningCopied, setReasoningCopied] = useState(false);
   const [phaseCopied, setPhaseCopied] = useState(false);
 
@@ -729,6 +747,8 @@ export function StageBar() {
         canvasMode === 'prose' ||
         canvasMode === 'belief' ||
         canvasMode === 'search' ||
+        canvasMode === 'board' ||
+        canvasMode === 'curriculum' ||
         (canvasMode === 'map' && (activeMap || currentWorldBuildData.worldBuild?.reasoningGraph || currentArcData.arc?.reasoningGraph))
       ) && <TopBarDivider />}
 
@@ -759,6 +779,26 @@ export function StageBar() {
           </>
         );
       })()}
+
+      {/* Export curriculum (topic tree + questions) as Markdown */}
+      {narrative && canvasMode === 'curriculum' && (
+        <CopyButton
+          label="Copy Curriculum"
+          title="Copy the topic tree + questions as Markdown"
+          getText={() => exportCurriculum(narrative, state.resolvedEntryKeys)}
+          className={TOPBAR_TEXT_BUTTON}
+        />
+      )}
+
+      {/* Export board state (location clusters) as Markdown */}
+      {narrative && canvasMode === 'board' && (
+        <CopyButton
+          label="Copy Board"
+          title="Copy the board / map state as Markdown"
+          getText={() => exportBoardState(narrative)}
+          className={TOPBAR_TEXT_BUTTON}
+        />
+      )}
 
       {/* Contextual controls per mode */}
       {canvasMode === 'plan' && (
@@ -799,23 +839,6 @@ export function StageBar() {
                 }
                 className={TOPBAR_TEXT_BUTTON}
               />
-            </>
-          )}
-
-          {/* Regenerate Embeddings button (plan mode only) */}
-          {narrative && (
-            <>
-              <TopBarDivider />
-              <button
-                onClick={() => setShowEmbeddingsModal(true)}
-                className={TOPBAR_ICON_BUTTON}
-                title="Regenerate Embeddings"
-              >
-                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
-                <span>Refresh</span>
-              </button>
             </>
           )}
         </div>
@@ -1099,9 +1122,54 @@ export function StageBar() {
                   Board
                 </button>
               </div>
+              {/* Curriculum — the learning topic tree (Dagre) */}
+              <div className="flex items-center">
+                <div className="w-px h-4 bg-white/10" />
+                <button
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    canvasMode === 'curriculum'
+                      ? 'bg-white/10 text-text-primary'
+                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                  }`}
+                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'curriculum' })}
+                >
+                  <IconLightbulb size={12} />
+                  Curriculum
+                </button>
+              </div>
             </div>
 
           </>
+        )}
+        {/* Belief source toggle — Thread / Stream. Tertiary control nested
+            under Mind → Belief: both share the belief mechanics (stance,
+            outcomes, trajectory, category), so the toggle just swaps the
+            dashboard's source between the narrative's own Threads and the
+            room's member-owned Streams. */}
+        {canvasMode === 'belief' && (
+          <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+            {[
+              { source: 'thread' as const, label: 'Thread' },
+              { source: 'stream' as const, label: 'Stream' },
+            ].map(({ source, label }, idx) => {
+              const isActive = state.viewState.beliefSource === source;
+              return (
+                <div key={source} className="flex items-center">
+                  {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                  <button
+                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                      isActive
+                        ? 'bg-white/10 text-text-primary'
+                        : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                    }`}
+                    onClick={() => dispatch({ type: 'SET_BELIEF_SOURCE', source })}
+                  >
+                    {label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {/* Control sub-mode toggle — Belief · Compass · Mode.
@@ -1120,6 +1188,7 @@ export function StageBar() {
               { mode: 'mode' as const, label: 'Phase' },
               { mode: 'decision' as const, label: 'Decision' },
               { mode: 'map' as const, label: 'Map' },
+              { mode: 'search' as const, label: 'Search' },
             ].map(({ mode, label }, idx) => {
               // Compass owns the merged variable surface — highlight it for
               // both the forward (compass) and current (present) projections,
@@ -1146,6 +1215,7 @@ export function StageBar() {
           </div>
         )}
 
+
         {/* Scene sub-mode toggle (renders to the LEFT of primary, matching
             the graph scope/domain toggle pattern). Shown whenever Scene is
             the active mode — even on world commits where currentScene is
@@ -1158,7 +1228,7 @@ export function StageBar() {
               { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
               { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
-              { mode: 'learning' as ScenePrimaryMode, Icon: IconQuestion, label: 'Learn', hidden: false },
+              { mode: 'learning' as ScenePrimaryMode, Icon: IconQuestion, label: 'Questions', hidden: false },
             ]
               .filter(({ hidden }) => !hidden)
               .map(({ mode, Icon, label }, idx) => {
@@ -1183,14 +1253,17 @@ export function StageBar() {
           </div>
         )}
 
-        {/* Driver sub-mode toggle — Queue / Search. Mirrors the Control
-            and Scene sub-toggles. Active when canvasMode is driver or
-            search (both are sub-modes of Driver). */}
-        {(canvasMode === 'driver' || canvasMode === 'search') && (
+        {/* Vision sub-mode toggle — Streams / History / Entry. Streams are the
+            tracked open questions that capture perspectives and decipher
+            uncertainty; History is the commit timeline; Entry is the raw-note
+            workspace — fragments and ideas combined into files that extend
+            the narrative. (Search lives under Mind; members in Config.) */}
+        {inCaptureMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'driver' as const, Icon: IconList, label: 'Priors' },
-              { mode: 'search' as const, Icon: IconSearch, label: 'Search' },
+              { mode: 'streams' as const, Icon: IconLineChart, label: 'Streams' },
+              { mode: 'merges' as const, Icon: IconGitBranch, label: 'History' },
+              { mode: 'vision' as const, Icon: IconNotepad, label: 'Entry' },
             ].map(({ mode, Icon, label }, idx) => {
               const isActive = graphViewMode === mode;
               return (
@@ -1221,10 +1294,10 @@ export function StageBar() {
             selected." empty state. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
-            { mode: 'driver' as const, Icon: IconList, label: 'Capture', activeWhen: inCaptureMode },
-            { mode: 'state' as const, Icon: IconNetwork, label: 'State', activeWhen: inStateMode },
+            { mode: 'vision' as const, Icon: IconEye, label: 'Vision', activeWhen: inCaptureMode },
+            { mode: 'state' as const, Icon: IconBox, label: 'State', activeWhen: inStateMode },
             { mode: 'control' as const, Icon: IconMind, label: 'Mind', activeWhen: inMindMode },
-            { mode: 'scene' as const, Icon: IconNotepad, label: 'Scene', activeWhen: inSceneMode },
+            { mode: 'scene' as const, Icon: IconNotepad, label: 'Channel', activeWhen: inSceneMode },
           ]
             .map(({ mode, Icon, label, activeWhen }, idx) => {
               return (
@@ -1247,8 +1320,8 @@ export function StageBar() {
                         // default — the first State sub-tab).
                         if (inStateMode) return;
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastStateSubModeRef.current });
-                      } else if (mode === 'driver') {
-                        // Already in driver/search → no-op; otherwise jump to
+                      } else if (mode === 'vision') {
+                        // Already in a Vision sub-tab → no-op; otherwise jump to
                         // whichever sub-tab the operator was last on.
                         if (inCaptureMode) return;
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastCaptureSubModeRef.current });

@@ -1,6 +1,6 @@
 // World generation — full narrative bootstrap, world expansion, and post-arc direction course-correction.
 
-import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm, WebsearchConfig } from '@/types/narrative';
+import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm, WebsearchConfig, Merge } from '@/types/narrative';
 import { REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
 import { resolveReasoningBudget, resolveWebsearch } from './api';
 import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/forces/narrative-utils';
@@ -27,6 +27,7 @@ import { buildActivePhaseSection } from './phase-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext } from './context';
+import { renderMergeBasisBlock } from '@/lib/merges';
 import { logInfo } from '@/lib/core/system-logger';
 import {
   buildSuggestArcDirectionPrompt,
@@ -234,6 +235,11 @@ export type ExpandWorldOptions = {
    *  parse + post-processing path. Used by the UI's "Repair" button after
    *  a primary call returns unparseable JSON. */
   repairFromRaw?: string;
+  /** Merges to fold in as the basis for this expansion — passed as full
+   *  objects (so a not-yet-persisted proposed merge can be rendered) into a
+   *  `<continuity-basis>` ground-truth block. The ids are stamped onto the
+   *  produced WorldBuild by the EXPAND_WORLD reducer (passed separately). */
+  basisMerges?: Merge[];
 };
 
 export async function expandWorld(
@@ -244,7 +250,7 @@ export async function expandWorld(
   size: WorldExpansionSize = 'medium',
   options: ExpandWorldOptions = {},
 ): Promise<WorldExpansionResponse> {
-  const { sourceText, onReasoning, entityFilter, repairFromRaw } = options;
+  const { sourceText, onReasoning, entityFilter, repairFromRaw, basisMerges } = options;
 
   logInfo('Starting world expansion', {
     source: 'world-expansion',
@@ -294,6 +300,9 @@ export async function expandWorld(
     size,
     entityFilterBlock,
     modeSection: buildActivePhaseSection(narrative, "expand"),
+    continuityBasis: basisMerges && basisMerges.length > 0
+      ? renderMergeBasisBlock(narrative, basisMerges) ?? undefined
+      : undefined,
     existingCharList,
     existingLocList,
     existingRelList,

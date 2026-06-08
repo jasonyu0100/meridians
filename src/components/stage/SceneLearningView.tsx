@@ -16,9 +16,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/state/store";
 import { generateSceneQuestions } from "@/lib/ai";
+import { embedQuestions } from "@/lib/search/embeddings";
 import { useResolvedProse } from "@/hooks/useResolvedScene";
+import { topicPath } from "@/lib/learning/curriculum";
 import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
-import { IconCheck, IconTrash, IconLightbulb } from "@/components/icons";
+import { IconCheck, IconTrash, IconQuestion } from "@/components/icons";
 import type {
   BloomLevel,
   DifficultyBand,
@@ -86,7 +88,22 @@ export function SceneLearningView({
             );
           },
         });
-        dispatch({ type: "SET_SCENE_QUESTIONS", sceneId: scene.id, questions: result });
+        // Embed the question stems up front so Expert search is usable without
+        // a separate embed pass. Refs survive the id reassignment in
+        // COMMIT_SCENE_QUESTIONS (it spreads `...q`). Best-effort: a failed
+        // embed shouldn't block committing the questions themselves.
+        let questions = result.questions;
+        try {
+          questions = await embedQuestions(questions, narrative.id);
+        } catch {
+          /* leave unembedded — the embeddings dashboard can backfill */
+        }
+        dispatch({
+          type: "COMMIT_SCENE_QUESTIONS",
+          sceneId: scene.id,
+          questions,
+          newTopics: result.newTopics,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -138,8 +155,8 @@ export function SceneLearningView({
               onClick={practice}
               className="ml-auto flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 transition-colors"
             >
-              <IconLightbulb size={13} />
-              Practice this scene
+              <IconQuestion size={13} />
+              Quiz this scene
             </button>
           )}
         </div>
@@ -179,7 +196,24 @@ export function SceneLearningView({
         {/* Question list */}
         <div className="space-y-4">
           {questions.map((q, i) => (
-            <QuestionCard key={q.id} question={q} index={i} onDelete={() => deleteQuestion(q.id)} />
+            <QuestionCard
+              key={q.id}
+              question={q}
+              index={i}
+              topicLabel={q.topicId ? topicPath(narrative.topics ?? {}, q.topicId) : undefined}
+              onOpenTopic={
+                q.topicId
+                  ? () => dispatch({ type: "SET_INSPECTOR", context: { type: "topic", topicId: q.topicId! } })
+                  : undefined
+              }
+              onOpenQuestion={() =>
+                dispatch({
+                  type: "SET_INSPECTOR",
+                  context: { type: "question", sceneId: scene.id, questionId: q.id },
+                })
+              }
+              onDelete={() => deleteQuestion(q.id)}
+            />
           ))}
         </div>
       </div>
@@ -190,10 +224,16 @@ export function SceneLearningView({
 function QuestionCard({
   question,
   index,
+  topicLabel,
+  onOpenTopic,
+  onOpenQuestion,
   onDelete,
 }: {
   question: LearningQuestion;
   index: number;
+  topicLabel?: string;
+  onOpenTopic?: () => void;
+  onOpenQuestion: () => void;
   onDelete: () => void;
 }) {
   const bloom = BLOOM_STYLE[question.bloom] ?? BLOOM_STYLE.understand;
@@ -252,18 +292,28 @@ function QuestionCard({
         </p>
       )}
 
-      {question.tags.length > 0 && (
-        <div className="mt-3 pl-7 flex flex-wrap gap-1.5">
-          {question.tags.map((t) => (
-            <span
-              key={t}
-              className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/6 text-text-dim"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="mt-3 pl-7 flex flex-wrap items-center gap-1.5">
+        {topicLabel ? (
+          <button
+            onClick={onOpenTopic}
+            className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 transition-colors"
+            title="Open this topic in the inspector"
+          >
+            {topicLabel}
+          </button>
+        ) : (
+          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/6 text-text-dim/70">
+            Untopiced
+          </span>
+        )}
+        <button
+          onClick={onOpenQuestion}
+          className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded text-text-dim hover:text-text-secondary hover:bg-white/6 transition-colors ml-auto"
+          title="Inspect / reassign this question"
+        >
+          Details
+        </button>
+      </div>
     </div>
   );
 }

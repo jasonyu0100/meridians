@@ -77,6 +77,7 @@ export {
   buildBranchChatSystem,
   buildExpandWorldSystem,
   buildExpansionSuggestSystem,
+  buildExpertSearchSystem,
   buildInterviewGenSystem,
   buildNarrativeDirectionSystem,
   buildSearchSynthesisSystem,

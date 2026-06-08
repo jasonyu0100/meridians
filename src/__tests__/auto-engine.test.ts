@@ -131,12 +131,7 @@ function createAutoConfig(overrides: Partial<AutoConfig> = {}): AutoConfig {
     direction: "Continue the story",
     minArcLength: 3,
     maxArcLength: 8,
-    maxActiveThreads: 5,
-    threadStagnationThreshold: 3,
-    toneGuidance: "",
     narrativeConstraints: "",
-    characterRotationEnabled: true,
-    minScenesBetweenCharacterFocus: 5,
     ...overrides,
   };
 }
@@ -631,7 +626,6 @@ describe("evaluateNarrativeState", () => {
     }
     const config = createAutoConfig({
       endConditions: [{ type: "scene_count", target: 50 }],
-      maxActiveThreads: 4,
     });
     const result = evaluateNarrativeState(narrative, [], 0, config);
     expect(result.pressure.threads.needsResolution).toBe(true);
@@ -649,7 +643,6 @@ describe("evaluateNarrativeState", () => {
     }
     const config = createAutoConfig({
       endConditions: [{ type: "scene_count", target: 50 }],
-      threadStagnationThreshold: 3,
     });
     const result = evaluateNarrativeState(
       narrative,
@@ -691,13 +684,6 @@ describe("buildOutlineDirective", () => {
     const directive = buildOutlineDirective(narrative, config, baseCtx);
     expect(directive).toContain("## Story Phase");
     expect(directive).toContain("MIDPOINT");
-  });
-  it("includes tone guidance when set", () => {
-    const narrative = createMinimalNarrative();
-    const config = createAutoConfig({ toneGuidance: "Dark and brooding" });
-    const directive = buildOutlineDirective(narrative, config, baseCtx);
-    expect(directive).toContain("## Tone");
-    expect(directive).toContain("Dark and brooding");
   });
   it("includes narrative constraints when set", () => {
     const narrative = createMinimalNarrative();

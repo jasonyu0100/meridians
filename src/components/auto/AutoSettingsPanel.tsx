@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { GuidanceFields } from '@/components/generation/GuidanceFields';
 import type { AutoConfig, AutoEndCondition } from '@/types/narrative';
+import { DEFAULT_AUTO_CONFIG } from '@/types/narrative';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import { Segmented } from '@/components/ui/Segmented';
 
@@ -22,7 +23,7 @@ export function AutoSettingsPanel({ onClose, onStart }: { onClose: () => void; o
   const hasCoordinationPlan = !!(state.activeNarrative?.branches && state.viewState.activeBranchId && state.activeNarrative.branches[state.viewState.activeBranchId]?.coordinationPlan);
 
   const [config, setConfig] = useState<AutoConfig>(() => {
-    const base = { ...state.autoConfig };
+    const base = { ...(state.activeNarrative?.storySettings?.autoConfig ?? DEFAULT_AUTO_CONFIG) };
     // When coordination plan is active, default to planning_complete instead of scene_count
     if (hasCoordinationPlan && !base.endConditions.some(c => c.type === 'planning_complete')) {
       base.endConditions = [{ type: 'planning_complete' }];

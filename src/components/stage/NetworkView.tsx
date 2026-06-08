@@ -56,8 +56,8 @@ export default function NetworkView() {
   // `graphViewMode`. We map the three network modes onto the existing
   // Scope union so the aggregation code below doesn't change.
   const scope: Scope =
-    state.graphViewMode === 'network-scene' ? 'scene'
-    : state.graphViewMode === 'network-arc' ? 'arc'
+    state.viewState.graphViewMode === 'network-scene' ? 'scene'
+    : state.viewState.graphViewMode === 'network-arc' ? 'arc'
     : 'narrative';
   // Heat is off by default — node fill defaults to the force colour
   // (fate/world/system) so the categorical signal reads cleanly.

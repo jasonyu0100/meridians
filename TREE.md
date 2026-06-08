@@ -2,7 +2,7 @@
 
 > **Generated** by `scripts/gen-tree.mjs` — structure is read from the filesystem and each file's description is derived from its own leading comment (else a name-based heuristic). No hand-maintained map; re-run after adding files: `node scripts/gen-tree.mjs`. Companion to [MERMAID.md](MERMAID.md). Stack: Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3 · IndexedDB.
 >
-> 480 files · 471 described from their own header comment, the rest from filename heuristics.
+> 509 files · 501 described from their own header comment, the rest from filename heuristics.
 
 ```xml
 <repo name="meridians">
@@ -11,7 +11,6 @@
     <file name="CLAUDE.md" desc="project instructions + engine concepts"/>
     <file name="MERMAID.md" desc="whole-app connection diagrams (top-down)"/>
     <file name="TREE.md" desc="this file — generated XML file-structure map"/>
-    <file name="ROADMAP.md" desc="build spec — iterative features → platform changes"/>
     <file name="CONCEPT.md" desc="Conviction — the rehearsal card game spec (ROADMAP A4)"/>
     <file name="LANGUAGE.md" desc="canonical glossary / vocabulary"/>
     <file name="DEFINITIONS.md" desc="game-theory + technical taxonomy definitions"/>
@@ -50,6 +49,7 @@
       <file name="build-grid.test.ts" desc="Tests for buildGrid (components/generation/BranchModal) — laying branches into the BranchModal grid"/>
       <file name="constants.test.ts" desc="Tests for lib/constants — validates tunable config values, model ids, timeouts, and concurrency limits"/>
       <file name="core-language.test.ts" desc="Core-language guard. Enforces the canonical vocabulary documented in src/lib/prompts/CORE_LANGUAGE.md. These…"/>
+      <file name="curriculum-restructure.test.ts" desc="Tests for the curriculum-restructure sanitiser — the id-stable, cross-branch"/>
       <file name="embeddings.test.ts" desc="Embedding System Integration Tests Tests cover: 1"/>
       <file name="epub-export.test.ts" desc="Tests for lib/io/epub-export — verifies EPUB export output, filename derivation, and browser API usage"/>
       <file name="file-conversion.test.ts" desc="file-conversion tests — focused on the pure pieces of the Apply pipeline that don't depend on the LLM: 1"/>
@@ -57,25 +57,29 @@
       <file name="game-theory.test.ts" desc="Tests for lib/game-theory — Nash equilibria, margin scoring, ELO updates, and rating trajectories"/>
       <file name="graph-export.test.ts" desc="Tests for lib/io/graph-export — graph view export, mode labels, and exportable-mode detection"/>
       <file name="graph-utils.test.ts" desc="Tests for graph utils — graph/overview data building, character positions, grouping, and color/size scales"/>
+      <file name="learning-coverage.test.ts" desc="Learning coverage + curriculum tests"/>
       <file name="mechanism-profiles.test.ts" desc="Tests for mechanism profile system"/>
+      <file name="merges.test.ts" desc="Tests for lib/merges — branch-scoped visibility (ownership model),"/>
       <file name="narrative-utils.test.ts" desc="Tests for lib/narrative-utils — force snapshots, swing, archetype/shape/scale classification, and cube logic"/>
       <file name="network-graph.test.ts" desc="Tests for lib/graph/network-graph — aggregate connection graph, tier/topology classification, and summaries"/>
       <file name="pacing-markov.test.ts" desc="Tests for lib/pacing/pacing-markov — transition matrices, sequence sampling, presets, and pacing prompts"/>
       <file name="package-export-import.test.ts" desc="Package Export/Import Tests Tests for .meridians ZIP package export and import"/>
       <file name="paradigm-system.test.ts" desc="Paradigm system + today's hardening work"/>
-      <file name="persistence.test.ts" desc="Persistence tests are skipped because they require browser environment (window, IndexedDB) which has…"/>
       <file name="portfolio-analytics.test.ts" desc="Tests for lib/analysis/portfolio-analytics — thread portfolio snapshots, rows, trajectories, and focus ids"/>
       <file name="positions.test.ts" desc="Tests for lib/forces/positions — participation-derived cumulative entity locations across scenes"/>
       <file name="proposition-classify.test.ts" desc="Proposition Classification Tests Tests the core classification logic: - Percentile and median computation -…"/>
+      <file name="room-ui.test.ts" desc="Tests for the pure helpers in components/stage/RoomUI — id-minting"/>
       <file name="scenarios-engine.test.ts" desc="Tests for lib/scenarios/scenarios-engine — scenario direction building, virtual state, and variable stamping"/>
       <file name="scenarios-remap.test.ts" desc="Tests for lib/scenarios/scenarios-remap — ID remapping of scenario commits to avoid collisions on merge"/>
       <file name="scene-filter.test.ts" desc="Tests for lib/graph/scene-filter — entity/world-node/relationship/thread visibility resolved at a given scene"/>
-      <file name="search-synthesis.test.ts" desc="Search Synthesis Tests Tests the AI-powered search synthesis functionality: - Context building from search…"/>
+      <file name="search-synthesis.test.ts" desc="Search Synthesis Tests Both search modes answer in academic prose and attribute to database entities in the…"/>
       <file name="search.test.ts" desc="Semantic Search Tests Tests the core search functionality including: - Query embedding generation -…"/>
       <file name="sentence-tokenization.test.ts" desc="Tests for sentence tokenization — splitting prose into sentences while respecting abbreviations"/>
       <file name="setup.ts" desc="Setup file for Vitest tests"/>
       <file name="slides-data.test.ts" desc="Tests for lib/slides-data — computing slide deck data from narrative state"/>
       <file name="store.test.ts" desc="Tests for lib/store reducer — state transitions over narratives, scenes, branches, and prose/plan versions"/>
+      <file name="stream-stance.test.ts" desc="Tests for lib/forces/stream-stance — the Vision belief engine"/>
+      <file name="streams-ai.test.ts" desc="Tests for lib/ai/streams — the Vision AI helpers' parsing/normalisation/"/>
       <file name="system-graph.test.ts" desc="Tests for lib/graph/system-graph — system delta sanitizing/application, edge keys, and concept id resolution"/>
       <file name="system-logger.test.ts" desc="Tests for lib/core/system-logger — error/warning log entries, subscription callbacks, and narrative scoping"/>
       <file name="text-analysis.test.ts" desc="Tests for lib/text-analysis — corpus chunking and extraction pipeline (with mocked AI calls and constants)"/>
@@ -203,11 +207,15 @@
         <file name="LocationDetail.tsx" desc="LocationDetail — inspector view for a location: prominence, accumulated history graph, threads, and image"/>
         <file name="MediaField.tsx" desc="MediaField — display + upload + clear for a single entity/board image"/>
         <file name="PhaseNodeDetail.tsx" desc="PhaseNodeDetail — inspector for a single Phase Reasoning Graph (PRG) node"/>
+        <file name="QuestionDetail.tsx" desc="QuestionDetail — inspector view for one learning question: stem, options"/>
         <file name="ReasoningNodeDetail.tsx" desc="ReasoningNodeDetail — inspector view for a CRG node: type, content, tier, and typed edges"/>
         <file name="SceneDetail.tsx" desc="SceneDetail — inspector view for a scene: forces, cube mode, participants, and structural deltas"/>
+        <file name="StreamDetail.tsx" desc="StreamDetail — inspector view for a stream: stance across outcomes, belief"/>
+        <file name="StreamPriorDetail.tsx" desc="StreamPriorDetail — inspector view for a single stream prior: perceptual"/>
         <file name="ThreadDetail.tsx" desc="ThreadDetail — inspector view for a thread: stance across outcomes, lifecycle status, and delta log"/>
         <file name="ThreadLogNodeDetail.tsx" desc="ThreadLogNodeDetail — inspector view for a single thread-log node: perceptual primitive, evidence, and…"/>
         <file name="ThreadsPanel.tsx" desc="ThreadsPanel — sidebar pane mirroring SurveyPanel / MapPanel shape: top bar with a count, then a stream of…"/>
+        <file name="TopicDetail.tsx" desc="TopicDetail — inspector view for one curriculum Topic: rename, describe,"/>
         <file name="WorldNodeDetail.tsx" desc="WorldNodeDetail — inspector view for an entity world-graph node: content, type, and edges"/>
       </dir>
       <dir name="landing">
@@ -233,6 +241,7 @@
         <file name="StorySettingsModal.tsx" desc="StorySettingsModal — edit per-story settings: POV, world focus, reasoning/websearch levels, prose format"/>
       </dir>
       <dir name="shared">
+        <file name="charts.tsx" desc="Shared chart primitives — the single source of truth for the app's inline line charts"/>
         <file name="CopyButton.tsx" desc="CopyButton — button that copies text to the clipboard with transient confirmation state"/>
         <file name="InferenceFields.tsx" desc="Shared inference-shape renderer — the canonical visual language for the universal inference-shape (detail…"/>
       </dir>
@@ -254,7 +263,7 @@
         <file name="FileComposerModal.tsx" desc="FileComposerModal — two-phase composer for extending the current world"/>
         <file name="HierarchyModal.tsx" desc="HierarchyModal — edit the location hierarchy (the map tree) of nested places"/>
         <file name="InterviewPanel.tsx" desc="InterviewPanel — sidebar panel for running and browsing one-subject-many-questions interviews"/>
-        <file name="LearningPanel.tsx" desc="LearningPanel — sidebar surface for browsing a world view's question banks"/>
+        <file name="LearningPanel.tsx" desc="LearningPanel — sidebar surface for a member's coverage of the world view's"/>
         <file name="MapPanel.tsx" desc="MapPanel — sidebar panel listing generated board/maps and launching the map composer"/>
         <file name="MediaDrive.tsx" desc="MediaDrive — sidebar gallery of generated images and media assets for the narrative"/>
         <file name="MediaPreview.tsx" desc="MediaPreview — full-screen portal lightbox for previewing a media asset"/>
@@ -302,23 +311,29 @@
         <file name="BeliefView.tsx" desc="Belief dashboard — the world view's belief, built from per-thread stances"/>
         <file name="BoardView.tsx" desc="BoardView — Stage board surface: board-game style map with nested location maps and participant avatars"/>
         <file name="CompassView.tsx" desc="CompassView — Stage Compass surface: arc Present + Future variable scenarios (the softmax-ranked cohort)"/>
+        <file name="CurriculumRestructureModal.tsx" desc="CurriculumRestructureModal — reorganise the global topic tree with AI"/>
+        <file name="CurriculumView.tsx" desc="CurriculumView — the world view's Topic tree as a horizontal, collapsible mind-map"/>
         <file name="DecisionView.tsx" desc="DecisionView — scene-level game-theoretic analysis"/>
         <file name="graph-utils.ts" desc="graph-utils — shared helpers for Stage graph surfaces: node/edge derivation, colors, and layout utilities"/>
+        <file name="MergesView.tsx" desc="MergesView — the Vision &quot;History&quot; tab"/>
         <file name="NetworkView.tsx" desc="NetworkView — Stage Network surface: aggregate connection graph across all entities, rendered with D3"/>
         <file name="PhaseGraphView.tsx" desc="Phase Reasoning Graph (PRG) view — renders a phase graph with the same dagre construction as the Causal…"/>
         <file name="PlanCandidatesModal.tsx" desc="PlanCandidatesModal — modal wrapper hosting PlanCandidatesView for picking among generated scene-plan…"/>
         <file name="PlanCandidatesView.tsx" desc="PlanCandidatesView — side-by-side comparison and selection UI for alternative generated scene-plan candidates"/>
         <file name="ReasoningGraphView.tsx" desc="ReasoningGraphView — Stage surface rendering an arc's causal reasoning graph (CRG) nodes and typed edges"/>
+        <file name="RoomUI.tsx" desc="RoomUI — presentation primitives shared by the room/perspective surfaces"/>
         <file name="SceneAudioView.tsx" desc="SceneAudioView — Stage surface for generating and playing back audio narration of a scene's prose"/>
         <file name="SceneBar.tsx" desc="SceneBar — horizontal scene navigator strip for the Stage; selects and scrolls through the branch's scenes"/>
         <file name="SceneLearningView.tsx" desc="SceneLearningView — scene-level learning question bank"/>
         <file name="ScenePanel.tsx" desc="ScenePanel — Stage scene detail container: header, POV/location, and the plan/prose/audio sub-views for a…"/>
         <file name="ScenePlanView.tsx" desc="ScenePlanView — Stage surface showing a scene's beat-by-beat plan with generate/rewrite/reverse-engineer…"/>
         <file name="SceneProseView.tsx" desc="SceneProseView — Stage surface rendering a scene's prose with generate/rewrite controls and version history"/>
-        <file name="SearchView.tsx" desc="SearchView — Stage semantic-search surface: embedding query with AI-synthesized overview and inline citations"/>
+        <file name="SearchView.tsx" desc="SearchView — Stage search surface"/>
         <file name="Stage.tsx" desc="Stage — center-view workspace shell that routes between the active Stage surfaces (board, graphs, scene, etc.)"/>
         <file name="StageBar.tsx" desc="StageBar — top toolbar for the Stage: switches the active center-view surface and exposes per-surface actions"/>
         <file name="StagePalette.tsx" desc="StagePalette — command-palette / picker for selecting which Stage center-view surface to display"/>
+        <file name="StreamBeliefView.tsx" desc="Stream belief dashboard — the Stream surface of Mind → Belief, mirroring the Thread dashboard ([BeliefView])…"/>
+        <file name="StreamsView.tsx" desc="StreamsView — the Perspectives &quot;Streams&quot; tab"/>
         <file name="SystemGraphView.tsx" desc="SystemGraphView — Stage surface visualising the system knowledge graph (laws, systems, concepts, tensions)…"/>
         <file name="ThreadGraphView.tsx" desc="ThreadGraphView — Stage surface mapping threads to their participant entities as a D3 force graph"/>
         <file name="ThreadLogGraphView.tsx" desc="ThreadLogGraphView — Stage surface tracing a thread's perceptual-primitive log (stance movement) scene by…"/>
@@ -338,6 +353,7 @@
         <file name="TimelineStrip.tsx" desc="TimelineStrip — bottom timeline: scene strip, force totals, branch switcher, and eval entry points"/>
       </dir>
       <dir name="topbar">
+        <file name="AgentsModal.tsx" desc="AgentsModal — dedicated TopBar interface for managing the room's AI players"/>
         <file name="ApiKeyModal.tsx" desc="ApiKeyModal — enter and manage user-provided API keys, gated by feature access"/>
         <file name="ApiLogsModal.tsx" desc="ApiLogsModal — modal wrapper around ApiLogsViewer with Narrative/Analysis/Misc scope selector"/>
         <file name="BeatProfileModal.tsx" desc="BeatProfileModal — visualises beat-function/mechanism distributions and Markov sampler from scene plans"/>
@@ -350,10 +366,11 @@
         <file name="ImportPackageModal.tsx" desc="ImportPackageModal — import a narrative from a package file or directory, with validation and options"/>
         <file name="LearnModal.tsx" desc="LearnModal — fullscreen quiz runner for reinforcing the concepts and ideas captured across a world view's…"/>
         <file name="MarkovChainModal.tsx" desc="MarkovChainModal — visualises the cube-mode transition matrix and pacing fingerprint of the narrative"/>
+        <file name="MembersModal.tsx" desc="MembersModal — dedicated TopBar interface for editing the room's member list"/>
         <file name="NarrativeEditModal.tsx" desc="NarrativeEditModal — edit narrative meta (title, premise, cover) with AI-assisted refinement"/>
         <file name="PatternsModal.tsx" desc="PatternsModal — detect and display recurring narrative patterns under a selected paradigm"/>
         <file name="PropositionAnalysisModal.tsx" desc="PropositionAnalysisModal — classifies and visualises embedded propositions by base category and reach"/>
-        <file name="RegenerateEmbeddingsModal.tsx" desc="RegenerateEmbeddingsModal — trigger bulk re-embedding of scenes/beats/propositions with mode selection"/>
+        <file name="RegenerateEmbeddingsModal.tsx" desc="RegenerateEmbeddingsModal — embeddings coverage dashboard"/>
         <file name="SlideRegionsModal.tsx" desc="SlideRegionsModal — configure named regions (sets of arcs) to view scoped"/>
         <file name="SystemLogModal.tsx" desc="SystemLogModal — browse the in-app system event log with filtering"/>
         <file name="ThemeModal.tsx" desc="ThemeMenu — compact dropdown to pick the app colour theme from preview"/>
@@ -374,6 +391,7 @@
       <file name="Modal.tsx" desc="Modal — reusable modal shell (header/body/streaming-status) with starfield backdrop"/>
     </dir>
     <dir name="hooks">
+      <file name="useActiveMember.ts" desc="useActiveMember — the room's currently-active member"/>
       <file name="useAssetUrl.ts" desc="React hook for resolving asset references to blob URLs Handles: - ImageRef: &quot;img_abc123&quot; → blob URL,…"/>
       <file name="useAudioPlayer.tsx" desc="useAudioPlayer — manages scene TTS playback state, audio caching, and the player context"/>
       <file name="useAutoPlay.ts" desc="useAutoPlay — drives the auto-engine generation loop: evaluate state, build directives, generate arcs"/>
@@ -387,6 +405,9 @@
       <file name="useScenarios.ts" desc="useScenarios — parallel Compass-driven branch generation"/>
     </dir>
     <dir name="lib">
+      <dir name="agents">
+        <file name="personas.ts" desc="Agent persona presets — the catalogue of preset personalities an Agent (AI"/>
+      </dir>
       <dir name="ai">
         <dir name="reasoning-graph">
           <file name="shared.ts" desc="Shared helpers for the reasoning-graph subsystem — scale helpers and force-preference type used across every…"/>
@@ -398,6 +419,7 @@
         <file name="candidates.ts" desc="Plan Candidates - Generate multiple candidate plans and rank by semantic similarity Embeddings are only…"/>
         <file name="capture.ts" desc="Driver entry generation. Produces a single Driver entry ({title, text}) from a user direction prompt and,…"/>
         <file name="context.ts" desc="LLM context builders — assembles narrative/branch/scene context blocks fed into generation prompts"/>
+        <file name="curriculum-restructure.ts" desc="Curriculum-restructure LLM helpers — reorganise the global topic tree into a"/>
         <file name="diagnose.ts" desc="Inspect a thrown error from a generation call and produce a user-facing diagnosis: what likely went wrong,…"/>
         <file name="errors.ts" desc="Errors raised at the LLM API boundary"/>
         <file name="game-analysis.ts" desc="Game-theoretic scene analysis — a purely additive, post-hoc layer"/>
@@ -419,6 +441,7 @@
         <file name="review.ts" desc="Branch/prose/plan review — LLM evaluation passes that produce per-scene verdicts and quality critiques"/>
         <file name="scenes.ts" desc="Scene generation — scene structures+deltas, beat plans, and plan reverse-engineering; Markov-paced"/>
         <file name="search-synthesis.ts" desc="AI Search Synthesis — proposition-primary RAG with scene-aggregate context"/>
+        <file name="streams.ts" desc="Stream instantiation — AI-seeds a new stream's belief from a member's initial intuition, the same way a Fate…"/>
         <file name="surveys.ts" desc="Survey executor — query characters, locations, and artifacts in parallel using their world-graph continuity…"/>
         <file name="validation.ts" desc="Validation utilities for AI API responses Ensures LLM outputs match expected types before accepting results"/>
         <file name="variables.ts" desc="Per-arc variable generation — the Compass surfaces"/>
@@ -428,6 +451,7 @@
         <file name="analysis-runner.ts" desc="Singleton analysis runner — persists across React component mounts/unmounts"/>
         <file name="portfolio-analytics.ts" desc="Thread-portfolio analytics"/>
         <file name="proposition-classify.ts" desc="Proposition Classification Engine Classifies propositions into 4 base categories with Local/Global reach: 1"/>
+        <file name="stream-portfolio.ts" desc="Stream-portfolio analytics — the HEAD-based cousin of `portfolio-analytics`"/>
         <file name="text-analysis.ts" desc="Text Analysis Pipeline — converts a large corpus (book, screenplay, etc.) into a full NarrativeState by…"/>
       </dir>
       <dir name="core">
@@ -441,6 +465,7 @@
         <file name="entity-ref.ts" desc="Entity-reference resolution for chat annotations"/>
         <file name="narrative-utils.ts" desc="Force formulas + graph/cube/stance algorithms — the deterministic math deriving Fate/World/System from deltas"/>
         <file name="positions.ts" desc="Entity positions — derives each character's current location from scene participation history"/>
+        <file name="stream-stance.ts" desc="Stream stance engine — a Stream is a thread"/>
         <file name="thread-category.ts" desc="Thread category classification — a single vocabulary derived from a thread's current MARKET STATE…"/>
         <file name="thread-log.ts" desc="Thread stance application"/>
         <file name="time-deltas.ts" desc="Time delta helpers. Scenes are instants; the gap between consecutive scenes is a TimeDelta ({value, unit}).…"/>
@@ -462,6 +487,8 @@
       </dir>
       <dir name="io">
         <file name="belief-export.ts" desc="Markdown exporter for the prediction-market dashboard"/>
+        <file name="board-export.ts" desc="board-export — render the board/map state (location clusters) as Markdown"/>
+        <file name="curriculum-export.ts" desc="curriculum-export — render a branch's Topic tree + questions as Markdown"/>
         <file name="epub-export.ts" desc="EPUB export — builds a valid EPUB archive (zip + CRC-32) from a narrative's resolved branch prose"/>
         <file name="file-conversion.ts" desc="file-conversion — world-scoped helpers for adding a source file to a narrative and (optionally) kicking off…"/>
         <file name="graph-export.ts" desc="Contextual Markdown exporters for the canvas graph views"/>
@@ -471,6 +498,8 @@
         <file name="scene-export.ts" desc="Markdown exporters for the currently-viewed scene plan and prose"/>
       </dir>
       <dir name="learning">
+        <file name="coverage.ts" desc="Continual learning coverage — spaced-repetition recall model over the question bank"/>
+        <file name="curriculum.ts" desc="Curriculum tree — operations over the Topic entities the question bank is organised under"/>
         <file name="quiz.ts" desc="Quiz aggregation + scoping helpers"/>
       </dir>
       <dir name="map">
@@ -605,7 +634,7 @@
           <file name="thread-lifecycle.ts" desc="Thread Stance / Belief Prompts and Helper Functions CONCEPTUAL MODEL: each thread is a QUESTION the world…"/>
         </dir>
         <dir name="search">
-          <file name="index.ts" desc="Search synthesis prompts — produce a Google-style overview with inline citations from semantic-search…"/>
+          <file name="index.ts" desc="Search synthesis prompts"/>
         </dir>
         <dir name="surveys">
           <file name="index.ts" desc="Survey prompts — persona builders (character / location / artifact) and the user-prompt builder that frames…"/>
@@ -628,6 +657,7 @@
         <file name="scenarios-state.ts" desc="Scenarios state helpers. The new scenario-batch model keeps run state inside the React hook…"/>
       </dir>
       <dir name="search">
+        <file name="citation-attribution.ts" desc="Citation → scene attribution"/>
         <file name="embeddings.ts" desc="Embedding utilities for semantic search Uses OpenAI text-embedding-3-small model via /api/embeddings…"/>
         <file name="search.ts" desc="Semantic Search Engine — two-pool architecture"/>
       </dir>
@@ -653,6 +683,7 @@
       <file name="auto-engine.ts" desc="Auto-engine — narrative-pressure analysis across the three forces; builds phase-aware generation directives"/>
       <file name="branch-tree.ts" desc="Branch-tree primitives — shared layout + ordering for surfaces that render the branch hierarchy"/>
       <file name="constants.ts" desc="Centralized constants for easy tuning across the narrative engine"/>
+      <file name="merges.ts" desc="merges.ts — merge-as-continuity-basis helpers"/>
       <file name="priors-compact.ts" desc="Daily Driver — synthesise queued entries into a markdown SourceFile"/>
       <file name="research-categories.ts" desc="Shared research categories for surveys + interviews"/>
       <file name="slides-data.ts" desc="Slides data — assembles the analysis walkthrough deck (force/cube/entity stats) from a narrative"/>

@@ -14,6 +14,7 @@ import type {
   NarrativeState,
   QuizScope,
   Scene,
+  Topic,
 } from "@/types/narrative";
 
 export type QuestionWithMeta = {
@@ -26,6 +27,18 @@ export type QuestionWithMeta = {
   arcId: string;
   arcName: string;
 };
+
+/** Every question across ALL scenes (all branches), flat. Topics are a global,
+ *  narrative-level vocabulary shared by every branch, so curriculum-wide
+ *  operations (restructure, dedup) must see the cumulative bank — not just one
+ *  branch's resolved slice. Use `collectQuestions` for branch-scoped views. */
+export function collectAllQuestions(narrative: NarrativeState): LearningQuestion[] {
+  const out: LearningQuestion[] = [];
+  for (const scene of Object.values(narrative.scenes)) {
+    for (const q of scene.questions ?? []) out.push(q);
+  }
+  return out;
+}
 
 /** Flatten every scene's question bank into timeline order, with metadata. */
 export function collectQuestions(
@@ -55,15 +68,13 @@ export function collectQuestions(
   return out;
 }
 
-/** Unique concept tags across a pool, sorted by frequency then alphabetically. */
-export function quizTags(items: QuestionWithMeta[]): { tag: string; count: number }[] {
+/** Direct question count per topic id across a pool. */
+export function quizTopicCounts(items: QuestionWithMeta[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const { q } of items) {
-    for (const t of q.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+    if (q.topicId) counts.set(q.topicId, (counts.get(q.topicId) ?? 0) + 1);
   }
-  return Array.from(counts.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+  return counts;
 }
 
 /** Arcs that carry at least one question, in timeline order, with counts. */
@@ -115,22 +126,50 @@ export type ScopeSelection = {
   sceneId?: string;
   /** For scope 'arc' — the arc id. */
   arcId?: string;
-  /** For scope 'tag' — the concept tag. */
-  tag?: string;
+  /** For scope 'topic' — the topic id (includes its whole subtree). */
+  topicId?: string;
 };
 
-/** Slice the pool down to a scope selection. */
+/** Topic id + all descendant ids (inclusive). Inlined here (rather than
+ *  importing curriculum) to keep quiz dependency-free — curriculum → coverage →
+ *  quiz must stay acyclic. */
+function topicSubtreeIds(
+  topics: Record<string, Topic>,
+  topicId: string,
+): Set<string> {
+  const out = new Set<string>([topicId]);
+  let frontier = [topicId];
+  while (frontier.length) {
+    const next: string[] = [];
+    for (const t of Object.values(topics)) {
+      const pid = t.parentId ?? null;
+      if (pid && frontier.includes(pid) && !out.has(t.id)) {
+        out.add(t.id);
+        next.push(t.id);
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}
+
+/** Slice the pool down to a scope selection. Topic scope needs the topics map
+ *  to resolve descendants. */
 export function selectScope(
   items: QuestionWithMeta[],
   sel: ScopeSelection,
+  topics: Record<string, Topic> = {},
 ): QuestionWithMeta[] {
   switch (sel.scope) {
     case "scene":
       return sel.sceneId ? items.filter((it) => it.sceneId === sel.sceneId) : [];
     case "arc":
       return sel.arcId ? items.filter((it) => it.arcId === sel.arcId) : [];
-    case "tag":
-      return sel.tag ? items.filter((it) => it.q.tags.includes(sel.tag!)) : [];
+    case "topic": {
+      if (!sel.topicId) return [];
+      const ids = topicSubtreeIds(topics, sel.topicId);
+      return items.filter((it) => it.q.topicId && ids.has(it.q.topicId));
+    }
     case "narrative":
     default:
       return items;

@@ -11,9 +11,10 @@ import {
   IconDownload,
   IconImport,
   IconLightbulb,
+  IconQuestion,
   IconPlus,
   IconScorecard,
-  IconSettings,
+  IconSparkle,
 } from "@/components/icons";
 import { NarrativeReport } from "@/components/report/NarrativeReport";
 import { SlidesPlayer } from "@/components/slides/SlidesPlayer";
@@ -30,13 +31,23 @@ import { TimeFlowModal } from "@/components/topbar/TimeFlowModal";
 import { ImportPackageModal } from "@/components/topbar/ImportPackageModal";
 import { MarkovChainModal } from "@/components/topbar/MarkovChainModal";
 import { NarrativeEditModal } from "@/components/topbar/NarrativeEditModal";
+import { MembersModal } from "@/components/topbar/MembersModal";
+import { AgentsModal } from "@/components/topbar/AgentsModal";
 import { PatternsModal } from "@/components/topbar/PatternsModal";
 import { PropositionAnalysisModal } from "@/components/topbar/PropositionAnalysisModal";
 import SystemLogModal from "@/components/topbar/SystemLogModal";
 import { ThemeMenu } from "@/components/topbar/ThemeModal";
 import { GameTheoryDashboard } from "@/components/topbar/GameTheoryDashboard";
 import { LearnModal } from "@/components/topbar/LearnModal";
-import type { ScopeSelection } from "@/lib/learning/quiz";
+import { collectQuestions, type ScopeSelection } from "@/lib/learning/quiz";
+import {
+  memberQuestions,
+  overallCoverage,
+  presetCount,
+  PRESET_LABELS,
+  type PresetId,
+} from "@/lib/learning/coverage";
+import { useActiveMember, memberName } from "@/hooks/useActiveMember";
 import {
   GasMeter,
   computeTotalCost,
@@ -291,7 +302,7 @@ function MenuDropdown({
         onMouseEnter={() => {
           if (anyMenuOpen) setOpenMenu(menuKey);
         }}
-        className={`px-2.5 py-1 text-[12px] rounded transition-colors ${
+        className={`px-2 py-1 text-[12px] rounded transition-colors ${
           isOpen
             ? "bg-white/10 text-text-primary"
             : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
@@ -370,19 +381,33 @@ export default function TopBar() {
   const [slidesMenuOpen, setSlidesMenuOpen] = useState(false);
   const [regionsModalOpen, setRegionsModalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);
   const [markovOpen, setMarkovOpen] = useState(false);
   const [beatProfileOpen, setBeatProfileOpen] = useState(false);
   const [propositionAnalysisOpen, setPropositionAnalysisOpen] = useState(false);
   const [gameTheoryOpen, setGameTheoryOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
   const [learnInitial, setLearnInitial] = useState<ScopeSelection | undefined>(undefined);
+  const [learnPreset, setLearnPreset] = useState<PresetId | null>(null);
+  const [learnMenuOpen, setLearnMenuOpen] = useState(false);
+  const learnRef = useRef<HTMLDivElement>(null);
 
-  // Open the Learn modal pre-scoped from anywhere (scene Learn tab,
-  // Learning sidebar). detail carries an optional ScopeSelection.
+  // Open the Learn modal pre-scoped from anywhere (scene Learn tab, Learning
+  // sidebar, curriculum view). detail carries a ScopeSelection OR { preset }.
   useEffect(() => {
     function handleOpenLearn(e: Event) {
-      const detail = (e as CustomEvent).detail as ScopeSelection | undefined;
-      setLearnInitial(detail && detail.scope ? detail : undefined);
+      const detail = (e as CustomEvent).detail as
+        | (ScopeSelection & { preset?: PresetId })
+        | { preset: PresetId }
+        | undefined;
+      if (detail && "preset" in detail && detail.preset) {
+        setLearnInitial(undefined);
+        setLearnPreset(detail.preset);
+      } else {
+        setLearnPreset(null);
+        setLearnInitial(detail && "scope" in detail && detail.scope ? detail : undefined);
+      }
       setLearnOpen(true);
     }
     window.addEventListener("open-learn-modal", handleOpenLearn);
@@ -448,9 +473,9 @@ export default function TopBar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [selectorOpen]);
 
-  // Close scorecard / usage / export / slides on outside click
+  // Close scorecard / usage / export / slides / learn on outside click
   useEffect(() => {
-    if (!scorecardOpen && !usageOpen && !exportOpen && !slidesMenuOpen && !themeMenuOpen) return;
+    if (!scorecardOpen && !usageOpen && !exportOpen && !slidesMenuOpen && !themeMenuOpen && !learnMenuOpen) return;
     function handleClick(e: MouseEvent) {
       if (
         scorecardOpen &&
@@ -487,10 +512,17 @@ export default function TopBar() {
       ) {
         setThemeMenuOpen(false);
       }
+      if (
+        learnMenuOpen &&
+        learnRef.current &&
+        !learnRef.current.contains(e.target as Node)
+      ) {
+        setLearnMenuOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [scorecardOpen, usageOpen, exportOpen, slidesMenuOpen, themeMenuOpen]);
+  }, [scorecardOpen, usageOpen, exportOpen, slidesMenuOpen, themeMenuOpen, learnMenuOpen]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -1127,6 +1159,37 @@ export default function TopBar() {
 
   const hasNarrative = !!narrative;
 
+  // ── Learn dropdown data — branch-scoped questions + active-member coverage ──
+  const { memberId: learnMemberId } = useActiveMember();
+  const learnMembers = useMemo(
+    () => Object.values(narrative?.members ?? {}),
+    [narrative?.members],
+  );
+  const learner = learnMemberId ?? (learnMembers.length ? null : "solo");
+  const learnItems = useMemo(
+    () => (narrative ? collectQuestions(narrative, state.resolvedEntryKeys) : []),
+    [narrative, state.resolvedEntryKeys],
+  );
+  const learnData = useMemo(() => {
+    const q = memberQuestions(narrative?.learningProgress, learner ?? "");
+    const now = Date.now();
+    const overall = overallCoverage(learnItems, q, now);
+    const counts: Record<PresetId, number> = {
+      focused: presetCount("focused", learnItems, q, now),
+      quick10: presetCount("quick10", learnItems, q, now),
+      new: presetCount("new", learnItems, q, now),
+      weak: presetCount("weak", learnItems, q, now),
+    };
+    return { overall, counts };
+  }, [learnItems, narrative?.learningProgress, learner]);
+
+  const openLearnPreset = (preset: PresetId) => {
+    setLearnInitial(undefined);
+    setLearnPreset(preset);
+    setLearnOpen(true);
+    setLearnMenuOpen(false);
+  };
+
   return (
     <div className="flex items-center justify-between h-11 glass-panel border-b border-border pr-3">
       {/* Left: home + title + menus */}
@@ -1134,7 +1197,7 @@ export default function TopBar() {
         {/* Home button with logo */}
         <button
           onClick={() => router.push("/")}
-          className="flex items-center justify-center w-14 py-1 rounded hover:bg-bg-elevated transition-colors"
+          className="flex items-center justify-center w-14 shrink-0 rounded hover:bg-bg-elevated transition-colors"
           title="All series"
         >
           <Image src="/logo.svg" alt="Meridians" width={30} height={30} />
@@ -1295,85 +1358,84 @@ export default function TopBar() {
               </div>
               {/* ── Actions ── */}
               <div className="border-t border-white/8 px-3 py-2">
-                <div className="flex gap-1.5">
+                <div className="flex rounded-md border border-white/6 overflow-hidden">
                   <button
                     onClick={() => {
                       wizardDispatch({ type: "OPEN" });
                       setSelectorOpen(false);
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors border border-white/6"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
                   >
                     <IconPlus size={10} />
                     New
                   </button>
-                  <div className="flex rounded-md border border-white/6 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        setImportPackageOpen(true);
-                        setSelectorOpen(false);
-                      }}
-                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
-                    >
-                      <IconImport size={10} />
-                      Import
-                    </button>
-                    {narrative && (
-                      <>
-                        <div className="w-px bg-white/6" />
-                        <button
-                          onClick={() => {
-                            setExportPackageOpen(true);
-                            setSelectorOpen(false);
-                          }}
-                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
-                        >
-                          <IconDownload size={10} />
-                          Export
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <div className="w-px bg-white/6" />
+                  <button
+                    onClick={() => {
+                      setImportPackageOpen(true);
+                      setSelectorOpen(false);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
+                  >
+                    <IconImport size={10} />
+                    Import
+                  </button>
+                  {narrative && (
+                    <>
+                      <div className="w-px bg-white/6" />
+                      <button
+                        onClick={() => {
+                          setExportPackageOpen(true);
+                          setSelectorOpen(false);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
+                      >
+                        <IconDownload size={10} />
+                        Export
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* ── Current narrative options ── */}
-              {narrative && (
-                <div className="border-t border-white/8 py-1">
-                  <div className="px-3 pt-1.5 pb-1">
-                    <span className="text-[9px] font-semibold text-text-dim uppercase tracking-widest">
-                      Current World View
-                    </span>
-                  </div>
-                  {(() => {
-                    const activeEntry = state.narratives.find(
-                      (n) => n.id === narrative.id,
-                    );
-                    return activeEntry ? (
-                      <button
-                        onClick={() => {
-                          setEditingEntry(activeEntry);
-                          setSelectorOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
-                      >
-                        <IconSettings
-                          size={12}
-                          className="text-text-dim shrink-0"
-                        />
-                        Settings
-                      </button>
-                    ) : null;
-                  })()}
-                </div>
-              )}
             </div>
           )}
         </div>
 
         {/* Divider */}
-        <div className="w-px h-4 bg-white/8 mx-1.5" />
+        <div className="w-px h-4 bg-white/8 mx-1" />
 
         {/* Menu bar */}
+        <MenuDropdown
+          label="Settings"
+          menuKey="config"
+          openMenu={openMenu}
+          setOpenMenu={setOpenMenu}
+          anyMenuOpen={openMenu !== null}
+          items={[
+            {
+              label: "About",
+              onClick: () => {
+                const activeEntry = state.narratives.find(
+                  (n) => n.id === narrative?.id,
+                );
+                if (activeEntry) setEditingEntry(activeEntry);
+              },
+              disabled: !hasNarrative,
+            },
+            {
+              label: "Members",
+              onClick: () => setMembersOpen(true),
+              disabled: !hasNarrative,
+            },
+            {
+              label: "Agents",
+              onClick: () => setAgentsOpen(true),
+              disabled: !hasNarrative,
+            },
+          ]}
+        />
+
         <MenuDropdown
           label="View"
           menuKey="view"
@@ -1511,12 +1573,6 @@ export default function TopBar() {
                   ? `$${usageCost.toFixed(3)}`
                   : `$${usageCost.toFixed(4)}`}
             </span>
-            <svg
-              className={`w-2.5 h-2.5 transition-transform ${usageOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <path d="M1 2.5 L4 5.5 L7 2.5" />
-            </svg>
           </button>
           {usageOpen && (
             <GasMeter
@@ -1557,12 +1613,6 @@ export default function TopBar() {
               >
                 {scorecard.grades.overall}
               </span>
-              <svg
-                className={`w-2.5 h-2.5 transition-transform ${scorecardOpen ? "rotate-180" : ""}`}
-                viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <path d="M1 2.5 L4 5.5 L7 2.5" />
-              </svg>
             </button>
           )}
           {scorecardOpen && !scorecard && (
@@ -2178,12 +2228,6 @@ export default function TopBar() {
               <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
             </svg>
             <span className="capitalize">{theme}</span>
-            <svg
-              className={`w-2.5 h-2.5 transition-transform ${themeMenuOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <path d="M1 2.5 L4 5.5 L7 2.5" />
-            </svg>
           </button>
           {themeMenuOpen && <ThemeMenu onClose={() => setThemeMenuOpen(false)} />}
         </div>
@@ -2208,12 +2252,6 @@ export default function TopBar() {
               >
                 <IconDownload size={14} />
                 <span>Export</span>
-                <svg
-                  className={`w-2.5 h-2.5 transition-transform ${exportOpen ? "rotate-180" : ""}`}
-                  viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                >
-                  <path d="M1 2.5 L4 5.5 L7 2.5" />
-                </svg>
               </button>
               {exportOpen && (
                 <div className="absolute top-full right-0 mt-1 min-w-52 rounded-lg glass py-1 z-50">
@@ -2435,12 +2473,6 @@ export default function TopBar() {
                   <path d="M12 17v4" />
                 </svg>
                 <span>Slides</span>
-                <svg
-                  className={`w-2.5 h-2.5 transition-transform ${slidesMenuOpen ? "rotate-180" : ""}`}
-                  viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                >
-                  <path d="M1 2.5 L4 5.5 L7 2.5" />
-                </svg>
               </button>
 
               {slidesMenuOpen && (
@@ -2513,17 +2545,93 @@ export default function TopBar() {
               )}
             </div>
 
-            {/* Learn — fullscreen quiz runner. Neutral badge, far right. */}
+            {/* Learn — dropdown: setup CTA + instant presets. Far right. */}
+            <div className="relative" ref={learnRef}>
+              <button
+                onClick={() => setLearnMenuOpen((v) => !v)}
+                className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border text-text-secondary hover:text-text-primary hover:bg-white/5 border-white/8 hover:border-white/15"
+                title="Quiz this world view's questions"
+              >
+                <IconQuestion size={14} />
+                <span>Quiz</span>
+              </button>
+
+              {learnMenuOpen && (
+                <div className="absolute top-full right-0 mt-1.5 z-[100] min-w-[260px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
+                  {/* Active learner */}
+                  <div className="px-3 pt-1 pb-1.5 flex items-center justify-between">
+                    <span className="text-[9px] uppercase tracking-wider text-text-dim/50">Learning as</span>
+                    <span className="text-[10px] text-text-secondary">
+                      {learner
+                        ? learnMembers.find((m) => m.id === learner)
+                          ? memberName(learnMembers.find((m) => m.id === learner)!)
+                          : "Solo"
+                        : "choose at start"}
+                    </span>
+                  </div>
+
+                  {/* Setup CTA — the default, full configurator */}
+                  <button
+                    onClick={() => {
+                      setLearnInitial(undefined);
+                      setLearnPreset(null);
+                      setLearnOpen(true);
+                      setLearnMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium bg-accent text-bg-base hover:bg-accent/90 transition-colors shadow-sm"
+                  >
+                    <IconQuestion size={14} className="shrink-0" />
+                    <span>Set up a quiz…</span>
+                  </button>
+
+                  {/* Presets — instant start */}
+                  <div className="px-3 pt-2 pb-1 text-[9px] uppercase tracking-wider text-text-dim/50">Presets</div>
+                  {(["focused", "quick10", "new", "weak"] as PresetId[]).map((p) => {
+                    const count = learnData.counts[p];
+                    const subtitle =
+                      p === "focused" ? (count ? `${count} queued · weak + due + new` : "nothing queued") :
+                      p === "quick10" ? `${count} random` :
+                      p === "new" ? (count ? `${count} unseen` : "all seen") :
+                      (count ? `${count} shaky topics` : "no weak topics");
+                    const disabled = count === 0;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => openLearnPreset(p)}
+                        disabled={disabled}
+                        className="w-full text-left px-3 py-1.5 rounded-md hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex flex-col"
+                      >
+                        <span className="text-[12px] text-text-primary">{PRESET_LABELS[p]}</span>
+                        <span className="text-[10px] text-text-dim/60 font-mono tabular-nums">{subtitle}</span>
+                      </button>
+                    );
+                  })}
+
+                  <div className="my-1 h-px bg-white/8" />
+                  <button
+                    onClick={() => {
+                      dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "curriculum" });
+                      setLearnMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-md text-[12px] text-text-dim hover:text-text-primary hover:bg-white/5 transition-colors flex items-center gap-2"
+                  >
+                    <IconLightbulb size={12} />
+                    View curriculum tree
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Generate — circular coloured CTA, far right. Opens the
+                generation panel; the accent fill marks it as the primary
+                action in the bar. */}
             <button
-              onClick={() => {
-                setLearnInitial(undefined);
-                setLearnOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border text-text-secondary hover:text-text-primary hover:bg-white/5 border-white/8 hover:border-white/15"
-              title="Practice this world view's questions"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-generate-panel"))}
+              className="ml-0.5 flex items-center justify-center w-8 h-8 rounded-full bg-world text-bg-base shadow-sm shadow-world/30 hover:bg-world/90 hover:shadow-world/50 transition-all"
+              title="Generate"
+              aria-label="Generate"
             >
-              <IconLightbulb size={14} />
-              <span>Learn</span>
+              <IconSparkle size={16} />
             </button>
           </>
         )}
@@ -2537,6 +2645,8 @@ export default function TopBar() {
       </div>
 
       {/* Modals */}
+      {membersOpen && <MembersModal onClose={() => setMembersOpen(false)} />}
+      {agentsOpen && <AgentsModal onClose={() => setAgentsOpen(false)} />}
       {apiKeysOpen && (
         <ApiKeyModal access={access} onClose={() => setApiKeysOpen(false)} />
       )}
@@ -2586,7 +2696,11 @@ export default function TopBar() {
           narrative={narrative}
           resolvedKeys={state.resolvedEntryKeys}
           initial={learnInitial}
-          onClose={() => setLearnOpen(false)}
+          preset={learnPreset}
+          onClose={() => {
+            setLearnOpen(false);
+            setLearnPreset(null);
+          }}
         />
       )}
       {markovOpen && narrative && (

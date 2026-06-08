@@ -46,6 +46,8 @@ const KIND_BADGE: Record<EntityRefKind, string> = {
   scene: 'bg-rose-400/15 text-rose-300 hover:bg-rose-400/25 hover:text-rose-200',
   arc: 'bg-fuchsia-400/15 text-fuchsia-300 hover:bg-fuchsia-400/25 hover:text-fuchsia-200',
   knowledge: 'bg-teal-400/15 text-teal-300 hover:bg-teal-400/25 hover:text-teal-200',
+  topic: 'bg-indigo-400/15 text-indigo-300 hover:bg-indigo-400/25 hover:text-indigo-200',
+  question: 'bg-cyan-400/15 text-cyan-300 hover:bg-cyan-400/25 hover:text-cyan-200',
 };
 
 /** Light-theme citation styling — darker -700 text on a soft tint, so the
@@ -58,6 +60,8 @@ const KIND_BADGE_LIGHT: Record<EntityRefKind, string> = {
   scene: 'bg-rose-500/12 text-rose-700 hover:bg-rose-500/20 hover:text-rose-800',
   arc: 'bg-fuchsia-500/12 text-fuchsia-700 hover:bg-fuchsia-500/20 hover:text-fuchsia-800',
   knowledge: 'bg-teal-500/12 text-teal-700 hover:bg-teal-500/20 hover:text-teal-800',
+  topic: 'bg-indigo-500/12 text-indigo-700 hover:bg-indigo-500/20 hover:text-indigo-800',
+  question: 'bg-cyan-500/12 text-cyan-700 hover:bg-cyan-500/20 hover:text-cyan-800',
 };
 
 /** Per-kind dot used in the hover-card header. */
@@ -69,6 +73,8 @@ const KIND_DOT: Record<EntityRefKind, string> = {
   scene: 'bg-rose-400',
   arc: 'bg-fuchsia-400',
   knowledge: 'bg-teal-400',
+  topic: 'bg-indigo-400',
+  question: 'bg-cyan-400',
 };
 
 const BADGE_BASE =

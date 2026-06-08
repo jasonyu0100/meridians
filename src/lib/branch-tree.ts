@@ -36,6 +36,31 @@ export function buildEntryOrigin(allBranches: Branch[]): Map<string, string> {
   return origin;
 }
 
+// ── Branch lineage (creation ancestry) ───────────────────────────────────
+
+/**
+ * The set of branch ids on `branchId`'s ancestor lineage, inclusive of itself:
+ * { branchId, parent, grandparent, … root }, walking `parentBranchId`.
+ *
+ * This is the relation used for OWNERSHIP-scoped visibility of streams/merges:
+ * a stream/merge owned by branch O is visible on branch A exactly when O is on
+ * A's lineage — i.e. A is O or a descendant of O. (Creation ancestry, not the
+ * forkEntry-based tree parent: visibility follows what a branch inherited when
+ * it was created.) Cycle-guarded against malformed parent chains.
+ */
+export function branchLineageIds(
+  branches: Record<string, Branch>,
+  branchId: string | null | undefined,
+): Set<string> {
+  const lineage = new Set<string>();
+  let cur = branchId ?? undefined;
+  while (cur && branches[cur] && !lineage.has(cur)) {
+    lineage.add(cur);
+    cur = branches[cur].parentBranchId ?? undefined;
+  }
+  return lineage;
+}
+
 // ── Tree parent resolution ───────────────────────────────────────────────
 
 /**

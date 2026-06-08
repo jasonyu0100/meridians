@@ -25,6 +25,9 @@ export type ExpandWorldArgs = {
   entityFilterBlock: string;
   /** Active phase graph rendered as a `<mode>` block (or empty). */
   modeSection?: string;
+  /** Merged-resolution ground truth rendered as a `<continuity-basis>` block
+   *  (or empty). The committed reality this expansion extends from. */
+  continuityBasis?: string;
   existingCharList: string;
   existingLocList: string;
   existingRelList: string;
@@ -110,6 +113,7 @@ export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
     size,
     entityFilterBlock,
     modeSection,
+    continuityBasis,
     existingCharList,
     existingLocList,
     existingRelList,
@@ -127,6 +131,7 @@ export function buildExpandWorldPrompt(args: ExpandWorldArgs): string {
 ${context}
   </narrative-context>
 ${modeSection ? `\n  ${modeSection.replace(/\n/g, '\n  ')}\n` : ''}
+${continuityBasis ? `\n  ${continuityBasis.replace(/\n/g, '\n  ')}\n` : ''}
   <directive hint="${directive.trim() ? 'Primary creative brief — drive the expansion off this.' : 'No directive — analyse the current narrative state and add what most extends existing tensions or opens unexplored areas.'}">
 ${directive.trim() ? directive : 'EXPAND the world — analyse the current narrative state and add characters, locations, and threads that extend existing tensions or open unexplored areas.'}
   </directive>
@@ -150,7 +155,7 @@ ${size === 'exact' ? `    <rule>EXACT expansion — create ONLY what the directi
 </inputs>
 
 <integration-hierarchy hint="When inputs conflict, this is the priority order for expansion decisions.">
-  <priority rank="1">DIRECTIVE / SOURCE-MATERIAL — explicit creative brief; the expansion must serve these directly. Source-material (when present) is verbatim authority over names, roles, and specifics.</priority>
+${continuityBasis ? `  <priority rank="0">CONTINUITY-BASIS — committed reality the expansion extends from. The merged resolutions are ground truth: don't introduce entities or threads that contradict a committed outcome. The perspective-held priors are directional pressure for what to add.</priority>\n` : ''}  <priority rank="1">DIRECTIVE / SOURCE-MATERIAL — explicit creative brief; the expansion must serve these directly. Source-material (when present) is verbatim authority over names, roles, and specifics.</priority>
   <priority rank="2">SIZE-MODE — the entity-count budget; shapes how much the expansion adds.</priority>
   ${modePriorityEntry(3, "expand")}
   <priority rank="4">EXISTING-ENTITIES — the canon the expansion must integrate with; new content references these to avoid orphaning.</priority>

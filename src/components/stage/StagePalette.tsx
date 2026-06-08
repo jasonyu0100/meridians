@@ -13,6 +13,7 @@ import {
   IconReset,
   IconSearch,
   IconSettings,
+  IconSparkle,
   IconTrash,
 } from "@/components/icons";
 import type { InspectorContext } from "@/types/narrative";
@@ -132,7 +133,7 @@ export default function StagePalette({
     dispatch,
   ]);
 
-  const graphViewMode = state.graphViewMode;
+  const graphViewMode = state.viewState.graphViewMode;
   const isEditingMode =
     graphViewMode === "plan" ||
     graphViewMode === "prose" ||
@@ -446,8 +447,9 @@ export default function StagePalette({
                 <span className="text-[9px] text-text-dim/30">&#x2318;Enter to submit</span>
                 <button
                   onClick={phaseSubmitGenerate}
-                  className="text-[10px] px-3 py-1 rounded transition bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15"
+                  className="inline-flex items-center gap-1 text-[10px] px-3 py-1 rounded transition bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15"
                 >
+                  <IconSparkle size={11} />
                   Generate
                 </button>
               </div>
@@ -580,7 +582,7 @@ export default function StagePalette({
           {/* Generate (text, world color) */}
           <button
             type="button"
-            className={`text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${
+            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${
               phaseMode === "generate"
                 ? "text-world bg-world/20"
                 : "text-world bg-world/10 hover:bg-world/20"
@@ -591,6 +593,7 @@ export default function StagePalette({
             }}
             title="Generate a new phase graph from canon"
           >
+            <IconSparkle size={12} />
             Generate
           </button>
 
@@ -762,7 +765,7 @@ export default function StagePalette({
             <button
               type="button"
               disabled={!canCompose}
-              className={`text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${
+              className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${
                 canCompose
                   ? "text-world bg-world/10 hover:bg-world/20"
                   : "text-text-dim/40 bg-white/3 cursor-not-allowed"
@@ -770,6 +773,7 @@ export default function StagePalette({
               onClick={() => arcCtx && setMapComposerArcId(arcCtx.arcId)}
               title="Generate a new investigation on this arc"
             >
+              <IconSparkle size={12} />
               Generate
             </button>
 
@@ -887,8 +891,9 @@ export default function StagePalette({
                   </span>
                   <button
                     onClick={submitGenerate}
-                    className={`text-[10px] px-3 py-1 rounded transition bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15`}
+                    className={`inline-flex items-center gap-1 text-[10px] px-3 py-1 rounded transition bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15`}
                   >
+                    <IconSparkle size={11} />
                     Generate
                   </button>
                 </div>
@@ -967,7 +972,7 @@ export default function StagePalette({
             </button>
             <button
               type="button"
-              className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${state.graphViewMode === 'search' ? "text-text-primary bg-white/10" : "text-text-secondary hover:text-text-primary hover:bg-white/6"}`}
+              className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${state.viewState.graphViewMode === 'search' ? "text-text-primary bg-white/10" : "text-text-secondary hover:text-text-primary hover:bg-white/6"}`}
               onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'search' })}
               aria-label="Search world view"
               title="Search world view"
@@ -993,7 +998,7 @@ export default function StagePalette({
                   <>
                     <button
                       type="button"
-                      className={`text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${!canGeneratePlan ? "text-text-dim/30 bg-white/3 cursor-not-allowed" : "text-world bg-world/10 hover:bg-world/20"}`}
+                      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${!canGeneratePlan ? "text-text-dim/30 bg-white/3 cursor-not-allowed" : "text-world bg-world/10 hover:bg-world/20"}`}
                       onClick={() => {
                         if (canGeneratePlan) {
                           setGenerateOpen((v) => !v);
@@ -1002,6 +1007,7 @@ export default function StagePalette({
                       }}
                       title={canGeneratePlan ? undefined : generatePlanDisabledReason}
                     >
+                      <IconSparkle size={12} />
                       Generate
                     </button>
                     {hasPlan && (
@@ -1073,7 +1079,7 @@ export default function StagePalette({
                   <>
                     <button
                       type="button"
-                      className={`text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${!hasPlan ? "text-text-dim/30 bg-white/3 cursor-not-allowed" : "text-world bg-world/10 hover:bg-world/20"}`}
+                      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${!hasPlan ? "text-text-dim/30 bg-white/3 cursor-not-allowed" : "text-world bg-world/10 hover:bg-world/20"}`}
                       onClick={() => {
                         if (hasPlan) {
                           setGenerateOpen((v) => !v);
@@ -1082,6 +1088,7 @@ export default function StagePalette({
                       }}
                       title={hasPlan ? undefined : "Generate a plan first"}
                     >
+                      <IconSparkle size={12} />
                       Generate
                     </button>
                     {hasProse && (
@@ -1151,13 +1158,14 @@ export default function StagePalette({
                   <>
                     <button
                       type="button"
-                      className="text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider text-world bg-world/10 hover:bg-world/20"
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider text-world bg-world/10 hover:bg-world/20"
                       onClick={() =>
                         window.dispatchEvent(
                           new CustomEvent("canvas:generate-game"),
                         )
                       }
                     >
+                      <IconSparkle size={12} />
                       Generate
                     </button>
                     {currentScene?.gameAnalysis && (
@@ -1200,7 +1208,7 @@ export default function StagePalette({
                   <>
                     <button
                       type="button"
-                      className={`text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${hasProse ? "text-world bg-world/10 hover:bg-world/20" : "text-text-dim/30 bg-white/3 cursor-not-allowed"}`}
+                      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider ${hasProse ? "text-world bg-world/10 hover:bg-world/20" : "text-text-dim/30 bg-white/3 cursor-not-allowed"}`}
                       onClick={() =>
                         hasProse &&
                         window.dispatchEvent(
@@ -1209,6 +1217,7 @@ export default function StagePalette({
                       }
                       title={hasProse ? undefined : "Generate prose first"}
                     >
+                      <IconSparkle size={12} />
                       Generate
                     </button>
                     {hasAudio && (
@@ -1251,12 +1260,13 @@ export default function StagePalette({
                   <>
                     <button
                       type="button"
-                      className="text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider text-world bg-world/10 hover:bg-world/20"
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider text-world bg-world/10 hover:bg-world/20"
                       onClick={() => {
                         setGenerateOpen((v) => !v);
                         setRewriteOpen(false);
                       }}
                     >
+                      <IconSparkle size={12} />
                       Generate
                     </button>
                     {currentScene?.questions && currentScene.questions.length > 0 && (
@@ -1336,7 +1346,7 @@ export default function StagePalette({
           <button
             type="button"
             className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
-              state.graphViewMode === 'search'
+              state.viewState.graphViewMode === 'search'
                 ? "text-text-primary bg-white/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-white/6"
             }`}
@@ -1366,7 +1376,7 @@ export default function StagePalette({
               {/* Generate */}
               <button
                 type="button"
-                className="text-xs font-semibold text-world bg-world/10 px-2 py-1 rounded-md hover:bg-world/20 transition-colors uppercase tracking-wider"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-world bg-world/10 px-2 py-1 rounded-md hover:bg-world/20 transition-colors uppercase tracking-wider"
                 onClick={() => {
                   if (access.userApiKeys && !access.hasOpenRouterKey) {
                     window.dispatchEvent(new Event("open-api-keys"));
@@ -1375,6 +1385,7 @@ export default function StagePalette({
                   window.dispatchEvent(new CustomEvent("open-generate-panel"));
                 }}
               >
+                <IconSparkle size={12} />
                 Generate
               </button>
 

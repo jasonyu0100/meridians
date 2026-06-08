@@ -992,6 +992,10 @@ export type WorldBuild = {
   /** Wall-clock timestamp (ISO 8601) when this world commit landed. See
    *  Scene.createdAt — same purpose, applied to expansion commits. */
   createdAt?: string;
+  /** Merges folded in as the basis for this expansion — same semantics as
+   *  Arc.basisMergeIds, applied to world-expansion commits. Branch-relative
+   *  for free: the WorldBuild only appears on branches that contain it. */
+  basisMergeIds?: string[];
 };
 
 // ── Branch Evaluation ─────────────────────────────────────────────────────
@@ -1251,6 +1255,16 @@ export type Arc = {
    * Undefined = no phase graph was active when this arc was generated.
    */
   phaseGraphId?: string;
+  /**
+   * Merges (committed-stream resolutions) folded in as the basis for this
+   * arc's continuation — the perspective-held reality the arc was generated
+   * to extend. Streams and merges are global, but *consumption* is per-arc:
+   * because an arc only appears on branches that contain its scenes, this
+   * stamp makes "which merges continued reality" branch-relative. A branch
+   * forked before this arc never sees the stamp. Undefined / empty = the arc
+   * was generated without folding any merge.
+   */
+  basisMergeIds?: string[];
 };
 
 /** Stored reasoning graph snapshot — decoupled from the ai module for type safety */
@@ -1693,6 +1707,203 @@ export type Region = {
 
 // ── Narrative State ──────────────────────────────────────────────────────────
 
+// ── Perspectives model (ROADMAP A0) ────────────────────────────────────────
+// What a room gathers over time is PERSPECTIVES. A Member attaches to an
+// entity/narrator Perspective and contributes a Stream of priors against it.
+// Each Stream is itself a thread (outcomes + a Stance moved by its priors), so
+// motivations live on the streams, not the perspective. One or many committed
+// Streams collapse into a Merge, interleaving priors by commit time to extend
+// continuity.
+// Persisted on NarrativeState (no new IndexedDB store). Exactly one Member
+// holds the GM role (single master device).
+
+export type MemberRole = "gm" | "member";
+
+export const MEMBER_ROLES: readonly MemberRole[] = ["gm", "member"];
+
+export interface Member {
+  id: string;
+  firstName: string;
+  lastName: string;
+  /** E.164 — routing key for WhatsApp (A6), the live mobile page (B1), and the close-out (A3). */
+  mobile?: string;
+  role: MemberRole;
+}
+
+/** An AI game player. A persona (a preset personality or a custom prompt) is the
+ *  basis for a varying, unique player that can operate an entity from that
+ *  entity's perspective — an alternative to a real Member for thinking about the
+ *  priors of a perspective: it augments stream suggestions, intuitions, and the
+ *  continuation of priors. Persisted on NarrativeState (no new IndexedDB store);
+ *  the preset prompt catalogue lives in `src/lib/agents/personas.ts`. */
+export type AgentPersonaKey =
+  | "strategist"
+  | "diplomat"
+  | "opportunist"
+  | "idealist"
+  | "skeptic"
+  | "aggressor"
+  | "guardian"
+  | "maverick"
+  | "analyst"
+  | "survivor"
+  | "custom";
+
+export interface Agent {
+  id: string;
+  name: string;
+  /** Preset personality, or "custom" to use `customPersona`. */
+  persona: AgentPersonaKey;
+  /** Free-text persona prompt — used (and required) when `persona === "custom"`. */
+  customPersona?: string;
+}
+
+/** A perspective seat. Bound to an entity (character/location/artifact) or the
+ *  general narrator vantage. The world itself is a seat (a location/Central-Bank
+ *  perspective produces external events). */
+export type PerspectiveKind = "character" | "location" | "artifact" | "narrator";
+
+export interface Perspective {
+  id: string;
+  kind: PerspectiveKind;
+  /** Entity id for character/location/artifact kinds; omitted for narrator. */
+  entityRef?: string;
+  label?: string;
+  /** Members attached to this perspective. Empty → AI/inferred. */
+  memberIds?: string[];
+  /** An AI player attached to this perspective — set when an agent (rather than
+   *  a member) drives its streams. */
+  agentId?: string;
+}
+
+export type StreamState = "open" | "committed" | "closed";
+
+/** One prior contributed to a Stream — a dated observation that doubles as a
+ *  belief-log node (a thread-log node, but for a stream). The prose `text` is
+ *  the member's intuition; the `updates` move the stream's stance. The first
+ *  prior on a stream is the seeding intuition the stance was opened from. */
+export interface StreamPrior {
+  id: string;
+  /** Member id; omitted for GM/system/AI notes. */
+  authorId?: string;
+  /** The prose intuition / observation. */
+  text: string;
+  at: number;
+  // ── Belief mechanics (mirrors ThreadLogNode) ──────────────────────────────
+  /** Per-outcome evidence this prior emits, log-odds shift in [-4, +4]. */
+  updates?: OutcomeEvidence[];
+  /** Which of the nine perceptual primitives this prior reads as. */
+  logType?: ThreadLogNodeType;
+  /** Change to the stance's attention (volume) from this prior. */
+  volumeDelta?: number;
+  /** Normalized KL info-gain stamped when the prior was applied (UI/analytics). */
+  infoGain?: number;
+  /** Stance volume immediately before this prior was applied. */
+  preVolume?: number;
+  /** Outcomes this prior introduced to the stream (mirrors ThreadLogNode). */
+  addedOutcomes?: string[];
+}
+
+/** A Stream — a member's bearing on an open QUESTION, gathered over time
+ *  (replaces the old Issue + Request). A Stream is a thread: it shares the Fate
+ *  Thread mechanics (outcomes + a Stance of logits/volume/volatility evolved by
+ *  evidence) but is owned by one member against one perspective, and its log
+ *  nodes are its `priors`. Opened with an AI-instantiated stance seeded from the
+ *  member's initial intuition (prior #1). Many streams can share one question —
+ *  each a perspective's independently-seeded stance — forming a local market.
+ *  Open while gathering, committed when folded into a Merge, or closed. */
+export interface Stream {
+  id: string;
+  perspectiveId: string;
+  /** The contributing member; omitted for AI/inferred streams. */
+  memberId?: string;
+  /** The AI player driving this stream — set instead of `memberId` when an
+   *  agent (rather than a real member) thinks about this perspective's priors. */
+  agentId?: string;
+  /** The open question this stream holds a stance on. */
+  title: string;
+  /** Named outcomes the stance distributes over (length ≥ 2). Optional only
+   *  for legacy streams opened before the belief model; always set now. */
+  outcomes?: string[];
+  /** The member's bearing over the outcomes — logits/volume/volatility. */
+  stance?: Stance;
+  /** Opening logits the stance was seeded with (the base for trajectory
+   *  replay); derived from the AI's priorProbs at open. */
+  openingLogits?: number[];
+  /** Structural distance to resolution; scales evidence magnitude. */
+  horizon?: ThreadHorizon;
+  state: StreamState;
+  /** When the stance committed to a winning outcome (soft closure). */
+  closedAt?: number;
+  /** Index into `outcomes` of the leading winner; set on soft closure. */
+  closeOutcome?: number;
+  /** How decisive the resolution was at closure, [0,1] (mirrors Thread). */
+  resolutionQuality?: number;
+  /** Priors gathered into this stream over time — the belief log. */
+  priors: StreamPrior[];
+  /** True when priors were AI-inferred (unattended / external seat). */
+  inferred?: boolean;
+  /** Origin branch — the branch this stream was opened on. Streams/merges are
+   *  global storage but branch-SCOPED for visibility (ownership model): a
+   *  stream is visible on its origin branch and every descendant, i.e. when its
+   *  origin is on the active branch's ancestor lineage. Undefined = legacy /
+   *  pre-branch-scoping stream, treated as visible everywhere. */
+  branchId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** The committed final outcome(s) for one stream at a merge — the GM's call at
+ *  the commit review. Defaults to the stream's leading stance; `overridden`
+ *  flags a GM override of that lean.
+ *
+ *  Usually a SINGLE clean outcome (`outcome`). Optionally MULTI-resolution: the
+ *  GM may commit a question to more than one outcome (`outcomes`, length ≥ 2)
+ *  when the resolution is genuinely plural — left to the user's discretion. The
+ *  generation LLM decides how to reconcile a multi-outcome set (both true, a
+ *  blend, a sequence, a partial) if it makes sense. */
+export interface MergeResolution {
+  /** The primary committed outcome (a member of the stream's `outcomes`).
+   *  Always set — the headline outcome even when the resolution is multi. */
+  outcome: string;
+  /** The FULL committed set when multi-resolution, including `outcome` as its
+   *  first entry (length ≥ 2). Omitted / empty = a single clean resolution
+   *  (the common case — read `outcome`). Use `resolutionOutcomes` to read the
+   *  set uniformly across both shapes. */
+  outcomes?: string[];
+  /** True when the committed outcome(s) diverge from the stance's leader. */
+  overridden?: boolean;
+}
+
+/** A Merge — a set of committed Streams folded together to extend continuity
+ *  (replaces the old Session). The GM commits each stream with a FINAL outcome
+ *  at a review step; streams are kept separate (not interleaved), and the merge
+ *  records each stream's committed resolution. */
+export interface Merge {
+  id: string;
+  label?: string;
+  /** When the commit happened. */
+  at: number;
+  /** The committed streams folded together. */
+  streamIds: string[];
+  /** Per-stream final outcome assigned at the commit review (keyed by stream id). */
+  resolutions?: Record<string, MergeResolution>;
+  /** Optional note describing how continuity was extended. */
+  summary?: string;
+  /** Origin branch — the branch this merge was committed on (the branch whose
+   *  generation folded it in). Branch-scoped for visibility like Stream.branchId:
+   *  visible on its origin branch and descendants. Undefined = legacy, visible
+   *  everywhere. */
+  branchId?: string;
+}
+
+/** A merge proposed at the commit review but not yet persisted. Carried into
+ *  the Generate panel as the continuity basis; a real Merge (with a minted id +
+ *  timestamp) is created and stamped onto the produced arc / world-build only
+ *  once a generation extends the narrative with it. Every Merge is therefore
+ *  consumed-by-construction. */
+export type ProposedMerge = Omit<Merge, "id" | "at">;
+
 export type NarrativeState = {
   id: string;
   title: string;
@@ -1796,6 +2007,23 @@ export type NarrativeState = {
    *  (`mode: 'extend'`). The raw source text lives in IndexedDB as a
    *  text asset (`contentRef`); this dict just holds metadata. */
   files?: Record<string, SourceFile>;
+  /** A0 — room members (exactly one holds the GM role). */
+  members?: Record<string, Member>;
+  /** A0 — AI players. Each carries a persona that can operate a perspective as
+   *  an alternative to a real member (see `Agent`). */
+  agents?: Record<string, Agent>;
+  /** A0 — perspective seats (entity or narrator vantages, with their threads). */
+  perspectives?: Record<string, Perspective>;
+  /** A0 — streams: player contributions against a perspective. */
+  streams?: Record<string, Stream>;
+  /** A0 — merges: committed streams collapsed together to extend continuity. */
+  merges?: Record<string, Merge>;
+  /** Curriculum / knowledge tree — Topic entities the question bank is
+   *  organised under. Keyed by topic id; parent chains form the tree. */
+  topics?: Record<string, Topic>;
+  /** Continual learning coverage — per-member recall state over the question
+   *  bank. Opt-in/additive; populated as members take quizzes. */
+  learningProgress?: LearningProgress;
   createdAt: number;
   updatedAt: number;
 };
@@ -2252,18 +2480,83 @@ export type LearningQuestion = {
   correctIndex: number;
   /** Why the correct answer is right — shown after the reader answers. */
   explanation?: string;
-  /** Concept tags (Title Case) — the unit cross-scene quizzes group by. */
-  tags: string[];
+  /** The Topic this question is assigned to (Topic.id in NarrativeState.topics).
+   *  Exactly one per question; reassignable. Undefined = untopiced (bucketed
+   *  separately until placed in the tree). */
+  topicId?: string;
   /** Cognitive level the question targets (Bloom's Revised Taxonomy). */
   bloom: BloomLevel;
   /** Independent difficulty rating (7 bands). */
   difficulty: DifficultyBand;
   /** ms since epoch when generated. */
   createdAt: number;
+  /** Asset reference to this question's embedding (the embedded stem). Powers
+   *  Expert search — semantic retrieval over the question bank, where matched
+   *  questions' verified answers become the synthesis grounding. */
+  embedding?: EmbeddingRef;
+  /** ms epoch the embedding was generated. */
+  embeddedAt?: number;
+  /** Model used for the embedding (e.g. "text-embedding-3-small"). */
+  embeddingModel?: string;
 };
 
-/** Scope a quiz is assembled over — drives the Learn surface's question pool. */
-export type QuizScope = "scene" | "arc" | "tag" | "narrative";
+/** A node in the curriculum / knowledge tree. Topics are first-class entities
+ *  (like characters/threads): questions are assigned to exactly one Topic, and
+ *  the parent chain forms a re-organisable tree. A topic with `parentId: null`
+ *  is a root. Re-parenting, renaming, merging, and deleting are all supported;
+ *  new topics are generated/expanded as the question banks cover new fields. */
+export type Topic = {
+  id: string;
+  name: string;
+  /** Optional longer description, surfaced in the inspector. */
+  description?: string;
+  /** Parent topic id, or null for a root concept. */
+  parentId: string | null;
+  createdAt: number;
+};
+
+/** Scope a quiz is assembled over — drives the Learn surface's question pool.
+ *  `"topic"` includes the chosen topic AND all its descendants. */
+export type QuizScope = "scene" | "arc" | "topic" | "narrative";
+
+// ── Learning coverage (continual, per-member) ───────────────────────────────
+// A persisted, additive layer over the question bank tracking what each room
+// member has seen and how well they know it. Powers spaced-repetition "focused
+// review", coverage/mastery readouts, and weakest-concept targeting. Whoever
+// sits down to quiz states which member they are; results record under that
+// member. Like gameAnalysis it never mutates deltas — it lives alongside the
+// bank.
+
+/** Per-question recall state. The "understanding" signal is `strength` (an
+ *  EWMA of correctness); `dueAt` drives spaced resurfacing. */
+export type QuestionProgress = {
+  /** Total attempts. */
+  seen: number;
+  /** Correct attempts. */
+  correct: number;
+  /** Consecutive-correct run (resets to 0 on a miss) — the Leitner box index. */
+  streak: number;
+  /** 0..1 EWMA of correctness, updated at each attempt — recall strength. */
+  strength: number;
+  /** ms epoch of the last attempt. */
+  lastSeenAt: number;
+  /** ms epoch this question should resurface for review. */
+  dueAt: number;
+};
+
+/** One member's recall state, keyed by LearningQuestion id. */
+export type MemberQuestionProgress = Record<string, QuestionProgress>;
+
+/** Continual learning coverage for one world view, partitioned by member. */
+export type LearningProgress = {
+  /** memberId → (questionId → recall state). The special id `"solo"` is used
+   *  on world views with no member roster so the feature still works. */
+  byMember: Record<string, MemberQuestionProgress>;
+  updatedAt: number;
+};
+
+/** Sentinel learner id for world views without a member roster. */
+export const SOLO_LEARNER_ID = "solo";
 
 /** Look up a timeline entry (scene or world build) by ID */
 export function resolveEntry(
@@ -2438,6 +2731,42 @@ export type StorySettings = {
    * persistent north-star.
    */
   autoClearDirection: boolean;
+  /**
+   * When true (default), Search uses embedding-based vector search whenever
+   * it's available (every scene on the branch has an embedded plan). When
+   * false — or when vector search is unavailable — Search falls back to a
+   * narrative-context search that reads the whole branch and answers from it
+   * (slower, more token-expensive). Both modes attribute to database entities
+   * in the same academic entity-ref citation style as chat.
+   */
+  vectorSearchEnabled: boolean;
+  /**
+   * Which search engine the Search surface uses. "vector" = embedding RAG over
+   * the proposition bank; "expert" = embedding RAG over the curriculum question
+   * bank (verified Q→A pairs ground the answer); "context" = full-branch
+   * narrative-context read (always works, slower). Optional for backward
+   * compatibility — read sites fall back to vectorSearchEnabled (true→"vector",
+   * false→"context") via `resolveSearchMode`.
+   */
+  searchMode?: SearchMode;
+  /**
+   * Auto-mode configuration for this narrative. Per-story so each narrative
+   * carries its own auto-engine behaviour (arc bounds, end conditions,
+   * direction) and it travels with package export. Optional for backward
+   * compatibility — read sites fall back to DEFAULT_AUTO_CONFIG.
+   */
+  autoConfig?: AutoConfig;
+};
+
+/** Default auto-mode configuration, used for new narratives and as the
+ *  fallback when a narrative predates per-story autoConfig. Declared before
+ *  DEFAULT_STORY_SETTINGS so the latter can embed it without a TDZ. */
+export const DEFAULT_AUTO_CONFIG: AutoConfig = {
+  endConditions: [{ type: "scene_count", target: 50 }],
+  minArcLength: 2,
+  maxArcLength: 5,
+  direction: "",
+  narrativeConstraints: "",
 };
 
 export const DEFAULT_STORY_SETTINGS: StorySettings = {
@@ -2464,7 +2793,19 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   proseFormat: "prose",
   planExtractionSource: "structure",
   autoClearDirection: true,
+  vectorSearchEnabled: true,
+  searchMode: "vector",
+  autoConfig: DEFAULT_AUTO_CONFIG,
 };
+
+/** Resolve the active search engine from settings, honouring the legacy
+ *  `vectorSearchEnabled` boolean for narratives saved before `searchMode`
+ *  existed (true→"vector", false→"context"). */
+export function resolveSearchMode(
+  settings: Pick<StorySettings, "searchMode" | "vectorSearchEnabled">,
+): SearchMode {
+  return settings.searchMode ?? (settings.vectorSearchEnabled ? "vector" : "context");
+}
 
 // ── Auto Mode ───────────────────────────────────────────────────────────────
 
@@ -2485,18 +2826,15 @@ export type AutoAction =
   | "resolution";
 
 export type AutoConfig = {
+  /** Stop conditions for the run (scene/arc count, planning-complete, manual). */
   endConditions: AutoEndCondition[];
+  /** Arc-length bounds the engine samples between based on narrative pressure. */
   minArcLength: number;
   maxArcLength: number;
-  maxActiveThreads: number;
-  threadStagnationThreshold: number;
   /** High-level north star that steers every arc */
   direction: string;
-  toneGuidance: string;
-  /** Constraints prompt — defaults from StorySettings.storyConstraints, overridable here */
+  /** Constraints prompt — things the engine should avoid each arc. */
   narrativeConstraints: string;
-  characterRotationEnabled: boolean;
-  minScenesBetweenCharacterFocus: number;
 };
 
 export type AutoRunState = {
@@ -2806,7 +3144,34 @@ export type AnalysisJob = {
 // UI state that is scoped to a specific narrative — swapped automatically when switching narratives.
 // Persisted per-narrative in IndexedDB and restored when the narrative is loaded.
 
+/**
+ * NarrativeViewState — the per-narrative LOCAL UI cursor.
+ *
+ * This is NOT part of the world view document. It records where the operator is
+ * *looking* — which surface is open, which scene/branch/inspector node is
+ * selected, the current search, who's the active member, etc. It is always
+ * EXCLUDED from package export / import: a teammate who imports the world view
+ * gets the document (NarrativeState), not your cursor position or device-local
+ * member selection.
+ *
+ * Lifetime today: SESSION-scoped. It resets to `defaultViewState` on every
+ * narrative load / switch. (Per-narrative persistence helpers exist —
+ * `saveViewState` / `loadViewState` in storage/persistence.ts, keyed
+ * `viewState:${id}` — but are not currently wired into the store, so the cursor
+ * does not yet survive a reload. Wire those in if a field here needs to.)
+ *
+ * Rule of thumb: if it travels with the world view to another person, it
+ * belongs on NarrativeState (the document). If it's "where am I / what am I
+ * looking at on this device", it belongs here.
+ */
 export type NarrativeViewState = {
+  /** Which centre-view surface is active. Per-narrative UI selection — resets
+   *  to the default on narrative switch alongside the rest of the view state. */
+  graphViewMode: GraphViewMode;
+  /** Tertiary toggle for the Belief surface (Mind → Belief): whether the
+   *  dashboard reads the narrative's own Threads or the room's member-owned
+   *  Streams. Both share the belief mechanics; the toggle swaps the source. */
+  beliefSource: 'thread' | 'stream';
   activeBranchId: string | null;
   currentSceneIndex: number;
   inspectorContext: InspectorContext | null;
@@ -2824,6 +3189,11 @@ export type NarrativeViewState = {
   activeBranchChatThreadId: string | null;
   autoRunState: AutoRunState | null;
   isPlaying: boolean;
+  /** The room's currently-active member on THIS device — presets the learner
+   *  for Learn quizzes and the contributor for new streams. Set in the Members
+   *  modal; null = no preset (manual choice each time). Device-local UI state,
+   *  so it lives here (persisted, not exported) rather than on the document. */
+  activeMemberId: string | null;
 };
 
 // ── App State ────────────────────────────────────────────────────────────────
@@ -2832,13 +3202,17 @@ export type InspectorContext =
   | { type: "character"; characterId: string }
   | { type: "location"; locationId: string }
   | { type: "thread"; threadId: string }
+  | { type: "stream"; streamId: string }
+  | { type: "streamPrior"; streamId: string; priorId: string }
   | { type: "arc"; arcId: string }
   | { type: "knowledge"; nodeId: string }
   | { type: "artifact"; artifactId: string }
   | { type: "world"; entityId: string; nodeId: string }
   | { type: "threadLog"; threadId: string; nodeId: string }
   | { type: "reasoning"; arcId?: string; worldBuildId?: string; nodeId: string }
-  | { type: "mode"; phaseGraphId: string; nodeId: string };
+  | { type: "mode"; phaseGraphId: string; nodeId: string }
+  | { type: "topic"; topicId: string }
+  | { type: "question"; sceneId: string; questionId: string };
 
 export type WizardStep = "form" | "details" | "generate";
 
@@ -2908,7 +3282,7 @@ export type WizardData = {
  * Canvas view mode. Encodes BOTH the active domain (world / system /
  * threads / network) AND, for the four graph domains, the scope window
  * (scene / arc / full). The two axes are flattened into one union so a
- * single `state.graphViewMode` drives the topbar's domain tabs + scope
+ * single `state.viewState.graphViewMode` drives the topbar's domain tabs + scope
  * toggle and every graph view's rendering branch.
  *
  * Graph modes follow `{domain}-{scope}`:
@@ -2918,7 +3292,7 @@ export type WizardData = {
  *   network-scene / network-arc / network-full — NetworkView
  *
  * Non-graph canvas modes (plan / prose / audio / decision / search /
- * driver / reasoning / belief / present / compass / mode) keep their
+ * vision / reasoning / belief / present / compass / mode) keep their
  * existing names — they have no scope dimension to encode.
  */
 export type GraphViewMode =
@@ -2937,7 +3311,9 @@ export type GraphViewMode =
   | "threads-arc"
   | "threads-full"
   | "search"
-  | "driver"
+  | "vision"
+  | "streams"
+  | "merges"
   | "map"
   | "network-scene"
   | "network-arc"
@@ -2946,6 +3322,7 @@ export type GraphViewMode =
   | "present"
   | "compass"
   | "mode"
+  | "curriculum"
   | "board";
 
 // ── Chat Threads ──────────────────────────────────────────────────────────────
@@ -3056,11 +3433,16 @@ export type AppState = {
   hydrationComplete: boolean;
   analysisJobs: AnalysisJob[];
 
-  // Global preferences
-  graphViewMode: GraphViewMode;
-  autoConfig: AutoConfig;
-
-  // Narrative-scoped (swapped on narrative switch)
+  // Narrative-scoped (swapped on narrative switch).
+  //
+  // Two homes, by what the data IS — not just where it's convenient:
+  //  • activeNarrative (NarrativeState) — the DOCUMENT: content + config that
+  //    travels with the world view on export/import (entities, scenes,
+  //    branches, topics, questions, learningProgress, storySettings, members…).
+  //  • viewState (NarrativeViewState) — the LOCAL UI CURSOR: where the operator
+  //    is looking on this device (open surface, selected scene/branch/inspector,
+  //    search, active member). Persisted per-narrative in IndexedDB but NOT
+  //    exported. See the NarrativeViewState doc-comment for the rule of thumb.
   viewState: NarrativeViewState;
   /** Derived: Ordered timeline entry IDs (scenes + world builds) for the active branch */
   resolvedEntryKeys: string[];
@@ -3127,14 +3509,19 @@ export type PlanCandidates = {
 
 // ─── Semantic Search Types ──────────────────────────────────────────
 
+/** Which search engine drives a query. Persisted on StorySettings.searchMode. */
+export type SearchMode = "vector" | "expert" | "context";
+
 export type SearchResult = {
-  type: "proposition" | "scene";
+  type: "proposition" | "scene" | "question";
   id: string;
   sceneId: string;
   /** Beat index within the scene's plan — only set for proposition results. */
   beatIndex?: number;
   /** Proposition index within the beat — only set for proposition results. */
   propIndex?: number;
+  /** LearningQuestion id — only set for question results (Expert search). */
+  questionId?: string;
   content: string;
   similarity: number;
   context: string;
@@ -3147,7 +3534,7 @@ export type SearchSynthesis = {
   citations: Array<{
     id: number;
     sceneId: string;
-    type: "scene" | "proposition";
+    type: "scene" | "proposition" | "question";
     title: string;
     similarity: number;
   }>;
@@ -3166,10 +3553,37 @@ export type SearchAvailability = {
   summaryEmbeddingsReady: boolean;
   /** True when at least one proposition has an embedding. */
   propositionsReady: boolean;
+  /** True when every scene on the branch has a generated plan. Vector search
+   *  requires this — a partial proposition bank produces a biased retrieval
+   *  (only the planned scenes can ever match). When false the UI falls back
+   *  to a narrative-context search. */
+  allScenesPlanned: boolean;
+  // ── Expert search (curriculum question bank) ──────────────────────────────
+  /** Total learning questions across the branch. */
+  totalQuestions: number;
+  /** Questions that have an embedding. */
+  questionsWithEmbedding: number;
+  /** Scenes carrying at least one question. */
+  scenesWithQuestions: number;
+  /** True when at least one question has an embedding. */
+  questionsReady: boolean;
+  /** True when every scene on the branch carries at least one question. Expert
+   *  search requires this — its "area of expertise" must cover the whole branch
+   *  or retrieval silently hides the un-questioned scenes (same discipline as
+   *  allScenesPlanned for Vector). */
+  allScenesHaveQuestions: boolean;
+  /** True when every question on the branch is embedded. */
+  allQuestionsEmbedded: boolean;
 };
 
 export type SearchQuery = {
   query: string;
+  /** Which engine produced this result. "vector" = embedding RAG over the
+   *  proposition bank; "expert" = embedding RAG over the curriculum question
+   *  bank (matched questions' verified answers ground the synthesis);
+   *  "context" = narrative-context fallback (no embeddings). The activation
+   *  timeline is meaningful for "vector" and "expert" (question origins). */
+  mode?: SearchMode;
   embedding: number[];
   synthesis?: SearchSynthesis;
   /** Combined results across both pools (scene summaries + propositions), sorted by similarity. */

@@ -499,9 +499,6 @@ function buildDirective(
   if (config.direction) {
     sections.push(`\n## Direction\n${config.direction}`);
   }
-  if (config.toneGuidance) {
-    sections.push(`\n## Tone\n${config.toneGuidance}`);
-  }
   if (config.narrativeConstraints) {
     sections.push(`\n## Constraints\n${config.narrativeConstraints}`);
   }

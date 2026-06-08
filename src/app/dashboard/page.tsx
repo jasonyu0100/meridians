@@ -164,15 +164,15 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Analysis Jobs */}
-          {state.analysisJobs.length > 0 && (
+          {/* Analysis Jobs — exclude world-scoped extension runs (they live on /extensions) */}
+          {state.analysisJobs.filter((j) => j.kind !== 'extend').length > 0 && (
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center gap-3 mb-5">
                 <h2 className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-mono">Analysis Jobs</h2>
                 <div className="flex-1 h-px bg-white/6" />
               </div>
               <div className="flex flex-col gap-2">
-                {state.analysisJobs.map((job) => {
+                {state.analysisJobs.filter((j) => j.kind !== 'extend').map((job) => {
                   const completedChunks = job.results.filter((r) => r !== null).length;
                   const totalChunks = job.chunks.length;
                   const progress = totalChunks > 0 ? Math.round((completedChunks / totalChunks) * 100) : 0;

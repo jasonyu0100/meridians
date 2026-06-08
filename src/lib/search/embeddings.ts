@@ -7,7 +7,7 @@
 import { logInfo, logError } from '@/lib/core/system-logger';
 import { EMBEDDING_BATCH_SIZE } from '@/lib/constants';
 import { assetManager } from '@/lib/storage/asset-manager';
-import type { EmbeddingRef } from '@/types/narrative';
+import type { EmbeddingRef, LearningQuestion } from '@/types/narrative';
 
 /**
  * Generate embeddings for an array of texts
@@ -216,4 +216,41 @@ export async function embedPropositions(
       embeddingModel: 'text-embedding-3-small',
     };
   }));
+}
+
+/**
+ * Embed learning questions and attach the embedding reference to each.
+ *
+ * The match surface is the question STEM (`prompt`) — Expert search retrieves
+ * by question similarity, then enriches the answer with the matched questions'
+ * curated correct answers. Called at generation time so questions arrive
+ * pre-embedded; the embedding fields survive the id reassignment in
+ * COMMIT_SCENE_QUESTIONS (it spreads `...q`). Questions that already carry an
+ * embedding are returned untouched.
+ */
+export async function embedQuestions(
+  questions: LearningQuestion[],
+  narrativeId?: string,
+): Promise<LearningQuestion[]> {
+  const pending = questions.filter((q) => !q.embedding);
+  if (pending.length === 0) return questions;
+
+  const embeddings = await generateEmbeddingsBatch(
+    pending.map((q) => q.prompt),
+    narrativeId,
+  );
+  const timestamp = Date.now();
+
+  const refByIndex = await Promise.all(
+    embeddings.map((vec) => assetManager.storeEmbedding(vec, 'text-embedding-3-small')),
+  );
+  const refByQuestion = new Map<string, string>();
+  pending.forEach((q, i) => refByQuestion.set(q.id, refByIndex[i]));
+
+  return questions.map((q) => {
+    const ref = refByQuestion.get(q.id);
+    return ref && !q.embedding
+      ? { ...q, embedding: ref, embeddedAt: timestamp, embeddingModel: 'text-embedding-3-small' }
+      : q;
+  });
 }

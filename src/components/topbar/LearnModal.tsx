@@ -13,13 +13,14 @@
  * quiz helpers and never mutates state.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/Modal";
 import { Segmented } from "@/components/ui/Segmented";
-import { IconCheck, IconClose } from "@/components/icons";
+import { IconCheck, IconClose, IconQuestion } from "@/components/icons";
+import { useStore } from "@/lib/state/store";
+import { useActiveMember, memberName } from "@/hooks/useActiveMember";
 import {
   collectQuestions,
-  quizTags,
   quizArcs,
   quizScenes,
   selectScope,
@@ -28,14 +29,25 @@ import {
   type ScopeSelection,
 } from "@/lib/learning/quiz";
 import {
+  buildPresetPool,
+  buildFocusedPool,
+  memberQuestions,
+  type PresetId,
+} from "@/lib/learning/coverage";
+import { buildTopicTree, topicPath, type TopicNode } from "@/lib/learning/curriculum";
+import { Avatar } from "@/components/stage/RoomUI";
+import {
   BLOOM_LEVELS,
   DIFFICULTY_BANDS,
+  SOLO_LEARNER_ID,
 } from "@/types/narrative";
 import type {
   BloomLevel,
   DifficultyBand,
+  Member,
   NarrativeState,
   QuizScope,
+  Topic,
 } from "@/types/narrative";
 
 const BLOOM_LABEL: Record<BloomLevel, string> = {
@@ -63,20 +75,44 @@ export function LearnModal({
   narrative,
   resolvedKeys,
   initial,
+  preset,
   onClose,
 }: {
   narrative: NarrativeState;
   resolvedKeys: string[];
   initial?: ScopeSelection;
+  /** When set, skip setup and auto-start this preset (once a learner is chosen). */
+  preset?: PresetId | null;
   onClose: () => void;
 }) {
+  const { dispatch } = useStore();
   const items = useMemo(
     () => collectQuestions(narrative, resolvedKeys),
     [narrative, resolvedKeys],
   );
-  const tags = useMemo(() => quizTags(items), [items]);
+  const topics = useMemo(() => narrative.topics ?? {}, [narrative.topics]);
+  const topicTree = useMemo(() => buildTopicTree(topics), [topics]);
   const arcs = useMemo(() => quizArcs(items), [items]);
   const scenes = useMemo(() => quizScenes(items), [items]);
+
+  // ── Learner — whoever sits down states which member they are ──────────────
+  const memberList = useMemo(
+    () => Object.values(narrative.members ?? {}),
+    [narrative.members],
+  );
+  const hasRoster = memberList.length > 0;
+  const { memberId, setMemberId } = useActiveMember();
+  // No roster → a single anonymous "Solo" learner so the feature still works.
+  const learner = memberId ?? (hasRoster ? null : SOLO_LEARNER_ID);
+  const learnerName = learner
+    ? memberList.find((m) => m.id === learner)
+      ? memberName(memberList.find((m) => m.id === learner)!)
+      : "Solo"
+    : null;
+  const myQuestions = useMemo(
+    () => memberQuestions(narrative.learningProgress, learner ?? ""),
+    [narrative.learningProgress, learner],
+  );
 
   const [selection, setSelection] = useState<ScopeSelection>(
     initial ?? { scope: "narrative" },
@@ -93,13 +129,46 @@ export function LearnModal({
 
   // The pool the current setup would produce — drives the "Start" count.
   const candidatePool = useMemo(() => {
-    let p = selectScope(items, selection);
+    let p = selectScope(items, selection, topics);
     if (bloomFilter.size) p = p.filter((it) => bloomFilter.has(it.q.bloom));
     if (difficultyFilter.size) p = p.filter((it) => difficultyFilter.has(it.q.difficulty));
     return p;
-  }, [items, selection, bloomFilter, difficultyFilter]);
+  }, [items, selection, bloomFilter, difficultyFilter, topics]);
+
+  // Auto-start a preset once a learner is known. Runs once per open (guarded by
+  // phase + empty pool) — legitimate prop→state init, not a derived-state loop.
+  useEffect(() => {
+    if (!preset || !learner || phase !== "setup" || pool.length > 0) return;
+    const seed = (Math.floor(Math.random() * 0x7fffffff) + 1) >>> 0;
+    const built = buildPresetPool(preset, items, myQuestions, Date.now(), seed);
+    if (built.length === 0) return;
+    setPool(built);
+    setCursor(0);
+    setAnswers({});
+    setPhase("running");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset, learner]);
+
+  // Record the first answer to each question under the active learner so even
+  // a partial session counts toward coverage.
+  const handleAnswer = (item: QuestionWithMeta, idx: number) => {
+    const qid = item.q.id;
+    if (answers[qid] !== undefined) return;
+    if (learner) {
+      dispatch({
+        type: "RECORD_QUIZ_ANSWER",
+        memberId: learner,
+        questionId: qid,
+        correct: idx === item.q.correctIndex,
+      });
+    }
+    setAnswers((prev) =>
+      prev[qid] !== undefined ? prev : { ...prev, [qid]: idx },
+    );
+  };
 
   const startQuiz = () => {
+    if (!learner) return; // must state who's learning first
     // Fresh random seed each run so the order differs every time the quiz
     // is started — not a fixed deterministic sequence.
     const seed = (Math.floor(Math.random() * 0x7fffffff) + 1) >>> 0;
@@ -107,6 +176,18 @@ export function LearnModal({
     const capped = limit === "all" ? shuffled : shuffled.slice(0, limit);
     if (capped.length === 0) return;
     setPool(capped);
+    setCursor(0);
+    setAnswers({});
+    setPhase("running");
+  };
+
+  // From the results screen — keep the loop going by running a fresh focused
+  // pool built from the learner's just-updated coverage.
+  const focusedReview = () => {
+    if (!learner) return;
+    const built = buildFocusedPool(items, myQuestions, Date.now());
+    if (built.length === 0) return;
+    setPool(built);
     setCursor(0);
     setAnswers({});
     setPhase("running");
@@ -152,23 +233,38 @@ export function LearnModal({
   return (
     <Modal onClose={onClose} fullScreen>
       <ModalHeader onClose={onClose}>
-        <div className="flex items-baseline gap-4 flex-wrap">
-          <h2 className="text-[18px] font-semibold text-text-primary tracking-tight">Learn</h2>
-          <span className="text-[11px] text-text-dim/70">
-            Reinforce the concepts this world view taught you
+        <div className="flex items-center gap-4 flex-wrap">
+          <h2 className="flex items-center gap-2 text-[18px] font-semibold text-text-primary tracking-tight">
+            <IconQuestion size={17} className="text-violet-400" />
+            Quiz
+          </h2>
+          <span className="text-[11px] text-text-dim/70 hidden sm:inline">
+            Calibrate your understanding of this world view
           </span>
-          {phase === "running" && (
-            <span className="text-[11px] font-mono text-text-dim ml-auto">
-              {cursor + 1} / {pool.length} · {correctCount} correct
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {phase !== "setup" && learnerName && (
+              <span className="text-[11px] text-text-dim/70">
+                as <span className="text-text-secondary">{learnerName}</span>
+              </span>
+            )}
+            {phase === "running" && (
+              <span className="text-[11px] font-mono text-text-dim">
+                {cursor + 1} / {pool.length} · {correctCount} correct
+              </span>
+            )}
+          </div>
         </div>
       </ModalHeader>
       <ModalBody className="p-0">
         {phase === "setup" && (
           <SetupView
             items={items}
-            tags={tags}
+            topics={topics}
+            topicTree={topicTree}
+            members={memberList}
+            hasRoster={hasRoster}
+            learner={learner}
+            setLearner={setMemberId}
             arcs={arcs}
             scenes={scenes}
             selection={selection}
@@ -180,6 +276,7 @@ export function LearnModal({
             limit={limit}
             setLimit={setLimit}
             poolSize={candidatePool.length}
+            needsLearner={!learner}
             onStart={startQuiz}
           />
         )}
@@ -187,14 +284,13 @@ export function LearnModal({
           <RunnerView
             key={pool[cursor].q.id}
             item={pool[cursor]}
-            chosen={answers[pool[cursor].q.id]}
-            onAnswer={(idx) =>
-              setAnswers((prev) =>
-                prev[pool[cursor].q.id] !== undefined
-                  ? prev
-                  : { ...prev, [pool[cursor].q.id]: idx },
-              )
+            topicLabel={
+              pool[cursor].q.topicId
+                ? topicPath(topics, pool[cursor].q.topicId!)
+                : undefined
             }
+            chosen={answers[pool[cursor].q.id]}
+            onAnswer={(idx) => handleAnswer(pool[cursor], idx)}
             isLast={cursor === pool.length - 1}
             onNext={() => {
               if (cursor === pool.length - 1) setPhase("done");
@@ -208,6 +304,7 @@ export function LearnModal({
             answers={answers}
             correctCount={correctCount}
             onPracticeAgain={practiceAgain}
+            onFocusedReview={focusedReview}
             onRestart={restart}
             onClose={onClose}
           />
@@ -217,11 +314,63 @@ export function LearnModal({
   );
 }
 
+// ── Learner picker ────────────────────────────────────────────────────────
+// Whoever sits down to quiz states which member they are; results record under
+// that member. Prefilled with the active member; mirrors the create-stream
+// member picker (avatar row). No roster → a single "Solo" learner, no choice.
+
+function LearnerPicker({
+  members,
+  value,
+  onChange,
+}: {
+  members: Member[];
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <section>
+      <h3 className="text-[11px] uppercase tracking-wider text-text-dim mb-3">
+        I am{" "}
+        <span className="text-text-dim/50 normal-case">
+          — coverage records under this member
+        </span>
+      </h3>
+      <div className="flex flex-wrap items-center gap-3">
+        {members.map((m) => {
+          const selected = value === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => onChange(m.id)}
+              className="flex flex-col items-center gap-1.5 w-16 group"
+              title={memberName(m)}
+            >
+              <Avatar label={memberName(m)} size={44} selected={selected} dim={!selected} />
+              <span
+                className={`text-[10px] truncate max-w-full ${selected ? "text-text-primary" : "text-text-dim group-hover:text-text-secondary"}`}
+              >
+                {memberName(m).split(" ")[0]}
+                {m.role === "gm" ? " ·GM" : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // ── Setup ───────────────────────────────────────────────────────────────────
 
 function SetupView({
   items,
-  tags,
+  topics,
+  topicTree,
+  members,
+  hasRoster,
+  learner,
+  setLearner,
   arcs,
   scenes,
   selection,
@@ -233,10 +382,16 @@ function SetupView({
   limit,
   setLimit,
   poolSize,
+  needsLearner,
   onStart,
 }: {
   items: QuestionWithMeta[];
-  tags: { tag: string; count: number }[];
+  topics: Record<string, Topic>;
+  topicTree: TopicNode[];
+  members: Member[];
+  hasRoster: boolean;
+  learner: string | null;
+  setLearner: (id: string) => void;
   arcs: { arcId: string; arcName: string; count: number }[];
   scenes: { sceneId: string; sceneIndex: number; sceneLabel: string; count: number }[];
   selection: ScopeSelection;
@@ -248,8 +403,40 @@ function SetupView({
   limit: number | "all";
   setLimit: (l: number | "all") => void;
   poolSize: number;
+  needsLearner: boolean;
   onStart: () => void;
 }) {
+  // Flatten the topic tree to indented options (subtree counts) for the picker.
+  const topicOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const { q } of items) {
+      if (!q.topicId) continue;
+      // count toward the topic and all its ancestors
+      let id: string | undefined = q.topicId;
+      const guard = new Set<string>();
+      while (id && topics[id] && !guard.has(id)) {
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+        guard.add(id);
+        id = topics[id].parentId ?? undefined;
+      }
+    }
+    const out: { value: string; label: string }[] = [];
+    const walk = (nodes: TopicNode[]) => {
+      for (const n of nodes) {
+        const c = counts.get(n.topic.id) ?? 0;
+        if (c > 0) {
+          out.push({
+            value: n.topic.id,
+            label: `${"  ".repeat(n.depth)}${n.topic.name} (${c})`,
+          });
+        }
+        walk(n.children);
+      }
+    };
+    walk(topicTree);
+    return out;
+  }, [items, topics, topicTree]);
+
   if (items.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center px-8">
@@ -264,20 +451,38 @@ function SetupView({
 
   return (
     <div className="max-w-2xl mx-auto px-8 py-10 space-y-8">
+      {/* I am — member picker (prefilled with the active member) */}
+      {hasRoster && (
+        <LearnerPicker members={members} value={learner} onChange={setLearner} />
+      )}
+
       {/* Scope */}
       <section>
         <h3 className="text-[11px] uppercase tracking-wider text-text-dim mb-3">Scope</h3>
         <Segmented<QuizScope>
           options={[
             { label: "Whole narrative", value: "narrative" },
+            { label: "By topic", value: "topic" },
             { label: "By arc", value: "arc" },
             { label: "By scene", value: "scene" },
-            { label: "By tag", value: "tag" },
           ]}
           value={selection.scope}
           onChange={(scope) => setSelection({ scope })}
         />
 
+        {selection.scope === "topic" && (
+          <>
+            <Picker
+              placeholder="Choose a topic…"
+              value={selection.topicId}
+              onChange={(topicId) => setSelection({ scope: "topic", topicId })}
+              options={topicOptions}
+            />
+            <p className="mt-2 text-[10px] text-text-dim/60">
+              Picks the topic and everything beneath it in the curriculum tree.
+            </p>
+          </>
+        )}
         {selection.scope === "arc" && (
           <Picker
             placeholder="Choose an arc…"
@@ -295,14 +500,6 @@ function SetupView({
               value: s.sceneId,
               label: `${s.sceneIndex}. ${s.sceneLabel || "Untitled"} (${s.count})`,
             }))}
-          />
-        )}
-        {selection.scope === "tag" && (
-          <Picker
-            placeholder="Choose a concept tag…"
-            value={selection.tag}
-            onChange={(tag) => setSelection({ scope: "tag", tag })}
-            options={tags.map((t) => ({ value: t.tag, label: `${t.tag} (${t.count})` }))}
           />
         )}
       </section>
@@ -360,17 +557,19 @@ function SetupView({
       <div className="flex items-center gap-4 pt-2">
         <button
           onClick={onStart}
-          disabled={poolSize === 0}
+          disabled={poolSize === 0 || needsLearner}
           className="px-5 py-2.5 rounded-lg bg-violet-500/20 text-violet-200 hover:bg-violet-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-[13px] font-medium transition-colors"
         >
           Start quiz
         </button>
         <span className="text-[12px] text-text-dim">
-          {poolSize === 0
-            ? "No questions match these filters."
-            : `${limit === "all" ? poolSize : Math.min(poolSize, limit)} question${
-                (limit === "all" ? poolSize : Math.min(poolSize, limit)) === 1 ? "" : "s"
-              } ready`}
+          {needsLearner
+            ? "Choose who's learning (top right) to begin."
+            : poolSize === 0
+              ? "No questions match these filters."
+              : `${limit === "all" ? poolSize : Math.min(poolSize, limit)} question${
+                  (limit === "all" ? poolSize : Math.min(poolSize, limit)) === 1 ? "" : "s"
+                } ready`}
         </span>
       </div>
     </div>
@@ -433,12 +632,14 @@ function FilterChip({
 
 function RunnerView({
   item,
+  topicLabel,
   chosen,
   onAnswer,
   isLast,
   onNext,
 }: {
   item: QuestionWithMeta;
+  topicLabel?: string;
   chosen: number | undefined;
   onAnswer: (idx: number) => void;
   isLast: boolean;
@@ -516,14 +717,11 @@ function RunnerView({
             {q.explanation ?? `The answer is "${q.options[q.correctIndex]}".`}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {q.tags.map((t) => (
-              <span
-                key={t}
-                className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/6 text-text-dim"
-              >
-                {t}
+            {topicLabel && (
+              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300">
+                {topicLabel}
               </span>
-            ))}
+            )}
             <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/6 text-text-dim ml-auto">
               {BLOOM_LABEL[q.bloom]} · {DIFFICULTY_LABEL[q.difficulty]}
             </span>
@@ -551,6 +749,7 @@ function DoneView({
   answers,
   correctCount,
   onPracticeAgain,
+  onFocusedReview,
   onRestart,
   onClose,
 }: {
@@ -558,6 +757,7 @@ function DoneView({
   answers: Record<string, number>;
   correctCount: number;
   onPracticeAgain: () => void;
+  onFocusedReview: () => void;
   onRestart: () => void;
   onClose: () => void;
 }) {
@@ -604,8 +804,15 @@ function DoneView({
 
       <div className="flex items-center gap-3">
         <button
-          onClick={onPracticeAgain}
+          onClick={onFocusedReview}
           className="px-5 py-2.5 rounded-lg bg-violet-500/20 text-violet-200 hover:bg-violet-500/30 text-[13px] font-medium transition-colors"
+          title="Run a fresh focused-review set from your updated coverage"
+        >
+          Focused review
+        </button>
+        <button
+          onClick={onPracticeAgain}
+          className="px-5 py-2.5 rounded-lg bg-white/5 text-text-secondary hover:bg-white/10 text-[13px] font-medium transition-colors"
         >
           Practice again
         </button>

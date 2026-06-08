@@ -5,8 +5,8 @@
  *
  * Renders Queue (Apple-Notes-style entry workspace) OR Search (the
  * existing vector search), driven by graphViewMode:
- *   - 'driver' → Queue
- *   - 'search' → Search (relocated under Driver in the topbar)
+ *   - 'vision' → Queue
+ *   - 'search' → Search (relocated under the Vision cluster in the topbar)
  *
  * The Queue/Search sub-tab switcher lives in StageBar, matching
  * the same pattern other canvas modes use for their sub-toggles
@@ -40,7 +40,7 @@ function isLocked(entry: Prior): boolean {
 function previewTitle(entry: Prior): string {
   if (entry.title && entry.title.trim()) return entry.title.trim();
   const firstLine = entry.text.split('\n').map((s) => s.trim()).find((s) => s.length > 0);
-  if (!firstLine) return 'New note';
+  if (!firstLine) return 'New entry';
   return firstLine.length > 56 ? firstLine.slice(0, 53) + '…' : firstLine;
 }
 
@@ -68,12 +68,12 @@ export function CaptureView() {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
   const subTab: 'entry' | 'search' =
-    state.graphViewMode === 'search' ? 'search' : 'entry';
+    state.viewState.graphViewMode === 'search' ? 'search' : 'entry';
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [compactOpen, setCompactOpen] = useState(false);
   // 'selection' = compact the operator's checked subset of queue entries.
-  // 'queue'     = compact every entry in the queue (Synthesise-all button).
+  // 'queue'     = compact every entry in the queue (Combine-all button).
   const [compactScope, setCompactScope] = useState<'selection' | 'queue'>('selection');
 
   const entries = useMemo<Prior[]>(() => {
@@ -96,7 +96,7 @@ export function CaptureView() {
   if (!narrative) {
     return (
       <div className="h-full flex items-center justify-center text-text-dim text-sm">
-        Open a world view to use Driver.
+        Open a world view to use Entry.
       </div>
     );
   }
@@ -121,8 +121,8 @@ export function CaptureView() {
     });
     setActiveId(id);
     // Ensure we're on the Queue sub-tab in case operator was on Search.
-    if (state.graphViewMode === 'search') {
-      dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'driver' });
+    if (state.viewState.graphViewMode === 'search') {
+      dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'vision' });
     }
   }
 
@@ -135,13 +135,13 @@ export function CaptureView() {
         entry: { id, title: title || undefined, text, capturedAt: Date.now() },
       });
       setActiveId(id);
-      if (state.graphViewMode === 'search') {
-        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'driver' });
+      if (state.viewState.graphViewMode === 'search') {
+        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'vision' });
       }
     } catch (err) {
-      logError('Driver entry generation failed', err, {
+      logError('Capture entry generation failed', err, {
         source: 'ingest',
-        operation: 'generate-driver-entry',
+        operation: 'generate-capture-entry',
       });
     }
   }
@@ -177,8 +177,28 @@ export function CaptureView() {
 
   return (
     <div className="h-full flex min-h-0 overflow-hidden">
-      {/* Sidebar — notes list, grouped Queue / Historical */}
+      {/* Sidebar — entries list, grouped Queue / Historical */}
       <aside className="w-64 shrink-0 border-r border-white/8 bg-white/2 flex flex-col min-h-0">
+        {/* Header — title + always-available new-entry affordance. The
+            palette no longer mints entries; creation lives here so it's
+            reachable regardless of selection / scroll state. */}
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-white/6">
+          <span className="text-[10px] uppercase tracking-widest font-mono text-text-dim/65">
+            Entries
+          </span>
+          <button
+            onClick={createEntry}
+            title="New entry"
+            aria-label="New entry"
+            className="ml-auto w-5 h-5 flex items-center justify-center rounded text-text-dim/60 hover:text-text-primary hover:bg-white/8 transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
+
         {/* Selection bar — only when queue items are selected */}
         {selectedIds.size > 0 && (
           <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-white/6 bg-amber-400/8">
@@ -203,22 +223,22 @@ export function CaptureView() {
           </div>
         )}
 
-        {/* Notes list — grouped */}
+        {/* Entries list — grouped */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {entries.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-[11px] text-text-dim/85 mb-3">No notes yet.</p>
+              <p className="text-[11px] text-text-dim/85 mb-3">No entries yet.</p>
               <button
                 onClick={createEntry}
                 className="text-[11px] text-text-secondary hover:text-text-primary underline underline-offset-2 transition"
               >
-                + Create your first note
+                + Create your first entry
               </button>
             </div>
           ) : (
             <>
               {queue.length > 0 && (
-                <NoteGroup
+                <EntryGroup
                   label="Queue"
                   items={queue}
                   activeId={activeId}
@@ -230,7 +250,7 @@ export function CaptureView() {
                 />
               )}
               {historical.length > 0 && (
-                <NoteGroup
+                <EntryGroup
                   label="Historical"
                   items={historical}
                   activeId={activeId}
@@ -247,12 +267,12 @@ export function CaptureView() {
         </div>
       </aside>
 
-      {/* Main pane — note editor + floating palette. The palette docks
+      {/* Main pane — entry editor + floating palette. The palette docks
           at the bottom-center over the editor; relative positioning
           here gives it an anchor. */}
       <main className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden relative">
         {activeEntry ? (
-          <NoteEditor
+          <EntryEditor
             entry={activeEntry}
             onUpdate={updateActive}
             onDelete={() => deleteEntry(activeEntry)}
@@ -260,10 +280,10 @@ export function CaptureView() {
         ) : (
           <div className="h-full flex items-center justify-center text-center px-8">
             <div className="max-w-sm space-y-3">
-              <p className="text-[13px] text-text-dim/85">No note selected.</p>
+              <p className="text-[13px] text-text-dim/85">No entry selected.</p>
               <p className="text-[11px] text-text-dim/55 leading-relaxed">
                 Capture fragments — briefings, observations, quoted excerpts —
-                then synthesise the queue into a file that flows into this
+                then combine the queue into a file that flows into this
                 narrative.
               </p>
             </div>
@@ -273,9 +293,8 @@ export function CaptureView() {
         <CapturePalette
           queueCount={queue.length}
           websearchEnabled={(narrative?.storySettings?.websearchLevel ?? 'none') !== 'none'}
-          onCreate={createEntry}
           onGenerate={generateEntry}
-          onSynthesiseAll={() => {
+          onCombineAll={() => {
             setCompactScope('queue');
             setCompactOpen(true);
           }}
@@ -296,9 +315,9 @@ export function CaptureView() {
   );
 }
 
-// ── Note group ────────────────────────────────────────────────────────
+// ── Entry group ───────────────────────────────────────────────────────
 
-function NoteGroup({
+function EntryGroup({
   label,
   items,
   activeId,
@@ -334,7 +353,7 @@ function NoteGroup({
       <ul className="space-y-px">
         {items.map((entry) => (
           <li key={entry.id}>
-            <NoteRow
+            <EntryRow
               entry={entry}
               active={activeId === entry.id}
               selected={selectedIds.has(entry.id)}
@@ -350,7 +369,7 @@ function NoteGroup({
   );
 }
 
-function NoteRow({
+function EntryRow({
   entry,
   active,
   selected,
@@ -443,9 +462,9 @@ function NoteRow({
   );
 }
 
-// ── Note editor (main pane) ───────────────────────────────────────────
+// ── Entry editor (main pane) ──────────────────────────────────────────
 
-function NoteEditor({
+function EntryEditor({
   entry,
   onUpdate,
   onDelete,
@@ -491,8 +510,8 @@ function NoteEditor({
         {!locked && (
           <button
             onClick={onDelete}
-            title="Delete note"
-            aria-label="Delete note"
+            title="Delete entry"
+            aria-label="Delete entry"
             className="ml-auto w-6 h-6 rounded flex items-center justify-center text-text-dim/40 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover/strip:opacity-100 transition"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

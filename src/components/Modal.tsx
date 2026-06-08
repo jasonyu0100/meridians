@@ -2,6 +2,7 @@
 // Modal — reusable modal shell (header/body/streaming-status) with starfield backdrop.
 
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { StarField } from '@/components/effects/StarField';
 import { useTheme } from '@/lib/state/theme-context';
 
@@ -52,8 +53,12 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
     };
   }, []);
 
-  if (fullScreen) {
-    return (
+  // Portal to <body> so `fixed inset-0` is viewport-relative — escapes any
+  // transformed/scrolled ancestor (e.g. the Stage) that would otherwise trap
+  // the overlay below the top bar.
+  if (typeof document === 'undefined') return null;
+
+  const content = fullScreen ? (
       <div className="fixed inset-0 bg-bg-base z-50 flex flex-col overflow-hidden">
         {/* Cosmic background — nebulae + glow + star field, identical to the
             home page's hero stack. Astral theme only; dark/light run flat.
@@ -76,10 +81,7 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
           {children}
         </div>
       </div>
-    );
-  }
-
-  return (
+  ) : (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
         className={`bg-bg-base border border-border rounded-2xl flex flex-col overflow-hidden ${SIZE_CLASSES[size]} ${panelClassName ?? ''}`}
@@ -90,6 +92,8 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
 
 export function ModalHeader({ children, onClose, hideClose }: { children: ReactNode; onClose: () => void; hideClose?: boolean }) {

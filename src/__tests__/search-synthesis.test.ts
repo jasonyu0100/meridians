@@ -1,25 +1,22 @@
 /**
  * Search Synthesis Tests
  *
- * Tests the AI-powered search synthesis functionality:
- * - Context building from search results
- * - AI overview generation with citations
- * - Streaming token callback
- * - Fallback synthesis on errors
- * - Citation metadata mapping
+ * Both search modes answer in academic prose and attribute to database
+ * entities in the same entity-ref citation style as chat (`Aragorn [C-1]`).
+ * The citations are resolved from the answer text at DISPLAY time, so
+ * `synthesizeSearchResults` returns an empty structured `citations` array —
+ * these tests cover the prompt assembly (retrieved evidence + entity roster),
+ * streaming, and the error fallback.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { synthesizeSearchResults } from '@/lib/ai/search-synthesis';
 import type { NarrativeState, SearchResult } from '@/types/narrative';
 import * as apiModule from '@/lib/ai/api';
-import * as jsonModule from '@/lib/ai/json';
 // Mock modules
 vi.mock('@/lib/ai/api');
-vi.mock('@/lib/ai/json');
 vi.mock('@/lib/core/system-logger');
 describe('synthesizeSearchResults', () => {
   let mockNarrative: NarrativeState;
-  let mockResults: SearchResult[];
   let mockSceneResults: SearchResult[];
   let mockDetailResults: SearchResult[];
   let mockTopArc: { arcId: string; avgSimilarity: number };
@@ -96,8 +93,6 @@ describe('synthesizeSearchResults', () => {
         context: 'Beat 2: King reveals the prophecy',
       },
     ];
-    // Combined results across all types
-    mockResults = [...mockSceneResults, ...mockDetailResults];
     mockTopArc = {
       arcId: 'arc1',
       avgSimilarity: 0.85,
@@ -111,28 +106,20 @@ describe('synthesizeSearchResults', () => {
       { sceneIndex: 1, maxSimilarity: 0.82 },
       { sceneIndex: 2, maxSimilarity: 0.75 },
     ];
-    // Setup default successful response
+    // Default successful response — prose with entity-ref + numeric-looking
+    // markers, to confirm we DON'T parse them into structured citations.
     vi.mocked(apiModule.callGenerateStream).mockImplementation(
-      async (prompt: string, system: string, onToken: (token: string) => void): Promise<string> => {
-        const response = JSON.stringify({
-          overview: 'The search reveals key moments in the hero\'s journey [1]. The castle entrance [2] and the prophecy revelation [3] are central themes.',
-          citationIds: [1, 2, 3],
-        });
-        // Simulate streaming
+      async (_prompt: string, _system: string, onToken: (token: string) => void): Promise<string> => {
+        const response =
+          'The search reveals key moments in the journey [1]. The castle entrance [2] and the prophecy revelation [3] are central themes.';
         if (onToken) {
-          for (const char of response) {
-            onToken(char);
-          }
+          for (const char of response) onToken(char);
         }
         return response;
       }
     );
-    vi.mocked(jsonModule.parseJson).mockReturnValue({
-      overview: 'The search reveals key moments in the hero\'s journey [1]. The castle entrance [2] and the prophecy revelation [3] are central themes.',
-      citationIds: [1, 2, 3],
-    });
   });
-  it('should call AI API with proper context', async () => {
+  it('should call AI API with the retrieved evidence and query', async () => {
     const query = 'castle entrance';
     await synthesizeSearchResults(
       mockNarrative,
@@ -146,9 +133,23 @@ describe('synthesizeSearchResults', () => {
     expect(apiModule.callGenerateStream).toHaveBeenCalled();
     const callArgs = vi.mocked(apiModule.callGenerateStream).mock.calls[0];
     const [prompt] = callArgs;
-    expect(prompt).toContain('SEARCH QUERY');
-    expect(prompt).toContain('TOP 2 PROPOSITIONS');
+    expect(prompt).toContain('TOP PROPOSITIONS');
+    expect(prompt).toContain('citable-entities');
     expect(prompt).toContain(query);
+  });
+  it('should include the retrieved propositions in the context', async () => {
+    await synthesizeSearchResults(
+      mockNarrative,
+      'test',
+      mockSceneResults,
+      mockDetailResults,
+      mockTopArc,
+      mockTopScene,
+      mockTimeline
+    );
+    const [prompt] = vi.mocked(apiModule.callGenerateStream).mock.calls[0];
+    expect(prompt).toContain('The castle gates swing open');
+    expect(prompt).toContain('King reveals the prophecy');
   });
   it('should stream tokens to callback', async () => {
     const onToken = vi.fn();
@@ -164,7 +165,7 @@ describe('synthesizeSearchResults', () => {
     );
     expect(onToken).toHaveBeenCalled();
   });
-  it('should return synthesis with overview and citations', async () => {
+  it('should return the overview and an empty structured citation list', async () => {
     const result = await synthesizeSearchResults(
       mockNarrative,
       'test',
@@ -174,13 +175,16 @@ describe('synthesizeSearchResults', () => {
       mockTopScene,
       mockTimeline
     );
-    expect(result).toHaveProperty('overview');
-    expect(result).toHaveProperty('citations');
     expect(typeof result.overview).toBe('string');
+    expect(result.overview.length).toBeGreaterThan(0);
+    // Attribution is resolved from entity-ref citations at render time — no
+    // numeric citation index is returned, even though the answer text contains
+    // bracketed markers.
     expect(Array.isArray(result.citations)).toBe(true);
+    expect(result.citations.length).toBe(0);
   });
-  it('should map citation IDs to result metadata', async () => {
-    const result = await synthesizeSearchResults(
+  it('should include the most relevant arc in the context', async () => {
+    await synthesizeSearchResults(
       mockNarrative,
       'test',
       mockSceneResults,
@@ -189,67 +193,9 @@ describe('synthesizeSearchResults', () => {
       mockTopScene,
       mockTimeline
     );
-    expect(result.citations.length).toBe(3);
-    // Results are sorted by similarity descending when combined
-    const sortedResults = [...mockSceneResults, ...mockDetailResults].sort((a, b) => b.similarity - a.similarity);
-    result.citations.forEach((citation, idx) => {
-      expect(citation).toHaveProperty('id');
-      expect(citation).toHaveProperty('sceneId');
-      expect(citation).toHaveProperty('type');
-      expect(citation).toHaveProperty('title');
-      expect(citation).toHaveProperty('similarity');
-      // Verify citation ID matches
-      expect(citation.id).toBe(idx + 1);
-      // Verify metadata from corresponding result (sorted by similarity)
-      const correspondingResult = sortedResults[idx];
-      expect(citation.sceneId).toBe(correspondingResult.sceneId);
-      expect(citation.similarity).toBe(correspondingResult.similarity);
-    });
-  });
-  it('should truncate long content in citation titles', async () => {
-    const longContent = 'A'.repeat(100);
-    // Set long content on the highest similarity result (mockDetailResults[0] has 0.95)
-    // which will be first after sorting by similarity
-    mockDetailResults[0].content = longContent;
-    const result = await synthesizeSearchResults(
-      mockNarrative,
-      'test',
-      mockSceneResults,
-      mockDetailResults,
-      mockTopArc,
-      mockTopScene,
-      mockTimeline
-    );
-    const citation = result.citations[0];
-    expect(citation.title.length).toBeLessThanOrEqual(60);
-    expect(citation.title).toContain('...');
-  });
-  it('should filter invalid citation IDs', async () => {
-    // Mock response with invalid citation IDs (100 and -1 exceed results length or are negative)
-    vi.mocked(apiModule.callGenerateStream).mockImplementation(
-      async (_prompt: string, _system: string, onToken: (token: string) => void): Promise<string> => {
-        const response = 'Test overview with citations [1], [2], [100], and [-1].';
-        if (onToken) {
-          for (const char of response) {
-            onToken(char);
-          }
-        }
-        return response;
-      }
-    );
-    const result = await synthesizeSearchResults(
-      mockNarrative,
-      'test',
-      mockSceneResults,
-      mockDetailResults,
-      mockTopArc,
-      mockTopScene,
-      mockTimeline
-    );
-    // Should only include valid citations (1, 2) - 100 exceeds results.length, -1 is invalid
-    expect(result.citations.length).toBe(2);
-    expect(result.citations[0].id).toBe(1);
-    expect(result.citations[1].id).toBe(2);
+    const [prompt] = vi.mocked(apiModule.callGenerateStream).mock.calls[0];
+    expect(prompt).toContain('MOST RELEVANT ARC');
+    expect(prompt).toContain('Act I');
   });
   it('should handle synthesis errors with fallback', async () => {
     vi.mocked(apiModule.callGenerateStream).mockRejectedValue(new Error('API error'));
@@ -262,44 +208,10 @@ describe('synthesizeSearchResults', () => {
       mockTopScene,
       mockTimeline
     );
-    // Should return fallback synthesis
+    // Fallback overview references the query + the top arc; no citations.
     expect(result.overview).toContain('test query');
     expect(result.overview).toContain('Act I');
-    expect(result.citations.length).toBeLessThanOrEqual(3);
-  });
-  it('should handle invalid JSON response', async () => {
-    vi.mocked(jsonModule.parseJson).mockImplementation(() => {
-      throw new Error('Invalid JSON');
-    });
-    const result = await synthesizeSearchResults(
-      mockNarrative,
-      'test',
-      mockSceneResults,
-      mockDetailResults,
-      mockTopArc,
-      mockTopScene,
-      mockTimeline
-    );
-    // Should return fallback
-    expect(result.overview).toBeDefined();
-    expect(result.citations).toBeDefined();
-  });
-  it('should handle missing overview in response', async () => {
-    vi.mocked(jsonModule.parseJson).mockReturnValue({
-      citationIds: [1, 2],
-      // missing overview
-    } as { overview: string; citationIds: number[] });
-    const result = await synthesizeSearchResults(
-      mockNarrative,
-      'test',
-      mockSceneResults,
-      mockDetailResults,
-      mockTopArc,
-      mockTopScene,
-      mockTimeline
-    );
-    // Should return fallback
-    expect(result.overview).toBeDefined();
+    expect(result.citations.length).toBe(0);
   });
   it('should handle null top arc gracefully', async () => {
     const result = await synthesizeSearchResults(
@@ -328,23 +240,7 @@ describe('synthesizeSearchResults', () => {
     expect(result.overview).toBeDefined();
     expect(result.citations.length).toBe(0);
   });
-  it('should map result types correctly to citation types', async () => {
-    const result = await synthesizeSearchResults(
-      mockNarrative,
-      'test',
-      mockSceneResults,
-      mockDetailResults,
-      mockTopArc,
-      mockTopScene,
-      mockTimeline
-    );
-    // Citations are extracted from combined results sorted by similarity
-    // Order depends on which citations the LLM referenced in the synthesis
-    expect(result.citations.length).toBeGreaterThan(0);
-    expect(['scene', 'proposition']).toContain(result.citations[0].type);
-  });
   it('should not call onToken if not provided', async () => {
-    // Should not throw error when onToken is undefined
     await expect(
       synthesizeSearchResults(
         mockNarrative,
@@ -356,20 +252,5 @@ describe('synthesizeSearchResults', () => {
         mockTimeline
       )
     ).resolves.toBeDefined();
-  });
-  it('should include top arc in context', async () => {
-    await synthesizeSearchResults(
-      mockNarrative,
-      'test',
-      mockSceneResults,
-      mockDetailResults,
-      mockTopArc,
-      mockTopScene,
-      mockTimeline
-    );
-    const callArgs = vi.mocked(apiModule.callGenerateStream).mock.calls[0];
-    const [prompt] = callArgs;
-    expect(prompt).toContain('TOP ARC');
-    expect(prompt).toContain('Act I');
   });
 });

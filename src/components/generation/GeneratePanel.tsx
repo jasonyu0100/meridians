@@ -5,7 +5,9 @@ import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
 import { Segmented } from "@/components/ui/Segmented";
 import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
 import { diagnoseError } from "@/lib/ai/diagnose";
-import { IconChevronRight, IconDice } from "@/components/icons";
+import { IconChevronRight, IconDice, IconMerge } from "@/components/icons";
+import { uid } from "@/components/stage/RoomUI";
+import { resolutionOutcomes } from "@/lib/merges";
 import {
   DEFAULT_EXPANSION_FILTER,
   expandWorld,
@@ -34,7 +36,7 @@ import {
 } from "@/lib/pacing/pacing-markov";
 import { useStore } from "@/lib/state/store";
 import { logError } from "@/lib/core/system-logger";
-import type { CubeCornerKey, NarrativeState, TimeUnit } from "@/types/narrative";
+import type { CubeCornerKey, NarrativeState, TimeUnit, Merge, ProposedMerge } from "@/types/narrative";
 import {
   DEFAULT_STORY_SETTINGS,
   NARRATIVE_CUBE,
@@ -45,7 +47,7 @@ import { GuidanceFields } from "./GuidanceFields";
 import { MarkovGraph } from "./MarkovGraph";
 import { CubeBadge, PacingStrip } from "./PacingStrip";
 
-type Mode = "continuation" | "world";
+type Mode = "arc" | "world";
 
 // ── Corner colors ────────────────────────────────────────────────────────────
 
@@ -105,6 +107,7 @@ export function GeneratePanel({
   initialWorldDirection,
   initialContinuationMode,
   initialStoryDirection,
+  proposedMerge,
 }: {
   onClose: () => void;
   /** When true, the panel opens straight into the world-expansion tab with
@@ -112,14 +115,19 @@ export function GeneratePanel({
    *  brief-driven expansion suggestions. */
   initialWorldMode?: boolean;
   initialWorldDirection?: string;
-  /** When true, the panel opens in continuation mode with
+  /** When true, the panel opens in arc mode with
    *  `initialStoryDirection` prefilled into the per-generation direction
    *  field. Fired by brief-driven Generate Arc CTAs. */
   initialContinuationMode?: boolean;
   initialStoryDirection?: string;
+  /** A merge proposed at the commit review. When present, it is the locked
+   *  continuity basis for this generation: rendered into the prompt, and only
+   *  persisted (CREATE_MERGE + COMMIT_STREAM) and stamped onto the produced
+   *  arc / world-build once generation succeeds. */
+  proposedMerge?: ProposedMerge;
 }) {
   const { state, dispatch } = useStore();
-  const [mode, setMode] = useState<Mode>(initialWorldMode ? "world" : "continuation");
+  const [mode, setMode] = useState<Mode>(initialWorldMode ? "world" : "arc");
 
   // Continuation state
   const [newArc, setNewArc] = useState(true);
@@ -185,6 +193,13 @@ export function GeneratePanel({
   // flow runs its own LLM-based diagnosis on the raw, so no hint is
   // tracked here.
   const [failedRaw, setFailedRaw] = useState<{ kind: 'scenes' | 'world'; raw: string } | null>(null);
+
+  // A proposed merge (from the commit review) is the locked continuity basis
+  // for this generation. We mint its id once, up front (stable across renders
+  // via the state initializer), so the same id is both stamped onto the
+  // produced arc / world-build AND used for the CREATE_MERGE that persists it
+  // on success — making every merge consumed-by-construction.
+  const [proposedMergeId] = useState(() => uid("merge"));
 
   const narrative = state.activeNarrative;
   if (!narrative) return null;
@@ -274,6 +289,41 @@ export function GeneratePanel({
     [narrative, state.resolvedEntryKeys],
   );
 
+  // ── Continuity basis (proposed merge) ───────────────────────────────────────
+  // When the panel was opened from a commit review, the proposed merge is the
+  // locked basis: a Merge-shaped object carrying the pre-minted id so it can be
+  // rendered into the prompt + stamped now, then persisted on success.
+  const basisMerges = useMemo<Merge[]>(() => {
+    if (!proposedMerge) return [];
+    return [{ id: proposedMergeId, at: Date.now(), ...proposedMerge }];
+  }, [proposedMerge, proposedMergeId]);
+  // The streams behind the proposed merge, for the pending-merge summary.
+  const proposedStreams = useMemo(
+    () => (proposedMerge?.streamIds ?? []).map((id) => narrative?.streams?.[id]).filter(Boolean),
+    [proposedMerge, narrative?.streams],
+  );
+
+  // Persist the proposed merge once a generation lands: create the Merge with
+  // the same id stamped onto the new entry, then seal its streams. Called from
+  // both the arc and world success paths.
+  const commitProposedMerge = useCallback(() => {
+    if (!proposedMerge) return;
+    dispatch({
+      type: "CREATE_MERGE",
+      merge: {
+        id: proposedMergeId,
+        at: Date.now(),
+        // Stamp the origin branch so the merge is visible on this branch and
+        // its descendants only (ownership-scoped).
+        branchId: state.viewState.activeBranchId ?? undefined,
+        ...proposedMerge,
+      },
+    });
+    for (const sid of proposedMerge.streamIds ?? []) {
+      dispatch({ type: "COMMIT_STREAM", streamId: sid });
+    }
+  }, [proposedMerge, proposedMergeId, dispatch, state.viewState.activeBranchId]);
+
   const storyMatrix = useMemo(() => {
     const presetKey =
       narrative.storySettings?.rhythmPreset ??
@@ -361,6 +411,7 @@ export function GeneratePanel({
           pacingSequence: previewSequence ?? undefined,
           worldBuildFocus,
           coordinationPlanContext,
+          basisMerges: basisMerges.length > 0 ? basisMerges : undefined,
           onReasoning: (token) => setStreamText((prev) => prev + token),
           repairFromRaw: opts.repairFromRaw,
           firstSceneTimeUnit:
@@ -378,6 +429,9 @@ export function GeneratePanel({
         arc,
         branchId: state.viewState.activeBranchId!,
       });
+      // Persist the proposed merge now that an arc extends the narrative with
+      // it — created + stamped onto this arc, its streams sealed.
+      commitProposedMerge();
       // Advance coordination plan if active (regardless of whether settings were changed)
       if (hasActivePlan && activeBranchId) {
         dispatch({ type: "ADVANCE_COORDINATION_PLAN", branchId: activeBranchId });
@@ -449,6 +503,7 @@ export function GeneratePanel({
           onReasoning: (token) => setStreamText((prev) => prev + token),
           entityFilter,
           repairFromRaw: opts.repairFromRaw,
+          basisMerges: basisMerges.length > 0 ? basisMerges : undefined,
         },
       );
       setFailedRaw(null);
@@ -456,6 +511,7 @@ export function GeneratePanel({
         type: "EXPAND_WORLD",
         worldBuildId: nextId("WB", Object.keys(narrative.worldBuilds)),
         branchId: state.viewState.activeBranchId!,
+        basisMergeIds: basisMerges.length > 0 ? basisMerges.map((m) => m.id) : undefined,
         summary: expansion.summary,
         characters: expansion.characters,
         locations: expansion.locations,
@@ -471,6 +527,9 @@ export function GeneratePanel({
         attributionEdges: expansion.attributionEdges,
       });
 
+      // Persist the proposed merge now that an expansion extends the narrative
+      // with it — created + stamped onto this world-build, its streams sealed.
+      commitProposedMerge();
       clearWorldDirectionAfterUse();
       onClose();
     } catch (err) {
@@ -512,7 +571,7 @@ export function GeneratePanel({
     }
   }
 
-  const showPreview = !!previewSequence && mode === "continuation" && !loading && narrative.storySettings?.usePacingChain;
+  const showPreview = !!previewSequence && mode === "arc" && !loading && narrative.storySettings?.usePacingChain;
 
   return (
     <Modal onClose={loading ? () => {} : onClose} size="xl" maxHeight="90vh">
@@ -525,7 +584,7 @@ export function GeneratePanel({
         {/* Mode tabs */}
         <Segmented<Mode>
           options={[
-            { label: "Continuation", value: "continuation" },
+            { label: "Generate Arc", value: "arc" },
             { label: "Expand World", value: "world" },
           ]}
           value={mode}
@@ -540,7 +599,7 @@ export function GeneratePanel({
         {loading ? (
           <StreamingOutput
             label={
-              mode === "continuation"
+              mode === "arc"
                 ? newArc
                   ? "Generating arc"
                   : "Continuing arc"
@@ -698,7 +757,66 @@ export function GeneratePanel({
         ) : (
           /* ── Configuration ──────────────────────────────────── */
           <div className="flex flex-col gap-4">
-            {mode === "continuation" ? (
+            {/* Pending merge — the proposed commit this generation will fold in.
+                Locked basis (rendered into the prompt); persisted + stamped onto
+                the produced arc / world-build only once generation succeeds. */}
+            {proposedMerge && (
+              <div className="rounded-lg border border-purple-400/30 bg-purple-500/8 px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <IconMerge size={12} className="text-purple-300" />
+                  <span className="text-[10px] uppercase tracking-widest text-purple-200">
+                    {proposedMerge.label || "Pending merge"}
+                  </span>
+                  <span className="ml-auto text-[10px] text-purple-300/60">
+                    folds in on generate
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {proposedStreams.map((s) => {
+                    const res = proposedMerge.resolutions?.[s!.id];
+                    const committed = resolutionOutcomes(res);
+                    return (
+                      <div key={s!.id} className="min-w-0 text-[11px]">
+                        {/* Question — full width, truncates if long */}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-text-dim/60 truncate">{s!.title}</span>
+                          {res?.overridden && (
+                            <span className="shrink-0 text-[9px] uppercase tracking-wide text-amber-400/80">
+                              override
+                            </span>
+                          )}
+                          {committed.length > 1 && (
+                            <span className="shrink-0 text-[9px] uppercase tracking-wide text-purple-300/70">
+                              multi
+                            </span>
+                          )}
+                        </div>
+                        {/* Committed outcome(s) — wrap as chips, never overflow */}
+                        <div className="mt-0.5 flex flex-wrap gap-1">
+                          {committed.length === 0 ? (
+                            <span className="text-text-dim/40">—</span>
+                          ) : (
+                            committed.map((o) => (
+                              <span
+                                key={o}
+                                className="rounded bg-purple-500/15 text-purple-100 px-1.5 py-0.5 leading-snug break-words"
+                              >
+                                {o}
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[10px] text-purple-300/50 leading-snug">
+                  These resolutions are the committed reality the generation extends from;
+                  the streams&apos; priors shape its direction.
+                </p>
+              </div>
+            )}
+            {mode === "arc" ? (
               <>
                 {/* Coordination plan indicator */}
                 {hasActivePlan && coordPlan && (

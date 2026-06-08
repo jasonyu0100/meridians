@@ -6,6 +6,7 @@ import { useStore } from '@/lib/state/store';
 import { generateScenePlan, generateSceneProse, reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { generateSceneQuestions } from '@/lib/ai/learning';
+import { embedQuestions } from '@/lib/search/embeddings';
 import { FatalApiError } from '@/lib/ai/errors';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
 import { PLAN_CONCURRENCY, PROSE_CONCURRENCY, GAME_CONCURRENCY } from '@/lib/constants';
@@ -154,7 +155,7 @@ export function useBulkGenerate() {
           dispatch({ type: 'REVISE_SCENE', sceneId, updates: { plan }, versionType: 'generate' });
         } else if (mode === 'questions') {
           window.dispatchEvent(new CustomEvent('bulk:questions-start', { detail: { sceneId } }));
-          const questions = await generateSceneQuestions(
+          const { questions, newTopics } = await generateSceneQuestions(
             activeNarrative, scene,
             {
               prose: resolvedProse ?? undefined,
@@ -162,7 +163,15 @@ export function useBulkGenerate() {
             },
           );
           window.dispatchEvent(new CustomEvent('bulk:questions-complete', { detail: { sceneId } }));
-          dispatch({ type: 'SET_SCENE_QUESTIONS', sceneId, questions });
+          // Embed stems up front so Expert search is usable without a separate
+          // pass; refs survive COMMIT_SCENE_QUESTIONS's id reassignment.
+          let embeddedQuestions = questions;
+          try {
+            embeddedQuestions = await embedQuestions(questions, activeNarrative.id);
+          } catch {
+            /* leave unembedded — the embeddings dashboard can backfill */
+          }
+          dispatch({ type: 'COMMIT_SCENE_QUESTIONS', sceneId, questions: embeddedQuestions, newTopics });
         } else {
           window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId } }));
           // Prose mode + 'prose' source: generate prose without a plan so it flows free,

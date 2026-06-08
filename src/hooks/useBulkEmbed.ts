@@ -14,7 +14,7 @@ import { generateEmbeddingsBatch, embedPropositions, computeCentroid, resolveEmb
 import { assetManager } from '@/lib/storage/asset-manager';
 import { logInfo, logError } from '@/lib/core/system-logger';
 
-export type EmbedMode = 'summaries' | 'propositions' | 'prose';
+export type EmbedMode = 'summaries' | 'propositions' | 'prose' | 'questions';
 
 export type EmbedProgress = {
   mode: EmbedMode;
@@ -27,6 +27,11 @@ export type EmbedStats = {
   summaries: { total: number; missing: number };
   propositions: { total: number; missing: number };
   prose: { total: number; missing: number };
+  questions: { total: number; missing: number };
+  /** Scene-level coverage feeding the modal's redirects: vector search needs
+   *  every scene planned; expert search needs every scene to carry questions. */
+  planCoverage: { covered: number; total: number };
+  questionCoverage: { covered: number; total: number };
 };
 
 /**
@@ -50,6 +55,9 @@ export function useBulkEmbed() {
       summaries: { total: 0, missing: 0 },
       propositions: { total: 0, missing: 0 },
       prose: { total: 0, missing: 0 },
+      questions: { total: 0, missing: 0 },
+      planCoverage: { covered: 0, total: 0 },
+      questionCoverage: { covered: 0, total: 0 },
     };
 
     for (const key of resolvedKeys) {
@@ -60,14 +68,24 @@ export function useBulkEmbed() {
       stats.summaries.total++;
       if (!scene.summaryEmbedding) stats.summaries.missing++;
 
-      // Proposition embeddings - use latest plan version
+      // Plan coverage (every scene planned ⇒ vector search unbiased)
+      stats.planCoverage.total++;
       const latestPlan = scene.planVersions?.[scene.planVersions.length - 1]?.plan;
       if (latestPlan) {
+        stats.planCoverage.covered++;
         for (const beat of latestPlan.beats) {
           stats.propositions.total += beat.propositions.length;
           stats.propositions.missing += beat.propositions.filter(p => !p.embedding).length;
         }
       }
+
+      // Question coverage (every scene carries questions ⇒ expert search covers
+      // the whole branch) + per-question embedding coverage
+      stats.questionCoverage.total++;
+      const questions = scene.questions ?? [];
+      if (questions.length > 0) stats.questionCoverage.covered++;
+      stats.questions.total += questions.length;
+      stats.questions.missing += questions.filter(q => !q.embedding).length;
 
       // Prose embeddings
       if (scene.proseVersions && scene.proseVersions.length > 0) {
@@ -101,6 +119,8 @@ export function useBulkEmbed() {
           await embedPropositionsForScenes(narrative.id, resolvedKeys);
         } else if (mode === 'prose') {
           await embedProse(narrative.id, resolvedKeys);
+        } else if (mode === 'questions') {
+          await embedQuestionsForScenes(narrative.id, resolvedKeys);
         }
       }
 
@@ -295,6 +315,60 @@ export function useBulkEmbed() {
         sceneId: scenesWithProse[i].id,
         updates: { proseEmbedding: embeddingId },
       });
+    }
+  };
+
+  /**
+   * Embed learning-question stems (powers Expert search). One global batch over
+   * every un-embedded question on the branch, written back per scene via
+   * SET_SCENE_QUESTIONS so the topic tree is left untouched.
+   */
+  const embedQuestionsForScenes = async (narrativeId: string, resolvedKeys: string[]) => {
+    const narrative = state.activeNarrative;
+    if (!narrative) return;
+
+    // Gather every question still missing an embedding, tagged with its scene.
+    const missing: { sceneId: string; questionId: string; prompt: string }[] = [];
+    const affectedScenes = new Set<string>();
+    for (const key of resolvedKeys) {
+      const scene = narrative.scenes[key];
+      if (!scene?.questions?.length) continue;
+      for (const q of scene.questions) {
+        if (q.embedding) continue;
+        missing.push({ sceneId: scene.id, questionId: q.id, prompt: q.prompt });
+        affectedScenes.add(scene.id);
+      }
+    }
+
+    if (missing.length === 0) return;
+
+    setProgress({ mode: 'questions', completed: 0, total: missing.length });
+
+    const embeddings = await generateEmbeddingsBatch(
+      missing.map((m) => m.prompt),
+      narrativeId,
+      (completed, total) => setProgress({ mode: 'questions', completed, total }),
+    );
+
+    // Store each embedding and map questionId → reference.
+    const refByQuestion = new Map<string, string>();
+    for (let i = 0; i < missing.length; i++) {
+      const embeddingId = await assetManager.storeEmbedding(embeddings[i], 'text-embedding-3-small');
+      refByQuestion.set(missing[i].questionId, embeddingId);
+    }
+
+    // Write embeddings back onto the questions, one scene at a time.
+    const now = Date.now();
+    for (const sceneId of affectedScenes) {
+      const scene = narrative.scenes[sceneId];
+      if (!scene?.questions) continue;
+      const updated = scene.questions.map((q) => {
+        const ref = refByQuestion.get(q.id);
+        return ref
+          ? { ...q, embedding: ref, embeddedAt: now, embeddingModel: 'text-embedding-3-small' }
+          : q;
+      });
+      dispatch({ type: 'SET_SCENE_QUESTIONS', sceneId, questions: updated });
     }
   };
 

@@ -47,6 +47,7 @@ import {
 } from "@/lib/graph/system-graph";
 import { logError, logWarning } from "@/lib/core/system-logger";
 import { applyThreadDelta, decayUntouchedStancesForScene, newNarratorStance } from "@/lib/forces/thread-log";
+import { rebuildStream } from "@/lib/forces/stream-stance";
 import type {
   AnalysisJob,
   AppState,
@@ -86,6 +87,7 @@ import type {
   Scene,
   SceneGameAnalysis,
   LearningQuestion,
+  Topic,
   ReasoningMap,
   SearchQuery,
   Region,
@@ -109,8 +111,17 @@ import type {
   WorldNode,
   Variable,
   WorldBuild,
+  Member,
+  Agent,
+  Perspective,
+  Stream,
+  StreamPrior,
+  Merge,
 } from "@/types/narrative";
-import { isScene, resolveEntry } from "@/types/narrative";
+import { isScene, resolveEntry, DEFAULT_STORY_SETTINGS } from "@/types/narrative";
+import { emptyProgress, applyAnswer } from "@/lib/learning/coverage";
+import { wouldCreateCycle, pruneOrphanTopics } from "@/lib/learning/curriculum";
+import { applyCurriculumRestructure } from "@/lib/ai/curriculum-restructure";
 import React, {
   createContext,
   useContext,
@@ -777,6 +788,8 @@ export function analysisIdsForNarrative(
 }
 
 const defaultViewState: NarrativeViewState = {
+  graphViewMode: "search",
+  beliefSource: "thread",
   activeBranchId: null,
   currentSceneIndex: 0,
   inspectorContext: null,
@@ -791,6 +804,7 @@ const defaultViewState: NarrativeViewState = {
   activeBranchChatThreadId: null,
   autoRunState: null,
   isPlaying: false,
+  activeMemberId: null,
 };
 
 const initialState: AppState = {
@@ -799,19 +813,6 @@ const initialState: AppState = {
   activeNarrative: null,
   hydrationComplete: false,
   analysisJobs: [],
-  graphViewMode: "search",
-  autoConfig: {
-    endConditions: [{ type: "scene_count", target: 50 }],
-    minArcLength: 2,
-    maxArcLength: 5,
-    maxActiveThreads: 6,
-    threadStagnationThreshold: 5,
-    direction: "",
-    toneGuidance: "",
-    narrativeConstraints: "",
-    characterRotationEnabled: true,
-    minScenesBetweenCharacterFocus: 3,
-  },
   viewState: defaultViewState,
   resolvedEntryKeys: [],
 };
@@ -877,6 +878,7 @@ export type Action =
   | { type: "SELECT_KNOWLEDGE_ENTITY"; entityId: string | null }
   | { type: "SELECT_THREAD_LOG"; threadId: string | null }
   | { type: "SET_GRAPH_VIEW_MODE"; mode: GraphViewMode }
+  | { type: "SET_BELIEF_SOURCE"; source: "thread" | "stream" }
   // Search
   | { type: "SET_SEARCH_QUERY"; query: SearchQuery }
   | { type: "SET_SEARCH_RESULT_INDEX"; index: number }
@@ -962,6 +964,50 @@ export type Action =
       type: "CLEAR_SCENE_QUESTIONS";
       sceneId: string;
     }
+  // Continual learning coverage (per-member)
+  | {
+      type: "RECORD_QUIZ_ANSWER";
+      memberId: string;
+      questionId: string;
+      correct: boolean;
+    }
+  | { type: "RESET_LEARNING_PROGRESS"; memberId: string }
+  | { type: "SET_ACTIVE_MEMBER"; memberId: string | null }
+  // Curriculum / topic tree. The tree self-cleans (pruneOrphanTopics) as
+  // questions move, so there are no manual merge/delete actions — re-parent
+  // (UPDATE_TOPIC) and reassign (SET_QUESTION_TOPIC) cover reorganisation.
+  | {
+      // Atomic: fold a generation's proposed topics into the live tree
+      // (deduping by name+parent so concurrent scenes don't mint duplicates),
+      // remap the questions' topicIds onto the canonical topics, and set the
+      // scene's bank — all in one pass.
+      type: "COMMIT_SCENE_QUESTIONS";
+      sceneId: string;
+      questions: LearningQuestion[];
+      newTopics: Topic[];
+    }
+  | {
+      type: "UPDATE_TOPIC";
+      topicId: string;
+      patch: Partial<Pick<Topic, "name" | "description" | "parentId">>;
+    }
+  | {
+      type: "SET_QUESTION_TOPIC";
+      sceneId: string;
+      questionId: string;
+      topicId: string | undefined;
+    }
+  | {
+      // Apply an id-stable curriculum restructure across the whole narrative
+      // (topics are global / branch-shared). `merges` redirect every question
+      // off a removed topic onto its survivor; `renames` relabel survivors;
+      // `assignments` reparent them. Questions never dangle — any topicId left
+      // pointing at a removed/missing topic is redirected, then orphans pruned.
+      type: "RESTRUCTURE_CURRICULUM";
+      assignments: Record<string, string | null>;
+      renames: Record<string, string>;
+      merges: Array<{ from: string; into: string }>;
+    }
   // Bulk AI-generated content
   | { type: "BULK_ADD_SCENES"; scenes: Scene[]; arc: Arc; branchId: string }
   | {
@@ -990,6 +1036,9 @@ export type Action =
       attributions?: string[];
       attributionEdges?: import("@/types/narrative").AttributionEdge[];
       reasoningGraph?: ReasoningGraphSnapshot;
+      /** Merges folded in as the basis for this expansion — stamped onto the
+       *  WorldBuild so consumption reads back per-branch. */
+      basisMergeIds?: string[];
     }
   // Auto mode
   | { type: "SET_AUTO_CONFIG"; config: AutoConfig }
@@ -1098,6 +1147,24 @@ export type Action =
       messages: ChatMessage[];
       name?: string;
     }
+  // A0 — Perspectives model (players, perspectives + their threads, streams,
+  // merges).
+  | { type: "UPSERT_MEMBER"; member: Member }
+  | { type: "REMOVE_MEMBER"; id: string }
+  | { type: "UPSERT_AGENT"; agent: Agent }
+  | { type: "REMOVE_AGENT"; id: string }
+  | { type: "UPSERT_PERSPECTIVE"; perspective: Perspective }
+  | { type: "REMOVE_PERSPECTIVE"; id: string }
+  | { type: "UPSERT_STREAM"; stream: Stream }
+  | { type: "REMOVE_STREAM"; id: string }
+  | { type: "ADD_STREAM_PRIOR"; streamId: string; prior: StreamPrior }
+  | { type: "EDIT_STREAM_PRIOR"; streamId: string; priorId: string; text: string }
+  | { type: "REMOVE_STREAM_PRIOR"; streamId: string; priorId: string }
+  | { type: "COMMIT_STREAM"; streamId: string }
+  | { type: "CLOSE_STREAM"; streamId: string }
+  | { type: "REOPEN_STREAM"; streamId: string }
+  | { type: "CREATE_MERGE"; merge: Merge }
+  | { type: "REVERT_MERGE"; mergeId: string }
   // Branch Chat threads — persisted multi-branch analytical sessions.
   | { type: "CREATE_BRANCH_CHAT_THREAD"; thread: BranchChatThread }
   | { type: "DELETE_BRANCH_CHAT_THREAD"; threadId: string }
@@ -1544,12 +1611,17 @@ function reducer(state: AppState, action: Action): AppState {
     case "SET_GRAPH_VIEW_MODE":
       return {
         ...state,
-        graphViewMode: action.mode,
         viewState: {
           ...state.viewState,
+          graphViewMode: action.mode,
           selectedThreadLog: null,
           selectedKnowledgeEntity: null,
         },
+      };
+    case "SET_BELIEF_SOURCE":
+      return {
+        ...state,
+        viewState: { ...state.viewState, beliefSource: action.source },
       };
 
     case "SET_SEARCH_QUERY":
@@ -2018,6 +2090,22 @@ function reducer(state: AppState, action: Action): AppState {
           }),
         );
 
+        // Branch-scoped streams & merges: a stream/merge owned by a deleted
+        // branch is removed with it (it was only visible on that line). Without
+        // this they'd orphan — their branchId points to a gone branch, so they
+        // resolve as visible-nowhere and accumulate forever. Streams/merges
+        // with no branchId (legacy/global) or owned by a survivor are kept.
+        const streams = Object.fromEntries(
+          Object.entries(n.streams ?? {}).filter(
+            ([, s]) => !(s.branchId && toDelete.has(s.branchId)),
+          ),
+        );
+        const merges = Object.fromEntries(
+          Object.entries(n.merges ?? {}).filter(
+            ([, m]) => !(m.branchId && toDelete.has(m.branchId)),
+          ),
+        );
+
         // Canon-branch upkeep — if the canon branch was deleted, clear
         // the explicit pointer so resolveCanonBranchId falls back to the
         // oldest surviving branch. Leaving a dangling id would mean the
@@ -2026,7 +2114,7 @@ function reducer(state: AppState, action: Action): AppState {
         const canonBranchId =
           n.canonBranchId && toDelete.has(n.canonBranchId) ? undefined : n.canonBranchId;
 
-        return { ...n, branches: remaining, scenes, worldBuilds, arcs, canonBranchId };
+        return { ...n, branches: remaining, scenes, worldBuilds, arcs, streams, merges, canonBranchId };
       });
 
       if (result.activeNarrative && result.viewState.activeBranchId) {
@@ -2265,13 +2353,12 @@ function reducer(state: AppState, action: Action): AppState {
       return updateNarrative(state, (n) => {
         const scene = n.scenes[action.sceneId];
         if (!scene) return n;
-        return {
-          ...n,
-          scenes: {
-            ...n.scenes,
-            [action.sceneId]: { ...scene, questions: action.questions },
-          },
+        const scenes = {
+          ...n.scenes,
+          [action.sceneId]: { ...scene, questions: action.questions },
         };
+        // Self-clean the curriculum: topics with no questions left fall away.
+        return { ...n, scenes, topics: pruneOrphanTopics(n.topics ?? {}, scenes) };
       });
 
     case "CLEAR_SCENE_QUESTIONS":
@@ -2279,10 +2366,162 @@ function reducer(state: AppState, action: Action): AppState {
         const scene = n.scenes[action.sceneId];
         if (!scene) return n;
         const { questions: _removed, ...rest } = scene;
+        const scenes = { ...n.scenes, [action.sceneId]: rest };
+        return { ...n, scenes, topics: pruneOrphanTopics(n.topics ?? {}, scenes) };
+      });
+
+    case "RECORD_QUIZ_ANSWER":
+      return updateNarrative(state, (n) => {
+        const progress = n.learningProgress ?? emptyProgress();
+        const now = Date.now();
+        const members = {
+          ...progress.byMember,
+          [action.memberId]: applyAnswer(
+            progress.byMember[action.memberId] ?? {},
+            action.questionId,
+            action.correct,
+            now,
+          ),
+        };
         return {
           ...n,
-          scenes: { ...n.scenes, [action.sceneId]: rest },
+          learningProgress: { byMember: members, updatedAt: now },
         };
+      });
+
+    case "RESET_LEARNING_PROGRESS":
+      return updateNarrative(state, (n) => {
+        const progress = n.learningProgress ?? emptyProgress();
+        const { [action.memberId]: _cleared, ...rest } = progress.byMember;
+        return {
+          ...n,
+          learningProgress: { byMember: rest, updatedAt: Date.now() },
+        };
+      });
+
+    case "SET_ACTIVE_MEMBER":
+      // Device-local UI selection → view state (persisted per-narrative, not
+      // exported), not the document.
+      return {
+        ...state,
+        viewState: { ...state.viewState, activeMemberId: action.memberId },
+      };
+
+    case "COMMIT_SCENE_QUESTIONS":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene) return n;
+        const topics = { ...(n.topics ?? {}) };
+        // Sequential ids (TOP-1, TOP-2 …) assigned HERE — the reducer runs
+        // serially, so concurrent scene generations never collide. The
+        // nanoid ids the generator emitted are just transient batch handles.
+        const topicIdPool = Object.keys(topics);
+        // Index existing topics by parent+name so duplicates collapse.
+        const keyOf = (parentId: string | null, name: string) =>
+          `${parentId ?? "∅"}|${name.trim().toLowerCase()}`;
+        const index = new Map<string, string>();
+        for (const t of Object.values(topics)) {
+          index.set(keyOf(t.parentId ?? null, t.name), t.id);
+        }
+        // proposed id → canonical id. Process parents before children so a
+        // child's resolved parent is known when we key it.
+        const remap = new Map<string, string>();
+        const pending = [...action.newTopics];
+        let guard = pending.length * pending.length + 1;
+        while (pending.length && guard-- > 0) {
+          const t = pending.shift()!;
+          const rawParent = t.parentId ?? null;
+          // Defer if the parent is another proposed topic not yet resolved.
+          if (
+            rawParent &&
+            !topics[rawParent] &&
+            action.newTopics.some((o) => o.id === rawParent) &&
+            !remap.has(rawParent)
+          ) {
+            pending.push(t);
+            continue;
+          }
+          const parentId = rawParent ? (remap.get(rawParent) ?? rawParent) : null;
+          const k = keyOf(parentId, t.name);
+          const existing = index.get(k);
+          if (existing) {
+            remap.set(t.id, existing);
+          } else {
+            const id = nextId("TOP", topicIdPool);
+            topicIdPool.push(id);
+            topics[id] = { id, name: t.name, description: t.description, parentId, createdAt: t.createdAt };
+            index.set(k, id);
+            remap.set(t.id, id);
+          }
+        }
+        // Sequential question ids (Q-1, Q-2 …), numbered across the whole
+        // narrative so they read like the other system structures.
+        const qIdPool: string[] = [];
+        for (const s of Object.values(n.scenes)) {
+          if (s.id === action.sceneId) continue; // this scene's bank is replaced
+          for (const qq of s.questions ?? []) qIdPool.push(qq.id);
+        }
+        const questions = action.questions.map((q) => {
+          const id = nextId("Q", qIdPool);
+          qIdPool.push(id);
+          return {
+            ...q,
+            id,
+            topicId: q.topicId ? (remap.get(q.topicId) ?? q.topicId) : undefined,
+          };
+        });
+        return {
+          ...n,
+          topics,
+          scenes: { ...n.scenes, [action.sceneId]: { ...scene, questions } },
+        };
+      });
+
+    case "UPDATE_TOPIC":
+      return updateNarrative(state, (n) => {
+        const topics = n.topics ?? {};
+        const topic = topics[action.topicId];
+        if (!topic) return n;
+        const patch = { ...action.patch };
+        // Guard re-parenting against cycles / self-parent.
+        if (
+          "parentId" in patch &&
+          patch.parentId != null &&
+          wouldCreateCycle(topics, action.topicId, patch.parentId)
+        ) {
+          delete patch.parentId;
+        }
+        return {
+          ...n,
+          topics: { ...topics, [action.topicId]: { ...topic, ...patch } },
+        };
+      });
+
+    case "SET_QUESTION_TOPIC":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene?.questions) return n;
+        const scenes = {
+          ...n.scenes,
+          [action.sceneId]: {
+            ...scene,
+            questions: scene.questions.map((q) =>
+              q.id === action.questionId ? { ...q, topicId: action.topicId } : q,
+            ),
+          },
+        };
+        // Reassigning away may orphan the old topic — prune it.
+        return { ...n, scenes, topics: pruneOrphanTopics(n.topics ?? {}, scenes) };
+      });
+
+    case "RESTRUCTURE_CURRICULUM":
+      return updateNarrative(state, (n) => {
+        const { topics, scenes } = applyCurriculumRestructure(n, {
+          assignments: action.assignments,
+          renames: action.renames,
+          merges: action.merges,
+        });
+        return { ...n, topics, scenes };
       });
 
     case "RECONSTRUCT_BRANCH": {
@@ -2329,9 +2568,16 @@ function reducer(state: AppState, action: Action): AppState {
           const existing = updatedArcs[action.arc.id];
           const existingSet = new Set(existing.sceneIds);
           const deduped = newSceneIds.filter((id) => !existingSet.has(id));
+          // Union the basis merges — generateScenes already merged them onto
+          // action.arc, but the reducer otherwise keeps only the existing arc's
+          // fields, so carry the union through explicitly.
+          const mergedBasis = action.arc.basisMergeIds && action.arc.basisMergeIds.length > 0
+            ? [...new Set([...(existing.basisMergeIds ?? []), ...action.arc.basisMergeIds])]
+            : existing.basisMergeIds;
           updatedArcs[action.arc.id] = {
             ...existing,
             sceneIds: [...existing.sceneIds, ...deduped],
+            ...(mergedBasis && mergedBasis.length > 0 ? { basisMergeIds: mergedBasis } : {}),
           };
         }
         const branch = n.branches[action.branchId];
@@ -2456,6 +2702,9 @@ function reducer(state: AppState, action: Action): AppState {
           attributionEdges: action.attributionEdges,
         },
         reasoningGraph: action.reasoningGraph,
+        ...(action.basisMergeIds && action.basisMergeIds.length > 0
+          ? { basisMergeIds: action.basisMergeIds }
+          : {}),
       };
 
       const newState = updateNarrative(state, (n) => {
@@ -2497,7 +2746,14 @@ function reducer(state: AppState, action: Action): AppState {
 
     // ── Auto mode ──────────────────────────────────────────────────────────
     case "SET_AUTO_CONFIG":
-      return { ...state, autoConfig: action.config };
+      // Per-story: persists on the active narrative's storySettings.
+      return updateNarrative(state, (n) => ({
+        ...n,
+        storySettings: {
+          ...(n.storySettings ?? DEFAULT_STORY_SETTINGS),
+          autoConfig: action.config,
+        },
+      }));
 
     case "START_AUTO_RUN":
       return {
@@ -3498,6 +3754,191 @@ function reducer(state: AppState, action: Action): AppState {
             },
           },
         };
+      });
+
+    // ── A0 · Members & room model ─────────────────────────────────────────
+    case "UPSERT_MEMBER":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        members: { ...(n.members ?? {}), [action.member.id]: action.member },
+      }));
+
+    case "REMOVE_MEMBER":
+      return updateNarrative(state, (n) => {
+        const { [action.id]: _removed, ...rest } = n.members ?? {};
+        return { ...n, members: rest };
+      });
+
+    case "UPSERT_AGENT":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        agents: { ...(n.agents ?? {}), [action.agent.id]: action.agent },
+      }));
+
+    case "REMOVE_AGENT":
+      return updateNarrative(state, (n) => {
+        const { [action.id]: _removed, ...rest } = n.agents ?? {};
+        return { ...n, agents: rest };
+      });
+
+    case "UPSERT_PERSPECTIVE":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        perspectives: { ...(n.perspectives ?? {}), [action.perspective.id]: action.perspective },
+      }));
+
+    case "REMOVE_PERSPECTIVE":
+      return updateNarrative(state, (n) => {
+        const { [action.id]: _removed, ...rest } = n.perspectives ?? {};
+        return { ...n, perspectives: rest };
+      });
+
+    case "UPSERT_STREAM":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        streams: { ...(n.streams ?? {}), [action.stream.id]: action.stream },
+      }));
+
+    case "REMOVE_STREAM":
+      return updateNarrative(state, (n) => {
+        const { [action.id]: _removed, ...rest } = n.streams ?? {};
+        return { ...n, streams: rest };
+      });
+
+    case "ADD_STREAM_PRIOR":
+      return updateNarrative(state, (n) => {
+        const s = (n.streams ?? {})[action.streamId];
+        if (!s) return n;
+        return {
+          ...n,
+          streams: {
+            ...(n.streams ?? {}),
+            [action.streamId]: { ...s, priors: [...s.priors, action.prior], updatedAt: Date.now() },
+          },
+        };
+      });
+
+    case "EDIT_STREAM_PRIOR":
+      return updateNarrative(state, (n) => {
+        const s = (n.streams ?? {})[action.streamId];
+        if (!s) return n;
+        return {
+          ...n,
+          streams: {
+            ...(n.streams ?? {}),
+            [action.streamId]: {
+              ...s,
+              priors: s.priors.map((p) => (p.id === action.priorId ? { ...p, text: action.text } : p)),
+              updatedAt: Date.now(),
+            },
+          },
+        };
+      });
+
+    case "REMOVE_STREAM_PRIOR":
+      return updateNarrative(state, (n) => {
+        const s = (n.streams ?? {})[action.streamId];
+        if (!s) return n;
+        // Rebuild cumulatively from the surviving priors so the stance, the
+        // outcome set (orphan outcomes the removed prior introduced are
+        // dropped), and the sparkline all revert correctly.
+        const keep = s.priors.filter((p) => p.id !== action.priorId);
+        return {
+          ...n,
+          streams: { ...(n.streams ?? {}), [action.streamId]: rebuildStream(s, keep) },
+        };
+      });
+
+    case "COMMIT_STREAM":
+      return updateNarrative(state, (n) => {
+        const s = (n.streams ?? {})[action.streamId];
+        if (!s) return n;
+        return {
+          ...n,
+          streams: {
+            ...(n.streams ?? {}),
+            [action.streamId]: { ...s, state: "committed", updatedAt: Date.now() },
+          },
+        };
+      });
+
+    case "CLOSE_STREAM":
+      return updateNarrative(state, (n) => {
+        const s = (n.streams ?? {})[action.streamId];
+        if (!s) return n;
+        return {
+          ...n,
+          streams: {
+            ...(n.streams ?? {}),
+            [action.streamId]: { ...s, state: "closed", updatedAt: Date.now() },
+          },
+        };
+      });
+
+    case "REOPEN_STREAM":
+      return updateNarrative(state, (n) => {
+        const s = (n.streams ?? {})[action.streamId];
+        // Only closed streams reopen — committed streams are sealed in history.
+        if (!s || s.state !== "closed") return n;
+        const { closedAt: _c, closeOutcome: _o, resolutionQuality: _q, ...rest } = s;
+        return {
+          ...n,
+          streams: {
+            ...(n.streams ?? {}),
+            [action.streamId]: { ...rest, state: "open", updatedAt: Date.now() },
+          },
+        };
+      });
+
+    case "CREATE_MERGE":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        merges: { ...(n.merges ?? {}), [action.merge.id]: action.merge },
+      }));
+
+    case "REVERT_MERGE":
+      // Undo a merge: drop the merge record, reopen the streams it sealed so
+      // they become open again, and unstamp it as a continuity basis. Any
+      // narrative content already generated FROM the merge is left intact —
+      // reverting reopens the streams, it doesn't roll back generation.
+      return updateNarrative(state, (n) => {
+        const merge = (n.merges ?? {})[action.mergeId];
+        if (!merge) return n;
+
+        // 1. Remove the merge record.
+        const { [action.mergeId]: _removed, ...mergesRest } = n.merges ?? {};
+
+        // 2. Reopen the streams this merge committed — but only those NOT still
+        //    sealed by another surviving merge (a stream commits once, but stay
+        //    defensive). Reopening strips any close metadata so it's fully open.
+        const stillCommitted = new Set<string>();
+        for (const m of Object.values(mergesRest)) {
+          for (const sid of m.streamIds ?? []) stillCommitted.add(sid);
+        }
+        const streams = { ...(n.streams ?? {}) };
+        for (const sid of merge.streamIds ?? []) {
+          const s = streams[sid];
+          if (!s || s.state !== "committed" || stillCommitted.has(sid)) continue;
+          const { closedAt: _c, closeOutcome: _o, resolutionQuality: _q, ...rest } = s;
+          streams[sid] = { ...rest, state: "open", updatedAt: Date.now() };
+        }
+
+        // 3. Unstamp the merge from any arc / world-build that folded it in as a
+        //    continuity basis, so no entry points at a merge that no longer exists.
+        const arcs = { ...n.arcs };
+        for (const [id, arc] of Object.entries(arcs)) {
+          if (arc.basisMergeIds?.includes(action.mergeId)) {
+            arcs[id] = { ...arc, basisMergeIds: arc.basisMergeIds.filter((mid) => mid !== action.mergeId) };
+          }
+        }
+        const worldBuilds = { ...n.worldBuilds };
+        for (const [id, wb] of Object.entries(worldBuilds)) {
+          if (wb.basisMergeIds?.includes(action.mergeId)) {
+            worldBuilds[id] = { ...wb, basisMergeIds: wb.basisMergeIds.filter((mid) => mid !== action.mergeId) };
+          }
+        }
+
+        return { ...n, merges: mergesRest, streams, arcs, worldBuilds };
       });
 
     // ── Branch Chat threads ───────────────────────────────────────────────

@@ -66,21 +66,10 @@ describe('store reducer', () => {
       activeNarrative: testNarrative,
       hydrationComplete: true,
       resolvedEntryKeys: ['S-1', 'S-2'],
-      graphViewMode: 'search',
-      autoConfig: {
-        endConditions: [{ type: 'scene_count', target: 50 }],
-        minArcLength: 2,
-        maxArcLength: 5,
-        maxActiveThreads: 6,
-        threadStagnationThreshold: 5,
-        direction: '',
-        toneGuidance: '',
-        narrativeConstraints: '',
-        characterRotationEnabled: true,
-        minScenesBetweenCharacterFocus: 3,
-      },
       analysisJobs: [],
       viewState: {
+        graphViewMode: 'search',
+        beliefSource: 'thread',
         activeBranchId: 'BR-1',
         currentSceneIndex: 1,
         inspectorContext: null,
@@ -95,6 +84,7 @@ describe('store reducer', () => {
         activeBranchChatThreadId: null,
         autoRunState: null,
         isPlaying: false,
+        activeMemberId: null,
       },
     };
   });

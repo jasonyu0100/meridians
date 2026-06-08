@@ -22,7 +22,9 @@ export type EntityRefKind =
   | "thread"
   | "scene"
   | "arc"
-  | "knowledge";
+  | "knowledge"
+  | "topic"
+  | "question";
 
 export type EntityRefInfo = {
   id: string;
@@ -47,14 +49,17 @@ const PREFIX_KIND: Record<string, EntityRefKind> = {
   ARC: "arc",
   SYS: "knowledge",
   K: "knowledge",
+  TOP: "topic",
+  Q: "question",
 };
 
 /**
  * Body of a recognised reference: a known prefix, then the canonical
  * `<PREFIX>-<N>` or work-scoped `<PREFIX>-<WORK>-<N>` tail. Longer prefixes
- * (ARC, SYS) are listed first so the alternation prefers them over A / S.
+ * (ARC, SYS, TOP) are listed first so the alternation prefers them over the
+ * single-letter prefixes that share a leading character (A / S / T).
  */
-const REF_BODY = "(?:ARC|SYS|C|L|A|T|S|K)-(?:[A-Za-z0-9]+-)*\\d+";
+const REF_BODY = "(?:ARC|SYS|TOP|C|L|A|T|S|K|Q)-(?:[A-Za-z0-9]+-)*\\d+";
 
 /** Source for the bracketed-annotation pattern, e.g. `[C-12]`. The trailing
  *  `(?!\\()` skips tokens that are actually markdown link labels (`[x](url)`). */
@@ -196,6 +201,35 @@ export function resolveEntityRef(
         detail: "",
         inspector: { type: "knowledge", nodeId: id },
       };
+    }
+    case "topic": {
+      const t = narrative.topics?.[id];
+      if (!t) return null;
+      return {
+        id,
+        kind,
+        label: t.name,
+        typeLabel: "Topic",
+        detail: t.description ?? "",
+        inspector: { type: "topic", topicId: id },
+      };
+    }
+    case "question": {
+      // Questions live on scenes (scene.questions), not a top-level map, so the
+      // owning scene must be found to build the inspector context.
+      for (const scene of Object.values(narrative.scenes ?? {})) {
+        const q = scene.questions?.find((x) => x.id === id);
+        if (!q) continue;
+        return {
+          id,
+          kind,
+          label: q.prompt,
+          typeLabel: "Question",
+          detail: q.options?.[q.correctIndex] ?? "",
+          inspector: { type: "question", sceneId: scene.id, questionId: id },
+        };
+      }
+      return null;
     }
   }
   return null;

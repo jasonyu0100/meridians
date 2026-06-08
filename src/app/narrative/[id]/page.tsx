@@ -26,6 +26,7 @@ import { useAutoPlay } from '@/hooks/useAutoPlay';
 import { useBulkGenerate } from '@/hooks/useBulkGenerate';
 import { useBulkAudioGenerate } from '@/hooks/useBulkAudioGenerate';
 import { type SceneRange } from '@/components/timeline/SceneRangeSelector';
+import type { ProposedMerge } from '@/types/narrative';
 import { ForceAnalytics } from '@/components/analytics/ForceAnalytics';
 import { CastAnalytics } from '@/components/analytics/CastAnalytics';
 import ProseProfilePanel from '@/components/layout/ProseProfilePanel';
@@ -60,6 +61,7 @@ export default function NarrativeWorkspace() {
     worldDirection?: string;
     continuationMode?: boolean;
     storyDirection?: string;
+    proposedMerge?: ProposedMerge;
   } | null>(null);
   const [forkOpen, setForkOpen] = useState(false);
   const [autoSettingsOpen, setAutoSettingsOpen] = useState(false);
@@ -108,11 +110,14 @@ export default function NarrativeWorkspace() {
         worldDirection?: string;
         continuationMode?: boolean;
         storyDirection?: string;
+        proposedMerge?: ProposedMerge;
       }>).detail;
       if (detail?.worldMode) {
-        setGeneratePreset({ worldMode: true, worldDirection: detail.worldDirection });
+        setGeneratePreset({ worldMode: true, worldDirection: detail.worldDirection, proposedMerge: detail?.proposedMerge });
       } else if (detail?.continuationMode) {
-        setGeneratePreset({ continuationMode: true, storyDirection: detail.storyDirection });
+        setGeneratePreset({ continuationMode: true, storyDirection: detail.storyDirection, proposedMerge: detail?.proposedMerge });
+      } else if (detail?.proposedMerge) {
+        setGeneratePreset({ proposedMerge: detail.proposedMerge });
       } else {
         setGeneratePreset(null);
       }
@@ -196,12 +201,12 @@ export default function NarrativeWorkspace() {
   // Graph-mode views render a legend strip (h-7 = 28px) at the top of the
   // canvas. When that strip is visible, push the bar light down so it sits
   // at the lowest divider line and the wash only spills downward.
-  const hasCanvasLegend = GRAPH_MODES.has(state.graphViewMode);
+  const hasCanvasLegend = GRAPH_MODES.has(state.viewState.graphViewMode);
   const barLightTop = hasCanvasLegend ? 28 : 0;
   // Variables view (Present/Compass) renders its OWN internal topbar with a
   // dedicated wash anchored to its bottom edge. Suppress the page-level
   // light there so the two illuminations don't double up.
-  const suppressBarLight = state.graphViewMode === 'present' || state.graphViewMode === 'compass';
+  const suppressBarLight = state.viewState.graphViewMode === 'present' || state.viewState.graphViewMode === 'compass';
 
   return (
     <PropositionClassificationProvider narrative={state.activeNarrative} resolvedKeys={state.resolvedEntryKeys}>
@@ -302,14 +307,14 @@ export default function NarrativeWorkspace() {
               />
             )}
 
-            {(GRAPH_MODES.has(state.graphViewMode) ||
-              state.graphViewMode === 'plan' ||
-              state.graphViewMode === 'prose' ||
-              state.graphViewMode === 'audio' ||
-              state.graphViewMode === 'learning' ||
-              state.graphViewMode === 'decision' ||
-              state.graphViewMode === 'mode' ||
-              state.graphViewMode === 'map') && (
+            {(GRAPH_MODES.has(state.viewState.graphViewMode) ||
+              state.viewState.graphViewMode === 'plan' ||
+              state.viewState.graphViewMode === 'prose' ||
+              state.viewState.graphViewMode === 'audio' ||
+              state.viewState.graphViewMode === 'learning' ||
+              state.viewState.graphViewMode === 'decision' ||
+              state.viewState.graphViewMode === 'mode' ||
+              state.viewState.graphViewMode === 'map') && (
               <StagePalette
                 isBulkActive={!!(bulk.runState?.isRunning || bulk.runState?.isPaused)}
                 isBulkAudioActive={!!(bulkAudio.runState?.isRunning || bulkAudio.runState?.isPaused)}
@@ -317,7 +322,7 @@ export default function NarrativeWorkspace() {
               />
             )}
             {/* Coordination Plan Indicator — only in graph-style canvas modes */}
-            {GRAPH_MODES.has(state.graphViewMode) && state.viewState.activeBranchId && state.activeNarrative.branches[state.viewState.activeBranchId]?.coordinationPlan && (
+            {GRAPH_MODES.has(state.viewState.graphViewMode) && state.viewState.activeBranchId && state.activeNarrative.branches[state.viewState.activeBranchId]?.coordinationPlan && (
               <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10">
                 <CoordinationPlanIndicator
                   branchPlan={state.activeNarrative.branches[state.viewState.activeBranchId].coordinationPlan!}
@@ -362,6 +367,7 @@ export default function NarrativeWorkspace() {
           initialWorldDirection={generatePreset?.worldDirection}
           initialContinuationMode={generatePreset?.continuationMode}
           initialStoryDirection={generatePreset?.storyDirection}
+          proposedMerge={generatePreset?.proposedMerge}
         />
       )}
       {forkOpen && <BranchModal onClose={() => setForkOpen(false)} />}

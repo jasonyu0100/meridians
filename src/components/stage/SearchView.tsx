@@ -1,30 +1,65 @@
 "use client";
-// SearchView — Stage semantic-search surface: embedding query with AI-synthesized overview and inline citations.
+// SearchView — Stage search surface. Three aligned engines share one UI:
+//   • vector  — embedding RAG over the proposition bank (fast, similarity-
+//     weighted activation timeline). Needs every scene planned + embedded.
+//   • expert  — embedding RAG over the curriculum question bank. Matched
+//     questions' verified answers ground the synthesis. Needs every scene
+//     questioned + embedded. Attributes to topics/questions.
+//   • context — narrative-context search reading the full branch (slower, more
+//     token-expensive, but works on any branch). The always-available fallback.
+// All three answer in academic prose, render the same scene-origin activation
+// timeline, and lay out a clickable reference list at the bottom (entity-refs
+// for vector/context; topic + question refs for expert).
 
-import { synthesizeSearchResults } from "@/lib/ai/search-synthesis";
 import {
-  resolvePlanForBranch,
-  resolveProseForBranch,
-} from "@/lib/forces/narrative-utils";
-import { searchNarrative } from "@/lib/search/search";
+  synthesizeSearchResults,
+  synthesizeExpertSearch,
+  synthesizeNarrativeContextSearch,
+} from "@/lib/ai/search-synthesis";
+import { narrativeContext } from "@/lib/ai/context";
+import {
+  searchNarrative,
+  searchExpert,
+  auditSearchAvailability,
+} from "@/lib/search/search";
+import {
+  buildCitationSceneTimeline,
+  citedEntityIds,
+} from "@/lib/search/citation-attribution";
+import {
+  resolveEntityRef,
+  type EntityRefInfo,
+  type EntityRefKind,
+} from "@/lib/forces/entity-ref";
+import { Markdown } from "@/components/ui/Markdown";
 import { useStore } from "@/lib/state/store";
+import {
+  DEFAULT_STORY_SETTINGS,
+  resolveSearchMode,
+  type InspectorContext,
+  type SearchMode,
+} from "@/types/narrative";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
-import { usePropositionClassification } from "@/hooks/usePropositionClassification";
-import { classificationColor, classificationLabel } from "@/lib/analysis/proposition-classify";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type QueryResponse = {
   question: string;
   answer: string;
-  citations: Array<{
-    id: number;
-    sceneId: string;
-    beatIndex?: number;
-    propIndex?: number;
-    content: string;
-    similarity: number;
-    type: "scene" | "proposition";
-  }>;
+  mode: SearchMode;
+};
+
+/** One row in the shared reference list — unified across entity-ref modes
+ *  (vector/context) and the expert mode's topic/question refs. */
+type RefEntry = {
+  key: string;
+  /** Tailwind bg class for the type-tinted dot. */
+  dotClass: string;
+  label: string;
+  typeLabel: string;
+  detail?: string;
+  /** Small mono id line under the label. */
+  idLabel: string;
+  inspector: InspectorContext;
 };
 
 const SUGGESTED_QUERIES = [
@@ -36,9 +71,29 @@ const SUGGESTED_QUERIES = [
   "Actors, motivations, and stakes",
 ];
 
+/** Type-tinted dot for the reference list — mirrors the chat EntityRef palette. */
+const KIND_DOT: Record<EntityRefKind, string> = {
+  character: "bg-sky-400",
+  location: "bg-emerald-400",
+  artifact: "bg-amber-400",
+  thread: "bg-violet-400",
+  scene: "bg-rose-400",
+  arc: "bg-fuchsia-400",
+  knowledge: "bg-teal-400",
+  topic: "bg-indigo-400",
+  question: "bg-cyan-400",
+};
+
+/** The fixed cycle order for the in-bar engine toggle. */
+const MODE_CYCLE: SearchMode[] = ["vector", "expert", "context"];
+const MODE_LABEL: Record<SearchMode, string> = {
+  vector: "Vector",
+  expert: "Expert",
+  context: "Context",
+};
+
 export function SearchView() {
   const { state, dispatch } = useStore();
-  const { getClassification } = usePropositionClassification();
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchStage, setSearchStage] = useState<string>("");
@@ -47,6 +102,43 @@ export function SearchView() {
   const [streamingAnswer, setStreamingAnswer] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
   const [showDetailTimeline, setShowDetailTimeline] = useState(false);
+
+  // The operator's *selected* engine (persisted on storySettings). Whether it
+  // can actually run on this branch is `runnable` below.
+  const searchModePref = useMemo<SearchMode>(
+    () =>
+      resolveSearchMode({
+        ...DEFAULT_STORY_SETTINGS,
+        ...state.activeNarrative?.storySettings,
+      }),
+    [state.activeNarrative?.storySettings],
+  );
+
+  // Synchronous coverage audit. Drives the toggle's availability colour and the
+  // inline coverage warning without paying for a query embedding.
+  const audit = useMemo(() => {
+    const narrative = state.activeNarrative;
+    const keys = state.resolvedEntryKeys;
+    if (!narrative || !keys || keys.length === 0) return null;
+    return auditSearchAvailability(narrative, keys);
+  }, [state.activeNarrative, state.resolvedEntryKeys]);
+
+  const vectorAvailable = !!audit && audit.allScenesPlanned && audit.propositionsReady;
+  const expertAvailable =
+    !!audit && audit.allScenesHaveQuestions && audit.allQuestionsEmbedded;
+
+  // Is the *selected* engine runnable on this branch? Context always is.
+  const runnable =
+    searchModePref === "context"
+      ? true
+      : searchModePref === "vector"
+        ? vectorAvailable
+        : expertAvailable;
+
+  // Selected an embedding engine but the branch doesn't have full coverage:
+  // block the action and show an inline warning (vs. silently retrieving over a
+  // partial pool).
+  const blocked = !runnable;
 
   // Load search state from store when narrative changes
   useEffect(() => {
@@ -62,32 +154,12 @@ export function SearchView() {
     const savedSearch = state.viewState.currentSearchQuery;
     if (savedSearch && savedSearch.synthesis) {
       setQuery(savedSearch.query);
-
-      // Guaranteed representation: top 5 summaries + top 10 details, then sort by similarity
-      const topScenes = savedSearch.sceneResults.slice(0, 5);
-      const topDetails = savedSearch.detailResults.slice(0, 10);
-      const combined = [...topScenes, ...topDetails]
-        .sort((a, b) => b.similarity - a.similarity)
-        .map((res, idx) => ({
-          id: idx + 1,
-          sceneId: res.sceneId,
-          beatIndex: res.beatIndex,
-          propIndex: res.propIndex,
-          content:
-            res.content.length > 200
-              ? res.content.substring(0, 197) + "..."
-              : res.content,
-          similarity: res.similarity,
-          type: res.type,
-        }));
-
       setResponse({
         question: savedSearch.query,
         answer: savedSearch.synthesis.overview,
-        citations: combined,
+        mode: savedSearch.mode ?? "vector",
       });
     } else {
-      // Clear local state if no saved search
       setQuery("");
       setResponse(null);
       setStreamingAnswer("");
@@ -110,259 +182,189 @@ export function SearchView() {
     return () => window.removeEventListener("search:clear", handleClear);
   }, [dispatch]);
 
+  const setMode = useCallback(
+    (next: SearchMode) => {
+      const narrative = state.activeNarrative;
+      if (!narrative) return;
+      dispatch({
+        type: "SET_STORY_SETTINGS",
+        settings: {
+          ...DEFAULT_STORY_SETTINGS,
+          ...narrative.storySettings,
+          searchMode: next,
+          // Keep the legacy boolean in sync for any reader that still consults it.
+          vectorSearchEnabled: next === "vector",
+        },
+      });
+    },
+    [state.activeNarrative, dispatch],
+  );
+
+  // Cycle Vector → Expert → Context → Vector.
+  const cycleMode = useCallback(() => {
+    const idx = MODE_CYCLE.indexOf(searchModePref);
+    setMode(MODE_CYCLE[(idx + 1) % MODE_CYCLE.length]);
+  }, [searchModePref, setMode]);
+
+  // Jump to the surface that generates the missing content for the selected
+  // engine: plans for vector, questions for expert.
+  const goToCoverage = useCallback(() => {
+    dispatch({
+      type: "SET_GRAPH_VIEW_MODE",
+      mode: searchModePref === "expert" ? "learning" : "plan",
+    });
+  }, [dispatch, searchModePref]);
+
+  // Open the embeddings dashboard (content present but not yet embedded).
+  const openEmbeddings = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("embeddings:open"));
+  }, []);
+
+  // Fall back to context search from the warning (keeps the query flowing).
+  const useContextInstead = useCallback(() => setMode("context"), [setMode]);
+
   const handleQuery = useCallback(
     async (question: string) => {
       const narrative = state.activeNarrative;
       const resolvedKeys = state.resolvedEntryKeys;
+      const q = question.trim();
 
-      if (!narrative || !resolvedKeys || question.trim().length === 0) return;
+      if (!narrative || !resolvedKeys || q.length === 0) return;
+
+      // Selected engine isn't runnable — the action is already disabled in the
+      // UI and the inline warning is showing, so refuse rather than silently
+      // falling back to partial coverage.
+      if (blocked) return;
 
       setIsSearching(true);
-      // Stage 1 — embed the query string via the embedding API.
-      setSearchStage("Embedding query");
       setErrorMessage(null);
       setResponse(null);
       setStreamingAnswer("");
 
+      const onToken = (token: string) => {
+        setStreamingAnswer((prev) => {
+          if (prev.length === 0) setSearchStage("");
+          return prev + token;
+        });
+      };
+
       try {
-        // Stage 2 — rank both pools (propositions primary, scene
-        // summaries supplementary) against the query embedding.
-        setSearchStage("Ranking propositions and scene summaries");
-        const result = await searchNarrative(
-          narrative,
-          resolvedKeys,
-          question.trim(),
-        );
+        if (searchModePref === "vector") {
+          // ── Vector path — proposition RAG ────────────────────────────
+          setSearchStage("Embedding query");
+          const searchResult = await searchNarrative(narrative, resolvedKeys, q);
+          if (
+            searchResult.sceneResults.length > 0 ||
+            searchResult.detailResults.length > 0
+          ) {
+            const propCount = searchResult.detailResults.length;
+            const sceneCount = searchResult.sceneResults.length;
+            setSearchStage(
+              `Synthesizing from ${propCount} proposition${propCount === 1 ? "" : "s"} + ${sceneCount} scene summar${sceneCount === 1 ? "y" : "ies"}`,
+            );
 
-        // Availability gate — vector search is proposition-first. Without
-        // a proposition bank (plans generated and embedded) search cannot
-        // run; surface a targeted prompt to generate the missing artefacts.
-        const availability = result.availability;
-        if (availability && !availability.propositionsReady) {
-          const hasPlans = availability.scenesWithPlans > 0;
-          const hasSummaryEmbeds = availability.summaryEmbeddingsReady;
-          const parts: string[] = ["Search needs a proposition bank to run."];
-          if (!hasPlans) {
-            parts.push(
-              `None of your ${availability.totalScenes} scene${availability.totalScenes === 1 ? "" : "s"} has a plan yet — generate scene plans to populate propositions.`,
+            const synthesis = await synthesizeSearchResults(
+              narrative,
+              q,
+              searchResult.sceneResults,
+              searchResult.detailResults,
+              searchResult.topArc,
+              searchResult.topScene,
+              searchResult.detailTimeline,
+              onToken,
             );
-          } else if (availability.totalPropositions === 0) {
-            parts.push(
-              `${availability.scenesWithPlans} scene${availability.scenesWithPlans === 1 ? " has" : "s have"} plans, but no propositions have been extracted. Re-generate plans with propositions enabled.`,
-            );
+
+            setResponse({ question: q, answer: synthesis.overview, mode: "vector" });
+            dispatch({
+              type: "SET_SEARCH_QUERY",
+              query: { ...searchResult, mode: "vector", synthesis },
+            });
           } else {
-            parts.push(
-              `${availability.totalPropositions} proposition${availability.totalPropositions === 1 ? "" : "s"} extracted, but none are embedded yet. Run the embedding step to enable search.`,
+            setErrorMessage(
+              "No relevant content found. Try rephrasing the question.",
             );
           }
-          if (!hasSummaryEmbeds) {
-            parts.push(
-              "Scene summary embeddings are also missing — generate embeddings for richer thematic context.",
+        } else if (searchModePref === "expert") {
+          // ── Expert path — curriculum question RAG ────────────────────
+          setSearchStage("Embedding query");
+          const searchResult = await searchExpert(narrative, resolvedKeys, q);
+          if (searchResult.detailResults.length > 0) {
+            const qCount = searchResult.detailResults.length;
+            setSearchStage(
+              `Synthesizing from ${qCount} matched question${qCount === 1 ? "" : "s"}`,
+            );
+
+            const synthesis = await synthesizeExpertSearch(
+              narrative,
+              q,
+              searchResult.detailResults,
+              onToken,
+            );
+
+            setResponse({ question: q, answer: synthesis.overview, mode: "expert" });
+            dispatch({
+              type: "SET_SEARCH_QUERY",
+              query: { ...searchResult, mode: "expert", synthesis },
+            });
+          } else {
+            setErrorMessage(
+              "No curriculum questions matched. Try rephrasing the question.",
             );
           }
-          setErrorMessage(parts.join(" "));
-          return;
-        }
-
-        if (result.sceneResults.length > 0 || result.detailResults.length > 0) {
-          // Stage 3 — build synthesis prompt from the top matches and
-          // wait for the first streamed token.
-          const propCount = result.detailResults.length;
-          const sceneCount = result.sceneResults.length;
-          setSearchStage(
-            `Synthesizing answer from ${propCount} proposition${propCount === 1 ? "" : "s"} + ${sceneCount} scene summar${sceneCount === 1 ? "y" : "ies"}`,
-          );
-
-          const synthesis = await synthesizeSearchResults(
+        } else {
+          // ── Context path — full-branch read ──────────────────────────
+          setSearchStage("Reading narrative context");
+          const contextBlock = narrativeContext(
             narrative,
-            question.trim(),
-            result.sceneResults,
-            result.detailResults,
-            result.topArc,
-            result.topScene,
-            result.detailTimeline,
-            (token) => {
-              // Update immediately for responsive streaming
-              setStreamingAnswer((prev) => {
-                if (prev.length === 0) {
-                  // First token received, we're streaming now
-                  setSearchStage("");
-                }
-                return prev + token;
-              });
-            },
+            resolvedKeys,
+            resolvedKeys.length - 1,
+          );
+          const synthesis = await synthesizeNarrativeContextSearch(
+            narrative,
+            contextBlock,
+            q,
+            onToken,
           );
 
-          // Flat citation list — whatever the search returned, sorted by
-          // similarity. search.ts already caps the pools at SEARCH_TOP_K_*.
-          const combined = [...result.sceneResults, ...result.detailResults]
-            .sort((a, b) => b.similarity - a.similarity)
-            .map((res, idx) => ({
-              id: idx + 1,
-              sceneId: res.sceneId,
-              beatIndex: res.beatIndex,
-              propIndex: res.propIndex,
-              content:
-                res.content.length > 200
-                  ? res.content.substring(0, 197) + "..."
-                  : res.content,
-              similarity: res.similarity,
-              type: res.type,
-            }));
+          // Derive a scene-origin activation timeline from the entities the
+          // answer cited, so context mode shares the timeline UI.
+          const sceneTimeline = buildCitationSceneTimeline(
+            narrative,
+            resolvedKeys,
+            synthesis.overview,
+          );
+          const availability = auditSearchAvailability(narrative, resolvedKeys);
 
-          const responseData = {
-            question: question.trim(),
-            answer: synthesis.overview,
-            citations: combined,
-          };
-          setResponse(responseData);
-
-          // Save search state to store
+          setResponse({ question: q, answer: synthesis.overview, mode: "context" });
           dispatch({
             type: "SET_SEARCH_QUERY",
             query: {
-              query: question.trim(),
-              embedding: result.embedding,
+              query: q,
+              mode: "context",
+              embedding: [],
               synthesis,
-              results: result.results,
-              sceneResults: result.sceneResults,
-              detailResults: result.detailResults,
-              sceneTimeline: result.sceneTimeline,
-              detailTimeline: result.detailTimeline,
-              topArc: result.topArc,
-              topScene: result.topScene,
-              availability: result.availability,
+              results: [],
+              sceneResults: [],
+              detailResults: [],
+              sceneTimeline,
+              detailTimeline: sceneTimeline.map((p) => ({
+                sceneIndex: p.sceneIndex,
+                maxSimilarity: 0,
+              })),
+              topArc: null,
+              topScene: null,
+              availability,
             },
           });
-        } else {
-          // Propositions exist but nothing matched the query. If summary
-          // embeddings are also missing, generating them would broaden
-          // thematic coverage; otherwise it's genuinely a low-match query.
-          const missingSummaries =
-            availability && !availability.summaryEmbeddingsReady;
-          setErrorMessage(
-            missingSummaries
-              ? "No matches found. Scene summary embeddings are not generated yet — generating them would broaden thematic coverage. Otherwise, try rephrasing the query."
-              : "No relevant content found. Try rephrasing the question.",
-          );
         }
-      } catch (err) {
+      } catch {
         setErrorMessage("Query failed. Please try again.");
       } finally {
         setIsSearching(false);
         setSearchStage("");
       }
     },
-    [state.activeNarrative, state.resolvedEntryKeys, dispatch],
-  );
-
-  const getSceneInfo = useCallback(
-    (sceneId: string, beatIndex?: number) => {
-      const narrative = state.activeNarrative;
-      if (!narrative || !state.viewState.activeBranchId) return null;
-
-      const scene = narrative.scenes[sceneId];
-      if (!scene) return null;
-
-      const proseData = resolveProseForBranch(
-        scene,
-        state.viewState.activeBranchId,
-        narrative.branches,
-      );
-      const planData = resolvePlanForBranch(
-        scene,
-        state.viewState.activeBranchId,
-        narrative.branches,
-      );
-
-      let beatProse: string | null = null;
-      if (beatIndex !== undefined && proseData?.beatProseMap) {
-        const beatChunk = proseData.beatProseMap.chunks.find(
-          (c) => c.beatIndex === beatIndex,
-        );
-        beatProse = beatChunk?.prose || null;
-      }
-
-      // Get arc index (1-based)
-      const arc = scene.arcId ? narrative.arcs[scene.arcId] : null;
-      const arcIndex = arc
-        ? Object.keys(narrative.arcs).indexOf(scene.arcId!) + 1
-        : null;
-
-      // Get scene index (1-based) - count only scenes, not world commits
-      const entryPosition = state.resolvedEntryKeys.indexOf(sceneId);
-      const sceneIndex = entryPosition >= 0
-        ? state.resolvedEntryKeys
-            .slice(0, entryPosition + 1)
-            .filter((id) => narrative.scenes[id]).length
-        : null;
-
-      return {
-        scene,
-        prose: proseData?.prose || null,
-        beatProse,
-        plan: planData?.beats || null,
-        arc,
-        arcIndex,
-        sceneIndex,
-      };
-    },
-    [state.activeNarrative, state.viewState.activeBranchId, state.resolvedEntryKeys],
-  );
-
-  const navigateToCitation = useCallback(
-    (citation: QueryResponse["citations"][0]) => {
-      const sceneIndex = state.resolvedEntryKeys.indexOf(citation.sceneId);
-      if (sceneIndex < 0) return;
-
-      const sceneInfo = getSceneInfo(citation.sceneId, citation.beatIndex);
-      const hasProse = sceneInfo?.prose || sceneInfo?.beatProse;
-
-      // Step 1: Set scene index
-      dispatch({ type: "SET_SCENE_INDEX", index: sceneIndex });
-
-      if (hasProse) {
-        // Step 2: Switch to prose view
-        dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "prose" });
-
-        // Step 3: Toggle beat plan side-by-side after view mode changes
-        setTimeout(() => {
-          window.dispatchEvent(
-            new CustomEvent("canvas:toggle-beat-plan", {
-              detail: { enabled: true },
-            }),
-          );
-
-          // Step 4: Scroll to beat after side-by-side view is enabled
-          if (citation.beatIndex !== undefined) {
-            setTimeout(() => {
-              window.dispatchEvent(
-                new CustomEvent("prose:scroll-to-beat", {
-                  detail: {
-                    beatIndex: citation.beatIndex,
-                    propIndex: citation.propIndex,
-                  },
-                }),
-              );
-            }, 200);
-          }
-        }, 100);
-      } else {
-        // Fallback to plan view if no prose available
-        dispatch({ type: "SET_GRAPH_VIEW_MODE", mode: "plan" });
-
-        if (citation.beatIndex !== undefined) {
-          setTimeout(() => {
-            window.dispatchEvent(
-              new CustomEvent("plan:scroll-to-beat", {
-                detail: { beatIndex: citation.beatIndex },
-              }),
-            );
-          }, 200);
-        }
-      }
-    },
-    [state.resolvedEntryKeys, dispatch, getSceneInfo],
+    [state.activeNarrative, state.resolvedEntryKeys, searchModePref, blocked, dispatch],
   );
 
   const handleSuggestedQuery = useCallback(
@@ -372,6 +374,99 @@ export function SearchView() {
     },
     [handleQuery],
   );
+
+  const currentSearchQuery = state.viewState.currentSearchQuery;
+  const mode = currentSearchQuery?.mode ?? response?.mode ?? "vector";
+
+  // Build the shared reference list from the entity-ref citations the answer
+  // actually emitted — so the inline badges and this list are 1:1, in first-
+  // appearance order. Uniform across all three engines: vector/context cite
+  // database entities; expert cites topics + questions (TOP-/Q- ids), which the
+  // entity-ref system resolves the same way.
+  const references = useMemo<RefEntry[]>(() => {
+    const narrative = state.activeNarrative;
+    if (!response || !narrative) return [];
+    return citedEntityIds(response.answer, narrative)
+      .map((id) => resolveEntityRef(narrative, id))
+      .filter((info): info is EntityRefInfo => !!info)
+      .map((info) => ({
+        key: info.id,
+        dotClass: KIND_DOT[info.kind],
+        label: info.label,
+        typeLabel: info.typeLabel,
+        detail: info.detail,
+        idLabel: info.id,
+        inspector: info.inspector,
+      }));
+  }, [response, state.activeNarrative]);
+
+  // Expert counts for the reference-list header.
+  const refCounts = useMemo(() => {
+    let topics = 0;
+    let questions = 0;
+    for (const r of references) {
+      if (r.typeLabel === "Topic") topics += 1;
+      else if (r.typeLabel === "Question") questions += 1;
+    }
+    return { topics, questions };
+  }, [references]);
+
+  const effectiveShowDetail = mode === "vector" && showDetailTimeline;
+  const hasActivation = mode === "vector" || mode === "expert";
+
+  // Per-mode framing for the toggle, idle hint, and coverage warning. These
+  // reflect the *selected* engine (searchModePref) — the result-area badge/
+  // timeline use `mode` (the engine that produced the shown answer).
+  const modeDot =
+    blocked
+      ? "bg-amber-400"
+      : searchModePref === "vector"
+        ? "bg-sky-400"
+        : searchModePref === "expert"
+          ? "bg-teal-400"
+          : "bg-text-dim/40";
+  const modeButtonClass = blocked
+    ? "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+    : searchModePref === "vector"
+      ? "bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"
+      : searchModePref === "expert"
+        ? "bg-teal-500/20 text-teal-300 hover:bg-teal-500/30"
+        : "bg-bg-elevated text-text-dim hover:text-text-secondary";
+
+  // Idle hint under the bar — describes the *selected* engine.
+  const idleHint: Record<SearchMode, string> = {
+    vector:
+      "Vector · semantic retrieval over scene propositions, with a per-scene activation timeline",
+    expert:
+      "Expert · answered from the curriculum's verified Q&A, retrieved by question similarity",
+    context:
+      "Context · reads the whole branch and answers directly — slower, always available",
+  };
+
+  // Coverage warning: distinguish "content missing" (→ generate plans/questions)
+  // from "content present but unembedded" (→ open the embeddings dashboard), and
+  // show the coverage fraction for whichever stage is the bottleneck.
+  const needsContent =
+    searchModePref === "vector"
+      ? !audit?.allScenesPlanned
+      : !audit?.allScenesHaveQuestions;
+  const coverageLabel = !audit
+    ? ""
+    : searchModePref === "vector"
+      ? needsContent
+        ? `${audit.scenesWithPlans}/${audit.totalScenes} planned`
+        : `${audit.propositionsWithEmbedding}/${audit.totalPropositions} embedded`
+      : needsContent
+        ? `${audit.scenesWithQuestions}/${audit.totalScenes} questioned`
+        : `${audit.questionsWithEmbedding}/${audit.totalQuestions} embedded`;
+  const warningText =
+    searchModePref === "vector"
+      ? needsContent
+        ? "Vector reads scene plans — generate the rest"
+        : "Vector needs embedded plans"
+      : needsContent
+        ? "Expert reads the curriculum — question every scene"
+        : "Expert needs embedded questions";
 
   return (
     <div className="flex flex-col items-center h-full overflow-y-auto">
@@ -409,28 +504,97 @@ export function SearchView() {
                   if (errorMessage) setErrorMessage(null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isSearching) {
+                  if (e.key === "Enter" && !isSearching && !blocked) {
                     handleQuery(query);
                   }
                 }}
                 placeholder="Search this text..."
-                className="w-full px-6 py-3.5 bg-bg-field border border-border rounded-full text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sky-500/50 transition-all shadow-sm"
+                className="w-full pl-6 pr-32 py-3.5 bg-bg-field border border-border rounded-full text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sky-500/50 transition-all shadow-sm"
                 disabled={isSearching}
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                {isSearching && searchStage && (
-                  <span className="text-xs text-text-dim mr-2">
-                    {searchStage}
-                  </span>
-                )}
+              {/* In-bar engine toggle — minimal, always visible; cycles
+                  Vector → Expert → Context. Embedding engines are selectable
+                  even when the branch lacks full coverage (they warn + offer a
+                  fix instead of being disabled). Amber = selected but not yet
+                  runnable. */}
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {isSearching && (
                   <div className="w-4 h-4 border-2 border-sky-500/20 border-t-sky-500 rounded-full animate-spin" />
                 )}
+                <button
+                  onClick={cycleMode}
+                  disabled={isSearching}
+                  title={
+                    blocked
+                      ? `${MODE_LABEL[searchModePref]} search selected but not yet runnable on this branch — ${searchModePref === "vector" ? "generate + embed all plans" : "generate + embed all questions"}. Click to cycle engine.`
+                      : searchModePref === "vector"
+                        ? "Vector search — proposition retrieval. Click to cycle to Expert."
+                        : searchModePref === "expert"
+                          ? "Expert search — curriculum question retrieval. Click to cycle to Context."
+                          : "Context search — reads the full branch. Click to cycle to Vector."
+                  }
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${modeButtonClass}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${modeDot}`} />
+                  {MODE_LABEL[searchModePref]}
+                </button>
               </div>
             </div>
 
+            {/* Stage text + idle mode hint */}
+            {isSearching && searchStage ? (
+              <div className="mt-2 text-center text-[11px] text-text-dim">
+                {searchStage}
+              </div>
+            ) : (
+              !response &&
+              !blocked && (
+                <div className="mt-2 text-center text-[11px] text-text-dim/50">
+                  {idleHint[searchModePref]}
+                </div>
+              )
+            )}
+
+            {/* Coverage warning — inline, non-blocking. The selected embedding
+                engine isn't runnable on this branch; the action is disabled
+                until the operator generates the missing content / embeds it, or
+                switches to context search. */}
+            {blocked && (
+              <div className="mt-3 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20 flex items-center gap-2.5 text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                <span className="flex-1 min-w-0 text-amber-200/80">
+                  {warningText}
+                  {coverageLabel && (
+                    <span className="text-amber-200/50"> · {coverageLabel}</span>
+                  )}
+                </span>
+                {needsContent ? (
+                  <button
+                    onClick={goToCoverage}
+                    className="shrink-0 font-medium text-amber-300 hover:text-amber-200 transition-colors"
+                  >
+                    {searchModePref === "vector" ? "Plan" : "Questions"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={openEmbeddings}
+                    className="shrink-0 font-medium text-amber-300 hover:text-amber-200 transition-colors"
+                  >
+                    Embed
+                  </button>
+                )}
+                <span className="text-text-dim/30">·</span>
+                <button
+                  onClick={useContextInstead}
+                  className="shrink-0 text-text-dim hover:text-text-secondary transition-colors"
+                >
+                  Use context
+                </button>
+              </div>
+            )}
+
             {errorMessage && (
-              <div className="mt-3 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-400 text-center">
+              <div className="mt-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-400 text-center">
                 {errorMessage}
               </div>
             )}
@@ -457,7 +621,8 @@ export function SearchView() {
                   <button
                     key={`${suggested}-${i}`}
                     onClick={() => handleSuggestedQuery(suggested)}
-                    className="shrink-0 px-4 py-2 bg-bg-elevated border border-border rounded-full text-xs text-text-secondary hover:border-sky-500/50 hover:bg-bg-elevated/80 transition-all"
+                    disabled={blocked}
+                    className="shrink-0 px-4 py-2 bg-bg-elevated border border-border rounded-full text-xs text-text-secondary hover:border-sky-500/50 hover:bg-bg-elevated/80 transition-all disabled:opacity-40 disabled:hover:border-border disabled:cursor-not-allowed"
                   >
                     {suggested}
                   </button>
@@ -473,30 +638,39 @@ export function SearchView() {
         <div className="w-full max-w-3xl px-8 pb-16 space-y-8">
           {/* AI Overview */}
           <div className="bg-bg-elevated/50 border-l-2 border-sky-500 pl-6 pr-4 py-5 rounded-r-lg">
-            <div className="text-xs text-sky-400 mb-3 font-medium">
-              AI Overview
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-sky-400 font-medium">AI Overview</div>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-text-dim/50">
+                {mode}
+              </div>
             </div>
             <div className="text-sm leading-relaxed text-text-primary">
-              {response ? response.answer : streamingAnswer}
-              {!response && streamingAnswer && (
-                <span className="inline-block w-0.5 h-4 ml-1 bg-sky-400 animate-pulse" />
+              {response ? (
+                <Markdown text={response.answer} entities />
+              ) : (
+                <>
+                  {streamingAnswer}
+                  {streamingAnswer && (
+                    <span className="inline-block w-0.5 h-4 ml-1 bg-sky-400 animate-pulse" />
+                  )}
+                </>
               )}
             </div>
           </div>
 
-          {/* Search Results */}
-          {response && response.citations.length > 0 && (
+          {/* Attribution: activation timeline + reference list */}
+          {response && (
             <div>
               {/* Timeline heat curve */}
-              {state.viewState.currentSearchQuery &&
+              {currentSearchQuery &&
                 (() => {
-                  const timeline = showDetailTimeline
-                    ? state.viewState.currentSearchQuery.detailTimeline
-                    : state.viewState.currentSearchQuery.sceneTimeline;
+                  const timeline = effectiveShowDetail
+                    ? currentSearchQuery.detailTimeline
+                    : currentSearchQuery.sceneTimeline;
 
                   if (!timeline || timeline.length === 0) return null;
 
-                  // Filter out world commits for visualization (only render scenes)
+                  // Only render scenes (filter out world commits)
                   const sceneTimeline = timeline.filter((point) => {
                     const entryId = state.resolvedEntryKeys[point.sceneIndex];
                     return !!state.activeNarrative?.scenes[entryId];
@@ -504,37 +678,49 @@ export function SearchView() {
 
                   if (sceneTimeline.length === 0) return null;
 
+                  const allSimilarities = sceneTimeline.map((p) =>
+                    "similarity" in p ? p.similarity : p.maxSimilarity,
+                  );
+                  if (allSimilarities.every((s) => s === 0)) return null;
+                  const maxSim = Math.max(...allSimilarities);
+                  const minSim = Math.min(
+                    ...allSimilarities.filter((s) => s > 0),
+                  );
+
                   return (
                     <div className="mb-8">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-xs text-text-dim">
-                          Activation Timeline
+                          {hasActivation
+                            ? "Activation Timeline"
+                            : "Where this comes from"}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setShowDetailTimeline(false)}
-                            className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                              !showDetailTimeline
-                                ? "bg-sky-500/20 text-sky-400 border border-sky-500/30"
-                                : "bg-bg-elevated text-text-dim hover:text-text-secondary border border-border"
-                            }`}
-                          >
-                            Scenes
-                          </button>
-                          <button
-                            onClick={() => setShowDetailTimeline(true)}
-                            className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                              showDetailTimeline
-                                ? "bg-sky-500/20 text-sky-400 border border-sky-500/30"
-                                : "bg-bg-elevated text-text-dim hover:text-text-secondary border border-border"
-                            }`}
-                          >
-                            Details
-                          </button>
-                        </div>
+                        {mode === "vector" && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setShowDetailTimeline(false)}
+                              className={`text-[10px] px-2 py-1 rounded transition-colors ${
+                                !showDetailTimeline
+                                  ? "bg-sky-500/20 text-sky-400 border border-sky-500/30"
+                                  : "bg-bg-elevated text-text-dim hover:text-text-secondary border border-border"
+                              }`}
+                            >
+                              Scenes
+                            </button>
+                            <button
+                              onClick={() => setShowDetailTimeline(true)}
+                              className={`text-[10px] px-2 py-1 rounded transition-colors ${
+                                showDetailTimeline
+                                  ? "bg-sky-500/20 text-sky-400 border border-sky-500/30"
+                                  : "bg-bg-elevated text-text-dim hover:text-text-secondary border border-border"
+                              }`}
+                            >
+                              Details
+                            </button>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Heat curve visualization */}
                       <div className="relative h-16 group/timeline">
                         <div className="absolute inset-0 bg-bg-elevated/30 rounded-lg border border-border">
                           <div className="absolute inset-0 flex items-end">
@@ -544,43 +730,25 @@ export function SearchView() {
                                   ? point.similarity
                                   : point.maxSimilarity;
 
-                              // Get scene info for tooltip
                               const sceneId =
                                 state.resolvedEntryKeys[point.sceneIndex];
                               const scene =
                                 state.activeNarrative?.scenes[sceneId];
                               const sceneSummary = scene?.summary || "";
 
-                              // Get actual scene number (count only scenes up to this point in resolvedKeys)
                               const sceneNumber = state.resolvedEntryKeys
                                 .slice(0, point.sceneIndex + 1)
                                 .filter(
                                   (id) => state.activeNarrative?.scenes[id],
                                 ).length;
 
-                              // Find min/max for normalization (amplify differences)
-                              const allSimilarities = sceneTimeline.map((p) =>
-                                "similarity" in p
-                                  ? p.similarity
-                                  : p.maxSimilarity,
-                              );
-                              const maxSim = Math.max(...allSimilarities);
-                              const minSim = Math.min(
-                                ...allSimilarities.filter((s) => s > 0),
-                              );
-
-                              // Normalize to 0-1 range within actual data range
                               const normalized =
                                 maxSim > minSim && similarity > 0
                                   ? (similarity - minSim) / (maxSim - minSim)
                                   : similarity > 0
                                     ? 1
                                     : 0;
-
-                              // Apply exponential scaling (power of 2.5 amplifies differences dramatically)
                               const amplified = Math.pow(normalized, 2.5);
-
-                              // Convert to percentage height (scale to 85% max to leave room at top)
                               const height =
                                 similarity > 0
                                   ? Math.max(3, amplified * 85)
@@ -605,7 +773,6 @@ export function SearchView() {
                                     } group-hover/bar:brightness-125`}
                                     style={{ height: `${height}%` }}
                                   />
-                                  {/* Enhanced hover tooltip */}
                                   {similarity > 0 && (
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 pointer-events-none transition-opacity z-50">
                                       <div className="bg-bg-elevated border border-border rounded-lg px-2.5 py-1.5 shadow-xl w-xs">
@@ -613,17 +780,19 @@ export function SearchView() {
                                           <span className="text-[10px] font-semibold text-text-primary whitespace-nowrap">
                                             Scene {sceneNumber}
                                           </span>
-                                          <span
-                                            className={`text-[10px] font-medium ${
-                                              isHigh
-                                                ? "text-sky-400"
-                                                : isMedium
-                                                  ? "text-sky-500"
-                                                  : "text-sky-600"
-                                            }`}
-                                          >
-                                            {(similarity * 100).toFixed(0)}%
-                                          </span>
+                                          {hasActivation && (
+                                            <span
+                                              className={`text-[10px] font-medium ${
+                                                isHigh
+                                                  ? "text-sky-400"
+                                                  : isMedium
+                                                    ? "text-sky-500"
+                                                    : "text-sky-600"
+                                              }`}
+                                            >
+                                              {(similarity * 100).toFixed(0)}%
+                                            </span>
+                                          )}
                                         </div>
                                         {sceneSummary && (
                                           <div className="text-[9px] text-text-secondary leading-snug mt-1">
@@ -643,107 +812,61 @@ export function SearchView() {
                   );
                 })()}
 
-              {/* Result count */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-xs text-text-dim">
-                  {response.citations.length} result
-                  {response.citations.length !== 1 ? "s" : ""}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {response.citations.map((cit) => {
-                  const sceneInfo = getSceneInfo(cit.sceneId, cit.beatIndex);
-                  const beatPlan = sceneInfo?.plan?.[cit.beatIndex ?? 0];
-                  const cls = (cit.type === "proposition" && cit.propIndex != null && cit.beatIndex != null)
-                    ? getClassification(cit.sceneId, cit.beatIndex, cit.propIndex)
-                    : null;
-                  const profileColor = cls ? classificationColor(cls.base, cls.reach) : undefined;
-
-                  // Source type label
-                  const sourceType = cit.type === 'proposition' ? 'proposition' : 'scene';
-
-                  // Build structured source path
-                  const pathParts: string[] = [];
-                  if (sceneInfo?.arcIndex) pathParts.push(`Arc ${sceneInfo.arcIndex}`);
-                  if (sceneInfo?.sceneIndex) pathParts.push(`Scene ${sceneInfo.sceneIndex}`);
-                  if (cit.type !== 'scene' && cit.beatIndex != null) pathParts.push(`Beat ${cit.beatIndex + 1}`);
-                  if (cit.type === 'proposition' && cit.propIndex != null) pathParts.push(`Prop ${cit.propIndex + 1}`);
-
-                  return (
-                    <div
-                      key={cit.id}
-                      className="group cursor-pointer"
-                      onClick={() => navigateToCitation(cit)}
-                    >
-                      <div className="flex gap-4 py-4 px-1 hover:bg-white/3 rounded-lg transition-colors">
-                        {/* Number column */}
-                        <div className="shrink-0 w-8 pt-0.5">
-                          <div className="text-[11px] font-mono text-text-dim/40 text-right">
-                            {cit.id}
-                          </div>
-                        </div>
-
-                        {/* Content column */}
-                        <div className="flex-1 min-w-0">
-                          {/* Content */}
-                          <div
-                            className="text-[13px] text-text-primary leading-relaxed group-hover:text-sky-300 transition-colors"
-                            style={profileColor ? { borderLeft: `2px solid ${profileColor}`, paddingLeft: '10px' } : undefined}
-                          >
-                            {cit.content}
-                          </div>
-
-                          {/* Prose excerpt */}
-                          {sceneInfo?.beatProse && (
-                            <div
-                              className="mt-1.5 text-[11px] text-text-secondary/30 leading-relaxed line-clamp-2 italic"
-                              style={profileColor ? { paddingLeft: '12px' } : undefined}
-                            >
-                              {sceneInfo.beatProse}
-                            </div>
-                          )}
-
-                          {/* Bottom metadata row */}
-                          <div className="flex items-center gap-3 mt-2.5 text-[9px]">
-                            {/* Source type badge */}
-                            <span className={`px-1.5 py-0.5 rounded font-mono uppercase tracking-wider ${
-                              sourceType === 'proposition' ? 'bg-white/8 text-text-dim/70' : 'bg-white/4 text-text-dim/40'
-                            }`}>
-                              {sourceType}
-                            </span>
-
-                            {/* Classification label */}
-                            {cls && (
-                              <span className="font-medium" style={{ color: profileColor }}>
-                                {classificationLabel(cls.base, cls.reach)}
-                              </span>
-                            )}
-
-                            {/* Beat function */}
-                            {beatPlan && (
-                              <span className="text-text-dim/40">{beatPlan.fn}</span>
-                            )}
-
-                            {/* Similarity */}
-                            <span className="font-mono text-sky-500/60">
-                              {(cit.similarity * 100).toFixed(0)}%
-                            </span>
-
-                            {/* Spacer */}
-                            <span className="flex-1" />
-
-                            {/* Source path */}
-                            <span className="text-text-dim/30 font-mono">
-                              {pathParts.join(' › ')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+              {/* Reference list — academic attributions. Entity-refs for
+                  vector/context; topic + question refs for expert. */}
+              {references.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-xs text-text-dim">References</div>
+                    <div className="text-xs text-text-dim">
+                      {mode === "expert"
+                        ? `${refCounts.questions} question${refCounts.questions === 1 ? "" : "s"} · ${refCounts.topics} topic${refCounts.topics === 1 ? "" : "s"}`
+                        : `${references.length} entit${references.length === 1 ? "y" : "ies"} cited`}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {references.map((ref, idx) => (
+                      <button
+                        key={ref.key}
+                        onClick={() =>
+                          dispatch({ type: "SET_INSPECTOR", context: ref.inspector })
+                        }
+                        className="w-full flex items-start gap-3 text-left py-2 px-1 hover:bg-white/3 rounded-lg transition-colors group"
+                      >
+                        <span className="shrink-0 w-6 pt-0.5 text-[11px] font-mono text-text-dim/40 text-right">
+                          {idx + 1}
+                        </span>
+                        <span
+                          className={`shrink-0 w-1.5 h-1.5 rounded-full mt-1.75 ${ref.dotClass}`}
+                        />
+                        <span className="flex-1 min-w-0">
+                          <span className="text-[13px] text-text-primary group-hover:text-sky-300 transition-colors">
+                            {ref.label}
+                          </span>
+                          <span className="ml-2 text-[9px] uppercase tracking-wider text-text-dim/50 font-mono">
+                            {ref.typeLabel}
+                          </span>
+                          {ref.detail && (
+                            <span className="block text-[11px] text-text-secondary/40 leading-snug mt-0.5">
+                              {ref.detail}
+                            </span>
+                          )}
+                          <span className="block text-[9px] font-mono text-text-dim/30 mt-0.5">
+                            {ref.idLabel}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-text-dim/50 italic">
+                  {mode === "expert"
+                    ? "No curriculum questions matched this answer."
+                    : "No database entities were cited in this answer."}
+                </div>
+              )}
             </div>
           )}
         </div>

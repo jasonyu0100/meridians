@@ -1,6 +1,6 @@
 // Scene generation — scene structures+deltas, beat plans, and plan reverse-engineering; Markov-paced.
 
-import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence, TimeUnit } from '@/types/narrative';
+import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence, TimeUnit, Merge } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import type { WorldNodeType } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/forces/narrative-utils';
@@ -14,6 +14,7 @@ import { proseShapeDirective } from '@/lib/prompts/paradigm';
 import { WRITING_MODEL, GENERATE_MODEL, PLANNING_MODEL, ANALYSIS_MODEL, MAX_TOKENS_LARGE, MAX_TOKENS_DEFAULT, MAX_TOKENS_SMALL, WORDS_PER_BEAT, ANALYSIS_TEMPERATURE } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext, sceneContext, buildProseProfile } from './context';
+import { renderMergeBasisBlock } from '@/lib/merges';
 import { PROMPT_STRUCTURAL_RULES, PROMPT_DELTAS, PROMPT_ARTIFACTS, PROMPT_LOCATIONS, PROMPT_POV, PROMPT_WORLD, PROMPT_SUMMARY_REQUIREMENT, promptThreadLifecycle, buildThreadHealthPrompt, buildCompletedBeatsPrompt, PROMPT_FORCE_STANDARDS, PROMPT_ARC_STATE_GUIDANCE, buildScenePlanSystemPrompt, buildBeatAnalystSystemPrompt, buildScenePlanEditSystemPrompt, buildSceneProseSystemPrompt } from './prompts';
 import { EXTRACT_PROPOSITIONS_SYSTEM, buildExtractPropositionsUserPrompt } from '@/lib/prompts/scenes/extract-propositions';
 import { buildGenerateScenesPrompt } from '@/lib/prompts/scenes/generate';
@@ -227,6 +228,13 @@ export type GenerateScenesOptions = {
    *  time-travel. Ignored when `firstSceneTimeUnit` is unset. Omit to let the
    *  model pick the magnitude at the locked scale. */
   firstSceneTimeValue?: number;
+  /** Merges (committed-stream resolutions) to fold in as the basis for this
+   *  continuation — passed as full objects so a not-yet-persisted proposed
+   *  merge can be rendered. Their resolutions + perspective-held priors are
+   *  rendered into a `<continuity-basis>` ground-truth block, and their ids are
+   *  stamped onto the produced arc (`arc.basisMergeIds`) so consumption is
+   *  recorded per-branch. */
+  basisMerges?: Merge[];
 };
 
 export async function generateScenes(
@@ -237,7 +245,7 @@ export async function generateScenes(
   direction: string,
   options: GenerateScenesOptions = {},
 ): Promise<{ scenes: Scene[]; arc: Arc }> {
-  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, firstSceneTimeUnit, firstSceneTimeValue } = options;
+  const { existingArc, pacingSequence, worldBuildFocus, reasoningGraph, coordinationPlanContext, onToken, onReasoning, repairFromRaw, firstSceneTimeUnit, firstSceneTimeValue, basisMerges } = options;
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
   const arcId = existingArc?.id ?? nextId('ARC', Object.keys(narrative.arcs));
 
@@ -359,6 +367,10 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   inputBlocks.push(`  <narrative-seed>${seed}</narrative-seed>`);
   if (arcInstruction) inputBlocks.push(`  <arc-instruction>${arcInstruction}</arc-instruction>`);
   inputBlocks.push(`  ${briefBlock.replace(/\n/g, '\n  ')}`);
+  const mergeBasisBlock = basisMerges && basisMerges.length > 0
+    ? renderMergeBasisBlock(narrative, basisMerges)
+    : null;
+  if (mergeBasisBlock) inputBlocks.push(`  ${mergeBasisBlock.replace(/\n/g, '\n  ')}`);
   const arcSettingsBlock = buildArcSettingsBlock(resolvedArcSettings);
   if (arcSettingsBlock) inputBlocks.push(`  ${arcSettingsBlock.replace(/\n/g, '\n  ')}`);
   if (worldBuildFocusBlock) inputBlocks.push(`  ${worldBuildFocusBlock.replace(/\n/g, '\n  ')}`);
@@ -708,6 +720,12 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
   const newLocationIds = [...new Set(scenes.map((s) => s.locationId))];
   const newCharacterIds = [...new Set(scenes.flatMap((s) => s.participantIds))];
 
+  // Merge the folded-in basis merges, union'd with any already on the arc
+  // (continuing an existing arc with a fresh batch may fold in more).
+  const foldedMergeIds = basisMerges && basisMerges.length > 0
+    ? [...new Set([...(existingArc?.basisMergeIds ?? []), ...basisMerges.map((m) => m.id)])]
+    : existingArc?.basisMergeIds;
+
   const arc: Arc = existingArc
     ? {
         ...existingArc,
@@ -716,6 +734,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
         locationIds: [...new Set([...existingArc.locationIds, ...newLocationIds])],
         activeCharacterIds: [...new Set([...existingArc.activeCharacterIds, ...newCharacterIds])],
         worldState: worldState ?? existingArc.worldState,
+        ...(foldedMergeIds && foldedMergeIds.length > 0 ? { basisMergeIds: foldedMergeIds } : {}),
       }
     : {
         id: arcId,
@@ -730,6 +749,9 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
         // so the working-model-of-reality the arc was built under is preserved
         // even after the user later switches or clears the active PRG.
         phaseGraphId: narrative.currentPhaseGraphId,
+        // Record which merged resolutions this arc was generated to extend.
+        // Consumption is read back per-branch (see lib/merges.ts).
+        ...(foldedMergeIds && foldedMergeIds.length > 0 ? { basisMergeIds: foldedMergeIds } : {}),
       };
 
   logInfo('Completed scene generation', {

@@ -5,6 +5,7 @@ import {
   buildEntryOrigin,
   resolveBranchTreeParents,
   layoutBranchTree,
+  branchLineageIds,
 } from '@/lib/branch-tree';
 import type { Branch } from '@/types/narrative';
 
@@ -227,5 +228,45 @@ describe('layoutBranchTree', () => {
     ];
     const rows = layoutBranchTree(branches);
     expect(rows.map((r) => r.branch.id)).toEqual(['EARLY', 'MID', 'LATE']);
+  });
+});
+
+// ── branchLineageIds ─────────────────────────────────────────────────────────
+
+describe('branchLineageIds', () => {
+  // CANON → A → B  (linear) with a sibling C off CANON.
+  const branches: Record<string, Branch> = {
+    CANON: branch('CANON', null, null, []),
+    A: branch('A', 'CANON', null, []),
+    B: branch('B', 'A', null, []),
+    C: branch('C', 'CANON', null, []),
+  };
+
+  it('includes the branch itself and every ancestor up to root', () => {
+    expect([...branchLineageIds(branches, 'B')].sort()).toEqual(['A', 'B', 'CANON']);
+  });
+
+  it('a root branch is its own lineage', () => {
+    expect([...branchLineageIds(branches, 'CANON')]).toEqual(['CANON']);
+  });
+
+  it('excludes sibling and descendant branches', () => {
+    const linA = branchLineageIds(branches, 'A');
+    expect(linA.has('C')).toBe(false); // sibling
+    expect(linA.has('B')).toBe(false); // descendant
+  });
+
+  it('returns empty for null / unknown branch ids', () => {
+    expect(branchLineageIds(branches, null).size).toBe(0);
+    expect(branchLineageIds(branches, 'NOPE').size).toBe(0);
+  });
+
+  it('is cycle-guarded against a malformed parent chain', () => {
+    const cyclic: Record<string, Branch> = {
+      X: branch('X', 'Y', null, []),
+      Y: branch('Y', 'X', null, []),
+    };
+    // Should terminate and contain exactly the two branches, not loop forever.
+    expect([...branchLineageIds(cyclic, 'X')].sort()).toEqual(['X', 'Y']);
   });
 });

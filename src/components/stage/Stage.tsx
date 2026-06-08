@@ -26,9 +26,13 @@ import { DecisionView } from './DecisionView';
 import { CaptureView } from '@/components/capture/CaptureView';
 import { ReasoningGraphView } from './ReasoningGraphView';
 import { PhaseGraphView } from './PhaseGraphView';
+import { CurriculumView } from './CurriculumView';
 import NetworkView from './NetworkView';
 import { BoardView } from './BoardView';
+import { StreamsView } from './StreamsView';
+import { MergesView } from './MergesView';
 import BeliefView from './BeliefView';
+import StreamBeliefView from './StreamBeliefView';
 import CompassView from './CompassView';
 import {
   type GraphNode,
@@ -85,7 +89,7 @@ export default function Stage() {
   const inspectorContext = state.viewState.inspectorContext;
   const selectedKnowledgeEntity = state.viewState.selectedKnowledgeEntity;
   const selectedThreadLog = state.viewState.selectedThreadLog;
-  const graphViewMode = state.graphViewMode;
+  const graphViewMode = state.viewState.graphViewMode;
   // arcFocus is driven by the topbar's Scene/Arc/Full scope: when the
   // active mode is `world-arc`, widen to the whole active arc (every
   // location + character it touched); otherwise scene-focus (scene.locationId
@@ -1599,22 +1603,28 @@ export default function Stage() {
             hideControls hideLegend
           />
         )
-      ) : graphViewMode === 'search' || graphViewMode === 'driver' ? (
-        // Driver canvas owns both — the sub-tab switcher inside reads the
+      ) : graphViewMode === 'search' || graphViewMode === 'vision' ? (
+        // Capture canvas owns both — the sub-tab switcher inside reads the
         // mode and renders Entry or Search. Routing both modes through
         // CaptureView means external "go to search" callers land in
-        // Driver/Search tab cleanly.
+        // Capture/Search tab cleanly.
         <CaptureView />
+      ) : graphViewMode === 'streams' ? (
+        <StreamsView />
+      ) : graphViewMode === 'merges' ? (
+        <MergesView />
       ) : graphViewMode === 'network-scene' || graphViewMode === 'network-arc' || graphViewMode === 'network-full' ? (
         <NetworkView />
       ) : graphViewMode === 'belief' ? (
-        <BeliefView />
+        state.viewState.beliefSource === 'stream' ? <StreamBeliefView /> : <BeliefView />
       ) : graphViewMode === 'present' ? (
         <CompassView mode="present" />
       ) : graphViewMode === 'compass' ? (
         <CompassView mode="compass" />
       ) : graphViewMode === 'mode' ? (
         <PhaseGraphView />
+      ) : graphViewMode === 'curriculum' ? (
+        <CurriculumView />
       ) : graphViewMode === 'board' ? (
         <BoardView />
       ) : graphViewMode === 'map' ? (

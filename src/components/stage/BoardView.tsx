@@ -144,6 +144,22 @@ function Avatar({ char, url, onClick, active }: { char: Character; url: string |
   );
 }
 
+/** Small circular location image shown inside a region / title label. Silent
+ *  (renders nothing) when the location has no generated image, so labels for
+ *  un-illustrated regions are unchanged. */
+function LocAvatar({ url, name, size = 16 }: { url: string | null; name: string; size?: number }) {
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt={name}
+      style={{ width: size, height: size }}
+      className="rounded-full object-cover shrink-0 ring-1 ring-black/10 -ml-0.5"
+      draggable={false}
+    />
+  );
+}
+
 /**
  * BoardView — fluid, one-map-at-a-time board viewer.
  *
@@ -197,6 +213,13 @@ export function BoardView() {
     return Object.values(narrative.characters).map((c) => c.imageUrl).filter((u): u is string => !!u);
   }, [narrative]);
   const charImages = useImageUrlMap(charImageRefs);
+
+  // Location image refs for label avatars.
+  const locImageRefs = useMemo(() => {
+    if (!narrative) return [];
+    return Object.values(narrative.locations).map((l) => l.imageUrl).filter((u): u is string => !!u);
+  }, [narrative]);
+  const locImages = useImageUrlMap(locImageRefs);
 
   // Navigation stack of map roots; current = last. The path follows the active
   // scene: when the narrative loads or the scene's location changes, jump to the
@@ -281,6 +304,12 @@ export function BoardView() {
   // is drillable when a map is rooted at that location.
   const labels = (currentMap.labels ?? []).filter((lb) => lb.locationId !== currentMap.rootLocationId);
 
+  // Resolve a location's generated image to a displayable URL (null when none).
+  const locUrl = (locId: string): string | null => {
+    const ref = narrative.locations[locId]?.imageUrl;
+    return ref ? locImages.get(ref) ?? null : null;
+  };
+
   // Participants of the active scene — highlighted; sorted to the front so the
   // active cast is on top of the overlap stack.
   const sceneParticipants = new Set(currentScene?.participantIds ?? []);
@@ -351,10 +380,11 @@ export function BoardView() {
                 onClick={goToParent}
                 disabled={!parentRoot}
                 title={parentRoot ? `Up to ${titleOf(parentRoot)}` : titleOf(currentRoot!)}
-                className={`px-4 py-1 rounded-full bg-slate-50/80 text-slate-900 text-lg font-bold tracking-wide shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
+                className={`inline-flex items-center gap-2 px-4 py-1 rounded-full bg-slate-50/80 text-slate-900 text-lg font-bold tracking-wide shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 transition-all ${
                   parentRoot ? 'ring-accent/40 hover:ring-accent cursor-pointer' : 'ring-black/10 cursor-default'
                 }`}
               >
+                <LocAvatar url={locUrl(currentRoot!)} name={titleOf(currentRoot!)} size={24} />
                 {titleOf(currentRoot!)}
               </button>
               {renderAvatars(parentMembers, currentMap.rootLocationId)}
@@ -373,10 +403,11 @@ export function BoardView() {
                   <button
                     onClick={() => drillRoot ? push(drillRoot) : inspectLocation(lb.locationId)}
                     title={drillRoot ? `Open ${name} map` : `Inspect ${name}`}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 cursor-pointer transition-all ${
+                    className={`flex items-center gap-1.5 ${locUrl(lb.locationId) ? 'pl-1 pr-2' : 'px-2'} py-0.5 rounded-full bg-slate-50/80 text-slate-900 text-[11px] font-bold tracking-wide whitespace-nowrap shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 cursor-pointer transition-all ${
                       drillRoot ? 'ring-accent/40 hover:ring-accent' : 'ring-black/10 hover:ring-accent/50'
                     }`}
                   >
+                    <LocAvatar url={locUrl(lb.locationId)} name={name} />
                     {name}
                   </button>
                   {renderCluster(lb.locationId)}
@@ -400,6 +431,7 @@ export function BoardView() {
                     title={drillRoot ? `Open ${name} map` : `Inspect ${name}`}
                     className={`flex items-center gap-1.5 text-xs flex-1 text-left cursor-pointer hover:underline ${drillRoot ? 'text-accent' : 'text-text-primary'}`}
                   >
+                    <LocAvatar url={locUrl(lb.locationId)} name={name} />
                     {drillRoot && <IconMapPin size={12} />}
                     {name}
                   </button>

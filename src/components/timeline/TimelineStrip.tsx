@@ -281,6 +281,32 @@ export default function TimelineStrip() {
                     </>
                   );
                 })()}
+                {/* Continuity-basis marker — this arc was generated to extend
+                    one or more merged resolutions. Purple dot (+ count) at the
+                    band's lower-left, branch-relative for free (the band only
+                    exists on branches that contain the arc). */}
+                {(band.arc.basisMergeIds?.length ?? 0) > 0 && (
+                  <g>
+                    <title>
+                      {`Continues from ${band.arc.basisMergeIds!.length} merge${band.arc.basisMergeIds!.length > 1 ? "s" : ""}: ${band.arc
+                        .basisMergeIds!.map((id) => narrative.merges?.[id]?.label || "commit")
+                        .join(", ")}`}
+                    </title>
+                    <circle cx={x1 + 7} cy={BAND_Y + BAND_HEIGHT - 6} r={3.5} fill="#a78bfa" />
+                    {band.arc.basisMergeIds!.length > 1 && (
+                      <text
+                        x={x1 + 13}
+                        y={BAND_Y + BAND_HEIGHT - 3}
+                        fontSize={8}
+                        fill="#a78bfa"
+                        fontFamily="monospace"
+                        fontWeight={600}
+                      >
+                        {band.arc.basisMergeIds!.length}
+                      </text>
+                    )}
+                  </g>
+                )}
               </g>
             );
           })}
@@ -396,6 +422,16 @@ export default function TimelineStrip() {
                     r={NODE_RADIUS}
                     fill={isSelected ? nodeFillSelected : nodeFill}
                   />
+                )}
+                {/* Continuity-basis marker on a world expansion folded from
+                    merged resolutions. */}
+                {isExpansion && (entry.basisMergeIds?.length ?? 0) > 0 && (
+                  <>
+                    <title>
+                      {`Expansion continues from ${entry.basisMergeIds!.length} merge${entry.basisMergeIds!.length > 1 ? "s" : ""}`}
+                    </title>
+                    <circle cx={x} cy={y - NODE_RADIUS - 6} r={3} fill="#a78bfa" />
+                  </>
                 )}
               </g>
             );

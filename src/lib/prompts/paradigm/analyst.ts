@@ -21,6 +21,7 @@ import {
   SURVEY_PROBE_HINT_BY_PARADIGM,
 } from './shapes';
 import { PRINCIPLE_PARADIGM_FIDELITY } from '../principles';
+import { CHAT_OUTPUT_DISCIPLINE } from '../chat/discipline';
 
 /** Compose the per-paradigm preamble: analyst identity + vocabulary hint +
  *  paradigm-specific discipline + paradigm-fidelity principle. Returns empty
@@ -78,8 +79,29 @@ FORMAT — clean GitHub-flavoured markdown. Use **bold** for emphasis, *italics*
 
 export function buildSearchSynthesisSystem(work: WorkIdentity): string {
   const pre = paradigmPreamble(work);
-  const body = 'Provide concise, accurate synthesis of search results with inline citations.';
+  // Search answers are written as a short academic synthesis and attribute to
+  // database entities in the SAME entity-ref citation style as chat — the
+  // natural name followed by the entity's bracketed id (`Aragorn [C-1]`).
+  // This is uniform across both search modes (vector RAG and the
+  // narrative-context fallback); the retrieval method differs, the
+  // attribution surface does not.
+  const body = `Answer the operator's query as a concise, academic synthesis grounded strictly in the attached context. ${CHAT_OUTPUT_DISCIPLINE}`;
   if (!pre) return `You are a long-form analysis assistant. ${body}`;
+  return `${pre}\n\n${body}`;
+}
+
+/**
+ * Expert-search synthesis system prompt. Distinct from the vector/context
+ * synthesis: the grounding is the curriculum question bank — verified Q→A
+ * pairs the operator authored — so the answer is taught from settled
+ * knowledge. Treats curated answers as established fact and attributes via the
+ * SAME entity-ref citation style as the other modes, here over the curriculum's
+ * own entities: topics (`[TOP-3]`) and questions (`[Q-12]`).
+ */
+export function buildExpertSearchSystem(work: WorkIdentity): string {
+  const pre = paradigmPreamble(work);
+  const body = `Answer the operator's query as a concise, academic synthesis grounded strictly in the verified curriculum Q&A provided. Treat each matched question's curated answer as established fact — synthesise across them, do not hedge against them. If the curriculum does not cover the query, say so plainly. ${CHAT_OUTPUT_DISCIPLINE}`;
+  if (!pre) return `You are a subject-matter expert answering from a curriculum you have mastered. ${body}`;
   return `${pre}\n\n${body}`;
 }
 

@@ -1212,15 +1212,35 @@ export function learningContext(
   const esc = (s: string) => s.replace(/"/g, '&quot;');
   const genre = [narrative.genre, narrative.subgenre].filter(Boolean).join(' / ');
   const genreAttr = genre ? ` genre="${esc(genre)}"` : '';
-  const worldView = `<world-view title="${esc(narrative.title)}"${genreAttr} hint="Framing only — phrase questions correctly for this world, but extract them from the scene below, not from the world at large.">${
-    narrative.worldSummary ? `\n  <summary>${narrative.worldSummary}</summary>\n` : ''
+
+  // Framing is a LINE, not the whole work. The cumulative worldSummary spans
+  // every arc (downstream mechanics, bibliography, …); dumping it pulls
+  // questions off this scene's actual content. Prefer the one-line
+  // description; fall back to the first sentence/clip of the summary.
+  const rawFrame = (narrative.description?.trim() || narrative.worldSummary?.trim() || '');
+  const frame =
+    rawFrame.length > 300
+      ? rawFrame.slice(0, 300).replace(/\s+\S*$/, '') + '…'
+      : rawFrame;
+  const worldView = `<world-view title="${esc(narrative.title)}"${genreAttr} hint="Framing only — phrase questions for this world, but extract them strictly from the scene below.">${
+    frame ? `\n  <about>${frame}</about>\n` : ''
   }</world-view>`;
+
+  // Reuse the shared scene surface (system-reveals + thread-shifts are the
+  // best extraction scaffold) but drop the prose-generation-only blocks it
+  // carries: <world-state> describes downstream mechanics not in this scene's
+  // prose (a soundness hazard for "answerable from the content"), and
+  // <time-gap> is a prose-weaving instruction irrelevant to questions.
+  const sceneBlock = sceneContext(narrative, scene)
+    .replace(/\n?<world-state[\s\S]*?<\/world-state>/, '')
+    .replace(/\n?<time-gap[\s\S]*?<\/time-gap>/, '');
+
   const proseBlock = opts.prose?.trim()
     ? `\n<source-prose hint="Authoritative text of the scene. When present this is the primary extraction surface — test what a reader of this prose should understand.">\n${opts.prose.trim()}\n</source-prose>`
     : '';
   return `<learning-context>
 ${worldView}
-${sceneContext(narrative, scene)}${proseBlock}
+${sceneBlock}${proseBlock}
 </learning-context>`;
 }
 

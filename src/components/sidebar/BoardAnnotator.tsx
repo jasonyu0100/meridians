@@ -4,7 +4,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/state/store';
-import { useImageUrl } from '@/hooks/useAssetUrl';
+import { useImageUrl, useImageUrlMap } from '@/hooks/useAssetUrl';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/Modal';
 import type { Board, MapLabel } from '@/types/narrative';
 
@@ -15,6 +15,22 @@ function displayLabel(name: string): string {
   const m = name.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
   if (m && /[A-Za-z]/.test(m[1])) return m[1].trim();
   return name.trim();
+}
+
+/** Small circular location image shown inside a label / title. Silent when the
+ *  location has no generated image, so un-illustrated labels are unchanged. */
+function LocAvatar({ url, name, size = 16 }: { url: string | null; name: string; size?: number }) {
+  if (!url) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={name}
+      style={{ width: size, height: size }}
+      className="rounded-full object-cover shrink-0 ring-1 ring-black/10 -ml-0.5"
+      draggable={false}
+    />
+  );
 }
 
 /**
@@ -54,6 +70,22 @@ export function BoardAnnotator({ map, onClose }: { map: Board; onClose: () => vo
   const nameOf = useCallback(
     (id: string) => children.find((c) => c.id === id)?.name ?? id,
     [children],
+  );
+
+  // Location image refs (root title + every child) → displayable URLs.
+  const locImageRefs = useMemo(() => {
+    if (!narrative) return [];
+    return [map.rootLocationId, ...map.locationIds]
+      .map((id) => narrative.locations[id]?.imageUrl)
+      .filter((u): u is string => !!u);
+  }, [narrative, map.rootLocationId, map.locationIds]);
+  const locImages = useImageUrlMap(locImageRefs);
+  const locUrl = useCallback(
+    (id: string): string | null => {
+      const ref = narrative?.locations[id]?.imageUrl;
+      return ref ? locImages.get(ref) ?? null : null;
+    },
+    [narrative, locImages],
   );
 
   // Pointer-drag: live-update the label's normalized position from the image's
@@ -153,7 +185,8 @@ export function BoardAnnotator({ map, onClose }: { map: Board; onClose: () => vo
               on below. */}
           {url && (
             <div className="absolute top-0 inset-x-0 flex justify-center pt-3 pointer-events-none">
-              <span className="px-4 py-1 rounded-full bg-slate-50/80 text-slate-900 text-lg font-bold tracking-wide shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 ring-black/10">
+              <span className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-slate-50/80 text-slate-900 text-lg font-bold tracking-wide shadow-[0_1px_6px_rgba(0,0,0,0.45)] ring-1 ring-black/10">
+                <LocAvatar url={locUrl(map.rootLocationId)} name={displayLabel(map.name)} size={24} />
                 {displayLabel(map.name)}
               </span>
             </div>
@@ -171,7 +204,7 @@ export function BoardAnnotator({ map, onClose }: { map: Board; onClose: () => vo
                   : 'ring-black/10 cursor-grab hover:ring-accent/60'
               }`}
             >
-              {/* Accent pin dot — anchors the label to its region. */}
+              <LocAvatar url={locUrl(lb.locationId)} name={nameOf(lb.locationId)} />
               <span>{nameOf(lb.locationId)}</span>
               <button
                 onMouseDown={(e) => e.stopPropagation()}
@@ -198,10 +231,11 @@ export function BoardAnnotator({ map, onClose }: { map: Board; onClose: () => vo
                 <div
                   key={c.id}
                   onMouseDown={(e) => beginDrag(c.id, e)}
-                  className={`px-2 py-1 rounded bg-bg-elevated border border-border text-[11px] text-text-primary hover:border-accent/50 transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded bg-bg-elevated border border-border text-[11px] text-text-primary hover:border-accent/50 transition-colors ${
                     draggingId === c.id ? 'cursor-grabbing border-accent' : 'cursor-grab'
                   }`}
                 >
+                  <LocAvatar url={locUrl(c.id)} name={c.name} size={14} />
                   {c.name}
                 </div>
               ))}

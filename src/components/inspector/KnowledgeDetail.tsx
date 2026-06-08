@@ -139,7 +139,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
   // - system-scene: jump to the nearest scene that mentions it, then zoom in
   // - system-arc / system-full: just zoom in on the node
   const navigateToNode = useCallback((targetId: string) => {
-    if (state.graphViewMode === 'system-scene') {
+    if (state.viewState.graphViewMode === 'system-scene') {
       // Find nearest scene that mentions this node
       const sceneIndices = nodeSceneIndex.get(targetId) ?? [];
       if (sceneIndices.length > 0) {
@@ -157,7 +157,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('focus-knowledge-node', { detail: { nodeId: targetId } }));
     }, 150);
-  }, [nodeSceneIndex, state.graphViewMode, state.viewState.currentSceneIndex, dispatch]);
+  }, [nodeSceneIndex, state.viewState.graphViewMode, state.viewState.currentSceneIndex, dispatch]);
 
   // Scenes that *use* this node — either by introducing it
   // (systemDeltas.addedNodes contains it) or by attributing it
@@ -277,7 +277,7 @@ export default function KnowledgeDetail({ nodeId }: Props) {
                       {other.type}
                     </span>
                   )}
-                  {state.graphViewMode === 'system-scene' && (() => {
+                  {state.viewState.graphViewMode === 'system-scene' && (() => {
                     const indices = nodeSceneIndex.get(otherId);
                     if (!indices || indices.length === 0) return null;
                     const current = state.viewState.currentSceneIndex;

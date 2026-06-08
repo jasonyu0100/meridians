@@ -38,45 +38,56 @@ const LEARNING_GUIDE = `<doctrine>
   <guidance>very-easy: stated outright, distractors obviously wrong. medium: requires having followed the scene; distractors plausible. very-hard: demands close reading or fine discrimination between near-identical options. Spread the bank across bands.</guidance>
 </difficulty>
 
-<tags hint="1–3 concept tags per question. Tags are the unit cross-scene quizzes group by, so reuse stable labels.">
-  <rule>Name the CONCEPT, not the scene. Title Case, 1–3 words: "Political Alliances", "Magic System", "Betrayal", "Resource Scarcity", "Cause and Effect".</rule>
-  <rule>Prefer reusing a tag that would also fit other scenes over inventing a hyper-specific one. A reader should be able to build a coherent quiz from a single tag across the whole work.</rule>
-  <rule>Tag by the idea being tested, so the same theme recurring in different scenes shares a tag.</rule>
-</tags>
+<topics hint="Assign every question to ONE Topic in a shared curriculum tree. Topics are hierarchical: a general parent ('Magic System') holds specific children ('Wandlore', 'Wand Allegiance'). The existing tree is shown below — EXTEND it, don't fork it.">
+  <rule>Assign each question to the most SPECIFIC topic that fits — the deepest node that still holds. A reader does a broad test by picking a parent (which sweeps in all descendants) or a precise one by picking a leaf.</rule>
+  <rule>REUSE an existing topic id (shown as [topic_xxx] in the tree) whenever one fits. Only propose a NEW topic when the scene genuinely covers ground the tree doesn't yet name.</rule>
+  <rule>When you propose a new topic, place it under the right parent: set its parentId to an existing topic id, or to the tempId of another new topic you define, or null for a brand-new root concept. Prefer hanging new specifics under an existing general topic over creating parallel roots.</rule>
+  <rule>Name topics as CONCEPTS, Title Case, 1–4 words: "Political Alliances", "Wandlore", "Resource Scarcity". Never name a topic after the scene.</rule>
+</topics>
 
 <output-format>
 Return ONLY valid JSON, no prose preamble, no markdown:
 {
+  "newTopics": [
+    { "tempId": "t1", "name": "Wandlore", "parentId": "topic_existingMagic" },
+    { "tempId": "t2", "name": "Wand Allegiance", "parentId": "t1" }
+  ],
   "questions": [
     {
       "prompt": "The question stem — a complete, self-contained question.",
       "options": ["option A", "option B", "option C", "option D"],
       "correctIndex": 0,
       "explanation": "One or two sentences on why the correct option is right (and, where useful, why a tempting distractor is wrong).",
-      "tags": ["Concept One", "Concept Two"],
+      "topicId": "t2",
       "bloom": "remember|understand|apply|analyse|evaluate|create",
       "difficulty": "very-easy|easy|easy-medium|medium|medium-hard|hard|very-hard"
     }
   ]
 }
+newTopics is [] when every question fits an existing topic. Each question's topicId is either an existing [topic_xxx] id or a tempId you defined in newTopics.
 </output-format>
 
 <hard-constraints>
   <constraint>2–6 options per question; 4 is the default. Exactly one correct answer; correctIndex is its 0-based position in options.</constraint>
-  <constraint>Never reference internal identifiers (C-1, L-2, T-3, A-4, SYS-5) — use the entity's name from the context.</constraint>
-  <constraint>Every question needs at least one tag, a bloom level, and a difficulty band.</constraint>
+  <constraint>Never reference internal identifiers (C-1, L-2, T-3, A-4, SYS-5) — use the entity's name from the context. (Topic ids like topic_xxx ARE allowed in topicId / parentId fields.)</constraint>
+  <constraint>Every question needs a topicId, a bloom level, and a difficulty band.</constraint>
   <constraint>Spread the bank across Bloom levels and difficulty bands — do not emit twenty very-easy "remember" questions.</constraint>
-  <constraint>An empty array is valid only when the scene genuinely teaches nothing: {"questions": []}.</constraint>
+  <constraint>Empty arrays are valid only when the scene genuinely teaches nothing: {"newTopics": [], "questions": []}.</constraint>
 </hard-constraints>`;
 
-/** Build the user prompt: scene + world context, then the extraction guide. */
-export function buildLearningUserPrompt(context: string, guidance?: string): string {
-  const guidanceBlock = guidance?.trim()
-    ? `\n<focus hint="Operator direction — bias coverage toward this, without abandoning exhaustiveness.">\n${guidance.trim()}\n</focus>\n`
+/** Build the user prompt: scene + world context, the existing topic tree, then
+ *  the extraction guide. */
+export function buildLearningUserPrompt(
+  context: string,
+  opts: { guidance?: string; topicOutline?: string } = {},
+): string {
+  const guidanceBlock = opts.guidance?.trim()
+    ? `\n<focus hint="Operator direction — bias coverage toward this, without abandoning exhaustiveness.">\n${opts.guidance.trim()}\n</focus>\n`
     : "";
+  const treeBlock = `\n<existing-topic-tree hint="The curriculum so far. Reuse these topic ids where a question fits; extend with new topics only for genuinely new ground.">\n${opts.topicOutline?.trim() || "(no topics yet — propose the first ones)"}\n</existing-topic-tree>\n`;
   return `<inputs>
 ${context}
 </inputs>
-${guidanceBlock}
+${guidanceBlock}${treeBlock}
 ${LEARNING_GUIDE}`;
 }

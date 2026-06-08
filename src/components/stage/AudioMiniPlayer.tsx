@@ -49,7 +49,15 @@ export function NowPlayingPill() {
     return { prevScene: prev, nextScene: next };
   }, [state.resolvedEntryKeys, player.sceneId, narrative]);
 
-  if (!narrative || !scene) return null;
+  // Only surface the pill when there's actually audio to play — either
+  // something is loaded in the player, or some scene in the narrative has
+  // generated narration. Otherwise the pill is dead weight in the bar.
+  const hasAudioAvailable = useMemo(
+    () => player.sceneId !== null || (!!narrative && Object.values(narrative.scenes).some((s) => s.audioUrl)),
+    [player.sceneId, narrative],
+  );
+
+  if (!narrative || !scene || !hasAudioAvailable) return null;
 
   const hasAnyAudio = player.sceneId !== null;
   const currentSceneHasAudio = !!currentScene?.audioUrl;
@@ -90,12 +98,6 @@ export function NowPlayingPill() {
         ) : (
           <span>Audio</span>
         )}
-        <svg
-          className={`w-2.5 h-2.5 transition-transform ${open ? 'rotate-180' : ''}`}
-          viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-        >
-          <path d="M1 2.5 L4 5.5 L7 2.5" />
-        </svg>
       </button>
 
       {/* Dropdown */}

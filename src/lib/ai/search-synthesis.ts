@@ -11,8 +11,18 @@
 import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { DEFAULT_MODEL } from '../constants';
 import { logInfo, logError } from '@/lib/core/system-logger';
-import { buildSearchSynthesisPrompt } from '@/lib/prompts/search';
-import { buildSearchSynthesisSystem, workIdentityFor } from '@/lib/prompts/paradigm';
+import {
+  buildSearchSynthesisPrompt,
+  buildNarrativeContextSearchPrompt,
+  buildExpertSearchPrompt,
+} from '@/lib/prompts/search';
+import {
+  buildSearchSynthesisSystem,
+  buildExpertSearchSystem,
+  workIdentityFor,
+} from '@/lib/prompts/paradigm';
+import { resolveEntityRef } from '@/lib/forces/entity-ref';
+import { topicPath } from '@/lib/learning/curriculum';
 import type { NarrativeState, SearchResult, SearchSynthesis } from '@/types/narrative';
 
 type AggregateScene = {
@@ -53,76 +63,90 @@ function aggregateScenesFromPropositions(
   });
 }
 
+/**
+ * Render the retrieved evidence as internal grounding. No citation markers —
+ * attribution is to database entities (see entity roster), not to numbered
+ * propositions. The evidence locates WHAT is relevant to the query; the model
+ * cites the entities involved, not these rows.
+ */
 function buildSearchContext(
-  query: string,
   propositionResults: SearchResult[],
   aggregateScenes: AggregateScene[],
   directSceneResults: SearchResult[],
   topArc: { arcId: string; avgSimilarity: number } | null,
-  timeline: Array<{ sceneIndex: number; maxSimilarity: number }>,
   narrative: NarrativeState,
-): { context: string; citationIndex: SearchResult[] } {
-  let context = `═══ SEARCH QUERY ═══\n"${query}"\n\n`;
-
-  // Citation index is the flat list the synthesis cites against. Propositions
-  // come first (primary signal), then direct scene matches. Aggregate scenes
-  // are rendered as context but don't get their own citation numbers — they
-  // annotate where the propositions live.
-  const citationIndex: SearchResult[] = [...propositionResults, ...directSceneResults];
+): string {
+  let context = '';
 
   // ── Primary: top propositions ─────────────────────────────────────────
-  context += `═══ TOP ${propositionResults.length} PROPOSITIONS (primary RAG signal) ═══\n`;
-  propositionResults.forEach((p, i) => {
-    context += `[${i + 1}] PROPOSITION — ${(p.similarity * 100).toFixed(1)}% match\n`;
-    context += `    Content: ${p.content}\n`;
-    context += `    Context: ${p.context}\n`;
-    context += `    Scene: ${p.sceneId}\n`;
-    if (p.beatIndex !== undefined) context += `    Beat: ${p.beatIndex + 1}\n`;
+  if (propositionResults.length > 0) {
+    context += `TOP PROPOSITIONS (primary signal — atomic facts most relevant to the query):\n`;
+    propositionResults.forEach((p) => {
+      context += `  • [${(p.similarity * 100).toFixed(0)}%] ${p.content}`;
+      context += ` (scene ${p.sceneId}${p.beatIndex !== undefined ? `, beat ${p.beatIndex + 1}` : ''})\n`;
+    });
     context += `\n`;
-  });
+  }
 
   // ── Aggregate scene membership — where the top propositions live ──────
   if (aggregateScenes.length > 0) {
-    context += `═══ AGGREGATE SCENE MEMBERSHIP (scenes containing the top propositions above) ═══\n`;
+    context += `SCENES THE TOP PROPOSITIONS LIVE IN:\n`;
     aggregateScenes.forEach((s) => {
-      context += `  • ${s.sceneId} — ${s.propositionCount} relevant proposition${s.propositionCount !== 1 ? 's' : ''}, top match ${(s.maxPropSimilarity * 100).toFixed(1)}%\n`;
-      context += `    Summary: ${s.summary}\n\n`;
+      context += `  • [${s.sceneId}] ${s.summary} (${s.propositionCount} relevant proposition${s.propositionCount !== 1 ? 's' : ''}, top ${(s.maxPropSimilarity * 100).toFixed(0)}%)\n`;
     });
+    context += `\n`;
   }
 
   // ── Supplementary: direct scene-summary matches ───────────────────────
   if (directSceneResults.length > 0) {
-    const offset = propositionResults.length;
-    context += `═══ TOP ${directSceneResults.length} SCENE SUMMARIES (direct match on summary embeddings, supplementary thematic context) ═══\n`;
-    directSceneResults.forEach((s, i) => {
-      context += `[${offset + i + 1}] SCENE SUMMARY — ${(s.similarity * 100).toFixed(1)}% match\n`;
-      context += `    Summary: ${s.content}\n`;
-      context += `    Scene: ${s.sceneId}\n\n`;
+    context += `SCENE SUMMARIES (direct thematic match, supplementary):\n`;
+    directSceneResults.forEach((s) => {
+      context += `  • [${(s.similarity * 100).toFixed(0)}%] [${s.sceneId}] ${s.content}\n`;
     });
+    context += `\n`;
   }
 
   if (topArc) {
     const arc = narrative.arcs[topArc.arcId];
     if (arc) {
-      context += `═══ TOP ARC ═══\n`;
-      context += `Arc: "${arc.name}" (${(topArc.avgSimilarity * 100).toFixed(1)}% avg relevance, ${arc.sceneIds.length} scenes)\n\n`;
+      context += `MOST RELEVANT ARC: "${arc.name}" (${(topArc.avgSimilarity * 100).toFixed(0)}% avg relevance, ${arc.sceneIds.length} scenes)\n`;
     }
   }
 
-  if (timeline.length > 0) {
-    const peaks = timeline
-      .filter((p) => p.maxSimilarity > 0.7)
-      .sort((a, b) => b.maxSimilarity - a.maxSimilarity)
-      .slice(0, 5);
-    if (peaks.length > 0) {
-      context += `═══ TIMELINE PATTERN ═══\n`;
-      context += `Peak matches at scenes: ${peaks.map((p) => `${p.sceneIndex + 1} (${(p.maxSimilarity * 100).toFixed(0)}%)`).join(', ')}\n`;
-      const highRelevanceCount = timeline.filter((p) => p.maxSimilarity > 0.6).length;
-      context += `High-relevance scenes: ${highRelevanceCount} out of ${timeline.length}\n`;
-    }
-  }
+  return context.trim();
+}
 
-  return { context, citationIndex };
+/**
+ * Render the citable database entities involved in the matched scenes, each
+ * with its exact id, so the model can attribute claims chat-style. Reuses
+ * `resolveEntityRef` for labels so roster entries match the rendered chips.
+ */
+function buildEntityRosterForScenes(
+  narrative: NarrativeState,
+  sceneIds: string[],
+): string {
+  const ids = new Set<string>();
+  for (const sid of sceneIds) {
+    const scene = narrative.scenes[sid];
+    if (!scene) continue;
+    ids.add(scene.id);
+    if (scene.povId) ids.add(scene.povId);
+    for (const p of scene.participantIds ?? []) ids.add(p);
+    if (scene.locationId) ids.add(scene.locationId);
+    for (const td of scene.threadDeltas ?? []) ids.add(td.threadId);
+    for (const wd of scene.worldDeltas ?? []) if (wd.entityId) ids.add(wd.entityId);
+  }
+  // Group by kind for a clean roster, scenes last (they have long labels).
+  const order: Record<string, number> = { Character: 0, Location: 1, Artifact: 2, Thread: 3, Arc: 4, Scene: 5 };
+  const lines = [...ids]
+    .map((id) => resolveEntityRef(narrative, id))
+    .filter((info): info is NonNullable<typeof info> => !!info)
+    .sort((a, b) => (order[a.typeLabel] ?? 9) - (order[b.typeLabel] ?? 9))
+    .map((info) => {
+      const detail = info.detail ? ` — ${info.detail}` : '';
+      return `  [${info.id}] ${info.typeLabel}: ${info.label}${detail}`;
+    });
+  return lines.join('\n');
 }
 
 /**
@@ -140,21 +164,27 @@ export async function synthesizeSearchResults(
   detailResults: SearchResult[],
   topArc: { arcId: string; avgSimilarity: number } | null,
   _topScene: { sceneId: string; similarity: number } | null,
-  timeline: Array<{ sceneIndex: number; maxSimilarity: number }>,
+  _timeline: Array<{ sceneIndex: number; maxSimilarity: number }>,
   onToken?: (token: string) => void,
 ): Promise<SearchSynthesis> {
   const propositionResults = detailResults.filter((r) => r.type === 'proposition');
   const aggregateScenes = aggregateScenesFromPropositions(propositionResults, narrative);
 
-  const { context, citationIndex } = buildSearchContext(
-    query,
+  const context = buildSearchContext(
     propositionResults,
     aggregateScenes,
     sceneResults,
     topArc,
-    timeline,
     narrative,
   );
+
+  // Citable entities are drawn from the union of matched scenes — propositions
+  // and direct scene hits — so the model can attribute claims to the database
+  // entities that actually appear there.
+  const matchedSceneIds = Array.from(
+    new Set([...sceneResults, ...detailResults].map((r) => r.sceneId)),
+  );
+  const entityRoster = buildEntityRosterForScenes(narrative, matchedSceneIds);
 
   logInfo('Starting search synthesis', {
     source: 'search',
@@ -164,16 +194,11 @@ export async function synthesizeSearchResults(
       propCount: propositionResults.length,
       aggregateSceneCount: aggregateScenes.length,
       directSceneCount: sceneResults.length,
+      rosterScenes: matchedSceneIds.length,
     },
   });
 
-  const prompt = buildSearchSynthesisPrompt({
-    context,
-    query,
-    propositionCount: propositionResults.length,
-    aggregateSceneCount: aggregateScenes.length,
-    directSceneCount: sceneResults.length,
-  });
+  const prompt = buildSearchSynthesisPrompt({ context, entityRoster, query });
 
   let accumulatedText = '';
 
@@ -194,37 +219,17 @@ export async function synthesizeSearchResults(
       resolveWebsearch(narrative),
     );
 
-    const citationMatches = accumulatedText.match(/\[(\d+)\]/g) || [];
-    const citationIds = Array.from(
-      new Set(citationMatches.map((match) => parseInt(match.replace(/\[|\]/g, ''), 10))),
-    ).sort((a, b) => a - b);
-
-    const citations = citationIds
-      .filter((id) => id >= 1 && id <= citationIndex.length)
-      .map((id) => {
-        const result = citationIndex[id - 1];
-        return {
-          id,
-          sceneId: result.sceneId,
-          type: result.type,
-          title: result.content.length > 60 ? result.content.substring(0, 57) + '...' : result.content,
-          similarity: result.similarity,
-        };
-      });
-
     const overview = accumulatedText.trim();
 
     logInfo('Search synthesis completed', {
       source: 'search',
       operation: 'synthesize-search-complete',
-      details: {
-        query: query.substring(0, 100),
-        overviewLength: overview.length,
-        citationCount: citations.length,
-      },
+      details: { query: query.substring(0, 100), overviewLength: overview.length },
     });
 
-    return { overview, citations };
+    // Attribution is rendered from the entity-ref citations in `overview` at
+    // display time; no structured citation index is returned.
+    return { overview, citations: [] };
   } catch (error) {
     logError('Search synthesis failed', error, {
       source: 'search',
@@ -232,18 +237,203 @@ export async function synthesizeSearchResults(
       details: { query: query.substring(0, 100) },
     });
 
-    const fallback = citationIndex[0];
+    const topProp = propositionResults[0];
     return {
       overview: `Found ${propositionResults.length} proposition${propositionResults.length === 1 ? '' : 's'} and ${sceneResults.length} scene summar${sceneResults.length === 1 ? 'y' : 'ies'} matching "${query}". ${
         topArc ? `Arc "${narrative.arcs[topArc.arcId]?.name}" is most relevant. ` : ''
-      }${fallback ? `Top match: ${fallback.content.substring(0, 100)}...` : 'Try refining your search query.'}`,
-      citations: citationIndex.slice(0, 3).map((result, idx) => ({
-        id: idx + 1,
-        sceneId: result.sceneId,
-        type: result.type,
-        title: result.content.substring(0, 60),
-        similarity: result.similarity,
-      })),
+      }${topProp ? `Top match: ${topProp.content.substring(0, 100)}...` : 'Try refining your search query.'}`,
+      citations: [],
+    };
+  }
+}
+
+/**
+ * Build the verified-curriculum grounding + citable-entities roster for expert
+ * synthesis. The grounding renders each matched question as a Q→A pair carrying
+ * its question id and topic id; the roster lists the distinct topics and
+ * questions (with ids + labels) the model may cite, so its inline citations
+ * resolve 1:1 against the reference list at display time.
+ */
+function buildExpertGrounding(
+  questionResults: SearchResult[],
+  narrative: NarrativeState,
+): { context: string; citableEntities: string } {
+  const topics = narrative.topics ?? {};
+  const rows: string[] = [];
+  const topicSim = new Map<string, { sum: number; count: number; name: string }>();
+  const questionRoster: string[] = [];
+  const seenQuestions = new Set<string>();
+
+  for (const r of questionResults) {
+    const scene = narrative.scenes[r.sceneId];
+    const q = scene?.questions?.find((x) => x.id === r.questionId);
+    if (!q) continue;
+    const answer = q.options[q.correctIndex] ?? '';
+    const topicLabel = q.topicId ? topicPath(topics, q.topicId) : 'Untopiced';
+    const topicTag = q.topicId ? ` [${q.topicId}]` : '';
+    rows.push(
+      `  • [${(r.similarity * 100).toFixed(0)}%] [${q.id}] (Topic: ${topicLabel}${topicTag}) Q: ${q.prompt} → A: ${answer}` +
+        (q.explanation ? `\n       Why: ${q.explanation}` : ''),
+    );
+    if (!seenQuestions.has(q.id)) {
+      seenQuestions.add(q.id);
+      questionRoster.push(`  [${q.id}] Question: ${q.prompt}`);
+    }
+    if (q.topicId) {
+      const cur = topicSim.get(q.topicId) ?? { sum: 0, count: 0, name: topicLabel };
+      topicSim.set(q.topicId, { sum: cur.sum + r.similarity, count: cur.count + 1, name: topicLabel });
+    }
+  }
+
+  let context = '';
+  if (rows.length > 0) {
+    context += `VERIFIED CURRICULUM Q&A (primary signal — teachable units most relevant to the query, each with its curated answer):\n`;
+    context += rows.join('\n');
+    context += `\n`;
+  }
+
+  // Most-covered topic area (highest average similarity across matched questions)
+  let topTopic: { id: string; name: string; avg: number } | null = null;
+  for (const [id, { sum, count, name }] of topicSim) {
+    const avg = sum / count;
+    if (!topTopic || avg > topTopic.avg) topTopic = { id, name, avg };
+  }
+  if (topTopic) {
+    context += `\nMOST RELEVANT TOPIC AREA: "${topTopic.name}" [${topTopic.id}] (${(topTopic.avg * 100).toFixed(0)}% avg relevance)\n`;
+  }
+
+  // Roster: topics first (the areas of expertise), then the matched questions.
+  const topicRoster = [...topicSim].map(
+    ([id, { name }]) => `  [${id}] Topic: ${name}`,
+  );
+  const citableEntities = [...topicRoster, ...questionRoster].join('\n');
+
+  return { context: context.trim(), citableEntities };
+}
+
+/**
+ * Expert search synthesis — answers from the curriculum question bank.
+ *
+ * The top-K matched questions (each with its verified answer + explanation)
+ * are handed to the model as settled knowledge; it teaches the query from
+ * them, attributing to topic areas by name. Distinct from vector synthesis:
+ * the grounding is curated Q→A, not atomic propositions, and attribution is to
+ * topics/questions (surfaced as a clickable reference list at display time),
+ * not database entity-refs.
+ */
+export async function synthesizeExpertSearch(
+  narrative: NarrativeState,
+  query: string,
+  questionResults: SearchResult[],
+  onToken?: (token: string) => void,
+): Promise<SearchSynthesis> {
+  const { context, citableEntities } = buildExpertGrounding(questionResults, narrative);
+
+  logInfo('Starting expert search synthesis', {
+    source: 'search',
+    operation: 'synthesize-expert',
+    details: { query: query.substring(0, 100), questionCount: questionResults.length },
+  });
+
+  const prompt = buildExpertSearchPrompt({ context, citableEntities, query });
+  let accumulatedText = '';
+
+  try {
+    await callGenerateStream(
+      prompt,
+      buildExpertSearchSystem(workIdentityFor(narrative)),
+      (token) => {
+        accumulatedText += token;
+        if (onToken) onToken(token);
+      },
+      2048,
+      'synthesizeExpertSearch',
+      DEFAULT_MODEL,
+      resolveReasoningBudget(narrative),
+      undefined,
+      0.3,
+      resolveWebsearch(narrative),
+    );
+
+    logInfo('Expert search synthesis completed', {
+      source: 'search',
+      operation: 'synthesize-expert-complete',
+      details: { query: query.substring(0, 100), overviewLength: accumulatedText.trim().length },
+    });
+
+    return { overview: accumulatedText.trim(), citations: [] };
+  } catch (error) {
+    logError('Expert search synthesis failed', error, {
+      source: 'search',
+      operation: 'synthesize-expert-error',
+      details: { query: query.substring(0, 100) },
+    });
+    return {
+      overview: `Unable to answer "${query}" from the curriculum. Please try again.`,
+      citations: [],
+    };
+  }
+}
+
+/**
+ * Fallback search synthesis — narrative-context search.
+ *
+ * Used when vector search is unavailable because not every scene on the
+ * branch has a generated plan (no proposition bank to rank against). Rather
+ * than embedding retrieval, the full branch continuity (`narrativeContext`)
+ * is fed straight to the model, which answers the query from it. Slower and
+ * more token-expensive than vector search, but works on any branch with no
+ * embeddings. Returns no structured citations (there is no citation index);
+ * the model references scenes / entities by name in prose.
+ */
+export async function synthesizeNarrativeContextSearch(
+  narrative: NarrativeState,
+  narrativeContextBlock: string,
+  query: string,
+  onToken?: (token: string) => void,
+): Promise<SearchSynthesis> {
+  const prompt = buildNarrativeContextSearchPrompt({ context: narrativeContextBlock, query });
+
+  logInfo('Starting narrative-context search (vector fallback)', {
+    source: 'search',
+    operation: 'synthesize-context-search',
+    details: { query: query.substring(0, 100), contextLength: narrativeContextBlock.length },
+  });
+
+  let accumulatedText = '';
+  try {
+    await callGenerateStream(
+      prompt,
+      buildSearchSynthesisSystem(workIdentityFor(narrative)),
+      (token) => {
+        accumulatedText += token;
+        if (onToken) onToken(token);
+      },
+      2048,
+      'synthesizeNarrativeContextSearch',
+      DEFAULT_MODEL,
+      resolveReasoningBudget(narrative),
+      undefined,
+      0.3,
+      resolveWebsearch(narrative),
+    );
+
+    logInfo('Narrative-context search completed', {
+      source: 'search',
+      operation: 'synthesize-context-search-complete',
+      details: { query: query.substring(0, 100), overviewLength: accumulatedText.trim().length },
+    });
+
+    return { overview: accumulatedText.trim(), citations: [] };
+  } catch (error) {
+    logError('Narrative-context search failed', error, {
+      source: 'search',
+      operation: 'synthesize-context-search-error',
+      details: { query: query.substring(0, 100) },
+    });
+    return {
+      overview: `Unable to search the narrative context for "${query}". Please try again.`,
+      citations: [],
     };
   }
 }

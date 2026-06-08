@@ -49,6 +49,11 @@ export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
   if (!node) return <p className="text-xs text-text-dim">Log node not found</p>;
 
   const edges = thread.threadLog?.edges ?? [];
+  // Ordered node list — drives the prev/next Sequence navigation.
+  const orderedNodeIds = Object.keys(thread.threadLog?.nodes ?? {});
+  const seqIndex = orderedNodeIds.indexOf(nodeId);
+  const prevNode = seqIndex > 0 ? thread.threadLog?.nodes?.[orderedNodeIds[seqIndex - 1]] : undefined;
+  const nextNode = seqIndex >= 0 && seqIndex < orderedNodeIds.length - 1 ? thread.threadLog?.nodes?.[orderedNodeIds[seqIndex + 1]] : undefined;
   // The originating scene/worldbuild id — explicit on the node, else recovered
   // from the node id pattern `${threadId}:${sceneId}`.
   const logSceneId = node.sceneId ?? (nodeId.includes(":") ? nodeId.slice(nodeId.indexOf(":") + 1) : "");
@@ -136,6 +141,39 @@ export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
       >
         &larr; {thread.description}
       </button>
+
+      {/* Sequence — adjacent log nodes in chronological order */}
+      {(prevNode || nextNode) && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-[10px] uppercase tracking-widest text-text-dim">Sequence</h3>
+          {prevNode && (
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "SET_INSPECTOR",
+                  context: { type: "threadLog", threadId, nodeId: orderedNodeIds[seqIndex - 1] },
+                })
+              }
+              className="text-xs text-text-dim hover:text-text-secondary transition-colors text-left"
+            >
+              ← {prevNode.content.slice(0, 60)}{prevNode.content.length > 60 ? "…" : ""}
+            </button>
+          )}
+          {nextNode && (
+            <button
+              onClick={() =>
+                dispatch({
+                  type: "SET_INSPECTOR",
+                  context: { type: "threadLog", threadId, nodeId: orderedNodeIds[seqIndex + 1] },
+                })
+              }
+              className="text-xs text-text-dim hover:text-text-secondary transition-colors text-left"
+            >
+              → {nextNode.content.slice(0, 60)}{nextNode.content.length > 60 ? "…" : ""}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Connections */}
       {connections.length > 0 && (
