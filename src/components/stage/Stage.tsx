@@ -5,7 +5,7 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { IconReasoning } from '@/components/icons';
+import { IconReasoning, IconNotepad, IconDocument, IconWaveform, IconQuestion, IconScorecard } from '@/components/icons';
 import { getEffectivePovId } from '@/lib/forces/narrative-utils';
 import { computeCumulativePositions } from '@/lib/forces/positions';
 import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
@@ -1546,41 +1546,51 @@ export default function Stage() {
         currentScene ? (
           <ScenePlanView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No scene selected.</p>
-          </div>
+          <EmptyState
+            icon={IconNotepad}
+            title="No scene selected."
+            hint="Select a scene from the timeline to view its plan."
+          />
         )
       ) : graphViewMode === 'prose' ? (
         currentScene ? (
           <SceneProseView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No scene selected.</p>
-          </div>
+          <EmptyState
+            icon={IconDocument}
+            title="No scene selected."
+            hint="Select a scene from the timeline to read its prose."
+          />
         )
       ) : graphViewMode === 'audio' ? (
         currentScene ? (
           <SceneAudioView narrative={narrative} scene={currentScene} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No scene selected.</p>
-          </div>
+          <EmptyState
+            icon={IconWaveform}
+            title="No scene selected."
+            hint="Select a scene from the timeline to play its audio."
+          />
         )
       ) : graphViewMode === 'learning' ? (
         currentScene ? (
           <SceneLearningView narrative={narrative} scene={currentScene} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No scene selected.</p>
-          </div>
+          <EmptyState
+            icon={IconQuestion}
+            title="No scene selected."
+            hint="Select a scene from the timeline to view its questions."
+          />
         )
       ) : graphViewMode === 'decision' ? (
         currentScene ? (
           <DecisionView narrative={narrative} scene={currentScene} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-text-dim text-sm italic">No scene selected.</p>
-          </div>
+          <EmptyState
+            icon={IconScorecard}
+            title="No scene selected."
+            hint="Select a scene from the timeline to view its decision matrix."
+          />
         )
       ) : graphViewMode === 'threads-scene' || graphViewMode === 'threads-arc' || graphViewMode === 'threads-full' ? (
         selectedThreadLog && narrative.threads[selectedThreadLog] ? (
