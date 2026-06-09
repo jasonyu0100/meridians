@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { type Stream, type PerspectiveKind, type ImageRef, type NarrativeState, type ProposedMerge } from '@/types/narrative';
-import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconPlus } from '@/components/icons';
+import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconPlus, IconSparkle, IconClose } from '@/components/icons';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { Segmented } from '@/components/ui/Segmented';
 import { InlineText } from '@/components/inspector/InlineEdit';
@@ -531,12 +531,13 @@ export function StreamsView() {
                   {suggestingQ ? 'Thinking...' : 'Suggest'}
                 </button>
               </div>
-              <input
+              <textarea
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="An open question this stream will hold a stance on…"
                 autoFocus
-                className="bg-bg-field/60 border border-white/10 rounded px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent/40"
+                rows={2}
+                className="bg-bg-field/60 border border-white/10 rounded px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent/40 resize-none leading-relaxed"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -1043,6 +1044,11 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
   const [scoring, setScoring] = useState(false);
   const [suggestingPrior, setSuggestingPrior] = useState(false);
   const [branching, setBranching] = useState(false);
+  // Whether the Guide popover is open. It collects an optional free-text
+  // direction that steers the AI, then offers the choice to Add Branch or Add
+  // Prior with that steer — mirroring the scene-plan "optional direction"
+  // affordance. Blank steer = unguided.
+  const [guide, setGuide] = useState(false);
 
   const isOpen = stream.state === 'open';
   const priors = [...stream.priors].sort((a, b) => a.at - b.at);
@@ -1062,7 +1068,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
 
   // Intelligent next prior — from this perspective's inner world, building on
   // the priors so far. Drops into the composer for the member to edit/add.
-  const handleSuggestPrior = async () => {
+  const handleSuggestPrior = async (direction?: string) => {
     if (suggestingPrior || !isOpen || !n) return;
     setSuggestingPrior(true);
     try {
@@ -1076,6 +1082,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
         narrativeContext: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         // An agent-driven stream continues its priors with that player's persona.
         personaContext: resolveAgentPersona(resolveAgentById(n, stream.agentId)) || undefined,
+        direction,
       });
       if (text) setDraft(text);
     } finally {
@@ -1088,7 +1095,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
   // perspective would now also track. That question pre-seeds the create-stream
   // composer (opened at step 2, perspective pair kept) so the user continues
   // with intuition suggestion and opens the branch as its own stream.
-  const handleBranch = async () => {
+  const handleBranch = async (direction?: string) => {
     if (branching || !n) return;
     setBranching(true);
     try {
@@ -1107,6 +1114,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
         entityContext: innerWorldText(stream.perspectiveId, n),
         narrativeContext: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         personaContext: persona,
+        direction,
       });
       if (!question) return;
       onBranch({ question, intuition, memberId: stream.memberId, agentId: stream.agentId, perspectiveId: stream.perspectiveId });
@@ -1201,31 +1209,38 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
           />
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-text-dim/40">⌘↵ to add · AI scores it into the stance</span>
-            {/* Integrated combo — secondary AI actions join into the primary. */}
-            <div className="ml-auto inline-flex items-stretch rounded-lg border border-white/10 overflow-hidden">
+            {/* Integrated combo — a single Guide button opens the popover that
+                collects an optional direction, then offers Add Branch / Add
+                Prior with that steer; Enter Prior commits the draft directly. */}
+            <div className="ml-auto relative inline-flex items-stretch rounded-lg border border-white/10">
               <button
-                onClick={handleBranch}
-                disabled={branching || priors.length === 0}
-                className="px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                title="Branch a new stream on this perspective — priors leading to a new line of thought"
+                onClick={() => setGuide(true)}
+                disabled={branching || suggestingPrior}
+                aria-haspopup="dialog"
+                aria-expanded={guide}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-l-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent ${guide ? 'bg-white/10 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}`}
+                title="Guide the AI — set an optional direction, then add a branch or a prior with it."
               >
-                {branching ? 'Branching…' : 'Branch'}
-              </button>
-              <button
-                onClick={handleSuggestPrior}
-                disabled={suggestingPrior}
-                className="px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent border-l border-white/10"
-                title="Suggest the next prior from this perspective's inner world"
-              >
-                {suggestingPrior ? 'Thinking…' : 'Suggest'}
+                <IconSparkle size={11} />
+                {branching ? 'Branching…' : suggestingPrior ? 'Thinking…' : 'Guide'}
               </button>
               <button
                 onClick={addPrior}
                 disabled={!draft.trim() || scoring}
-                className="px-3.5 py-1.5 text-[12px] font-semibold bg-white/10 hover:bg-white/16 text-text-primary transition-colors disabled:opacity-30 disabled:hover:bg-white/10 border-l border-white/10"
+                className="px-3.5 py-1.5 text-[12px] font-semibold bg-white/10 hover:bg-white/16 text-text-primary transition-colors disabled:opacity-30 disabled:hover:bg-white/10 border-l border-white/10 rounded-r-lg"
               >
-                {scoring ? 'Scoring…' : 'Enter Prior'}
+                {scoring ? 'Scoring…' : 'Add'}
               </button>
+              {guide && (
+                <StreamGuidePopover
+                  branching={branching}
+                  suggesting={suggestingPrior}
+                  canBranch={priors.length > 0}
+                  onClose={() => setGuide(false)}
+                  onBranch={(direction) => { setGuide(false); handleBranch(direction); }}
+                  onSuggest={(direction) => { setGuide(false); handleSuggestPrior(direction); }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1242,6 +1257,84 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Guide popover for the stream AI actions — collects an optional free-text
+ *  direction that steers the AI, then offers the choice to Add Branch or Add
+ *  Prior with that steer (mirroring the scene-plan generate affordance).
+ *  Anchored above the combo button group. Blank steer = unguided. Closes on
+ *  Escape, outside click, or either action. */
+function StreamGuidePopover({
+  branching, suggesting, canBranch, onBranch, onSuggest, onClose,
+}: {
+  /** AI branch in flight — disables both actions. */
+  branching: boolean;
+  /** AI prior-suggestion in flight — disables both actions. */
+  suggesting: boolean;
+  /** Branch needs ≥1 prior to grow from. */
+  canBranch: boolean;
+  onBranch: (direction?: string) => void;
+  onSuggest: (direction?: string) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const busy = branching || suggesting;
+  const dir = () => text.trim() || undefined;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown); };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      className="absolute bottom-full right-0 mb-2 z-50 w-80 rounded-lg border border-white/12 bg-bg-base shadow-2xl shadow-black/60 p-3"
+    >
+      <div className="flex items-center gap-1.5 mb-2">
+        <IconSparkle size={12} className="text-accent/70" />
+        <span className="text-[11px] font-semibold text-text-primary">Guide</span>
+        <button onClick={onClose} className="ml-auto text-text-dim/40 hover:text-text-primary transition-colors" title="Close">
+          <IconClose size={12} />
+        </button>
+      </div>
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !busy) onSuggest(dir()); }}
+        placeholder="Optional direction to steer the AI… e.g. “focus on the rival's next move”. Leave blank for unguided."
+        rows={3}
+        className="w-full bg-bg-field/60 border border-white/10 rounded px-2.5 py-1.5 text-[12px] text-text-primary outline-none focus:border-accent/40 resize-none leading-relaxed"
+      />
+      {/* Combo button — two equal-width segments joined into one full-width
+          control. Left commits a branch, right drafts the next prior; both
+          carry the steer typed above. */}
+      <div className="mt-2 flex items-stretch w-full rounded-md border border-white/10 overflow-hidden">
+        <button
+          onClick={() => onBranch(dir())}
+          disabled={busy || !canBranch}
+          title={canBranch ? 'Open a new branching stream steered by this direction' : 'Add a prior first — a branch grows from the priors so far'}
+          className="flex-1 inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          {branching ? 'Branching…' : 'New Branch'}
+        </button>
+        <button
+          onClick={() => onSuggest(dir())}
+          disabled={busy}
+          title="Draft the next prior steered by this direction"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[12px] font-semibold bg-white/10 hover:bg-white/16 text-text-primary transition-colors disabled:opacity-40 border-l border-white/10"
+        >
+          {suggesting ? 'Thinking…' : 'New Prior'}
+        </button>
+      </div>
     </div>
   );
 }

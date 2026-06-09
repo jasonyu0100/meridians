@@ -100,7 +100,7 @@ const SUGGEST_QUESTION_SYSTEM = `You help a team member open a BELIEF STREAM —
 
 CRITICAL — adopt the PERSPECTIVE strictly. The question must be what THIS perspective would actually ask, framed around ITS OWN goals, stake, leverage, and information. Do NOT default to the story's protagonist or main character: if the perspective is a side / minor / rival / antagonist character — or a non-character vantage (location, artifact, faction, the narrator) — the question must be about what THAT vantage cares about, in THAT vantage's interest. The CONTINUITY block IS this perspective's own situation — anchor on it. The WORLD context is shared background, not the subject; don't let it pull you toward whoever the story centres on.
 
-A strong question is: genuinely OPEN (the answer is honestly uncertain right now), CONSEQUENTIAL to this perspective, DECISION-RELEVANT, and resolves through SEVERAL real branches — it carves the future at a real joint (who/what prevails, degree, mechanism, magnitude band, timing). Avoid: yes/no trivialities, questions already settled by the continuity, vague mood questions, and restatements of the situation. If ALREADY-OPEN questions are listed, propose something genuinely DIFFERENT — a distinct uncertainty, not a rephrasing.
+A strong question is: SHORT (one plain sentence, ideally under ~15 words — a clean headline, not a loaded multi-clause sentence with caveats baked in), genuinely OPEN (the answer is honestly uncertain right now), CONSEQUENTIAL to this perspective, DECISION-RELEVANT, and resolves through SEVERAL real branches — it carves the future at a real joint (who/what prevails, degree, mechanism, magnitude band, timing). Avoid: yes/no trivialities, questions already settled by the continuity, vague mood questions, restatements of the situation, and long compound questions that smuggle in their own answer. If ALREADY-OPEN questions are listed, propose something genuinely DIFFERENT — a distinct uncertainty, not a rephrasing.
 
 Output ONLY JSON: {"question":"..."}`;
 
@@ -141,7 +141,15 @@ export async function suggestIntuition(args: {
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
     args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
   ].filter(Boolean).join('\n\n');
-  const sys = `You write the first INTUITION on an open QUESTION strictly from the given PERSPECTIVE — a 1–2 sentence gut read (their lean + why) in first person AS that perspective, framed around its own goals/stake/information. Anchor on the CONTINUITY (this perspective's own situation); do NOT default to the protagonist or main character — the WORLD context is only shared background. Output ONLY JSON: {"intuition":"..."}`;
+  const sys = `You write the first INTUITION on an open QUESTION strictly from the given PERSPECTIVE — a RAW gut read in first person AS that perspective. This is a prior, not an essay: 1–2 short, plain sentences stating where they lean and the one concrete reason, the way someone actually thinks it to themselves.
+
+HARD RULES:
+- NO meta-preamble. Never describe your own role or goals ("As the Narrator, my primary goal is…", "My objective here is…"). Just say the read.
+- NO consultant / strategy-deck register. Ban abstractions like "optimal sequencing", "de-risk", "maximize eventual impact", "robust revenue stream", "proving ground". Plain words.
+- Lead with the lean. Start with the actual call ("Probably X.", "I doubt it.", "Leaning toward…") then the gut reason.
+- Concrete and grounded in THIS perspective's situation, not generic. Anchor on the CONTINUITY; do NOT default to the protagonist — the WORLD context is only shared background.
+
+Output ONLY JSON: {"intuition":"..."}`;
   const raw = await callGenerate(user, sys, undefined, 'suggestIntuition', PREDICTIVE_MODEL, 0);
   const parsed = parseJson(raw, 'suggestIntuition') as { intuition?: unknown };
   return typeof parsed.intuition === 'string' ? parsed.intuition.trim() : '';
@@ -163,6 +171,10 @@ export async function suggestPrior(args: {
   narrativeContext?: string;
   /** AI-player persona driving this perspective — shapes lean, framing, risk. */
   personaContext?: string;
+  /** Optional operator steer — free-text direction the suggestion should aim
+   *  toward (e.g. "focus on the rival's next move"). Shapes WHAT the next prior
+   *  is about; the in-vantage / genuinely-new disciplines still hold. */
+  direction?: string;
 }): Promise<string> {
   const dist = args.currentProbs?.length === args.outcomes.length
     ? args.outcomes.map((o, i) => `${o}: ${Math.round((args.currentProbs![i] ?? 0) * 100)}%`).join(', ')
@@ -170,11 +182,18 @@ export async function suggestPrior(args: {
   const priorsBlock = args.priors.length ? args.priors.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(none yet)';
   const sys = `You propose the NEXT prior for a belief stream — a fresh observation/update the PERSPECTIVE would record next, strictly from ITS vantage (its goals, stake, information, voice; first person as them). Do NOT default to the protagonist or main character; the CONTINUITY block is this perspective's own situation, the WORLD is shared background.
 
-Read the PRIORS SO FAR as a chain of reasoning and extract the NEXT MOST LOGICAL prior — the development, consequence, move, or consideration that naturally follows from where the thinking has reached. It MUST be genuinely new: never a restatement, paraphrase, or re-angle of any existing prior. If an obvious next step is already covered, advance past it to the one that isn't. Ground the new prior in concrete detail from the available context (continuity, world, current stance) rather than a vague gesture. 1–3 sentences. Output ONLY JSON: {"prior":"..."}`;
+Read the PRIORS SO FAR as a chain of reasoning and extract the NEXT MOST LOGICAL prior — the development, consequence, move, or consideration that naturally follows from where the thinking has reached. It MUST be genuinely new: never a restatement, paraphrase, or re-angle of any existing prior. If an obvious next step is already covered, advance past it to the one that isn't. Ground the new prior in concrete detail from the available context (continuity, world, current stance) rather than a vague gesture. 1–3 sentences.
+
+When an OPERATOR DIRECTION is given, steer the next prior toward what it asks — the subject, angle, or development it points at — while keeping it in THIS perspective's voice, genuinely new, and honest to the stance. The direction sets the topic, not the conclusion; never let it become a restatement or an out-of-vantage leap.
+
+KEEP IT RAW: this is a prior, not an essay. NO meta-preamble about your own role or goals ("As the X, my goal is…"). NO consultant / strategy-deck register or abstractions ("optimal sequencing", "de-risk", "maximize impact"). Plain words, the way the perspective actually thinks it.
+
+Output ONLY JSON: {"prior":"..."}`;
   const user = [
     `QUESTION: ${args.question}`,
     `OUTCOMES: ${JSON.stringify(args.outcomes)}`,
     `CURRENT STANCE: ${dist}`,
+    args.direction?.trim() ? `OPERATOR DIRECTION (steer the next prior toward this; optional): ${args.direction.trim()}` : '',
     args.perspectiveLabel ? `PERSPECTIVE: ${args.perspectiveLabel}` : '',
     personaBlock(args.personaContext),
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
@@ -203,16 +222,23 @@ export async function suggestBranchStream(args: {
   narrativeContext?: string;
   /** AI-player persona driving this perspective — shapes lean, framing, risk. */
   personaContext?: string;
+  /** Optional operator steer — free-text direction the branch question should
+   *  aim toward. Shapes WHICH sibling uncertainty is surfaced; the distinct /
+   *  open / in-vantage / grows-from-priors disciplines still hold. */
+  direction?: string;
 }): Promise<{ question: string; intuition: string }> {
   const priorsBlock = args.priors.length ? args.priors.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(none yet)';
   const sys = `A team member is recording priors on an open QUESTION from a PERSPECTIVE, and the thinking has BRANCHED — the priors so far have surfaced a NEW, related-but-separate uncertainty this perspective would now also want to track as its own belief stream. Propose that branching question plus a first intuition on it, strictly from THIS perspective's vantage (its goals, stake, information, voice; first person for the intuition). Do NOT default to the protagonist or main character.
 
-The branch question must: grow naturally OUT of the priors so far (a sibling line the reasoning opened up, not a non-sequitur), be genuinely DISTINCT from the originating question and any ALREADY-OPEN questions (a different uncertainty, not a rephrasing), be honestly OPEN and consequential to this perspective, and resolve through several real branches. The intuition is a 1–2 sentence gut read (lean + why).
+The branch question must: be SHORT (one plain sentence, ideally under ~15 words — a clean headline, not a loaded multi-clause question), grow naturally OUT of the priors so far (a sibling line the reasoning opened up, not a non-sequitur), be genuinely DISTINCT from the originating question and any ALREADY-OPEN questions (a different uncertainty, not a rephrasing), be honestly OPEN and consequential to this perspective, and resolve through several real branches. The intuition is a 1–2 sentence gut read (lean + why) — raw and plain, no meta-preamble or strategy-deck abstractions.
+
+When an OPERATOR DIRECTION is given, steer the branch toward the line it points at — pick the sibling uncertainty nearest that direction — while keeping it distinct, open, grown from the priors, and in THIS perspective's vantage. The direction chooses which branch to open, not its answer.
 
 Output ONLY JSON: {"question":"...","intuition":"..."}`;
   const user = [
     `ORIGINATING QUESTION: ${args.fromQuestion}`,
     `PRIORS SO FAR (the thinking that branched — grow the new question OUT of these):\n${priorsBlock}`,
+    args.direction?.trim() ? `OPERATOR DIRECTION (steer the branch toward this; optional): ${args.direction.trim()}` : '',
     args.existingQuestions?.length ? `ALREADY OPEN (stay DISTINCT from every one of these):\n${args.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}` : '',
     args.perspectiveLabel ? `PERSPECTIVE: ${args.perspectiveLabel}` : '',
     personaBlock(args.personaContext),
