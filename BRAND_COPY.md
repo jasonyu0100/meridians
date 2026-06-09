@@ -2,7 +2,7 @@
 
 > The copy bank: the lines that capture Meridians, clustered for reuse across decks, landing pages, and the [manifesto](src/app/manifesto/page.tsx). The frame is a **cognitive operating system for teams** — it *runs* judgement (not stores files), *holds the state* (not forgets), and *compounds* (the moat) — landing on the mechanic (commitment over talk), the human edge, the proof, the Game Master, and the promise.
 >
-> **Canonical lines — keep verbatim:** *"Anyone can say it. A card makes you pay for it."* · *"You play the actor that produces the outcome, not the price of it."* · *"Practise the future. Earn the morning the surprise lands."* Vocabulary lives in [LANGUAGE.md](LANGUAGE.md); the engine claims they rest on live in the manifesto.
+> **Canonical lines — keep verbatim:** *"Anyone can say it. A card makes you pay for it."* · *"You play the actor that produces the outcome, not the price of it."* · *"Streams make the qualitative quantitative."* · *"Practise the future. Earn the morning the surprise lands."* Vocabulary lives in [LANGUAGE.md](LANGUAGE.md); the engine claims they rest on live in the manifesto.
 
 ---
 
@@ -71,6 +71,20 @@ The vision thesis, exercised two ways — two sides of one coin:
 - Capture is what reality *is*. Conviction is how it *could go*.
 - Capture records the vision. Conviction runs it.
 - Capture is async; Conviction is live. Two tempos, one substrate.
+
+## Calibration — judgement made measurable
+
+The proof layer: streams turn judgement into a tracked number, then reality grades it.
+
+- Streams make the qualitative quantitative.
+- A prior is a sentence. A stream turns it into a number you can track.
+- An idea meritocracy you can finally audit.
+- Bridgewater weighted opinions by track record. We compute the track record.
+- We don't record who turned out right. We score the probability you committed before the fact.
+- Back-test your beliefs against the reality that arrived.
+- History is the calibration gym: replay a decision whose answer is known, and find out whose judgement was real.
+- Alignment and diversity are the same measurement, read two ways.
+- The senior voice carries because it's senior. A Brier score doesn't care who you are.
 
 ## The day-one hook — the coordination drill
 

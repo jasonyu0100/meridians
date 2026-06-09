@@ -4868,7 +4868,7 @@ export default function PaperPage() {
               out.
             </P>
             <P>
-              <B>Who it&apos;s for.</B> Six honest use cases:
+              <B>Who it&apos;s for.</B> Seven honest use cases:
             </P>
             <ul className="mt-3 space-y-2 text-[13px] text-white/55 leading-[1.85]">
               <li className="flex gap-2">
@@ -4923,6 +4923,17 @@ export default function PaperPage() {
                   departing experts leave their committed calls behind.
                 </span>
               </li>
+              <li className="flex gap-2">
+                <span className="text-white/25 shrink-0">·</span>
+                <span>
+                  <B>Historical rehearsal.</B> A team replays a decision whose
+                  outcome is already known &mdash; a crisis, a famous deal, a
+                  market break &mdash; capturing priors under the original fog,
+                  then scoring them against what happened. Calibration training
+                  with ground truth, and the cleanest way to evaluate a
+                  room&apos;s judgement.
+                </span>
+              </li>
             </ul>
             <P>
               <B>What practising buys.</B> Reduced detail on
@@ -4933,6 +4944,84 @@ export default function PaperPage() {
               drops, fifty rounds of calibration, and the sharpened
               substrate that emerges from them. The team that practises
               earns the morning the surprise lands.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
+              Calibration
+            </h3>
+            <P>
+              <B>Streams make the qualitative quantitative.</B> A prior is a
+              sentence of judgement &mdash; <em>&ldquo;early customers will be
+              high-stakes enterprises; only they can afford to care&rdquo;</em>.
+              The stream scores it into a stance, and a chain of priors becomes a
+              tracked belief: a distribution that moves over time. That one move
+              makes everything else measurable. Each stream is an <B>idea under
+              test</B> &mdash; you see which hold, which decay, which get
+              overturned, and (against the reality write-back) which were
+              calibrated. And since every seat keeps its own stream, the distance
+              between them is a number: read one way it is <B>alignment</B> (the
+              room actually converged, not deferred to the senior voice), the
+              other it is <B>diversity</B> (real disagreement, kept rather than
+              averaged). The same number lets you trust convergence when it is
+              earned and protect dissent when consensus is collapsing too soon.
+            </P>
+            <P>
+              <B>History is the calibration gym.</B> You cannot grade a strategic
+              call for years &mdash; unless it already happened. Run Conviction
+              on a past crisis: each seat captures priors under the original fog,
+              no peeking, then scores against what actually occurred. Clean,
+              immediate feedback on judgement itself, with ground truth &mdash;
+              the fast loop the slow domains never give you, and the cleanest
+              proof of the whole thesis.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
+              Idea meritocracy
+            </h3>
+            <P>
+              <B>The practice has a name &mdash; an idea meritocracy you can
+              finally audit.</B> The aim is old: weight a decision by the proven
+              accuracy of the people behind it, not their seniority. Bridgewater
+              built a culture on it &mdash; record everything, surface
+              disagreement, weight by track record.
+              <Cite id="dalio2017" label="Dalio 2017" /> What it could not close
+              was proof: with nothing separating conviction from credibility,
+              believability drifts back to rank &mdash; the senior voice carries
+              because it is senior, and no one can show otherwise because no one
+              kept score. Capture is that missing ledger.
+            </P>
+            <P>
+              <B>Freeze the belief now; record what reality did later.</B> At
+              commit, Capture freezes each seat&apos;s probability over a
+              thread&apos;s outcomes &mdash; a paid, timestamped forecast, not a
+              free opinion. Later the game master records what actually happened
+              as a <B>confirmed</B> resolution, walled in software from the{" "}
+              <B>believed</B> merge the room played, so the ledger can&apos;t
+              grade itself. <B>Post-hoc Brier scoring</B>
+              <Cite id="brier1950" label="Brier 1950" />
+              <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />{" "}
+              then scores the gap, per seat, across every resolved thread. Only
+              the outcome is post-hoc &mdash; the belief was sealed beforehand,
+              or the score means nothing. It is not &ldquo;was she
+              right?&rdquo; (lossy and luck-ridden on one call): Brier scores the
+              probability committed <em>up front</em>, rewards calibration over
+              many questions, and can&apos;t be gamed by hedging. Aggregate it
+              and each seat earns a <em>computed</em> believability weight
+              &mdash; the numbered track record Bridgewater never had. The
+              reasoning stays attached, so a bad score is auditable: reopen it
+              and ask what that vantage missed.
+            </P>
+            <P>
+              <B>This back-testing of belief is the enterprise sell.</B> A
+              serious room is not buying a forecast &mdash; it is buying its own
+              audited judgement: weight earned by calibration, not title, and the
+              record client-owned. The limit, stated plainly: it bites only where
+              threads resolve observably (a market move, a filing, a
+              regulator&apos;s call), the signal is in the corpus not the single
+              event, and it leans on the GM writing reality back. The slow
+              one-shot calls still resolve late and murky &mdash; but the fast
+              loops inside them compound a real record, and that record is what a
+              table of senior people has never been able to put between them.
             </P>
           </Section>
 
@@ -5489,6 +5578,19 @@ export default function PaperPage() {
                   {
                     label: "Penguin Random House",
                     href: "https://www.penguinrandomhouse.com/books/227815/superforecasting-by-philip-e-tetlock-and-dan-gardner/",
+                  },
+                ]}
+              />
+              <Ref
+                id="dalio2017"
+                authors="Dalio, R."
+                year="2017"
+                title="Principles: Life and Work"
+                venue="Simon & Schuster"
+                links={[
+                  {
+                    label: "Publisher",
+                    href: "https://www.simonandschuster.com/books/Principles/Ray-Dalio/9781501124020",
                   },
                 ]}
               />
