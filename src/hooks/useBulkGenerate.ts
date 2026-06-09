@@ -51,7 +51,7 @@ export function useBulkGenerate() {
   }, []);
 
   // Run bulk generation with sliding window concurrency
-  const runBulk = useCallback(async (mode: BulkMode, sceneIds: string[]) => {
+  const runBulk = useCallback(async (mode: BulkMode, sceneIds: string[], targetAll = false) => {
     const { activeNarrative, resolvedEntryKeys } = stateRef.current;
     if (!activeNarrative || sceneIds.length === 0) return;
 
@@ -87,23 +87,20 @@ export function useBulkGenerate() {
       const resolvedPlan = resolvePlanForBranch(scene, activeBranchId, branches);
       const { prose: resolvedProse } = resolveProseForBranch(scene, activeBranchId, branches);
 
-      // Dependency gates — these are structural, not "already exists" gates.
+      // Dependency gates — structural, ALWAYS enforced regardless of focus.
       //   'plan' + 'prose' source: reverse-engineering requires prose to exist.
       //   'prose' + 'structure' source: forward prose generation requires a plan.
       if (mode === 'plan' && planSource === 'prose' && !resolvedProse) return;
       if (mode === 'prose' && planSource === 'structure' && !resolvedPlan) return;
-      // Game analysis prefers prose, falls back to plan, and will read
-      // scene structure (summary + deltas) when neither exists — so every
-      // scene is eligible. Skip scenes that already have an analysis:
-      // unlike plan/prose, game analyses aren't versioned, so re-running
-      // would just overwrite. Users can Clear + Generate per-scene to
-      // force regeneration.
-      if (mode === 'game' && scene.gameAnalysis) return;
-      // Questions read prose → scene structure, so every scene is eligible.
-      // Skip scenes that already have a bank — like game analyses, question
-      // banks aren't versioned, so re-running would just overwrite. Users can
-      // Clear + Generate per-scene to force regeneration.
-      if (mode === 'questions' && scene.questions?.length) return;
+      // Existence gates — the FOCUS. By default the run fills gaps (skips
+      // scenes that already carry the artifact); `targetAll` regenerates them.
+      // (Plan/prose write a new version; game/questions overwrite in place.)
+      if (!targetAll) {
+        if (mode === 'plan' && resolvedPlan?.beats?.length) return;
+        if (mode === 'prose' && resolvedProse) return;
+        if (mode === 'game' && scene.gameAnalysis) return;
+        if (mode === 'questions' && scene.questions?.length) return;
+      }
 
       const statusVerb =
         mode === 'plan' ? (planSource === 'prose' ? 'Reverse-engineering plan for' : 'Planning') :
@@ -261,16 +258,17 @@ export function useBulkGenerate() {
     }, 1500);
   }, [dispatch, updateRunState]);
 
-  const start = useCallback((mode: BulkMode, range: SceneRange = null) => {
+  const start = useCallback((mode: BulkMode, range: SceneRange = null, targetAll = false) => {
     const { activeNarrative, resolvedEntryKeys } = stateRef.current;
     if (!activeNarrative) return;
 
     const planSource = activeNarrative.storySettings?.planExtractionSource ?? 'structure';
     const keysInRange = filterKeysBySceneRange(resolvedEntryKeys, activeNarrative, range);
 
-    // Find every scene that bulk mode will regenerate. Queue membership is
-    // about dependencies, not "already exists" — bulk always writes new
-    // versions, leaving prior versions in history.
+    // Queue membership: dependency gates ALWAYS apply (a reverse plan needs
+    // prose, forward prose needs a plan). The "already exists" gate is the
+    // FOCUS: by default the run fills gaps (skips scenes that already have the
+    // artifact); `targetAll` overrides it to regenerate every eligible scene.
     const scenesToProcess: string[] = [];
     for (const key of keysInRange) {
       const entry = resolveEntry(activeNarrative, key);
@@ -283,32 +281,23 @@ export function useBulkGenerate() {
       const { prose: resolvedProse } = resolveProseForBranch(scene, activeBranchId, branches);
 
       if (mode === 'plan') {
-        // Structure source: any scene can be forward-generated.
-        // Prose source: needs prose to reverse-engineer from.
-        if (planSource === 'structure' || resolvedProse) {
-          scenesToProcess.push(scene.id);
-        }
+        // Dependency: prose source needs prose to reverse-engineer from.
+        const depOk = planSource === 'structure' || !!resolvedProse;
+        const exists = !!resolvedPlan?.beats?.length;
+        if (depOk && (targetAll || !exists)) scenesToProcess.push(scene.id);
       } else if (mode === 'prose') {
-        // Structure source: prose generation requires a plan first.
-        // Prose source: prose can be generated directly.
-        if (planSource === 'prose' || resolvedPlan) {
-          scenesToProcess.push(scene.id);
-        }
+        // Dependency: structure source needs a plan to write from.
+        const depOk = planSource === 'prose' || !!resolvedPlan;
+        const exists = !!resolvedProse;
+        if (depOk && (targetAll || !exists)) scenesToProcess.push(scene.id);
       } else if (mode === 'game') {
-        // Game analysis reads prose → plan → scene structure (in that
-        // order), so every scene is eligible. Skip scenes that already
-        // have an analysis — unlike plan/prose, game analyses aren't
-        // versioned.
-        if (!scene.gameAnalysis) {
-          scenesToProcess.push(scene.id);
-        }
+        // Game analysis reads prose → plan → structure, so every scene is
+        // eligible. Gap-fill skips scenes that already carry one.
+        if (targetAll || !scene.gameAnalysis) scenesToProcess.push(scene.id);
       } else if (mode === 'questions') {
-        // Questions read prose → scene structure, so every scene is
-        // eligible. Skip scenes that already have a bank — like game
-        // analyses, question banks aren't versioned.
-        if (!scene.questions?.length) {
-          scenesToProcess.push(scene.id);
-        }
+        // Questions read prose → structure, so every scene is eligible.
+        // Gap-fill skips scenes that already carry a bank.
+        if (targetAll || !scene.questions?.length) scenesToProcess.push(scene.id);
       }
     }
 
@@ -330,7 +319,7 @@ export function useBulkGenerate() {
     setRunState(initialState);
     runStateRef.current = initialState;
 
-    runBulk(mode, scenesToProcess);
+    runBulk(mode, scenesToProcess, targetAll);
   }, [runBulk]);
 
   const pause = useCallback(() => {

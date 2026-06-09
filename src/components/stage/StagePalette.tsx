@@ -1064,9 +1064,9 @@ export default function StagePalette({
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
                         title: "Bulk generate plans — pick range",
                       }}
-                      onStart={(r) =>
-                        window.dispatchEvent(
-                          new CustomEvent("canvas:bulk-plan", { detail: { range: r } }),
+                      onStart={(r, all) =>
+                          window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-plan", { detail: { range: r, all } }),
                         )
                       }
                       startLabel="Start plan generation"
@@ -1143,9 +1143,9 @@ export default function StagePalette({
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
                         title: "Bulk generate prose — pick range (requires plans)",
                       }}
-                      onStart={(r) =>
-                        window.dispatchEvent(
-                          new CustomEvent("canvas:bulk-prose", { detail: { range: r } }),
+                      onStart={(r, all) =>
+                          window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-prose", { detail: { range: r, all } }),
                         )
                       }
                       startLabel="Start prose generation"
@@ -1193,9 +1193,9 @@ export default function StagePalette({
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
                         title: "Analyse scenes — pick range (sliding-window parallel)",
                       }}
-                      onStart={(r) =>
-                        window.dispatchEvent(
-                          new CustomEvent("canvas:bulk-game", { detail: { range: r } }),
+                      onStart={(r, all) =>
+                          window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-game", { detail: { range: r, all } }),
                         )
                       }
                       startLabel="Start game analysis"
@@ -1245,9 +1245,9 @@ export default function StagePalette({
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
                         title: "Bulk generate audio — pick range (requires prose)",
                       }}
-                      onStart={(r) =>
-                        window.dispatchEvent(
-                          new CustomEvent("canvas:bulk-audio", { detail: { range: r } }),
+                      onStart={(r, all) =>
+                          window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-audio", { detail: { range: r, all } }),
                         )
                       }
                       startLabel="Start audio generation"
@@ -1294,9 +1294,9 @@ export default function StagePalette({
                         className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
                         title: "Extract questions across scenes — pick range (sliding-window parallel)",
                       }}
-                      onStart={(r) =>
-                        window.dispatchEvent(
-                          new CustomEvent("canvas:bulk-questions", { detail: { range: r } }),
+                      onStart={(r, all) =>
+                          window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-questions", { detail: { range: r, all } }),
                         )
                       }
                       startLabel="Start question extraction"

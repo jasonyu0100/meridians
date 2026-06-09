@@ -45,7 +45,7 @@ export function useBulkAudioGenerate() {
   }, []);
 
   // Run bulk audio generation with sliding window concurrency
-  const runBulk = useCallback(async (sceneIds: string[]) => {
+  const runBulk = useCallback(async (sceneIds: string[], targetAll = false) => {
     const { activeNarrative, viewState } = stateRef.current;
     const { activeBranchId } = viewState;
     if (!activeNarrative || !activeBranchId || sceneIds.length === 0) return;
@@ -71,10 +71,11 @@ export function useBulkAudioGenerate() {
       // Resolve prose for current branch
       const { prose } = resolveProseForBranch(scene, activeBranchId, branches);
 
-      // Prose is a hard dependency — but existing audio is NOT a skip
-      // condition. Bulk audio always regenerates so the latest prose is
-      // reflected in speech.
+      // Prose is a hard dependency (always enforced). Existing audio is the
+      // FOCUS gate: gap-fill skips scenes that already have audio; `targetAll`
+      // regenerates them so the latest prose is reflected in speech.
       if (!prose) return;
+      if (!targetAll && scene.audioUrl) return;
 
       updateRunState({
         statusMessage: `Generating audio for "${scene.summary.slice(0, 40)}..."`,
@@ -139,7 +140,7 @@ export function useBulkAudioGenerate() {
     }, 1500);
   }, [dispatch, updateRunState]);
 
-  const start = useCallback((range: SceneRange = null) => {
+  const start = useCallback((range: SceneRange = null, targetAll = false) => {
     const { activeNarrative, resolvedEntryKeys, viewState } = stateRef.current;
     const { activeBranchId } = viewState;
     if (!activeNarrative || !activeBranchId) return;
@@ -147,8 +148,9 @@ export function useBulkAudioGenerate() {
     const branches = activeNarrative.branches;
     const keysInRange = filterKeysBySceneRange(resolvedEntryKeys, activeNarrative, range);
 
-    // Find every scene bulk audio will regenerate — any scene with prose.
-    // Existing audio is overwritten so regeneration tracks the latest prose.
+    // Any scene with prose is eligible. By default the run fills gaps (skips
+    // scenes that already have audio); `targetAll` regenerates them so audio
+    // tracks the latest prose.
     const scenesToProcess: string[] = [];
     for (const key of keysInRange) {
       const entry = resolveEntry(activeNarrative, key);
@@ -156,7 +158,7 @@ export function useBulkAudioGenerate() {
       const scene = entry as Scene;
 
       const { prose } = resolveProseForBranch(scene, activeBranchId, branches);
-      if (prose) {
+      if (prose && (targetAll || !scene.audioUrl)) {
         scenesToProcess.push(scene.id);
       }
     }
@@ -178,7 +180,7 @@ export function useBulkAudioGenerate() {
     setRunState(initialState);
     runStateRef.current = initialState;
 
-    runBulk(scenesToProcess);
+    runBulk(scenesToProcess, targetAll);
   }, [runBulk]);
 
   const pause = useCallback(() => {

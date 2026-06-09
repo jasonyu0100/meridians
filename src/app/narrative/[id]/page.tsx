@@ -166,11 +166,15 @@ export default function NarrativeWorkspace() {
     function readRange(e: Event): SceneRange {
       return (e as CustomEvent<{ range?: SceneRange }>).detail?.range ?? null;
     }
-    function handleBulkPlan(e: Event) { bulk.start('plan', readRange(e)); }
-    function handleBulkProse(e: Event) { bulk.start('prose', readRange(e)); }
-    function handleBulkGame(e: Event) { bulk.start('game', readRange(e)); }
-    function handleBulkQuestions(e: Event) { bulk.start('questions', readRange(e)); }
-    function handleBulkAudio(e: Event) { bulkAudio.start(readRange(e)); }
+    // `all` = regenerate existing too; absent/false = fill gaps only.
+    function readAll(e: Event): boolean {
+      return (e as CustomEvent<{ all?: boolean }>).detail?.all === true;
+    }
+    function handleBulkPlan(e: Event) { bulk.start('plan', readRange(e), readAll(e)); }
+    function handleBulkProse(e: Event) { bulk.start('prose', readRange(e), readAll(e)); }
+    function handleBulkGame(e: Event) { bulk.start('game', readRange(e), readAll(e)); }
+    function handleBulkQuestions(e: Event) { bulk.start('questions', readRange(e), readAll(e)); }
+    function handleBulkAudio(e: Event) { bulkAudio.start(readRange(e), readAll(e)); }
     window.addEventListener('canvas:bulk-plan', handleBulkPlan);
     window.addEventListener('canvas:bulk-prose', handleBulkProse);
     window.addEventListener('canvas:bulk-game', handleBulkGame);

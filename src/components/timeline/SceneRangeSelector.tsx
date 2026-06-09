@@ -55,7 +55,10 @@ export default function SceneRangeSelector({
   range: SceneRange;
   onChange: (range: SceneRange) => void;
   trigger?: { icon: ReactNode; className?: string; title?: string };
-  onStart?: (range: SceneRange) => void;
+  /** Start a bulk run over the chosen range. `targetAll` = regenerate even
+   *  scenes that already have the focus's artifact; when false (default) the
+   *  run fills gaps only — scenes missing that artifact. */
+  onStart?: (range: SceneRange, targetAll: boolean) => void;
   startLabel?: string;
   placement?: 'top' | 'bottom';
   /** Which generation surface the picker is being used FOR — drives the
@@ -71,6 +74,8 @@ export default function SceneRangeSelector({
   const branches = narrative?.branches ?? {};
 
   const [open, setOpen] = useState(false);
+  // Gap-fill by default; the operator can opt into regenerating existing.
+  const [targetAll, setTargetAll] = useState(false);
   const popoutRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [popoutPos, setPopoutPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
@@ -297,19 +302,54 @@ export default function SceneRangeSelector({
             </span>
           </div>
 
-          {/* Optional Start CTA — bulk auto modes require an explicit confirm */}
-          {onStart && (
-            <button
-              type="button"
-              onClick={() => {
-                onStart(range);
-                setOpen(false);
-              }}
-              className="w-full text-[11px] font-semibold px-2 py-1.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition-colors uppercase tracking-wider"
-            >
-              {startLabel ?? `Start on ${rangeStats.count} scene${rangeStats.count !== 1 ? 's' : ''}`}
-            </button>
-          )}
+          {/* Optional Start CTA — bulk auto modes require an explicit confirm.
+              The count reflects the preset: gap-fill targets only scenes
+              MISSING the focus's artifact; "target all" regenerates every
+              scene in range. */}
+          {onStart && (() => {
+            const present =
+              focus === 'plan' ? rangeStats.plans :
+              focus === 'prose' ? rangeStats.prose :
+              focus === 'audio' ? rangeStats.audio :
+              focus === 'game' ? rangeStats.games :
+              focus === 'questions' ? rangeStats.questions : 0;
+            const missing = Math.max(0, rangeStats.count - present);
+            const targetCount = focus ? (targetAll ? rangeStats.count : missing) : rangeStats.count;
+            const nothingToFill = !!focus && !targetAll && targetCount === 0;
+            return (
+              <div className="space-y-2 pt-1 border-t border-white/5">
+                {focus && (
+                  <label className="flex items-center gap-2 text-[10px] text-text-dim cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={targetAll}
+                      onChange={(e) => setTargetAll(e.target.checked)}
+                      className="accent-amber-500 w-3 h-3"
+                    />
+                    <span>
+                      Target all <span className="text-text-dim/50">— regenerate existing (off: fill gaps only)</span>
+                    </span>
+                  </label>
+                )}
+                <button
+                  type="button"
+                  disabled={nothingToFill}
+                  onClick={() => { onStart(range, targetAll); setOpen(false); }}
+                  className={`w-full text-[11px] font-semibold px-2 py-1.5 rounded border transition-colors uppercase tracking-wider ${
+                    nothingToFill
+                      ? 'bg-white/5 text-text-dim/40 border-white/10 cursor-not-allowed'
+                      : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/30'
+                  }`}
+                >
+                  {nothingToFill
+                    ? 'Nothing missing in range'
+                    : startLabel
+                      ? `${startLabel} · ${targetCount}`
+                      : `Generate ${targetCount} scene${targetCount !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            );
+          })()}
         </div>,
         document.body,
       )}
