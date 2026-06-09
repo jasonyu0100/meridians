@@ -2,7 +2,7 @@
 
 > **Generated** by `scripts/gen-tree.mjs` — structure is read from the filesystem and each file's description is derived from its own leading comment (else a name-based heuristic). No hand-maintained map; re-run after adding files: `node scripts/gen-tree.mjs`. Companion to [MERMAID.md](MERMAID.md). Stack: Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3 · IndexedDB.
 >
-> 509 files · 501 described from their own header comment, the rest from filename heuristics.
+> 512 files · 504 described from their own header comment, the rest from filename heuristics.
 
 ```xml
 <repo name="meridians">
@@ -51,6 +51,7 @@
       <file name="core-language.test.ts" desc="Core-language guard. Enforces the canonical vocabulary documented in src/lib/prompts/CORE_LANGUAGE.md. These…"/>
       <file name="curriculum-restructure.test.ts" desc="Tests for the curriculum-restructure sanitiser — the id-stable, cross-branch"/>
       <file name="embeddings.test.ts" desc="Embedding System Integration Tests Tests cover: 1"/>
+      <file name="entity-ref.test.ts" desc="Tests for entity-ref — bracketed entity citations in chat / search, including"/>
       <file name="epub-export.test.ts" desc="Tests for lib/io/epub-export — verifies EPUB export output, filename derivation, and browser API usage"/>
       <file name="file-conversion.test.ts" desc="file-conversion tests — focused on the pure pieces of the Apply pipeline that don't depend on the LLM: 1"/>
       <file name="game-theory-tags.test.ts" desc="Behavioural-tag classifier coverage for the Game Theory Dashboard"/>
@@ -206,6 +207,7 @@
         <file name="KnowledgePanel.tsx" desc="KnowledgePanel — ranked directory of system-graph nodes"/>
         <file name="LocationDetail.tsx" desc="LocationDetail — inspector view for a location: prominence, accumulated history graph, threads, and image"/>
         <file name="MediaField.tsx" desc="MediaField — display + upload + clear for a single entity/board image"/>
+        <file name="MergeDetail.tsx" desc="MergeDetail — inspector view for a merge: the war-room commit that folded a"/>
         <file name="PhaseNodeDetail.tsx" desc="PhaseNodeDetail — inspector for a single Phase Reasoning Graph (PRG) node"/>
         <file name="QuestionDetail.tsx" desc="QuestionDetail — inspector view for one learning question: stem, options"/>
         <file name="ReasoningNodeDetail.tsx" desc="ReasoningNodeDetail — inspector view for a CRG node: type, content, tier, and typed edges"/>
@@ -243,6 +245,7 @@
       <dir name="shared">
         <file name="charts.tsx" desc="Shared chart primitives — the single source of truth for the app's inline line charts"/>
         <file name="CopyButton.tsx" desc="CopyButton — button that copies text to the clipboard with transient confirmation state"/>
+        <file name="EmptyState.tsx" desc="EmptyState — the universal &quot;nothing here yet&quot; placeholder for stage tabs"/>
         <file name="InferenceFields.tsx" desc="Shared inference-shape renderer — the canonical visual language for the universal inference-shape (detail…"/>
       </dir>
       <dir name="sidebar">
@@ -353,7 +356,7 @@
         <file name="TimelineStrip.tsx" desc="TimelineStrip — bottom timeline: scene strip, force totals, branch switcher, and eval entry points"/>
       </dir>
       <dir name="topbar">
-        <file name="AgentsModal.tsx" desc="AgentsModal — dedicated TopBar interface for managing the room's AI players"/>
+        <file name="AgentsModal.tsx" desc="AgentsModal — manage the room's AI players"/>
         <file name="ApiKeyModal.tsx" desc="ApiKeyModal — enter and manage user-provided API keys, gated by feature access"/>
         <file name="ApiLogsModal.tsx" desc="ApiLogsModal — modal wrapper around ApiLogsViewer with Narrative/Analysis/Misc scope selector"/>
         <file name="BeatProfileModal.tsx" desc="BeatProfileModal — visualises beat-function/mechanism distributions and Markov sampler from scene plans"/>
