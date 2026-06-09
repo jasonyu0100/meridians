@@ -333,11 +333,12 @@ describe('renderMergeBasisBlock', () => {
     });
     const block = renderMergeBasisBlock(baseNarrative, [m])!;
     // The synthesis block is what tells the consumer to de-noise priors +
-    // resolutions into the direction the continuation advances along.
+    // resolutions into the direction the continuation advances along, and to
+    // concretely realise each committed outcome (the coverage mandate).
     expect(block).toContain('<synthesis');
     expect(block).toContain('signal-vs-noise');
     expect(block).toContain('extract-vector');
-    expect(block).toContain('continue-along');
+    expect(block).toContain('realise-each');
   });
 
   it('flags overrides with the belief lean the committed outcome diverged from', () => {

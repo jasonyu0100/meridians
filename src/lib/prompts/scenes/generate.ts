@@ -156,7 +156,7 @@ export function buildScenesOutputSchema(args: { arcId: string; povRestrictedHint
   const { arcId, povRestrictedHint = '' } = args;
   return `{
   "arcName": "2-4 words drawn from the narrative's own register. Mood-coded ('Seeds of Distrust') or concrete-event ('Tier Tribulation', 'Ratification Vote') — both fine. Bad: generic ('Continuation') or a register that doesn't match the world the cast lives in.",
-  "directionVector": "1-2 sentences. Central pressure (what is closing, sharpening, tipping) and shape of consequence. Vector, not script. When a <continuity-basis> is present, this IS its <synthesis> output — the de-noised direction distilled from the committed resolutions and their noisy perspective priors, the vector these scenes advance along.",
+  "directionVector": "1-2 sentences. Central pressure (what is closing, sharpening, tipping) and shape of consequence. Vector, not script. When a <continuity-basis> is present, this IS its <synthesis> output — the de-noised direction distilled from the committed resolutions and their noisy perspective priors; name the committed outcomes these scenes realise (by their actual content), not just the topics they touch.",
   "worldState": "Compact state snapshot at END of arc — the chess-board position.",
   "scenes": [
     {
@@ -202,7 +202,7 @@ export function buildGenerateScenesPrompt(args: GenerateScenesPromptArgs): strin
 
   const priorities = [
     `  <priority rank="1" critical="true">PARADIGM-SHAPE DISCIPLINE — what KIND of scene this arc must produce (fictional event, documented event, rule-driven event, essay section, panel session, typology entry, contest move, chronicle entry). Block emitted below; render to it.</priority>`,
-    hasContinuityBasis ? `  <priority rank="2" critical="true">CONTINUITY BASIS — committed merge resolutions are SETTLED FACT the continuation extends from; you cannot un-happen them. De-noise their perspective priors into the direction via the block's &lt;synthesis&gt; and advance along it. Facts outrank any speculative lean; user direction (below) shapes HOW you continue, never whether a committed fact holds.</priority>` : '',
+    hasContinuityBasis ? `  <priority rank="2" critical="true">CONTINUITY BASIS — committed merge resolutions are SETTLED FACT the continuation extends from; you cannot un-happen them. De-noise their perspective priors into the direction via the block's &lt;synthesis&gt; and advance along it. EVERY committed outcome must surface concretely in these scenes by its actual content (the specific committed answer becomes events / claims / consequences) woven NATURALLY into the continuing narrative through the perspective that held the stream, as lived story — never a bolted-on forecast report. Content merely adjacent to a question's topic, that never realises its committed answer, has ignored the basis. Facts outrank any speculative lean; user direction (below) shapes HOW you continue, never whether a committed fact holds.</priority>` : '',
     `  <priority rank="3">USER-SUPPLIED CONTEXT — operator's direction, constraints, settings, explicit guidance. Beats engine defaults whenever it speaks; defaults apply only where the operator is silent.</priority>`,
     `  <priority rank="4">BRIEF — reasoning graph (CRG) / coordination-plan directive / direction. Scenes execute the brief.</priority>`,
     `  <priority rank="5">ARC SETTINGS — force preference / reasoning mode / network bias the CRG was built under. Scenes inherit the engine tilt.</priority>`,
