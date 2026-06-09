@@ -323,12 +323,14 @@ export function StreamsView() {
         {viewing ? (
           <StreamDetail stream={viewing} number={numberOf[viewing.id]} onBack={() => setViewId(null)} onBranch={startBranch} />
         ) : (<>
-        <header className="flex items-center gap-2 pb-3">
-          <h1 className="text-[13px] font-semibold text-text-primary">Streams</h1>
-          <span className="text-[11px] text-text-dim/50">member contributions against a perspective</span>
+        <header className="flex items-center gap-2 pb-2.5 mb-3 border-b border-white/5">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim/80 font-medium">
+            Streams <span className="text-text-dim/40 ml-0.5">{streams.length}</span>
+          </span>
+          <span className="text-[10px] text-text-dim/40">member contributions against a perspective</span>
           <button
             onClick={() => setComposing(true)}
-            className="ml-auto text-sm font-semibold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary transition"
+            className="ml-auto text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary transition"
           >
             New stream
           </button>
@@ -341,7 +343,7 @@ export function StreamsView() {
         ) : (
           <>
             {/* Actively monitored */}
-            <div className="flex items-center gap-2 pb-2 text-[10px] uppercase tracking-wider text-text-dim/50">
+            <div className="flex items-center gap-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-text-dim/60">
               Actively monitored
               <span className="font-mono text-text-dim/40">{open.length}</span>
               {selectedOpen.length > 0 && (
@@ -354,42 +356,48 @@ export function StreamsView() {
                 </button>
               )}
             </div>
-            <div className="space-y-2">
+            <div className="relative space-y-0.5">
               {open.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-white/8 px-4 py-5 text-center text-[11px] text-text-dim/40 italic">
                   Nothing being monitored.
                 </div>
               ) : (
-                open.map((s) => (
-                  <StreamCard
-                    key={s.id}
-                    stream={s}
-                    number={numberOf[s.id]}
-                    merged={mergedIds.has(s.id)}
-                    selected={selected.has(s.id)}
-                    onToggleSelect={() => toggleSelect(s.id)}
-                    onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
-                  />
-                ))
+                <>
+                  <div className="absolute left-[6px] top-2 bottom-2 w-px bg-white/8" aria-hidden />
+                  {open.map((s) => (
+                    <StreamCard
+                      key={s.id}
+                      stream={s}
+                      number={numberOf[s.id]}
+                      merged={mergedIds.has(s.id)}
+                      selected={selected.has(s.id)}
+                      onToggleSelect={() => toggleSelect(s.id)}
+                      onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
+                    />
+                  ))}
+                </>
               )}
             </div>
 
             {/* Horizontal divider — settled streams below */}
             <div className="flex items-center gap-3 py-4">
-              <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-text-dim/40">
+              <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-text-dim/45">
                 Committed &amp; closed
                 <span className="font-mono">{settled.length}</span>
               </span>
               <div className="h-px flex-1 bg-white/8" />
             </div>
 
-            <div className="space-y-2">
+            <div className="relative space-y-0.5">
               {settled.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-white/8 px-4 py-5 text-center text-[11px] text-text-dim/40 italic">
                   Nothing committed or closed yet.
                 </div>
               ) : (
-                settled.map((s) => <StreamCard key={s.id} stream={s} number={numberOf[s.id]} merged={mergedIds.has(s.id)} onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }} />)
+                <>
+                  <div className="absolute left-[6px] top-2 bottom-2 w-px bg-white/8" aria-hidden />
+                  {settled.map((s) => <StreamCard key={s.id} stream={s} number={numberOf[s.id]} merged={mergedIds.has(s.id)} onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }} />)}
+                </>
               )}
             </div>
           </>
@@ -951,6 +959,13 @@ function StreamReviewCard({
   );
 }
 
+// Stream state → rail-dot colour (matches StreamStateIcon's octicon colours).
+const STREAM_STATE_HEX: Record<Stream['state'], string> = {
+  open: '#34d399',
+  committed: '#a855f7',
+  closed: '#f87171',
+};
+
 function StreamCard({
   stream,
   number,
@@ -994,8 +1009,20 @@ function StreamCard({
     ...(stream.state !== 'committed' ? [{ label: 'Delete stream', danger: true, onClick: () => dispatch({ type: 'REMOVE_STREAM' as const, id: stream.id }) }] : []),
   ];
 
+  const dotColor = STREAM_STATE_HEX[stream.state] ?? STREAM_STATE_HEX.open;
   return (
-    <div className={`rounded-lg border bg-white/[0.02] px-3 py-2 transition-colors flex items-center gap-3 ${selected ? 'border-purple-400/50' : 'border-white/10'}`}>
+    <div className="group relative pl-6">
+      {/* State dot on the lineage rail (open = emerald, committed = purple,
+          closed = red) — the stream cousin of the branch-tree dot. */}
+      <span
+        className="absolute left-[2px] top-[15px] h-[9px] w-[9px] rounded-full border-[1.5px]"
+        style={{ borderColor: dotColor, background: dotColor, opacity: stream.state === 'closed' ? 0.5 : 0.9 }}
+        title={stream.state}
+        aria-hidden
+      />
+      <div className={`relative overflow-hidden rounded-lg px-3 py-2 transition-colors flex items-center gap-3 ${selected ? 'bg-purple-500/10' : 'hover:bg-white/[0.035]'}`}>
+        {/* Selected rows get a quiet purple left-edge accent (branch-style). */}
+        {selected && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-purple-400/70" aria-hidden />}
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           {selectable && (
@@ -1010,10 +1037,9 @@ function StreamCard({
               {selected && <IconCheck size={10} />}
             </button>
           )}
-          <StreamStateIcon state={stream.state} size={14} />
           <button
             onClick={onOpen}
-            className="text-[13px] font-medium text-text-primary leading-snug truncate text-left hover:text-accent transition-colors"
+            className="text-[13px] font-medium text-text-primary leading-snug truncate text-left group-hover:text-white hover:text-accent transition-colors"
             title="Open stream"
           >
             {stream.title}
@@ -1053,8 +1079,9 @@ function StreamCard({
         </div>
       </div>
 
-      {/* Belief — spark chart with the leading outcome + % on the far right */}
-      <StreamBeliefSpark stream={stream} />
+        {/* Belief — spark chart with the leading outcome + % on the far right */}
+        <StreamBeliefSpark stream={stream} />
+      </div>
     </div>
   );
 }

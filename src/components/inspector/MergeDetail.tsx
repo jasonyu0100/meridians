@@ -47,11 +47,11 @@ function MergeStreamRow({ streamId, resolution }: { streamId: string; resolution
         onClick={() => dispatch({ type: "SET_INSPECTOR", context: { type: "stream", streamId } })}
         className="flex w-full flex-col gap-1 rounded bg-white/3 px-2 py-1.5 text-left transition-colors hover:bg-white/7 group"
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-start gap-2 min-w-0">
           <PerspectivePairBadge memberId={stream.memberId} agentId={stream.agentId} perspectiveId={stream.perspectiveId} n={narrative} size={16} />
-          <span className="text-[11px] text-text-secondary group-hover:text-text-primary transition-colors truncate">{stream.title}</span>
+          <span className="flex-1 min-w-0 text-[11px] text-text-secondary group-hover:text-text-primary transition-colors leading-snug wrap-break-word">{stream.title}</span>
           <span
-            className={`ml-auto shrink-0 text-[8px] uppercase tracking-wide px-1 py-0.5 rounded border ${
+            className={`mt-0.5 shrink-0 text-[8px] uppercase tracking-wide px-1 py-0.5 rounded border ${
               isExecutive ? "border-emerald-400/40 text-emerald-300/90" : "border-white/12 text-text-dim/55"
             }`}
             title={isExecutive
