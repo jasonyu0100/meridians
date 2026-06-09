@@ -58,19 +58,19 @@ flowchart TB
 
 ## 3. Center views (StageBar clusters → graphViewMode → component)
 
-`Stage.tsx` is a render switch keyed on `state.graphViewMode`; `StageBar.tsx` groups the ~29 modes into **4 clusters: Capture · State · Mind · Scene**.
+`Stage.tsx` is a render switch keyed on `state.graphViewMode`; `StageBar.tsx` groups the ~29 modes into **4 clusters: Signals · Base · Mind · Content** (tab labels; the internal cluster codenames now match — `signals` / `base` / `mind` / `content`).
 
 ```mermaid
 flowchart LR
     CTB["StageBar"]
-    CTB --> Capture & State & Mind & Scene
+    CTB --> Signals & Base & Mind & Content
 
-    subgraph Capture["CAPTURE — room / perspective surfaces"]
-        d1["vision → CaptureView (Priors)"]
+    subgraph Signals["SIGNALS (Capture) — room / perspective surfaces"]
+        d1["vision → CaptureView (Priors / Entry)"]
         d2["streams → StreamsView (member-owned perspective contributions)"]
-        d3["merges → MergesView (committed-stream timeline)"]
+        d3["merges → MergesView (committed-stream History)"]
     end
-    subgraph State["STATE — Board + graph domains + curriculum (scope Scene/Arc/Full)"]
+    subgraph Base["BASE — Board + graph domains + curriculum (scope Scene/Arc/Full)"]
         b1["board → BoardView (nested maps + avatars)"]
         g1["world-* → WorldGraphView / inline D3"]
         g2["system-* → SystemGraphView"]
@@ -86,7 +86,7 @@ flowchart LR
         c5["map → ReasoningGraphView (Maps; was Investigations)"]
         c6["search → CaptureView / SearchView"]
     end
-    subgraph Scene["SCENE"]
+    subgraph Content["CONTENT — the authored move"]
         s1["plan → ScenePlanView"]
         s2["prose → SceneProseView"]
         s3["audio → SceneAudioView"]
@@ -94,7 +94,7 @@ flowchart LR
     end
 ```
 
-> Cluster membership lives in `StageBar` (`inCaptureMode` / `inStateMode` / `inMindMode` / `inSceneMode`). The **Capture** cluster is now the room/perspective workspace (`vision` Priors + `streams` + `merges`); `search` moved into **Mind**. `curriculum` joins `board` + the graph domains in **State**. `BeliefView` swaps to `StreamBeliefView` for the member-sourced stream dashboard; `RoomUI` provides shared presentation primitives (avatars, status icons, perspective names) for Streams + Merges.
+> Cluster membership lives in `StageBar` (`inSignalsMode` / `inBaseMode` / `inMindMode` / `inContentMode`). The **Signals** cluster (internally Capture) is the room/perspective workspace (`vision` Priors + `streams` + `merges`); `search` moved into **Mind**. `curriculum` joins `board` + the graph domains in **Base**. *Tab labels Signals / Base / Mind / Content; the persisted `graphViewMode` literals (`vision`, `streams`, `world-*`, …) are unchanged.* `BeliefView` swaps to `StreamBeliefView` for the member-sourced stream dashboard; `RoomUI` provides shared presentation primitives (avatars, status icons, perspective names) for Streams + Merges.
 
 Adding a view = a `GraphViewMode` literal (`types/narrative.ts`) + a `StageBar` button + a `Stage` branch (copy `mode`).
 

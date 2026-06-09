@@ -3324,6 +3324,7 @@ export type GraphViewMode =
   | "compass"
   | "mode"
   | "curriculum"
+  | "curriculum-list"
   | "board";
 
 // ── Chat Threads ──────────────────────────────────────────────────────────────

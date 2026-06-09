@@ -8,7 +8,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconDocument, IconWaveform, IconMapPin, IconQuestion, IconEye, IconLineChart, IconGitBranch, IconBox } from '@/components/icons';
+import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconProse, IconWaveform, IconMapPin, IconQuestion, IconSignals, IconContent, IconPlan, IconCurriculum, IconSystem, IconScorecard, IconReasoning, IconSearch, IconCompass, IconLineChart, IconGitBranch, IconDatabase, IconClose, IconRefresh, IconCopy, IconDownload, IconChevronDown } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/io/graph-export';
@@ -306,17 +306,7 @@ function VersionSelector({
           }`}
         />
         <span className="font-medium">V{displayVersion}</span>
-        <svg
-          className={`w-2 h-2 text-text-dim/50 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          viewBox="0 0 8 8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M1 2.5 L4 5.5 L7 2.5" />
-        </svg>
+        <IconChevronDown size={8} className={`text-text-dim/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Opaque dropdown panel — the underlying prose was bleeding through
@@ -358,7 +348,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'present') return 'present';
   if (graphViewMode === 'compass') return 'compass';
   if (graphViewMode === 'mode') return 'mode';
-  if (graphViewMode === 'curriculum') return 'curriculum';
+  if (graphViewMode === 'curriculum' || graphViewMode === 'curriculum-list') return 'curriculum';
   if (graphViewMode === 'board') return 'board';
   return 'graph';
 }
@@ -387,14 +377,14 @@ export function StageBar() {
   }, [currentScope]);
 
   // Remember last scene sub-mode so "Scene" returns to the user's choice
-  const lastSceneModeRef = useRef<ScenePrimaryMode>('plan');
+  const lastContentSubModeRef = useRef<ScenePrimaryMode>('plan');
   useEffect(() => {
     if ((SCENE_MODES as string[]).includes(graphViewMode)) {
-      lastSceneModeRef.current = graphViewMode as ScenePrimaryMode;
+      lastContentSubModeRef.current = graphViewMode as ScenePrimaryMode;
     }
   }, [graphViewMode]);
 
-  const inSceneMode = (SCENE_MODES as string[]).includes(graphViewMode);
+  const inContentMode = (SCENE_MODES as string[]).includes(graphViewMode);
   // "Control" supersedes the old "Market" top-level slot — it bundles
   // Belief (the world view's aggregated belief, built from per-thread stances),
   // Present (the realized variables disposition), Compass (the cohort of
@@ -402,20 +392,20 @@ export function StageBar() {
   const inMindMode = (
     graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map' || graphViewMode === 'search'
   );
-  // The "Vision" cluster bundles Streams (perspective capture) / History
+  // The "Signals" cluster bundles Streams (perspective capture) / History
   // (commit timeline) / Capture (the raw-note workspace + daily-ingest queue).
   // All render through CaptureView / room views; the sub-tab toggle in the
   // topbar flips between them.
-  const inCaptureMode =
+  const inSignalsMode =
     graphViewMode === 'vision' || graphViewMode === 'streams' ||
     graphViewMode === 'merges';
-  const lastCaptureSubModeRef = useRef<'vision' | 'streams' | 'merges'>('streams');
+  const lastSignalsSubModeRef = useRef<'vision' | 'streams' | 'merges'>('streams');
   useEffect(() => {
     if (
       graphViewMode === 'vision' || graphViewMode === 'streams' ||
       graphViewMode === 'merges'
     ) {
-      lastCaptureSubModeRef.current = graphViewMode;
+      lastSignalsSubModeRef.current = graphViewMode;
     }
   }, [graphViewMode]);
 
@@ -432,12 +422,12 @@ export function StageBar() {
   // and Board (the nested-map board). World is the default sub-tab and the
   // graph domains lead, carrying their own Scene / Arc / Full scope toggle;
   // Board sits after them.
-  const inStateMode = canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum';
+  const inBaseMode = canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum';
   // World is the default State sub-tab; Board sits after the graph domains.
-  const lastStateSubModeRef = useRef<GraphViewMode>('world-scene');
+  const lastBaseSubModeRef = useRef<GraphViewMode>('world-scene');
   useEffect(() => {
     if (canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum') {
-      lastStateSubModeRef.current = graphViewMode;
+      lastBaseSubModeRef.current = graphViewMode;
     }
   }, [graphViewMode, canvasMode]);
 
@@ -692,7 +682,7 @@ export function StageBar() {
   const inputClass = "w-8 bg-white/5 text-center text-[10px] font-mono text-text-primary rounded px-1 py-0.5 outline-none border border-white/15 focus:border-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
-    <div className="h-9 shrink-0 flex items-center px-2 gap-2 glass-panel border-b border-border">
+    <div className="min-h-9 shrink-0 flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1 glass-panel border-b border-border">
 
       {/* Left — ARC / SCENE navigation */}
       {narrative && sceneNav.total > 0 ? (
@@ -932,9 +922,7 @@ export function StageBar() {
             className={TOPBAR_ICON_BUTTON}
             title="Clear Search"
           >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
+            <IconClose size={10} />
             <span>Clear</span>
           </button>
 
@@ -947,9 +935,7 @@ export function StageBar() {
                 className={TOPBAR_ICON_BUTTON}
                 title="Regenerate Embeddings"
               >
-                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
+                <IconRefresh size={10} />
                 <span>Generate Embeddings</span>
               </button>
             </>
@@ -971,10 +957,7 @@ export function StageBar() {
             className={TOPBAR_ICON_BUTTON}
             title="Copy sequential reasoning path"
           >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-            </svg>
+            <IconCopy size={10} />
             <span>{reasoningCopied ? "Copied!" : "Copy"}</span>
           </button>
           <button
@@ -982,11 +965,7 @@ export function StageBar() {
             className={TOPBAR_ICON_BUTTON}
             title="Export graph as JSON"
           >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
+            <IconDownload size={10} />
             <span>Export</span>
           </button>
           <button
@@ -1042,10 +1021,11 @@ export function StageBar() {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Right — Mode toggles */}
-      <div className="flex items-center gap-2">
+      {/* Right — Mode toggles. Wraps to additional rows (and the bar grows
+          taller) when there isn't enough width, rather than clipping. */}
+      <div className="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1 min-w-0">
         {/* State sub-controls: scope + Board / domain sub-tabs */}
-        {inStateMode && (
+        {inBaseMode && (
           <>
             {/* Scope toggle — Scene / Arc / Full, only for scoped graph domains
                 (World / System / Threads). Hidden on Board (scopeTriple is
@@ -1061,12 +1041,41 @@ export function StageBar() {
                     <div key={scope} className="flex items-center">
                       {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                       <button
-                        className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                        className={`px-1.5 py-1 text-[10px] font-medium transition-colors ${
                           isActive
                             ? 'bg-white/10 text-text-primary'
                             : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
                         }`}
                         onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: scopeTriple[scope] })}
+                      >
+                        {label}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Curriculum view toggle — Tree (horizontal mind-map) / List
+                (indented collapsible outline). Only shown when Curriculum is
+                the active base sub-tab; both render CurriculumView. */}
+            {canvasMode === 'curriculum' && (
+              <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+                {([
+                  { mode: 'curriculum' as const, label: 'Tree' },
+                  { mode: 'curriculum-list' as const, label: 'List' },
+                ]).map(({ mode, label }, idx) => {
+                  const isActive = graphViewMode === mode;
+                  return (
+                    <div key={mode} className="flex items-center">
+                      {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                      <button
+                        className={`px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                          isActive
+                            ? 'bg-white/10 text-text-primary'
+                            : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                        }`}
+                        onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
                       >
                         {label}
                       </button>
@@ -1091,7 +1100,7 @@ export function StageBar() {
                   <div key={label} className="flex items-center">
                     {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                     <button
-                      className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                      className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                         isActive
                           ? 'bg-white/10 text-text-primary'
                           : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
@@ -1111,7 +1120,7 @@ export function StageBar() {
               <div className="flex items-center">
                 <div className="w-px h-4 bg-white/10" />
                 <button
-                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                  className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                     canvasMode === 'board'
                       ? 'bg-white/10 text-text-primary'
                       : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
@@ -1126,14 +1135,14 @@ export function StageBar() {
               <div className="flex items-center">
                 <div className="w-px h-4 bg-white/10" />
                 <button
-                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                  className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                     canvasMode === 'curriculum'
                       ? 'bg-white/10 text-text-primary'
                       : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
                   }`}
-                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'curriculum' })}
+                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'curriculum-list' })}
                 >
-                  <IconLightbulb size={12} />
+                  <IconCurriculum size={12} />
                   Curriculum
                 </button>
               </div>
@@ -1157,7 +1166,7 @@ export function StageBar() {
                 <div key={source} className="flex items-center">
                   {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                   <button
-                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                       isActive
                         ? 'bg-white/10 text-text-primary'
                         : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
@@ -1190,7 +1199,7 @@ export function StageBar() {
                   {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                   <button
                     title={title}
-                    className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                    className={`px-1.5 py-1 text-[10px] font-medium transition-colors ${
                       isActive
                         ? 'bg-white/10 text-text-primary'
                         : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
@@ -1215,14 +1224,14 @@ export function StageBar() {
             that permeates downstream planning. */}
         {inMindMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-            {[
-              { mode: 'belief' as const, label: 'Belief' },
-              { mode: 'compass' as const, label: 'Compass' },
-              { mode: 'mode' as const, label: 'Phase' },
-              { mode: 'decision' as const, label: 'Decision' },
-              { mode: 'map' as const, label: 'Map' },
-              { mode: 'search' as const, label: 'Search' },
-            ].map(({ mode, label }, idx) => {
+            {([
+              { mode: 'belief' as const, label: 'Belief', Icon: IconBelief },
+              { mode: 'compass' as const, label: 'Compass', Icon: IconCompass },
+              { mode: 'mode' as const, label: 'Phase', Icon: IconSystem },
+              { mode: 'decision' as const, label: 'Decision', Icon: IconScorecard },
+              { mode: 'map' as const, label: 'Map', Icon: IconReasoning },
+              { mode: 'search' as const, label: 'Search', Icon: IconSearch },
+            ] as const).map(({ mode, label, Icon }, idx) => {
               // Compass owns the merged variable surface — highlight it for
               // both the forward (compass) and current (present) projections,
               // including any state persisted under the old "present" value.
@@ -1233,13 +1242,14 @@ export function StageBar() {
                 <div key={mode} className="flex items-center">
                   {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                   <button
-                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                       isActive
                         ? 'bg-white/10 text-text-primary'
                         : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
                     }`}
                     onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
                   >
+                    {Icon && <Icon size={12} />}
                     {label}
                   </button>
                 </div>
@@ -1255,11 +1265,11 @@ export function StageBar() {
             null, mirroring Control's always-visible sub-toggle. The canvas
             views below render an empty state ("No scene selected.") when
             there's no scene to draw against. */}
-        {inSceneMode && (
+        {inContentMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'plan' as ScenePrimaryMode, Icon: IconNotepad, label: 'Plan', hidden: false },
-              { mode: 'prose' as ScenePrimaryMode, Icon: IconDocument, label: 'Prose', hidden: false },
+              { mode: 'plan' as ScenePrimaryMode, Icon: IconPlan, label: 'Plan', hidden: false },
+              { mode: 'prose' as ScenePrimaryMode, Icon: IconProse, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
               { mode: 'learning' as ScenePrimaryMode, Icon: IconQuestion, label: 'Questions', hidden: false },
             ]
@@ -1270,7 +1280,7 @@ export function StageBar() {
                   <div key={mode} className="flex items-center">
                     {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                     <button
-                      className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                      className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                         isActive
                           ? 'bg-white/10 text-text-primary'
                           : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
@@ -1286,12 +1296,12 @@ export function StageBar() {
           </div>
         )}
 
-        {/* Vision sub-mode toggle — Streams / History / Entry. Streams are the
+        {/* Signals sub-mode toggle — Streams / History / Entry. Streams are the
             tracked open questions that capture perspectives and decipher
             uncertainty; History is the commit timeline; Entry is the raw-note
             workspace — fragments and ideas combined into files that extend
             the narrative. (Search lives under Mind; members in Config.) */}
-        {inCaptureMode && (
+        {inSignalsMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
               { mode: 'streams' as const, Icon: IconLineChart, label: 'Streams' },
@@ -1303,7 +1313,7 @@ export function StageBar() {
                 <div key={mode} className="flex items-center">
                   {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                   <button
-                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                       isActive
                         ? 'bg-white/10 text-text-primary'
                         : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
@@ -1327,37 +1337,37 @@ export function StageBar() {
             selected." empty state. */}
         <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           {[
-            { mode: 'vision' as const, Icon: IconEye, label: 'Vision', activeWhen: inCaptureMode },
-            { mode: 'state' as const, Icon: IconBox, label: 'State', activeWhen: inStateMode },
-            { mode: 'control' as const, Icon: IconMind, label: 'Mind', activeWhen: inMindMode },
-            { mode: 'scene' as const, Icon: IconNotepad, label: 'Channel', activeWhen: inSceneMode },
+            { mode: 'signals' as const, Icon: IconSignals, label: 'Signals', activeWhen: inSignalsMode },
+            { mode: 'base' as const, Icon: IconDatabase, label: 'Base', activeWhen: inBaseMode },
+            { mode: 'mind' as const, Icon: IconMind, label: 'Mind', activeWhen: inMindMode },
+            { mode: 'content' as const, Icon: IconContent, label: 'Content', activeWhen: inContentMode },
           ]
             .map(({ mode, Icon, label, activeWhen }, idx) => {
               return (
                 <div key={mode} className="flex items-center">
                   {idx > 0 && <div className="w-px h-4 bg-white/10" />}
                   <button
-                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors ${
+                    className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
                       activeWhen
                         ? 'bg-white/10 text-text-primary'
                         : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
                     }`}
                     onClick={() => {
-                      if (mode === 'scene') {
-                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastSceneModeRef.current });
-                      } else if (mode === 'control') {
+                      if (mode === 'content') {
+                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastContentSubModeRef.current });
+                      } else if (mode === 'mind') {
                         dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastMindSubModeRef.current });
-                      } else if (mode === 'state') {
-                        // Already in a State sub-tab → no-op; otherwise jump to
+                      } else if (mode === 'base') {
+                        // Already in a Base sub-tab → no-op; otherwise jump to
                         // whichever sub-tab the operator was last on (Board by
                         // default — the first State sub-tab).
-                        if (inStateMode) return;
-                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastStateSubModeRef.current });
-                      } else if (mode === 'vision') {
-                        // Already in a Vision sub-tab → no-op; otherwise jump to
+                        if (inBaseMode) return;
+                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastBaseSubModeRef.current });
+                      } else if (mode === 'signals') {
+                        // Already in a Signals sub-tab → no-op; otherwise jump to
                         // whichever sub-tab the operator was last on.
-                        if (inCaptureMode) return;
-                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastCaptureSubModeRef.current });
+                        if (inSignalsMode) return;
+                        dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: lastSignalsSubModeRef.current });
                       } else {
                         switchMode(mode);
                       }
@@ -1408,10 +1418,7 @@ function GraphInfoStrip({
         className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
         title="Copy sequential reasoning path"
       >
-        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-        </svg>
+        <IconCopy size={10} />
         <span>{copied ? "Copied!" : "Copy"}</span>
       </button>
       <button
@@ -1419,11 +1426,7 @@ function GraphInfoStrip({
         className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-text-dim/60 hover:text-text-dim transition-colors"
         title="Export graph as JSON"
       >
-        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
+        <IconDownload size={10} />
         <span>Export</span>
       </button>
     </div>
