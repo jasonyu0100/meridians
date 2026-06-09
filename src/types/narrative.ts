@@ -3204,6 +3204,7 @@ export type InspectorContext =
   | { type: "thread"; threadId: string }
   | { type: "stream"; streamId: string }
   | { type: "streamPrior"; streamId: string; priorId: string }
+  | { type: "merge"; mergeId: string }
   | { type: "arc"; arcId: string }
   | { type: "knowledge"; nodeId: string }
   | { type: "artifact"; artifactId: string }

@@ -6,6 +6,8 @@ import { useMemo } from 'react';
 import { useStore } from '@/lib/state/store';
 import { computeForceSnapshots, computeActivityCurve, classifyCurrentPosition, getEffectivePovId } from '@/lib/forces/narrative-utils';
 import type { Scene } from '@/types/narrative';
+import { resolutionOutcomes } from '@/lib/merges';
+import { PrMergedIcon } from '@/components/stage/RoomUI';
 import { InlineText } from './InlineEdit';
 
 const POSITION_COLORS: Record<string, string> = {
@@ -80,6 +82,44 @@ export default function ArcDetail({ arcId }: Props) {
         <span>{arc.activeCharacterIds.length} characters</span>
         <span>{arc.locationIds.length} locations</span>
       </div>
+
+      {/* Basis — merges folded into continuity to seed this arc. Executive
+          decisions drive the generation; recorded ones rode along. Click
+          through to the merge detail. */}
+      {(arc.basisMergeIds?.length ?? 0) > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <h3 className="text-[10px] uppercase tracking-widest text-text-dim">Basis</h3>
+          <p className="text-[10px] text-text-dim/50 leading-relaxed">
+            Merges this arc was generated from — executive decisions drove it; recorded streams rode along.
+          </p>
+          <div className="flex flex-col gap-1">
+            {(arc.basisMergeIds ?? []).map((mid) => {
+              const merge = narrative.merges?.[mid];
+              if (!merge) return null;
+              const ids = merge.streamIds ?? [];
+              const exec = ids.filter((id) => resolutionOutcomes(merge.resolutions?.[id]).length > 0).length;
+              const rec = ids.length - exec;
+              return (
+                <button
+                  key={mid}
+                  type="button"
+                  onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'merge', mergeId: mid } })}
+                  className="flex items-center gap-2 rounded bg-white/3 px-2 py-1.5 text-left transition-colors hover:bg-white/7 group"
+                >
+                  <PrMergedIcon size={12} />
+                  <span className="text-[11px] text-text-secondary group-hover:text-text-primary transition-colors truncate">
+                    {merge.label || 'Commit'}
+                  </span>
+                  <span className="ml-auto shrink-0 flex items-center gap-1.5 text-[9px] font-mono tabular-nums">
+                    <span className="text-emerald-300/80" title={`${exec} executive`}>{exec}e</span>
+                    <span className="text-text-dim/50" title={`${rec} recorded`}>{rec}r</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Direction vector — forward-looking narrative intent (editable) */}
       <div className="flex flex-col gap-1">

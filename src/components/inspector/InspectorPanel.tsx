@@ -32,6 +32,7 @@ import ThreadDetail from "./ThreadDetail";
 import ThreadLogNodeDetail from "./ThreadLogNodeDetail";
 import StreamDetail from "./StreamDetail";
 import StreamPriorDetail from "./StreamPriorDetail";
+import MergeDetail from "./MergeDetail";
 import ReasoningNodeDetail from "./ReasoningNodeDetail";
 import PhaseNodeDetail from "./PhaseNodeDetail";
 import TopicDetail from "./TopicDetail";
@@ -330,6 +331,8 @@ export default function InspectorPanel() {
         return <StreamDetail streamId={ctx.streamId} />;
       case "streamPrior":
         return <StreamPriorDetail streamId={ctx.streamId} priorId={ctx.priorId} />;
+      case "merge":
+        return <MergeDetail mergeId={ctx.mergeId} />;
       case "arc":
         return <ArcDetail arcId={ctx.arcId} />;
       case "knowledge":
