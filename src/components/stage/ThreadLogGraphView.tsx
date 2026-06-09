@@ -4,6 +4,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
+import { IconChevronLeft } from '@/components/icons';
 import { THREAD_LOG_FILL } from './graph-utils';
 import { getThreadLogAtScene } from '@/lib/graph/scene-filter';
 import type { ThreadLog, Scene } from '@/types/narrative';
@@ -227,7 +228,7 @@ export default function ThreadLogGraphView({
           onClick={() => dispatch({ type: 'SELECT_THREAD_LOG', threadId: null })}
           className="text-[10px] text-text-dim hover:text-text-secondary transition-colors flex items-center gap-1 mr-2"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+          <IconChevronLeft size={12} />
           Threads
         </button>
         <span className="text-[10px] text-text-dim mr-1">/</span>

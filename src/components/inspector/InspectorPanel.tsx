@@ -48,7 +48,7 @@ import {
   IconCompass,
   IconScorecard,
   IconThread,
-  IconQuestion,
+  IconCoverage,
   IconChevronLeft,
   IconChevronRight,
 } from "@/components/icons";
@@ -148,7 +148,7 @@ const TAB_ICONS: Record<Tab, IconCmp> = {
   interviews: IconUser,
   maps: IconReasoning,
   compass: IconCompass,
-  learning: IconQuestion,
+  learning: IconCoverage,
   eval: IconScorecard,
 };
 

@@ -22,7 +22,7 @@ import VariableGridChart from './variables/VariableGridChart';
 import VariableViewSwitcher, { type VariableViewMode } from './variables/VariableViewSwitcher';
 import { TileLabel } from './variables/BentoTile';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
-import { IconFork, IconCompass } from '@/components/icons';
+import { IconFork, IconCompass, IconRefresh, IconTrash } from '@/components/icons';
 import { EmptyState as SharedEmptyState } from '@/components/shared/EmptyState';
 import { findHeadArc } from '@/hooks/useScenarios';
 import { InferenceFields } from '@/components/shared/InferenceFields';
@@ -792,11 +792,7 @@ function VariablesTopBar({
           className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-text-dim/70 hover:text-text-primary disabled:opacity-30 transition-colors"
           title={regenerateLabel ?? 'Regenerate'}
         >
-          {!busy && (
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-            </svg>
-          )}
+          {!busy && <IconRefresh size={12} />}
           <span>{busy ? 'Generating' : (regenerateLabel ?? 'Regenerate')}</span>
           {directionSet && <span className="w-1 h-1 rounded-full bg-white/60" title="direction set" />}
         </button>
@@ -810,11 +806,7 @@ function VariablesTopBar({
             className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-text-dim/60 hover:text-rose-300 disabled:opacity-30 transition-colors"
             title="Wipe this arc's variables, scenarios, and direction"
           >
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6M14 11v6"/>
-            </svg>
+            <IconTrash size={12} />
           </button>
         </>
       )}

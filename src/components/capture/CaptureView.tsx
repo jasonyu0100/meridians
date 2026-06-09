@@ -30,6 +30,7 @@ import { SearchView } from '@/components/stage/SearchView';
 import { CompactPreviewModal } from './CompactPreviewModal';
 import { CapturePalette } from './CapturePalette';
 import { generatePrior } from '@/lib/ai';
+import { IconPlus, IconTrash } from '@/components/icons';
 import { logError } from '@/lib/core/system-logger';
 
 function isLocked(entry: Prior): boolean {
@@ -192,10 +193,7 @@ export function CaptureView() {
             aria-label="New entry"
             className="ml-auto w-5 h-5 flex items-center justify-center rounded text-text-dim/60 hover:text-text-primary hover:bg-white/8 transition-colors"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+            <IconPlus size={13} />
           </button>
         </div>
 
@@ -514,11 +512,7 @@ function EntryEditor({
             aria-label="Delete entry"
             className="ml-auto w-6 h-6 rounded flex items-center justify-center text-text-dim/40 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover/strip:opacity-100 transition"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18" />
-              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            </svg>
+            <IconTrash size={12} />
           </button>
         )}
       </div>

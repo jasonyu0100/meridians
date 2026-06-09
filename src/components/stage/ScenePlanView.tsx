@@ -1,7 +1,7 @@
 "use client";
 // ScenePlanView — Stage surface showing a scene's beat-by-beat plan with generate/rewrite/reverse-engineer controls.
 
-import { IconClose, IconPlus, IconNotepad } from "@/components/icons";
+import { IconClose, IconPlus, IconPlan } from "@/components/icons";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { generateScenePlan, rewriteScenePlan, reverseEngineerScenePlan } from "@/lib/ai";
 import { useResolvedPlan, useResolvedProse } from "@/hooks/useResolvedScene";
@@ -716,7 +716,7 @@ export function ScenePlanView({
         {/* Empty state */}
         {!activePlan && !isLoading && !hasError && (
           <EmptyState
-            icon={IconNotepad}
+            icon={IconPlan}
             title="No plan yet for this scene."
             hint="Use the palette below to generate one."
           />

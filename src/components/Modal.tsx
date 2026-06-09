@@ -4,6 +4,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { StarField } from '@/components/effects/StarField';
+import { IconClose } from '@/components/icons';
 import { useTheme } from '@/lib/state/theme-context';
 
 type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl' | 'full';
@@ -107,9 +108,7 @@ export function ModalHeader({ children, onClose, hideClose }: { children: ReactN
           onClick={onClose}
           className="p-1.5 rounded hover:bg-white/5 transition-colors text-text-dim hover:text-text-primary shrink-0 ml-3"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <IconClose size={16} />
         </button>
       )}
     </div>

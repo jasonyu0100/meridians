@@ -4,7 +4,7 @@
 import { generateSceneProse, rewriteSceneProse, reverseEngineerScenePlan } from "@/lib/ai";
 import { useResolvedProse, useResolvedPlan } from "@/hooks/useResolvedScene";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { IconDocument } from "@/components/icons";
+import { IconProse } from "@/components/icons";
 import { getResolvedPlanVersion } from "@/lib/forces/narrative-utils";
 import { useStore } from "@/lib/state/store";
 import type { NarrativeState, Scene } from "@/types/narrative";
@@ -665,13 +665,13 @@ export function SceneProseView({
           {!hasProse && !isLoading && !hasError && (
             resolvedPlan ? (
               <EmptyState
-                icon={IconDocument}
+                icon={IconProse}
                 title="This scene hasn't been written yet."
                 hint="Use the palette below to generate prose."
               />
             ) : (
               <EmptyState
-                icon={IconDocument}
+                icon={IconProse}
                 title="Create a plan first, then generate prose."
                 action={
                   <button

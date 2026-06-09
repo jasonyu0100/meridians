@@ -5,7 +5,7 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { IconReasoning, IconNotepad, IconDocument, IconWaveform, IconQuestion, IconScorecard } from '@/components/icons';
+import { IconReasoning, IconPlan, IconProse, IconWaveform, IconQuestion, IconScorecard } from '@/components/icons';
 import { getEffectivePovId } from '@/lib/forces/narrative-utils';
 import { computeCumulativePositions } from '@/lib/forces/positions';
 import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
@@ -1547,7 +1547,7 @@ export default function Stage() {
           <ScenePlanView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
         ) : (
           <EmptyState
-            icon={IconNotepad}
+            icon={IconPlan}
             title="No scene selected."
             hint="Select a scene from the timeline to view its plan."
           />
@@ -1557,7 +1557,7 @@ export default function Stage() {
           <SceneProseView narrative={narrative} scene={currentScene} resolvedKeys={resolvedEntryKeys} />
         ) : (
           <EmptyState
-            icon={IconDocument}
+            icon={IconProse}
             title="No scene selected."
             hint="Select a scene from the timeline to read its prose."
           />
@@ -1636,7 +1636,9 @@ export default function Stage() {
       ) : graphViewMode === 'mode' ? (
         <PhaseGraphView />
       ) : graphViewMode === 'curriculum' ? (
-        <CurriculumView />
+        <CurriculumView view="tree" />
+      ) : graphViewMode === 'curriculum-list' ? (
+        <CurriculumView view="list" />
       ) : graphViewMode === 'board' ? (
         <BoardView />
       ) : graphViewMode === 'map' ? (

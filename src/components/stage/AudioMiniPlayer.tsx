@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useStore } from '@/lib/state/store';
-import { IconChevronLeft, IconChevronRight } from '@/components/icons';
+import { IconChevronLeft, IconChevronRight, IconPlay, IconPause, IconWaveform } from '@/components/icons';
 
 export function NowPlayingPill() {
   const { state: player, toggle, seek, stop, play } = useAudioPlayer();
@@ -129,7 +129,7 @@ export function NowPlayingPill() {
                     title="Play current scene"
                     className="shrink-0 w-7 h-7 rounded-full bg-violet-500 text-bg-base flex items-center justify-center hover:bg-violet-400 shadow-sm transition-colors"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5"><polygon points="6,3 20,12 6,21" /></svg>
+                    <IconPlay size={12} className="ml-0.5" />
                   </button>
                 </div>
               ) : (
@@ -139,9 +139,7 @@ export function NowPlayingPill() {
                     onClick={() => { dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'audio' }); setOpen(false); }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-bg-base text-[12px] font-semibold shadow-sm transition-colors"
                   >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 10v4M7.5 6v12M12 3v18M16.5 6v12M21 10v4" />
-                    </svg>
+                    <IconWaveform size={14} />
                     <span>Generate audio</span>
                     <span aria-hidden className="text-bg-base/60">&rarr;</span>
                   </button>
@@ -185,9 +183,9 @@ export function NowPlayingPill() {
                       }`}
                     >
                       {player.playing ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+                        <IconPause size={14} />
                       ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5"><polygon points="6,3 20,12 6,21" /></svg>
+                        <IconPlay size={14} className="ml-0.5" />
                       )}
                     </button>
 

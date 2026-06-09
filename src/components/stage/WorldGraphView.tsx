@@ -4,6 +4,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
+import { IconChevronLeft } from '@/components/icons';
 import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/graph/scene-filter';
 import { WORLD_FILL } from './graph-utils';
 import type { WorldNode, WorldEdge, World, WorldNodeType } from '@/types/narrative';
@@ -231,7 +232,7 @@ export default function WorldGraphView({ entityId, entityName, world, scenes, re
           onClick={() => dispatch({ type: 'SELECT_KNOWLEDGE_ENTITY', entityId: null })}
           className="text-[10px] text-text-dim hover:text-text-secondary transition-colors flex items-center gap-1 mr-2"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+          <IconChevronLeft size={12} />
           World
         </button>
         <span className="text-[10px] text-text-dim mr-1">/</span>

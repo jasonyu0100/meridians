@@ -85,6 +85,15 @@ export function IconDownload({ size, ...rest }: P) {
   );
 }
 
+export function IconCopy({ size, ...rest }: P) {
+  return (
+    <svg {...defaults(size)} {...rest}>
+      <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
+      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
 export function IconShare({ size, ...rest }: P) {
   return (
     <svg {...defaults(size)} {...rest}>

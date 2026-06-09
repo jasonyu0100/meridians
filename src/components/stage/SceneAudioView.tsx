@@ -6,7 +6,7 @@ import type { NarrativeState, Scene } from '@/types/narrative';
 import { useStore } from '@/lib/state/store';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { IconWaveform } from '@/components/icons';
+import { IconWaveform, IconPlay, IconPause } from '@/components/icons';
 import { resolveProseForBranch } from '@/lib/forces/narrative-utils';
 
 export function SceneAudioView({
@@ -139,9 +139,9 @@ export function SceneAudioView({
               }`}
             >
               {isPlaying ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+                <IconPause size={20} />
               ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><polygon points="6,3 20,12 6,21" /></svg>
+                <IconPlay size={20} className="ml-1" />
               )}
             </button>
             <span className="text-[11px] text-text-dim font-mono tabular-nums w-12">{formatTime(duration)}</span>

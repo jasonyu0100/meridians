@@ -7,6 +7,7 @@ import { useStore } from '@/lib/state/store';
 import { buildCumulativeSystemGraph } from '@/lib/forces/narrative-utils';
 import type { NarrativeState, SystemNode } from '@/types/narrative';
 import EvalBar from '@/components/timeline/EvalBar';
+import { IconChevronLeft, IconChevronRight, IconReset } from '@/components/icons';
 import { computeGroups, SYS_TYPE_COLORS, type SysNode, type SysLink } from './graph-utils';
 import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph/graph-styling';
 
@@ -658,7 +659,7 @@ export default function SystemGraphView({ narrative, resolvedKeys, currentIndex,
             onClick={() => navigateSysGroup('prev')}
             title="Previous group"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            <IconChevronLeft size={12} />
           </button>
           <span className="text-text-dim px-0.5 tabular-nums">
             {sysFocusedGroupIndex !== null
@@ -670,7 +671,7 @@ export default function SystemGraphView({ narrative, resolvedKeys, currentIndex,
             onClick={() => navigateSysGroup('next')}
             title="Next group"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            <IconChevronRight size={12} />
           </button>
           {sysFocusedGroupIndex !== null && (
             <>
@@ -680,7 +681,7 @@ export default function SystemGraphView({ narrative, resolvedKeys, currentIndex,
                 onClick={() => navigateSysGroup('reset')}
                 title="Reset view"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
+                <IconReset size={12} />
               </button>
             </>
           )}
