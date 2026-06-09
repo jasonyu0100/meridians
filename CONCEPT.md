@@ -1,168 +1,292 @@
 # Conviction — Meridians' Rehearsal Card Game (CONCEPT)
 
-> **The spec for [ROADMAP.md](ROADMAP.md) A4 (Rehearsal)** — *Conviction*, the War Room played as a card game on the substrate. **Conviction is the first rehearsal mode, not the only one** — rehearsal is a pluggable layer over the shared resolver, so other game formats can ride the same substrate later. Future modes aim at richer **emergent gameplay** that trains strategists and teamwork; this doc specs the first. ROADMAP A4 defers here; the build plan is the **Tickets** section, the unknowns are in **Open questions**. Rides on the shipping engine (threads/stances, variable cohort, causal reasoning graphs, game-theory/ELO — see [CLAUDE.md](CLAUDE.md)). Vocabulary: [LANGUAGE.md](LANGUAGE.md).
+> **Spec for [ROADMAP.md](ROADMAP.md) A4 (Rehearsal).** Conviction is the War Room played as a **turn-based card game** on the shipping substrate — threads/stances, **streams/priors**, **merges**, **locations** ([CLAUDE.md](CLAUDE.md)). This doc is implementation-first: the **game loop as a state machine**, and the **type model** that backs it (what we reuse, what's net-new). Vocabulary: [LANGUAGE.md](LANGUAGE.md).
 
 ---
 
-## The core
+## In one paragraph
 
-**Conviction** turns the room's model of reality into a **wargame you can play** — a game about *belief made visible*. A table of perspectives (allies, rivals, and the world itself) bets on what happens next: you spend scarce **conviction** to back what you believe, **show or hide** it to coordinate or mislead, and the engine plays the table's bets forward into a future you have to live with. Mostly you read and wait; in the moments that matter you **commit, hard, and force an outcome where everyone sees you do it.** It's a *fight against entropy* — spending scarce certainty to carve a coherent future from a world that drifts to noise — and **conviction is the resource you spend, the signal you send, and the point.**
-
-**It's capture, gamified and accelerated.** Mechanically: *perspectives play cards under a budget, in a turn order, resolved into kept branches* — the **fast twin of Capture** (same threads, stances, and resolver, run in a session instead of over a week; ROADMAP A1–A3). Building the capture resolver gives you the shared *engine* — but the game itself is **substantial net-new** (and the riskiest part of the spec); they share an engine, not a system. It compresses what a team already does slowly — read each other's stances and the conviction behind them — into a high-feedback drill for the **informational and signalling games** strategists run on. Not built for fun, but for rehearsing decisions under uncertainty and reading the room.
-
-**What you are actually doing — feeding a model of reality, in turns.** Each round, perspectives feed the engine **structured priors** from their own vantage; the engine generates the next state from them. The game is the layer on top: **an in-game conviction economy** turns "submit a prior" into a *strategic resource decision* — priors cost conviction priced by how far they push against the odds, so you can only influence so much per round. The skill is **getting the model to adopt the priors that serve your intent more cheaply than your rivals get theirs.** No one seat's budget moves the world far alone, so **seats coordinate** — pooling conviction, lining up face-up commitments, dividing the cost — to push the engine further than any single hand can. You're not writing the outcome; you're *bidding to shape the inputs* of a shared generation, against other bidders, under a budget.
-
-**Goals are emergent, not assigned.** There's no win screen and no dealt objective. Each player brings their own intent — protect a faction, force a rupture, keep the peace, simply read the room — and the engine just plays the priors forward. The incentive spine is **cost + consequence**: you live in the world you paid to shape, and that (not a score) is what makes the choices bite. Scoring (ELO) is available as an optional ladder, never the point.
-
-**Priors are admissible, not arbitrary — the engine is a gatekeeper, not a stenographer.** You cannot feed the model an outrageous claim. Every submitted prior is **scored for realism and bias** against the world's current state (the existing `scoreStreamPrior` path); one that's implausible given continuity, or that tries to swing a stance further than the evidence warrants, is **denied — you revise and resubmit.** (Admissibility is a hard gate, separate from price: a plausible long-shot is *admissible but expensive* via `−log p`; an implausible claim is *refused at any price*.) This is the load-bearing constraint that keeps the game honest — influence is *earned within the realm of the plausible*, so players win by finding the realistic priors that serve them, never by asserting fantasy or grinding junk into the shared model.
-
-**Same resolver, different question.** Capture measures **what reality *is*** — belief, calibrated over time, confirmed at the merge. Conviction plays **how reality *evolves*** through committed actors who force outcomes — *agency*. So the engine is shared but the **trigger** differs: Capture resolves on **certainty / confirmation**, Conviction on **conviction-forcing**. Two clocks, one resolver, two triggers — don't expect them to resolve identically.
-
-**The turn — what you actually do.** Going around the table, on your turn you take **one action**: **Play** a card (commit to an outcome, pay its cost — *face-up* to signal, *face-down* to hide), **Raise** (pour more conviction into an outcome you've already backed), **Pass** (hold this go-around), or **Fold** (out for the round; threads you never backed are *ceded* — others' conviction sets them). When the table is done, the round resolves. Poker's grammar — *bet · raise · check · fold* — over claims about the future.
-
-**The rules:**
-
-1. **A card is a concrete claim about the near future** — *"gold closes below $2,400 this quarter," "the CFO resigns," "the regulator opens a probe."* **Cards are grouped per stream.** A *stream* is one open question a perspective holds a belief on — a set of named outcomes with a probability across them, evolved by the priors fed into it; its cards are those outcomes, and playing one commits you to it. Each stream shows a **sparkline** — its belief trajectory, the leading outcome's probability replayed across its priors (`streamTrajectory`) — so a glance tells you whether the question is settling or swinging. Your hand is **~5–8 cards** across the streams your perspective holds this round.
-2. **Conviction is the scarce resource — it has income, and it decays.** Each card costs **conviction** priced by improbability (`−log p`): the likely call is cheap, a long-shot dear. Unspent conviction **banks but decays** (`α = 0.9`, the engine's thread-volume constant) — inflation on idle capital, so a war chest costs you to hold (no snowball, no hoarding stalemate). Decay alone is the holding cost — banking is never free. The **conviction economy is the GM's**: how much each seat gets, the decay, and resets — conviction **carries across rounds by default**, though the GM may reset it. The main lever for difficulty and feel.
-3. **Talk is cheap; plays bind — that's what makes a signal credible.** Negotiate freely (propose, threaten, mislead) — but words cost and bind nothing. A **face-up** card is the opposite: a *paid, binding* commitment (you spent conviction; it resolves), so it's a costly, credible signal, not cheap talk in card form. **Face-down** hides which commitments you made. You **cooperate** by backing your words with cards and **defect** by playing against them — the gap shows at the reveal and costs you the table's trust.
-4. **Turn order is configurable** — deterministic (poker) or random.
-5. **A round IS a merge — the engine plays it forward.** The played cards are the round's committed resolutions; assembled into a merge request, the engine generates the continuation from it and forks a kept branch. **v1 resolves with the shipping merge→generate path** — the round's resolutions ride in as the generation's ground-truth *continuity basis*, the same path Capture's commit uses. **v2 upgrades the resolver to a CRG** that abduces the realistic path from the cards (ROADMAP A3). Either way divergent stances reconcile — **payment-weighted** when contested, **multi-resolved** (both true, the engine reconciles) when plural — never blurred to an average.
-6. **Perspectives are the seats** — a character, location, artifact, or the general narrator; human- or AI-played. The **world itself is a seat**: a hurricane is a location seat, a rate hike a Central Bank seat — external events are just a seat's plays.
-7. **Certainty is an aggregate of conviction.** What's true about the world is set by the conviction the room commits — not a base rate it nudges. Don't play a stance and you **cede** it: the model ignores your absent view and the others' conviction defines it. And a stream you don't play **closes at the end of the round** — its question leaves the board, settled by whoever did back it; the next round deals fresh streams. Silence is a choice to let the room decide, and you can't sit on a question forever.
-8. **Priors are the in-round economy — and the timer is the constraint.** Adding a prior to one of your streams — the same capture action — is how you work the board: a prior that *moves* the stance earns conviction and **cheapens** your cards on that thread (rarity = cost = `−log p`, so shifting the odds toward your call lowers its price) and **refreshes what you're dealt**. Each round opens with a **timed prior phase**: under the clock you keep **branching** — prompting the engine for fresh, reality-grounded priors that, once admissible, **deal you new cards** — building new card sets until time runs out, or you **stick with your guns** and stand pat. The clock is the real limit on how much you can reshape your hand. No-op or inadmissible priors earn nothing; only belief that *shifts* and *passes the gate* pays.
-9. **Seats move across the map, and place couples them.** Travel is **node-to-node** (a single hop on the location tree — **up to the parent, down into a child, or across to a sibling**) and **one move per round** — you reposition a step at a time, not teleport. **Where you stand shapes your hand**: the streams you hold depend on your location, so moving changes what you can see and back. Seats sharing a location get **private location chat** and enhanced visibility into each other's hands — the channel where **alliances** form and covert coordination happens; everyone also has an open **global chat** (cheap talk, binds nothing — only cards bind). Seats apart play blind to each other. Place is the medium of the signalling game: who you can talk to, and what you hold, are positions you choose by moving.
-10. **Betting is the side economy — pari-mutuel, GM-run.** Alongside conviction (which *shapes* outcomes) runs a **betting** layer (which *wagers* on them): players stake on which outcome a thread resolves to, **pari-mutuel** — all stakes pool, and at resolution the pool (less the GM's rake) splits among the winners in proportion to their stake, so the odds are set by the table, not a book. The GM **administers** it and chooses per game whether betting is **on** (the incentive system — competition, hedging, and alliances form around the pool) or **off** (pure strategic rehearsal). Conviction and betting interact richly: you can spend conviction to *force* an outcome and bet the same call, but a pari-mutuel pool pays least on the favourite — so **forcing a long-shot you also backed is the edge**, and sandbagging your hand to lengthen the odds is a play. Every game has a betting side; whether it bites is the GM's lever for engineering incentives without touching the conviction economy.
-
-**The one invariant — buy the outcome, not the consequences.** You can force an outcome (unopposed; contested, it's a payment-weighted reconciliation), but the engine owns the **fallout** — often a monkey's paw. Consequences are *state-dependent*, so players learning the world's causal patterns is the rehearsal value, not an exploit.
-
-**What good play is:** high coordination between allies, run through **signalling** (what you show vs hide) and **budget control** (what you can afford to commit). Players own the strategy; the engine owns the verdict — which is what keeps the planning honest rather than self-graded.
+Perspectives (allies, rivals, the world itself — human- or agent-driven) sit at a table and bet on what happens next. Each round the engine **narrates the state**, deals each seat a **hand of cards** (concrete claims on its open questions), and players spend scarce **conviction** to **play** cards — *face-up* to signal, *face-down* to hide. When the table is done, the round's commitments assemble into a **merge** the engine plays forward into a kept **branch**. It's **Capture run live**: the same streams/priors/resolver, compressed from a week into a session. Goals are emergent; the spine is **cost + consequence** — you live in the world you paid to shape.
 
 ---
 
-## Built on the shipping engine
+## The game loop (state machine)
 
-Conviction is **net-new game logic over primitives that already exist** — it adds a round/turn/economy layer, not a new substrate. Each game concept resolves to real code:
+A game is a **branch**; a `GameRoom` runs over it. The loop is a **sequential, deterministic phase machine** — one known state at a time, each transition dealing every perspective its own information. Humans take their turns by hand; agents resolve theirs automatically. **Chat (global + location) is always open** — it runs through *every* phase, not just the narration windows.
 
-| Game concept | Built on (shipping) | Net-new for the game |
+**One window, automated.** Conviction is a **gamified layer over the shipping stream / merge / generate UI** — it doesn't replace those surfaces, it **wraps and automates** them into one continuous, immersive window for GM and players. Progression is **one click for the GM through the existing Generate Panel** (deal, pricing, the narration batch, income/decay all run automatically); the GM can always **override** — drop to the underlying stream/merge tools and edit — because they're the GM.
+
+```
+SETUP ─▶ [WAITING?] ─▶ ROUND ─▶ ROUND ─▶ …
+                         │
+   ┌─────────────────────┴───────────────────────────────────────────┐
+   ▼                                                                   │
+PUBLIC_NARRATION ─▶ PRIVATE_NARRATION ─▶ READ WRITE ─▶ PLAY ─▶ RESOLVE ─▶ SETTLE ─┘
+```
+
+1. **SETUP** *(GM, desktop)* — GM builds the `GameRoom`: picks the **locations** in play, **creates and seats perspectives** (each assigned a driver — `human` / `agent` / `gm-proxy`; a **human seat must bind a registered `Member`** from the members table, and any seat with no member is **filled by an agent**), sets the opening **roster**, and dials the **conviction economy** (income, decay). Chooses the **mode**: `computer` (single screen, GM proxies everyone — start immediately) or `remote` (players join their own controllers — go to WAITING).
+2. **WAITING** *(remote only)* — a waiting room: seats join via per-seat link/QR (`status: pending → joined`). GM **starts** when ready; unfilled competitive seats fall back to `agent`.
+3. **PUBLIC_NARRATION** — **delivers** the **public** narration that brings the table up to date on the game's status (pre-generated in the RESOLVE batch off the canon; round 1 narrates the opening state). Public, everyone, first. A timer runs; chat is open (global + location).
+4. **PRIVATE_NARRATION** — then **delivers** each seat's **private** `PerspectiveView` — its **special context** (continuity + vantage), from the same RESOLVE batch. Strict delivery order: **public → private**. Timer runs; chat continues. Players may also pull **non-canon views** of past scenes while reading.
+5. **READ WRITE** — each seat is dealt its **hand** (chosen stream cards + sampled), then **works the model**: it can **update priors** on its existing streams (shifting the odds → re-pricing those cards) and **open new unique streams** by **posing open questions** (fresh streams that, once admissible, **deal new cards**). This write-back is where **emergent play** comes from — each seat reshapes the board it's about to bet on. A seat may also take its **one move** here — a single hop on the location tree — which changes **the streams it holds** (it's dealt against its new place) and **who it shares location chat with**. Bounded by the read timer; stand pat to skip.
+6. **PLAY** — **poker turn order** (rotating button). On a turn a seat **plays** card(s) *face-up/face-down* (paying conviction), **raises**, **passes**, or **folds**. Agents auto-resolve their turn from their feed. If a seat's **turn timer expires with nothing committed**, that's **no action** — it cedes, leaving the question to the LLM, which the rest of the table's commitments already sway.
+7. **RESOLVE** — after the table is done comes the **showdown**, where revealing your **face-down** cards is **at your discretion** — you may flip them to prove a call or keep them hidden for good. (Either way the engine/GM sees every committed play; the reveal is a *signalling* choice to the table, not a resolution gate.) Then the GM advances the round with **one click through the existing Generate Panel**: the played cards **pre-fill the merge's resolutions** (**executive** = drives the continuation; **recorded** = rides along, non-driving) — the GM can **override** any before generating, or just click through; fully automated, it generates with no input. The merge → the engine generates the continuation (one scene/beat) → a kept branch entry. **Narration is canon-first, then a parallel fan-out:** the **canonical** continuation generates once (ground truth), then a **single batched set of parallel calls** renders the **public** perspective and **every seat's private** `PerspectiveView` off it. That batch is the **next round's narration**, delivered in order (PUBLIC → PRIVATE) though generated together — closing the loop. The raw **canon stays GM-only**; players only ever receive the public layer and their own private view.
+8. **SETTLE** — **decay** each seat's carried balance first (`× α = 0.9`), **then** grant fresh **income** (so the new allowance isn't taxed the round it arrives). Loop back to PUBLIC_NARRATION for the next round.
+
+---
+
+## Type model
+
+### Reused (shipping — see [CLAUDE.md](CLAUDE.md))
+
+| Game concept | Existing type / fn |
+| --- | --- |
+| **Seat vantage** | `Perspective` (`kind`, `entityRef`, `memberIds`, `agentId`) |
+| **Who drives a seat** | `Member` (human) · `Agent` (AI persona) |
+| **Open question + belief** | `Stream` (`outcomes`, `stance`, `priors`) |
+| **A prior (belief move)** | `StreamPrior` (`updates`, `logType`, `volumeDelta`, `at`) |
+| **Belief math** | `Stance` (`logits`/`volume`/`volatility`); `streamProbs`, `streamTrajectory` |
+| **Card cost / rarity** | scaled `−log p` (0–100) from `streamProbs` |
+| **Submit a prior** | `ADD_STREAM_PRIOR` + `scoreStreamPrior` (admissibility/bias) |
+| **Round resolution** | `Merge` + `MergeResolution` (single, or multi-resolution) → merge→generate |
+| **Place / proximity** | `Location` + `positions` |
+| **Game isolation** | a **branch** (streams/merges branch-scoped) |
+
+### New (the game layer)
+
+```ts
+// One live session, over one branch. The only always-mutating game object.
+interface GameRoom {
+  id: string;
+  branchId: string;                       // a game IS a branch
+  mode: 'computer' | 'remote';            // single-screen GM-proxy vs distributed
+  phase: 'setup' | 'waiting' | 'round';
+  locations: string[];                    // play area (subset of Location ids)
+  seats: Record<string, Seat>;
+  economy: ConvictionEconomy;             // GM-owned
+  bets: Bet[];                            // opt-in side market; placed early, GM-settled at game end
+  round: RoundState | null;
+}
+
+// A Perspective bound to a driver + its play state.
+interface Seat {
+  id: string;
+  perspectiveId: string;                  // existing Perspective
+  driver: 'human' | 'agent' | 'gm-proxy'; // human decides; agent automates; GM proxies
+  memberId?: string;                      // REQUIRED for driver='human' — a registered Member (members table)
+  agentId?: string;                       // for driver='agent' — fills a seat with no assigned member
+  status: 'pending' | 'joined' | 'playing' | 'spectating';
+  conviction: number;                     // current balance (income − spend, decayed)
+  locationId: string;                     // current node (positions)
+  movedThisRound: boolean;                // enforces one hop / round
+}
+
+// GM-owned scarcity. Balances live on Seat.conviction.
+interface ConvictionEconomy {
+  income: number;                         // allowance granted each SETTLE
+  decayAlpha: number;                     // tax on banked total (0.9 = thread-volume decay)
+}
+
+// The per-round sequential machine.
+type RoundPhase =
+  | 'public-narration' | 'private-narration'
+  | 'read-write' | 'play' | 'resolve' | 'settle';
+
+interface RoundState {
+  index: number;
+  phase: RoundPhase;
+  turnOrder: string[];                    // seatIds, rotated each round (poker)
+  buttonSeat: string;                     // dealer button
+  activeSeat: string | null;              // whose turn in PLAY
+  boardStreamIds: string[];               // shared "community" streams
+  hands: Record<string, Hand>;            // per seat
+  pot: number;                            // committed conviction this round
+  viewIds: string[];                      // the round's PerspectiveView batch (canon + public + per-seat private)
+  timers: Partial<Record<RoundPhase, number>>; // ms remaining per timed phase
+  mergeId?: string;                       // set at RESOLVE — the round's Merge
+}
+
+// A card = a stance commitment on one outcome of a stream.
+interface Card {
+  streamId: string;
+  outcome: number;                        // the chosen outcome — playing the card IS choosing it on the stream
+  cost: number;                           // clamp(0, 100, round(RARITY_SCALE × −ln p)); live from streamProbs
+  origin: 'chosen' | 'dealt';             // own open stream vs sampled
+}
+// A seat MAY play multiple cards on one stream (back several outcomes), but that
+// only lands as intended if the question genuinely supports multi-resolution
+// (MergeResolution multi) — otherwise the commitments contend. The engine allows
+// it; knowing when it helps is the player's edge.
+
+interface Hand {
+  seatId: string;
+  cards: Card[];
+  played: PlayedCard[];
+}
+
+interface PlayedCard {
+  card: Card;
+  faceUp: boolean;                        // played open (visible) vs face-down (hidden)
+  revealed?: boolean;                     // a face-down card the player CHOSE to show at showdown (optional)
+  conviction: number;                     // committed amount (≥ cost; raise = more)
+  playedAt: number;
+}
+
+// Talk is cheap — chat binds nothing; only played cards bind. Agents are full
+// participants: you can negotiate with (or be misled by) an AI seat in chat.
+interface ChatMessage {
+  scope: 'global' | 'location';
+  locationId?: string;                    // set for location scope (proximity-gated)
+  seatId: string;                          // a human OR an agent seat
+  text: string;
+  at: number;
+}
+
+// READ-phase "request more cards": pose an open question → open a Stream → deal.
+interface CardRequest {
+  seatId: string;
+  question: string;                       // the open question posed
+  // → ADD_STREAM_PRIOR seeds a new Stream from intuition; scoreStreamPrior gates;
+  //   admissible → new Cards appended to the seat's Hand.
+}
+
+// Side bet — usually placed at game start, held, then GM-settled at the end.
+// A call on an outcome into a pari-mutuel pool (opt-in).
+interface Bet {
+  seatId: string;
+  streamId: string;
+  outcome: number;                        // the called outcome
+  stake: number;                          // into the pool; payout = pro-rata of (pool − rake)
+  at: number;
+}
+
+// A scene rendered at a visibility tier — the ONE narration / perspective type.
+//   canon   = GM-only ground truth      (no perspectiveId)
+//   public  = everyone                  (no perspectiveId)
+//   private = one seat's vantage        (perspectiveId set)
+// The round's narration is a parallel batch of these off the canon at RESOLVE
+// (one canon + one public + one private per seat). The SAME type backs a
+// player's on-demand non-canon retelling of a PAST scene (scope 'private', an
+// older sceneId). Cached by (sceneId, scope, perspectiveId); the text reuses
+// context.ts's perspective-coded narration.
+interface PerspectiveView {
+  id: string;
+  sceneId: string;                        // the scene being (re)told
+  scope: 'canon' | 'public' | 'private';
+  perspectiveId?: string;                 // set only for scope 'private'
+  text: string;
+  at: number;
+}
+```
+
+**Continuity context.** Every seat — human or agent — carries its **continuity context** (its `Perspective`'s logs + the canon scene narrations it's entitled to). Agents play purely off that. A human can additionally **request a `PerspectiveView`** (scope `private`) of any past scene from their own vantage — a retelling generated on demand and cached, so the canon trunk stays single while each seat can read history through its own eyes.
+
+**Visibility tiers = the three `PerspectiveView` scopes.** **`canon`** is **GM-only** (the ground truth); **`public`** goes to everyone; **`private`** is each seat's own. The **GM sees all three** — canon + public + every private view (browsable on demand) — plus any **GM-only** extras; **players never see `canon`**, only `public` and their own `private`. This is the same gating the table uses (global for the GM, perspective-gated for players).
+
+---
+
+## Constants & tunables
+
+> Starting **defaults — hypotheses to pilot, not law**; most are **GM dials**. Where a value already lives in the engine ([`constants.ts`](src/lib/constants.ts)), reuse it.
+
+**Round & turn limits**
+
+| Const | Default | What |
 | --- | --- | --- |
-| **Seat** | `Perspective` (+ `Member` / `Agent`) | turn order, the table |
-| **Card** | a `{ streamId, outcome }` stance commitment | hand, deal, face-up/down |
-| **Card cost / rarity** | `−log p` from the stream's stance (`streamProbs`) | the conviction price |
-| **Stream sparkline** | `streamTrajectory` (belief replayed over priors) | per-stream card grouping |
-| **Global / location chat** | `Member` / `Agent` seats + `Location` occupancy | the chat channels + privacy |
-| **Submitting a prior** | `ADD_STREAM_PRIOR` + `scoreStreamPrior` (realism/bias scoring already exists) | admissibility gate, earn/discount curve |
-| **A round** | a **merge** assembled from the round's plays | `RoundState`, phase machine |
-| **Resolution (v1)** | the **proposed-merge → `<continuity-basis>` → generate** path (ships today) | conviction-weighting of resolutions |
-| **Resolution (v2)** | the **CRG** causal resolver (ROADMAP A3) | cards → fate nodes |
-| **Contested / plural outcomes** | `MergeResolution` — payment-weighted single, or **multi-resolution** (already supported) | the weighting rule |
-| **Movement / co-location** | `Location` + `positions` | per-round movement, visibility coupling |
-| **Per-game isolation** | a **branch** (streams/merges are branch-scoped by ownership) | — a game *is* a branch |
-| **Betting (pari-mutuel)** | thread outcomes + resolution timing | the pool / odds / rake / settlement math |
-| **Scoring (optional)** | `game-theory.ts` ELO | — |
+| `ROUND_LIMIT` | none (GM ends) | optional hard cap on rounds per game |
+| `TIMER_PUBLIC` | 45s | public-narration window |
+| `TIMER_PRIVATE` | 30s | private-narration window |
+| `TIMER_READ` | 90s | deal + request-more window |
+| `TIMER_TURN` | 30s | per-seat play clock (timeout → no action / cede) |
+| `READ_MAX_REQUESTS` | 3 | card-requests allowed per read phase (bounds the branching loop) |
 
-The implication: a War Room game is **a branch with its own streams and merges**, played in rounds, each round a merge the engine generates forward. The branch-scoping already shipped is what keeps one game's belief state from leaking into another.
+**Conviction economy** (GM-owned — the main difficulty lever)
 
----
+| Const | Default | What |
+| --- | --- | --- |
+| `CONVICTION_START` | 100 | opening balance per seat |
+| `CONVICTION_INCOME` | 50 | granted each SETTLE (≈ one mid card, or part of a long-shot) |
+| `CONVICTION_DECAY` | 0.9 | tax on banked total — **reuses `STANCE_VOLUME_DECAY`** |
+| `FOLD_REFUND` | 0 | fraction of staked conviction returned on fold *(open)* |
+| `BLINDS` | off | opt-in poker blinds (GM toggle) |
+| `BLIND_SMALL` | 5 | fixed tax on the 1st seat after the button, each round |
+| `BLIND_BIG` | 10 | fixed tax on the 2nd seat after the button |
 
-## Access & runtime
+*(Economy is scaled to the **0–100 card-cost** range: a round's income covers roughly one mid call, so a long-shot or two committed cards is a real budget decision.)*
 
-Meridians follows a **federated local-host model** (after OpenClaw): each game runs on a **sovereign local host** — a machine running the Meridians **Electron app + background daemon** that *owns* its truth (state + embeddings in IndexedDB) and answers only to its operator. There is **no central server**; sovereignty stays on the host, and **federation is just connectivity** — a host exposes access so players can join, and sovereigns can interconnect, without any of them ceding their data to a hub. The daemon is the only always-on piece (trade-off: if the host sleeps, its channels pause).
+**Blinds** *(opt-in)* — when on, the two seats **after the button** post a fixed conviction tax at the start of each round, **restricting their mobility** that round; the blinds **rotate with the button** poker-style so the burden moves around the table. Off by default; purely a GM dial for pressure.
 
-**Game Master vs Player — the one authority line.** The **Game Master** is the host's **sovereign operator**: runs setup, the turn loop, generation and commits, curates async capture, owns the conviction economy — and holds the master console with full state. A **Player** is a **guest seat** that connects in (QR or WhatsApp link) through a per-perspective controller: they play their hand and read their own perspective feed, but have **no authority over the host's truth** and no view of others' hidden state, the GM console, or the world's raw distributions. One **GM per host** (the sovereign); many players (guests). A GM may also take a seat, but the roles stay distinct — *operating the sovereign* is not the same as *playing a hand*.
+**Rarity → cost** — the price of committing a card, on an intuitive **0–100** scale:
 
-Two channels hang off the host, split by tempo:
+```
+cost = clamp(0, 100, round(RARITY_SCALE × −ln p))      // p = outcome's live streamProbs
+RARITY_SCALE = 33   ·   range [0, 100]
+```
 
-- **Async capture (dark), split by audience.** Members drop priors into a chat channel between rounds; the model turns each message **per member** into **priors on that member's open streams**, or **opens a new stream** for a genuinely new question — all through the same **admissibility gate** (implausible / over-biasing → denied, with a reply asking to revise). Capture is **all the dark channel does** — it never plays a live turn; streams it creates carry the member's perspective and branch, exactly like one opened in-app. **The two channels we primarily support, by audience: WhatsApp** for everyday rooms (direct, informal) via **QR — OpenClaw-style web-bridge** (no Business Cloud API, no hosted webhook), and a **Slack / Teams connector** for businesses that already live there and trust it.
-- **Mobile web — live play.** Real-time rounds happen on the per-seat **controller** (the mobile page over the tunnel), entered by **scanning a per-seat QR or tapping a play link the daemon delivers over WhatsApp** (reusing `Member.mobile` to address it; the QR is the no-WhatsApp path). Turns, reveals, the timer, and location chat all live here.
+So near-certain (`p≥0.95`) ≈ **0–2** (almost free), a modal call (`p≈0.7`) ≈ **12**, a coin-flip (`p=0.5`) ≈ **23**, a long-shot (`p=0.1`) ≈ **76**, a 1-in-20 (`p=0.05`) ≈ **99**, anything rarer **caps at 100**. Improbability *is* the price.
 
-Same source of truth, two tempos — the two practices Meridians runs on: **Capture is asynchronous** (the dark channel feeds belief **between** rounds, on each member's own clock); **Conviction is live** (the controller plays it **during** them, in a real-time high-feedback session). Conviction is the live practice; the priors it plays forward are captured async.
+**Prior economy** — *work the model, don't brute-force.* A prior that **moves** a stance is paid twice: it **earns conviction** and it **shifts the distribution**, which **re-prices your cards** — pushing `p` toward your outcome lowers its `−ln p`, so the call you're building toward gets cheaper to commit.
 
----
+| Const | Default | What |
+| --- | --- | --- |
+| `PRIOR_EARN_RATE` | 15 | conviction returned per nat of info-gain (KL on the stance) |
+| `PRIOR_MIN_INFOGAIN` | 0.05 | below this → no earn (the no-op gate) |
+| `PRIOR_ADMIT` | `scoreStreamPrior` threshold | implausible / over-biasing → **denied** (hard gate, separate from price) |
 
-## The dynamic
+So the skill is finding the **realistic** prior that bends the odds your way — not grinding junk (the no-op + admissibility gates stop that).
 
-**A round, felt.** You're dealt a hand of concrete claims on the threads in play. You read the board and the other seats; decide what to back and how hard — the likely call is cheap, a long-shot dear, and you can **fold and bank conviction for a round that matters more**. You choose what to **show** (to coordinate or bluff) and what to **hide** (so an adversary can't exploit it); you negotiate in the open, knowing words are cheap and only cards bind. Then hands reveal and the round's cards **resolve into what happens next** — v1 plays the merge forward, v2 reasons it through a graph; you get the outcome you paid for, plus whatever the world does about it. The board moves; the next round deals.
+**Side betting** — the **opt-in incentive layer** (pari-mutuel; never touches the conviction economy):
 
-**Concretely (a markets room).** The thread on the table: *"does the central bank hold or cut?"* The dovish seat backs **cut** cheaply — it's the modal call. A hawk, convinced of a surprise, spends heavily to force **hold**, face-down. Allies signal to line up behind one read; the adversary seat bets the tail. At showdown the cards resolve into a continuation — rates hold, but the graph abduces the inflation scare that *made* them hold, and the seat that forced it watches its other positions take the hit. The room learns which priors were wrong; the next round opens on the new world.
+| Const | Default | What |
+| --- | --- | --- |
+| `BETTING_DEFAULT` | off | **consent-gated** (GM + seated players opt in together); fast-feedback rooms only |
+| `BETTING_RAKE` | 0.05 | GM's cut; the rest of the pool splits **pro-rata** among winners |
 
-**What we hope emerges.** A **full table of players and agents** turns the evolving board into a *dynamic simulation* of a world that keeps changing — like the real one. The play is meant to be **emergent, not scripted**, and to test decision-making honestly: sometimes there's no best move; sometimes you must **commit and signal your intent clearly** to line the team up; sometimes you stay **covert — hide your hand and trust your teammates**. The full room is what creates the dynamic, so empty seats run as agents and the world is never half-simulated.
-
----
-
-## Key concepts (in brief)
-
-- **The perspective feed — what each seat sees.** While you play, you read a **perspective feed**: the information available to *your* entity — its **continuity logs** plus a **perspective-coded narrative** (the global summary retold from your vantage), refreshed each time the engine generates a step. It's information asymmetry made concrete — every seat reads a *different* feed, and an AI seat plays from exactly the feed a human would.
-- **The perspective interface — your controller.** You play through a per-perspective **controller** — a mobile page over the tunnel, or the desktop view — reached by **scanning a per-seat QR or tapping a play link the daemon sends you over WhatsApp**. It shows your feed, your hand, and your **history**, and it's a *controller into the game*, not the full GM console. History is first-class: you can review your perspective's past (how far back is **GM-configurable**) because reading what happened, and how it shapes what's next, is the skill the game trains.
-- **The table — the shared surface.** An **online-poker-casino** layout: seats around a circular, length-elongated table in turn order with a shifting button, each showing its **face-up** commitments and hiding its **face-down** ones until the reveal. The **center of the board** surfaces the round's shared information — the board stream(s) and their sparklines, the pot of committed conviction, the phase timer, recent reveals. A **chat** panel runs alongside: **global** chat (everyone; cheap talk) and **location** chat (private, only among seats sharing a place — where alliances are struck). It's the front-of-house companion to each player's per-seat **controller** (their own feed, hand, and history); co-located seats see a little more of each other.
-- **Communication is spatial — and being there costs you elsewhere.** Who you can talk to is a *position*, not a given. Co-located seats share a **private location channel** (where alliances form and plans are laid); seats apart can't hear it. The trade-off that makes it a game: an adversary can **travel into another team's location** to listen and sow — gaining that channel — but **loses direct contact with its own team** while embedded (you can't hold two places at once). Movement is **one hop a round**, so reach is bounded by **speed of transport** — distance is delay. Information asymmetry, lines of communication, and transport speed are the levers, the same ones real **intelligence operations** turn. (Frontier; the exact coupling is tunable — see R10.)
-- **Prior admissibility — the gatekeeper.** A submitted prior passes through the realism/bias scorer (`scoreStreamPrior`) before it can become a card or move a stance: implausible-given-continuity or over-swinging priors are **denied — the player revises and resubmits**, never adopted at face value. Admissibility is a *hard gate, distinct from price* (a plausible long-shot is admissible but dear; an implausible one is refused at any price). This is what makes the influence game *honest* — you bid to shape inputs the engine finds **plausible**, so the win is finding the realistic prior that serves you, not asserting a fantasy. (The same gate blocks a seat from biasing the shared model past what the world supports.)
-- **Hands are differentiated and part-dealt.** Each seat gets a *different* hand: chosen stance cards (its own open questions) + RNG-dealt cards sampled from world-model distributions. Differentiation is what keeps contests clean — no two seats hold the identical card to bid head-to-head, so opposition is always *different cards* the resolver reconciles.
-- **Red team is emergent, not a coded role.** It's just what an *adversarial* seat does — bet against the modal, target converged threads. Give a seat a hostile disposition (an AI seat, R6; or a human with opposed interests) and it red-teams; nothing to build. It matters because it's *what makes information a resource* — without a predator reading your reveals, hiding is pointless and the signalling game dies. Opposed interests are the precondition for the whole hidden-information game, not a feature on top of it.
-- **AI & world seats.** The GM configures AI players (gap-fill / adversary) and world-power seats; all play under the same budget + turn order. Reuses Capture's inferred priors (A1).
-- **Fresh rounds, rotating rosters.** Every round starts fresh — the GM can field a **different mix of players and agents** each round. In long playthroughs a **default roster persists**, but the GM may run **different groups on separate turns** — teams playing on their own terms, or a blend — so a campaign can interleave (say) a finance team's round, a policy team's round, and a mixed table. Seats not dealt into a round are **spectators**: they watch, and can still use **location chat** between rounds (present in place, just not playing). Empty *competitive* seats fill with agents so the table is never half-simulated.
-- **Causal cards (frontier).** Block / force / reveal / gate — cards that change what *others* can play, expressed as reasoning-graph edges. Highest balance risk; prototype before building.
-- **GM = sovereign operator, optionally a player.** Runs setup / turns / generation on the host they own; may take a seat or pure-referee; **never pilots the world seats** (the engine owns consequences). **Exactly one GM per host** — the sovereign — and players are guests with no authority over its truth (see *Access & runtime*).
-- **Where it commits:** a showdown resolves *the branch* (a kept fork), never the canonical trunk — rehearsal is a sandbox.
-- **Saved and replayable.** Every game's state is persisted (for review and replay), and every play-through is a **kept branch**. Replay a scenario under different conditions and — because the resolver *reasons* the outcome rather than scripting it — you get a different continuation, which tests whether you understood *why* the first one happened.
-- **The betting layer.** A **pari-mutuel** side market the GM runs: stake on outcomes, the pool splits among winners (less rake), odds set by the crowd. Optional per game — the GM's dial for turning rehearsal into **competition** (and the natural seed for alliances and rivalries) without touching the conviction economy. Where conviction is *agency* (force the outcome), betting is *prediction* (call it) — and the two together make **forcing-and-backing a long-shot** the sharp play. The competitive incentive that emergent goals don't supply on their own.
-- **Scoring isn't the point.** Reuse the existing game-theory ELO (`game-theory.ts`) if a ladder is wanted; the real feedback is **cost + consequence** (and, when betting is on, the pool).
-- **Pricing taxes *forcing*, not *exploring*.** Rehearsing a tail is free — the GM seeds the rupture, the cohort surfaces it. Conviction is spent only to *assert* a long-shot as your committed call. So the room rehearses the surprise it most needs cheaply; what costs is claiming it true. (If pricing ever gates exploration, that's a bug — exploration is the point.)
-- **The merge is the full decision record; only executive calls drive the world.** A round folds **all** of the table's decision-making into its merge — but only the stances the GM commits as **executive decisions** (1+ resolved outcomes) steer the continuation. Lines considered and not taken ride along **recorded** (no committed outcome — they just track the final prior distribution, optionally closed): preserved for the organisational record, **non-driving**. So a GM can commit a primary stance on the line being acted on while keeping the alternatives visible. *Executive needs a commitment; recorded needs none.* (See R5.)
-- **Custom rulesets, per client.** Conviction is a **pluggable ruleset over the shared resolver**, so a client can run its own variant — which mechanics are live (movement, location comms, causal cards, betting), the conviction economy's dials, win conditions — tuned to its domain. The hard constraint across every variant: **the mechanics stay intuitive.** Sophistication is meant to *emerge* from interaction (information asymmetry, lines of communication, transport) — not from rules a player has to study. If a mechanic needs a manual, it's wrong.
+Bets are typically **placed at the start of a game** — a long wager on how the whole thing resolves — then **held and forgotten** through play, and **settled manually by the GM at the end** (when the game closes or the players are done): the GM marks the winning outcome and triggers the pro-rata payout. No auto-settle — the side market stays under the sovereign's hand. The pari-mutuel pays least on the favourite — so **forcing-and-backing a long-shot** is the edge. It turns rehearsal into competition (and seeds alliances/rivalries) without changing how outcomes are shaped.
 
 ---
 
-## Tickets (ROADMAP A4)
+## Access & play modes
 
-> Build the fast game on the capture substrate (A0–A3). The **resolver** is reuse — v1 the shipping **merge→generate** path, v2 the A3 **CRG** (R5); the rest — turn loop, conviction economy, prior admissibility, hidden-info reveal, differentiated dealing, movement, concurrent state — is **net-new and the riskiest work**. Share an engine, not a system. **A game is a branch** (streams/merges branch-scoped), so rounds accumulate as that branch's merges.
-
-- **R1 · Round setup.** GM scopes the play area: locations (subset of `Location`), the round's **roster** (which seats/agents play this round vs spectate — a default persists across a long playthrough; the GM may rotate groups/teams turn to turn), a round concept (direction vector / premise); one contested thread is "the board." *Reuses:* A0 + `Location`/`Character`. *Net-new: per-round roster + spectator state.*
-- **R2 · The hand.** Deal each seat a *different* hand — chosen stance cards (its open threads) + RNG-dealt cards from world-model distributions. *Reuses:* A1 threads/stances.
-- **R3 · Conviction budget & pricing.** A conviction pool that **accumulates with decay** (allowance = income each round; unspent banks but decays at `α = 0.9` = inflation); cost = `−log p` of the chosen outcome; unplayed → **ceded** to others' conviction (no engine auto-resolve); GM owns the economy — allowance, decay, resets (**carries by default**). *Reuses:* A2 distributions + the existing volume-decay constant. *Open: whether accumulation earns its keep at all.*
-- **R4 · Play loop.** Configurable turn order; go around the table; each seat plays (face up/down — free) or folds. *Reuses:* UI/state over the hand.
-- **R5 · End of round → resolve.** The round's played cards → the round's **merge** (conviction-weighted; contested = payment-weighted, plural = multi-resolved) → continuation → kept branch (trunk stays open; **state persisted** for review + replay-under-different-conditions). **v1 = merge→generate** — ships today; the round's **executive** resolutions ride in as the generation's continuity basis — they alone drive the continuation. Streams folded in without a committed outcome stay **recorded** (organisational record, non-driving, just tracking their prior distribution; optionally closed). **v2 = CRG** — cards → fate nodes → abduced path, regenerable (guidance vector / thinking mode, freeform default). *Reuses:* the **merge→generate path** (v1) / **A3 causal resolver** (v2) + Branch/Scenarios + the merge's executive-vs-record split (resolutions are partial by design).
-- **R6 · AI & world seats.** GM-configured AI players (with disposition — cooperative / adversarial / wildcard; an adversarial one red-teams) and world-power seats (location/artifact/general) playing under the same rules. *Reuses:* A1 inferred priors + A0 perspectives + the `Agent` persona catalogue.
-- **R7 · Causal cards (frontier).** Block / force / reveal / gate as reasoning-graph edges. Highest balance risk — design carefully, build last. *Reuses:* edge types + R5 v2.
-- **R8 · Prior economy & timed branching phase.** A prior that *moves* a stance (positive info-gain) earns conviction + **cheapens** that thread's cards + **deals new ones**; a round opens with a **timed phase** in which a seat keeps **branching** — prompting for fresh reality-grounded priors → admissible ones deal new cards → repeat until the clock runs out — or stands pat. *Reuses:* `ADD_STREAM_PRIOR` + stance info-gain + the generate/branch path + the `α=0.9` decay constant. *Net-new: the earn/discount curve + the bounded branching loop.*
-- **R9 · Prior admissibility gate.** Every submitted prior runs through realism/bias scoring before it can deal a card or move a stance — implausible / over-biasing priors are **denied** (player revises and resubmits); admissibility is hard and separate from `−log p` price. *Reuses:* `scoreStreamPrior`. *Net-new: the admissible/denied threshold + surfacing the verdict + revise-resubmit loop.*
-- **R10 · Movement, co-location & comms.** Per-round seat movement over `Location` — **one hop a round**, so reach is bounded by **transport speed** and distance is delay; co-located seats share a **private location channel** (visibility + alliance/coordination), seats apart play blind. The trade-off that makes it a game: a seat can **travel into another team's location** to listen and influence, but **loses its own team's channel** while embedded — infiltration costs you contact at home. The mix of **information asymmetry, lines of communication, and transport speed** is the future-mechanics layer that mirrors real intelligence operations; the exact coupling is tunable per ruleset. *Reuses:* `Location` + `positions`. *Net-new: the visibility-coupling rule + the embed-vs-home-channel trade-off + transport-speed cost.*
-- **R11 · The table.** The shared poker-style table view (circular/elongated, turn order + button, face-up/down reveal) alongside the per-seat controller. *Reuses:* RoomUI seat primitives. *Net-new: table layout + reveal state.*
-- **R12 · Access & runtime (federated local-host).** The **sovereign host** = Electron app + **daemon** (owns truth, always-on access, no central server); a dark **capture channel** (QR-paired **WhatsApp** web-bridge for everyday rooms, a **Slack / Teams** connector for businesses) for per-member async capture → streams (admissibility-gated, **capture-only**); the **mobile-web controller** for live play (guest seats), entered by per-seat QR or delivered link; the **GM/Player authority split** enforced in software. An opt-in **Substrate Vault** removes the bus factor: an **inbuilt encrypted online backup** (client-held key → ciphertext only on our side) plus client-chosen destinations (second device / own cloud / S3). The vault has **two tiers — private storage** (the client's own substrate) and **public storage** (worlds a GM publishes). The **public layer is built on the vault**: a host issues a **guest pass** (time-limited, revocable, seat-scoped to board/graph, private substrate never exposed), and the vault's public storage distributes worlds so players pull **fresh copies and new experiences constantly** — so public rooms grow from private ones opening a door (no cold-start, no new infra), private and public **self-reinforcing**, GMs curating both. *Reuses:* IndexedDB source-of-truth + `Member.mobile` routing + the tunnel + `scoreStreamPrior` + seat-scoping. *Net-new: daemon lifecycle, the bridge/connector + per-member parse, QR/link session binding, the permission boundary, the vault, the guest-pass scope. Single-host SPOF — channels pause if the host sleeps; the vault covers durability, not live availability.*
-- **R13 · Betting layer (pari-mutuel).** A GM-run side market: per-thread outcome **pools**, stakes pooled and split among winners pro-rata at resolution (less GM **rake**). **Off by default and consent-gated** (GM + seated players opt in together); offered **only in fast-feedback rooms** (markets, campaigns, live ops), never long-horizon strategy; stakes fictional unless a room opts into real with **legal sign-off**. **Fully separable** — a surface over stance pricing that never touches the Capture loop or substrate, so it ships experimental and deprecates without a trace. *Reuses:* thread outcomes + resolution timing + ELO (optional ranking). *Net-new: the pool / odds / rake / settlement math + the betting UI + when bets lock + the consent gate.*
+- **`computer` mode — single screen, zero setup.** The GM drives every seat from the desktop interface (hot-seat: `act-as-seat` → take its turn, move, chat). No tunnel, no pairing. The fast path for demos and in-person sessions.
+- **`remote` mode — distributed.** Players join their own **mobile controller** over the tunnel (per-seat QR / link); a **waiting room** holds the round until seats are `joined`. The controller is the lighter **player interface**: **move, chat, read** (perspective feed + hand). *(Least-settled half — see Open questions.)*
+- **Mix freely.** Some seats on phones, some GM-proxied, the rest agents. Empty competitive seats → agents so the table is never half-simulated.
+- **Federated local-host.** The GM runs a **sovereign host** (Electron app + daemon; state in IndexedDB; no central server). **Async capture** rides a dark channel (QR-paired WhatsApp web-bridge / Slack-Teams connector) → per-member priors, admissibility-gated. **GM = sovereign operator** (full state, the master console); **players = guest seats** with no authority over truth and no view of others' hidden state.
+- **Surfaces (the build) — minimalist, board-centric.** **The Board** is the single primary surface (poker-table view): **narration and round information are conveyed on the board itself**, not in side panels. **The Cards** / hand sit at the player's seat. **Chat** (global + location) opens as a **modal**; **navigation** (move, pose-question / request-more, settings) is via **popups** layered over the board. All **responsive across desktop + mobile**, rendered global for the GM and perspective-gated for players; per-scene **Perspective views** live in the **Content tab**. Component map: [MERMAID.md](MERMAID.md) §8.
 
 ---
 
-## Honest about what it is — and the risks
+## Key invariants (decided)
 
-- **Not a deckbuilding game.** The hand is AI-dealt from priors — always relevant, but no fixed pool, no combos, no collection. Depth is *reading and timing*, not card mastery; "card game" is the feel, not a Hearthstone promise.
-- **Poker grammar is for legibility, not literal.** It's non-zero-sum over a shared evolving world, so folding isn't purely defensive (it banks conviction, accepts drift) and "winning" is calibration + influence, not a pot.
-- **The resolver models narrative plausibility, not causal reality — the deepest risk.** An LLM abducing "the realistic path" produces *story-shaped* fallout (apt betrayal, ironic reversal); reality has anticlimax and dumb luck it under-produces — so it risks teaching the world is *more* narratively causal than it is, the error the product should correct. Validated on narrative (HP), unproven cross-domain. Partial mitigants, **not a solution**: (a) **inject noise** — with probability ε a round resolves to a sampled tail/anticlimax draw from the power-law cohort, not the apt outcome (ε a GM volatility dial); (b) the resolver is **legible** (reject unjustified fallout); (c) **reality-confirmed merges** anchor the model to what *happened*, not what's apt. The catch: (c) is the only one that makes it truly *honest*, and it only bites once a room has *accumulated* confirmed merges — so **resolver calibration depends on sustained play, which is unproven.** Legible + noisy makes it *usable*; only confirmed merges over many weeks make it *honest*. Don't sell it as "calibration" until then. **And enforce trunk provenance in software** (not GM discipline): merged outcomes are **confirmed** (ground truth the resolver may treat as fact) or **believed** (high-certainty but unconfirmed). The resolver **may not read a believed node as fact** — a hard constraint, because under time pressure a human maintainer will let the trunk drift to self-confirming belief unless the code refuses (ROADMAP A3).
-- **Resolver reasoning is subjective — and regenerable.** A resolution is *one* LLM interpretation, not ground truth; it may not reflect the real world. Regenerate it with a custom **guidance vector or thinking mode** (as Maps already do); **freeform is the default** — the LLM reasons as it naturally would. Treat a resolution as *a* reasoned reading, not *the* answer, and disclose that to players.
-- **No exogenous default — certainty is the aggregate of conviction.** Earlier the engine auto-sampled unplayed threads from a base rate; that encoded false physics for reflexive worlds (markets, runs, cascades, where the actors *are* the regime) and taxed players to defend against the engine's dice. *Removed.* Now an unplayed stance is **ceded** to the others' conviction (and the **stream closes at round end** — questions don't linger across rounds) — the world is what the room commits to, endogenous, not a backdrop.
-- **Conviction is one scalar — a simplification that can launder real constraints.** Capacity isn't fungible (political capital ≠ balance sheet ≠ credibility ≠ attention), and the binding constraint is often *non-*fungibility — the System-dominant firm can't spend rule-capital on people. v1 keeps it scalar for legibility; the refinement is **typed conviction** (per force, or per domain) so the game teaches where you're actually constrained.
-- **AI seats may not hold hidden state — and the adversary is the worst case.** A coherent private log + deception is where models are weakest, and the seat you *most* want to fill by inference (the **adversary** you'll never seat with a human) is exactly the one inference is worst at. So an inferred adversary is a **stopgap that degrades the rehearsal, not an equivalent** — a room red-teamed by an inferred seat is weaker than one with a hostile human, and the **GM should know which kind of room they're running.** Keep humans in the asymmetric seats where you can; use AI for gap-fill / world seats; autonomous deceptive play is exploratory.
-- **The biases are directional — so declare them.** "Advisory, not predictive" only holds if the model is wrong in ways the operator can *correct*. The three above aren't neutral noise; they lean one way — **continuity over rupture, legible causes over dumb ones, fungible over constrained agency.** An operator can discount a known lean, not a hidden one. So the room must **surface its standing lean at the table** (read the resolver with this discount), or it quietly miscalibrates the very people it's meant to calibrate. A model that names which way it's wrong is advisory; one that hides it isn't.
+- **Humans decide; agents automate — and you can chat with them.** A human seat takes its turn **by hand**; an agent seat plays **automatically** from its feed each turn (no human input). Both are full participants in **global + location chat**, so you can negotiate with — or be bluffed by — an AI seat just like a human one.
+- **Admissibility is a hard gate.** Every prior runs `scoreStreamPrior` before it can deal a card or move a stance — implausible/over-biasing → **denied, revise & resubmit**. Distinct from price: a plausible long-shot is *admissible but dear* (`−log p`); fantasy is refused at any price.
+- **Conviction: income + decay.** Banked conviction **carries by default** but **decays** (`α = 0.9`) — no hoarding. The economy (income, decay, resets) is the GM's lever.
+- **A card is a chosen outcome; a round IS a merge.** Playing a card *is* choosing one of a stream's outcomes. Played cards → the round's `Merge`; only **executive** resolutions (a committed outcome) drive the continuation; streams folded in without one ride along **recorded** (organisational record, non-driving). Contested = payment-weighted; plural = multi-resolved; never averaged. A seat may **back several cards on one stream**, but it only does what they intend when the question genuinely supports multi-resolution — otherwise the commitments contend (the player's call to know).
+- **Certainty is the aggregate of conviction.** No exogenous base rate. An unplayed stance is **ceded** to others' conviction and the **stream closes at round end** — questions don't linger. A **timeout with nothing committed is the same as ceding** — no action, the LLM resolves it from the table's other plays (which already sway it).
+- **The pot is spent, not won.** Unlike poker, committed conviction isn't awarded to a winner — it's **consumed** to shape the outcome and gone. Your "winnings" are the **world you forced** (plus the betting pool, if on); **folding banks** conviction for a round that matters more. There's no per-round winner — the spine is cost + consequence, not a pot.
+- **Buy the outcome, not the consequences.** You can force an outcome; the engine owns the **fallout** (state-dependent — learning it is the rehearsal value, not an exploit).
+- **Branch isolation.** A game is a branch; one game's belief state can't leak into another. A showdown resolves the **branch**, never the canonical trunk.
+- **Replayable by design — the special part.** Every playthrough is a **branch**, and the resolver *reasons* each outcome rather than scripting it — so the **same setup replayed on a fresh branch yields a different continuation**. Run the same scenario many ways, on many branches, and the **divergence is the lesson** (it tests whether you understood *why* the first run happened). Everything in Conviction is built to be re-run and compared across branches; that's what makes it worth playing more than once.
+- **Betting is separable & optional.** A GM-run **pari-mutuel** side market (pool − rake, split pro-rata), off by default, consent-gated — a surface over stance pricing that never touches Capture or the substrate.
 
 ---
 
-## Open questions (settle during design)
+## Risks (the honest part)
 
-- **Contested certainty** — exact weighting of payment → fate-node share in the reconciliation, and how the engine *shows* why it reconciled (the legibility the whole resolution rests on).
-- **Conviction budget** — *decided:* income each round, unspent banks **but decays** (`α = 0.9`); the GM owns the economy; conviction **carries by default**, GM may reset. Still open: allowance size, decay tuning, whether folding refunds, and **whether accumulation earns its keep at all**.
-- **Pricing** — fixed at pre-round prediction, or moves intra-round as cards reveal (pari-mutuel)? Any convex term on conviction on top of `−log p`?
-- **Unplayed threads** — *decided:* **ceded** to the others' conviction (certainty = aggregate of conviction; no engine auto-resolve) **and closed at round end**. Open: how the aggregate is computed when a thread is lightly contested.
-- **The dealt hand** — what the dealt non-stance cards are (causal? events? extra outcomes?), and the chosen-vs-dealt ratio.
-- **Round shape** — one board thread or several? When does a round end (all fold / threads exhausted)?
-- **GM-as-player fairness** — when the GM plays, how is the master-device info edge (visible distributions) neutralised?
-- **Transparency** — do players know which seats are AI? Does the red team announce itself?
-- **Player goals / win condition** — *decided:* **freeform / emergent.** No assigned objective, no win screen; players bring their own intent and the engine plays it forward. The spine is **cost + consequence** (you live in the world you shaped); ELO is an optional ladder, never the point.
-- **Coordination — enforced or emergent?** — *decided:* **emergent.** No hard pooling gate; budget scarcity makes coordinating card play the natural way to push the engine further than one hand can. Open: whether any late, optional **threshold** outcomes are worth adding for set-pieces.
-- **Prior admissibility** — *decided:* implausible / over-biasing priors are **denied** (player revises and resubmits) via `scoreStreamPrior`; admissibility is a hard gate, separate from `−log p` price. Open: the exact realism/bias thresholds, and whether a GM override exists.
-- **Prior economy curve** — how much conviction does an info-gain-moving prior return, and the discount it applies; what stops prior-grinding beyond the no-op + admissibility gates?
-- **Betting economy** — *decided:* a GM-run **pari-mutuel** side market (pool − rake, split pro-rata), optional per game. Open: the bet currency (a separate chip, the conviction pool itself, or reality-anchored stakes), the rake, **when bets lock** (pre-round vs intra-round pari-mutuel drift as cards reveal), and how alliances around a pool stay legible rather than collusive.
-- **Movement reach** — *decided:* location shapes **which streams you hold** (your hand) and **who you can talk to** (location chat / alliances); it does **not** add a play-time gate on cards already in hand. Travel is **node-to-node** (single hop — parent, child, or sibling on the location tree) and **one move per round**. Open: how a stream set is recomputed on move, and whether some hops are one-way.
-- **Federation reach** — *decided:* sovereign local hosts, connectivity-federated, **no central server** (a GM owns one host; players are guests). Open: whether a player can be a guest seat across *different* sovereigns (roaming), how identity travels between hosts, and whether two sovereigns ever share a board — or federation stays strictly host→players for v1.
-- **Single-host resilience** — the host is a SPOF: what happens to an in-flight round and queued WhatsApp messages if it sleeps / drops the tunnel? Reconnect + replay model, and whether the timer pauses or forfeits.
-- **WhatsApp bridge realities** — QR-paired web-bridge is ToS-gray and one number per host; how an **unknown sender** (not on the roster) is handled (ignore / invite / GM-approve), and rate-/abuse-limits on per-member capture.
-- **Live session security** — QR / play-link token lifetime, whether a PIN gates entry, and how a token is re-issued or revoked when a seat changes hands or a player drops.
-- **WhatsApp stream sprawl** — auto-creating a new stream per "genuinely new" message risks duplicates / noise; the dedupe-against-open-streams rule and any per-member creation cap.
+- **The resolver models narrative plausibility, not causal reality** — the deepest risk. It produces *story-shaped* fallout; reality has anticlimax it under-produces. Mitigants (not a fix): ε-noise tail draws (GM volatility dial), a **legible** resolver, and **confirmed merges** anchoring to what happened — only the last makes it *honest*, and it bites only after sustained play. Enforce **trunk provenance in code**: `confirmed` (ground truth) vs `believed` (unconfirmed) — the resolver may not read `believed` as fact.
+- **AI seats are weak at hidden state + deception** — exactly the **adversary** seat you most want filled. Inferred adversaries are a **stopgap that degrades the rehearsal**, not an equivalent; keep humans in the asymmetric seats.
+- **Conviction is one scalar** — can launder real (non-fungible) constraints; v1 keeps it scalar for legibility, **typed conviction** is the refinement.
+- **The biases are directional — so declare them** (continuity over rupture, legible over dumb causes, fungible over constrained agency). Surface the standing lean at the table or it miscalibrates the people it's meant to calibrate.
+
+---
+
+## Open questions
+
+- **Narration cadence** — *decided:* the **canonical continuation generates first**, then **public + all private perspectives are one batched set of parallel calls** off that canon; delivered in order (public → private). Open: timer lengths, whether a seat can skip ahead once read, and the batch's concurrency cap.
+- **Non-canon views** — generate lazily per request and cache, or pre-generate for active seats? How far back is history readable (GM-configurable)?
+- **READ economy** — how much conviction an info-gain-moving prior returns, the discount it applies, and what stops prior-grinding beyond the no-op + admissibility gates.
+- **PLAY end + resolution** — one board stream or several; round ends on all-fold / threads exhausted / timer; exact payment→fate-node weighting and how the engine *shows* why it reconciled.
+- **Conviction tuning** — allowance size, decay tuning, whether folding refunds, whether accumulation earns its keep at all.
+- **Player mobile interface — least settled** — full perspective-gated table on the phone vs a stripped move/chat/read controller; reveals + timer on mobile; mid-game handoff between GM-proxy and a player's phone.
+- **Live session security** — QR / link token lifetime, PIN gate, re-issue/revoke when a seat changes hands.
+- **GM-as-player fairness** — when the GM also seats, how the master-device info edge is neutralised.

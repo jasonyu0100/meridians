@@ -91,6 +91,7 @@ flowchart LR
         s2["prose → SceneProseView"]
         s3["audio → SceneAudioView"]
         s4["learning → SceneLearningView (per-scene question bank)"]
+        s5["perspective → per-scene PerspectiveView: canon global + private per-entity retellings · A4 (planned)"]
     end
 ```
 
@@ -245,3 +246,52 @@ flowchart TB
 **Invariants:** one source of truth (the GM's machine); forces are *derived from deltas*, never authored; derived entities re-derive from manifests (don't mutate the caches); every LLM call funnels through `ai/api.ts` and is logged by `caller`; output schemas live with the prompt builder and are shared with repair.
 
 > **Room / curriculum state on `NarrativeState`:** `Member[]` (one GM), `Agent[]` (AI players + personas), `Perspective[]` (entity/narrator seats), `Stream[]` (member-owned bearings on open questions — a Stream reuses Fate-Thread belief mechanics but over one member-owned Stance whose log nodes are its `priors`), `Merge[]` (committed-stream folds; **Streams + Merges are a global ledger** shared across branches, made branch-relative via `basisMergeIds`), and `Topic[]` + `LearningProgress` (curriculum tree + per-member spaced-repetition coverage). Threads = the world view's belief over narrative questions; Streams = the parallel, perspective-scoped belief layer feeding the room.
+
+---
+
+## 8. Conviction — the rehearsal game state machine (A4, [CONCEPT.md](CONCEPT.md))
+
+A game is a **branch**; a `GameRoom` runs the round loop over it as a sequential, deterministic phase machine (`RoundState.phase`). Humans take their turns by hand; agents resolve automatically; a timeout with nothing committed = no action (ceded to the LLM). Conviction is a **gamified automation layer over the shipping stream / merge / generate UI** — one continuous window; the GM advances each round with **one click through the Generate Panel** (override optional). **Not yet built** — this is the A4 spec.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Setup
+    Setup --> Waiting: mode = remote (seats join controllers)
+    Setup --> Round: mode = computer (GM proxies all)
+    Waiting --> Round: GM starts · empty seats → agents
+
+    state Round {
+        [*] --> PublicNarration
+        PublicNarration --> PrivateNarration: public delivered (everyone)
+        PrivateNarration --> ReadWrite: private delivered (per seat)
+        ReadWrite --> Play: read timer ends / stand pat
+        Play --> Resolve: showdown (reveal face-down at your discretion)
+        Resolve --> Settle: GM one-click via Generate Panel (override optional) → generate → branch
+        Settle --> PublicNarration: − decay, then + income (α=0.9)
+    }
+    Round --> [*]: GM ends game
+
+    note left of Round
+      RoundState.phase ∈ public-narration · private-narration ·
+      read-write · play · resolve · settle (state ReadWrite = id
+      'read-write'). NARRATION: at Resolve the canon generates
+      once (GM-only ground truth; round 1 = the opening state),
+      then a PARALLEL BATCH of PerspectiveViews off it — public,
+      then each seat's private. Players never see canon; GM sees all.
+    end note
+    note right of Round
+      READ WRITE: deal hands, update priors + open NEW streams
+      (open questions → scoreStreamPrior gate → deal), and take the
+      ONE location hop (re-deals the hand + changes location chat).
+      PLAY: poker turn order, face up/down, pay cost (0–100).
+      Showdown reveal is optional. RESOLVE folds the round into a
+      Merge. Chat (global / location) is ALWAYS open, every phase.
+    end note
+```
+
+> **Build components (A4).**
+> **Host surfaces** — (1) **GM board · desktop**: the Play fullscreen modal, global state + `act-as-seat` proxy, runs the machine. (2) **Player controller · mobile**: perspective-gated, over the tunnel.
+> **Shared play UI** — minimalist; **The Board is the single primary surface** (rendered global for the GM, perspective-gated for a player — **responsive across desktop + mobile**). (3) **The Board**: poker-table-inspired felt that **conveys narration + round info directly** (no side panels) — seats as **avatar + name + conviction stack**, a rotating **dealer button**, **board streams + pot + timer** at centre, face-up/down reveal. (4) **The Cards**: the hand at the player's seat — face-up/down, `−log p` cost, play / raise / pass / fold. (5) **Chat — modal**: **global** (everyone; cheap talk) + **location** (co-located only; alliances), opened over the board; **agents are full participants**. (6) **Navigation — popups**: move, pose-question / request-more, settings — popups layered on the board, not panels.
+> **Content tab** — (7) **Perspective views**: per-scene `PerspectiveView` (canon global + private per-entity retellings) that feed the narration phases.
+> **Spec** — (8) **State machine** (this diagram): `RoundState.phase` over a `GameRoom`.
+> New types (`GameRoom` · `Seat` · `RoundState` · `Card`/`Hand`/`PlayedCard` · `CardRequest` (backs nav (6)) · `ChatMessage` · `PerspectiveView` (canon/public/private — one type for narration *and* requested retellings) · `Bet` · `ConvictionEconomy`) layer over shipped `Perspective` / `Stream` / `Merge` / `Location` — see [CONCEPT.md](CONCEPT.md).
