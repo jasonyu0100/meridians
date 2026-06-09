@@ -10,6 +10,7 @@ import {
   suggestQuestion,
   suggestIntuition,
   suggestPrior,
+  suggestBranchStream,
 } from '@/lib/ai/streams';
 
 vi.mock('@/lib/ai/api');
@@ -94,5 +95,48 @@ describe('suggestion helpers', () => {
   it('suggestPrior returns the trimmed prior string', async () => {
     mockReply(JSON.stringify({ prior: '  A new development.  ' }));
     expect(await suggestPrior({ question: 'q', outcomes: ['Yes', 'No'], priors: [] })).toBe('A new development.');
+  });
+
+  it('suggestBranchStream returns the trimmed question + intuition', async () => {
+    mockReply(JSON.stringify({ question: '  Will the ally hold?  ', intuition: '  Probably not.  ' }));
+    expect(await suggestBranchStream({ fromQuestion: 'q', priors: ['a'] })).toEqual({
+      question: 'Will the ally hold?',
+      intuition: 'Probably not.',
+    });
+  });
+});
+
+// The Guide popover lets the operator steer Suggest / Branch with an optional
+// free-text direction. When set, it must reach the model as an explicit steer;
+// when absent, no steer line should appear.
+describe('optional direction steer', () => {
+  const userPromptOf = () => vi.mocked(apiModule.callGenerate).mock.calls[0]?.[0] ?? '';
+
+  it('suggestPrior injects an OPERATOR DIRECTION line when direction is given', async () => {
+    mockReply(JSON.stringify({ prior: 'x' }));
+    await suggestPrior({ question: 'q', outcomes: ['Yes', 'No'], priors: [], direction: 'focus on the rival' });
+    const user = userPromptOf();
+    expect(user).toContain('OPERATOR DIRECTION');
+    expect(user).toContain('focus on the rival');
+  });
+
+  it('suggestPrior omits the OPERATOR DIRECTION line when no direction is given', async () => {
+    mockReply(JSON.stringify({ prior: 'x' }));
+    await suggestPrior({ question: 'q', outcomes: ['Yes', 'No'], priors: [] });
+    expect(userPromptOf()).not.toContain('OPERATOR DIRECTION');
+  });
+
+  it('suggestBranchStream injects an OPERATOR DIRECTION line when direction is given', async () => {
+    mockReply(JSON.stringify({ question: 'q2', intuition: 'i' }));
+    await suggestBranchStream({ fromQuestion: 'q', priors: ['a'], direction: 'the rival\'s next move' });
+    const user = userPromptOf();
+    expect(user).toContain('OPERATOR DIRECTION');
+    expect(user).toContain("the rival's next move");
+  });
+
+  it('suggestBranchStream omits the OPERATOR DIRECTION line when no direction is given', async () => {
+    mockReply(JSON.stringify({ question: 'q2', intuition: 'i' }));
+    await suggestBranchStream({ fromQuestion: 'q', priors: ['a'] });
+    expect(userPromptOf()).not.toContain('OPERATOR DIRECTION');
   });
 });

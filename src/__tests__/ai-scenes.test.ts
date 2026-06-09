@@ -284,6 +284,30 @@ describe("generateScenes", () => {
     expect(result.arc.name).toBe("The Siege Begins");
     expect(result.scenes[0].summary).toContain("Alice prepares");
   });
+  it("wires basisMerges into a <continuity-basis> block + the CONTINUITY BASIS priority", async () => {
+    // The merge-as-continuity-basis path: a resolved stream is an executive
+    // decision that must reach the generation prompt as ground truth.
+    vi.mocked(callGenerate).mockResolvedValue(JSON.stringify({ arcName: "A", scenes: [] }));
+    const narrative = createMinimalNarrative();
+    (narrative as unknown as { perspectives: Record<string, unknown> }).perspectives = {
+      "P-1": { id: "P-1", kind: "narrator" },
+    };
+    (narrative as unknown as { streams: Record<string, unknown> }).streams = {
+      "STR-1": {
+        id: "STR-1", perspectiveId: "P-1", title: "Will the gate hold?",
+        state: "open", outcomes: ["holds", "falls"],
+        stance: { logits: [1.5, 0], volume: 3, volatility: 0 },
+        priors: [{ id: "p1", text: "reinforcements arrived", at: 1, logType: "payoff" }],
+        createdAt: 0, updatedAt: 0,
+      },
+    };
+    const merge = { id: "M-1", at: 1, streamIds: ["STR-1"], resolutions: { "STR-1": { outcome: "holds" } } };
+    await generateScenes(narrative, [], 0, 1, "go", { basisMerges: [merge] } as Parameters<typeof generateScenes>[5]);
+    const prompt = vi.mocked(callGenerate).mock.calls[0]?.[0] as string;
+    expect(prompt).toContain("<continuity-basis");
+    expect(prompt).toContain('outcome="holds"');
+    expect(prompt).toContain("CONTINUITY BASIS");
+  });
   it("assigns sequential scene IDs", async () => {
     const mockResponse = JSON.stringify({
       arcName: "Test Arc",
