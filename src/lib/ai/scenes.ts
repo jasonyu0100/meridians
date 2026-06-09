@@ -417,6 +417,7 @@ ${threads ? `  <threads-to-activate>\n${threads}\n  </threads-to-activate>` : ''
     arcId,
     povRestrictedHint,
     hasPacingSequence: !!sequencePrompt,
+    hasContinuityBasis: !!mergeBasisBlock,
     sharedRulesBlock,
     paradigm: narrative.paradigm,
     narrativeTitle: narrative.title,

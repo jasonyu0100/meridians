@@ -21,7 +21,7 @@ import {
   resolveEntry,
   isWorldBuild,
 } from "@/types/narrative";
-import { streamMargin } from "@/lib/forces/stream-stance";
+import { streamMargin, streamProbs } from "@/lib/forces/stream-stance";
 import { branchLineageIds } from "@/lib/branch-tree";
 import { agentPersonaLabel, resolveAgentById } from "@/lib/agents/personas";
 
@@ -213,15 +213,28 @@ const MAX_PRIORS_PER_STREAM = 10;
  * (not ids) so a not-yet-persisted ProposedMerge can be rendered before it's
  * committed; stream data is still read from `n.streams` by id.
  *
- * Weighting (per the product model): the committed RESOLUTION is the biggest
- * driving factor — it is what HAPPENED and outranks any speculative lean in the
- * world-state. The stream PRIORS are secondary: perspective-held observations
- * that shaped the resolution, read for motive / texture / directional pressure,
- * never as competing outcomes. Streams are perspective-based, so each resolved
- * question is attributed to whose vantage (and which member) carried it.
+ * The mental model (signal vs noise): each resolved question carries a COMMITTED
+ * OUTCOME (settled fact — the signal) and the stream PRIORS that drove it (raw,
+ * perspective-held thinking — noisy evidence, partial and vantage-biased, often
+ * mutually contradictory). The block ships a `<synthesis>` directive that tells
+ * the consumer to de-noise: separate signal from noise, reconcile contradictions
+ * toward the committed outcome, and read the AGGREGATE directional pressure the
+ * body of evidence creates — the de-noised vector the continuation advances
+ * along. Weighting: resolution > aggregated prior pressure > any single prior;
+ * later/payoff-or-twist priors outweigh early setup pulses. Streams are
+ * perspective-based, so each reading keeps whose vantage (and which member /
+ * agent) carried it.
+ *
+ * OPEN-ENDED streams: a merge may fold a stream in WITHOUT committing an outcome
+ * (no entry in `merge.resolutions` for it). There is then no settled fact — the
+ * question stays genuinely open. Such a stream renders as `<open>` carrying its
+ * stance DISTRIBUTION (softmax over outcomes) instead of an `outcome`, and its
+ * priors are framed as open thought (live, unsettled reasoning) the continuation
+ * interprets within the distribution rather than as evidence for a fact.
  *
  * Returns null when there's nothing renderable (no merges, or no surviving
- * streams on them).
+ * streams — a stream with neither a resolution nor any outcomes to weight
+ * contributes nothing).
  */
 export function renderMergeBasisBlock(
   n: NarrativeState,
@@ -232,57 +245,96 @@ export function renderMergeBasisBlock(
 
   const mergeBlocks: string[] = [];
   for (const merge of merges) {
-    const resolvedBlocks: string[] = [];
+    const streamBlocks: string[] = [];
     for (const sid of merge.streamIds ?? []) {
       const stream = n.streams?.[sid];
       if (!stream) continue;
       const outcomes = stream.outcomes ?? [];
       const res = merge.resolutions?.[sid];
-      // The committed outcome(s) are the spine; skip streams with no resolution.
       const committed = resolutionOutcomes(res);
-      if (committed.length === 0) continue;
-      const outcome = committed[0];
-      const multi = committed.length > 1;
 
       const persp = perspectiveLabel(n.perspectives?.[stream.perspectiveId], n);
       const member = memberLabel(n, stream.memberId);
       const agent = agentLabel(n, stream.agentId);
-      const { topIdx } = streamMargin(stream);
-      const leaned = outcomes[topIdx];
-      // Overridden when the belief leader isn't among the committed outcome(s).
-      const overridden = !!res?.overridden && !!leaned && !committed.includes(leaned);
 
+      // Priors render identically for resolved + open streams; the FRAMING (the
+      // <priors> hint) differs — evidence behind a fact vs open thought.
       const priors = [...stream.priors]
         .sort((a, b) => a.at - b.at)
         .slice(-MAX_PRIORS_PER_STREAM)
         .map((p) => `        - ${p.logType ? `[${p.logType}] ` : ""}${p.text}`)
         .join("\n");
 
-      const attrs = [
+      const idAttrs = [
         `question="${xmlAttr(stream.title)}"`,
         `perspective="${xmlAttr(persp)}"`,
         member ? `member="${xmlAttr(member)}"` : "",
         agent ? `agent="${xmlAttr(agent)}"` : "",
-        `outcome="${xmlAttr(outcome)}"`,
-        // Multi-resolution: the question committed to several outcomes at once.
-        // The generation LLM reconciles them (both true / blend / sequence /
-        // partial) — they are NOT competing alternatives.
-        multi ? `multi-resolved="${xmlAttr(committed.join(" + "))}"` : "",
-        overridden ? `overridden="true" belief-leaned="${xmlAttr(leaned!)}"` : "",
-      ].filter(Boolean).join(" ");
+      ];
 
-      resolvedBlocks.push(
-        `      <resolved ${attrs}>${priors ? `\n      <priors hint="perspective-held observations that drove this resolution — texture/motive/direction, not competing outcomes">\n${priors}\n      </priors>\n      ` : ""}</resolved>`,
-      );
+      if (committed.length > 0) {
+        // ── Resolved — a committed outcome is the spine (settled fact / signal).
+        const outcome = committed[0];
+        const multi = committed.length > 1;
+        const { topIdx } = streamMargin(stream);
+        const leaned = outcomes[topIdx];
+        // Overridden when the belief leader isn't among the committed outcome(s).
+        const overridden = !!res?.overridden && !!leaned && !committed.includes(leaned);
+
+        const attrs = [
+          ...idAttrs,
+          `outcome="${xmlAttr(outcome)}"`,
+          // Multi-resolution: the question committed to several outcomes at once.
+          // The generation LLM reconciles them (both true / blend / sequence /
+          // partial) — they are NOT competing alternatives.
+          multi ? `multi-resolved="${xmlAttr(committed.join(" + "))}"` : "",
+          overridden ? `overridden="true" belief-leaned="${xmlAttr(leaned!)}"` : "",
+        ].filter(Boolean).join(" ");
+
+        streamBlocks.push(
+          `      <resolved ${attrs}>${priors ? `\n      <priors hint="RAW perspective-held thinking behind this resolution — noisy evidence, not fact. De-noise per &lt;synthesis&gt;: read for motive / texture / directional pressure, never as competing outcomes. [logType] tags weight: payoff/twist/escalation &gt; setup/pulse.">\n${priors}\n      </priors>\n      ` : ""}</resolved>`,
+        );
+      } else if (outcomes.length > 0) {
+        // ── Open-ended — the merge folded this stream in WITHOUT committing an
+        // outcome. No settled fact: the belief is the stance DISTRIBUTION over
+        // outcomes, and the priors are open thought the continuation interprets
+        // within (it may move along the distribution, or leave the question
+        // open). A stream with no outcomes carries no distribution → skip it.
+        const probs = streamProbs(stream);
+        const dist = outcomes
+          .map((o, i) => ({ o, p: probs[i] ?? 0 }))
+          .sort((a, b) => b.p - a.p)
+          .map(({ o, p }) => `${o} ${Math.round(p * 100)}%`)
+          .join(" · ");
+        const { topIdx } = streamMargin(stream);
+        const leaning = outcomes[topIdx];
+
+        const attrs = [
+          ...idAttrs,
+          `distribution="${xmlAttr(dist)}"`,
+          leaning ? `leaning="${xmlAttr(leaning)}"` : "",
+        ].filter(Boolean).join(" ");
+
+        streamBlocks.push(
+          `      <open ${attrs}>${priors ? `\n      <priors hint="OPEN THOUGHT — interpretive latitude, NOT fact and NOT settled. No outcome was committed, so this question stays genuinely OPEN. Move within the distribution above (lean toward the leading outcome, but the tail is live), or leave it unresolved — never harden it into a fact, never treat the tail as certain. Read the priors for motive / texture / directional pressure. [logType] tags weight: payoff/twist/escalation &gt; setup/pulse.">\n${priors}\n      </priors>\n      ` : ""}</open>`,
+        );
+      }
     }
-    if (resolvedBlocks.length === 0) continue;
+    if (streamBlocks.length === 0) continue;
     const label = merge.label ? ` label="${xmlAttr(merge.label)}"` : "";
     const summary = merge.summary ? `\n    <summary>${xmlAttr(merge.summary)}</summary>` : "";
-    mergeBlocks.push(`  <merge${label}>${summary}\n${resolvedBlocks.join("\n")}\n  </merge>`);
+    mergeBlocks.push(`  <merge${label}>${summary}\n${streamBlocks.join("\n")}\n  </merge>`);
   }
   if (mergeBlocks.length === 0) return null;
 
-  return `<continuity-basis hint="GROUND TRUTH the continuation extends from. Each resolved question below was committed at a merge — the outcome is what HAPPENED and outranks any speculative lean elsewhere in context. overridden=&quot;true&quot; means reality diverged from the accumulated belief (which leaned belief-leaned) — honour the committed outcome, not the lean. multi-resolved=&quot;a + b&quot; means the question committed to SEVERAL outcomes at once — reconcile them as jointly true / a blend / a sequence / a partial, NOT as competing alternatives; if they cannot coherently coexist, prefer the primary outcome and treat the rest as tension. The priors are perspective-held observations that drove each resolution: weigh them for motive, texture, and directional pressure, never as alternative outcomes. Streams are perspective-based — keep whose vantage each reading comes from.">
+  return `<continuity-basis hint="GROUND TRUTH the continuation extends from. Each &lt;resolved&gt; question below was committed at a merge — its outcome is what HAPPENED and outranks any speculative lean elsewhere in context. The priors under each are RAW perspective-held thinking (noisy evidence), not facts. De-noise them into a single direction (see &lt;synthesis&gt;) and continue ALONG that vector. overridden=&quot;true&quot; means reality diverged from the accumulated belief (which leaned belief-leaned) — honour the committed outcome, not the lean. multi-resolved=&quot;a + b&quot; means the question committed to SEVERAL outcomes at once — reconcile them as jointly true / a blend / a sequence / a partial, NOT as competing alternatives; if they cannot coherently coexist, prefer the primary outcome and treat the rest as tension. &lt;open&gt; questions were folded in WITHOUT a committed outcome — they are NOT fact: they carry a distribution (the perspective's stance weighting) and stay genuinely UNSETTLED. Move within that distribution (lean to the leading outcome, keep the tail live) and you MAY leave them open — never harden an &lt;open&gt; question into fact, and never treat its tail as certain.">
+  <synthesis hint="How to turn these noisy priors + committed resolutions into the direction this continuation advances along. Do this BEFORE drafting — when an arc/expansion emits a directionVector, it IS the output of this synthesis.">
+    <step n="1" name="signal-vs-noise">Treat each &lt;resolved&gt; question's committed outcome as settled fact (the signal). Treat its priors as raw, vantage-biased thinking — partial, sometimes wrong, often contradicting each other. Never promote a single prior to fact.</step>
+    <step n="2" name="reconcile">Where priors disagree, or lean away from what was committed (especially overridden=&quot;true&quot;), the resolution wins. The discarded leans are not alternative truth — they are residue the continuation can still FEEL: denial, surprise, sunk conviction, a perspective forced to update or double down.</step>
+    <step n="3" name="extract-vector">Across ALL questions (resolved facts AND open distributions) and their priors, read the net DIRECTION the body of evidence pushes — which pressures intensified, who gained or lost conviction, what is now closing, sharpening, opening, or foreclosed. Weight later priors and payoff/twist/escalation logTypes over early setup pulses, and higher-volume streams over thin ones. This aggregate is the de-noised direction vector.</step>
+    <step n="4" name="continue-along">Advance the world ALONG that vector: realise the committed outcomes and their second-order consequences, carry the motive and texture the priors reveal, and let each perspective act on its confirmed or broken read. Do not relitigate settled questions; build on them.</step>
+    <step n="5" name="open-questions">For each &lt;open&gt; question, NO outcome was committed — it is not fact. Read its distribution as the perspective's live belief weighting and let the continuation move within it: most naturally toward the leading outcome, with the tail still genuinely possible. You may let the continuation resolve an open question if it earns the resolution, or leave it open — but never assert a hard outcome the distribution doesn't support, and treat its priors as unsettled thinking, not evidence for a fact.</step>
+  </synthesis>
 ${mergeBlocks.join("\n")}
 </continuity-basis>`;
 }

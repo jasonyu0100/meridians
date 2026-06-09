@@ -256,9 +256,56 @@ describe('renderMergeBasisBlock', () => {
     expect(renderMergeBasisBlock(baseNarrative, [])).toBeNull();
   });
 
-  it('returns null when no merged stream carries a resolution', () => {
+  it('renders an unresolved stream as <open> with its stance distribution (no fact)', () => {
+    // The merge folds s1 in but commits NO outcome — it stays open-ended.
     const m = merge('m1', 'A', { streamIds: ['s1'], resolutions: {} });
-    expect(renderMergeBasisBlock(baseNarrative, [m])).toBeNull();
+    const block = renderMergeBasisBlock(baseNarrative, [m])!;
+    expect(block).not.toBeNull();
+    expect(block).toContain('<open ');
+    // belief leans 'yes' (logit 1.2 vs 0.1) → ~75/25, leaning 'yes'.
+    expect(block).toContain('leaning="yes"');
+    expect(block).toContain('distribution="yes 75% · no 25%"');
+    // Priors are framed as open thought, not as evidence for a committed fact.
+    expect(block).toContain('OPEN THOUGHT');
+    expect(block).toContain('envoy returned with signed terms');
+    // No committed outcome is asserted for an open-ended stream.
+    expect(block).not.toContain('outcome="');
+    // The synthesis carries the open-question handling step.
+    expect(block).toContain('open-questions');
+  });
+
+  it('returns null when a merged stream has neither a resolution nor outcomes to weight', () => {
+    // A bare stream (no outcomes, no stance) carries no distribution → nothing
+    // renderable, so the whole block collapses to null.
+    const bare = makeNarrative({
+      streams: { bare: stream('bare', 'A') },
+      perspectives: { p1: { id: 'p1', kind: 'narrator' } },
+    });
+    const m = merge('m1', 'A', { streamIds: ['bare'], resolutions: {} });
+    expect(renderMergeBasisBlock(bare, [m])).toBeNull();
+  });
+
+  it('renders a merge that mixes a resolved stream and an open-ended one', () => {
+    const openStream = stream('s2', 'A', {
+      title: 'Who holds the pass?',
+      outcomes: ['north', 'south'],
+      stance: { logits: [0.2, 0.2], volume: 2, volatility: 0 },
+      priors: [{ id: 'q1', text: 'both sides moving troops', at: 1, logType: 'setup' }],
+    });
+    const mixed = makeNarrative({
+      streams: { s1: overriddenStream, s2: openStream },
+      perspectives: { p1: { id: 'p1', kind: 'character', entityRef: 'c1' } },
+      members: { m1: { id: 'm1', firstName: 'Ada', lastName: 'Lovelace', role: 'member' } },
+      characters: { c1: { id: 'c1', name: 'Envoy' } } as unknown as NarrativeState['characters'],
+    });
+    const m = merge('m1', 'A', { streamIds: ['s1', 's2'], resolutions: { s1: { outcome: 'no' } } });
+    const block = renderMergeBasisBlock(mixed, [m])!;
+    // The resolved stream keeps its committed-outcome spine.
+    expect(block).toContain('<resolved ');
+    expect(block).toContain('outcome="no"');
+    // The unresolved stream renders alongside it as open-ended.
+    expect(block).toContain('<open ');
+    expect(block).toContain('Who holds the pass?');
   });
 
   it('renders the committed outcome, perspective + member attribution, and priors', () => {
@@ -277,6 +324,20 @@ describe('renderMergeBasisBlock', () => {
     // Priors are carried as secondary directional pressure.
     expect(block).toContain('envoy returned with signed terms');
     expect(block).toContain('[payoff]');
+  });
+
+  it('ships the de-noising synthesis directive that turns noisy priors into a direction', () => {
+    const m = merge('m1', 'A', {
+      streamIds: ['s1'],
+      resolutions: { s1: { outcome: 'no' } },
+    });
+    const block = renderMergeBasisBlock(baseNarrative, [m])!;
+    // The synthesis block is what tells the consumer to de-noise priors +
+    // resolutions into the direction the continuation advances along.
+    expect(block).toContain('<synthesis');
+    expect(block).toContain('signal-vs-noise');
+    expect(block).toContain('extract-vector');
+    expect(block).toContain('continue-along');
   });
 
   it('flags overrides with the belief lean the committed outcome diverged from', () => {
