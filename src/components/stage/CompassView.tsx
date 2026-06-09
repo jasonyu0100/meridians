@@ -57,7 +57,7 @@ export default function CompassView({ mode }: VariablesViewProps) {
   // surface — only the body's message changes. The topbar's actions are
   // disabled in these states because there's no arc to operate on.
   if (!narrative) {
-    return <VariablesShell mode={mode} message="No active narrative." />;
+    return <VariablesShell message="No active narrative." />;
   }
 
   const currentEntryId = state.resolvedEntryKeys[state.viewState.currentSceneIndex] ?? null;
@@ -67,7 +67,6 @@ export default function CompassView({ mode }: VariablesViewProps) {
   if (isWorldCommit) {
     return (
       <VariablesShell
-        mode={mode}
         title="World commit selected"
         message="Variables describe the machinery active in a scene. Navigate to a scene to inspect or plan its variables."
       />
@@ -80,7 +79,6 @@ export default function CompassView({ mode }: VariablesViewProps) {
   if (!focusedArc) {
     return (
       <VariablesShell
-        mode={mode}
         title="No arc on this scene"
         message="The currently-viewed scene isn't grouped under an arc, so there's no variable surface to show."
       />
@@ -145,12 +143,13 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   );
   const isHeadArc = !!headArc && focusedArc.id === headArc.id;
 
-  // Merged Present/Compass surface. `mode` is the entry projection; the user
-  // flips between the CURRENT projection (this arc's live variable
-  // disposition, formerly the standalone "Present" tab) and the FORWARD
-  // projection (the cohort of next-arc directions) via the topbar toggle,
-  // without leaving the view. State persists across arc navigation.
-  const [view, setView] = useState<Mode>(mode);
+  // Merged Present/Compass surface. The projection IS the active graph view
+  // mode: CURRENT (this arc's live variable disposition, `present`) vs FORWARD
+  // (the cohort of next-arc directions, `compass`). The Current/Forward toggle
+  // lives in the StageBar (driven by graphViewMode), so `view` simply tracks
+  // the `mode` prop Stage passes down — state persists across arc navigation
+  // because graphViewMode is global.
+  const view = mode;
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -523,7 +522,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   const accent = view === 'present' ? PRESENT_TRACE_COLOR : COMPASS_TRACE_COLOR;
 
   const onRegenerate = view === 'present' ? generatePresent : generateCompass;
-  const regenerateLabel = view === 'present' ? 'Regenerate Current' : 'Regenerate Forward';
+  const regenerateLabel = view === 'present' ? 'Regenerate Present' : 'Regenerate Future';
 
   const canExperiment = view === 'compass'
     && isHeadArc
@@ -532,8 +531,6 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <VariablesTopBar
-        mode={view}
-        onViewChange={busy ? undefined : setView}
         arcName={focusedArc.name}
         isHeadArc={isHeadArc}
         variableCount={view === 'present' ? presentVariables.length : undefined}
@@ -637,7 +634,7 @@ function DirectionModal({
   const placeholder = mode === 'present'
     ? "What should the variable extraction emphasise?"
     : "What should the forward cohort bias toward?";
-  const title = mode === 'present' ? 'Regenerate Current' : 'Regenerate Forward';
+  const title = mode === 'present' ? 'Regenerate Present' : 'Regenerate Future';
 
   // Style mirrors GeneratePanel.tsx — same Modal size, same uppercase
   // section labels, same `bg-bg-elevated border border-border rounded-lg`
@@ -715,15 +712,14 @@ function DirectionModal({
  *  shows the mode label only — actions are hidden because there's no arc
  *  in scope to operate on. */
 function VariablesShell({
-  mode, title, message,
+  title, message,
 }: {
-  mode: Mode;
   title?: string;
   message: string;
 }) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <VariablesTopBar mode={mode} />
+      <VariablesTopBar />
       <BodyContainer>
         <EmptyState title={title} message={message} />
       </BodyContainer>
@@ -736,15 +732,10 @@ function VariablesShell({
  *  page they're on. Action buttons are gated on `canRegenerate`/`canWipe`
  *  flags — callers without an arc pass neither and get the minimal label. */
 function VariablesTopBar({
-  mode, onViewChange, arcName, isHeadArc, variableCount, scenariosCount, error, busy,
+  arcName, isHeadArc, variableCount, scenariosCount, error, busy,
   directionSet, regenerateLabel, canRegenerate, canWipe, showExperiment,
   onOpenRegenerateModal, onOpenExperiment, onWipe,
 }: {
-  mode: Mode;
-  /** Flip between the current (present) and forward (compass) projection.
-   *  Omitted in the early-return shells (no arc) so the toggle only shows
-   *  when there's a variable surface to operate on. */
-  onViewChange?: (m: Mode) => void;
   arcName?: string;
   isHeadArc?: boolean;
   variableCount?: number;
@@ -827,38 +818,6 @@ function VariablesTopBar({
           </button>
         </>
       )}
-
-      {/* Projection toggle — far right. Current (this arc's live variable
-          disposition) vs Forward (the cohort of next-arc directions). The
-          merge of the old Present + Compass tabs into a single in-view
-          switch. */}
-      {onViewChange && (
-        <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-          {([
-            { m: 'present' as Mode, label: 'Current', title: 'Current projection — this arc’s live variable disposition' },
-            { m: 'compass' as Mode, label: 'Forward', title: 'Forward projection — the cohort of feasible next-arc directions' },
-          ]).map(({ m, label, title }, idx) => {
-            const isActive = mode === m;
-            return (
-              <div key={m} className="flex items-center">
-                {idx > 0 && <div className="w-px h-4 bg-white/10" />}
-                <button
-                  onClick={() => onViewChange(m)}
-                  disabled={busy}
-                  title={title}
-                  className={`px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-40 ${
-                    isActive
-                      ? 'bg-white/10 text-text-primary'
-                      : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
-                  }`}
-                >
-                  {label}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -912,7 +871,7 @@ function EmptyState({
     'Nothing to show.'
   );
   const hint = mode && !message
-    ? `Use the Regenerate ${mode === 'present' ? 'Current' : 'Forward'} action above to generate one.`
+    ? `Use the Regenerate ${mode === 'present' ? 'Present' : 'Future'} action above to generate one.`
     : undefined;
   return (
     <SharedEmptyState

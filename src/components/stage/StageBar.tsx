@@ -1172,6 +1172,39 @@ export function StageBar() {
           </div>
         )}
 
+        {/* Compass projection toggle — Present / Future. Tertiary control
+            nested under Mind → Compass: Present is this arc's live variable
+            disposition; Future is the cohort of feasible next-arc directions.
+            Each segment drives the active graph view mode directly, so the
+            CompassView body follows. Future is the default (the Compass tab
+            opens straight into it). */}
+        {(canvasMode === 'present' || canvasMode === 'compass') && (
+          <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+            {[
+              { mode: 'present' as const, label: 'Present', title: 'Present projection — this arc’s live variable disposition' },
+              { mode: 'compass' as const, label: 'Future', title: 'Future projection — the cohort of feasible next-arc directions' },
+            ].map(({ mode, label, title }, idx) => {
+              const isActive = graphViewMode === mode;
+              return (
+                <div key={mode} className="flex items-center">
+                  {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                  <button
+                    title={title}
+                    className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                      isActive
+                        ? 'bg-white/10 text-text-primary'
+                        : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                    }`}
+                    onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
+                  >
+                    {label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Control sub-mode toggle — Belief · Compass · Mode.
             Belief is the world view's aggregated belief, built from the
             stances each thread carries; Compass is the variable surface —
