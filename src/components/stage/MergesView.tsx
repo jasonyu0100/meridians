@@ -109,10 +109,13 @@ export function MergesView() {
                                   {res ? (
                                     <span className="ml-auto shrink-0 flex items-center gap-1.5 max-w-[55%] justify-end flex-wrap">
                                       {res.overridden && <span className="text-[9px] uppercase tracking-wide text-amber-400/80">override</span>}
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 shrink-0" title="Executive decision — drives generation" />
                                       <span className="text-[12px] font-medium text-text-primary text-right break-words">{resolutionOutcomes(res).join(' + ')}</span>
                                     </span>
                                   ) : (
-                                    <span className="ml-auto shrink-0 text-[11px] text-text-dim/40">—</span>
+                                    <span className="ml-auto shrink-0 text-[9px] uppercase tracking-wide text-text-dim/45 border border-white/10 rounded px-1.5 py-0.5" title="Recorded only — no executive decision; kept for the record, does not drive generation">
+                                      recorded
+                                    </span>
                                   )}
                                   <StreamBeliefSpark stream={s} />
                                 </div>
@@ -150,7 +153,10 @@ function MergeDetail({ merge, n, onBack }: { merge: Merge; n: NarrativeState; on
 
   const overrides = merged.filter((s) => merge.resolutions?.[s.id]?.overridden).length;
   const totalPriors = merged.reduce((sum, s) => sum + s.priors.length, 0);
-  const perspectives = new Set(merged.map((s) => s.perspectiveId)).size;
+  // Executive = streams committed to an outcome (drive generation); recorded =
+  // folded in without one (organisational record, non-driving).
+  const executive = merged.filter((s) => merge.resolutions?.[s.id]).length;
+  const recorded = merged.length - executive;
 
   // Editable label/summary persist via CREATE_MERGE (an upsert keyed by id).
   const saveMerge = (patch: Partial<Merge>) =>
@@ -202,10 +208,12 @@ function MergeDetail({ merge, n, onBack }: { merge: Merge; n: NarrativeState; on
         )}
       </div>
 
-      {/* Overview strip */}
+      {/* Overview strip — executive (drives generation) vs recorded (kept for
+          the organisational record only) leads, since that split is the merge's
+          core distinction. */}
       <div className="mt-3 grid grid-cols-4 gap-2">
-        <OverviewStat value={String(merged.length)} label={merged.length === 1 ? 'stream' : 'streams'} />
-        <OverviewStat value={String(perspectives)} label={perspectives === 1 ? 'perspective' : 'perspectives'} />
+        <OverviewStat value={String(executive)} label="executive" tone="emerald" />
+        <OverviewStat value={String(recorded)} label="recorded" />
         <OverviewStat value={String(totalPriors)} label="priors folded" />
         <OverviewStat value={String(overrides)} label="overrides" accent={overrides > 0} />
       </div>
@@ -285,10 +293,11 @@ function MergeDetail({ merge, n, onBack }: { merge: Merge; n: NarrativeState; on
   );
 }
 
-function OverviewStat({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
+function OverviewStat({ value, label, accent, tone }: { value: string; label: string; accent?: boolean; tone?: 'emerald' }) {
+  const valueColor = tone === 'emerald' ? 'text-emerald-400/90' : accent ? 'text-amber-400/90' : 'text-text-primary';
   return (
     <div className="rounded-lg border border-white/8 bg-white/[0.02] px-2.5 py-2 flex flex-col gap-0.5">
-      <span className={`text-[16px] font-mono tabular-nums leading-none ${accent ? 'text-amber-400/90' : 'text-text-primary'}`}>{value}</span>
+      <span className={`text-[16px] font-mono tabular-nums leading-none ${valueColor}`}>{value}</span>
       <span className="text-[9px] uppercase tracking-wider text-text-dim/40">{label}</span>
     </div>
   );
@@ -311,14 +320,26 @@ function MergeStreamCard({ stream, resolution, n }: { stream: Stream; resolution
       <div className="flex items-center gap-2">
         <PerspectivePairBadge memberId={stream.memberId} agentId={stream.agentId} perspectiveId={stream.perspectiveId} n={n} size={22} />
         <span className="text-[14px] font-semibold text-text-primary truncate">{stream.title}</span>
+        <span
+          className={`shrink-0 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded border ${
+            resolution
+              ? 'border-emerald-400/40 text-emerald-300/90'
+              : 'border-white/12 text-text-dim/55'
+          }`}
+          title={resolution
+            ? 'Executive decision — a commitment to updating reality; drives generation'
+            : 'Recorded only — no executive stance; kept for the record, does not drive generation'}
+        >
+          {resolution ? 'executive' : 'recorded'}
+        </span>
         <span className="ml-auto shrink-0 text-[11px] text-text-dim/40">
           {perspectiveName(n.perspectives?.[stream.perspectiveId], n)}
         </span>
       </div>
 
       {/* Committed outcome(s) — and where they diverged from the accumulated belief */}
-      <div className="flex items-center gap-2 rounded-lg border border-white/8 bg-white/[0.015] px-3 py-2 flex-wrap">
-        <span className="text-[10px] uppercase tracking-wider text-text-dim/50">Committed</span>
+      <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 flex-wrap ${committedSet.length > 0 ? 'border-white/8 bg-white/[0.015]' : 'border-dashed border-white/8'}`}>
+        <span className="text-[10px] uppercase tracking-wider text-text-dim/50">{committedSet.length > 0 ? 'Committed' : 'Recorded'}</span>
         {multi && <span className="text-[9px] uppercase tracking-wide text-purple-300/70">multi</span>}
         {committedSet.length > 0 ? (
           <span className="flex items-center gap-2 flex-wrap min-w-0">
@@ -335,7 +356,7 @@ function MergeStreamCard({ stream, resolution, n }: { stream: Stream; resolution
             })}
           </span>
         ) : (
-          <span className="text-[12px] text-text-dim/40">unresolved</span>
+          <span className="text-[12px] text-text-dim/50">no executive decision — kept for the record, doesn&apos;t drive generation</span>
         )}
         {overridden && (
           <span className="ml-auto flex items-center gap-1.5 text-[10px] text-amber-400/80">

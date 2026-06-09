@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { type Stream, type PerspectiveKind, type ImageRef, type NarrativeState, type ProposedMerge } from '@/types/narrative';
-import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconPlus, IconSparkle, IconClose } from '@/components/icons';
+import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconChevronDown, IconPlus, IconSparkle, IconClose } from '@/components/icons';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { Segmented } from '@/components/ui/Segmented';
 import { InlineText } from '@/components/inspector/InlineEdit';
@@ -58,6 +58,10 @@ export function StreamsView() {
   // Per-stream committed outcome SET (length 1 = single clean resolution, the
   // default; length ≥ 2 = multi-resolution, the LLM reconciles them).
   const [resolutionDraft, setResolutionDraft] = useState<Record<string, string[]>>({});
+  // RECORD-ONLY is derived, not a separate flag: a stream whose committed set is
+  // EMPTY is folded into the merge for the organisational record only — no
+  // executive decision, so it doesn't drive generation (it just tracks the final
+  // prior distribution). 1+ committed outcomes ⇒ executive (drives generation).
   // Open streams selected for a one-shot commit + collapse into a merge.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Stream opened for detail (priors timeline), staying in this tab.
@@ -289,11 +293,13 @@ export function StreamsView() {
       const outs = s.outcomes ?? [];
       const { topIdx } = streamMargin(s);
       const leading = outs[topIdx];
-      // The committed SET — default to the leader; the GM may have selected
-      // several (multi-resolution) or a different single outcome (override).
-      const draft = (resolutionDraft[s.id] ?? []).filter(Boolean);
-      const chosenSet = draft.length > 0 ? draft : [leading ?? outs[0]].filter(Boolean);
-      if (chosenSet.length === 0) continue; // stream had no outcomes — skip
+      // The committed SET. EMPTY = record-only: the stream stays in the merge
+      // (organisational record) with NO resolution, so it won't drive generation
+      // — just tracks its final prior distribution. 1+ = an executive decision
+      // (a single clean call, a different outcome = override, or several =
+      // multi-resolution the LLM reconciles).
+      const chosenSet = (resolutionDraft[s.id] ?? []).filter(Boolean);
+      if (chosenSet.length === 0) continue; // record-only — no resolution entry
       const overridden = !!leading && !chosenSet.includes(leading);
       resolutions[s.id] = {
         outcome: chosenSet[0],
@@ -620,26 +626,46 @@ export function StreamsView() {
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-4xl mx-auto p-6 space-y-5">
                 <p className="text-[11px] text-text-dim/50">
-                  Each stream commits with a final outcome — the stance leader is the <span className="text-emerald-400/80">default</span>; override where reality says otherwise. Select more than one to <span className="text-purple-300/80">multi-resolve</span> (the generation reconciles them).
+                  Each <span className="text-emerald-300/80">executive</span> stream commits with a final outcome — the stance leader is the default; override where reality says otherwise, or select more than one to <span className="text-purple-300/80">multi-resolve</span>. Mark a stream <span className="text-text-secondary">record only</span> to fold it in for the record without an executive decision — it won&apos;t drive generation. Only executive decisions move the world.
                 </p>
-                {selectedOpen.map((s) => (
+                {selectedOpen.map((s) => {
+                  const draft = resolutionDraft[s.id] ?? [];
+                  return (
                   <StreamReviewCard
                     key={s.id}
                     stream={s}
                     n={n}
-                    chosen={resolutionDraft[s.id] ?? []}
+                    chosen={draft}
+                    // Empty committed set ⇒ record-only.
+                    recordOnly={draft.length === 0}
                     onToggle={(o) =>
                       setResolutionDraft((d) => {
                         const cur = d[s.id] ?? [];
+                        // Toggling MAY empty the set — that's how you make it
+                        // record-only (uncheck every outcome).
                         const next = cur.includes(o)
                           ? cur.filter((x) => x !== o)
                           : [...cur, o];
-                        // Never allow an empty set — keep at least the toggled one.
-                        return { ...d, [s.id]: next.length > 0 ? next : [o] };
+                        return { ...d, [s.id]: next };
+                      })
+                    }
+                    // Badge flips the whole state: clear → record-only, or
+                    // restore the stance leader → executive.
+                    onToggleRecordOnly={() =>
+                      setResolutionDraft((d) => {
+                        const cur = d[s.id] ?? [];
+                        if (cur.length === 0) {
+                          const outs = s.outcomes ?? [];
+                          const { topIdx } = streamMargin(s);
+                          const leader = outs[topIdx] ?? outs[0];
+                          return { ...d, [s.id]: leader ? [leader] : [] };
+                        }
+                        return { ...d, [s.id]: [] };
                       })
                     }
                   />
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -801,12 +827,18 @@ function StreamReviewCard({
   stream,
   chosen,
   onToggle,
+  recordOnly,
+  onToggleRecordOnly,
   n,
 }: {
   stream: Stream;
   /** The committed outcome set so far (defaults to [leader] in the parent). */
   chosen: string[];
   onToggle: (outcome: string) => void;
+  /** When true, this stream is folded in for the record only — no executive
+   *  decision, so it won't drive generation. */
+  recordOnly: boolean;
+  onToggleRecordOnly: () => void;
   n: NarrativeState | null;
 }) {
   const outcomes = stream.outcomes ?? [];
@@ -816,25 +848,45 @@ function StreamReviewCard({
   const priors = [...stream.priors].sort((a, b) => a.at - b.at);
   const ranked = outcomes.map((o, i) => ({ o, i, p: probs[i] ?? 0 })).sort((a, b) => b.p - a.p);
   // Effective set — fall back to the leader when nothing is explicitly chosen.
-  const chosenSet = chosen.length > 0 ? chosen : leading ? [leading] : [];
+  // The committed set as-is — EMPTY means record-only (no executive call), so
+  // no fallback to the leader here.
+  const chosenSet = chosen;
   const multi = chosenSet.length > 1;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+    <div className={`rounded-xl border bg-white/[0.02] p-4 space-y-4 ${recordOnly ? 'border-white/8 opacity-80' : 'border-white/10'}`}>
       <div className="flex items-center gap-2">
         <PerspectivePairBadge memberId={stream.memberId} agentId={stream.agentId} perspectiveId={stream.perspectiveId} n={n} size={22} />
         <span className="text-[15px] font-semibold text-text-primary truncate">{stream.title}</span>
-        <span className="ml-auto shrink-0 text-[11px] text-text-dim/40">{priors.length} priors</span>
+        {/* Executive decision vs record-only. Record-only keeps the stream in
+            the merge but leaves it unresolved (won't drive generation). */}
+        <button
+          onClick={onToggleRecordOnly}
+          aria-pressed={recordOnly}
+          title={recordOnly
+            ? 'Recorded only — no executive decision; folded in for the record, won’t drive generation. Click to resolve it instead.'
+            : 'Executive decision — drives the continuation. Click to fold in for the record only (leave unresolved).'}
+          className={`ml-auto shrink-0 text-[10px] px-2 py-1 rounded-md border transition-colors ${
+            recordOnly
+              ? 'border-white/15 text-text-dim/70 hover:text-text-primary'
+              : 'border-emerald-400/40 text-emerald-300/90 hover:bg-emerald-500/10'
+          }`}
+        >
+          {recordOnly ? 'Record only' : 'Executive'}
+        </button>
+        <span className="shrink-0 text-[11px] text-text-dim/40">{priors.length} priors</span>
       </div>
 
       {/* Belief — distribution + how priors evolved (trajectory) */}
       <StreamBeliefPanel stream={stream} />
 
-      {/* Final outcome(s) — toggleable chips; the stance leader is the default.
-          Select more than one to multi-resolve (the generation reconciles). */}
+      {/* Final outcome(s) — toggleable chips. 1+ chosen = executive decision
+          (the stance leader is the default; select several to multi-resolve).
+          Uncheck them all to make it RECORD-ONLY — folded in for the record,
+          tracking only the prior distribution, never driving generation. */}
       <div className="flex flex-col gap-2">
         <label className="text-[10px] uppercase tracking-wider text-text-dim/50 flex items-center gap-2">
-          Final outcome
+          {recordOnly ? 'Outcome — none (recorded)' : 'Final outcome'}
           {multi && <span className="text-purple-300/80 normal-case tracking-normal">multi-resolution · {chosenSet.length} outcomes</span>}
         </label>
         <div className="flex flex-wrap gap-2">
@@ -846,8 +898,13 @@ function StreamReviewCard({
                 key={o}
                 onClick={() => onToggle(o)}
                 aria-pressed={isChosen}
+                title={isChosen ? 'Committed — click to uncheck' : 'Click to commit this outcome (executive decision)'}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                  isChosen ? 'border-purple-400/60 bg-purple-500/15 text-text-primary' : 'border-white/10 text-text-secondary hover:bg-white/5'
+                  isChosen
+                    ? 'border-purple-400/60 bg-purple-500/15 text-text-primary'
+                    : recordOnly && isLeading
+                      ? 'border-emerald-400/50 bg-emerald-500/10 text-text-primary ring-1 ring-emerald-400/30 hover:bg-emerald-500/15'
+                      : 'border-white/10 text-text-secondary hover:bg-white/5'
                 }`}
               >
                 <span className={`shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center ${isChosen ? 'bg-purple-500/40 border-purple-400/70 text-purple-100' : 'border-white/25'}`}>
@@ -861,6 +918,18 @@ function StreamReviewCard({
             );
           })}
         </div>
+        {recordOnly ? (
+          <div className="flex items-start gap-2 rounded-lg border border-dashed border-emerald-400/25 bg-emerald-500/[0.04] px-3 py-2 text-[11px] text-text-dim/65 leading-relaxed">
+            <IconChevronDown size={13} className="shrink-0 mt-0.5 rotate-180 text-emerald-300/70" />
+            <span>
+              <span className="text-text-secondary">Recorded only</span> — no executive commitment; this stream just tracks the final prior distribution and <span className="text-text-secondary">won&apos;t drive generation</span>. <span className="text-emerald-300/90">Click an outcome above</span> to commit it as an executive decision.
+            </span>
+          </div>
+        ) : (
+          <p className="text-[10px] text-text-dim/45 leading-relaxed">
+            Uncheck every outcome to fold this in as <span className="text-text-dim/70">record only</span> (tracked, but not an executive decision).
+          </p>
+        )}
       </div>
 
       {/* Priors evolution */}

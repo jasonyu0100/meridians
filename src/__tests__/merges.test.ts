@@ -256,8 +256,9 @@ describe('renderMergeBasisBlock', () => {
     expect(renderMergeBasisBlock(baseNarrative, [])).toBeNull();
   });
 
-  it('renders an unresolved stream as <open> with its stance distribution (no fact)', () => {
-    // The merge folds s1 in but commits NO outcome — it stays open-ended.
+  it('renders an unresolved stream as <open> record-only (no fact, non-driving)', () => {
+    // The merge folds s1 in but commits NO outcome — it stays unresolved, kept
+    // in the merge as organisational record (an executive decision elsewhere).
     const m = merge('m1', 'A', { streamIds: ['s1'], resolutions: {} });
     const block = renderMergeBasisBlock(baseNarrative, [m])!;
     expect(block).not.toBeNull();
@@ -265,13 +266,17 @@ describe('renderMergeBasisBlock', () => {
     // belief leans 'yes' (logit 1.2 vs 0.1) → ~75/25, leaning 'yes'.
     expect(block).toContain('leaning="yes"');
     expect(block).toContain('distribution="yes 75% · no 25%"');
-    // Priors are framed as open thought, not as evidence for a committed fact.
-    expect(block).toContain('OPEN THOUGHT');
+    // Priors are framed as non-driving organisational record, not as evidence
+    // for a committed fact and not as a driver of generation.
+    expect(block).toContain('ORGANISATIONAL RECORD');
+    expect(block).toContain('NON-DRIVING');
     expect(block).toContain('envoy returned with signed terms');
-    // No committed outcome is asserted for an open-ended stream.
+    // No committed outcome is asserted for an unresolved stream.
     expect(block).not.toContain('outcome="');
-    // The synthesis carries the open-question handling step.
+    // The synthesis carries the open-question handling step + the executive-only
+    // driving rule.
     expect(block).toContain('open-questions');
+    expect(block).toContain('executive');
   });
 
   it('returns null when a merged stream has neither a resolution nor outcomes to weight', () => {
