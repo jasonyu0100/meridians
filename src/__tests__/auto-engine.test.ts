@@ -56,8 +56,8 @@ function createThread(id: string, overrides: Partial<Thread> = {}): Thread {
     outcomes: ["yes", "no"],
     stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
     participants: [],
-    dependents: [],
     openedAt: "s1",
+    dependents: [],
     threadLog: { nodes: {}, edges: [] },
     ...overrides,
   };
@@ -1156,7 +1156,6 @@ describe("buildPlanDirective", () => {
           stances: { narrator: { logits: [0, 0], volume: 2, volatility: 0 } },
           kind: "external",
           participants: [],
-          dependents: [],
           seedNodeIds: [],
           terminalNodeIds: [],
           peakNodeIds: [],

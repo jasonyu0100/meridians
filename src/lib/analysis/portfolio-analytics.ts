@@ -13,7 +13,7 @@
  */
 
 import type { NarrativeState, Thread, Scene, WorldBuild } from '@/types/narrative';
-import { NARRATOR_AGENT_ID } from '@/types/narrative';
+import { NARRATOR_ID } from '@/types/narrative';
 import { STANCE_OPENING_VOLUME } from '@/lib/constants';
 import { STANCE_FOCUS_K } from '@/lib/constants';
 import {
@@ -57,7 +57,7 @@ function seedThreadCopy(t: Thread): Thread {
   const belief = newNarratorStance(t.outcomes.length, STANCE_OPENING_VOLUME, rawPriorProbs);
   return {
     ...t,
-    stances: { [NARRATOR_AGENT_ID]: belief },
+    stances: { [NARRATOR_ID]: belief },
     threadLog: { nodes: {}, edges: [] },
     closedAt: undefined,
     closeOutcome: undefined,

@@ -25,7 +25,7 @@ import type {
   Scene,
   SceneGameAnalysis,
 } from "@/types/narrative";
-import { NARRATOR_AGENT_ID } from "@/types/narrative";
+import { NARRATOR_ID } from "@/types/narrative";
 
 type RawGame = Record<string, unknown>;
 
@@ -237,7 +237,7 @@ function resolvePlayerId(
   return tryDirect(id) ?? tryName(name) ?? tryName(id) ?? null;
 }
 
-const NARRATOR_PLAYER = { id: NARRATOR_AGENT_ID, name: "Narrator" } as const;
+const NARRATOR_PLAYER = { id: NARRATOR_ID, name: "Narrator" } as const;
 
 /**
  * Resolve a player reference, defaulting to the Narrator when none is given.
@@ -255,7 +255,7 @@ function resolveOrNarrator(
   const id = typeof rawId === "string" ? rawId.trim() : "";
   const name = typeof rawName === "string" ? rawName.trim() : "";
   if (!id && !name) return { ...NARRATOR_PLAYER };
-  if (id.toLowerCase() === NARRATOR_AGENT_ID || name.toLowerCase() === "narrator") {
+  if (id.toLowerCase() === NARRATOR_ID || name.toLowerCase() === "narrator") {
     return { ...NARRATOR_PLAYER };
   }
   return resolvePlayerId(rawId, rawName, narrative);

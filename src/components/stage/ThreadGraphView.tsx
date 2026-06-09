@@ -4,7 +4,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import type { NarrativeState, Scene } from '@/types/narrative';
-import { resolveEntry, NARRATOR_AGENT_ID } from '@/types/narrative';
+import { resolveEntry, NARRATOR_ID } from '@/types/narrative';
 import { resolveEntityName } from '@/lib/forces/narrative-utils';
 import {
   classifyThreadCategory,
@@ -44,7 +44,7 @@ function buildLinks(narrative: NarrativeState, nodeIds: Set<string>): TLink[] {
   // Explicit dependents only
   for (const t of Object.values(narrative.threads)) {
     if (!nodeIds.has(t.id)) continue;
-    for (const depId of t.dependents) {
+    for (const depId of t.dependents ?? []) {
       if (!nodeIds.has(depId)) continue;
       const key = [t.id, depId].sort().join('|');
       if (!seen.has(key)) {
@@ -103,7 +103,7 @@ export default function ThreadGraphView({
     const scrubbed = replayThreadsAtIndex(narrative, resolvedKeys, currentIndex);
     return Object.fromEntries(
       Object.entries(scrubbed).map(([id, t]) => {
-        const lastTouched = t.stances?.[NARRATOR_AGENT_ID]?.lastTouchedScene;
+        const lastTouched = t.stances?.[NARRATOR_ID]?.lastTouchedScene;
         const touchedIdx = lastTouched ? resolvedKeys.indexOf(lastTouched) : -1;
         const scenesSinceTouch = touchedIdx < 0 ? Infinity : currentIndex - touchedIdx;
         return [id, classifyThreadCategory(t, { scenesSinceTouch })];

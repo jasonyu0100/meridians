@@ -19,6 +19,7 @@ import EvalBar from '@/components/timeline/EvalBar';
 import SystemGraphView, { FullscreenButton } from './SystemGraphView';
 import WorldGraphView from './WorldGraphView';
 import ThreadGraphView from './ThreadGraphView';
+import SankeyView from './SankeyView';
 import ThreadLogGraphView from './ThreadLogGraphView';
 import { ScenePlanView } from './ScenePlanView';
 import { SceneProseView } from './SceneProseView';
@@ -1615,6 +1616,23 @@ export default function Stage() {
             hideControls hideLegend
           />
         )
+      ) : graphViewMode === 'threads-influence' || graphViewMode === 'streams-influence' ? (
+        // Influence — log-based alluvial of fate volume over time. Source
+        // (Threads / Streams) from the topbar; span (Full / Window) + window
+        // size configured in the bar below.
+        <SankeyView
+          narrative={narrative!}
+          resolvedKeys={state.resolvedEntryKeys}
+          currentIndex={state.viewState.currentSceneIndex}
+          source={graphViewMode === 'streams-influence' ? 'streams' : 'threads'}
+          onSelectThread={(id: string) => {
+            dispatch({ type: 'SELECT_THREAD_LOG', threadId: id });
+            dispatch({ type: 'SET_INSPECTOR', context: { type: 'thread', threadId: id } });
+          }}
+          onSelectStream={(id: string) => {
+            dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: id } });
+          }}
+        />
       ) : graphViewMode === 'search' || graphViewMode === 'vision' ? (
         // Capture canvas owns both — the sub-tab switcher inside reads the
         // mode and renders Entry or Search. Routing both modes through

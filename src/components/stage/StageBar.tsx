@@ -8,7 +8,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconGlobe, IconLightbulb, IconThread, IconNetwork, IconBelief, IconMind, IconNotepad, IconProse, IconWaveform, IconMapPin, IconQuestion, IconSignals, IconContent, IconPlan, IconCurriculum, IconSystem, IconScorecard, IconReasoning, IconSearch, IconCompass, IconLineChart, IconGitBranch, IconDatabase, IconClose, IconRefresh, IconCopy, IconDownload, IconChevronDown } from '@/components/icons';
+import { IconMind, IconSignals, IconContent, IconDatabase, IconClose, IconRefresh, IconCopy, IconDownload, IconChevronDown, IconLineChart } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/io/graph-export';
@@ -30,7 +30,6 @@ type GraphDomain = {
   // Each scoped domain carries three modes — one per scope window.
   // Scopeless domains (Network) use the same mode for all three slots.
   scopes: ScopeTriple;
-  Icon: typeof IconGlobe;
   description: string;
   scopeless?: boolean;
 };
@@ -39,13 +38,11 @@ const GRAPH_DOMAINS: GraphDomain[] = [
   {
     label: 'World',
     scopes: { scene: 'world-scene', arc: 'world-arc', full: 'world-full' },
-    Icon: IconGlobe,
     description: 'Characters & locations',
   },
   {
     label: 'System',
     scopes: { scene: 'system-scene', arc: 'system-arc', full: 'system-full' },
-    Icon: IconLightbulb,
     description: 'System knowledge & rules',
   },
   {
@@ -54,13 +51,11 @@ const GRAPH_DOMAINS: GraphDomain[] = [
     // the label reflects the force it rolls up into.
     label: 'Fate',
     scopes: { scene: 'threads-scene', arc: 'threads-arc', full: 'threads-full' },
-    Icon: IconThread,
     description: 'Fate — threads & tensions',
   },
   {
     label: 'Network',
     scopes: { scene: 'network-scene', arc: 'network-arc', full: 'network-full' },
-    Icon: IconNetwork,
     description: 'Aggregate connection graph',
   },
 ];
@@ -95,7 +90,7 @@ function scopeOf(mode: GraphViewMode): Scope | null {
 export const GRAPH_MODES = new Set<GraphViewMode>([
   'world-scene', 'world-arc', 'world-full',
   'system-scene', 'system-arc', 'system-full',
-  'threads-scene', 'threads-arc', 'threads-full',
+  'threads-scene', 'threads-arc', 'threads-full', 'threads-influence', 'streams-influence',
   'network-scene', 'network-arc', 'network-full',
 ]);
 
@@ -393,21 +388,21 @@ export function StageBar() {
     graphViewMode === 'belief' || graphViewMode === 'present' || graphViewMode === 'compass' || graphViewMode === 'mode' || graphViewMode === 'decision' || graphViewMode === 'map' || graphViewMode === 'search'
   );
   // The "Signals" cluster bundles Streams (perspective capture) / History
-  // (commit timeline) / Capture (the raw-note workspace + daily-ingest queue).
-  // All render through CaptureView / room views; the sub-tab toggle in the
-  // topbar flips between them.
+  // (commit timeline) / Capture (the raw-note workspace + daily-ingest queue)
+  // and Board (the nested-map board). All render through CaptureView / room
+  // views / the board; the sub-tab toggle in the topbar flips between them.
   const inSignalsMode =
     graphViewMode === 'vision' || graphViewMode === 'streams' ||
-    graphViewMode === 'merges';
-  const lastSignalsSubModeRef = useRef<'vision' | 'streams' | 'merges'>('streams');
+    graphViewMode === 'merges' || canvasMode === 'board';
+  const lastSignalsSubModeRef = useRef<'vision' | 'streams' | 'merges' | 'board'>('streams');
   useEffect(() => {
     if (
       graphViewMode === 'vision' || graphViewMode === 'streams' ||
-      graphViewMode === 'merges'
+      graphViewMode === 'merges' || canvasMode === 'board'
     ) {
-      lastSignalsSubModeRef.current = graphViewMode;
+      lastSignalsSubModeRef.current = canvasMode === 'board' ? 'board' : graphViewMode as 'vision' | 'streams' | 'merges';
     }
-  }, [graphViewMode]);
+  }, [graphViewMode, canvasMode]);
 
   const lastMindSubModeRef = useRef<'belief' | 'present' | 'compass' | 'mode' | 'decision' | 'map' | 'search'>('belief');
   useEffect(() => {
@@ -419,14 +414,13 @@ export function StageBar() {
   }, [graphViewMode]);
 
   // "State" bundles the graph domains (World / System / Threads / Network)
-  // and Board (the nested-map board). World is the default sub-tab and the
-  // graph domains lead, carrying their own Scene / Arc / Full scope toggle;
-  // Board sits after them.
-  const inBaseMode = canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum';
-  // World is the default State sub-tab; Board sits after the graph domains.
+  // and Curriculum. World is the default sub-tab and the graph domains lead,
+  // carrying their own Scene / Arc / Full scope toggle.
+  const inBaseMode = canvasMode === 'graph' || canvasMode === 'curriculum';
+  // World is the default State sub-tab.
   const lastBaseSubModeRef = useRef<GraphViewMode>('world-scene');
   useEffect(() => {
-    if (canvasMode === 'graph' || canvasMode === 'board' || canvasMode === 'curriculum') {
+    if (canvasMode === 'graph' || canvasMode === 'curriculum') {
       lastBaseSubModeRef.current = graphViewMode;
     }
   }, [graphViewMode, canvasMode]);
@@ -1032,7 +1026,33 @@ export function StageBar() {
                 null) and on the scopeless Network domain. Each segment
                 dispatches the mode for its scope from the active domain's
                 triple. */}
-            {scopeTriple && (
+            {(graphViewMode === 'threads-influence' || graphViewMode === 'streams-influence') ? (
+              // Influence: Threads vs Streams source. Span + window size live in
+              // the bar below the stage bar (inside the view).
+              <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+                {([
+                  { mode: 'threads-influence', label: 'Threads' },
+                  { mode: 'streams-influence', label: 'Streams' },
+                ] as { mode: GraphViewMode; label: string }[]).map(({ mode, label }, idx) => {
+                  const isActive = graphViewMode === mode;
+                  return (
+                    <div key={mode} className="flex items-center">
+                      {idx > 0 && <div className="w-px h-4 bg-white/10" />}
+                      <button
+                        className={`px-1.5 py-1 text-[10px] font-medium transition-colors ${
+                          isActive
+                            ? 'bg-white/10 text-text-primary'
+                            : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
+                        }`}
+                        onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
+                      >
+                        {label}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : scopeTriple ? (
               <div className="flex items-center rounded-md overflow-hidden border border-white/10">
                 {(['scene', 'arc', 'full'] as const).map((scope, idx) => {
                   const isActive = currentScope === scope;
@@ -1054,7 +1074,7 @@ export function StageBar() {
                   );
                 })}
               </div>
-            )}
+            ) : null}
 
             {/* Curriculum view toggle — Tree (horizontal mind-map) / List
                 (indented collapsible outline). Only shown when Curriculum is
@@ -1085,9 +1105,9 @@ export function StageBar() {
               </div>
             )}
 
-            {/* Sub-tabs — graph domains first (World default), then Board */}
+            {/* Sub-tabs — graph domains (World default) */}
             <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-              {GRAPH_DOMAINS.map(({ label, scopes, Icon, scopeless }, idx) => {
+              {GRAPH_DOMAINS.map(({ label, scopes, scopeless }, idx) => {
                 const isActive = graphViewMode === scopes.scene
                   || graphViewMode === scopes.arc
                   || graphViewMode === scopes.full;
@@ -1110,25 +1130,24 @@ export function StageBar() {
                         mode: scopeless ? scopes.scene : scopes[preferredScope],
                       })}
                     >
-                      <Icon size={12} />
                       {label}
                     </button>
                   </div>
                 );
               })}
-              {/* Board — scopeless nested-map board, after the graph domains */}
+              {/* Influence — log-based fate alluvial (Threads / Streams). Its
+                  own top-level tab, peer to the graph domains. */}
               <div className="flex items-center">
                 <div className="w-px h-4 bg-white/10" />
                 <button
                   className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                    canvasMode === 'board'
+                    graphViewMode === 'threads-influence' || graphViewMode === 'streams-influence'
                       ? 'bg-white/10 text-text-primary'
                       : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
                   }`}
-                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'board' })}
+                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'threads-influence' })}
                 >
-                  <IconMapPin size={12} />
-                  Board
+                  Influence
                 </button>
               </div>
               {/* Curriculum — the learning topic tree (Dagre) */}
@@ -1142,7 +1161,6 @@ export function StageBar() {
                   }`}
                   onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'curriculum-list' })}
                 >
-                  <IconCurriculum size={12} />
                   Curriculum
                 </button>
               </div>
@@ -1225,13 +1243,13 @@ export function StageBar() {
         {inMindMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {([
-              { mode: 'belief' as const, label: 'Belief', Icon: IconBelief },
-              { mode: 'compass' as const, label: 'Compass', Icon: IconCompass },
-              { mode: 'mode' as const, label: 'Phase', Icon: IconSystem },
-              { mode: 'decision' as const, label: 'Decision', Icon: IconScorecard },
-              { mode: 'map' as const, label: 'Map', Icon: IconReasoning },
-              { mode: 'search' as const, label: 'Search', Icon: IconSearch },
-            ] as const).map(({ mode, label, Icon }, idx) => {
+              { mode: 'belief' as const, label: 'Belief' },
+              { mode: 'compass' as const, label: 'Compass' },
+              { mode: 'mode' as const, label: 'Phase' },
+              { mode: 'decision' as const, label: 'Decision' },
+              { mode: 'map' as const, label: 'Map' },
+              { mode: 'search' as const, label: 'Search' },
+            ] as const).map(({ mode, label }, idx) => {
               // Compass owns the merged variable surface — highlight it for
               // both the forward (compass) and current (present) projections,
               // including any state persisted under the old "present" value.
@@ -1249,7 +1267,6 @@ export function StageBar() {
                     }`}
                     onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
                   >
-                    {Icon && <Icon size={12} />}
                     {label}
                   </button>
                 </div>
@@ -1268,13 +1285,13 @@ export function StageBar() {
         {inContentMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'plan' as ScenePrimaryMode, Icon: IconPlan, label: 'Plan', hidden: false },
-              { mode: 'prose' as ScenePrimaryMode, Icon: IconProse, label: 'Prose', hidden: false },
-              { mode: 'audio' as ScenePrimaryMode, Icon: IconWaveform, label: 'Audio', hidden: false },
-              { mode: 'learning' as ScenePrimaryMode, Icon: IconQuestion, label: 'Questions', hidden: false },
+              { mode: 'plan' as ScenePrimaryMode, label: 'Plan', hidden: false },
+              { mode: 'prose' as ScenePrimaryMode, label: 'Prose', hidden: false },
+              { mode: 'audio' as ScenePrimaryMode, label: 'Audio', hidden: false },
+              { mode: 'learning' as ScenePrimaryMode, label: 'Questions', hidden: false },
             ]
               .filter(({ hidden }) => !hidden)
-              .map(({ mode, Icon, label }, idx) => {
+              .map(({ mode, label }, idx) => {
                 const isActive = canvasMode === mode;
                 return (
                   <div key={mode} className="flex items-center">
@@ -1287,7 +1304,6 @@ export function StageBar() {
                       }`}
                       onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
                     >
-                      <Icon size={12} />
                       {label}
                     </button>
                   </div>
@@ -1304,10 +1320,11 @@ export function StageBar() {
         {inSignalsMode && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {[
-              { mode: 'streams' as const, Icon: IconLineChart, label: 'Streams' },
-              { mode: 'merges' as const, Icon: IconGitBranch, label: 'History' },
-              { mode: 'vision' as const, Icon: IconNotepad, label: 'Entry' },
-            ].map(({ mode, Icon, label }, idx) => {
+              { mode: 'streams' as const, label: 'Streams' },
+              { mode: 'merges' as const, label: 'History' },
+              { mode: 'board' as const, label: 'Board' },
+              { mode: 'vision' as const, label: 'Entry' },
+            ].map(({ mode, label }, idx) => {
               const isActive = graphViewMode === mode;
               return (
                 <div key={mode} className="flex items-center">
@@ -1320,7 +1337,6 @@ export function StageBar() {
                     }`}
                     onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode })}
                   >
-                    <Icon size={12} />
                     {label}
                   </button>
                 </div>
@@ -1386,6 +1402,7 @@ export function StageBar() {
       {showEmbeddingsModal && (
         <RegenerateEmbeddingsModal onClose={() => setShowEmbeddingsModal(false)} />
       )}
+
     </div>
   );
 }

@@ -50,7 +50,7 @@ const VALID_PARADIGMS: ReadonlySet<NarrativeParadigm> = new Set<NarrativeParadig
 ]);
 import {
   DEFAULT_STORY_SETTINGS,
-  NARRATOR_AGENT_ID,
+  NARRATOR_ID,
   THREAD_LOG_NODE_TYPES,
 } from "@/types/narrative";
 import { clampEvidence, isThreadAbandoned, isThreadClosed } from "@/lib/forces/narrative-utils";
@@ -1929,7 +1929,7 @@ export async function assembleNarrative(
           outcomes,
           horizon,
           stances: {
-            [NARRATOR_AGENT_ID]: newNarratorStance(
+            [NARRATOR_ID]: newNarratorStance(
               outcomes.length,
               2,
               rawPriorProbs,
@@ -1953,7 +1953,7 @@ export async function assembleNarrative(
           }
         }
         if (addedOutcomes.length > 0) {
-          const b = threads[id].stances[NARRATOR_AGENT_ID];
+          const b = threads[id].stances[NARRATOR_ID];
           if (b) {
             b.logits = [
               ...b.logits,

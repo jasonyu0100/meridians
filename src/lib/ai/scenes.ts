@@ -1,7 +1,7 @@
 // Scene generation — scene structures+deltas, beat plans, and plan reverse-engineering; Markov-paced.
 
 import type { NarrativeState, Scene, Arc, WorldBuild, StorySettings, Beat, BeatPlan, BeatProse, BeatProseMap, Proposition, ThreadLogNodeType, SystemNode, Thread, Artifact, Character, Location as LocationEntity, LocationProminence, TimeUnit, Merge } from '@/types/narrative';
-import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_AGENT_ID, WORLD_NODE_CATEGORY } from '@/types/narrative';
+import { DEFAULT_STORY_SETTINGS, BEAT_FN_LIST, BEAT_MECHANISM_LIST, NARRATOR_ID, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import type { WorldNodeType } from '@/types/narrative';
 import { isThreadAbandoned, isThreadClosed, clampEvidence } from '@/lib/forces/narrative-utils';
 import { nextId, nextIds } from '@/lib/forces/narrative-utils';
@@ -2130,7 +2130,7 @@ export function sanitizeScenes(scenes: Scene[], narrative: NarrativeState, label
           description: t.description,
           outcomes,
           stances: {
-            [NARRATOR_AGENT_ID]: { ...seedStance, lastTouchedScene: scene.id },
+            [NARRATOR_ID]: { ...seedStance, lastTouchedScene: scene.id },
           },
           participants: validParticipants,
           openedAt: t.openedAt ?? scene.id,

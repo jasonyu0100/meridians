@@ -15,7 +15,7 @@ import type {
   Thread,
   NarrativeState,
 } from '@/types/narrative';
-import { NARRATOR_AGENT_ID } from '@/types/narrative';
+import { NARRATOR_ID } from '@/types/narrative';
 import { newNarratorStance } from '@/lib/forces/thread-log';
 import { EMPTY_THREAD_LOG } from '@/lib/forces/thread-log';
 
@@ -71,7 +71,7 @@ function makeThread(id: string, overrides: Partial<Thread> = {}): Thread {
     participants: [],
     outcomes,
     stances: {
-      [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length),
+      [NARRATOR_ID]: newNarratorStance(outcomes.length),
     },
     openedAt: 'S-1',
     dependents: [],

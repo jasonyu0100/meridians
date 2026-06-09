@@ -864,11 +864,11 @@ export default function ThreadDetail({ threadId }: Props) {
       {(() => {
         // Dedupe — `dependents` can list the same thread id more than once,
         // which would collide on the React key below.
-        const convergesWith = [...new Set(thread.dependents)].filter(
+        const convergesWith = [...new Set(thread.dependents ?? [])].filter(
           (id) => narrative.threads[id],
         );
         const dependedOnBy = Object.values(narrative.threads).filter(
-          (t) => t.id !== threadId && t.dependents.includes(threadId),
+          (t) => t.id !== threadId && (t.dependents ?? []).includes(threadId),
         );
         if (convergesWith.length === 0 && dependedOnBy.length === 0)
           return null;

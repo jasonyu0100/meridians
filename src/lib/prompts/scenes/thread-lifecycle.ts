@@ -15,7 +15,7 @@
  */
 
 import type { NarrativeState, Thread } from '@/types/narrative';
-import { NARRATOR_AGENT_ID } from '@/types/narrative';
+import { NARRATOR_ID } from '@/types/narrative';
 import { THREAD_LIFECYCLE_DOC } from '@/lib/ai/context';
 import {
   STANCE_NEAR_CLOSED_MIN,
@@ -211,7 +211,7 @@ export function buildCompletedBeatsPrompt(
 /** Short-form stance rendering for a single thread — used in focus window
  *  blocks where we want a compact per-thread readout. */
 export function renderThreadStanceLine(t: Thread): string {
-  const stance = t.stances?.[NARRATOR_AGENT_ID];
+  const stance = t.stances?.[NARRATOR_ID];
   const probs = getStanceProbs(t);
   const vol = stance?.volume ?? 0;
   const top = probs.indexOf(Math.max(...probs));

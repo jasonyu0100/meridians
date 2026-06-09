@@ -311,7 +311,9 @@ export default function NarrativeWorkspace() {
               />
             )}
 
-            {(GRAPH_MODES.has(state.viewState.graphViewMode) ||
+            {((GRAPH_MODES.has(state.viewState.graphViewMode) &&
+              state.viewState.graphViewMode !== 'threads-influence' &&
+              state.viewState.graphViewMode !== 'streams-influence') ||
               state.viewState.graphViewMode === 'plan' ||
               state.viewState.graphViewMode === 'prose' ||
               state.viewState.graphViewMode === 'audio' ||

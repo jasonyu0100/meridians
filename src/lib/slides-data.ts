@@ -367,7 +367,7 @@ export function computeSlidesData(
   const threadConvergences: SlidesData['threadConvergences'] = [];
   const convSet = new Set<string>();
   for (const t of Object.values(narrative.threads)) {
-    for (const depId of t.dependents) {
+    for (const depId of t.dependents ?? []) {
       if (!narrative.threads[depId]) continue;
       const key = [t.id, depId].sort().join('|');
       if (!convSet.has(key)) {

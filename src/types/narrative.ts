@@ -15,7 +15,7 @@
 
 /** Canonical agent whose stance is the "narrator price" before per-character
  *  stances are populated. Phase 1: only the narrator holds a stance. */
-export const NARRATOR_AGENT_ID = "narrator" as const;
+export const NARRATOR_ID = "narrator" as const;
 
 /** A stance held by a single agent (narrator or character) over a thread's
  *  outcomes — that agent's current bearing on the question the thread poses.
@@ -164,7 +164,7 @@ export type Thread = {
    *  prompts. Undefined treated as 'medium' for backwards compatibility. */
   horizon?: ThreadHorizon;
   /** Per-agent stances over the outcomes — each agent's current bearing on
-   *  the question. Phase 1: stances[NARRATOR_AGENT_ID] is the only entry
+   *  the question. Phase 1: stances[NARRATOR_ID] is the only entry
    *  and serves as the canonical narrator price. Phase 5 adds per-character
    *  stances; the canonical price becomes an aggregate over them. */
   stances: Record<string, Stance>;
@@ -3290,6 +3290,8 @@ export type WizardData = {
  *   world-scene   / world-arc   / world-full   — Stage
  *   system-scene  / system-arc  / system-full  — SystemGraphView
  *   threads-scene / threads-arc / threads-full — ThreadGraphView
+ *   threads-influence / streams-influence — SankeyView (Influence alluvial;
+ *     Threads or Streams source, Full/Window span configured in-view)
  *   network-scene / network-arc / network-full — NetworkView
  *
  * Non-graph canvas modes (plan / prose / audio / decision / search /
@@ -3311,6 +3313,8 @@ export type GraphViewMode =
   | "threads-scene"
   | "threads-arc"
   | "threads-full"
+  | "threads-influence"
+  | "streams-influence"
   | "search"
   | "vision"
   | "streams"

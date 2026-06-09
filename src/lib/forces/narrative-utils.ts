@@ -2,7 +2,7 @@
 
 import type { Branch, NarrativeState, Scene, Thread, Stance, OutcomeEvidence, ThreadDelta, ForceSnapshot, CubeCornerKey, CubeCorner, SystemGraph, SystemNode, SystemEdge, SystemDelta, WorldBuild, Character, Location, Artifact } from '@/types/narrative';
 import { getSceneSystemAttributions } from '@/lib/graph/system-graph';
-import { NARRATOR_AGENT_ID } from '@/types/narrative';
+import { NARRATOR_ID } from '@/types/narrative';
 import {
   STANCE_EVIDENCE_SENSITIVITY,
   STANCE_EVIDENCE_MIN,
@@ -534,7 +534,7 @@ export function updateLogits(
 /** The narrator's stance on a thread. Phase 1 uses this as the canonical
  *  bearing the world view's belief aggregates from. */
 export function getThreadStance(thread: Thread): Stance | undefined {
-  return thread.stances?.[NARRATOR_AGENT_ID];
+  return thread.stances?.[NARRATOR_ID];
 }
 
 /** Probability distribution over a thread's outcomes (narrator stance). */

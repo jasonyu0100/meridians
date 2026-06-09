@@ -1,7 +1,7 @@
 // LLM context builders — assembles narrative/branch/scene context blocks fed into generation prompts.
 
 import type { NarrativeState, Scene, StorySettings, RelationshipEdge, ProseProfile, SystemGraph } from '@/types/narrative';
-import { resolveEntry, NARRATOR_AGENT_ID, DEFAULT_STORY_SETTINGS, WORLD_NODE_CATEGORY } from '@/types/narrative';
+import { resolveEntry, DEFAULT_STORY_SETTINGS, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import { buildCumulativeSystemGraph, getThreadStance, getStanceMargin, getStanceProbs, isThreadAbandoned, isThreadClosed, rankSystemNodes, resolveEntityName, scenesSinceTouched, softmax, updateLogits } from '@/lib/forces/narrative-utils';
 import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/forces/thread-category';
@@ -741,7 +741,7 @@ export function narrativeContext(
       const age = firstMut !== undefined ? totalScenes - firstMut : 0;
       const deltas = threadDeltaCount[t.id] ?? 0;
       const participantNames = t.participants.map((a) => n.characters[a.id]?.name ?? n.locations[a.id]?.name ?? a.id).join(', ');
-      const validDeps = t.dependents.filter((id) => n.threads[id]);
+      const validDeps = (t.dependents ?? []).filter((id) => n.threads[id]);
       const depsAttr = validDeps.length > 0 ? ` converges="${validDeps.join(',')}"` : '';
       // Market state — read live from thread. Closed or abandoned threads
       // don't appear in generation context.

@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { NarrativeState, Thread, Scene } from '@/types/narrative';
-import { NARRATOR_AGENT_ID } from '@/types/narrative';
+import { NARRATOR_ID } from '@/types/narrative';
 import {
   computePortfolioSnapshot,
   buildPortfolioRows,
@@ -18,7 +18,7 @@ function mkThread(id: string, overrides: Partial<Thread> = {}): Thread {
     participants: [],
     outcomes,
     stances: {
-      [NARRATOR_AGENT_ID]: {
+      [NARRATOR_ID]: {
         logits: new Array(outcomes.length).fill(0),
         volume: 2, volatility: 0,
         lastTouchedScene: 'S-1',
@@ -52,12 +52,12 @@ function mkNarrative(threads: Record<string, Thread>, scenes: Record<string, Sce
 describe('computePortfolioSnapshot', () => {
   it('buckets threads into active / closed / abandoned and sums belief weight', () => {
     const threads = {
-      T1: mkThread('T1', { stances: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: 3, volatility: 0 } } }),
+      T1: mkThread('T1', { stances: { [NARRATOR_ID]: { logits: [0, 0], volume: 3, volatility: 0 } } }),
       T2: mkThread('T2', {
         closedAt: 'S-10', closeOutcome: 0, resolutionQuality: 0.85,
-        stances: { [NARRATOR_AGENT_ID]: { logits: [4, -4], volume: 5, volatility: 0 } },
+        stances: { [NARRATOR_ID]: { logits: [4, -4], volume: 5, volatility: 0 } },
       }),
-      T3: mkThread('T3', { stances: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: 0.1, volatility: 0 } } }),
+      T3: mkThread('T3', { stances: { [NARRATOR_ID]: { logits: [0, 0], volume: 0.1, volatility: 0 } } }),
     };
     const snapshot = computePortfolioSnapshot(mkNarrative(threads));
     expect(snapshot.totalThreads).toBe(3);
@@ -92,13 +92,13 @@ describe('buildPortfolioRows', () => {
       CLOSED: mkThread('CLOSED', { closedAt: 'S-1', closeOutcome: 0 }),
       COMMITTED: mkThread('COMMITTED', {
         // Margin ≈ 0.9 (below saturating threshold), topProb ≈ 0.71 → "committed" category.
-        stances: { [NARRATOR_AGENT_ID]: { logits: [0.45, -0.45], volume: 2, volatility: 0, lastTouchedScene: 'S-1' } },
+        stances: { [NARRATOR_ID]: { logits: [0.45, -0.45], volume: 2, volatility: 0, lastTouchedScene: 'S-1' } },
       }),
       NEAR: mkThread('NEAR', {
-        stances: { [NARRATOR_AGENT_ID]: { logits: [2.5, 0], volume: 2, volatility: 0, lastTouchedScene: 'S-1' } },
+        stances: { [NARRATOR_ID]: { logits: [2.5, 0], volume: 2, volatility: 0, lastTouchedScene: 'S-1' } },
       }),
       ABANDONED: mkThread('ABANDONED', {
-        stances: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: 0.1, volatility: 0 } },
+        stances: { [NARRATOR_ID]: { logits: [0, 0], volume: 0.1, volatility: 0 } },
       }),
     };
     const rows = buildPortfolioRows(mkNarrative(threads), ['S-1'], 0);
@@ -117,7 +117,7 @@ describe('buildPortfolioRows', () => {
     const threads = {
       T1: mkThread('T1', {
         // Margin = 2.5 is in the near-closed band [2, 3) → saturating.
-        stances: { [NARRATOR_AGENT_ID]: { logits: [1.25, -1.25], volume: 3, volatility: 0.4, lastTouchedScene: 'S-1' } },
+        stances: { [NARRATOR_ID]: { logits: [1.25, -1.25], volume: 3, volatility: 0.4, lastTouchedScene: 'S-1' } },
       }),
     };
     const [row] = buildPortfolioRows(mkNarrative(threads), ['S-1'], 0);
@@ -134,7 +134,7 @@ describe('currentFocusIds', () => {
     const threads: Record<string, Thread> = {};
     for (let i = 0; i < 10; i++) {
       threads[`T${i}`] = mkThread(`T${i}`, {
-        stances: { [NARRATOR_AGENT_ID]: { logits: [0, 0], volume: i + 1, volatility: 0, lastTouchedScene: 'S-1' } },
+        stances: { [NARRATOR_ID]: { logits: [0, 0], volume: i + 1, volatility: 0, lastTouchedScene: 'S-1' } },
       });
     }
     const ids = currentFocusIds(mkNarrative(threads), ['S-1'], 0, 3);

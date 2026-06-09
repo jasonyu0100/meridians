@@ -23,7 +23,7 @@ import {
   type Force,
   type NetworkGraph,
 } from "@/lib/graph/network-graph";
-import { NARRATOR_AGENT_ID } from "@/types/narrative";
+import { NARRATOR_ID } from "@/types/narrative";
 import type {
   Artifact,
   Character,
@@ -328,7 +328,7 @@ function exportFullThreads(narrative: NarrativeState): string {
 
   if (active.length > 0) {
     lines.push("", `## Active threads (${active.length})`);
-    for (const t of sortBy(active, (t) => -1 * (t.stances?.[NARRATOR_AGENT_ID]?.volume ?? 0))) {
+    for (const t of sortBy(active, (t) => -1 * (t.stances?.[NARRATOR_ID]?.volume ?? 0))) {
       lines.push(threadLine(t));
     }
   }

@@ -1,7 +1,7 @@
 // World generation — full narrative bootstrap, world expansion, and post-arc direction course-correction.
 
 import type { NarrativeState, Scene, Character, Location, Thread, ThreadDelta, ThreadHorizon, RelationshipEdge, SystemNode, SystemDelta, SystemNodeType, Artifact, OwnershipDelta, TieDelta, WorldDelta, RelationshipDelta, WorldBuild, NarrativeParadigm, WebsearchConfig, Merge } from '@/types/narrative';
-import { REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_AGENT_ID } from '@/types/narrative';
+import { REASONING_BUDGETS, DEFAULT_STORY_SETTINGS, NARRATOR_ID } from '@/types/narrative';
 import { resolveReasoningBudget, resolveWebsearch } from './api';
 import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/forces/narrative-utils';
 import { nextId, nextIds } from '@/lib/forces/narrative-utils';
@@ -350,7 +350,7 @@ export async function expandWorld(
       horizon: normaliseHorizon(t.horizon),
       dependents,
       openedAt: '', // Store reducer stamps worldBuildId at apply time
-      stances: { [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length, 2) },
+      stances: { [NARRATOR_ID]: newNarratorStance(outcomes.length, 2) },
       threadLog: { nodes: {}, edges: [] },
     } satisfies Thread;
   });
@@ -571,7 +571,7 @@ export async function generateNarrative(
       : undefined;
     const stances = rest.stances && typeof rest.stances === 'object' && Object.keys(rest.stances).length > 0
       ? rest.stances
-      : { [NARRATOR_AGENT_ID]: newNarratorStance(outcomes.length, 2, rawPriorProbs) };
+      : { [NARRATOR_ID]: newNarratorStance(outcomes.length, 2, rawPriorProbs) };
     threads[t.id] = {
       ...rest,
       participants: rest.participants ?? anchors ?? [],

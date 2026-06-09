@@ -15,7 +15,7 @@
  */
 
 import type { Stance, Thread, ThreadDelta, ThreadLog, ThreadLogNode } from '@/types/narrative';
-import { NARRATOR_AGENT_ID } from '@/types/narrative';
+import { NARRATOR_ID } from '@/types/narrative';
 import {
   STANCE_EVIDENCE_SENSITIVITY,
   STANCE_OPENING_MAX_LOGIT,
@@ -121,7 +121,7 @@ export function applyThreadDelta(
   }
 
   // Narrator stance — extend logits to match the (possibly-expanded) outcomes.
-  const existingStance: Stance = thread.stances?.[NARRATOR_AGENT_ID]
+  const existingStance: Stance = thread.stances?.[NARRATOR_ID]
     ?? newNarratorStance(expandedOutcomes.length);
   const stance: Stance = existingStance.logits.length < expandedOutcomes.length
     ? {
@@ -266,10 +266,10 @@ export function applyThreadDelta(
   // If outcomes expanded, also extend any *other* agents' stances so all
   // stance vectors keep matching the canonical outcome list length. Phase 1
   // only has narrator; Phase 5 per-character stances will already fit here.
-  const nextStances: Thread['stances'] = { ...thread.stances, [NARRATOR_AGENT_ID]: updatedStance };
+  const nextStances: Thread['stances'] = { ...thread.stances, [NARRATOR_ID]: updatedStance };
   if (addedOutcomes.length > 0) {
     for (const [agentId, agentStance] of Object.entries(nextStances)) {
-      if (agentId === NARRATOR_AGENT_ID) continue;
+      if (agentId === NARRATOR_ID) continue;
       if (agentStance.logits.length < expandedOutcomes.length) {
         nextStances[agentId] = {
           ...agentStance,
@@ -362,14 +362,14 @@ export function decayUntouchedStancesForScene(
       out[id] = t;
       continue;
     }
-    const stance = t.stances?.[NARRATOR_AGENT_ID];
+    const stance = t.stances?.[NARRATOR_ID];
     if (!stance) {
       out[id] = t;
       continue;
     }
     out[id] = {
       ...t,
-      stances: { ...t.stances, [NARRATOR_AGENT_ID]: decayUntouchedStance(stance) },
+      stances: { ...t.stances, [NARRATOR_ID]: decayUntouchedStance(stance) },
     };
   }
   return out;
