@@ -77,6 +77,7 @@ flowchart LR
         g3["threads-* → ThreadGraphView / ThreadLogGraphView"]
         g4["network-* → NetworkView"]
         g5["curriculum → CurriculumView (topic tree + mastery)"]
+        g6["threads-influence / streams-influence → SankeyView (Fate Influence alluvial; lib/forces/thread-alluvial; branch-scoped streams)"]
     end
     subgraph Mind["MIND"]
         c1["belief → BeliefView / StreamBeliefView (mode-conditional)"]
@@ -95,7 +96,7 @@ flowchart LR
     end
 ```
 
-> Cluster membership lives in `StageBar` (`inSignalsMode` / `inBaseMode` / `inMindMode` / `inContentMode`). The **Signals** cluster (internally Capture) is the room/perspective workspace (`vision` Priors + `streams` + `merges`); `search` moved into **Mind**. `curriculum` joins `board` + the graph domains in **Base**. *Tab labels Signals / Base / Mind / Content; the persisted `graphViewMode` literals (`vision`, `streams`, `world-*`, …) are unchanged.* `BeliefView` swaps to `StreamBeliefView` for the member-sourced stream dashboard; `RoomUI` provides shared presentation primitives (avatars, status icons, perspective names) for Streams + Merges.
+> Cluster membership lives in `StageBar` (`inSignalsMode` / `inBaseMode` / `inMindMode` / `inContentMode`). The **Signals** cluster (internally Capture) is the room/perspective workspace (`vision` Priors + `streams` + `merges`); `search` moved into **Mind**. `curriculum` joins `board` + the graph domains in **Base**. *Tab labels Signals / Base / Mind / Content; the persisted `graphViewMode` literals (`vision`, `streams`, `world-*`, …) are unchanged.* `BeliefView` swaps to `StreamBeliefView` for the member-sourced stream dashboard; `RoomUI` provides shared presentation primitives (avatars, status icons, perspective names) for Streams + Merges. The **Influence** view (`SankeyView`, threads-influence / streams-influence) reuses the shared `StagePalette` for period navigation — back/forward step one column (scene for threads, time-unit/chunk for streams) and fast-skip to the nearest populated block — bridged by `influence:nav-state` / `canvas:influence-step` window events; streams are branch-scoped with a This-branch / All-branches toggle.
 
 Adding a view = a `GraphViewMode` literal (`types/narrative.ts`) + a `StageBar` button + a `Stage` branch (copy `mode`).
 

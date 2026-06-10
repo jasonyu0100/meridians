@@ -2,7 +2,7 @@
 
 > **Generated** by `scripts/gen-tree.mjs` — structure is read from the filesystem and each file's description is derived from its own leading comment (else a name-based heuristic). No hand-maintained map; re-run after adding files: `node scripts/gen-tree.mjs`. Companion to [MERMAID.md](MERMAID.md). Stack: Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3 · IndexedDB.
 >
-> 512 files · 504 described from their own header comment, the rest from filename heuristics.
+> 519 files · 511 described from their own header comment, the rest from filename heuristics.
 
 ```xml
 <repo name="meridians">
@@ -66,6 +66,7 @@
       <file name="pacing-markov.test.ts" desc="Tests for lib/pacing/pacing-markov — transition matrices, sequence sampling, presets, and pacing prompts"/>
       <file name="package-export-import.test.ts" desc="Package Export/Import Tests Tests for .meridians ZIP package export and import"/>
       <file name="paradigm-system.test.ts" desc="Paradigm system + today's hardening work"/>
+      <file name="perspectives.test.ts" desc="Tests for the pure perspective helpers — label resolution and the set of"/>
       <file name="portfolio-analytics.test.ts" desc="Tests for lib/analysis/portfolio-analytics — thread portfolio snapshots, rows, trajectories, and focus ids"/>
       <file name="positions.test.ts" desc="Tests for lib/forces/positions — participation-derived cumulative entity locations across scenes"/>
       <file name="proposition-classify.test.ts" desc="Proposition Classification Tests Tests the core classification logic: - Percentile and median computation -…"/>
@@ -84,6 +85,7 @@
       <file name="system-graph.test.ts" desc="Tests for lib/graph/system-graph — system delta sanitizing/application, edge keys, and concept id resolution"/>
       <file name="system-logger.test.ts" desc="Tests for lib/core/system-logger — error/warning log entries, subscription callbacks, and narrative scoping"/>
       <file name="text-analysis.test.ts" desc="Tests for lib/text-analysis — corpus chunking and extraction pipeline (with mocked AI calls and constants)"/>
+      <file name="thread-alluvial.test.ts" desc="Tests for the Streams influence alluvial: the fixed-size sliding time window,"/>
       <file name="thread-category.test.ts" desc="Tests for lib/forces/thread-category — thread category thresholds, logit energy, and volatile/developing…"/>
       <file name="thread-log.test.ts" desc="Tests for lib/forces/thread-log — applying thread deltas to stances, stance decay, and stance/log invariants"/>
       <file name="time-deltas.test.ts" desc="Tests for lib/forces/time-deltas — time-delta normalization, scene offsets, gap descriptions, and formatting"/>
@@ -172,7 +174,7 @@
         <file name="CoordinationPlanModal.tsx" desc="CoordinationPlanModal — view and regenerate a branch's coordination plan"/>
         <file name="CoordinationPlanSetupModal.tsx" desc="CoordinationPlanSetupModal — configure thinking style/resources and generate a coordination plan"/>
         <file name="GeneratePanel.tsx" desc="GeneratePanel — main scene/arc generation controls with expand-world and error-repair surfacing"/>
-        <file name="GuidanceFields.tsx" desc="GuidanceFields — direction/constraint input fields with AI direction suggestion"/>
+        <file name="GuidanceFields.tsx" desc="GuidanceFields — direction input field with AI direction suggestion"/>
         <file name="MarkovGraph.tsx" desc="MarkovGraph — visualises the cube-mode Markov transition matrix driving pacing"/>
         <file name="PacingStrip.tsx" desc="PacingStrip — horizontal strip showing the sampled cube-mode pacing sequence for an arc"/>
         <file name="ReasoningGraphModal.tsx" desc="ReasoningGraphModal — view and regenerate an arc's causal reasoning graph (CRG)"/>
@@ -315,7 +317,7 @@
         <file name="BoardView.tsx" desc="BoardView — Stage board surface: board-game style map with nested location maps and participant avatars"/>
         <file name="CompassView.tsx" desc="CompassView — Stage Compass surface: arc Present + Future variable scenarios (the softmax-ranked cohort)"/>
         <file name="CurriculumRestructureModal.tsx" desc="CurriculumRestructureModal — reorganise the global topic tree with AI"/>
-        <file name="CurriculumView.tsx" desc="CurriculumView — the world view's Topic tree as a horizontal, collapsible mind-map"/>
+        <file name="CurriculumView.tsx" desc="CurriculumView — the world view's Topic curriculum, rendered one of two ways per the `view` prop (the Tree /…"/>
         <file name="DecisionView.tsx" desc="DecisionView — scene-level game-theoretic analysis"/>
         <file name="graph-utils.ts" desc="graph-utils — shared helpers for Stage graph surfaces: node/edge derivation, colors, and layout utilities"/>
         <file name="MergesView.tsx" desc="MergesView — the Vision &quot;History&quot; tab"/>
@@ -325,10 +327,12 @@
         <file name="PlanCandidatesView.tsx" desc="PlanCandidatesView — side-by-side comparison and selection UI for alternative generated scene-plan candidates"/>
         <file name="ReasoningGraphView.tsx" desc="ReasoningGraphView — Stage surface rendering an arc's causal reasoning graph (CRG) nodes and typed edges"/>
         <file name="RoomUI.tsx" desc="RoomUI — presentation primitives shared by the room/perspective surfaces"/>
+        <file name="SankeyView.tsx" desc="SankeyView — the Fate INFLUENCE alluvial"/>
         <file name="SceneAudioView.tsx" desc="SceneAudioView — Stage surface for generating and playing back audio narration of a scene's prose"/>
         <file name="SceneBar.tsx" desc="SceneBar — horizontal scene navigator strip for the Stage; selects and scrolls through the branch's scenes"/>
         <file name="SceneLearningView.tsx" desc="SceneLearningView — scene-level learning question bank"/>
         <file name="ScenePanel.tsx" desc="ScenePanel — Stage scene detail container: header, POV/location, and the plan/prose/audio sub-views for a…"/>
+        <file name="ScenePerspectivesView.tsx" desc="ScenePerspectivesView — Content → Perspectives"/>
         <file name="ScenePlanView.tsx" desc="ScenePlanView — Stage surface showing a scene's beat-by-beat plan with generate/rewrite/reverse-engineer…"/>
         <file name="SceneProseView.tsx" desc="SceneProseView — Stage surface rendering a scene's prose with generate/rewrite controls and version history"/>
         <file name="SearchView.tsx" desc="SearchView — Stage search surface"/>
@@ -433,6 +437,7 @@
         <file name="interviews.ts" desc="Interview executor — ask one subject many questions in parallel using its world-graph continuity"/>
         <file name="json.ts" desc="Clean common LLM JSON quirks: code fences, trailing commas, single-quoted keys"/>
         <file name="learning.ts" desc="Learning (Quiz) generation — a purely additive, post-hoc layer"/>
+        <file name="perspectives.ts" desc="Scene perspectives — retell a canonical scene through a single lens (the"/>
         <file name="phase-graph.ts" desc="Phase generator — mines narrative context (with optional user guidance and optional seed graph) to produce a…"/>
         <file name="premise.ts" desc="Premise suggestion for the creation wizard"/>
         <file name="prompts.ts" desc="Re-export wrapper for backward compatibility"/>
@@ -469,6 +474,7 @@
         <file name="narrative-utils.ts" desc="Force formulas + graph/cube/stance algorithms — the deterministic math deriving Fate/World/System from deltas"/>
         <file name="positions.ts" desc="Entity positions — derives each character's current location from scene participation history"/>
         <file name="stream-stance.ts" desc="Stream stance engine — a Stream is a thread"/>
+        <file name="thread-alluvial.ts" desc="thread-alluvial.ts — log-based layering for the Fate Influence Sankey"/>
         <file name="thread-category.ts" desc="Thread category classification — a single vocabulary derived from a thread's current MARKET STATE…"/>
         <file name="thread-log.ts" desc="Thread stance application"/>
         <file name="time-deltas.ts" desc="Time delta helpers. Scenes are instants; the gap between consecutive scenes is a TimeDelta ({value, unit}).…"/>
@@ -627,6 +633,7 @@
           <file name="extract-propositions.ts" desc="Phase 1 of scene-plan generation — extract the compulsory propositions (the discrete, checkable claims a…"/>
           <file name="game-theory.ts" desc="Game-Theory Analysis Prompts"/>
           <file name="generate.ts" desc="Scene generation prompt — emits a JSON arc with N scenes (and their full delta blocks) given the narrative…"/>
+          <file name="perspective.ts" desc="Scene Perspective Prompt Retells a canonical scene through ONE lens — the public narrator, or a participant…"/>
           <file name="plan-format.ts" desc="Plan-side format-awareness block — surfaces the downstream rendering target so the planner shapes mechanism…"/>
           <file name="plan-user.ts" desc="User prompts for the scene-plan pipeline: - `buildScenePlanUserPrompt` — primary plan generator"/>
           <file name="plan.ts" desc="Scene Plan System Prompt — combined &quot;fact-extractor + scene architect&quot; role"/>
