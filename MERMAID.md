@@ -245,13 +245,13 @@ flowchart TB
 
 **Invariants:** one source of truth (the GM's machine); forces are *derived from deltas*, never authored; derived entities re-derive from manifests (don't mutate the caches); every LLM call funnels through `ai/api.ts` and is logged by `caller`; output schemas live with the prompt builder and are shared with repair.
 
-> **Room / curriculum state on `NarrativeState`:** `Member[]` (one GM), `Agent[]` (AI players + personas), `Perspective[]` (entity/narrator seats), `Stream[]` (member-owned bearings on open questions — a Stream reuses Fate-Thread belief mechanics but over one member-owned Stance whose log nodes are its `priors`), `Merge[]` (committed-stream folds; **Streams + Merges are a global ledger** shared across branches, made branch-relative via `basisMergeIds`), and `Topic[]` + `LearningProgress` (curriculum tree + per-member spaced-repetition coverage). Threads = the world view's belief over narrative questions; Streams = the parallel, perspective-scoped belief layer feeding the room.
+> **Room / curriculum state on `NarrativeState`:** `Member[]` (one GM), `Agent[]` (AI players + personas), `Perspective[]` (entity/narrator seats), `Stream[]` (member-owned bearings on open questions — a Stream reuses Fate-Thread belief mechanics but over one member-owned Stance whose log nodes are its `priors`), `Merge[]` (committed-stream folds; **Streams + Merges are branch-OWNED** — `branchId` is ownership, and a **fork deep-copies** the parent branch's streams + merges into the child with fresh ids + an `originStreamId` / `originMergeId` back-link, so every branch is a fully isolated sandbox: priors, commits, reverts and undos on one branch never touch another, and the origin links let you compare *the same question* across divergent playthroughs. Scenes stay structurally **shared** (immutable); only the mutable belief layer is copied. `n.streams` / `n.merges` remain global dicts so id-lookups always resolve; `branchId` governs which copy a branch *operates on* and *displays*. Consumption (`basisMergeIds`) matches a copy by id **or** its origin), and `Topic[]` + `LearningProgress` (curriculum tree + per-member spaced-repetition coverage). Threads = the world view's belief over narrative questions; Streams = the parallel, perspective-scoped belief layer feeding the room.
 
 ---
 
 ## 8. Conviction — the rehearsal game state machine (A4, [CONCEPT.md](CONCEPT.md))
 
-A game is a **branch**; a `GameRoom` runs the round loop over it as a sequential, deterministic phase machine (`RoundState.phase`). Humans take their turns by hand; agents resolve automatically; a timeout with nothing committed = no action (ceded to the LLM). Conviction is a **gamified automation layer over the shipping stream / merge / generate UI** — one continuous window; the GM advances each round with **one click through the Generate Panel** (override optional). **Not yet built** — this is the A4 spec.
+A game is a **branch**; a `GameRoom` runs the round loop over it as a phase machine (`RoundState.phase`), in one of two **variants** — **Rounds** (poker turn order; the diagram below) or **Showdown** (a real-time, simultaneous **LIVE** window replacing READ-WRITE + PLAY). Humans take their turns by hand; agents resolve automatically; a timeout with nothing committed = no action (ceded to the LLM). Scoring is **intrinsic**: in the **SCORING** phase each round, the realized stance shift on every thread is decomposed across the seats that moved it — **Aumann–Shapley on the Fate/KL, conserving exactly** — into a running **Impact** score, shown with a **Ranking**. **Streams are perspective-owned** (one per seat — no shared "board" streams); the **Merge** is the only place separate seats' streams meet, settling each **contested thread** per **`RESOLVE_BIAS`** (a random draw from the conviction-shaped odds by default · `lowest-cost` realism · `highest-cost` drama · `gm` sovereign), optionally spotlit in an **optional SHOWDOWN phase** before SETTLE. **Goals** are optional personal trackers that never affect the score; the old betting layer is gone. Conviction is a **gamified automation layer over the shipping stream / merge / generate UI** — one continuous window; the GM advances each round with **one click through the Generate Panel** (override optional). **Not yet built** — this is the A4 spec.
 
 ```mermaid
 stateDiagram-v2
@@ -265,33 +265,42 @@ stateDiagram-v2
         PublicNarration --> PrivateNarration: public delivered (everyone)
         PrivateNarration --> ReadWrite: private delivered (per seat)
         ReadWrite --> Play: read timer ends / stand pat
-        Play --> Resolve: showdown (reveal face-down at your discretion)
-        Resolve --> Settle: GM one-click via Generate Panel (override optional) → generate → branch
-        Settle --> PublicNarration: − decay, then + income (α=0.9)
+        Play --> Resolve: reveal forced by default - off = teeth
+        Resolve --> Showdown: settle contests per RESOLVE_BIAS - random default - GM one-click generate
+        Showdown --> Settle: spotlight verdicts - optional SHOWDOWN_PHASE
+        Settle --> Scoring: decay then income - ceiling 150
+        Scoring --> PublicNarration: Impact decomposed - Ranking shown
     }
     Round --> [*]: GM ends game
 
     note left of Round
       RoundState.phase ∈ public-narration · private-narration ·
-      read-write · play · resolve · settle (state ReadWrite = id
-      'read-write'). NARRATION: at Resolve the canon generates
+      read-write · play (Rounds) | live (Showdown) · resolve ·
+      showdown (optional) · settle · scoring (ReadWrite = id 'read-write'). NARRATION:
+      at Resolve the canon generates
       once (GM-only ground truth; round 1 = the opening state),
       then a PARALLEL BATCH of PerspectiveViews off it — public,
       then each seat's private. Players never see canon; GM sees all.
     end note
     note right of Round
-      READ WRITE: deal hands, update priors + open NEW streams
-      (open questions → scoreStreamPrior gate → deal), and take the
-      ONE location hop (re-deals the hand + changes location chat).
-      PLAY: poker turn order, face up/down, pay cost (0–100).
-      Showdown reveal is optional. RESOLVE folds the round into a
-      Merge. Chat (global / location) is ALWAYS open, every phase.
+      Streams are PERSPECTIVE-OWNED, one per seat — no shared board.
+      READ WRITE: deal hands on your OWN streams, update priors + open
+      NEW streams you own (open questions → scoreStreamPrior gate →
+      deal), take the ONE location hop. PLAY: poker turn order, face
+      up/down, cost COST_MIN–100. Reveal FORCED by default. RESOLVE
+      folds committed streams into a Merge; contested threads settle
+      per RESOLVE_BIAS — random draw default · lowest-cost realism ·
+      highest-cost drama · gm sovereign — optionally spotlit in the
+      SHOWDOWN phase (shows the draw + Fate house band). SCORING:
+      nudge-fate decomposed across seats (Aumann–Shapley); the draw's
+      snap is FATE's band, not a seat's → Impact + Ranking; goals
+      personal, never scored. Chat global / location ALWAYS open.
     end note
 ```
 
 > **Build components (A4).**
 > **Host surfaces** — (1) **GM board · desktop**: the Play fullscreen modal, global state + `act-as-seat` proxy, runs the machine. (2) **Player controller · mobile**: perspective-gated, over the tunnel.
-> **Shared play UI** — minimalist; **The Board is the single primary surface** (rendered global for the GM, perspective-gated for a player — **responsive across desktop + mobile**). (3) **The Board**: poker-table-inspired felt that **conveys narration + round info directly** (no side panels) — seats as **avatar + name + conviction stack**, a rotating **dealer button**, **board streams + pot + timer** at centre, face-up/down reveal. (4) **The Cards**: the hand at the player's seat — face-up/down, `−log p` cost, play / raise / pass / fold. (5) **Chat — modal**: **global** (everyone; cheap talk) + **location** (co-located only; alliances), opened over the board; **agents are full participants**. (6) **Navigation — popups**: move, pose-question / request-more, settings — popups layered on the board, not panels.
+> **Shared play UI** — minimalist; **The Board is the single primary surface** (rendered global for the GM, perspective-gated for a player — **responsive across desktop + mobile**). (3) **The Board**: poker-table-inspired felt that **conveys narration + round info directly** (no side panels) — seats as **avatar + name + conviction stack**, a rotating **dealer button**, the **live canonical threads + pot + timer** at centre (each seat's own streams sit in its hand), face-up/down reveal, plus the live **Impact tally / Ranking** and the SCORING-phase **readout** (authored stance ribbons + per-seat fate decomposition). (4) **The Cards**: the hand at the player's seat — face-up/down, `−log p` cost, play / raise / pass / fold. (5) **Chat — modal**: **global** (everyone; cheap talk) + **location** (co-located only; alliances), opened over the board; **agents are full participants**. (6) **Navigation — popups**: move, pose-question / request-more, **set / reassign goal**, settings — popups layered on the board, not panels.
 > **Content tab** — (7) **Perspective views**: per-scene `PerspectiveView` (canon global + private per-entity retellings) that feed the narration phases.
 > **Spec** — (8) **State machine** (this diagram): `RoundState.phase` over a `GameRoom`.
-> New types (`GameRoom` · `Seat` · `RoundState` · `Card`/`Hand`/`PlayedCard` · `CardRequest` (backs nav (6)) · `ChatMessage` · `PerspectiveView` (canon/public/private — one type for narration *and* requested retellings) · `Bet` · `ConvictionEconomy`) layer over shipped `Perspective` / `Stream` / `Merge` / `Location` — see [CONCEPT.md](CONCEPT.md).
+> New types (`GameRoom` (carries `variant`) · `Seat` (carries `goals` + running `fateImpact`) · `RoundState` (phase incl. `scoring`) · `Card`/`Hand`/`PlayedCard` · `CardRequest` (backs nav (6)) · `ChatMessage` · `PerspectiveView` (canon/public/private — one type for narration *and* requested retellings) · `Goal` (personal target; never scored) · `ConvictionEconomy`) layer over shipped `Perspective` / `Stream` / `Merge` / `Location` — see [CONCEPT.md](CONCEPT.md). Scoring reuses the engine's **Fate/KL + thread log** (Aumann–Shapley attribution), and the **Influence alluvial** (Fate tab) carries cumulative Impact.
