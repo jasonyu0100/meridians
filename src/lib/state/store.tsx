@@ -4,6 +4,7 @@
 import { assetManager } from "@/lib/storage/asset-manager";
 import { initBeatProfilePresets } from "@/lib/pacing/beat-profiles";
 import { applyWorldDelta } from "@/lib/graph/world-graph";
+import { forkLedger } from "@/lib/merges";
 import { initMechanismProfilePresets } from "@/lib/pacing/mechanism-profiles";
 import {
   classifyArchetype,
@@ -2005,10 +2006,19 @@ function reducer(state: AppState, action: Action): AppState {
 
     // ── CRUD: Branches ────────────────────────────────────────────────────
     case "CREATE_BRANCH": {
-      const newState = updateNarrative(state, (n) => ({
-        ...n,
-        branches: { ...n.branches, [action.branch.id]: action.branch },
-      }));
+      const newState = updateNarrative(state, (n) => {
+        // Copy-on-fork: deep-copy the parent branch's streams + merges into the
+        // new branch so it's a fully mutable, isolated sandbox (the parent stays
+        // a backup). Fresh ids + origin back-links; merge stream-refs remapped.
+        const parentId = action.branch.parentBranchId;
+        const ledger = parentId ? forkLedger(n, parentId, action.branch.id) : { streams: [], merges: [] };
+        return {
+          ...n,
+          branches: { ...n.branches, [action.branch.id]: action.branch },
+          streams: { ...(n.streams ?? {}), ...Object.fromEntries(ledger.streams.map((s) => [s.id, s])) },
+          merges: { ...(n.merges ?? {}), ...Object.fromEntries(ledger.merges.map((m) => [m.id, m])) },
+        };
+      });
       if (newState.activeNarrative) {
         const resolved = getResolvedKeys(
           newState.activeNarrative,

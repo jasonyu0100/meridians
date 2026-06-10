@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { useStore } from '@/lib/state/store';
 import { IconChevronRight } from '@/components/icons';
 import { PrMergedIcon } from './RoomUI';
-import { buildMergeConsumerMap, mergesForBranch, resolutionOutcomes } from '@/lib/merges';
+import { buildMergeConsumerMap, mergeConsumerFor, mergesForBranch, resolutionOutcomes } from '@/lib/merges';
 
 const fmtWhen = (ms: number) =>
   `${new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
@@ -55,7 +55,7 @@ export function MergesView() {
             <div className="absolute left-[6px] top-2 bottom-3 w-px bg-white/8" aria-hidden />
             {merges.map((f) => {
               const streamIds = f.streamIds ?? [];
-              const consumer = mergeConsumers.get(f.id);
+              const consumer = mergeConsumerFor(mergeConsumers, f);
               const folded = !!consumer;
               const exec = streamIds.filter((id) => resolutionOutcomes(f.resolutions?.[id]).length > 0).length;
               const rec = streamIds.length - exec;

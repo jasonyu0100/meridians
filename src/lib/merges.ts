@@ -22,49 +22,67 @@ import {
   isWorldBuild,
 } from "@/types/narrative";
 import { streamMargin, streamProbs } from "@/lib/forces/stream-stance";
-import { branchLineageIds } from "@/lib/branch-tree";
 import { agentPersonaLabel, resolveAgentById } from "@/lib/agents/personas";
 
-// ── Branch-scoped visibility (ownership model) ───────────────────────────────
-// Streams and merges are global storage but visible only on their origin branch
-// and its descendants. A row with no `branchId` is legacy (pre-scoping) and
-// stays visible everywhere so existing data isn't hidden by the migration.
+// ── Branch-OWNED visibility ──────────────────────────────────────────────────
+// A fork deep-copies the parent's streams + merges into the child (forkLedger),
+// so each branch is a fully mutable, experimentable sandbox with the parent as
+// a backup. Visibility is therefore strict OWNERSHIP — a branch sees exactly
+// the rows it owns. `n.streams`/`n.merges` stay global dicts so id-lookups
+// always resolve; ownership only governs display + which copy a branch mutates.
 
-/** True when an origin branch id is visible from the given lineage set. */
-export function isVisibleOnBranch(
-  originBranchId: string | undefined,
-  lineage: Set<string>,
-): boolean {
-  return !originBranchId || lineage.has(originBranchId);
-}
+// Visibility under the branch-OWNED model: a row shows on a branch iff that
+// branch OWNS it. A fork deep-copies the parent's streams/merges into the child
+// (see forkLedger), so strict ownership is sufficient — no lineage walk. The
+// `n.streams`/`n.merges` dicts stay global so id-lookups always resolve; this
+// only governs display + which copy a branch operates on.
 
-/** True when an origin is on the lineage, legacy (unset), or ORPHANED — its
- *  branch no longer exists. Orphans surface everywhere (recoverable) rather
- *  than vanishing silently; branch deletion normally removes owned rows, so an
- *  orphan only arises from corrupted / imported data. */
-function isVisibleOrOrphan(
-  originBranchId: string | undefined,
-  lineage: Set<string>,
-  knownBranchIds: Set<string>,
-): boolean {
-  if (!originBranchId) return true; // legacy / global
-  if (lineage.has(originBranchId)) return true; // owned by self or ancestor
-  return !knownBranchIds.has(originBranchId); // orphaned origin → surface it
-}
-
-/** Streams visible on `branchId` — owned by it or any ancestor (plus legacy
- *  unstamped streams and orphaned-origin rows). */
+/** Streams owned by `branchId`. */
 export function streamsForBranch(n: NarrativeState, branchId: string | null | undefined): Stream[] {
-  const lineage = branchLineageIds(n.branches, branchId);
-  const known = new Set(Object.keys(n.branches ?? {}));
-  return Object.values(n.streams ?? {}).filter((s) => isVisibleOrOrphan(s.branchId, lineage, known));
+  return Object.values(n.streams ?? {}).filter((s) => s.branchId === branchId);
 }
 
-/** Merges visible on `branchId` — same ownership rule. */
+/** Merges owned by `branchId`. */
 export function mergesForBranch(n: NarrativeState, branchId: string | null | undefined): Merge[] {
-  const lineage = branchLineageIds(n.branches, branchId);
-  const known = new Set(Object.keys(n.branches ?? {}));
-  return Object.values(n.merges ?? {}).filter((m) => isVisibleOrOrphan(m.branchId, lineage, known));
+  return Object.values(n.merges ?? {}).filter((m) => m.branchId === branchId);
+}
+
+/**
+ * Deep-copy the streams + merges visible on `fromBranchId` into ownership of
+ * `toBranchId` — the copy-on-fork that makes each branch an isolated sandbox.
+ * Copies get fresh ids (`<srcId>::<toBranchId>`), a root-origin back-link
+ * (`originStreamId` / `originMergeId`), and `branchId = toBranchId`; a merge's
+ * `streamIds` + `resolutions` keys are remapped to the copied streams. Returns
+ * the new rows for the reducer to fold into `n.streams` / `n.merges`.
+ */
+export function forkLedger(
+  n: NarrativeState,
+  fromBranchId: string | null | undefined,
+  toBranchId: string,
+): { streams: Stream[]; merges: Merge[] } {
+  const streamIdMap = new Map<string, string>();
+  const streams = streamsForBranch(n, fromBranchId).map((s) => {
+    const copy = structuredClone(s);
+    copy.id = `${s.id}::${toBranchId}`;
+    copy.branchId = toBranchId;
+    copy.originStreamId = s.originStreamId ?? s.id; // root origin
+    streamIdMap.set(s.id, copy.id);
+    return copy;
+  });
+  const merges = mergesForBranch(n, fromBranchId).map((m) => {
+    const copy = structuredClone(m);
+    copy.id = `${m.id}::${toBranchId}`;
+    copy.branchId = toBranchId;
+    copy.originMergeId = m.originMergeId ?? m.id;
+    copy.streamIds = (m.streamIds ?? []).map((sid) => streamIdMap.get(sid) ?? sid);
+    if (m.resolutions) {
+      copy.resolutions = Object.fromEntries(
+        Object.entries(m.resolutions).map(([sid, res]) => [streamIdMap.get(sid) ?? sid, res]),
+      );
+    }
+    return copy;
+  });
+  return { streams, merges };
 }
 
 /** Where a merge was folded into continuity on a given branch. */
@@ -103,6 +121,15 @@ export function collectConsumedMergeIds(
   return consumed;
 }
 
+/** True when `mergeId` (or the merge's origin) appears in `basisIds`. A forked
+ *  branch owns COPIES with fresh ids, while pre-fork (shared) entries reference
+ *  the ORIGINAL merge id — so consumption matches either. */
+function basisHits(n: NarrativeState, basisIds: string[] | undefined, mergeId: string): boolean {
+  if (!basisIds || basisIds.length === 0) return false;
+  const origin = n.merges?.[mergeId]?.originMergeId;
+  return basisIds.includes(mergeId) || (!!origin && basisIds.includes(origin));
+}
+
 /** The arc / world-build on this branch that folded in `mergeId`, or null if
  *  the merge has not been consumed on the branch. First consumer wins. */
 export function findMergeConsumer(
@@ -115,20 +142,30 @@ export function findMergeConsumer(
     const entry = resolveEntry(n, key);
     if (!entry) continue;
     if (isWorldBuild(entry)) {
-      if ((entry.basisMergeIds ?? []).includes(mergeId)) {
+      if (basisHits(n, entry.basisMergeIds, mergeId)) {
         return { entryKey: key, kind: "world", id: entry.id, name: "World expansion" };
       }
     } else {
       const arc = n.arcs[entry.arcId];
       if (arc && !seenArc.has(arc.id)) {
         seenArc.add(arc.id);
-        if ((arc.basisMergeIds ?? []).includes(mergeId)) {
+        if (basisHits(n, arc.basisMergeIds, mergeId)) {
           return { entryKey: key, kind: "arc", id: arc.id, name: arc.name };
         }
       }
     }
   }
   return null;
+}
+
+/** Look up a merge's consumer in a `buildMergeConsumerMap` result, matching the
+ *  merge by its own id OR its `originMergeId` (a fork copy vs the original the
+ *  shared entry references). */
+export function mergeConsumerFor(
+  map: Map<string, MergeConsumer>,
+  merge: Merge,
+): MergeConsumer | undefined {
+  return map.get(merge.id) ?? (merge.originMergeId ? map.get(merge.originMergeId) : undefined);
 }
 
 /** Reverse index: arc/world entry consumer keyed by mergeId, for one branch.

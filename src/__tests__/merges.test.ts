@@ -5,12 +5,13 @@
 import { describe, it, expect } from 'vitest';
 import type { NarrativeState, Stream, Merge, Branch, Scene, WorldBuild, Arc } from '@/types/narrative';
 import {
-  isVisibleOnBranch,
   streamsForBranch,
   mergesForBranch,
+  forkLedger,
   collectConsumedMergeIds,
   findMergeConsumer,
   buildMergeConsumerMap,
+  mergeConsumerFor,
   renderMergeBasisBlock,
   resolutionOutcomes,
   isMultiResolution,
@@ -75,97 +76,143 @@ function makeNarrative(over: Partial<NarrativeState> = {}): NarrativeState {
   } as unknown as NarrativeState;
 }
 
-// ── isVisibleOnBranch ──────────────────────────────────────────────────────
+// ── streamsForBranch / mergesForBranch (strict ownership) ────────────────────
 
-describe('isVisibleOnBranch', () => {
-  const lineage = new Set(['B', 'A', 'CANON']);
-
-  it('shows a row whose origin is on the lineage', () => {
-    expect(isVisibleOnBranch('A', lineage)).toBe(true);
-    expect(isVisibleOnBranch('CANON', lineage)).toBe(true);
-  });
-
-  it('hides a row whose origin is off the lineage (a sibling branch)', () => {
-    expect(isVisibleOnBranch('C', lineage)).toBe(false);
-  });
-
-  it('treats an unstamped (legacy) row as visible everywhere', () => {
-    expect(isVisibleOnBranch(undefined, lineage)).toBe(true);
-    expect(isVisibleOnBranch(undefined, new Set())).toBe(true);
-  });
-});
-
-// ── streamsForBranch / mergesForBranch ───────────────────────────────────────
-
-describe('streamsForBranch', () => {
+describe('streamsForBranch (ownership)', () => {
   const n = makeNarrative({
     streams: {
       s_canon: stream('s_canon', 'CANON'),
       s_a: stream('s_a', 'A'),
-      s_b: stream('s_b', 'B'),
       s_c: stream('s_c', 'C'),
-      s_legacy: stream('s_legacy', undefined),
     },
   });
 
-  it('a descendant sees ancestor + own streams, not sibling ones', () => {
-    // Active branch B: lineage B→A→CANON. Sees s_canon, s_a, s_b, s_legacy. NOT s_c.
-    const ids = streamsForBranch(n, 'B').map((s) => s.id).sort();
-    expect(ids).toEqual(['s_a', 's_b', 's_canon', 's_legacy']);
+  it('shows only the streams a branch OWNS', () => {
+    expect(streamsForBranch(n, 'CANON').map((s) => s.id)).toEqual(['s_canon']);
+    expect(streamsForBranch(n, 'A').map((s) => s.id)).toEqual(['s_a']);
+    expect(streamsForBranch(n, 'C').map((s) => s.id)).toEqual(['s_c']);
   });
 
-  it('an ancestor does NOT see streams opened on a descendant', () => {
-    // Active branch CANON: only its own + legacy. Not s_a / s_b / s_c.
-    const ids = streamsForBranch(n, 'CANON').map((s) => s.id).sort();
-    expect(ids).toEqual(['s_canon', 's_legacy']);
-  });
-
-  it('sibling branches share the common ancestor but not each other (divergence)', () => {
-    // C forks off CANON, so it inherits s_canon — but NOT s_a / s_b (the A line).
-    expect(streamsForBranch(n, 'C').map((s) => s.id).sort()).toEqual(['s_c', 's_canon', 's_legacy']);
-    expect(streamsForBranch(n, 'C').some((s) => s.id === 's_a' || s.id === 's_b')).toBe(false);
-    // A inherits s_canon too but never sees C's stream.
-    expect(streamsForBranch(n, 'A').map((s) => s.id).sort()).toEqual(['s_a', 's_canon', 's_legacy']);
-    expect(streamsForBranch(n, 'A').some((s) => s.id === 's_c')).toBe(false);
-  });
-
-  it('a null active branch still surfaces legacy streams', () => {
-    expect(streamsForBranch(n, null).map((s) => s.id)).toEqual(['s_legacy']);
-  });
-
-  it('surfaces a stream whose origin branch no longer exists (orphan fallback)', () => {
-    // Defense-in-depth: branch deletion normally removes owned streams, but a
-    // stream stamped with a GONE branch must still be reachable (recoverable),
-    // never silently invisible. It shows regardless of the active branch.
-    const orphaned = makeNarrative({
-      streams: { s_orphan: stream('s_orphan', 'DELETED_BRANCH'), s_a: stream('s_a', 'A') },
-    });
-    expect(streamsForBranch(orphaned, 'CANON').map((s) => s.id)).toContain('s_orphan');
-    expect(streamsForBranch(orphaned, 'B').map((s) => s.id)).toContain('s_orphan');
-    // A live sibling's stream is still correctly hidden from CANON.
-    expect(streamsForBranch(orphaned, 'CANON').map((s) => s.id)).not.toContain('s_a');
+  it('a branch never sees another branch\'s streams (full isolation)', () => {
+    expect(streamsForBranch(n, 'A').some((s) => s.id === 's_canon' || s.id === 's_c')).toBe(false);
   });
 });
 
-describe('mergesForBranch', () => {
+describe('mergesForBranch (ownership)', () => {
   const n = makeNarrative({
+    merges: { m_a: merge('m_a', 'A'), m_c: merge('m_c', 'C') },
+  });
+
+  it('shows only the merges a branch OWNS', () => {
+    expect(mergesForBranch(n, 'A').map((m) => m.id)).toEqual(['m_a']);
+    expect(mergesForBranch(n, 'C').map((m) => m.id)).toEqual(['m_c']);
+  });
+});
+
+// ── forkLedger (copy-on-fork) ────────────────────────────────────────────────
+
+describe('forkLedger', () => {
+  const base = () => makeNarrative({
+    streams: {
+      s1: stream('s1', 'A', { priors: [{ id: 'p1', text: 'x', at: 1 }] }),
+    },
     merges: {
-      m_a: merge('m_a', 'A'),
-      m_c: merge('m_c', 'C'),
-      m_legacy: merge('m_legacy', undefined),
+      m1: merge('m1', 'A', { streamIds: ['s1'], resolutions: { s1: { outcome: 'yes' } } }),
     },
   });
 
-  it('scopes merges by lineage like streams', () => {
-    expect(mergesForBranch(n, 'B').map((m) => m.id).sort()).toEqual(['m_a', 'm_legacy']);
-    expect(mergesForBranch(n, 'C').map((m) => m.id).sort()).toEqual(['m_c', 'm_legacy']);
+  it('deep-copies the parent\'s streams + merges with fresh ids + origin links', () => {
+    const n = base();
+    const { streams, merges } = forkLedger(n, 'A', 'B');
+    expect(streams).toHaveLength(1);
+    expect(merges).toHaveLength(1);
+
+    const s = streams[0];
+    expect(s.id).toBe('s1::B');
+    expect(s.branchId).toBe('B');
+    expect(s.originStreamId).toBe('s1');
+    // Deep copy — mutating the copy never touches the source.
+    s.priors.push({ id: 'p2', text: 'y', at: 2 });
+    expect(n.streams!.s1.priors).toHaveLength(1);
+
+    const m = merges[0];
+    expect(m.id).toBe('m1::B');
+    expect(m.branchId).toBe('B');
+    expect(m.originMergeId).toBe('m1');
+    // Merge stream-refs + resolution keys remapped to the copied stream.
+    expect(m.streamIds).toEqual(['s1::B']);
+    expect(Object.keys(m.resolutions!)).toEqual(['s1::B']);
   });
 
-  it('surfaces a merge whose origin branch no longer exists (orphan fallback)', () => {
-    const orphaned = makeNarrative({
-      merges: { m_orphan: merge('m_orphan', 'DELETED_BRANCH') },
+  it('propagates the ROOT origin through chained forks', () => {
+    const n = base();
+    const child = forkLedger(n, 'A', 'B').streams[0];
+    // Re-home the copy on B, then fork B → C.
+    const n2 = makeNarrative({ streams: { [child.id]: child } });
+    const grandchild = forkLedger(n2, 'B', 'C').streams[0];
+    expect(grandchild.originStreamId).toBe('s1'); // root, not s1::B
+  });
+
+  it('a root fork (no parent) copies nothing', () => {
+    expect(forkLedger(base(), null, 'X')).toEqual({ streams: [], merges: [] });
+  });
+});
+
+// ── Copy-on-fork integration (what the CREATE_BRANCH reducer composes) ───────
+
+describe('copy-on-fork integration', () => {
+  // Mirror the reducer body: fork the ledger, then fold the copies into the
+  // global dicts + register the child branch.
+  function fork(n: NarrativeState, from: string, to: string): NarrativeState {
+    const { streams, merges } = forkLedger(n, from, to);
+    return {
+      ...n,
+      branches: { ...n.branches, [to]: branch(to, from) },
+      streams: { ...(n.streams ?? {}), ...Object.fromEntries(streams.map((s) => [s.id, s])) },
+      merges: { ...(n.merges ?? {}), ...Object.fromEntries(merges.map((m) => [m.id, m])) },
+    } as NarrativeState;
+  }
+
+  it('child owns independent copies; the parent keeps its originals (isolation)', () => {
+    const n0 = makeNarrative({
+      streams: { s1: stream('s1', 'CANON', { priors: [{ id: 'p1', text: 'x', at: 1 }] }) },
+      merges: { m1: merge('m1', 'CANON', { streamIds: ['s1'] }) },
     });
-    expect(mergesForBranch(orphaned, 'CANON').map((m) => m.id)).toContain('m_orphan');
+    const n = fork(n0, 'CANON', 'B');
+
+    // Ownership: parent sees the original, child sees its own copy.
+    expect(streamsForBranch(n, 'CANON').map((s) => s.id)).toEqual(['s1']);
+    expect(streamsForBranch(n, 'B').map((s) => s.id)).toEqual(['s1::B']);
+    expect(mergesForBranch(n, 'B').map((m) => m.id)).toEqual(['m1::B']);
+    expect(n.streams!['s1::B'].originStreamId).toBe('s1'); // comparison link
+
+    // Isolation: a prior added on the child never touches the parent's stream.
+    n.streams!['s1::B'].priors.push({ id: 'p2', text: 'y', at: 2 });
+    expect(n.streams!.s1.priors).toHaveLength(1);
+    expect(n.streams!['s1::B'].priors).toHaveLength(2);
+  });
+
+  it('reverting a merge on the child leaves the parent\'s merge intact', () => {
+    const n0 = makeNarrative({
+      streams: { s1: stream('s1', 'CANON') },
+      merges: { m1: merge('m1', 'CANON', { streamIds: ['s1'] }) },
+    });
+    const n = fork(n0, 'CANON', 'B');
+    // Simulate REVERT_MERGE on B — drop only B's owned copy.
+    delete n.merges!['m1::B'];
+    expect(mergesForBranch(n, 'CANON').map((m) => m.id)).toEqual(['m1']); // parent untouched
+    expect(mergesForBranch(n, 'B')).toHaveLength(0);                      // child reverted, isolated
+  });
+
+  it('a grandchild fork keeps each generation isolated and the root origin linked', () => {
+    const n0 = makeNarrative({ streams: { s1: stream('s1', 'CANON') } });
+    const n1 = fork(n0, 'CANON', 'B');
+    const n2 = fork(n1, 'B', 'C');
+    expect(streamsForBranch(n2, 'C').map((s) => s.id)).toEqual(['s1::B::C']);
+    expect(n2.streams!['s1::B::C'].originStreamId).toBe('s1'); // root origin, not s1::B
+    // All three generations coexist independently.
+    expect(streamsForBranch(n2, 'CANON').map((s) => s.id)).toEqual(['s1']);
+    expect(streamsForBranch(n2, 'B').map((s) => s.id)).toEqual(['s1::B']);
   });
 });
 
@@ -227,6 +274,19 @@ describe('findMergeConsumer', () => {
     expect(map.get('m1')?.id).toBe('ARC1');
     expect(map.get('m2')?.id).toBe('wb1');
     expect(map.has('m-unused')).toBe(false);
+  });
+
+  it('matches a forked merge COPY via its origin (shared entry references the original)', () => {
+    // A pre-fork (shared) entry consumed the ORIGINAL 'm1'; a child owns a copy
+    // with a fresh id + originMergeId 'm1'. Consumption must still recognise it.
+    const n2 = makeNarrative({
+      arcs: { ARC1: arc('ARC1', ['m1']) },
+      scenes: { s1: scene('s1', 'ARC1') },
+      merges: { 'm1::B': merge('m1::B', 'B', { originMergeId: 'm1' }) },
+    });
+    expect(findMergeConsumer(n2, ['s1'], 'm1::B')).toMatchObject({ id: 'ARC1' });
+    const map = buildMergeConsumerMap(n2, ['s1']);
+    expect(mergeConsumerFor(map, n2.merges!['m1::B'])?.id).toBe('ARC1');
   });
 });
 

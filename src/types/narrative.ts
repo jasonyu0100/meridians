@@ -1843,12 +1843,16 @@ export interface Stream {
   priors: StreamPrior[];
   /** True when priors were AI-inferred (unattended / external seat). */
   inferred?: boolean;
-  /** Origin branch — the branch this stream was opened on. Streams/merges are
-   *  global storage but branch-SCOPED for visibility (ownership model): a
-   *  stream is visible on its origin branch and every descendant, i.e. when its
-   *  origin is on the active branch's ancestor lineage. Undefined = legacy /
-   *  pre-branch-scoping stream, treated as visible everywhere. */
+  /** Owning branch. Streams are branch-OWNED: `n.streams` is a global dict (so
+   *  id-lookups always resolve), but a stream is *displayed on / operated by*
+   *  exactly the branch that owns it. A fork DEEP-COPIES the parent branch's
+   *  streams into the child (fresh ids), so reverts / undos / new priors on one
+   *  branch never touch another. Undefined = legacy / root, visible everywhere. */
   branchId?: string;
+  /** Back-link to the stream this one was copied from on a fork — the ROOT
+   *  origin (propagated through chained forks), so "the same question" can be
+   *  lined up across divergent branches. Undefined = an original (not a copy). */
+  originStreamId?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -1890,11 +1894,15 @@ export interface Merge {
   resolutions?: Record<string, MergeResolution>;
   /** Optional note describing how continuity was extended. */
   summary?: string;
-  /** Origin branch — the branch this merge was committed on (the branch whose
-   *  generation folded it in). Branch-scoped for visibility like Stream.branchId:
-   *  visible on its origin branch and descendants. Undefined = legacy, visible
-   *  everywhere. */
+  /** Owning branch — the branch this merge was committed on. Branch-OWNED like
+   *  Stream.branchId: a fork deep-copies merges into the child (fresh ids), so a
+   *  revert/undo on one branch never affects another. Undefined = legacy / root,
+   *  visible everywhere. */
   branchId?: string;
+  /** Back-link to the merge this one was copied from on a fork (root origin,
+   *  propagated through chained forks). Lets `basisMergeIds` on shared pre-fork
+   *  entries match a branch's copy. Undefined = an original (not a copy). */
+  originMergeId?: string;
 }
 
 /** A merge proposed at the commit review but not yet persisted. Carried into
