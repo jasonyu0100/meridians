@@ -536,7 +536,7 @@ Meridians is a **cognitive operating system for teams** — it *runs* a team's j
 
 ### Two practices, two tempos — Capture (async) & Conviction (live)
 
-The practice runs at **two tempos**. **Capture** (async) — each perspective records its priors between sessions, on its own clock; the slow side that compounds into the moat. **Conviction** (live, renamed from "Playback") — a synchronous, high-feedback session where judgement is battle-tested against AI-simulated teams, played as the Rehearsal card game; the fast side, day-one value. *Capture is what reality is; Conviction is how it could go.* Both exercise the Vision thesis: *human judgement-as-vision is the one human edge that doesn't go away.* (Tempo is the practice-level frame; *live (ngrok) / dark (WhatsApp + Slack)* is a separate device-reach layer.) Canonical defs: [LANGUAGE.md](LANGUAGE.md).
+The practice runs at **two tempos**. **Capture** (async) — each perspective records its priors between sessions, on its own clock; the slow side that compounds into the moat. **Conviction** (live, renamed from "Playback") — a synchronous, high-feedback session where judgement is battle-tested against AI-simulated teams, played as the Rehearsal card game; the fast side, day-one value. *Capture is what reality is; Conviction is how it could go.* Both exercise the Vision thesis: *human judgement-as-vision is the one human edge that doesn't go away.* (Tempo is the practice-level frame; *live (Cloudflare tunnel) / dark (Signal)* is a separate device-reach layer.) Canonical defs: [LANGUAGE.md](LANGUAGE.md).
 
 ### Dual value proposition — Players & GMs (the growth engine)
 

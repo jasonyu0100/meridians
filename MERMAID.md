@@ -91,7 +91,7 @@ flowchart LR
         s2["prose → SceneProseView"]
         s3["audio → SceneAudioView"]
         s4["learning → SceneLearningView (per-scene question bank)"]
-        s5["perspective → per-scene PerspectiveView: canon global + private per-entity retellings · A4 (planned)"]
+        s5["perspective → per-scene PerspectiveView: canon global + private per-entity retellings · planned"]
     end
 ```
 
@@ -179,7 +179,7 @@ flowchart TB
     end
 ```
 
-> Roadmap note: the **room / participant model** (A0 — `Member`/`Agent`/`Perspective`), **capture-as-perspective-PRs** (A1 — Streams: a member's bearing on an open question, member-owned Stance), and the **war-room merge** (A3 — Merges fold committed streams into continuity) are now **shipped**. Still **not yet built**: the weekly market (A2), the **Conviction** card game (A4, [CONCEPT.md](CONCEPT.md)), encryption/PIN (A5), WhatsApp async capture (A6), and ngrok/multi-user live access (B1). Other shipped bases: `useScenarios`/`scenarios-engine` (Rehearse), `SlidesPlayer`/`slides-data` + **SlideRegionsModal** (scoped decks), `ai/review`+`reconstruct` (the engine's branch review). *Review-as-a-loop-phase and Butterfly were dropped.* See [ROADMAP.md](ROADMAP.md).
+> Build status: the **room / participant model** (`Member`/`Agent`/`Perspective`), **capture-as-perspective-PRs** (Streams — a member's bearing on an open question, member-owned Stance), and the **war-room merge** (Merges fold committed streams into continuity) are now **shipped**. Still **not yet built**: the weekly market, the **Conviction** card game ([CONCEPT.md](CONCEPT.md)), local encryption/PIN, **Signal** async capture (E2E), and **Cloudflare-tunnel** (`cloudflared`) multi-user live access. Other shipped bases: `useScenarios`/`scenarios-engine` (Rehearse), `SlidesPlayer`/`slides-data` + **SlideRegionsModal** (scoped decks), `ai/review`+`reconstruct` (the engine's branch review). *Review-as-a-loop-phase and Butterfly were dropped.*
 
 ---
 
@@ -249,9 +249,9 @@ flowchart TB
 
 ---
 
-## 8. Conviction — the rehearsal game state machine (A4, [CONCEPT.md](CONCEPT.md))
+## 8. Conviction — the rehearsal game state machine ([CONCEPT.md](CONCEPT.md))
 
-A game is a **branch**; a `GameRoom` runs the round loop over it as a phase machine (`RoundState.phase`), in one of two **variants** — **Rounds** (poker turn order; the diagram below) or **Showdown** (a real-time, simultaneous **LIVE** window replacing READ-WRITE + PLAY). Humans take their turns by hand; agents resolve automatically; a timeout with nothing committed = no action (ceded to the LLM). Scoring is **intrinsic**: in the **SCORING** phase each round, the realized stance shift on every thread is decomposed across the seats that moved it — **Aumann–Shapley on the Fate/KL, conserving exactly** — into a running **Impact** score, shown with a **Ranking**. **Streams are perspective-owned** (one per seat — no shared "board" streams); the **Merge** is the only place separate seats' streams meet, settling each **contested thread** per **`RESOLVE_BIAS`** (a random draw from the conviction-shaped odds by default · `lowest-cost` realism · `highest-cost` drama · `gm` sovereign), optionally spotlit in an **optional SHOWDOWN phase** before SETTLE. **Goals** are optional personal trackers that never affect the score; the old betting layer is gone. Conviction is a **gamified automation layer over the shipping stream / merge / generate UI** — one continuous window; the GM advances each round with **one click through the Generate Panel** (override optional). **Not yet built** — this is the A4 spec.
+A game is a **branch**; a `GameRoom` runs the round loop over it as a phase machine (`RoundState.phase`), in one of two **variants** — **Rounds** (poker turn order; the diagram below) or **Showdown** (a real-time, simultaneous **LIVE** window replacing READ-WRITE + PLAY). Humans take their turns by hand; agents resolve automatically; a timeout with nothing committed = no action (ceded to the LLM). Scoring is **intrinsic**: in the **SCORING** phase each round, the realized stance shift on every thread is decomposed across the seats that moved it — **Aumann–Shapley on the Fate/KL, conserving exactly** — into a running **Impact** score, shown with a **Ranking**. **Streams are perspective-owned** (one per seat — no shared "board" streams); the **Merge** is the only place separate seats' streams meet, settling each **contested thread** per **`RESOLVE_BIAS`** (a random draw from the conviction-shaped odds by default · `lowest-cost` realism · `highest-cost` drama · `gm` sovereign), optionally spotlit in an **optional SHOWDOWN phase** before SETTLE. **Goals** are optional personal trackers that never affect the score; the old betting layer is gone. Conviction is a **gamified automation layer over the shipping stream / merge / generate UI** — one continuous window; the GM advances each round with **one click through the Generate Panel** (override optional). **Not yet built** — this is the spec.
 
 ```mermaid
 stateDiagram-v2
@@ -298,7 +298,7 @@ stateDiagram-v2
     end note
 ```
 
-> **Build components (A4).**
+> **Build components.**
 > **Host surfaces** — (1) **GM board · desktop**: the Play fullscreen modal, global state + `act-as-seat` proxy, runs the machine. (2) **Player controller · mobile**: perspective-gated, over the tunnel.
 > **Shared play UI** — minimalist; **The Board is the single primary surface** (rendered global for the GM, perspective-gated for a player — **responsive across desktop + mobile**). (3) **The Board**: poker-table-inspired felt that **conveys narration + round info directly** (no side panels) — seats as **avatar + name + conviction stack**, a rotating **dealer button**, the **live canonical threads + pot + timer** at centre (each seat's own streams sit in its hand), face-up/down reveal, plus the live **Impact tally / Ranking** and the SCORING-phase **readout** (authored stance ribbons + per-seat fate decomposition). (4) **The Cards**: the hand at the player's seat — face-up/down, `−log p` cost, play / raise / pass / fold. (5) **Chat — modal**: **global** (everyone; cheap talk) + **location** (co-located only; alliances), opened over the board; **agents are full participants**. (6) **Navigation — popups**: move, pose-question / request-more, **set / reassign goal**, settings — popups layered on the board, not panels.
 > **Content tab** — (7) **Perspective views**: per-scene `PerspectiveView` (canon global + private per-entity retellings) that feed the narration phases.

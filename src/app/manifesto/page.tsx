@@ -4749,10 +4749,10 @@ export default function PaperPage() {
               models an adversary who should surprise you (its seat keeps
               deliberately hostile priors; what&apos;s shared is the
               board, not the belief). Priors arrive two ways: <em>live</em>,
-              each member tends their seat; <em>dark</em>, they message a
-              WhatsApp number paired to the room and the engine parses
-              each member&apos;s notes into priors on their own seat, the
-              game master curating exceptions. Threads aren&apos;t fixed
+              each member tends their seat; <em>dark</em>, they message the
+              room&apos;s end-to-end-encrypted Signal number and the engine
+              parses each member&apos;s notes into priors on their own
+              seat, the game master curating exceptions. Threads aren&apos;t fixed
               either &mdash; new ones open as the story turns, so each
               perspective is an evolving decision system.
             </P>
@@ -5012,10 +5012,17 @@ export default function PaperPage() {
               and ask what that vantage missed.
             </P>
             <P>
-              <B>This back-testing of belief is the enterprise sell.</B> A
+              <B>This back-testing of belief is the enterprise sell &mdash;
+              and privacy-first is what lets a serious room say yes.</B> A
               serious room is not buying a forecast &mdash; it is buying its own
               audited judgement: weight earned by calibration, not title, and the
-              record client-owned. The limit, stated plainly: it bites only where
+              record client-owned. For the desks and units that hold the most
+              sensitive judgement, <B>data-privacy-first by construction</B>
+              {" "}(local, client-owned, end-to-end-encrypted capture) is not a
+              feature behind the product &mdash; it is the precondition for
+              buying it at all, and the line that separates us from any rival
+              that parks the same judgement on its own cloud. The limit, stated
+              plainly: it bites only where
               threads resolve observably (a market move, a filing, a
               regulator&apos;s call), the signal is in the corpus not the single
               event, and it leans on the GM writing reality back. The slow
@@ -5033,8 +5040,9 @@ export default function PaperPage() {
               moves. The architectural read is what to take
               forward: a federation of <em>sovereign local hosts</em>
               (after OpenClaw) &mdash; each a laptop that owns its truth,
-              reached live over a tunnel and async through a QR-paired
-              WhatsApp bridge, LLM-as-gateway, no central server.
+              reached live over a Cloudflare quick tunnel and async
+              through an end-to-end-encrypted Signal capture channel,
+              LLM-as-gateway, no central server.
             </p>
             <P>
               The substrate ships as a single Next.js application with
@@ -5075,29 +5083,36 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Tunnel</B> &mdash; live access. While the host runs,
-                  a tunnel puts the instance behind a public URL; players
-                  join by <B>scanning a per-seat QR or tapping a play link
-                  the daemon sends over WhatsApp</B>, opening a{" "}
+                  <B>Cloudflare quick tunnel</B> &mdash; live access.
+                  While the host runs, a bundled{" "}
+                  <code className="text-white/70">cloudflared</code> quick
+                  tunnel (free, no account) puts the instance behind a
+                  real-cert public URL; players join by <B>scanning a
+                  per-seat QR</B> (or a play link the daemon sends over the
+                  capture channel), opening a{" "}
                   <em>controller scoped to their seat</em> (its feed,
                   hand, history) over the same live state. They get their
                   vantage &mdash; not the GM console, others&apos; hidden
                   state, or the raw distributions; that boundary is the
-                  asymmetry the game runs on. PIN-gated, GM-elevated, and
+                  asymmetry the game runs on. Public exposure, so{" "}
+                  <B>application-layer auth is the perimeter</B>:
+                  two-stage pairing (token QR + GM PIN), GM-elevated, and
                   gone the moment the machine sleeps.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>WhatsApp bridge</B> &mdash; the always-open capture
-                  layer. The daemon pairs to a number by <B>QR</B>
-                  {" "}(an OpenClaw-style web-bridge, no Business API), so
-                  members message priors from the phone already in their
-                  pocket; the engine parses each member&apos;s notes into{" "}
+                  <B>Signal capture channel</B> &mdash; the always-open,
+                  end-to-end-encrypted capture layer (a dedicated room
+                  number via{" "}
+                  <code className="text-white/70">signal-cli</code>;
+                  members DM priors from the phone in their pocket, bound
+                  to their seat by sender UUID). The engine parses each
+                  member&apos;s notes into{" "}
                   <em>their</em> seat&apos;s streams under the plausibility
-                  gate, and the GM curates the exceptions. It is also our
-                  standing line to the team &mdash; the channel the work
+                  gate, replies a bare admissibility ack, and the GM
+                  curates the exceptions &mdash; the standing line the work
                   and the facilitation already share.
                 </span>
               </li>
@@ -5164,53 +5179,60 @@ export default function PaperPage() {
               <B>Two ways in: live and dark.</B> The console is the
               single source of truth &mdash; no sync, no merge, no
               conflict &mdash; and the room reaches it on two clocks.{" "}
-              <B>Live</B>, the game master raises the{" "}
+              <B>Live</B>, the game master raises a{" "}
               <a
-                href="https://ngrok.com"
+                href="https://github.com/cloudflare/cloudflared"
                 className="text-white/70 underline-offset-2 hover:underline"
               >
-                ngrok
+                Cloudflare quick tunnel
               </a>{" "}
-              tunnel and the team plays their seat controllers together
-              over it. <B>Dark</B>, the tunnel is down but the capture
-              channel is not, split by audience: a{" "}
+              (free, no account, bundled in the app) and the team plays
+              their seat controllers together over it. <B>Dark</B>, the
+              tunnel is down but the capture channel is not:{" "}
               <a
-                href="https://www.whatsapp.com"
+                href="https://signal.org"
                 className="text-white/70 underline-offset-2 hover:underline"
               >
-                WhatsApp
+                Signal
               </a>{" "}
-              bridge for everyday rooms (direct, informal) and a{" "}
-              <B>Slack / Teams</B> connector for businesses that already
-              trust it. Members keep messaging priors, the engine parses
-              them into their seats, and the GM &mdash; a volunteer inside
-              the organisation, or a facilitator on our side &mdash; curates
-              the exceptions when the instance wakes. Capture below,
-              curation-and-commit above. Nothing we run sits between: a
-              tunnel, a group chat, and the substrate on one laptop.
+              (end-to-end encrypted) is the one capture channel &mdash; a
+              dedicated room number members DM, bound to their seat. Members
+              keep messaging priors, the
+              engine parses them into their seats, and the GM &mdash; a
+              volunteer inside the organisation, or a facilitator on our
+              side &mdash; curates the exceptions when the instance wakes.
+              Capture below, curation-and-commit above. Nothing we run sits
+              between: a tunnel, an encrypted chat, and the substrate on one
+              laptop.
             </P>
             <P>
-              <B>The access path is its own risk, named.</B> A public
-              tunnel URL plus a consumer messaging app as the standing
-              channel is real exposure, and it belongs in the risk list
-              beside the inference path. The live instance is{" "}
-              <B>PIN-gated</B> and exists only while the GM hosts, but a
-              leaked URL mid-session is a live door, so rotating the PIN per
-              session is the discipline. WhatsApp is the other half: prior
-              content crosses Meta&apos;s servers before the GM curates it,
-              so the judgement that is supposed to be the moat transits a
-              third party in the clear. For the named high-stakes buyers
-              &mdash; desks, funds, units &mdash; that is the line a security
-              reviewer stops on. We don&apos;t dissolve the contradiction;
-              we <em>sequence</em> it. The early book is bootstrapped on
-              clients who can run on the default (or a contained,
-              lower-sensitivity room), and the hardened posture (a private
-              channel for WhatsApp, tighter gating or a VPN for the tunnel,
-              local inference where the provider is the objection) is built
-              out <em>with and for the clients who require it</em>, funded by
-              the engagement that needs it. <B>Security matures with the
-              book, not ahead of it</B> &mdash; the high-stakes path is
-              services-shaped early, by design.
+              <B>Privacy-first is the posture &mdash; and the
+              differentiator.</B> Meridians is built data-privacy-first, and
+              for the buyers that matter most &mdash; desks, funds, units,
+              policy cells &mdash; that is a reason to buy, not a caveat to
+              manage. The substrate is <B>local-first and client-owned</B>:
+              one encrypted <code className="text-white/70">.meridian</code>
+              {" "}on the operator&apos;s machine, no per-user database on
+              our side. Capture rides <B>Signal, end-to-end encrypted</B>, so
+              prior content &mdash; the judgement that is the moat &mdash;
+              never crosses a third party in the clear. Live access is a{" "}
+              <B>Cloudflare quick tunnel gated by application-layer auth</B>
+              {" "}(two-stage token-QR + PIN, session-scoped, killed on
+              close), so a leaked URL meets a locked door and the exposure
+              window is the session, not forever; fully-private tables run{" "}
+              <B>LAN-only</B>. Privacy-first also means saying where it still
+              leaks: a Cloudflare quick tunnel terminates TLS at
+              Cloudflare&apos;s edge (it sees live board / chat traffic at the
+              proxy &mdash; not the priors corpus, app-auth-gated, no central
+              store), and the deeper one, the <B>inference path</B> &mdash;
+              the substrate leaves through the LLM gateway, so where the
+              provider itself is the objection, only local inference clears
+              it, and we don&apos;t ship that yet. Net: the encrypted path is
+              the default, the bases a security reviewer checks are covered,
+              and <em>&ldquo;your judgement never leaves your
+              control&rdquo;</em> is a claim we can largely stand behind
+              &mdash; exactly the line a competitor built on someone
+              else&apos;s cloud cannot.
             </P>
             <P>
               <B>Electron + daemon for the install.</B> An Electron
@@ -5220,7 +5242,7 @@ export default function PaperPage() {
               <code className="text-white/70">.meridian</code>, the
               console one launch away &mdash; running a{" "}
               <B>background daemon</B> that keeps the host&apos;s access
-              alive (the tunnel up, the WhatsApp bridge paired) while the
+              alive (the tunnel up, the Signal channel paired) while the
               machine is awake.
             </P>
             <P>
