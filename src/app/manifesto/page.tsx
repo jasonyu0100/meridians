@@ -5228,11 +5228,12 @@ export default function PaperPage() {
               the substrate leaves through the LLM gateway, so where the
               provider itself is the objection, only local inference clears
               it, and we don&apos;t ship that yet. Net: the encrypted path is
-              the default, the bases a security reviewer checks are covered,
-              and <em>&ldquo;your judgement never leaves your
-              control&rdquo;</em> is a claim we can largely stand behind
-              &mdash; exactly the line a competitor built on someone
-              else&apos;s cloud cannot.
+              the default, and <em>&ldquo;your judgement never leaves your
+              control&rdquo;</em> is a claim we can stand behind for the
+              principal who signs for themselves &mdash; with the enterprise
+              tier (BYOC, below) making it stricter and audit-verifiable, not
+              weaker. Exactly the line a competitor built on someone
+              else&apos;s cloud cannot match.
             </P>
             <P>
               <B>Electron + daemon for the install.</B> An Electron
@@ -5244,6 +5245,31 @@ export default function PaperPage() {
               <B>background daemon</B> that keeps the host&apos;s access
               alive (the tunnel up, the Signal channel paired) while the
               machine is awake.
+            </P>
+            <P>
+              <B>The host is a laptop today; the principle scales to the
+              customer&apos;s tenancy.</B> Right now the sovereign host is
+              one person&apos;s machine &mdash; the right shape for the buyer
+              who <em>is</em> the principal (boutique funds, family offices,
+              political consultancies, owner-led firms), where no security
+              committee sits between desire and signature and{" "}
+              <em>&ldquo;it lives on my machine, encrypted, no vendor
+              cloud&rdquo;</em> reads as pure upside. The enterprise reframe
+              keeps the principle and <B>moves the host</B>: it stops being a
+              laptop and becomes a <B>workload in the customer&apos;s own
+              tenancy</B> &mdash; we ship the application as a container or VM
+              image the customer runs in their <B>own AWS / Azure / GCP
+              account or on-prem</B> (BYOC / customer-VPC), the encrypted
+              substrate living in <em>their</em> storage, under <em>their</em>
+              {" "}IAM, backup, and legal hold. We never touch the data
+              &mdash; so <em>&ldquo;your judgement never leaves your
+              control&rdquo;</em> becomes <em>more</em> true and{" "}
+              <B>verifiable by their own cloud audit logs</B>, not our
+              whitepaper. It is a well-understood enterprise pattern (how
+              security-sensitive data tooling commonly ships), nothing exotic
+              to evaluate. One product, three deployment tiers &mdash;
+              laptop, then the customer&apos;s cloud &mdash; and a
+              differentiator that only sharpens as it climbs.
             </P>
             <P>
               <B>Priors are human-made, not scraped.</B> A person
@@ -5341,6 +5367,29 @@ export default function PaperPage() {
               <em>private subscription for the working surface +
               value-add layers on top + free public distribution
               where it earns its way</em>. Numbers follow.
+            </P>
+            <P>
+              <B>Sell the laptop to the sub-enterprise tier now; earn the
+              enterprise tier later.</B> There is a real market where the
+              laptop model passes as-is &mdash; <B>boutique funds, family
+              offices, political consultancies, strategy boutiques, owner-led
+              firms</B>, anywhere the buyer <em>is</em> the principal and no
+              security committee sits between desire and signature. For them
+              {" "}<em>&ldquo;it lives on my machine, encrypted, no vendor
+              cloud&rdquo;</em> is pure upside &mdash; and they are
+              conveniently the same <B>champion-led, GM-shaped</B> motion
+              the rest of this model already runs on. So the honest
+              sequencing: <B>sell the current architecture to the
+              sub-enterprise tier now</B> and let it fund and prove the
+              practice; <B>build the BYOC / customer-VPC deployment in
+              parallel</B> (see Architecture) for when an enterprise buyer is
+              real. And the discipline that protects the motion: <B>don&apos;t
+              drag the laptop architecture into an enterprise security review
+              in the meantime.</B> A failed review doesn&apos;t just lose the
+              deal &mdash; it burns the internal champion the whole motion
+              depends on, and that person doesn&apos;t get a second swing.
+              Move the host into their tenancy <em>before</em> you walk in
+              that door.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
