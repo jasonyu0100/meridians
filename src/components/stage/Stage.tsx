@@ -5,7 +5,7 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { IconReasoning, IconPlan, IconProse, IconWaveform, IconQuestion, IconScorecard } from '@/components/icons';
+import { IconReasoning, IconPlan, IconProse, IconWaveform, IconQuestion, IconScorecard, IconUser } from '@/components/icons';
 import { getEffectivePovId } from '@/lib/forces/narrative-utils';
 import { computeCumulativePositions } from '@/lib/forces/positions';
 import { getRelationshipsAtScene, getOwnershipAtScene, getTiesAtScene } from '@/lib/graph/scene-filter';
@@ -24,6 +24,7 @@ import ThreadLogGraphView from './ThreadLogGraphView';
 import { ScenePlanView } from './ScenePlanView';
 import { SceneProseView } from './SceneProseView';
 import { SceneLearningView } from './SceneLearningView';
+import { ScenePerspectivesView } from './ScenePerspectivesView';
 import { SceneAudioView } from './SceneAudioView';
 import { DecisionView } from './DecisionView';
 import { CaptureView } from '@/components/capture/CaptureView';
@@ -1157,6 +1158,36 @@ export default function Stage() {
           .attr('clip-path', `url(#${clipId})`);
       });
 
+    // ── Letter-fallback avatars ────────────────────────────────────────────
+    // Entities (character / location / artifact) with no resolved image show
+    // their initial centred inside the node shape — the map-style avatar
+    // fallback. Skipped in heatmap mode (same as the image overlays) so the
+    // heat reads clean, and skipped where an image already covers the shape.
+    const hasNodeImage = (d: GraphNode) => !!d.imageUrl && resolvedImageUrls.has(d.imageUrl);
+    const nodeInitial = (d: GraphNode) => d.label?.trim()?.[0]?.toUpperCase() ?? '?';
+    nodeGroup
+      .filter((d) => !showHeatmap && d.kind !== 'knowledge' && !hasNodeImage(d))
+      .append('text')
+      .attr('class', 'graph-node-initial')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.34em')
+      .attr('pointer-events', 'none')
+      .style('font-weight', '700')
+      .style('fill', 'rgba(255,255,255,0.92)')
+      .style('font-size', (d) => {
+        if (d.kind === 'character') {
+          const r = scaleByUsage ? CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * normChar(d) : (ROLE_RADIUS[d.role ?? 'recurring'] ?? 18);
+          return `${Math.round(r * 0.9)}px`;
+        }
+        if (d.kind === 'artifact') {
+          const sz = ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 16;
+          return `${Math.round(sz * 0.85)}px`;
+        }
+        const s = LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * normLoc(d);
+        return `${Math.round((LOCATION_SIZE * s) * 0.42)}px`;
+      })
+      .text((d) => nodeInitial(d));
+
     // Character / location labels
     nodeGroup
       .filter((d) => d.kind !== 'knowledge')
@@ -1583,6 +1614,16 @@ export default function Stage() {
             hint="Select a scene from the timeline to view its questions."
           />
         )
+      ) : graphViewMode === 'perspective' ? (
+        currentScene ? (
+          <ScenePerspectivesView narrative={narrative} scene={currentScene} />
+        ) : (
+          <EmptyState
+            icon={IconUser}
+            title="No scene selected."
+            hint="Select a scene from the timeline to view its perspectives."
+          />
+        )
       ) : graphViewMode === 'decision' ? (
         currentScene ? (
           <DecisionView narrative={narrative} scene={currentScene} />
@@ -1625,6 +1666,7 @@ export default function Stage() {
           resolvedKeys={state.resolvedEntryKeys}
           currentIndex={state.viewState.currentSceneIndex}
           source={graphViewMode === 'streams-influence' ? 'streams' : 'threads'}
+          branchId={state.viewState.activeBranchId}
           onSelectThread={(id: string) => {
             dispatch({ type: 'SELECT_THREAD_LOG', threadId: id });
             dispatch({ type: 'SET_INSPECTOR', context: { type: 'thread', threadId: id } });

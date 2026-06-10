@@ -264,28 +264,13 @@ export function StorySettingsModal({ onClose }: { onClose: () => void }) {
                 </p>
               </div>
 
-              <div>
-                <label className="text-[10px] text-text-dim uppercase tracking-wider block mb-2">
-                  Constraints
-                </label>
-                <textarea
-                  value={settings.storyConstraints}
-                  onChange={(e) => update({ storyConstraints: e.target.value })}
-                  placeholder="e.g. &quot;No deus ex machina resolutions. Don't kill off the protagonist's mentor yet. Avoid romance subplots between the leads&quot;..."
-                  className="w-full bg-bg-field border border-white/10 rounded-lg px-3 py-2 text-[11px] text-text-primary placeholder:text-text-dim/40 outline-none focus:border-blue-500/40 resize-none h-24"
-                />
-                <p className="text-[9px] text-text-dim/50 mt-1">
-                  What the AI should avoid. Negative guardrails that steer generation away from unwanted directions.
-                </p>
-              </div>
-
               <div className="flex items-center justify-between gap-3 py-1">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-text-dim uppercase tracking-wider">
                     Auto-clear after use
                   </span>
                   <span className="text-[9px] text-text-dim/50">
-                    Clear Direction + Constraints after they guide a scene generation, and World Direction after it guides a world expansion. Default on — prevents a one-off steer from silently shaping every subsequent run.
+                    Clear Direction after it guides a scene generation, and World Direction after it guides a world expansion. Default on — prevents a one-off steer from silently shaping every subsequent run.
                   </span>
                 </div>
                 <button

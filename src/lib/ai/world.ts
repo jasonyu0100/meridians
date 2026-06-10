@@ -27,7 +27,7 @@ import { buildActivePhaseSection } from './phase-graph';
 import { MAX_TOKENS_LARGE, GENERATE_MODEL } from '@/lib/constants';
 import { parseJson } from './json';
 import { narrativeContext } from './context';
-import { renderMergeBasisBlock } from '@/lib/merges';
+import { renderMergeBasisBlock, executiveStreamCount } from '@/lib/merges';
 import { logInfo } from '@/lib/core/system-logger';
 import {
   buildSuggestArcDirectionPrompt,
@@ -132,7 +132,10 @@ export type WorldExpansionResponse = {
 };
 
 export type DirectionSuggestion = {
+  /** Composite display string: "ArcName: direction\n\nsceneSuggestion". */
   text: string;
+  /** The direction VECTOR alone — what to put in a Direction field. */
+  direction: string;
   arcName: string;
   suggestedSceneCount: number;
 };
@@ -141,10 +144,20 @@ export async function suggestArcDirection(
   narrative: NarrativeState,
   resolvedKeys: string[],
   currentIndex: number,
+  /** When the next arc folds in a pending merge, pass it here: the suggestion
+   *  reads the committed continuity basis and proposes an arc name + direction
+   *  that coordinate every committed outcome into one continuation. */
+  basisMerges?: Merge[],
 ): Promise<DirectionSuggestion> {
   const ctx = narrativeContext(narrative, resolvedKeys, currentIndex);
+  const basisBlock = basisMerges && basisMerges.length > 0
+    ? renderMergeBasisBlock(narrative, basisMerges) ?? undefined
+    : undefined;
+  const executiveCount = basisMerges
+    ? basisMerges.reduce((sum, m) => sum + executiveStreamCount(m), 0)
+    : 0;
 
-  const prompt = buildSuggestArcDirectionPrompt({ narrativeContext: ctx });
+  const prompt = buildSuggestArcDirectionPrompt({ narrativeContext: ctx, basisBlock, executiveCount });
 
   const reasoningBudget = resolveReasoningBudget(narrative);
   const websearch = resolveWebsearch(narrative);
@@ -155,6 +168,7 @@ export async function suggestArcDirection(
   const sceneCount = Math.max(1, Math.min(8, parsed.suggestedSceneCount ?? 4));
   return {
     text: `${parsed.arcName}: ${parsed.direction}${parsed.sceneSuggestion ? '\n\n' + parsed.sceneSuggestion : ''}`,
+    direction: parsed.direction ?? '',
     arcName: parsed.arcName ?? '',
     suggestedSceneCount: sceneCount,
   };

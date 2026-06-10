@@ -7,7 +7,7 @@ import type { ScenariosRunState } from '@/types/narrative';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
 
-type ModeType = 'auto' | 'scenarios' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game' | 'bulk-questions';
+type ModeType = 'auto' | 'scenarios' | 'bulk-plan' | 'bulk-prose' | 'bulk-audio' | 'bulk-game' | 'bulk-questions' | 'bulk-perspectives';
 
 // Pause/resume apply to auto + bulk modes (which manage queues we can
 // genuinely pause between iterations). Scenarios runs are pure
@@ -79,7 +79,15 @@ type BulkQuestionsProps = PausableProps & {
   statusMessage: string;
 };
 
-type Props = AutoModeProps | ScenariosModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps | BulkQuestionsProps;
+type BulkPerspectivesProps = PausableProps & {
+  mode: 'bulk-perspectives';
+  isRunning: boolean;
+  isPaused: boolean;
+  progress: { completed: number; total: number };
+  statusMessage: string;
+};
+
+type Props = AutoModeProps | ScenariosModeProps | BulkPlanProps | BulkProseProps | BulkAudioProps | BulkGameProps | BulkQuestionsProps | BulkPerspectivesProps;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,6 +107,7 @@ const MODE_CONFIG: Record<ModeType, { label: string; color: string; bgColor: str
   'bulk-audio': { label: 'Audio', color: 'text-violet-400', bgColor: 'bg-violet-400' },
   'bulk-game': { label: 'Games', color: 'text-amber-400', bgColor: 'bg-amber-400' },
   'bulk-questions': { label: 'Questions', color: 'text-emerald-400', bgColor: 'bg-emerald-400' },
+  'bulk-perspectives': { label: 'Perspectives', color: 'text-teal-400', bgColor: 'bg-teal-400' },
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────

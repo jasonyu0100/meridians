@@ -35,7 +35,7 @@ import { diagnoseError } from '@/lib/ai/diagnose';
  *
  *   2. CONFIG (idle) — scenarios exist; the panel lists them with
  *      checkboxes, a parallel-workers selector, and an optional
- *      direction / constraints box. "Start Generation" kicks off the
+ *      direction box. "Start Generation" kicks off the
  *      batch.
  *
  *   3. RUN / RESULTS — full-screen view: left rail lists each scenario
@@ -200,7 +200,7 @@ function ConfigModal({
   onStart: (config: Partial<ScenariosConfig>) => void;
 }) {
   // The scenario's coordination IS the direction; no separate user-supplied
-  // direction or constraints box. Each scenario's variables drive its own
+  // direction box. Each scenario's variables drive its own
   // generation, and the cohort as a whole already represents the user's
   // intent (refined via the Compass view).
   const [selected, setSelected] = useState<Set<string>>(() => new Set(scenarios.map((s) => s.id)));

@@ -62,6 +62,24 @@ export default function StagePalette({
   // and persisting across modes lets the user keep their selection while
   // jumping between bulk passes.
   const [bulkRange, setBulkRange] = useState<SceneRange>(null);
+  // Influence-view period navigation — state published by SankeyView; the
+  // palette renders the matching back/forward (+ fast skip) cluster.
+  const [navState, setNavState] = useState<{ active: boolean; label: string; canBack: boolean; canFwd: boolean; unit: string }>(
+    { active: false, label: '', canBack: false, canFwd: false, unit: '' },
+  );
+  useEffect(() => {
+    function onNav(e: Event) {
+      const d = (e as CustomEvent<{ active: boolean; label?: string; canBack?: boolean; canFwd?: boolean; unit?: string }>).detail;
+      if (!d) return;
+      if (!d.active) { setNavState((s) => ({ ...s, active: false })); return; }
+      setNavState({ active: true, label: d.label ?? '', canBack: !!d.canBack, canFwd: !!d.canFwd, unit: d.unit ?? '' });
+    }
+    window.addEventListener('influence:nav-state', onNav);
+    window.dispatchEvent(new CustomEvent('influence:nav-request'));
+    return () => window.removeEventListener('influence:nav-state', onNav);
+  }, []);
+  const stepInfluence = (dir: number, fast: boolean) =>
+    window.dispatchEvent(new CustomEvent('canvas:influence-step', { detail: { dir, fast } }));
   // Map composer mount — opened from the reasoning palette's
   // Generate/Regenerate affordances. Pre-seeds the host arc.
   const [mapComposerArcId, setMapComposerArcId] = useState<
@@ -139,7 +157,8 @@ export default function StagePalette({
     graphViewMode === "prose" ||
     graphViewMode === "audio" ||
     graphViewMode === "decision" ||
-    graphViewMode === "learning";
+    graphViewMode === "learning" ||
+    graphViewMode === "perspective";
   const isPhaseMode = graphViewMode === "mode";
   const isMapMode = graphViewMode === "map";
 
@@ -322,7 +341,9 @@ export default function StagePalette({
         ? "canvas:generate-plan"
         : graphViewMode === "learning"
           ? "canvas:generate-questions"
-          : "canvas:generate-prose";
+          : graphViewMode === "perspective"
+            ? "canvas:generate-perspectives"
+            : "canvas:generate-prose";
     window.dispatchEvent(
       new CustomEvent(event, { detail: { guidance: generateText.trim() } }),
     );
@@ -857,7 +878,7 @@ export default function StagePalette({
                 <span
                   className={`text-[10px] uppercase tracking-wider text-emerald-400/70`}
                 >
-                  Generate {graphViewMode === "plan" ? "Plan" : graphViewMode === "learning" ? "Questions" : "Prose"}
+                  Generate {graphViewMode === "plan" ? "Plan" : graphViewMode === "learning" ? "Questions" : graphViewMode === "perspective" ? "Perspectives" : "Prose"}
                 </span>
                 <button
                   onClick={() => setGenerateOpen(false)}
@@ -881,7 +902,9 @@ export default function StagePalette({
                       ? 'Optional direction... e.g. "focus on the power struggle" or "open with a quiet moment"'
                       : graphViewMode === "learning"
                         ? 'Optional direction... e.g. "emphasise the magic-system rules" or "more analyse/evaluate questions"'
-                        : 'Optional direction... e.g. "write it sparse and clipped" or "lean into sensory detail"'
+                        : graphViewMode === "perspective"
+                          ? 'Generates every lens in parallel — the public narrator and each participant'
+                          : 'Optional direction... e.g. "write it sparse and clipped" or "lean into sensory detail"'
                   }
                   className="w-full h-20 bg-black/30 border border-border rounded text-[11px] text-text-secondary p-2 resize-none outline-none focus:border-violet-300/30 transition-colors placeholder:text-text-dim/30"
                 />
@@ -1303,6 +1326,52 @@ export default function StagePalette({
                     />
                   </>
                 )}
+
+                {/* Perspectives palette actions — Generate fans out all lenses in parallel */}
+                {graphViewMode === "perspective" && (
+                  <>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors uppercase tracking-wider text-world bg-world/10 hover:bg-world/20"
+                      onClick={() => {
+                        setGenerateOpen((v) => !v);
+                        setRewriteOpen(false);
+                      }}
+                      title="Generate every available perspective in parallel"
+                    >
+                      <IconSparkle size={12} />
+                      Generate
+                    </button>
+                    {currentScene?.perspectives && Object.keys(currentScene.perspectives).length > 0 && (
+                      <button
+                        type="button"
+                        className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
+                        onClick={() => window.dispatchEvent(new CustomEvent("canvas:clear-perspectives"))}
+                        title="Clear perspectives"
+                      >
+                        <IconClose size={14} />
+                      </button>
+                    )}
+                    <div className="w-px h-4 bg-white/12 mx-0.5" />
+                    <SceneRangeSelector
+                      range={bulkRange}
+                      onChange={setBulkRange}
+                      placement="top"
+                      focus="perspectives"
+                      trigger={{
+                        icon: <IconAutoLoop size={14} />,
+                        className: "w-7 h-7 flex items-center justify-center rounded-md transition-colors text-amber-400 bg-amber-500/10 hover:bg-amber-500/20",
+                        title: "Generate perspectives across scenes — pick range (sliding-window parallel)",
+                      }}
+                      onStart={(r, all) =>
+                        window.dispatchEvent(
+                          new CustomEvent("canvas:bulk-perspectives", { detail: { range: r, all } }),
+                        )
+                      }
+                      startLabel="Start perspective generation"
+                    />
+                  </>
+                )}
               </>
             )}
 
@@ -1332,43 +1401,96 @@ export default function StagePalette({
         <div
           className={`glass-pill px-3 py-1.5 flex items-center gap-2 ${wrapperClasses}`}
         >
-          {/* Scene navigation — always visible */}
-          <button
-            type="button"
-            className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors"
-            onClick={() => dispatch({ type: "PREV_SCENE" })}
-            aria-label="Previous scene"
-          >
-            <IconChevronLeft size={14} />
-          </button>
+          {navState.active ? (
+            /* Influence period navigation — back/forward step one unit (scene
+               for threads; hour/day/week for streams) + fast-skip over gaps. */
+            <>
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                onClick={() => stepInfluence(-1, true)}
+                disabled={!navState.canBack}
+                title={`Skip back to previous ${navState.unit} section`}
+                aria-label="Skip back"
+              >
+                <span className="flex -space-x-2"><IconChevronLeft size={14} /><IconChevronLeft size={14} /></span>
+              </button>
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                onClick={() => stepInfluence(-1, false)}
+                disabled={!navState.canBack}
+                title={`Back one ${navState.unit}`}
+                aria-label="Back"
+              >
+                <IconChevronLeft size={14} />
+              </button>
+              <span className="px-1.5 min-w-36 text-center text-[11px] tabular-nums text-text-secondary select-none whitespace-nowrap">
+                {navState.label}
+              </span>
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                onClick={() => stepInfluence(1, false)}
+                disabled={!navState.canFwd}
+                title={`Forward one ${navState.unit}`}
+                aria-label="Forward"
+              >
+                <IconChevronRight size={14} />
+              </button>
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                onClick={() => stepInfluence(1, true)}
+                disabled={!navState.canFwd}
+                title={`Skip forward to next ${navState.unit} section`}
+                aria-label="Skip forward"
+              >
+                <span className="flex -space-x-2"><IconChevronRight size={14} /><IconChevronRight size={14} /></span>
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Scene navigation — always visible */}
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors"
+                onClick={() => dispatch({ type: "PREV_SCENE" })}
+                aria-label="Previous scene"
+              >
+                <IconChevronLeft size={14} />
+              </button>
 
-          {/* Search */}
-          <button
-            type="button"
-            className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
-              state.viewState.graphViewMode === 'search'
-                ? "text-text-primary bg-white/10"
-                : "text-text-secondary hover:text-text-primary hover:bg-white/6"
-            }`}
-            onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'search' })}
-            aria-label="Search world view"
-            title="Search world view"
-          >
-            <IconSearch size={12} />
-          </button>
+              {/* Search */}
+              <button
+                type="button"
+                className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
+                  state.viewState.graphViewMode === 'search'
+                    ? "text-text-primary bg-white/10"
+                    : "text-text-secondary hover:text-text-primary hover:bg-white/6"
+                }`}
+                onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'search' })}
+                aria-label="Search world view"
+                title="Search world view"
+              >
+                <IconSearch size={12} />
+              </button>
 
-          {/* Next */}
-          <button
-            type="button"
-            className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors"
-            onClick={() => dispatch({ type: "NEXT_SCENE" })}
-            aria-label="Next scene"
-          >
-            <IconChevronRight size={14} />
-          </button>
+              {/* Next */}
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/6 rounded-md transition-colors"
+                onClick={() => dispatch({ type: "NEXT_SCENE" })}
+                aria-label="Next scene"
+              >
+                <IconChevronRight size={14} />
+              </button>
+            </>
+          )}
 
-          {/* Action buttons — hidden during auto/Scenarios/bulk */}
-          {!isAnyModeActive && (
+          {/* Action buttons — hidden during auto/Scenarios/bulk, and on the
+              influence view (its palette is navigation-only). */}
+          {!isAnyModeActive && !navState.active && (
             <>
               {/* Divider */}
               <div className="w-px h-4 bg-white/12 mx-1" />
@@ -1441,33 +1563,37 @@ export default function StagePalette({
             </>
           )}
 
-          {/* Coordination Plan */}
-          <button
-            type="button"
-            className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("open-coordination-plan"))
-            }
-            title="Coordination plan"
-          >
-            <IconList size={14} />
-          </button>
+          {/* Coordination Plan + Story Settings — hidden on the influence view. */}
+          {!navState.active && (
+            <>
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("open-coordination-plan"))
+                }
+                title="Coordination plan"
+              >
+                <IconList size={14} />
+              </button>
 
-          {/* Story Settings — always visible */}
-          <button
-            type="button"
-            className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("open-world-view-settings"))
-            }
-            title="World view settings"
-          >
-            <IconSettings size={14} />
-          </button>
+              <button
+                type="button"
+                className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("open-world-view-settings"))
+                }
+                title="World view settings"
+              >
+                <IconSettings size={14} />
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Delete head scene button */}
-        {isActive &&
+        {/* Delete head scene button — hidden on the influence view. */}
+        {!navState.active &&
+          isActive &&
           isHead &&
           headIsOwned &&
           (headIsForkPoint ? (

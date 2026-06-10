@@ -91,7 +91,7 @@ flowchart LR
         s2["prose → SceneProseView"]
         s3["audio → SceneAudioView"]
         s4["learning → SceneLearningView (per-scene question bank)"]
-        s5["perspective → per-scene PerspectiveView: canon global + private per-entity retellings · planned"]
+        s5["perspective → ScenePerspectivesView: per-scene retellings (public narrator + each participant); palette Generate fans out all lenses in parallel"]
     end
 ```
 

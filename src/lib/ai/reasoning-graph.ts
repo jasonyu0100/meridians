@@ -474,8 +474,6 @@ export type PlanGuidance = {
   arcTarget?: number;
   /** Direction — coordinates end fate goals that should be achieved */
   direction?: string;
-  /** Constraints — what must NOT happen, restrictions on the narrative */
-  constraints?: string;
   /**
    * Which force category to bias the plan toward. Default "freeform"
    * (no bias — LLM picks composition). "chaos" elevates chaos from
@@ -666,7 +664,6 @@ export async function generateCoordinationPlan(
     reasoningScale(guidance.reasoningLevel),
   );
   const userDirection = guidance.direction ?? "";
-  const userConstraints = guidance.constraints ?? "";
 
   // Get patterns and anti-patterns
   const patterns = narrative.patterns ?? [];
@@ -693,7 +690,6 @@ export async function generateCoordinationPlan(
     antiPatternsSection,
     threadTargetsSection,
     userDirection,
-    userConstraints,
     arcTarget,
     activeThreadCount,
     nodeGuidance,

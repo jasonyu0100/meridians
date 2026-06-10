@@ -1,5 +1,5 @@
 'use client';
-// GuidanceFields — direction/constraint input fields with AI direction suggestion.
+// GuidanceFields — direction input field with AI direction suggestion.
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useStore } from '@/lib/state/store';
@@ -7,15 +7,17 @@ import { suggestAutoDirection } from '@/lib/ai';
 
 type Props = {
   direction: string;
-  constraints: string;
   onDirectionChange: (value: string) => void;
-  onConstraintsChange: (value: string) => void;
-  /** Hide suggest buttons */
+  /** Hide suggest button */
   hideSuggest?: boolean;
+  /** Override the Direction "Suggest" action. When provided, the button runs
+   *  this instead of the default macro-direction suggestion — the handler owns
+   *  populating the direction (and any sibling fields, e.g. an arc title). */
+  onSuggestDirection?: () => void | Promise<void>;
 };
 
 /**
- * Reusable direction + constraints fields with story-settings sync.
+ * Reusable direction field with story-settings sync.
  *
  * - Defaults to "use story settings" when they exist
  * - Auto-updates parent when story settings change while checkbox is on
@@ -24,22 +26,19 @@ type Props = {
  * - Re-checking restores current story settings
  */
 export function GuidanceFields({
-  direction, constraints, onDirectionChange, onConstraintsChange, hideSuggest,
+  direction, onDirectionChange, hideSuggest, onSuggestDirection,
 }: Props) {
   const { state } = useStore();
   const narrative = state.activeNarrative;
 
   const storyDir = narrative?.storySettings?.storyDirection?.trim() ?? '';
-  const storyCon = narrative?.storySettings?.storyConstraints?.trim() ?? '';
 
   // Default to true when story settings exist
   const [useStoryDir, setUseStoryDir] = useState(!!storyDir);
-  const [useStoryCon, setUseStoryCon] = useState(!!storyCon);
   const [suggestingDir, setSuggestingDir] = useState(false);
 
   // Track previous story settings to detect changes
   const prevDirRef = useRef(storyDir);
-  const prevConRef = useRef(storyCon);
 
   // When story settings change and checkbox is on, push new values to parent
   useEffect(() => {
@@ -49,20 +48,12 @@ export function GuidanceFields({
     prevDirRef.current = storyDir;
   }, [storyDir, useStoryDir, onDirectionChange]);
 
-  useEffect(() => {
-    if (useStoryCon && storyCon !== prevConRef.current) {
-      onConstraintsChange(storyCon);
-    }
-    prevConRef.current = storyCon;
-  }, [storyCon, useStoryCon, onConstraintsChange]);
-
   // On mount, sync parent if using story settings
   const mountedRef = useRef(false);
   useEffect(() => {
     if (mountedRef.current) return;
     mountedRef.current = true;
     if (useStoryDir && storyDir && direction !== storyDir) onDirectionChange(storyDir);
-    if (useStoryCon && storyCon && constraints !== storyCon) onConstraintsChange(storyCon);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -70,17 +61,23 @@ export function GuidanceFields({
     if (!narrative) return;
     setSuggestingDir(true);
     try {
-      // Always use head index for generation operations
-      const headIndex = state.resolvedEntryKeys.length - 1;
-      const result = await suggestAutoDirection(narrative, state.resolvedEntryKeys, headIndex);
-      onDirectionChange(result);
-      setUseStoryDir(false);
+      if (onSuggestDirection) {
+        // Caller owns the suggestion (e.g. merge-aware arc title + direction).
+        await onSuggestDirection();
+        setUseStoryDir(false);
+      } else {
+        // Always use head index for generation operations
+        const headIndex = state.resolvedEntryKeys.length - 1;
+        const result = await suggestAutoDirection(narrative, state.resolvedEntryKeys, headIndex);
+        onDirectionChange(result);
+        setUseStoryDir(false);
+      }
     } catch (err) {
       console.error('[guidance] suggest direction failed:', err);
     } finally {
       setSuggestingDir(false);
     }
-  }, [narrative, state.resolvedEntryKeys, onDirectionChange]);
+  }, [narrative, state.resolvedEntryKeys, onDirectionChange, onSuggestDirection]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -96,21 +93,7 @@ export function GuidanceFields({
           value={direction}
           onChange={(e) => { onDirectionChange(e.target.value); setUseStoryDir(false); }}
           placeholder="What should the world view focus on?"
-          className="bg-bg-field border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-14 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
-        />
-      </Field>
-
-      <Field
-        label="Constraints"
-        storyValue={storyCon}
-        useStory={useStoryCon}
-        onToggleStory={(checked) => { setUseStoryCon(checked); onConstraintsChange(checked ? storyCon : ''); }}
-      >
-        <textarea
-          value={constraints}
-          onChange={(e) => { onConstraintsChange(e.target.value); setUseStoryCon(false); }}
-          placeholder="What should NOT happen..."
-          className="bg-bg-field border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-12 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
+          className="bg-bg-field border border-border rounded-lg px-3 py-2 text-[11px] text-text-primary w-full h-28 resize-none outline-none placeholder:text-text-dim focus:border-white/16 transition"
         />
       </Field>
     </div>

@@ -131,7 +131,6 @@ function createAutoConfig(overrides: Partial<AutoConfig> = {}): AutoConfig {
     direction: "Continue the story",
     minArcLength: 3,
     maxArcLength: 8,
-    narrativeConstraints: "",
     ...overrides,
   };
 }
@@ -684,15 +683,6 @@ describe("buildOutlineDirective", () => {
     const directive = buildOutlineDirective(narrative, config, baseCtx);
     expect(directive).toContain("## Story Phase");
     expect(directive).toContain("MIDPOINT");
-  });
-  it("includes narrative constraints when set", () => {
-    const narrative = createMinimalNarrative();
-    const config = createAutoConfig({
-      narrativeConstraints: "No character deaths",
-    });
-    const directive = buildOutlineDirective(narrative, config, baseCtx);
-    expect(directive).toContain("## Constraints");
-    expect(directive).toContain("No character deaths");
   });
   it("includes direction when set", () => {
     const narrative = createMinimalNarrative();

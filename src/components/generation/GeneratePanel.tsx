@@ -7,11 +7,12 @@ import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/a
 import { diagnoseError } from "@/lib/ai/diagnose";
 import { IconChevronRight, IconDice, IconMerge } from "@/components/icons";
 import { uid } from "@/components/stage/RoomUI";
-import { resolutionOutcomes } from "@/lib/merges";
+import { resolutionOutcomes, suggestMergeSceneCount, executiveStreamCount } from "@/lib/merges";
 import {
   DEFAULT_EXPANSION_FILTER,
   expandWorld,
   generateScenes,
+  suggestArcDirection,
   suggestWorldExpansion,
   type CoordinationPlanContext,
   type ExpansionEntityFilter,
@@ -157,7 +158,6 @@ export function GeneratePanel({
   const [guidanceDirection, setGuidanceDirection] = useState(
     initialContinuationMode && initialStoryDirection ? initialStoryDirection : "",
   );
-  const [guidanceConstraints, setGuidanceConstraints] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [firstSceneTimeUnit, setFirstSceneTimeUnit] = useState<TimeUnit | "automatic">("automatic");
   const [firstSceneTimeValue, setFirstSceneTimeValue] = useState<string>("");
@@ -200,6 +200,9 @@ export function GeneratePanel({
   // produced arc / world-build AND used for the CREATE_MERGE that persists it
   // on success — making every merge consumed-by-construction.
   const [proposedMergeId] = useState(() => uid("merge"));
+
+  // Guards the one-time automatic arc-length set from a pending merge.
+  const mergeLengthSetRef = useRef(false);
 
   const narrative = state.activeNarrative;
   if (!narrative) return null;
@@ -260,17 +263,15 @@ export function GeneratePanel({
   // Auto-clear saved direction fields after they've guided a generation, per
   // the autoClearDirection setting (on by default). Prevents a one-off steer
   // from silently shaping every subsequent run without the user re-opting in.
-  // Scene generation clears storyDirection + storyConstraints; world expansion
-  // clears worldDirection.
+  // Scene generation clears storyDirection; world expansion clears worldDirection.
 
   const clearSceneDirectionAfterUse = useCallback(() => {
     const s = narrative?.storySettings;
     if (!s?.autoClearDirection) return;
-    const hasContent = !!(s.storyDirection?.trim() || s.storyConstraints?.trim());
-    if (!hasContent) return;
+    if (!s.storyDirection?.trim()) return;
     dispatch({
       type: "SET_STORY_SETTINGS",
-      settings: { ...s, storyDirection: "", storyConstraints: "" },
+      settings: { ...s, storyDirection: "" },
     });
   }, [narrative?.storySettings, dispatch]);
 
@@ -323,6 +324,39 @@ export function GeneratePanel({
       dispatch({ type: "COMMIT_STREAM", streamId: sid });
     }
   }, [proposedMerge, proposedMergeId, dispatch, state.viewState.activeBranchId]);
+
+  // Automatic arc length — when the panel opens from a commit review, the scene
+  // count is set once from the deterministic sublinear estimate (one stream ≈ 1
+  // scene, each extra stream costs less; see suggestMergeSceneCount). The user
+  // can still adjust the slider afterwards.
+  useEffect(() => {
+    if (!proposedMerge || mergeLengthSetRef.current) return;
+    mergeLengthSetRef.current = true;
+    setDirectionCount(suggestMergeSceneCount(proposedMerge));
+  }, [proposedMerge]);
+
+  // Suggest the arc title + direction. Merge-aware: when a merge is pending, the
+  // suggestion coordinates every committed outcome into one continuation. Fills
+  // the arc name and the direction field; leaves the (automatic) scene count
+  // alone when a merge is pending, otherwise adopts the suggested count.
+  const handleSuggestArc = useCallback(async () => {
+    if (!narrative) return;
+    const result = await suggestArcDirection(
+      narrative,
+      state.resolvedEntryKeys,
+      headIndex,
+      basisMerges.length > 0 ? basisMerges : undefined,
+    );
+    if (result.arcName) setArcName(result.arcName);
+    if (result.direction) {
+      setGuidanceDirection(result.direction);
+      setDirection(result.direction);
+    }
+    // A pending merge owns the (automatic, sublinear) scene count — leave it.
+    if (basisMerges.length === 0 && result.suggestedSceneCount) {
+      setDirectionCount(result.suggestedSceneCount);
+    }
+  }, [narrative, state.resolvedEntryKeys, headIndex, basisMerges]);
 
   const storyMatrix = useMemo(() => {
     const presetKey =
@@ -391,7 +425,6 @@ export function GeneratePanel({
         storySettings: {
           ...currentSettings,
           storyDirection: guidanceDirection,
-          storyConstraints: guidanceConstraints,
         },
       };
 
@@ -813,6 +846,9 @@ export function GeneratePanel({
                 <p className="mt-2 text-[10px] text-purple-300/50 leading-snug">
                   These resolutions are the committed reality the generation extends from;
                   the streams&apos; priors shape its direction.
+                  {executiveStreamCount(proposedMerge) > 0 && (
+                    <> Scene count set automatically from {executiveStreamCount(proposedMerge)} executive {executiveStreamCount(proposedMerge) === 1 ? "decision" : "decisions"} (scales sublinearly) — adjust below if needed.</>
+                  )}
                 </p>
               </div>
             )}
@@ -866,15 +902,15 @@ export function GeneratePanel({
                   </div>
                 ) : null}
 
-                {/* Direction + Constraints */}
+                {/* Direction. The "Suggest" proposes the arc title + direction
+                    together, merge-aware when a merge is pending. */}
                 <GuidanceFields
                   direction={guidanceDirection}
-                  constraints={guidanceConstraints}
                   onDirectionChange={(v) => {
                     setGuidanceDirection(v);
                     setDirection(v);
                   }}
-                  onConstraintsChange={setGuidanceConstraints}
+                  onSuggestDirection={handleSuggestArc}
                 />
 
                 {/* Scene Count */}

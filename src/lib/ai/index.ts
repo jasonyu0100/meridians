@@ -10,6 +10,9 @@ export { generateSceneGameAnalysis } from './game-analysis';
 // Learning question extraction (opt-in, post-hoc layer)
 export { generateSceneQuestions } from './learning';
 
+// Scene perspectives (opt-in retellings per lens — Content → Perspectives)
+export { generateScenePerspective, availablePerspectiveKeys, perspectiveLabel } from './perspectives';
+
 // Plan candidates
 export { runPlanCandidates } from './candidates';
 

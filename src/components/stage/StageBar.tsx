@@ -94,9 +94,9 @@ export const GRAPH_MODES = new Set<GraphViewMode>([
   'network-scene', 'network-arc', 'network-full',
 ]);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'decision' | 'search' | 'vision' | 'streams' | 'merges' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'curriculum' | 'board';
-type ScenePrimaryMode = 'plan' | 'prose' | 'audio' | 'learning';
-const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio', 'learning'];
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'perspective' | 'decision' | 'search' | 'vision' | 'streams' | 'merges' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'curriculum' | 'board';
+type ScenePrimaryMode = 'plan' | 'prose' | 'audio' | 'learning' | 'perspective';
+const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio', 'learning', 'perspective'];
 
 // Module-level state shared with SceneProseView
 let beatPlanLinkedModeGlobal = false;
@@ -333,6 +333,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'prose') return 'prose';
   if (graphViewMode === 'audio') return 'audio';
   if (graphViewMode === 'learning') return 'learning';
+  if (graphViewMode === 'perspective') return 'perspective';
   if (graphViewMode === 'decision') return 'decision';
   if (graphViewMode === 'search') return 'search';
   if (graphViewMode === 'vision') return 'vision';
@@ -1289,6 +1290,7 @@ export function StageBar() {
               { mode: 'prose' as ScenePrimaryMode, label: 'Prose', hidden: false },
               { mode: 'audio' as ScenePrimaryMode, label: 'Audio', hidden: false },
               { mode: 'learning' as ScenePrimaryMode, label: 'Questions', hidden: false },
+              { mode: 'perspective' as ScenePrimaryMode, label: 'Perspectives', hidden: false },
             ]
               .filter(({ hidden }) => !hidden)
               .map(({ mode, label }, idx) => {

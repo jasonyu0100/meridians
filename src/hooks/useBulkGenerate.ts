@@ -6,6 +6,7 @@ import { useStore } from '@/lib/state/store';
 import { generateScenePlan, generateSceneProse, reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { generateSceneQuestions } from '@/lib/ai/learning';
+import { generateScenePerspective, availablePerspectiveKeys, perspectiveLabel } from '@/lib/ai/perspectives';
 import { embedQuestions } from '@/lib/search/embeddings';
 import { FatalApiError } from '@/lib/ai/errors';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
@@ -14,7 +15,7 @@ import { resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrat
 import { filterKeysBySceneRange, type SceneRange } from '@/components/timeline/SceneRangeSelector';
 import { logError } from '@/lib/core/system-logger';
 
-type BulkMode = 'plan' | 'prose' | 'game' | 'questions';
+type BulkMode = 'plan' | 'prose' | 'game' | 'questions' | 'perspectives';
 
 type BulkProgress = {
   completed: number;
@@ -100,12 +101,14 @@ export function useBulkGenerate() {
         if (mode === 'prose' && resolvedProse) return;
         if (mode === 'game' && scene.gameAnalysis) return;
         if (mode === 'questions' && scene.questions?.length) return;
+        if (mode === 'perspectives' && scene.perspectives && Object.keys(scene.perspectives).length) return;
       }
 
       const statusVerb =
         mode === 'plan' ? (planSource === 'prose' ? 'Reverse-engineering plan for' : 'Planning') :
         mode === 'prose' ? 'Writing' :
         mode === 'questions' ? 'Extracting questions from' :
+        mode === 'perspectives' ? 'Writing perspectives for' :
         'Analysing games in';
       updateRunState({
         statusMessage: `${statusVerb} "${scene.summary.slice(0, 40)}..."`,
@@ -169,6 +172,21 @@ export function useBulkGenerate() {
             /* leave unembedded — the embeddings dashboard can backfill */
           }
           dispatch({ type: 'COMMIT_SCENE_QUESTIONS', sceneId, questions: embeddedQuestions, newTopics });
+        } else if (mode === 'perspectives') {
+          window.dispatchEvent(new CustomEvent('bulk:perspectives-start', { detail: { sceneId } }));
+          const sceneIdx = resolvedEntryKeys.indexOf(sceneId);
+          // Every lens for this scene, in parallel.
+          await Promise.all(
+            availablePerspectiveKeys(activeNarrative, scene).map(async (key) => {
+              const text = await generateScenePerspective(activeNarrative, scene, key, resolvedEntryKeys, sceneIdx);
+              dispatch({
+                type: 'SET_SCENE_PERSPECTIVE',
+                sceneId,
+                view: { key, label: perspectiveLabel(activeNarrative, key), text, generatedAt: Date.now() },
+              });
+            }),
+          );
+          window.dispatchEvent(new CustomEvent('bulk:perspectives-complete', { detail: { sceneId } }));
         } else {
           window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId } }));
           // Prose mode + 'prose' source: generate prose without a plan so it flows free,

@@ -20,16 +20,28 @@ function displayLabel(name: string): string {
 /** Small circular location image shown inside a label / title. Silent when the
  *  location has no generated image, so un-illustrated labels are unchanged. */
 function LocAvatar({ url, name, size = 16 }: { url: string | null; name: string; size?: number }) {
-  if (!url) return null;
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name}
+        style={{ width: size, height: size }}
+        className="rounded-full object-cover shrink-0 ring-1 ring-black/10 -ml-0.5"
+        draggable={false}
+      />
+    );
+  }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={url}
-      alt={name}
+    <div
+      title={name}
       style={{ width: size, height: size }}
-      className="rounded-full object-cover shrink-0 ring-1 ring-black/10 -ml-0.5"
-      draggable={false}
-    />
+      className="rounded-full shrink-0 ring-1 ring-black/10 -ml-0.5 bg-slate-300 flex items-center justify-center"
+    >
+      <span className="font-bold leading-none text-slate-600" style={{ fontSize: Math.max(8, Math.round(size * 0.5)) }}>
+        {name[0]?.toUpperCase() ?? "?"}
+      </span>
+    </div>
   );
 }
 

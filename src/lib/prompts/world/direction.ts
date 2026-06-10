@@ -5,16 +5,27 @@
  * dispatch on paradigm.
  */
 
-export function buildSuggestArcDirectionPrompt(args: { narrativeContext: string }): string {
+export function buildSuggestArcDirectionPrompt(args: {
+  narrativeContext: string;
+  /** When the suggestion is requested with a pending merge as its basis, the
+   *  rendered <continuity-basis> block (committed outcomes + priors). The
+   *  suggested arc must coordinate every committed outcome into one continuation. */
+  basisBlock?: string;
+  /** Number of executive (driving) committed decisions in the merge basis. */
+  executiveCount?: number;
+}): string {
+  const hasBasis = !!args.basisBlock;
+  const execN = args.executiveCount ?? 0;
   return `<inputs>
   <narrative-context>
 ${args.narrativeContext}
   </narrative-context>
+${hasBasis ? args.basisBlock : ''}
 </inputs>
 
 <instructions>
-  <step name="analyze">Based on the full scene history, suggest the direction for the NEXT arc that best moves what is already in motion.</step>
-  <consider>
+  <step name="analyze">Based on the full scene history${hasBasis ? ' AND the committed continuity-basis below' : ''}, suggest the direction for the NEXT arc that best moves what is already in motion.</step>
+${hasBasis ? `  <step name="coordinate" critical="true">This arc folds in a merge: ${execN} committed decision${execN === 1 ? '' : 's'} (the &lt;resolved&gt; questions in the continuity-basis) must ALL be realised by the arc this direction describes. Synthesise them — and the directional pressure their priors create — into ONE coherent arc that braids them together, not a checklist. Follow the basis's &lt;synthesis&gt; steps: separate signal from noise, reconcile toward the committed outcomes, extract the net vector, and make every committed outcome concrete and load-bearing. The arc NAME and DIRECTION should both read as the natural continuation these resolutions set in motion.</step>\n` : ''}  <consider>
     <factor>Unresolved stances, their probability distributions, and which outcomes are contested vs. saturating.</factor>
     <factor>Entity tensions and relationship dynamics — including, where the narrative is rule-driven, the modelled state of agents under the rule set and the trajectories the rules are forcing.</factor>
     <factor>Narrative momentum — what has been building (dramatic, evidentiary, argumentative, or rule-driven)?</factor>
@@ -31,7 +42,7 @@ ${args.narrativeContext}
 Return JSON with this exact structure:
 {
   "arcName": "suggested arc name",
-  "direction": "2-3 sentence VECTOR (not script): central pressure, shape of consequence, anchoring entity / rule. No scene-by-scene outline.",
+  "direction": "2-3 sentence VECTOR (not script): central pressure, shape of consequence, anchoring entity / rule${hasBasis ? ', coordinating every committed outcome' : ''}. No scene-by-scene outline.",
   "sceneSuggestion": "brief outline of what kind of scenes would work — kinds, not specific events",
   "suggestedSceneCount": 3
 }

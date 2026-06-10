@@ -26,9 +26,9 @@ import { applySceneDeltas } from "@/lib/scenarios/scenarios-state";
  */
 export function buildDirectionFromScenario(
   scenario: PlanningScenario,
-  options: { overallDirection?: string; constraintsPrompt?: string } = {},
+  options: { overallDirection?: string } = {},
 ): string {
-  const { overallDirection, constraintsPrompt } = options;
+  const { overallDirection } = options;
 
   const variablesBlock = scenario.variables.length > 0
     ? scenario.variables
@@ -70,9 +70,6 @@ Steer AGAINST the rejected alternatives in \`considered\` — those routings wer
 
   if (overallDirection?.trim()) {
     direction = `OVERALL DIRECTION (steer the broader work toward this): ${overallDirection.trim()}\n\n${direction}`;
-  }
-  if (constraintsPrompt?.trim()) {
-    direction += `\n\nCONSTRAINTS (DO NOT do any of the following): ${constraintsPrompt.trim()}`;
   }
 
   return direction;

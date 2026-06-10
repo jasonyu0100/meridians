@@ -190,15 +190,13 @@ export function AutoSettingsPanel({ onClose, onStart }: { onClose: () => void; o
           {tab === 'direction' && (
             <>
               <p className="text-[10px] text-text-dim leading-relaxed">
-                Direction and constraints guide every arc. Use the planning queue for long-form narrative structure.
+                Direction guides every arc. Use the planning queue for long-form narrative structure.
               </p>
 
-              {/* Direction + Constraints */}
+              {/* Direction */}
               <GuidanceFields
                 direction={config.direction}
-                constraints={config.narrativeConstraints}
                 onDirectionChange={(v) => update({ direction: v })}
-                onConstraintsChange={(v) => update({ narrativeConstraints: v })}
               />
             </>
           )}

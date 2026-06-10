@@ -542,7 +542,6 @@ async function generateOneScenario(input: {
 
   const direction = buildDirectionFromScenario(scenario, {
     overallDirection: config.direction,
-    constraintsPrompt: config.constraintsPrompt,
   });
 
   const worldBuildFocus: undefined | { id: string; summary?: string } = undefined;

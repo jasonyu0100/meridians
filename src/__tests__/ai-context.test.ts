@@ -299,14 +299,6 @@ describe('buildStorySettingsBlock', () => {
     expect(block).toContain('<story-direction');
     expect(block).toContain('defeat the villain');
   });
-  it('includes story constraints when set', () => {
-    const n = createMinimalNarrative({
-      storySettings: { ...DEFAULT_STORY_SETTINGS, storyConstraints: 'No character deaths' },
-    });
-    const block = buildStorySettingsBlock(n);
-    expect(block).toContain('<story-constraints');
-    expect(block).toContain('No character deaths');
-  });
 });
 // ── sceneContext ─────────────────────────────────────────────────────────────
 describe('sceneContext', () => {

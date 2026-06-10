@@ -13,6 +13,7 @@
 import type { NarrativeState } from '@/types/narrative';
 import { resolveEntry } from '@/types/narrative';
 import { isThreadClosed, isThreadAbandoned } from '@/lib/forces/narrative-utils';
+import { streamsForBranch } from '@/lib/merges';
 
 export type AlluvialBucket = { key: string; label: string; sceneKeys: string[] };
 
@@ -30,6 +31,11 @@ export type AlluvialData = {
   currentBucket: number;
   /** Label / lifecycle per entity id. */
   meta: Map<string, AlluvialMeta>;
+  /** Time width (ms) of one displayed COLUMN, for streams: one unit in window
+   *  mode, `groupSize × unit` in full mode (columns are chunked there). Drives
+   *  single-step navigation so an arrow moves by exactly one column. Undefined
+   *  for threads (per-scene, not time-based). */
+  bucketMs?: number;
 };
 
 const DEFAULT_WINDOW = 13; // odd → present sits dead-centre when room allows
@@ -149,14 +155,21 @@ export function buildLogAlluvial(
   return { buckets, volumes, threadOrder: orderEntities(volumes), currentBucket, meta };
 }
 
-export type TimeGranularity = 'day' | 'week' | 'month';
+export type TimeGranularity = 'hour' | 'day' | 'week';
 const DAY_MS = 86_400_000;
-const GRAN_MS: Record<TimeGranularity, number> = { day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS };
+const HOUR_MS = 3_600_000;
+const GRAN_MS: Record<TimeGranularity, number> = { hour: HOUR_MS, day: DAY_MS, week: 7 * DAY_MS };
+
+/** Milliseconds in one bucket of the given granularity — used by callers to
+ *  step a time cursor forward / backward one unit at a time. */
+export function granularityMs(g: TimeGranularity): number {
+  return GRAN_MS[g];
+}
 
 /** Date label for a bucket start, scaled to the granularity. */
 function dateLabel(startMs: number, gran: TimeGranularity): string {
   const d = new Date(startMs);
-  if (gran === 'month') return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+  if (gran === 'hour') return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
@@ -169,10 +182,12 @@ function dateLabel(startMs: number, gran: TimeGranularity): string {
  */
 export function buildStreamAlluvial(
   narrative: NarrativeState,
-  opts: { window: boolean; windowUnits: number; granularity: TimeGranularity; nowMs: number },
+  opts: { window: boolean; windowUnits: number; granularity: TimeGranularity; nowMs: number; branchId?: string | null; allBranches?: boolean },
 ): AlluvialData {
-  const { window, windowUnits, granularity, nowMs } = opts;
-  const streams = Object.values(narrative.streams ?? {});
+  const { window, windowUnits, granularity, nowMs, branchId, allBranches } = opts;
+  // Branch-scoped by default (copy-on-fork ownership): only the active branch's
+  // own streams. `allBranches` widens to the whole pool across every branch.
+  const streams = allBranches ? Object.values(narrative.streams ?? {}) : streamsForBranch(narrative, branchId);
   if (streams.length === 0) return EMPTY;
 
   let earliest = Infinity;
@@ -187,13 +202,23 @@ export function buildStreamAlluvial(
   for (let t = firstStart; t <= lastStart; t += unit) starts.push(t);
   if (starts.length === 0) starts.push(lastStart);
 
-  // Window = the most recent N units; Full = the whole span (chunked if huge,
-  // each chunk a contiguous range of units).
+  // Window = a fixed-size sliding frame of N units ending at the cursor
+  // (lastStart). It is NOT clipped to the data range, so navigating back past
+  // the earliest prior still shows a full N-cell continuum (just empty cells)
+  // rather than collapsing — the frame slides smoothly both ways.
+  // Full = the whole span (chunked if huge, each chunk a contiguous range).
   let ranges: { lo: number; hi: number }[];
+  let bucketMs = unit; // time width of one displayed column (drives step size)
   if (window) {
-    ranges = starts.slice(-Math.max(3, windowUnits)).map((s) => ({ lo: s, hi: s + unit }));
+    const n = Math.max(3, windowUnits);
+    ranges = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const s = lastStart - i * unit;
+      ranges.push({ lo: s, hi: s + unit });
+    }
   } else if (starts.length > MAX_COLS) {
     const groupSize = Math.ceil(starts.length / MAX_COLS);
+    bucketMs = groupSize * unit; // full mode chunks units into wider columns
     ranges = [];
     for (let i = 0; i < starts.length; i += groupSize) {
       const grp = starts.slice(i, i + groupSize);
@@ -226,5 +251,5 @@ export function buildStreamAlluvial(
   }
 
   // The present sits in the final bucket — mark it so open streams read as "now".
-  return { buckets, volumes, threadOrder: orderEntities(volumes), currentBucket: buckets.length - 1, meta };
+  return { buckets, volumes, threadOrder: orderEntities(volumes), currentBucket: buckets.length - 1, meta, bucketMs };
 }

@@ -174,17 +174,20 @@ export default function NarrativeWorkspace() {
     function handleBulkProse(e: Event) { bulk.start('prose', readRange(e), readAll(e)); }
     function handleBulkGame(e: Event) { bulk.start('game', readRange(e), readAll(e)); }
     function handleBulkQuestions(e: Event) { bulk.start('questions', readRange(e), readAll(e)); }
+    function handleBulkPerspectives(e: Event) { bulk.start('perspectives', readRange(e), readAll(e)); }
     function handleBulkAudio(e: Event) { bulkAudio.start(readRange(e), readAll(e)); }
     window.addEventListener('canvas:bulk-plan', handleBulkPlan);
     window.addEventListener('canvas:bulk-prose', handleBulkProse);
     window.addEventListener('canvas:bulk-game', handleBulkGame);
     window.addEventListener('canvas:bulk-questions', handleBulkQuestions);
+    window.addEventListener('canvas:bulk-perspectives', handleBulkPerspectives);
     window.addEventListener('canvas:bulk-audio', handleBulkAudio);
     return () => {
       window.removeEventListener('canvas:bulk-plan', handleBulkPlan);
       window.removeEventListener('canvas:bulk-prose', handleBulkProse);
       window.removeEventListener('canvas:bulk-game', handleBulkGame);
       window.removeEventListener('canvas:bulk-questions', handleBulkQuestions);
+      window.removeEventListener('canvas:bulk-perspectives', handleBulkPerspectives);
       window.removeEventListener('canvas:bulk-audio', handleBulkAudio);
     };
   }, [bulk, bulkAudio]);
@@ -274,6 +277,7 @@ export default function NarrativeWorkspace() {
                   bulk.runState.mode === 'plan' ? 'bulk-plan' :
                   bulk.runState.mode === 'prose' ? 'bulk-prose' :
                   bulk.runState.mode === 'questions' ? 'bulk-questions' :
+                  bulk.runState.mode === 'perspectives' ? 'bulk-perspectives' :
                   'bulk-game'
                 }
                 isRunning={bulk.runState.isRunning}
@@ -311,13 +315,12 @@ export default function NarrativeWorkspace() {
               />
             )}
 
-            {((GRAPH_MODES.has(state.viewState.graphViewMode) &&
-              state.viewState.graphViewMode !== 'threads-influence' &&
-              state.viewState.graphViewMode !== 'streams-influence') ||
+            {(GRAPH_MODES.has(state.viewState.graphViewMode) ||
               state.viewState.graphViewMode === 'plan' ||
               state.viewState.graphViewMode === 'prose' ||
               state.viewState.graphViewMode === 'audio' ||
               state.viewState.graphViewMode === 'learning' ||
+              state.viewState.graphViewMode === 'perspective' ||
               state.viewState.graphViewMode === 'decision' ||
               state.viewState.graphViewMode === 'mode' ||
               state.viewState.graphViewMode === 'map') && (

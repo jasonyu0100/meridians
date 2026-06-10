@@ -23,6 +23,7 @@ import {
 } from "@/types/narrative";
 import { streamMargin, streamProbs } from "@/lib/forces/stream-stance";
 import { agentPersonaLabel, resolveAgentById } from "@/lib/agents/personas";
+import { MERGE_SCENE_COMPRESSION } from "@/lib/constants";
 
 // ── Branch-OWNED visibility ──────────────────────────────────────────────────
 // A fork deep-copies the parent's streams + merges into the child (forkLedger),
@@ -208,6 +209,36 @@ export function resolutionOutcomes(res: MergeResolution | undefined): string[] {
 /** True when a resolution commits a question to more than one outcome. */
 export function isMultiResolution(res: MergeResolution | undefined): boolean {
   return resolutionOutcomes(res).length > 1;
+}
+
+/** How many of a merge's streams are EXECUTIVE — carry a committed resolution
+ *  and therefore DRIVE the continuation. Recorded-only streams (no resolution)
+ *  don't move the world, so they don't add to the scene budget. */
+export function executiveStreamCount(merge: Pick<Merge, "streamIds" | "resolutions">): number {
+  return (merge.streamIds ?? []).filter(
+    (sid) => resolutionOutcomes(merge.resolutions?.[sid]).length > 0,
+  ).length;
+}
+
+/**
+ * Heuristic scene count to realise a merge's executive decisions in a single
+ * continuation. One stream typically resolves in ~1 scene, but additional
+ * streams scale SUBLINEARLY: a single coherent scene can carry several
+ * resolutions at once, so the marginal cost per stream falls as the merge
+ * grows (`scenes ≈ round(N^MERGE_SCENE_COMPRESSION)`, clamped to [1, max]).
+ * Counts EXECUTIVE streams only; if a merge is record-only (no resolutions),
+ * falls back to its total stream count so the floor is never zero. This is the
+ * deterministic ANCHOR — the coordination suggestion may nudge it ±1 when the
+ * streams genuinely need more or less room.
+ */
+export function suggestMergeSceneCount(
+  merge: Pick<Merge, "streamIds" | "resolutions">,
+  max = 12,
+): number {
+  const exec = executiveStreamCount(merge);
+  const n = exec > 0 ? exec : (merge.streamIds ?? []).length;
+  if (n <= 0) return 1;
+  return Math.max(1, Math.min(max, Math.round(n ** MERGE_SCENE_COMPRESSION)));
 }
 
 /** Perspective display name without React deps (mirrors RoomUI.perspectiveName). */

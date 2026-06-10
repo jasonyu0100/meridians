@@ -33,7 +33,6 @@ export type CoordinationPlanArgs = {
   antiPatternsSection: string;
   threadTargetsSection: string;
   userDirection: string;
-  userConstraints: string;
   arcTarget: number;
   activeThreadCount: number;
   nodeGuidance: CoordPlanNodeGuidance;
@@ -57,7 +56,6 @@ export function buildCoordinationPlanPrompt(args: CoordinationPlanArgs): string 
     antiPatternsSection,
     threadTargetsSection,
     userDirection,
-    userConstraints,
     arcTarget,
     activeThreadCount,
     nodeGuidance,
@@ -94,7 +92,6 @@ ${antiPatternsSection ? `  <anti-patterns hint="Pitfalls to avoid.">\n${antiPatt
   <plan-requirements>
 ${threadTargetsSection ? `    <thread-targets>\n${threadTargetsSection}\n    </thread-targets>` : ""}
 ${userDirection ? `    <direction hint="End fate goals to achieve.">${userDirection}</direction>` : ""}
-${userConstraints ? `    <constraints hint="What must NOT happen.">${userConstraints}</constraints>` : ""}
     <arc-target>${arcTarget}</arc-target>
 ${forcePreferenceBlockText ? `    ${forcePreferenceBlockText.replace(/\n/g, '\n    ')}` : ""}
 ${reasoningModeBlockText ? `    ${reasoningModeBlockText.replace(/\n/g, '\n    ')}` : ""}
@@ -104,10 +101,10 @@ ${reasoningModeBlockText ? `    ${reasoningModeBlockText.replace(/\n/g, '\n    '
 <task>Build a COORDINATION PLAN using BACKWARD INDUCTION, organised around the narrative's STRUCTURAL SPINE.</task>
 
 <integration-hierarchy hint="When inputs conflict, this is the priority order for plan-level decisions.">
-  <priority rank="1">DIRECTION / CONSTRAINTS / THREAD TARGETS — explicit user guidance; the plan must serve these directly.</priority>
+  <priority rank="1">DIRECTION / THREAD TARGETS — explicit user guidance; the plan must serve these directly.</priority>
   <priority rank="2">NARRATIVE STATE — active threads, key characters/locations, system knowledge, recent scenes; the substrate the plan operates on.</priority>
   ${modePriorityEntry(3, "reasoning-plan")}
-  <priority rank="4">FORCE PREFERENCE / REASONING MODE — engine tilt applied within the constraints above.</priority>
+  <priority rank="4">FORCE PREFERENCE / REASONING MODE — engine tilt applied within the guidance above.</priority>
 </integration-hierarchy>
 
 <spine-doctrine>

@@ -466,15 +466,10 @@ export function buildStorySettingsBlock(n: NarrativeState): string {
     );
   }
 
-  // Direction / constraints / guidance
+  // Direction / guidance
   if (s.storyDirection.trim()) {
     elements.push(
       `<story-direction hint="North star.">${s.storyDirection.trim()}</story-direction>`,
-    );
-  }
-  if (s.storyConstraints.trim()) {
-    elements.push(
-      `<story-constraints hint="Do NOT do any of the following.">${s.storyConstraints.trim()}</story-constraints>`,
     );
   }
   // Paradigm — one of the six canonical world-shapes (fiction / non-fiction /

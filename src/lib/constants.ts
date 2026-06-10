@@ -296,3 +296,11 @@ export const STANCE_OPENING_MAX_LOGIT = 1.2; // p ≈ 0.77
 
 /** Focus window size — top-K stances by focus score feed generation. */
 export const STANCE_FOCUS_K = 6;
+
+/** Merge → scene-count compression exponent. When a merge folds N executive
+ *  (driving) streams into a continuation, the scenes needed to realise them
+ *  scale SUBLINEARLY: one stream resolves in ~1 scene, but each additional
+ *  stream costs less than a full scene because a single coherent scene can
+ *  carry several resolutions at once. scenes ≈ round(N^MERGE_SCENE_COMPRESSION).
+ *  At 0.6: 1→1, 2→2, 3→2, 4→2, 5→3, 8→3, 12→4, 16→5. */
+export const MERGE_SCENE_COMPRESSION = 0.6;

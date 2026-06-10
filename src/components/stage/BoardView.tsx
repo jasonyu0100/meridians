@@ -144,19 +144,31 @@ function Avatar({ char, url, onClick, active }: { char: Character; url: string |
   );
 }
 
-/** Small circular location image shown inside a region / title label. Silent
- *  (renders nothing) when the location has no generated image, so labels for
- *  un-illustrated regions are unchanged. */
+/** Small circular location avatar shown inside a region / title label. Uses the
+ *  generated image when available, else a grey letter-fallback circle (map
+ *  style) so un-illustrated regions still read as world entities. */
 function LocAvatar({ url, name, size = 16 }: { url: string | null; name: string; size?: number }) {
-  if (!url) return null;
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        style={{ width: size, height: size }}
+        className="rounded-full object-cover shrink-0 ring-1 ring-black/10 -ml-0.5"
+        draggable={false}
+      />
+    );
+  }
   return (
-    <img
-      src={url}
-      alt={name}
+    <div
+      title={name}
       style={{ width: size, height: size }}
-      className="rounded-full object-cover shrink-0 ring-1 ring-black/10 -ml-0.5"
-      draggable={false}
-    />
+      className="rounded-full shrink-0 ring-1 ring-black/10 -ml-0.5 bg-slate-300 flex items-center justify-center"
+    >
+      <span className="font-bold leading-none text-slate-600" style={{ fontSize: Math.max(8, Math.round(size * 0.5)) }}>
+        {name[0]?.toUpperCase() ?? "?"}
+      </span>
+    </div>
   );
 }
 

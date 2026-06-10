@@ -41,7 +41,7 @@ export function filterKeysBySceneRange(
  *     the popover and forwards the chosen range. Used by bulk auto modes
  *     where the user must explicitly confirm a range before kicking off a run.
  */
-export type StreamFocus = 'plan' | 'prose' | 'audio' | 'game' | 'questions';
+export type StreamFocus = 'plan' | 'prose' | 'audio' | 'game' | 'questions' | 'perspectives';
 
 export default function SceneRangeSelector({
   range,
@@ -105,6 +105,7 @@ export default function SceneRangeSelector({
     const hasAudio: boolean[] = [];
     const hasGame: boolean[] = [];
     const hasQuestions: boolean[] = [];
+    const hasPerspectives: boolean[] = [];
     for (const { scene } of sceneEntries) {
       if (branchId) {
         const plan = resolvePlanForBranch(scene, branchId, branches);
@@ -118,8 +119,9 @@ export default function SceneRangeSelector({
       hasAudio.push(!!scene.audioUrl);
       hasGame.push(!!(scene.gameAnalysis?.games?.length));
       hasQuestions.push(!!(scene.questions?.length));
+      hasPerspectives.push(!!(scene.perspectives && Object.keys(scene.perspectives).length));
     }
-    return { hasPlan, hasProse, hasAudio, hasGame, hasQuestions };
+    return { hasPlan, hasProse, hasAudio, hasGame, hasQuestions, hasPerspectives };
   }, [sceneEntries, branchId, branches]);
 
   const effectiveStart = range?.start ?? 0;
@@ -132,14 +134,16 @@ export default function SceneRangeSelector({
     let audio = 0;
     let games = 0;
     let questions = 0;
+    let perspectives = 0;
     for (let i = effectiveStart; i <= effectiveEnd && i < totalScenes; i++) {
       if (streamAvail.hasPlan[i]) plans++;
       if (streamAvail.hasProse[i]) prose++;
       if (streamAvail.hasAudio[i]) audio++;
       if (streamAvail.hasGame[i]) games++;
       if (streamAvail.hasQuestions[i]) questions++;
+      if (streamAvail.hasPerspectives[i]) perspectives++;
     }
-    return { count, plans, prose, audio, games, questions };
+    return { count, plans, prose, audio, games, questions, perspectives };
   }, [effectiveStart, effectiveEnd, totalScenes, streamAvail]);
 
   // Position the popout relative to the trigger via portal. Anchoring from
@@ -300,6 +304,9 @@ export default function SceneRangeSelector({
             <span className={rangeStats.questions > 0 ? 'text-emerald-400/70' : 'text-text-dim/40'}>
               {rangeStats.questions} question{rangeStats.questions !== 1 ? 's' : ''}
             </span>
+            <span className={rangeStats.perspectives > 0 ? 'text-world/70' : 'text-text-dim/40'}>
+              {rangeStats.perspectives} perspective{rangeStats.perspectives !== 1 ? 's' : ''}
+            </span>
           </div>
 
           {/* Optional Start CTA — bulk auto modes require an explicit confirm.
@@ -312,7 +319,8 @@ export default function SceneRangeSelector({
               focus === 'prose' ? rangeStats.prose :
               focus === 'audio' ? rangeStats.audio :
               focus === 'game' ? rangeStats.games :
-              focus === 'questions' ? rangeStats.questions : 0;
+              focus === 'questions' ? rangeStats.questions :
+              focus === 'perspectives' ? rangeStats.perspectives : 0;
             const missing = Math.max(0, rangeStats.count - present);
             const targetCount = focus ? (targetAll ? rangeStats.count : missing) : rangeStats.count;
             const nothingToFill = !!focus && !targetAll && targetCount === 0;
@@ -368,6 +376,7 @@ const STREAM_DOT_COLORS: Record<StreamFocus, { inRange: string; outRange: string
   audio: { inRange: 'bg-sky-400/70', outRange: 'bg-sky-400/20' },
   game: { inRange: 'bg-rose-400/70', outRange: 'bg-rose-400/20' },
   questions: { inRange: 'bg-emerald-400/70', outRange: 'bg-emerald-400/20' },
+  perspectives: { inRange: 'bg-world/70', outRange: 'bg-world/20' },
 };
 
 function RangeSlider({
@@ -389,6 +398,7 @@ function RangeSlider({
     hasAudio: boolean[];
     hasGame: boolean[];
     hasQuestions: boolean[];
+    hasPerspectives: boolean[];
   };
   focus?: StreamFocus;
   onChange: (start: number, end: number) => void;
@@ -450,6 +460,7 @@ function RangeSlider({
               focus === 'prose' ? streamAvail.hasProse :
               focus === 'audio' ? streamAvail.hasAudio :
               focus === 'questions' ? streamAvail.hasQuestions :
+              focus === 'perspectives' ? streamAvail.hasPerspectives :
               streamAvail.hasGame;
             const present = streamArr[sceneIdx];
             const colors = STREAM_DOT_COLORS[focus];

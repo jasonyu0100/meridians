@@ -898,6 +898,23 @@ export type TimeDelta = {
   transition?: string;
 };
 
+/** A narrative perspective on one scene — the scene retold through a single
+ *  lens. `key` is `public` (the public narrator's account) or a participant
+ *  entity id (character / location / artifact). The text is a summary in the
+ *  scene-summary register, derived from the canon entry but free to add
+ *  non-canon, lens-specific detail (what this vantage knows, believes, or
+ *  misses). Distinct from the room-seat `Perspective`: this is generated
+ *  authored content, surfaced in the Content → Perspectives tab. */
+export interface PerspectiveView {
+  /** `public` (public narrator) or a participant entity id. */
+  key: string;
+  /** Display label resolved at generation time — the entity's name, or "Public". */
+  label: string;
+  /** The perspective retelling — scene-summary style, may carry non-canon detail. */
+  text: string;
+  generatedAt: number;
+}
+
 export type Scene = {
   kind: "scene";
   id: string;
@@ -956,6 +973,13 @@ export type Scene = {
    *  context; like gameAnalysis it never mutates deltas and regenerating
    *  replaces the bank. Tags drive cross-scene quiz assembly. */
   questions?: LearningQuestion[];
+  /** Narrative perspectives on this scene — opt-in, additive retellings from
+   *  different lenses, keyed by perspective key (`public` = the public
+   *  narrator; otherwise a participant entity id). Each is a summary derived
+   *  from the canon entry but free to carry non-canon, lens-specific detail
+   *  (private knowledge, bias, blind spots). Regenerating replaces a key.
+   *  Surfaced + generated in the Content → Perspectives tab. */
+  perspectives?: Record<string, PerspectiveView>;
   /** Estimated time elapsed since the prior scene in the branch. Required
    *  via prompting going forward — the LLM commits to a best-guess based on
    *  prose cues, even when the gap is fuzzy. Optional in the type for
@@ -2684,8 +2708,6 @@ export type StorySettings = {
   storyDirection: string;
   /** High-level world direction / north star prompt for world expansion */
   worldDirection: string;
-  /** Negative prompt — things the AI should avoid */
-  storyConstraints: string;
   /** Target arc length in scenes */
   targetArcLength: number;
   /** Markov chain rhythm preset key (from MATRIX_PRESETS) */
@@ -2732,8 +2754,8 @@ export type StorySettings = {
    */
   planExtractionSource: PlanExtractionSource;
   /**
-   * When true (default), storyDirection and storyConstraints are cleared
-   * from this settings object after they guide a scene or CRG generation.
+   * When true (default), storyDirection is cleared
+   * from this settings object after it guides a scene or CRG generation.
    * Prevents a directive from silently shaping every subsequent generation
    * without the user re-opting-in. Power users can toggle off to keep a
    * persistent north-star.
@@ -2774,7 +2796,6 @@ export const DEFAULT_AUTO_CONFIG: AutoConfig = {
   minArcLength: 2,
   maxArcLength: 5,
   direction: "",
-  narrativeConstraints: "",
 };
 
 export const DEFAULT_STORY_SETTINGS: StorySettings = {
@@ -2782,7 +2803,6 @@ export const DEFAULT_STORY_SETTINGS: StorySettings = {
   povCharacterIds: [],
   storyDirection: "",
   worldDirection: "",
-  storyConstraints: "",
   targetArcLength: 4,
   rhythmPreset: "",
   proseVoice: "",
@@ -2841,8 +2861,6 @@ export type AutoConfig = {
   maxArcLength: number;
   /** High-level north star that steers every arc */
   direction: string;
-  /** Constraints prompt — things the engine should avoid each arc. */
-  narrativeConstraints: string;
 };
 
 export type AutoRunState = {
@@ -3315,6 +3333,7 @@ export type GraphViewMode =
   | "audio"
   | "decision"
   | "learning"
+  | "perspective"
   | "system-scene"
   | "system-arc"
   | "system-full"
@@ -3691,9 +3710,6 @@ export type ScenariosConfig = {
   /** Optional high-level user direction layered on top of scenario
    *  guidance for every generation in the batch. */
   direction?: string;
-  /** Constraints prompt — defaults from StorySettings.storyConstraints,
-   *  overridable here. */
-  constraintsPrompt?: string;
   /** Optional world-build commit to seed all generations with. */
   worldBuildFocusId?: string;
   /** Per-batch override for arc length. When unset, generateScenes falls

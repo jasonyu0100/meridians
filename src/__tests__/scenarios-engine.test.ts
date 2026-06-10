@@ -342,15 +342,12 @@ describe('buildDirectionFromScenario', () => {
     expect(direction).not.toContain('⇒ opens');
   });
 
-  it('prefixes overall direction and appends constraints when supplied', () => {
+  it('prefixes overall direction when supplied', () => {
     const direction = buildDirectionFromScenario(makeScenario(), {
       overallDirection: 'The work pivots toward consolidation.',
-      constraintsPrompt: 'Do not resolve T-1.',
     });
     expect(direction.indexOf('OVERALL DIRECTION')).toBeLessThan(direction.indexOf('SCENARIO:'));
     expect(direction).toContain('The work pivots toward consolidation.');
-    expect(direction).toContain('CONSTRAINTS');
-    expect(direction).toContain('Do not resolve T-1.');
   });
 });
 

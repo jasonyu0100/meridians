@@ -88,6 +88,7 @@ import type {
   Scene,
   SceneGameAnalysis,
   LearningQuestion,
+  PerspectiveView,
   Topic,
   ReasoningMap,
   SearchQuery,
@@ -963,6 +964,16 @@ export type Action =
     }
   | {
       type: "CLEAR_SCENE_QUESTIONS";
+      sceneId: string;
+    }
+  // Scene perspectives (Content → Perspectives) — one retelling per lens
+  | {
+      type: "SET_SCENE_PERSPECTIVE";
+      sceneId: string;
+      view: PerspectiveView;
+    }
+  | {
+      type: "CLEAR_SCENE_PERSPECTIVES";
       sceneId: string;
     }
   // Continual learning coverage (per-member)
@@ -2378,6 +2389,30 @@ function reducer(state: AppState, action: Action): AppState {
         const { questions: _removed, ...rest } = scene;
         const scenes = { ...n.scenes, [action.sceneId]: rest };
         return { ...n, scenes, topics: pruneOrphanTopics(n.topics ?? {}, scenes) };
+      });
+
+    case "SET_SCENE_PERSPECTIVE":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene) return n;
+        return {
+          ...n,
+          scenes: {
+            ...n.scenes,
+            [action.sceneId]: {
+              ...scene,
+              perspectives: { ...(scene.perspectives ?? {}), [action.view.key]: action.view },
+            },
+          },
+        };
+      });
+
+    case "CLEAR_SCENE_PERSPECTIVES":
+      return updateNarrative(state, (n) => {
+        const scene = n.scenes[action.sceneId];
+        if (!scene) return n;
+        const { perspectives: _removed, ...rest } = scene;
+        return { ...n, scenes: { ...n.scenes, [action.sceneId]: rest } };
       });
 
     case "RECORD_QUIZ_ANSWER":

@@ -126,7 +126,6 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
 
   // Setup form state
   const [direction, setDirection] = useState("");
-  const [constraints, setConstraints] = useState("");
   const [arcTarget, setArcTarget] = useState(3);
   const [threadConfigs, setThreadConfigs] = useState<Record<string, ThreadConfig>>({});
   const activeThreadCount = Object.values(threadConfigs).filter((c) => c.status !== "auto").length;
@@ -175,11 +174,10 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
       threadTargets: threadTargets.length > 0 ? threadTargets : undefined,
       arcTarget,
       direction: direction.trim() || undefined,
-      constraints: constraints.trim() || undefined,
       thinkingResource,
       thinkingStyle,
     };
-  }, [threadConfigs, arcTarget, direction, constraints, thinkingResource, thinkingStyle]);
+  }, [threadConfigs, arcTarget, direction, thinkingResource, thinkingStyle]);
 
   async function handleGeneratePlan(additionalPrompt?: string) {
     if (!narrative) return;
@@ -309,12 +307,10 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
               {/* General tab */}
               {activeTab === "general" && (
                 <div className="space-y-5">
-                  {/* Direction & Constraints */}
+                  {/* Direction */}
                   <GuidanceFields
                     direction={direction}
-                    constraints={constraints}
                     onDirectionChange={setDirection}
-                    onConstraintsChange={setConstraints}
                   />
 
                   {/* Arc Target */}
