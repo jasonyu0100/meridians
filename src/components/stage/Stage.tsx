@@ -1657,15 +1657,20 @@ export default function Stage() {
             hideControls hideLegend
           />
         )
-      ) : graphViewMode === 'threads-influence' || graphViewMode === 'streams-influence' ? (
-        // Influence — log-based alluvial of fate volume over time. Source
-        // (Threads / Streams) from the topbar; span (Full / Window) + window
-        // size configured in the bar below.
+      ) : graphViewMode === 'fate-influence' || graphViewMode === 'world-influence' || graphViewMode === 'system-influence' || graphViewMode === 'streams-influence' ? (
+        // Influence — log-based alluvial of force volume over time. Source
+        // (Fate / World / System / Streams) from the topbar; mode (Individual /
+        // Tags), span (Full / Window), window + bucket size in the bar below.
         <SankeyView
           narrative={narrative!}
           resolvedKeys={state.resolvedEntryKeys}
           currentIndex={state.viewState.currentSceneIndex}
-          source={graphViewMode === 'streams-influence' ? 'streams' : 'threads'}
+          source={
+            graphViewMode === 'streams-influence' ? 'streams'
+            : graphViewMode === 'world-influence' ? 'world'
+            : graphViewMode === 'system-influence' ? 'system'
+            : 'fate'
+          }
           branchId={state.viewState.activeBranchId}
           onSelectThread={(id: string) => {
             dispatch({ type: 'SELECT_THREAD_LOG', threadId: id });
@@ -1673,6 +1678,16 @@ export default function Stage() {
           }}
           onSelectStream={(id: string) => {
             dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: id } });
+          }}
+          onSelectEntity={(id: string) => {
+            const ctx = narrative!.characters?.[id]
+              ? { type: 'character' as const, characterId: id }
+              : narrative!.locations?.[id]
+                ? { type: 'location' as const, locationId: id }
+                : narrative!.artifacts?.[id]
+                  ? { type: 'artifact' as const, artifactId: id }
+                  : null;
+            if (ctx) dispatch({ type: 'SET_INSPECTOR', context: ctx });
           }}
         />
       ) : graphViewMode === 'search' || graphViewMode === 'vision' ? (

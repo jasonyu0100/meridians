@@ -90,11 +90,17 @@ function scopeOf(mode: GraphViewMode): Scope | null {
 export const GRAPH_MODES = new Set<GraphViewMode>([
   'world-scene', 'world-arc', 'world-full',
   'system-scene', 'system-arc', 'system-full',
-  'threads-scene', 'threads-arc', 'threads-full', 'threads-influence', 'streams-influence',
+  'threads-scene', 'threads-arc', 'threads-full',
+  'fate-influence', 'world-influence', 'system-influence', 'streams-influence',
   'network-scene', 'network-arc', 'network-full',
 ]);
 
-type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'perspective' | 'decision' | 'search' | 'vision' | 'streams' | 'merges' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'curriculum' | 'board';
+// The Influence alluvial's four sources (Fate / World / System / Streams).
+export const INFLUENCE_MODES = new Set<GraphViewMode>([
+  'fate-influence', 'world-influence', 'system-influence', 'streams-influence',
+]);
+
+type CanvasMode = 'graph' | 'plan' | 'prose' | 'audio' | 'learning' | 'perspective' | 'decision' | 'search' | 'vision' | 'streams' | 'merges' | 'map' | 'belief' | 'present' | 'compass' | 'mode' | 'curriculum' | 'board' | 'experience';
 type ScenePrimaryMode = 'plan' | 'prose' | 'audio' | 'learning' | 'perspective';
 const SCENE_MODES: ScenePrimaryMode[] = ['plan', 'prose', 'audio', 'learning', 'perspective'];
 
@@ -1027,12 +1033,14 @@ export function StageBar() {
                 null) and on the scopeless Network domain. Each segment
                 dispatches the mode for its scope from the active domain's
                 triple. */}
-            {(graphViewMode === 'threads-influence' || graphViewMode === 'streams-influence') ? (
-              // Influence: Threads vs Streams source. Span + window size live in
-              // the bar below the stage bar (inside the view).
+            {INFLUENCE_MODES.has(graphViewMode) ? (
+              // Influence: Fate / World / System / Streams source. Mode, span,
+              // window + bucket size live in the bar below (inside the view).
               <div className="flex items-center rounded-md overflow-hidden border border-white/10">
                 {([
-                  { mode: 'threads-influence', label: 'Threads' },
+                  { mode: 'fate-influence', label: 'Fate' },
+                  { mode: 'world-influence', label: 'World' },
+                  { mode: 'system-influence', label: 'System' },
                   { mode: 'streams-influence', label: 'Streams' },
                 ] as { mode: GraphViewMode; label: string }[]).map(({ mode, label }, idx) => {
                   const isActive = graphViewMode === mode;
@@ -1142,11 +1150,11 @@ export function StageBar() {
                 <div className="w-px h-4 bg-white/10" />
                 <button
                   className={`flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium transition-colors ${
-                    graphViewMode === 'threads-influence' || graphViewMode === 'streams-influence'
+                    INFLUENCE_MODES.has(graphViewMode)
                       ? 'bg-white/10 text-text-primary'
                       : 'text-text-dim/60 hover:text-text-secondary hover:bg-white/5'
                   }`}
-                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'threads-influence' })}
+                  onClick={() => dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode: 'fate-influence' })}
                 >
                   Influence
                 </button>

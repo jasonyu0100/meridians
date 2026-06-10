@@ -3316,8 +3316,9 @@ export type WizardData = {
  *   world-scene   / world-arc   / world-full   — Stage
  *   system-scene  / system-arc  / system-full  — SystemGraphView
  *   threads-scene / threads-arc / threads-full — ThreadGraphView
- *   threads-influence / streams-influence — SankeyView (Influence alluvial;
- *     Threads or Streams source, Full/Window span configured in-view)
+ *   fate-influence / world-influence / system-influence / streams-influence —
+ *     SankeyView (Influence alluvial; Fate/World/System/Streams source, with
+ *     Unit/Type mode + Full/Window span + window/bucket size configured in-view)
  *   network-scene / network-arc / network-full — NetworkView
  *
  * Non-graph canvas modes (plan / prose / audio / decision / search /
@@ -3340,7 +3341,9 @@ export type GraphViewMode =
   | "threads-scene"
   | "threads-arc"
   | "threads-full"
-  | "threads-influence"
+  | "fate-influence"
+  | "world-influence"
+  | "system-influence"
   | "streams-influence"
   | "search"
   | "vision"

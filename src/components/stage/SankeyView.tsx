@@ -1,19 +1,27 @@
 "use client";
-// SankeyView — the Fate INFLUENCE alluvial. Columns are time buckets read off
-// the logs; each entity (thread or stream) is a horizontal stream whose width
-// at each bucket = the volume it drew there, so the picture reads as influence
-// moving through time. Source (Threads / Streams) is chosen by the topbar; the
-// span (Full / Window) and window size are configured in the bar below it.
+// SankeyView — the INFLUENCE alluvial. Columns are time buckets read off the
+// logs; each band is a horizontal stream whose width at each bucket = the
+// volume it drew there, so the picture reads as influence moving through time.
+// Source (Fate / World / System / Streams) is chosen by the topbar; the mode
+// (Individual / Tags), span (Full / Window), window + bucket size are in the
+// bar below it. Fate/World/System read off scene deltas; Streams ride calendar
+// time. Tags group by the log type stamped on each delta; System is tags-only.
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import * as d3 from "d3";
 import type { NarrativeState } from "@/types/narrative";
-import { resolveEntry } from "@/types/narrative";
 import {
-  buildLogAlluvial,
+  resolveEntry,
+  THREAD_LOG_NODE_TYPES,
+  WORLD_NODE_TYPES,
+  SYSTEM_NODE_TYPES,
+} from "@/types/narrative";
+import {
+  buildForceAlluvial,
   buildStreamAlluvial,
   granularityMs,
   type TimeGranularity,
+  type InfluenceMode,
 } from "@/lib/forces/thread-alluvial";
 import { useStore } from "@/lib/state/store";
 import { streamsForBranch } from "@/lib/merges";
@@ -44,8 +52,6 @@ const TOP = 22;
 const BOT = 8;
 const ML = 8;
 const MR = 8;
-const WIN_MIN = 5;
-const WIN_MAX = 31;
 
 function ribbon(
   sx: number,
@@ -82,6 +88,44 @@ function Seg({
   );
 }
 
+/** Compact −/value/+ stepper used for window + bucket size. */
+function Stepper({
+  label,
+  value,
+  suffix,
+  min,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  min: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-md border border-white/10 px-1">
+      <span className="text-text-dim/50 uppercase tracking-wider">{label}</span>
+      <button
+        className="px-1 text-text-dim/60 hover:text-text-primary disabled:opacity-30"
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+      >
+        −
+      </button>
+      <span className="tabular-nums text-text-secondary">
+        {value}
+        {suffix ?? ""}
+      </span>
+      <button
+        className="px-1 text-text-dim/60 hover:text-text-primary"
+        onClick={() => onChange(value + 1)}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 export default function SankeyView({
   narrative,
   resolvedKeys,
@@ -90,16 +134,22 @@ export default function SankeyView({
   branchId,
   onSelectThread,
   onSelectStream,
+  onSelectEntity,
 }: {
   narrative: NarrativeState;
   resolvedKeys: string[];
   currentIndex: number;
-  source: "threads" | "streams";
+  /** Fate / World / System read off scene deltas; Streams ride calendar time. */
+  source: "fate" | "world" | "system" | "streams";
   /** Active branch — streams are branch-scoped (copy-on-fork ownership). */
   branchId: string | null;
   onSelectThread: (id: string) => void;
   onSelectStream: (id: string) => void;
+  /** World individual band → entity (character / location / artifact). */
+  onSelectEntity: (id: string) => void;
 }) {
+  // Scene-based forces vs the calendar-time stream axis.
+  const timeAxis = source === "streams";
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
@@ -112,9 +162,19 @@ export default function SankeyView({
     label: string;
     sub: string;
   } | null>(null);
-  const [showLabels, setShowLabels] = useState(true);
+  // Band labels are always on (no toggle).
+  const showLabels = true;
   const [span, setSpan] = useState<"full" | "window">("window");
   const [windowSize, setWindowSize] = useState(15);
+  // Units aggregated per displayed column in window mode — scenes for the
+  // scene-based forces, granularity units for streams.
+  const [bucketSize, setBucketSize] = useState(1);
+  // Unit bands (one per thread / entity / stream) vs type bands (one per log
+  // type). System is one global graph with no per-entity decomposition → type
+  // only, so the toggle is hidden and the mode is forced to tags there.
+  const [mode, setMode] = useState<InfluenceMode>("individual");
+  const isTypeOnly = source === "system";
+  const effMode: InfluenceMode = isTypeOnly ? "tags" : mode;
   const [granularity, setGranularity] = useState<TimeGranularity>("day");
   // Stream scope — this branch's own streams (default) vs every branch's.
   const [streamScope, setStreamScope] = useState<"branch" | "all">("branch");
@@ -140,24 +200,32 @@ export default function SankeyView({
 
   const data = useMemo(
     () =>
-      source === "threads"
-        ? buildLogAlluvial(
-            narrative,
-            resolvedKeys,
-            currentIndex,
-            span === "window",
-            windowSize,
-          )
-        : buildStreamAlluvial(narrative, {
+      timeAxis
+        ? buildStreamAlluvial(narrative, {
             window: span === "window",
             windowUnits: windowSize,
             granularity,
             nowMs: effectiveNow,
             branchId,
             allBranches,
-          }),
+            mode: effMode,
+            bucketUnits: bucketSize,
+          })
+        : buildForceAlluvial(
+            narrative,
+            resolvedKeys,
+            currentIndex,
+            span === "window",
+            windowSize,
+            source as "fate" | "world" | "system",
+            effMode,
+            bucketSize,
+          ),
     [
+      timeAxis,
       source,
+      effMode,
+      bucketSize,
       narrative,
       resolvedKeys,
       currentIndex,
@@ -170,20 +238,38 @@ export default function SankeyView({
     ],
   );
 
-  // Stable colour per entity — keyed to the source's FULL id set (in insertion
-  // order), NOT the currently-visible subset, so a thread/stream keeps the same
-  // colour as the window slides, the timeline advances, or Full/Window toggles.
+  // Stable colour per band — keyed to the source/mode's FULL id set (in
+  // insertion order), NOT the currently-visible subset, so a band keeps the
+  // same colour as the window slides, the timeline advances, or toggles flip.
   const colorOf = useMemo(() => {
-    const ids =
-      source === "threads"
-        ? Object.keys(narrative.threads ?? {})
+    let ids: string[];
+    if (timeAxis) {
+      ids = effMode === "tags"
+        ? THREAD_LOG_NODE_TYPES
         : (allBranches
             ? Object.values(narrative.streams ?? {})
             : streamsForBranch(narrative, branchId)
           ).map((s) => s.id);
+    } else if (effMode === "tags") {
+      ids =
+        source === "fate"
+          ? THREAD_LOG_NODE_TYPES
+          : source === "world"
+            ? WORLD_NODE_TYPES
+            : SYSTEM_NODE_TYPES;
+    } else if (source === "fate") {
+      ids = Object.keys(narrative.threads ?? {});
+    } else {
+      // World individual — characters, then locations, then artifacts.
+      ids = [
+        ...Object.keys(narrative.characters ?? {}),
+        ...Object.keys(narrative.locations ?? {}),
+        ...Object.keys(narrative.artifacts ?? {}),
+      ];
+    }
     const scale = d3.scaleOrdinal<string, string>().domain(ids).range(COLORS);
     return (id: string) => scale(id);
-  }, [narrative, source, branchId, allBranches]);
+  }, [narrative, source, effMode, timeAxis, branchId, allBranches]);
 
   const layout = useMemo(() => {
     const { w, h } = size;
@@ -331,14 +417,20 @@ export default function SankeyView({
     };
   }, [size, data, colorOf]);
 
-  const onPick = (id: string) =>
-    source === "threads" ? onSelectThread(id) : onSelectStream(id);
+  // Tags aren't individually inspectable; otherwise route by source.
+  const onPick = (id: string) => {
+    if (effMode === "tags") return;
+    if (source === "streams") onSelectStream(id);
+    else if (source === "world") onSelectEntity(id);
+    else onSelectThread(id);
+  };
 
   // Populated anchors for FAST-nav (skip empty gaps to the nearest block that
   // actually has activity). Streams: the sorted unit-bucket starts that contain
-  // ≥1 prior. Threads: the scene indices that carry ≥1 thread delta.
+  // ≥1 prior. Scene-based forces: the scene indices that carry a delta of the
+  // active force.
   const streamBucketStarts = useMemo(() => {
-    if (source !== "streams") return [] as number[];
+    if (!timeAxis) return [] as number[];
     const unit = granularityMs(granularity);
     const set = new Set<number>();
     const streams = allBranches
@@ -347,28 +439,33 @@ export default function SankeyView({
     for (const s of streams)
       for (const p of s.priors ?? []) set.add(Math.floor(p.at / unit) * unit);
     return [...set].sort((a, b) => a - b);
-  }, [narrative, source, granularity, branchId, allBranches]);
-  const threadActiveIdx = useMemo(() => {
-    if (source !== "threads") return [] as number[];
+  }, [narrative, timeAxis, granularity, branchId, allBranches]);
+  const sceneActiveIdx = useMemo(() => {
+    if (timeAxis) return [] as number[];
+    const hasActivity = (e: Extract<ReturnType<typeof resolveEntry>, { kind: "scene" }>) =>
+      source === "fate"
+        ? (e.threadDeltas?.length ?? 0) > 0
+        : source === "world"
+          ? (e.worldDeltas ?? []).some((d) => (d.addedNodes?.length ?? 0) > 0)
+          : (e.systemDeltas?.addedNodes?.length ?? 0) > 0;
     const idx: number[] = [];
     resolvedKeys.forEach((k, i) => {
       const e = resolveEntry(narrative, k);
-      if (e?.kind === "scene" && (e.threadDeltas?.length ?? 0) > 0) idx.push(i);
+      if (e?.kind === "scene" && hasActivity(e)) idx.push(i);
     });
     return idx;
-  }, [narrative, resolvedKeys, source]);
+  }, [narrative, resolvedKeys, source, timeAxis]);
 
   // ── Period navigation (driven from the shared StagePalette) ─────────────────
-  // Threads step by SCENE (the existing global scene cursor); streams step by
-  // one granularity UNIT of absolute time. Forward is capped at the present.
+  // Scene-based forces step by SCENE (the existing global scene cursor); streams
+  // step by one granularity UNIT of absolute time. Forward is capped at present.
   const sceneCount = resolvedKeys.length;
-  const canBack = source === "threads" ? currentIndex > 0 : true;
-  const canFwd =
-    source === "threads" ? currentIndex < sceneCount - 1 : timeOffsetMs < 0;
+  const canBack = timeAxis ? true : currentIndex > 0;
+  const canFwd = timeAxis ? timeOffsetMs < 0 : currentIndex < sceneCount - 1;
   // Label always carries a DATE for general time orientation, plus the
   // unit-specific detail (clock time when bucketing by hour).
   const navLabel = useMemo(() => {
-    if (source === "threads")
+    if (!timeAxis)
       return `Scene ${Math.min(currentIndex + 1, sceneCount)} / ${sceneCount}`;
     const d = new Date(effectiveNow);
     const date = d.toLocaleDateString(undefined, {
@@ -386,24 +483,24 @@ export default function SankeyView({
         : "";
     return `${date}${time}${timeOffsetMs < 0 ? "" : " · now"}`;
   }, [
-    source,
+    timeAxis,
     currentIndex,
     sceneCount,
     effectiveNow,
     granularity,
     timeOffsetMs,
   ]);
-  const stepUnit = source === "threads" ? "scene" : granularity;
+  const stepUnit = timeAxis ? granularity : "scene";
 
   // Apply a step requested by the StagePalette nav cluster. `fast` skips empty
-  // gaps, jumping to the nearest populated block: threads → nearest scene with a
-  // thread delta; streams → nearest unit-bucket holding a prior.
+  // gaps, jumping to the nearest populated block: scene-based → nearest scene
+  // with a delta of the active force; streams → nearest unit-bucket with a prior.
   useEffect(() => {
     function onStep(e: Event) {
       const { dir = 0, fast = false } =
         (e as CustomEvent<{ dir: number; fast?: boolean }>).detail ?? {};
       if (!dir) return;
-      if (source === "threads") {
+      if (!timeAxis) {
         if (!fast) {
           dispatch({ type: dir < 0 ? "PREV_SCENE" : "NEXT_SCENE" });
           return;
@@ -411,11 +508,11 @@ export default function SankeyView({
         // Fast: jump to the nearest populated block in that direction; if there
         // is none further along, stay put.
         if (dir > 0) {
-          const n = threadActiveIdx.find((i) => i > currentIndex);
+          const n = sceneActiveIdx.find((i) => i > currentIndex);
           if (n != null) dispatch({ type: "SET_SCENE_INDEX", index: n });
         } else {
           let p: number | undefined;
-          for (const i of threadActiveIdx) {
+          for (const i of sceneActiveIdx) {
             if (i < currentIndex) p = i;
             else break;
           }
@@ -451,7 +548,7 @@ export default function SankeyView({
     window.addEventListener("canvas:influence-step", onStep);
     return () => window.removeEventListener("canvas:influence-step", onStep);
   }, [
-    source,
+    timeAxis,
     granularity,
     dispatch,
     sceneCount,
@@ -460,7 +557,7 @@ export default function SankeyView({
     nowMs,
     data.bucketMs,
     streamBucketStarts,
-    threadActiveIdx,
+    sceneActiveIdx,
   ]);
 
   // Publish nav state so the StagePalette can render the cluster + enabled state.
@@ -508,25 +605,40 @@ export default function SankeyView({
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col">
-      {/* Config bar (below the stage bar) — span + window size. Mirrors the
-          World/System graph toolbars: glass-panel, fixed height, bottom border. */}
+      {/* Config bar (below the stage bar) — a minimal identity on the left, all
+          controls pushed to the far right. Glass-panel, fixed height. */}
       <div className="shrink-0 flex items-center gap-2 px-2 h-7 border-b border-border glass-panel z-30 text-[10px] text-text-dim/70">
         <IconThread size={12} />
-        <span className="uppercase tracking-wider">Influence</span>
-        <span className="text-text-dim/40">·</span>
-        <span className="capitalize">{source}</span>
+        <span className="capitalize text-text-secondary">{source}</span>
+        {!isTypeOnly && (
+          <span className="text-text-dim/40">· {effMode === "tags" ? "Type" : "Unit"}</span>
+        )}
+
+        {/* Spacer — everything below sits at the far right. */}
+        <div className="flex-1" />
+
+        {/* Unit ⇄ Type display method. System is type-only (one global graph,
+            no per-entity decomposition), so the toggle is hidden there. */}
+        {!isTypeOnly && (
+          <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+            <Seg active={effMode === "individual"} onClick={() => setMode("individual")}>
+              Unit
+            </Seg>
+            <div className="w-px h-4 bg-white/10" />
+            <Seg active={effMode === "tags"} onClick={() => setMode("tags")}>
+              Type
+            </Seg>
+          </div>
+        )}
 
         {/* Streams ride an absolute-time continuum — pick the bucket
-            granularity. Threads are per-scene, so this is hidden there. */}
-        {source === "streams" && (
-          <div className="ml-2 flex items-center rounded-md overflow-hidden border border-white/10">
+            granularity. Scene-based forces are per-scene, so this is hidden. */}
+        {timeAxis && (
+          <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             {(["hour", "day", "week"] as const).map((g, i) => (
               <div key={g} className="flex items-center">
                 {i > 0 && <div className="w-px h-4 bg-white/10" />}
-                <Seg
-                  active={granularity === g}
-                  onClick={() => setGranularity(g)}
-                >
+                <Seg active={granularity === g} onClick={() => setGranularity(g)}>
                   {g === "hour" ? "Hour" : g === "day" ? "Day" : "Week"}
                 </Seg>
               </div>
@@ -534,9 +646,7 @@ export default function SankeyView({
           </div>
         )}
 
-        <div
-          className={`flex items-center rounded-md overflow-hidden border border-white/10 ${source === "streams" ? "" : "ml-2"}`}
-        >
+        <div className="flex items-center rounded-md overflow-hidden border border-white/10">
           <Seg active={span === "full"} onClick={() => setSpan("full")}>
             Full
           </Seg>
@@ -545,33 +655,28 @@ export default function SankeyView({
             Window
           </Seg>
         </div>
+        {/* Window size (columns) is only meaningful in window mode. */}
         {span === "window" && (
-          <div className="flex items-center gap-1 rounded-md border border-white/10 px-1">
-            <button
-              className="px-1 text-text-dim/60 hover:text-text-primary disabled:opacity-30"
-              disabled={windowSize <= WIN_MIN}
-              onClick={() => setWindowSize((s) => Math.max(WIN_MIN, s - 2))}
-            >
-              −
-            </button>
-            <span className="tabular-nums text-text-secondary">
-              {windowSize}
-              {source === "streams"
-                ? ` ${granularity === "hour" ? "h" : granularity === "day" ? "d" : "w"}`
-                : ""}
-            </span>
-            <button
-              className="px-1 text-text-dim/60 hover:text-text-primary disabled:opacity-30"
-              disabled={windowSize >= WIN_MAX}
-              onClick={() => setWindowSize((s) => Math.min(WIN_MAX, s + 2))}
-            >
-              +
-            </button>
-          </div>
+          <Stepper
+            label="Win"
+            value={windowSize}
+            suffix={timeAxis ? (granularity === "hour" ? "h" : granularity === "day" ? "d" : "w") : ""}
+            min={1}
+            onChange={(v) => setWindowSize(v)}
+          />
         )}
+        {/* Units aggregated per column (scenes for forces, granularity units for
+            streams) — controls window columns AND how Full separates the span. */}
+        <Stepper
+          label="Bucket"
+          value={bucketSize}
+          suffix={timeAxis ? (granularity === "hour" ? "h" : granularity === "day" ? "d" : "w") : " sc"}
+          min={1}
+          onChange={(v) => setBucketSize(v)}
+        />
 
         {/* Stream scope — this branch's own streams (default) vs all branches'. */}
-        {source === "streams" && (
+        {timeAxis && (
           <div className="flex items-center rounded-md overflow-hidden border border-white/10">
             <Seg active={!allBranches} onClick={() => setStreamScope("branch")}>
               Current
@@ -582,11 +687,6 @@ export default function SankeyView({
             </Seg>
           </div>
         )}
-        <div className="flex items-center rounded-md overflow-hidden border border-white/10">
-          <Seg active={showLabels} onClick={() => setShowLabels((v) => !v)}>
-            Labels
-          </Seg>
-        </div>
       </div>
 
       <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-hidden">
@@ -788,12 +888,20 @@ export default function SankeyView({
               title={
                 source === "streams"
                   ? "No stream priors to chart."
-                  : "No fate volume to chart."
+                  : source === "world"
+                    ? "No world volume to chart."
+                    : source === "system"
+                      ? "No system volume to chart."
+                      : "No fate volume to chart."
               }
               hint={
                 source === "streams"
                   ? "Streams gather priors over time — once they do, their influence shows here."
-                  : "No thread attention recorded yet — generate scenes to see fate influence over time."
+                  : source === "world"
+                    ? "No entity world-graph growth recorded yet — generate scenes to see world influence over time."
+                    : source === "system"
+                      ? "No system-graph growth recorded yet — generate scenes to see system influence over time."
+                      : "No thread attention recorded yet — generate scenes to see fate influence over time."
               }
             />
           </div>
