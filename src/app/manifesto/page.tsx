@@ -1618,18 +1618,21 @@ export default function PaperPage() {
               trust.
             </P>
             <P>
-              <B>Meridians is that place &mdash; a rehearsal engine for the
-              future.</B> Give it any coherent text &mdash; a market brief, a
-              doctrine, a memoir, a novel &mdash; and it becomes a{" "}
+              <B>Meridians is that place &mdash; a rehearsal engine for
+              teams.</B> That is the company, singular: we help teams that
+              make consequential decisions rehearse the future together, and
+              we keep the ledger so the rehearsal compounds. Give the engine
+              any coherent text &mdash; a market brief, a doctrine, a
+              competitive landscape &mdash; and it becomes a{" "}
               <B>playable world</B>: a board your team sits around and moves
               against, one turn at a time. Anyone can say it; a card makes you
               pay for it. <B>You play the actor that produces the outcome, not
-              the price of it.</B> The math underneath is proven on narrative:
-              the same deterministic formulas recover the dramatic shape of{" "}
-              <em>Harry Potter</em> from structural deltas alone. Reading your
-              organisation&apos;s strategic position with that math is the bet
-              the product makes &mdash; same engine, demonstrated on fiction,
-              earning its way into strategy one historical rehearsal at a time.
+              the price of it.</B> The math underneath was proven on narrative
+              &mdash; the same deterministic formulas recover the dramatic
+              shape of <em>Harry Potter</em> from structural deltas alone
+              &mdash; but fiction is our wind tunnel, not our market: a known
+              text with a known shape is how you validate an instrument before
+              pointing it at a live one.
             </P>
             <P>
               Underneath is a <B>world view</B>: a typed, continuously
@@ -1702,12 +1705,16 @@ export default function PaperPage() {
               Private rooms are the product today &mdash; closed tables on
               a local data model, compounding one team&apos;s edge with no
               vendor in the middle. Public rooms are the second-phase bet,
-              unproven and named as such. What follows runs on two tracks:{" "}
-              <B>the argument</B> for why a rehearsed room beats an
-              unrehearsed one, and <B>the engine</B> that makes the
-              rehearsal measurable. Skim the argument for the wager; the
-              engine sections (Forces through Reconstruction) prove it.
-              Either way the spine is the same.
+              unproven and named as such. One note on how to read what
+              follows: there is <B>one business here, the rehearsal engine
+              for teams.</B> Everything narrative &mdash; Harry Potter, story
+              shapes, voice, beat chains &mdash; is either the validation
+              harness that proved the math or the internal tooling that runs
+              the engine. When a section reads like a writing product, it
+              isn&apos;t one; it is the engine room of the rehearsal product,
+              documented. Skim the argument for the wager; the engine
+              sections (Forces through Reconstruction) are the
+              instrument&apos;s spec sheet.
             </P>
           </Section>
 
@@ -1821,20 +1828,23 @@ export default function PaperPage() {
           {/* ── The Narrative Origin ──────────────────────────────────── */}
           <Section id="narrative-origin" label="Narrative Origin">
             <P>
-              <B>Meridians began with stories, not strategy.</B> The
-              first substrate was a novel &mdash; and the discovery was
-              that any coherent text, read <em>structurally</em> rather
-              than literally, contains a measurable world model: the
-              rules that govern it (<B>System</B>), the actors who move
-              through it (<B>World</B>), and the open questions that
-              decide where it goes (<B>Fate</B>). The delta
-              arithmetic that recovers the dramatic shape of{" "}
-              <em>Harry Potter</em> is built to read a company&apos;s
-              strategic position from its committed history &mdash; the
-              narrative case is demonstrated; the strategic case is the
-              working hypothesis, and the historical rehearsal (a real
-              decision with known ground truth, replayed under the original
-              fog) is where it gets tested first.
+              <B>Meridians began with stories, not strategy &mdash; origin,
+              not identity.</B> The first substrate was a novel, and the
+              discovery was that any coherent text, read{" "}
+              <em>structurally</em> rather than literally, contains a
+              measurable world model: the rules that govern it
+              (<B>System</B>), the actors who move through it
+              (<B>World</B>), and the open questions that decide where it
+              goes (<B>Fate</B>). A finished novel is the ideal test
+              instrument &mdash; a complete world with a known shape, where
+              the engine&apos;s reading can be checked against a million
+              readers&apos; &mdash; and that is the only role fiction plays
+              here. The delta arithmetic validated on <em>Harry Potter</em>{" "}
+              is built to read a team&apos;s strategic position from its
+              committed history; the strategic case is the working
+              hypothesis, and the historical rehearsal (a real decision with
+              known ground truth, replayed under the original fog) is where
+              it gets tested first.
             </P>
             <P>
               <B>Every organisation already has a narrative</B> &mdash;
@@ -1906,13 +1916,11 @@ export default function PaperPage() {
               <B>Two value propositions, one growth engine.</B>{" "}
               <B>Players</B> get Capture and Conviction: judgement
               developed by battle-testing against AI-simulated teams.{" "}
-              <B>Game Masters</B> get the{" "}
-              <B>engine and a text-first surface</B>: infinite
-              customisability, expanding the world sandbox-style as an
-              admin, the creative and structural craft. Sharpening players&apos;
-              judgement <em>and</em> GMs&apos; authoring is what carries
-              Meridians from private rooms into public ones, where
-              at scale GMs curate both and the two reinforce each other.
+              <B>Game Masters</B> get the <B>engine</B>: the tools to prime
+              a world, keep it true, and run the table. Both propositions
+              serve the same product &mdash; the rehearsal &mdash; and
+              sharpening them is what carries Meridians from private rooms
+              into public ones.
             </P>
             <P>
               The Game Master is already a profession. Thousands run paid
@@ -1987,7 +1995,7 @@ export default function PaperPage() {
               actually decides. Every world the room cares about
               &mdash; a
               market regime, a campaign theatre, a portfolio, a
-              novel, an alternate-history timeline &mdash; is
+              doctrine, a competitive landscape &mdash; is
               modelled as a knowledge graph
               <Cite id="hogan2021" label="Hogan et al. 2021" />{" "}
               that updates step by step: one page per actor,
@@ -2082,17 +2090,19 @@ export default function PaperPage() {
               touching the deltas.
             </P>
             <p className="text-[12.5px] text-white/35 italic leading-[1.85] mt-6 border-l-2 border-white/10 pl-4">
-              A note to the reader. The sections that follow
-              (Hierarchy through Reconstruction) describe how the
-              substrate is built and measured. The buyer
-              doesn&apos;t need to follow the math to use the
-              room &mdash; the math is what keeps scoring
-              reproducible and generation principled. If you
-              trust the practice, the{" "}
+              A note to the reader &mdash; and a boundary drawn in ink.
+              The sections that follow (Hierarchy through Reconstruction)
+              are the engine room: how the substrate is built, measured,
+              and validated. They are written on the narrative corpus
+              because that is where ground truth lives, so they will read,
+              at moments, like a story-analysis product. They are not one.
+              Every instrument below exists to do exactly one job &mdash;
+              make a team&apos;s rehearsal measurable &mdash; and the
+              literary examples are its calibration data. If you trust the
+              practice, skip to{" "}
               <a href="#war-rooms" className="text-white/55 underline-offset-2 hover:underline">
                 War Rooms
-              </a>{" "}
-              section is where the product picks back up.
+              </a>; the product never left.
             </p>
           </Section>
 
@@ -2101,8 +2111,11 @@ export default function PaperPage() {
             <P>
               Before the room sits down, the substrate has to know
               what it&apos;s sitting on. Long-form worlds &mdash;
-              narratives, papers, simulations, market regimes,
-              campaigns &mdash; decompose into five nested layers.
+              market regimes, campaigns, doctrines, and the narrative
+              corpus we validate on &mdash; decompose into five nested
+              layers. (The <em>Harry Potter</em> examples throughout are
+              the test fixture, chosen because every reader can check the
+              engine&apos;s reading against their own.)
               Structure generation (scenes with deltas) runs
               independently of prose generation (beats and
               propositions), enabling parallel processing and
@@ -3293,11 +3306,15 @@ export default function PaperPage() {
           {/* ── Grading ───────────────────────────────────────────────── */}
           <Section id="grading" label="Grading">
             <P>
-              Each story receives a score out of 100, with 25 points allocated
-              to each of the three forces plus <B>swing</B> — the Euclidean
-              distance between consecutive force snapshots, measuring dynamic
-              contrast. The grading curve is piecewise, calibrated so published
-              works land in the 85–92 range.
+              Grading is the calibration layer, not a product feature:
+              scoring published works against a reference corpus is how we
+              verify the instrument reads known shapes correctly before
+              trusting it on a room&apos;s live history. Each work receives a
+              score out of 100, with 25 points allocated to each of the three
+              forces plus <B>swing</B> — the Euclidean distance between
+              consecutive force snapshots, measuring dynamic contrast. The
+              grading curve is piecewise, calibrated so published works land
+              in the 85–92 range.
             </P>
             <Eq tex="g(\tilde{x}) = 25 - 17\,e^{-k\tilde{x}} \qquad k = \ln\!\tfrac{17}{4} \approx 1.45 \qquad \tilde{x} = \frac{\bar{x}}{\mu_{\text{ref}}}" />
             <P>
@@ -3481,11 +3498,15 @@ export default function PaperPage() {
           {/* ── Classification ──────────────────────────────────────── */}
           <Section id="classification" label="Classification">
             <P>
-              Classification operates at two levels: <B>propositions</B> (the
-              atomic claims within prose) and <B>narratives</B> (the overall
-              structural profile). Proposition classification identifies
-              load-bearing content for generation. Narrative classification
-              categorizes works by force dominance for comparative analysis.
+              Classification is internal machinery with one customer: the
+              rehearsal loop. It operates at two levels &mdash;{" "}
+              <B>propositions</B> (the atomic claims within a record) and{" "}
+              <B>whole runs</B> (the overall structural profile). Proposition
+              classification tells generation which committed claims are
+              load-bearing and must not be contradicted; run-level
+              classification tells the room what kind of world it is playing.
+              The literary distributions below are validation evidence, not a
+              literary product.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
@@ -4164,15 +4185,14 @@ export default function PaperPage() {
           {/* ── Prose Profiles ────────────────────────────────────────── */}
           <Section id="voice" label="Voice">
             <P>
-              A scope note first: this layer is research infrastructure
-              inherited from the narrative origin &mdash; it powers
-              authoring and the forge, and none of it ships in the war-room
-              wedge. It is documented because the same vocabulary (beats,
-              scenes, transitions) underpins how sessions are recorded. The
-              room ends each session with a record &mdash; negotiated
-              agreements, commitments, reveals, the narration the substrate
-              writes up &mdash; and that record is prose that deserves the
-              same craft as any authored work. Generation separates{" "}
+              A scope note first: this is internal tooling, not a product
+              line. Voice exists so the engine can write the session record
+              &mdash; the negotiated agreements, commitments, and reveals a
+              room walks away with &mdash; in prose a team will actually
+              read. It was built and validated on the narrative corpus, none
+              of it ships as an authoring product, and a reader allergic to
+              literary machinery can skip to Reconstruction without losing
+              the thread. Generation separates{" "}
               <B>content</B> (what is written) from <B>accent</B> (how it
               sounds). Content comes from beat plans, blueprints specifying
               the work each paragraph performs; accent comes from <B>prose
@@ -4740,9 +4760,10 @@ export default function PaperPage() {
           {/* ── Revision ──────────────────────────────────────────── */}
           <Section id="revision" label="Reconstruction">
             <P>
-              First drafts are rough; first sessions are messy.
-              {" "}<B>Evaluation</B> reads scene (or session) summaries
-              and assigns per-scene verdicts;{" "}
+              First sessions are messy, and a room&apos;s ledger is only
+              useful if it can be cleaned without being falsified &mdash;
+              that is the job here.{" "}<B>Evaluation</B> reads session
+              summaries and assigns per-scene verdicts;{" "}
               <B>reconstruction</B> creates a new versioned branch,
               applying verdicts in parallel &mdash; edits revise
               content, merges combine scenes, inserts fill gaps,
@@ -5210,10 +5231,12 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Personal simulation.</B> A career pivot or relocation:
-                  the solo operator takes their seat plus the seats of
-                  consequential others (employer, market, family) and plays
-                  the move forward.
+                  <B>Solo rehearsal &mdash; the edge case, not the
+                  centre.</B> A single operator can run the practice on a
+                  career pivot or a portfolio, taking the seats of
+                  consequential others (employer, market, rival). Same
+                  engine, table of one; noted for completeness. The product
+                  is built for teams.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -5245,9 +5268,10 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Board game dynamics.</B> A tabletop group uses the room
-                  as a grand-strategy sandbox &mdash; asymmetry, faction
-                  politics, diplomacy, multi-turn doctrine all native.
+                  <B>The forge, at play.</B> A tabletop group runs the room
+                  as a grand-strategy sandbox &mdash; not a market we sell
+                  into, but where Game Masters train and the engine earns its
+                  fifty cheap games.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -5905,18 +5929,14 @@ export default function PaperPage() {
           {/* ── Coda ──────────────────────────────────────────────────── */}
           <Section id="coda" label="Coda">
             <P>
-              What Meridians does is <B>convene a room to play the
-              future before it arrives</B>, on a measured
-              substrate that learns from every committed move.
-              Anyone can say it; a card makes you pay for it. The
-              substrate keeps the ledger. The next room inherits the
-              priors. Any coherent text
-              can seed the first session &mdash; a history, a
-              paper, a novel, a doctrine, a market brief. After
-              that, the room authors its own world. The same holds
-              for a life: authored one deliberate step at a time,
-              it becomes a world view you can play against rather
-              than a past you merely remember.
+              Meridians is <B>one company doing one thing: a rehearsal
+              engine for teams.</B> It convenes a room to play the future
+              before it arrives, on a measured substrate that learns from
+              every committed move. Anyone can say it; a card makes you pay
+              for it. The substrate keeps the ledger; the next room inherits
+              the priors. Any coherent text can seed the first session
+              &mdash; a market brief, a doctrine, a history. After that, the
+              room authors its own world.
             </P>
             <P>
               Three things we believe.{" "}
