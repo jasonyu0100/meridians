@@ -349,8 +349,8 @@ export default function HomePage() {
             </span>
             <br />
             <span className="text-white/55">
-              Most tools store what your team wrote down; Meridians runs what
-              your team believes.
+              Most tools keep what you filed. Meridians runs what your team
+              believes.
             </span>
           </p>
 
@@ -470,47 +470,47 @@ export default function HomePage() {
               {[
                 {
                   q: "What problem does Meridians solve?",
-                  a: "Teams make their biggest calls about a future that hasn't arrived, then lose the thinking the moment the meeting ends. Notes save what got written down, not how the team reads the world or where it expects things to go. Meridians keeps that living read, and lets you play it forward before reality does.",
+                  a: "Teams make their biggest calls against a future that hasn't arrived — then lose the thinking the moment the meeting ends. Notes keep what got written down, not how the room reads the world or what it expects next. Meridians keeps that living read, and lets you play it forward before reality does.",
                 },
                 {
                   q: "What is it, plainly?",
-                  a: "A shared model of what your team believes and how it decides. You feed it what you're seeing; it tracks each person's read on the open questions and turns the whole into one world you can query, simulate, and rehearse against. The frame we use is a cognitive operating system for teams: it runs your judgement, not your files.",
+                  a: "A shared model of what your team believes and how it decides. You feed it what you're seeing; it tracks each seat's read on the open questions and assembles one world you can query, simulate, and rehearse against. Think of it as an operating system for your team's judgement: it runs what you believe, not what you filed.",
                 },
                 {
                   q: "What's a 'world view'?",
-                  a: "Any coherent body of text describes a world: who's in it, the rules it runs on, and the open questions that decide where it goes. Meridians measures all three as forces. World is the actors and their state; System is the rules and structures; Fate is the open questions and which way they're leaning. A novel, a research paper, and a market brief are all world views, just weighted differently.",
+                  a: "Any coherent text describes a world: the actors in it, the rules it runs on, and the open questions that decide where it goes. Meridians measures all three as forces — World, the actors and their state; System, the rules and structures; Fate, the open questions and which way they're leaning. A novel, a research paper, and a market brief are all world views; they just carry the weight differently.",
                 },
                 {
                   q: "Is this just an AI guessing?",
-                  a: "No. The AI does one job: read the text into structured pieces, at low temperature. The scores come from fixed formulas, so the same input always gives the same number. The proof point: the same math that recovers the dramatic shape of Harry Potter from a few thousand structural deltas reads a company's position from the decisions it actually made.",
+                  a: "No. The AI has one job: read the text into structured pieces, at low temperature. The scores come from fixed formulas — same input, same number, every run. The proof the math is sound: it recovers the dramatic shape of Harry Potter from structural deltas alone, no prose scored, no scenes hand-ranked. Your team's history is the same arithmetic pointed at a live world.",
                 },
                 {
                   q: "Who is it for?",
-                  a: "Two roles. Players sharpen their judgement by playing. Game Masters build and run the worlds, using the engine like a sandbox they can expand and customise endlessly. Most teams have one GM and several players; a GM can be someone on your team or a facilitator we train.",
+                  a: "Two roles. Players sharpen their judgement by playing. Game Masters build and run the worlds — the engine is their sandbox, open-ended by design. Most teams run one GM and a table of players; the GM can be someone on your team or a facilitator we train.",
                 },
                 {
                   q: "What do I actually do in it?",
-                  a: "Two things, at two speeds. Between sessions you Capture: note what you believe about the open questions, from your own seat, as things happen. In a session you play Conviction: a live game where you commit to calls, signal or hold, and an AI opponent hunts the gaps in how your team coordinates. One records reality; the other rehearses how it could go.",
+                  a: "Two things, at two speeds. Between sessions you Capture: record what you believe about the open questions, from your own seat, as the world moves. In session you play Conviction: a live game where you commit to calls, signal or hide, and an AI opponent hunts the seams in how your team coordinates. One records reality; the other rehearses it.",
                 },
                 {
                   q: "Can I ask the world questions?",
-                  a: "Yes, a few ways. Search by meaning rather than keywords, with cited answers. Survey the whole cast with one question to see where they disagree. Or talk to any character, who replies only from what they'd actually know. Every entity carries its own private knowledge, so nothing leaks and the world stays consistent.",
+                  a: "Yes — three ways. Search by meaning rather than keywords, with cited answers. Survey the whole cast on one question and see exactly where they split. Or interview any character, who answers only from what it would actually know. Every entity holds its own private knowledge, so nothing leaks and the world stays consistent.",
                 },
                 {
                   q: "Can it predict the future?",
-                  a: "No, and it doesn't pretend to. It reads your present clearly, looks about one step ahead, and lets you rehearse several ways the next stretch could go, ranked by likelihood. It's advisory, not predictive. The value is a sharper, better-prepared team, not a crystal ball.",
+                  a: "No, and it doesn't pretend to. It reads your present clearly, looks one step ahead, and lets you rehearse several ways the next stretch could go. It's advisory, not predictive. What you buy isn't a crystal ball — it's a team that has already met the morning that would have surprised it.",
                 },
                 {
                   q: "Why does it get better over time?",
-                  a: "Every session adds beliefs, plays, and calls graded against what actually happened to a shared record that's yours and compounds. The fiftieth session is nothing like the tenth. No vendor can ship that cold, because it's built from the decisions your team actually made.",
+                  a: "Every session adds beliefs, plays, and calls — graded against what actually happened — to a record your team owns. The fiftieth session is nothing like the tenth. No vendor can ship that cold: it's built from the decisions your team actually made, and it compounds nowhere but with you.",
                 },
                 {
                   q: "Where does my data live? Is it private?",
-                  a: "On your machine, in your browser (IndexedDB). No backend, no account, no copy on our servers. An optional encrypted vault backs it up under a key only you hold. You capture between sessions through tools you already use: WhatsApp for everyday teams, Slack for businesses.",
+                  a: "On your machine, in your browser (IndexedDB). No backend, no account, no copy on our servers. An optional encrypted vault backs it up under a key only you hold. Between sessions you capture by dropping priors into the room's end-to-end-encrypted Signal number; nothing leaves that channel until your Game Master commits it.",
                 },
                 {
                   q: "What does it cost?",
-                  a: "The engine is free and open source. You bring your own AI key (OpenRouter) and pay only for the tokens you use. The team product is a facilitated practice on top.",
+                  a: "The engine is free and open source. Bring your own AI key (OpenRouter) and pay only for the tokens you use — a session costs cents. The paid product is the practice: facilitated rooms and training, built on top of the free engine.",
                 },
               ].map(({ q, a }, i) => (
                 <details key={i} className="group">
