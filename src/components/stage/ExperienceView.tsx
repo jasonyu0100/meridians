@@ -242,24 +242,15 @@ export default function ExperienceView() {
 
           {/* Headline: Experience Level + XP + branch triad */}
           {report && lvl && (
-            <div className="rounded-xl border border-white/8 bg-white/2 px-4 py-3.5">
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-center shrink-0">
-                  <span className="text-[34px] font-bold font-mono leading-none" style={{ color: scoreColor(lvl.level * 10) }}>L{lvl.level}</span>
-                  <span className="text-[8px] uppercase tracking-widest text-text-dim mt-1">{Math.round(report.experienceXP)} xp</span>
-                </div>
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-[9px] uppercase tracking-widest text-text-dim">{lvl.label}</span>
-                  <span className="text-[12px] text-text-secondary">Branch experience accrues with depth + cross-branch rehearsal</span>
-                  <div className="mt-1.5 h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: scoreColor(lvl.level * 10) }} />
-                  </div>
-                  {lvl.nextAt != null && (
-                    <span className="text-[8px] text-text-dim/50 font-mono mt-1">next L{lvl.level + 1} at {lvl.nextAt} xp</span>
-                  )}
-                </div>
+            <div className="rounded-xl border border-white/8 bg-white/2 px-5 py-4">
+              <div className="flex items-baseline gap-2.5">
+                <span className="text-[34px] font-bold font-mono leading-none tracking-tight" style={{ color: '#facc15' }}>L{lvl.level}</span>
+                <span className="text-[16px] font-medium text-text-secondary truncate">{lvl.label}</span>
               </div>
-              <div className="mt-3.5">
+              <div className="mt-3 h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: '#facc15' }} />
+              </div>
+              <div className="mt-4 border-t border-white/8 pt-3.5">
                 <ReadingPair prior={report.branchPrior} posterior={report.branchPosterior} />
               </div>
             </div>

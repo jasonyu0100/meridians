@@ -53,31 +53,21 @@ export function ExperienceScorePanel() {
   }
 
   const lvl = experienceLevel(report.experienceXP);
-  const lvlColor = c(lvl.level * 10);
-  const xp = Math.round(report.experienceXP);
+  const lvlColor = '#facc15'; // level UI is yellow
   const arcs = [...report.perArc.values()];
   const arcValues = arcs.map((a) => (arcMetric === 'prior' ? a.prior : a.posterior));
   const arcLabels = arcs.map((a) => (a.arcId === '—' ? 'Unassigned' : (narrative?.arcs[a.arcId]?.name ?? a.arcId)));
 
   return (
     <div className="flex flex-col gap-3">
-      {/* North Star: Experience — additive XP over branch depth → Level */}
-      <div className="flex items-center gap-3">
-        <div className="flex flex-col items-center shrink-0">
-          <span className="text-[30px] font-bold font-mono leading-none" style={{ color: lvlColor }}>L{lvl.level}</span>
-          <span className="text-[8px] uppercase tracking-widest text-text-dim mt-0.5">{xp} xp</span>
+      {/* North Star: Experience — Level + progress */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[24px] font-bold font-mono leading-none tracking-tight" style={{ color: lvlColor }}>L{lvl.level}</span>
+          <span className="text-[13px] font-medium text-text-secondary truncate">{lvl.label}</span>
         </div>
-        <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[11px] text-text-secondary truncate">{lvl.label}</span>
-            {lvl.nextAt != null && (
-              <span className="text-[8px] text-text-dim/50 font-mono ml-auto">→ {lvl.nextAt} xp</span>
-            )}
-          </div>
-          <div className="mt-1 h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: lvlColor }} />
-          </div>
-          <span className="text-[9px] text-text-dim font-mono mt-1">{report.scoredScenes} scenes</span>
+        <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: lvlColor }} />
         </div>
       </div>
 

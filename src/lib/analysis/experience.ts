@@ -334,16 +334,16 @@ export async function computeExperienceReport(
 // veil to the all-seeing Oracle: the deeper a branch has rehearsed its futures,
 // the further its understanding pierces the unknown.
 const LEVEL_BANDS = [
-  { min: 0,   level: 1,  label: 'Veiled' },       // sight curtained; no futures rehearsed
-  { min: 2,   level: 2,  label: 'Glimmer' },      // first faint flicker of foresight
-  { min: 6,   level: 3,  label: 'Portent' },      // signs begin to surface
-  { min: 12,  level: 4,  label: 'Augur' },         // reads the omens
-  { min: 22,  level: 5,  label: 'Diviner' },       // draws meaning from them
-  { min: 36,  level: 6,  label: 'Scryer' },        // gazes into the glass
-  { min: 55,  level: 7,  label: 'Seer' },          // sees the patterns plainly
-  { min: 80,  level: 8,  label: 'Clairvoyant' },   // clear sight across branches
-  { min: 115, level: 9,  label: 'Prophet' },       // foretells with conviction
-  { min: 160, level: 10, label: 'Oracle' },        // speaks the future as known
+  { min: 0,   level: 1,  label: 'Novice' },        // no futures rehearsed yet
+  { min: 2,   level: 2,  label: 'Beginner' },      // first rehearsed branches
+  { min: 6,   level: 3,  label: 'Apprentice' },    // building the habit
+  { min: 12,  level: 4,  label: 'Adept' },          // reliable foresight
+  { min: 22,  level: 5,  label: 'Skilled' },        // reads the situation well
+  { min: 36,  level: 6,  label: 'Expert' },         // deep, repeated rehearsal
+  { min: 55,  level: 7,  label: 'Veteran' },        // sees the patterns plainly
+  { min: 80,  level: 8,  label: 'Master' },         // command across branches
+  { min: 115, level: 9,  label: 'Grandmaster' },    // foresight with conviction
+  { min: 160, level: 10, label: 'Legend' },         // the future read as known
 ] as const;
 
 export interface ExperienceLevel {

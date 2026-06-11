@@ -2295,19 +2295,7 @@ export default function TopBar() {
             title="Experience scorecard — rehearsal level, prior / posterior / connectivity"
           >
             <IconSignals size={14} />
-            <span
-              className={`font-semibold font-mono ${
-                expPrior == null
-                  ? "text-text-dim"
-                  : expPrior >= 8
-                    ? "text-green-400"
-                    : expPrior >= 6
-                      ? "text-lime-400"
-                      : expPrior >= 4
-                        ? "text-yellow-400"
-                        : "text-red-400"
-              }`}
-            >
+            <span className={`font-semibold font-mono ${expPrior == null ? "text-text-dim" : "text-yellow-400"}`}>
               {expPrior == null ? "–" : `L${expPrior}`}
             </span>
           </button>

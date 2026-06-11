@@ -556,13 +556,6 @@ export default function ForceTimeline() {
 }
 
 // ── Experience score-card (Prior + Level) ────────────────────────────────────
-function expColor(v: number): string {
-  if (v >= 90) return '#22c55e'; // strong green
-  if (v >= 80) return '#a3e635'; // light green
-  if (v >= 70) return '#f59e0b'; // orange
-  return '#f87171';              // red
-}
-
 /** Left-panel readout for Experience scoring: the current branch's progression
  *  Level + level bar, derived from its Prior (recall) score. */
 function ExperienceScoreCard({ value }: { value: number | null }) {
@@ -574,18 +567,14 @@ function ExperienceScoreCard({ value }: { value: number | null }) {
     );
   }
   const lvl = experienceLevel(value);
-  const col = expColor(lvl.level * 10); // colour by level (XP is unbounded)
+  const col = '#facc15'; // level UI is yellow
   return (
-    <div className="flex flex-col justify-center flex-1 min-w-0 gap-1 px-3 py-1.5">
-      <div className="flex items-baseline justify-between">
-        <span className="text-[8px] uppercase tracking-widest text-text-dim">Experience</span>
-        <span className="text-[8px] font-mono text-text-dim/60">{Math.round(value)} xp</span>
+    <div className="flex flex-col justify-center flex-1 min-w-0 gap-1.5 px-3 py-1.5">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[28px] font-bold font-mono leading-none tracking-tight" style={{ color: col }}>L{lvl.level}</span>
+        <span className="text-[12px] font-medium text-text-secondary truncate">{lvl.label}</span>
       </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[15px] font-bold leading-none" style={{ color: col }}>L{lvl.level}</span>
-        <span className="text-[10px] text-text-secondary truncate">{lvl.label}</span>
-      </div>
-      <div className="mt-0.5 h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
+      <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
         <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: col }} />
       </div>
     </div>
