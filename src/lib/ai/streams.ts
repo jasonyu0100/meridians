@@ -102,6 +102,10 @@ CRITICAL — adopt the PERSPECTIVE strictly. The question must be what THIS pers
 
 A strong question is: SHORT (one plain sentence, ideally under ~15 words — a clean headline, not a loaded multi-clause sentence with caveats baked in), genuinely OPEN (the answer is honestly uncertain right now), CONSEQUENTIAL to this perspective, DECISION-RELEVANT, and resolves through SEVERAL real branches — it carves the future at a real joint (who/what prevails, degree, mechanism, magnitude band, timing). Avoid: yes/no trivialities, questions already settled by the continuity, vague mood questions, restatements of the situation, and long compound questions that smuggle in their own answer. If ALREADY-OPEN questions are listed, propose something genuinely DIFFERENT — a distinct uncertainty, not a rephrasing.
 
+VOICE & CONCRETENESS — phrase it as THIS character's real preoccupation, in their own register, with the concrete stakes that actually matter to them. Name the real people, objects, places, factions, and capabilities from the CONTINUITY and WORLD by their actual names; never fall back on generic placeholders ("the rival", "the prize", "the resource", "the goal") when a real name exists. It should read like a worry this character is genuinely carrying, not an analyst's abstract query.
+  GOOD: names the actual actors, the actual prize, and the real stakes drawn from this world's continuity — a concrete question this specific character would lie awake on.
+  WEAK: "Will I secure the key resource before my competitor?" — abstract, voiceless, generic; could belong to anyone in any story.
+
 Output ONLY JSON: {"question":"..."}`;
 
 export async function suggestQuestion(args: {
@@ -141,13 +145,16 @@ export async function suggestIntuition(args: {
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
     args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
   ].filter(Boolean).join('\n\n');
-  const sys = `You write the first INTUITION on an open QUESTION strictly from the given PERSPECTIVE — a RAW gut read in first person AS that perspective. This is a prior, not an essay: 1–2 short, plain sentences stating where they lean and the one concrete reason, the way someone actually thinks it to themselves.
+  const sys = `You write the first INTUITION on an open QUESTION strictly from the given PERSPECTIVE — a fragment of THIS character's stream of consciousness, recorded in first person as they actually think it. You are capturing their inner voice, not analysing from outside. This is a prior, not an essay: 1–3 short, plain sentences — where they lean, then the concrete personal reason they lean that way.
 
 HARD RULES:
-- NO meta-preamble. Never describe your own role or goals ("As the Narrator, my primary goal is…", "My objective here is…"). Just say the read.
-- NO consultant / strategy-deck register. Ban abstractions like "optimal sequencing", "de-risk", "maximize eventual impact", "robust revenue stream", "proving ground". Plain words.
-- Lead with the lean. Start with the actual call ("Probably X.", "I doubt it.", "Leaning toward…") then the gut reason.
-- Concrete and grounded in THIS perspective's situation, not generic. Anchor on the CONTINUITY; do NOT default to the protagonist — the WORLD context is only shared background.
+- First person, in character. Speak AS them, in their register, temperament, and concerns — a recorded thought, not a neutral analyst's read.
+- Lead with the lean ("Probably.", "I doubt it.", "Leaning toward…"), then the reason.
+- Ground the reason in YOUR OWN situation, named concretely — a move you've already made, an ability or asset you hold, a fact you know, a named rival / place / object from your continuity. Never a generic abstraction.
+- NO meta-preamble about your role or goals ("As the Narrator, my primary goal is…", "My objective here is…"). NO consultant / strategy-deck register ("optimal sequencing", "de-risk", "maximize eventual impact", "proving ground"). Plain words, the way the thought actually arrives.
+- Anchor on the CONTINUITY (your own situation); do NOT default to the protagonist — the WORLD context is only shared background.
+
+EXAMPLE SHAPE (the lean, then a concrete personal reason in the character's own voice): "I doubt the others reach the cache before me — I sent two runners up the east face at first light, and I'm the only one here who's climbed it in winter."
 
 Output ONLY JSON: {"intuition":"..."}`;
   const raw = await callGenerate(user, sys, undefined, 'suggestIntuition', PREDICTIVE_MODEL, 0);
@@ -180,13 +187,13 @@ export async function suggestPrior(args: {
     ? args.outcomes.map((o, i) => `${o}: ${Math.round((args.currentProbs![i] ?? 0) * 100)}%`).join(', ')
     : '(uniform)';
   const priorsBlock = args.priors.length ? args.priors.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(none yet)';
-  const sys = `You propose the NEXT prior for a belief stream — a fresh observation/update the PERSPECTIVE would record next, strictly from ITS vantage (its goals, stake, information, voice; first person as them). Do NOT default to the protagonist or main character; the CONTINUITY block is this perspective's own situation, the WORLD is shared background.
+  const sys = `You propose the NEXT prior for a belief stream — the next fragment of THIS character's stream of consciousness, recorded in first person as they actually think it. You are capturing their inner voice as the thinking continues, not analysing from outside. Stay strictly in ITS vantage (its goals, stake, information, register, temperament). Do NOT default to the protagonist or main character; the CONTINUITY block is this perspective's own situation, the WORLD is shared background.
 
 Read the PRIORS SO FAR as a chain of reasoning and extract the NEXT MOST LOGICAL prior — the development, consequence, move, or consideration that naturally follows from where the thinking has reached. It MUST be genuinely new: never a restatement, paraphrase, or re-angle of any existing prior. If an obvious next step is already covered, advance past it to the one that isn't. Ground the new prior in concrete detail from the available context (continuity, world, current stance) rather than a vague gesture. 1–3 sentences.
 
 When an OPERATOR DIRECTION is given, steer the next prior toward what it asks — the subject, angle, or development it points at — while keeping it in THIS perspective's voice, genuinely new, and honest to the stance. The direction sets the topic, not the conclusion; never let it become a restatement or an out-of-vantage leap.
 
-KEEP IT RAW: this is a prior, not an essay. NO meta-preamble about your own role or goals ("As the X, my goal is…"). NO consultant / strategy-deck register or abstractions ("optimal sequencing", "de-risk", "maximize impact"). Plain words, the way the perspective actually thinks it.
+KEEP IT RAW and IN VOICE: this is a recorded thought, not an essay. Speak as the character, naming concrete specifics from your continuity (real people, places, objects, capabilities) rather than generic abstractions. NO meta-preamble about your own role or goals ("As the X, my goal is…"). NO consultant / strategy-deck register ("optimal sequencing", "de-risk", "maximize impact"). Plain words, the way the thought actually arrives.
 
 Output ONLY JSON: {"prior":"..."}`;
   const user = [
@@ -230,7 +237,7 @@ export async function suggestBranchStream(args: {
   const priorsBlock = args.priors.length ? args.priors.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(none yet)';
   const sys = `A team member is recording priors on an open QUESTION from a PERSPECTIVE, and the thinking has BRANCHED — the priors so far have surfaced a NEW, related-but-separate uncertainty this perspective would now also want to track as its own belief stream. Propose that branching question plus a first intuition on it, strictly from THIS perspective's vantage (its goals, stake, information, voice; first person for the intuition). Do NOT default to the protagonist or main character.
 
-The branch question must: be SHORT (one plain sentence, ideally under ~15 words — a clean headline, not a loaded multi-clause question), grow naturally OUT of the priors so far (a sibling line the reasoning opened up, not a non-sequitur), be genuinely DISTINCT from the originating question and any ALREADY-OPEN questions (a different uncertainty, not a rephrasing), be honestly OPEN and consequential to this perspective, and resolve through several real branches. The intuition is a 1–2 sentence gut read (lean + why) — raw and plain, no meta-preamble or strategy-deck abstractions.
+The branch question must: be SHORT (one plain sentence, ideally under ~15 words — a clean headline, not a loaded multi-clause question), grow naturally OUT of the priors so far (a sibling line the reasoning opened up, not a non-sequitur), be genuinely DISTINCT from the originating question and any ALREADY-OPEN questions (a different uncertainty, not a rephrasing), be honestly OPEN and consequential to this perspective, and resolve through several real branches. Phrase it as this character's real preoccupation, naming the concrete people / places / objects in play (no generic placeholders). The intuition is a 1–2 sentence gut read (lean + why) in the character's own voice — a fragment of their stream of consciousness, raw and plain, grounded in a concrete personal reason; no meta-preamble or strategy-deck abstractions.
 
 When an OPERATOR DIRECTION is given, steer the branch toward the line it points at — pick the sibling uncertainty nearest that direction — while keeping it distinct, open, grown from the priors, and in THIS perspective's vantage. The direction chooses which branch to open, not its answer.
 
