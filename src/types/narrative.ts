@@ -1751,10 +1751,14 @@ export type Region = {
 // ── Perspectives model (ROADMAP A0) ────────────────────────────────────────
 // What a room gathers over time is PERSPECTIVES. A Member attaches to an
 // entity/narrator Perspective and contributes a Stream of priors against it.
-// Each Stream is itself a thread (outcomes + a Stance moved by its priors), so
-// motivations live on the streams, not the perspective. One or many committed
-// Streams collapse into a Merge, interleaving priors by commit time to extend
-// continuity.
+// Streams are ACTION-FIRST — the contrast with Threads: a Thread tracks an
+// OUTCOME (will X happen?), a Stream holds an open question of WHAT TO DO and
+// tracks a perspective's leaning over the candidate ACTIONS it could take (the
+// result of a move is downstream and uncertain). Each Stream reuses the thread stance
+// machinery (its `outcomes` array holds candidate actions/moves; a Stance moved
+// by its priors), so a seat's intended moves live on the streams, not the
+// perspective. One or many committed Streams collapse into a Merge, interleaving
+// priors by commit time to extend continuity.
 // Persisted on NarrativeState (no new IndexedDB store). Exactly one Member
 // holds the GM role (single master device).
 
@@ -1832,7 +1836,8 @@ export interface StreamPrior {
   text: string;
   at: number;
   // ── Belief mechanics (mirrors ThreadLogNode) ──────────────────────────────
-  /** Per-outcome evidence this prior emits, log-odds shift in [-4, +4]. */
+  /** Per-action evidence this prior emits — log-odds shift in [-4, +4] of the
+   *  leaning toward/away from each candidate move. */
   updates?: OutcomeEvidence[];
   /** Which of the nine perceptual primitives this prior reads as. */
   logType?: ThreadLogNodeType;
@@ -1842,18 +1847,23 @@ export interface StreamPrior {
   infoGain?: number;
   /** Stance volume immediately before this prior was applied. */
   preVolume?: number;
-  /** Outcomes this prior introduced to the stream (mirrors ThreadLogNode). */
+  /** Candidate actions this prior introduced to the stream (mirrors ThreadLogNode). */
   addedOutcomes?: string[];
 }
 
-/** A Stream — a member's bearing on an open QUESTION, gathered over time
- *  (replaces the old Issue + Request). A Stream is a thread: it shares the Fate
- *  Thread mechanics (outcomes + a Stance of logits/volume/volatility evolved by
- *  evidence) but is owned by one member against one perspective, and its log
- *  nodes are its `priors`. Opened with an AI-instantiated stance seeded from the
- *  member's initial intuition (prior #1). Many streams can share one question —
- *  each a perspective's independently-seeded stance — forming a local market.
- *  Open while gathering, committed when folded into a Merge, or closed. */
+/** A Stream — a perspective's bearing on an open question of WHAT TO DO,
+ *  gathered over time (replaces the old Issue + Request). Streams are
+ *  ACTION-FIRST: unlike a Thread (which tracks an outcome — will X happen?), a
+ *  Stream holds an open question of what to do and tracks the perspective's
+ *  leaning over the candidate ACTIONS it could take. It reuses the
+ *  Thread stance machinery (the `outcomes` array holds candidate actions/moves +
+ *  a Stance of logits/volume/volatility evolved by evidence) but is owned by one
+ *  member against one perspective, and its log nodes are its `priors` — the
+ *  perspective's stream of consciousness as it deliberates. Opened with an
+ *  AI-instantiated stance seeded from the member's initial intuition (prior #1).
+ *  Many streams can share one question — each a perspective's independently-
+ *  seeded leaning — forming a local market. Open while deliberating, committed
+ *  when folded into a Merge, or closed once the move is settled. */
 export interface Stream {
   id: string;
   perspectiveId: string;
@@ -1862,12 +1872,14 @@ export interface Stream {
   /** The AI player driving this stream — set instead of `memberId` when an
    *  agent (rather than a real member) thinks about this perspective's priors. */
   agentId?: string;
-  /** The open question this stream holds a stance on. */
+  /** The open question of what to do this stream holds a stance on. */
   title: string;
-  /** Named outcomes the stance distributes over (length ≥ 2). Optional only
-   *  for legacy streams opened before the belief model; always set now. */
+  /** Candidate ACTIONS the stance leans across (length ≥ 2) — the moves this
+   *  perspective is choosing between, NOT outcome resolutions. Optional only for
+   *  legacy streams opened before the belief model; always set now. */
   outcomes?: string[];
-  /** The member's bearing over the outcomes — logits/volume/volatility. */
+  /** The perspective's leaning over the candidate actions (its intent) —
+   *  logits/volume/volatility. */
   stance?: Stance;
   /** Opening logits the stance was seeded with (the base for trajectory
    *  replay); derived from the AI's priorProbs at open. */

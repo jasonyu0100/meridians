@@ -629,7 +629,7 @@ export function StreamsView() {
                   onClick={handleSuggestQuestion}
                   disabled={suggestingQ}
                   className="ml-auto shrink-0 text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
-                  title="Suggest an open question from this perspective's continuity"
+                  title="Suggest an open question of what to do, from this perspective's continuity"
                 >
                   {suggestingQ ? 'Thinking...' : 'Suggest'}
                 </button>
@@ -637,7 +637,7 @@ export function StreamsView() {
               <textarea
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="An open question this stream will hold a stance on…"
+                placeholder="An open question of what to do — the move this perspective is weighing…"
                 autoFocus
                 rows={2}
                 className="bg-bg-field/60 border border-white/10 rounded px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent/40 resize-none leading-relaxed"
@@ -658,11 +658,11 @@ export function StreamsView() {
               <textarea
                 value={intuition}
                 onChange={(e) => setIntuition(e.target.value)}
-                placeholder="Your gut read — this seeds the stance and becomes the first prior."
+                placeholder="Your gut read on what to do — this seeds the stance and becomes the first prior."
                 rows={4}
                 className="bg-bg-field/60 border border-white/10 rounded px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent/40 resize-none leading-relaxed"
               />
-              <span className="text-[10px] text-text-dim/40">The AI opens the stream with outcomes + initial probabilities from this intuition.</span>
+              <span className="text-[10px] text-text-dim/40">The AI opens the stream with the candidate moves + your initial leaning from this intuition.</span>
             </div>
             {openErr && (
               <div className="text-[11px] text-red-400/90 bg-red-500/10 border border-red-400/30 rounded-md px-2.5 py-1.5">{openErr}</div>
