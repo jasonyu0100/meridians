@@ -2,7 +2,7 @@
 export { narrativeContext, sceneContext, learningContext, outlineContext, compassContext, hasCompassScenarios, modeContext, hasMode, mapContext, hasMap, gameTheoryContext, hasGameTheory } from './context';
 
 // Scene generation
-export { generateScenes, generateScenePlan, rewriteScenePlan, generateSceneProse, reverseEngineerScenePlan, type CoordinationPlanContext } from './scenes';
+export { generateScenes, generateScenePlan, rewriteScenePlan, reviseScene, generateSceneProse, reverseEngineerScenePlan, type CoordinationPlanContext } from './scenes';
 
 // Game-theoretic analysis (opt-in, post-hoc layer)
 export { generateSceneGameAnalysis } from './game-analysis';

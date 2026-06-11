@@ -20,6 +20,7 @@ import type { InspectorContext } from "@/types/narrative";
 import { MapComposerModal } from "@/components/sidebar/maps/MapComposerModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useStore } from "@/lib/state/store";
+import { reviseScene } from "@/lib/ai";
 import { resolvePlanForBranch, resolveProseForBranch } from "@/lib/forces/narrative-utils";
 import SceneRangeSelector, { type SceneRange } from "@/components/timeline/SceneRangeSelector";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -317,6 +318,36 @@ export default function StagePalette({
     : undefined;
 
   const hasAudio = !!currentScene?.audioUrl;
+
+  // On-the-fly prompt-driven edit of the CURRENT scene (any scene, not just the
+  // head): the existing scene is the base, the prompt says what to change —
+  // fixing a hallucination, correcting a fact, or supplying updated info.
+  const [modifyOpen, setModifyOpen] = useState(false);
+  const [modifyPrompt, setModifyPrompt] = useState("");
+  const [modifying, setModifying] = useState(false);
+  const [modifyErr, setModifyErr] = useState<string | null>(null);
+  const handleModifyScene = useCallback(async () => {
+    const instruction = modifyPrompt.trim();
+    if (!narrative || !currentScene || !instruction || modifying) return;
+    setModifying(true);
+    setModifyErr(null);
+    try {
+      const updates = await reviseScene(
+        narrative,
+        currentScene,
+        state.resolvedEntryKeys,
+        instruction,
+      );
+      dispatch({ type: "REVISE_SCENE", sceneId: currentScene.id, updates, versionType: "rewrite" });
+      setModifyPrompt("");
+      setModifyOpen(false);
+    } catch (e) {
+      setModifyErr(e instanceof Error ? e.message : "Modify failed");
+    } finally {
+      setModifying(false);
+    }
+  }, [narrative, currentScene, state.resolvedEntryKeys, modifyPrompt, modifying, dispatch]);
+
   const wrapperClasses = isActive ? "" : "opacity-30 pointer-events-none";
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generateText, setGenerateText] = useState("");
@@ -1396,6 +1427,47 @@ export default function StagePalette({
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
+      {/* Modify-scene popover — centered above the palette, mirroring the
+          Generate-Plan / Prose dialog cards. Toggled by the revise button in
+          the action row below. */}
+      {modifyOpen && isActive && currentScene && (
+        <div className="w-96 flex flex-col rounded-xl glass overflow-hidden">
+          <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-violet-300/80">Modify scene</span>
+            <button
+              onClick={() => { setModifyOpen(false); setModifyErr(null); }}
+              className="text-[10px] text-text-dim/40 hover:text-text-dim transition"
+            >
+              &times;
+            </button>
+          </div>
+          <div className="p-3">
+            <textarea
+              value={modifyPrompt}
+              onChange={(e) => setModifyPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setModifyOpen(false);
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleModifyScene();
+              }}
+              autoFocus
+              placeholder='What to change — fix a hallucination, correct a fact, add updated info… the rest stays.'
+              className="w-full h-24 bg-black/30 border border-border rounded text-[11px] text-text-secondary p-2 resize-none outline-none focus:border-violet-300/30 transition-colors placeholder:text-text-dim/30"
+            />
+            {modifyErr && <div className="mt-1.5 text-[10px] text-red-400">{modifyErr}</div>}
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-[9px] text-text-dim/30">&#x2318;Enter to submit</span>
+              <button
+                onClick={handleModifyScene}
+                disabled={modifying || !modifyPrompt.trim()}
+                className="inline-flex items-center gap-1 text-[10px] px-3 py-1 rounded transition bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/15 disabled:opacity-30"
+              >
+                <IconReset size={11} />
+                {modifying ? "Modifying…" : "Modify"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Palette row: bar + delete button side by side */}
       <div className="flex items-center gap-2">
         <div
@@ -1591,47 +1663,63 @@ export default function StagePalette({
           )}
         </div>
 
-        {/* Delete head scene button — hidden on the influence view. */}
-        {!navState.active &&
-          isActive &&
-          isHead &&
-          headIsOwned &&
-          (headIsForkPoint ? (
+        {/* Combo action pill — Revise (purple, any scene) + Delete (red, owned
+            head only) side by side, to the right of the palette. Revise toggles
+            the centered popover card above; Delete keeps its inline confirm. */}
+        {!navState.active && isActive && currentScene && !isAnyModeActive && (
+          <div className="glass-pill px-1.5 py-1 flex items-center gap-0.5">
             <button
               type="button"
-              disabled
-              title="Another branch forks from this scene — delete that branch first"
-              className="w-8 h-8 flex items-center justify-center rounded-full glass-pill text-text-dim opacity-30 cursor-not-allowed"
+              onClick={() => { setModifyOpen((v) => !v); setModifyErr(null); }}
+              className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${modifyOpen ? "text-violet-300 bg-violet-500/15" : "text-text-dim hover:text-violet-300 hover:bg-violet-500/10"}`}
+              title="Modify this scene with a prompt"
             >
-              <IconTrash size={14} />
+              <IconReset size={14} />
             </button>
-          ) : deleteConfirm ? (
-            <div className="glass-pill px-2 py-1.5 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleDeleteHead}
-                className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-              >
-                Confirm
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(false)}
-                className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-text-dim hover:text-text-secondary transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setDeleteConfirm(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-full glass-pill text-text-dim hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Delete head scene"
-            >
-              <IconTrash size={14} />
-            </button>
-          ))}
+
+            {isHead && headIsOwned && (
+              <>
+                <div className="w-px h-4 bg-white/10 mx-0.5" aria-hidden />
+                {headIsForkPoint ? (
+                  <button
+                    type="button"
+                    disabled
+                    title="Another branch forks from this scene — delete that branch first"
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-text-dim opacity-30 cursor-not-allowed"
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                ) : deleteConfirm ? (
+                  <div className="flex items-center gap-1 px-0.5">
+                    <button
+                      type="button"
+                      onClick={handleDeleteHead}
+                      className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(false)}
+                      className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-text-dim hover:text-text-secondary transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(true)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-text-dim hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Delete head scene"
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

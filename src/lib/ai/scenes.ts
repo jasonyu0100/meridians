@@ -1586,6 +1586,116 @@ Scene-level "propositions" should capture the overall takeaways from the scene.`
 }
 
 /**
+ * reviseScene — a surgical, prompt-driven edit of ONE existing scene's
+ * STRUCTURE. The current scene is the BASE; the author's instruction says what
+ * to change (fix a hallucination, correct a fact, supply updated information).
+ * Everything the instruction doesn't touch is preserved verbatim. Returns the
+ * revised structural fields; the caller applies them via REVISE_SCENE (which
+ * sanitizes deltas + versions content). Plan/prose are NOT regenerated here —
+ * the summary is the brief, so regenerate them afterward if the change is big.
+ */
+export async function reviseScene(
+  narrative: NarrativeState,
+  scene: Scene,
+  resolvedKeys: string[],
+  instruction: string,
+  onReasoning?: (token: string) => void,
+): Promise<Pick<Scene, 'summary' | 'events' | 'threadDeltas' | 'worldDeltas' | 'relationshipDeltas' | 'povId' | 'locationId' | 'participantIds'>> {
+  const sceneIdx = resolvedKeys.indexOf(scene.id);
+  const contextIndex = sceneIdx >= 0 ? sceneIdx : resolvedKeys.length - 1;
+  const fullContext = narrativeContext(narrative, resolvedKeys, contextIndex);
+
+  const base = JSON.stringify(
+    {
+      povId: scene.povId,
+      locationId: scene.locationId,
+      participantIds: scene.participantIds,
+      summary: scene.summary,
+      events: scene.events,
+      threadDeltas: scene.threadDeltas,
+      worldDeltas: scene.worldDeltas,
+      relationshipDeltas: scene.relationshipDeltas,
+    },
+    null,
+    2,
+  );
+
+  // Explicit id↔name maps so a "move it to the tavern" / "make Karis the POV"
+  // instruction resolves to real entity ids the engine can apply.
+  const locList = Object.values(narrative.locations).map((l) => `  ${l.id}: ${l.name}`).join('\n') || '  (none)';
+  const charList = Object.values(narrative.characters).map((c) => `  ${c.id}: ${c.name}`).join('\n') || '  (none)';
+  const artList = Object.values(narrative.artifacts ?? {}).map((a) => `  ${a.id}: ${a.name}`).join('\n');
+  const entityRef = `LOCATIONS:\n${locList}\n\nCHARACTERS:\n${charList}${artList ? `\n\nARTIFACTS:\n${artList}` : ''}`;
+
+  const system = `You revise ONE existing scene's STRUCTURE on the author's instruction. The CURRENT SCENE is the base — this is a surgical edit, NOT a regeneration. The author is fixing a hallucination, correcting a fact, changing who/where, or supplying updated information.
+
+RULES:
+- Preserve everything the instruction does NOT touch EXACTLY: same summary sentences, same events, same deltas verbatim. Change only what the instruction asks for, and ripple only the consequences it implies.
+- WHO / WHERE: keep povId, locationId, and participantIds as given UNLESS the instruction changes them. When it does, set them to the matching real ids from AVAILABLE ENTITIES — locationId to an L- id, povId to a C- id (or the narrator id "${NARRATOR_ID}", or null for an impersonal vantage), participantIds to the C-/L-/A- ids actually present. Never invent ids; pick from AVAILABLE ENTITIES. When location or cast changes, update the summary, events, and deltas to match.
+- threadDeltas may only reference threadIds present in the NARRATIVE CONTEXT; each "outcome" must be VERBATIM from that thread's existing market (a genuinely new one must also be listed in addOutcomes).
+- worldDeltas: 15–25 word present-tense facts; entityId must be a real C-/L-/A- id.
+- The summary is the prose writer's ONLY brief — keep it consistent with the revised who/where/deltas, in NAMES not IDs, and NEVER reference engine field names (threadDeltas / worldDeltas / etc.) inside it.
+- Return the COMPLETE revised structure (all fields below), not a diff.
+
+Output ONLY JSON:
+{
+  "povId": "C-XX | ${NARRATOR_ID} | null",
+  "locationId": "L-XX",
+  "participantIds": ["C-XX", "L-XX", "A-XX"],
+  "summary": "the revised scene summary (prose, names not IDs)",
+  "events": ["short event labels"],
+  "threadDeltas": [{"threadId": "T-XX", "logType": "pulse|transition|setup|escalation|payoff|twist|callback|resistance|stall", "updates": [{"outcome": "VERBATIM from this thread's existing outcomes", "evidence": 1.5}], "volumeDelta": 1, "addOutcomes": ["optional — a genuinely new possibility"], "rationale": "the summary sentence that moved this stance"}],
+  "worldDeltas": [{"entityId": "C-XX|L-XX|A-XX", "addedNodes": [{"id": "K-GEN-1", "content": "15-25 words, present tense", "type": "trait|state|history|capability|belief|relation|secret|goal|weakness"}]}],
+  "relationshipDeltas": [{"from": "C-XX", "to": "C-YY", "type": "short relation label", "valenceDelta": 0.1}]
+}`;
+
+  const prompt = `NARRATIVE CONTEXT:\n${fullContext}
+
+AVAILABLE ENTITIES (use these exact ids for povId / locationId / participantIds):
+${entityRef}
+
+CURRENT SCENE (the base to revise — keep what the instruction doesn't change):
+${base}
+
+AUTHOR INSTRUCTION (what to change; everything else stays exactly as-is):
+${instruction}`;
+
+  const reasoningBudget = resolveReasoningBudget(narrative);
+  const websearch = resolveWebsearch(narrative);
+  const raw = onReasoning
+    ? await callGenerateStream(prompt, system, () => {}, MAX_TOKENS_DEFAULT, 'reviseScene', PLANNING_MODEL, reasoningBudget, onReasoning, undefined, websearch)
+    : await callGenerate(prompt, system, MAX_TOKENS_DEFAULT, 'reviseScene', PLANNING_MODEL, reasoningBudget, true, undefined, websearch);
+  const parsed = parseJson(raw, 'reviseScene') as Partial<Scene>;
+
+  // Validate who/where against real entities — never let a hallucinated id land.
+  const isEntity = (id: string) => !!(narrative.characters[id] || narrative.locations[id] || narrative.artifacts?.[id]);
+  const locationId =
+    typeof parsed.locationId === 'string' && narrative.locations[parsed.locationId]
+      ? parsed.locationId
+      : scene.locationId;
+  const povId =
+    parsed.povId === null
+      ? null
+      : typeof parsed.povId === 'string' && (parsed.povId === NARRATOR_ID || !!narrative.characters[parsed.povId])
+        ? parsed.povId
+        : scene.povId;
+  const participantIds = Array.isArray(parsed.participantIds)
+    ? parsed.participantIds.filter((id): id is string => typeof id === 'string' && isEntity(id))
+    : scene.participantIds;
+
+  return {
+    povId,
+    locationId,
+    participantIds: participantIds.length > 0 ? participantIds : scene.participantIds,
+    summary: typeof parsed.summary === 'string' && parsed.summary.trim() ? parsed.summary : scene.summary,
+    events: Array.isArray(parsed.events) ? parsed.events.filter((e): e is string => typeof e === 'string') : scene.events,
+    threadDeltas: Array.isArray(parsed.threadDeltas) ? (parsed.threadDeltas as Scene['threadDeltas']) : scene.threadDeltas,
+    worldDeltas: Array.isArray(parsed.worldDeltas) ? (parsed.worldDeltas as Scene['worldDeltas']) : scene.worldDeltas,
+    relationshipDeltas: Array.isArray(parsed.relationshipDeltas) ? (parsed.relationshipDeltas as Scene['relationshipDeltas']) : scene.relationshipDeltas,
+  };
+}
+
+/**
  * Parse beat-aligned prose from LLM output with [BEAT:N] start markers.
  * Returns clean prose + beatProseMap (prose strings) if markers are valid, otherwise prose only.
  *
