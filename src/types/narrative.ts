@@ -1778,6 +1778,7 @@ export interface Member {
  *  continuation of priors. Persisted on NarrativeState (no new IndexedDB store);
  *  the preset prompt catalogue lives in `src/lib/agents/personas.ts`. */
 export type AgentPersonaKey =
+  | "actor"
   | "strategist"
   | "diplomat"
   | "opportunist"

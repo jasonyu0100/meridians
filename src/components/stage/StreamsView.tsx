@@ -6,9 +6,10 @@
 // Closed; commit or close inline; merge committed streams into a Merge.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '@/lib/state/store';
 import { type Stream, type PerspectiveKind, type ImageRef, type NarrativeState, type ProposedMerge } from '@/types/narrative';
-import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconChevronDown, IconPlus, IconSparkle, IconClose, IconSignals } from '@/components/icons';
+import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconChevronDown, IconPlus, IconSparkle, IconClose, IconSignals, IconSearch } from '@/components/icons';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { Segmented } from '@/components/ui/Segmented';
@@ -28,9 +29,38 @@ import { THREAD_CATEGORY_HEX, THREAD_CATEGORY_LABEL } from '@/lib/forces/thread-
 import { outlineContext } from '@/lib/ai/context';
 import { TrajectoryChart as TrajectoryChart_ } from '@/components/shared/charts';
 
-type Vantage = { key: string; kind: PerspectiveKind; entityRef?: string; label: string; imageRef?: ImageRef };
+type Vantage = { key: string; kind: PerspectiveKind; entityRef?: string; label: string; imageRef?: ImageRef; tier?: string };
 type VantageTab = 'character' | 'location' | 'artifact';
 const VANTAGE_TABS: VantageTab[] = ['character', 'location', 'artifact'];
+// Tier order + labels per tab — the dividers in the "Developing perspective"
+// picker. Each entity carries a tier (character role / location prominence /
+// artifact significance); the Narrator is its own special tier under Character.
+const VANTAGE_TIERS: Record<VantageTab, { key: string; label: string }[]> = {
+  character: [
+    { key: 'narrator', label: 'Narrator' },
+    { key: 'anchor', label: 'Anchor' },
+    { key: 'recurring', label: 'Recurring' },
+    { key: 'transient', label: 'Transient' },
+  ],
+  location: [
+    { key: 'domain', label: 'Domain' },
+    { key: 'place', label: 'Place' },
+    { key: 'margin', label: 'Margin' },
+  ],
+  artifact: [
+    { key: 'key', label: 'Key' },
+    { key: 'notable', label: 'Notable' },
+    { key: 'minor', label: 'Minor' },
+  ],
+};
+// Flat tier-key → label (e.g. 'anchor' → 'Anchor') and tier-key → sort rank,
+// derived from VANTAGE_TIERS so the picker rows sort + label consistently.
+const TIER_LABEL: Record<string, string> = Object.fromEntries(
+  Object.values(VANTAGE_TIERS).flat().map((t) => [t.key, t.label]),
+);
+const TIER_RANK: Record<string, number> = Object.fromEntries(
+  Object.values(VANTAGE_TIERS).flatMap((tiers) => tiers.map((t, i) => [t.key, i])),
+);
 
 export function StreamsView() {
   const { state, dispatch } = useStore();
@@ -43,9 +73,19 @@ export function StreamsView() {
   const [memberId, setMemberId] = useState(activeMemberId ?? '');
   // The new-stream contributor can be a real member or an AI player (agent).
   const [actorTab, setActorTab] = useState<'members' | 'agents'>('members');
+  // Free-text filter over the contributor picker — matches member/agent name.
+  const [actorQuery, setActorQuery] = useState('');
   const [agentId, setAgentId] = useState('');
   const [vantageKey, setVantageKey] = useState('');
   const [vantageTab, setVantageTab] = useState<VantageTab>('character');
+  // Free-text filter over the perspective picker — matches entity name across
+  // every tier in the active tab.
+  const [vantageQuery, setVantageQuery] = useState('');
+  // Collapse-on-select: each picker shows its full search/list while choosing,
+  // then folds to a compact chosen-row (with "Change") once a pick is made —
+  // so the two-step pair reads fast at a glance, expands only on demand.
+  const [actorOpen, setActorOpen] = useState(!activeMemberId);
+  const [vantageOpen, setVantageOpen] = useState(true);
   const [opening, setOpening] = useState(false);
   const [openErr, setOpenErr] = useState<string | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
@@ -80,10 +120,10 @@ export function StreamsView() {
   const vantagesByTab = useMemo<Record<VantageTab, Vantage[]>>(() => {
     const byTab: Record<VantageTab, Vantage[]> = { character: [], location: [], artifact: [] };
     if (!n) return byTab;
-    byTab.character.push({ key: 'narrator', kind: 'narrator', label: 'Narrator' });
-    for (const c of Object.values(n.characters)) byTab.character.push({ key: `character:${c.id}`, kind: 'character', entityRef: c.id, label: c.name, imageRef: c.imageUrl });
-    for (const l of Object.values(n.locations)) byTab.location.push({ key: `location:${l.id}`, kind: 'location', entityRef: l.id, label: l.name, imageRef: l.imageUrl });
-    for (const a of Object.values(n.artifacts ?? {})) byTab.artifact.push({ key: `artifact:${a.id}`, kind: 'artifact', entityRef: a.id, label: a.name, imageRef: a.imageUrl });
+    byTab.character.push({ key: 'narrator', kind: 'narrator', label: 'Narrator', tier: 'narrator' });
+    for (const c of Object.values(n.characters)) byTab.character.push({ key: `character:${c.id}`, kind: 'character', entityRef: c.id, label: c.name, imageRef: c.imageUrl, tier: c.role });
+    for (const l of Object.values(n.locations)) byTab.location.push({ key: `location:${l.id}`, kind: 'location', entityRef: l.id, label: l.name, imageRef: l.imageUrl, tier: l.prominence });
+    for (const a of Object.values(n.artifacts ?? {})) byTab.artifact.push({ key: `artifact:${a.id}`, kind: 'artifact', entityRef: a.id, label: a.name, imageRef: a.imageUrl, tier: a.significance });
     return byTab;
   }, [n]);
   const allVantages = useMemo(() => [...vantagesByTab.character, ...vantagesByTab.location, ...vantagesByTab.artifact], [vantagesByTab]);
@@ -92,8 +132,11 @@ export function StreamsView() {
   // The chosen contributor — a member or an agent (mutually exclusive). Picking
   // one clears the other so a stream is driven by exactly one actor.
   const selectedAgent = resolveAgentById(n, agentId);
-  const pickMember = (id: string) => { setMemberId((cur) => (cur === id ? '' : id)); setAgentId(''); };
-  const pickAgent = (id: string) => { setAgentId((cur) => (cur === id ? '' : id)); setMemberId(''); };
+  // Choosing an actor/vantage collapses its picker (and clears the sibling
+  // actor kind so a stream is driven by exactly one contributor).
+  const pickMember = (id: string) => { setMemberId(id); setAgentId(''); setActorOpen(false); };
+  const pickAgent = (id: string) => { setAgentId(id); setMemberId(''); setActorOpen(false); };
+  const pickVantage = (key: string) => { setVantageKey(key); setVantageOpen(false); };
   const actorName = memberId ? memberName(n?.members?.[memberId]) : selectedAgent ? (selectedAgent.name || 'Agent') : '';
   const hasActor = !!memberId || !!agentId;
   const numberOf = useMemo(() => {
@@ -129,7 +172,7 @@ export function StreamsView() {
     });
   const selectedOpen = open.filter((s) => selected.has(s.id));
 
-  const reset = () => { setTitle(''); setIntuition(''); setMemberId(activeMemberId ?? ''); setAgentId(''); setActorTab('members'); setVantageKey(''); setOpenErr(null); setStep(1); };
+  const reset = () => { setTitle(''); setIntuition(''); setMemberId(activeMemberId ?? ''); setAgentId(''); setActorTab('members'); setActorQuery(''); setActorOpen(!activeMemberId); setVantageKey(''); setVantageQuery(''); setVantageOpen(true); setOpenErr(null); setStep(1); };
   const closeComposer = () => { setComposing(false); reset(); };
 
   // Branch from a stream — priors leading to a new line of thought. Opens the
@@ -146,8 +189,10 @@ export function StreamsView() {
     setMemberId(seed.memberId ?? '');
     setAgentId(seed.agentId ?? '');
     setActorTab(seed.agentId ? 'agents' : 'members');
+    setActorOpen(!(seed.memberId || seed.agentId));
     setVantageKey(vKey);
     setVantageTab(persp.kind === 'narrator' ? 'character' : persp.kind);
+    setVantageOpen(false);
     setOpenErr(null);
     setStep(2);
     setViewId(null);
@@ -266,6 +311,15 @@ export function StreamsView() {
     }
   };
 
+  // Close every selected open stream at once — the bulk cousin of the per-card
+  // "Close stream" action. Leaves them in the list (closed, reopenable), clears
+  // the selection.
+  const closeSelected = () => {
+    if (selectedOpen.length === 0) return;
+    for (const s of selectedOpen) dispatch({ type: 'CLOSE_STREAM' as const, streamId: s.id });
+    setSelected(new Set());
+  };
+
   // Open the commit review — the GM assigns each selected stream's FINAL
   // outcome (defaulting to its stance leader) before the merge is recorded.
   const openCommitReview = () => {
@@ -350,13 +404,22 @@ export function StreamsView() {
               Actively monitored
               <span className="font-mono text-text-dim/40">{open.length}</span>
               {selectedOpen.length > 0 && (
-                <button
-                  onClick={openCommitReview}
-                  className="ml-auto flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-purple-400/40 text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
-                  title="Review and commit the selected streams' final outcomes"
-                >
-                  <IconMerge size={12} /> Review &amp; commit {selectedOpen.length}
-                </button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button
+                    onClick={closeSelected}
+                    className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-white/12 text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
+                    title="Close the selected streams (they stay in the list and can be reopened)"
+                  >
+                    <IconClose size={12} /> Close {selectedOpen.length}
+                  </button>
+                  <button
+                    onClick={openCommitReview}
+                    className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-purple-400/40 text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
+                    title="Review and commit the selected streams' final outcomes"
+                  >
+                    <IconMerge size={12} /> Review &amp; commit {selectedOpen.length}
+                  </button>
+                </div>
               )}
             </div>
             <div className="relative space-y-0.5">
@@ -419,93 +482,116 @@ export function StreamsView() {
           </ModalHeader>
           <ModalBody className="p-6 space-y-4">
             {step === 1 ? (<>
-            {/* Perspective pair */}
+            {/* Perspective pair — two collapse-on-select pickers stacked:
+                WHO contributes (member/agent) → which perspective they DEVELOP.
+                Each shows a searchable, tier-tagged list while choosing, then
+                folds to a compact chosen-row; "Change" reopens it. */}
             <div className="flex flex-col gap-2">
               <label className="text-[10px] uppercase tracking-wider text-text-dim/50">Perspective pair</label>
               <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-3">
-                <div className="flex justify-center py-2">
-                  <div className="grid grid-cols-[auto_auto_auto] items-center justify-items-center gap-x-6 gap-y-1.5">
-                    {/* Row 1 — avatars + arrow, centred on the circles */}
-                    <Avatar label={actorName || '?'} size={56} dim={!hasActor} />
-                    <span className="text-text-dim/40 text-2xl leading-none">→</span>
-                    <Avatar
-                      label={selectedVantage ? selectedVantage.label : '?'}
-                      imageUrl={selectedVantage?.imageRef ? vantageImages.get(selectedVantage.imageRef) ?? null : null}
-                      size={56}
-                      dim={!selectedVantage}
-                    />
-                    {/* Row 2 — labels under each circle */}
-                    <span className="text-[11px] text-text-dim/60">{actorName || (actorTab === 'agents' ? 'agent' : 'member')}</span>
-                    <span />
-                    <span className="text-[11px] text-text-dim/60">{selectedVantage ? selectedVantage.label : 'perspective'}</span>
-                  </div>
-                </div>
 
+                {/* Contributor */}
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[10px] text-text-dim/50">Contributor</span>
-                  <Segmented<'members' | 'agents'>
-                    size="sm"
-                    options={[
-                      { value: 'members', label: 'Members' },
-                      { value: 'agents', label: 'Agents' },
-                    ]}
-                    value={actorTab}
-                    onChange={setActorTab}
-                  />
-                  {actorTab === 'members' ? (
-                    members.length === 0 ? (
-                      <span className="text-[10px] text-text-dim/40 italic pt-1">No members yet — add them from Config → Members.</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {members.map((p) => (
-                          <button key={p.id} onClick={() => pickMember(p.id)} title={memberName(p)} className="rounded-full">
-                            <Avatar label={memberName(p)} size={30} selected={memberId === p.id} />
-                          </button>
-                        ))}
-                      </div>
-                    )
-                  ) : (
-                    agents.length === 0 ? (
-                      <span className="text-[10px] text-text-dim/40 italic pt-1">No agents yet — add AI players from Config → Agents.</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {agents.map((a) => (
-                          <button key={a.id} onClick={() => pickAgent(a.id)} title={`${a.name || 'Agent'} · ${agentPersonaLabel(a)}`} className="rounded-full">
-                            <Avatar label={a.name || 'Agent'} size={30} selected={agentId === a.id} />
-                          </button>
-                        ))}
-                      </div>
-                    )
-                  )}
-                  {selectedAgent && (
-                    <span className="text-[10px] text-text-dim/50 pt-0.5">{agentPersonaLabel(selectedAgent)} · AI player</span>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[10px] text-text-dim/50">Developing perspective</span>
-                  <Segmented<VantageTab>
-                    size="sm"
-                    options={VANTAGE_TABS.map((t) => ({ value: t, label: `${t[0].toUpperCase()}${t.slice(1)}` }))}
-                    value={vantageTab}
-                    onChange={setVantageTab}
-                  />
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-1">
-                    {vantagesByTab[vantageTab].length === 0 ? (
-                      <span className="text-[10px] text-text-dim/40 italic">No {vantageTab}s.</span>
-                    ) : (
-                      vantagesByTab[vantageTab].map((v) => (
-                        <button key={v.key} onClick={() => setVantageKey((cur) => (cur === v.key ? '' : v.key))} title={v.label} className="rounded-full">
-                          <Avatar
-                            label={v.label}
-                            imageUrl={v.imageRef ? vantageImages.get(v.imageRef) ?? null : null}
-                            size={30}
-                            selected={vantageKey === v.key}
-                          />
-                        </button>
-                      ))
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-text-dim/50">Contributor</span>
+                    {!actorOpen && hasActor && (
+                      <button onClick={() => setActorOpen(true)} className="ml-auto text-[10px] uppercase tracking-wider text-text-dim/50 hover:text-text-primary transition-colors">Change</button>
                     )}
                   </div>
+                  {!actorOpen && hasActor ? (
+                    <PickerChosenRow
+                      label={actorName || (selectedAgent ? 'Agent' : 'Member')}
+                      meta={selectedAgent ? `${agentPersonaLabel(selectedAgent)} · AI player` : 'Member'}
+                      ai={!!selectedAgent}
+                      onClick={() => setActorOpen(true)}
+                    />
+                  ) : (<>
+                    <Segmented<'members' | 'agents'>
+                      size="sm"
+                      options={[
+                        { value: 'members', label: 'Members' },
+                        { value: 'agents', label: 'Agents' },
+                      ]}
+                      value={actorTab}
+                      onChange={setActorTab}
+                    />
+                    <PickerSearch value={actorQuery} onChange={setActorQuery} placeholder={`Search ${actorTab}…`} />
+                    <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto">
+                      {actorTab === 'members' ? (
+                        members.length === 0 ? (
+                          <PickerEmpty>No members yet — add them from Config → Members.</PickerEmpty>
+                        ) : (() => {
+                          const q = actorQuery.trim().toLowerCase();
+                          const list = q ? members.filter((p) => memberName(p).toLowerCase().includes(q)) : members;
+                          if (list.length === 0) return <PickerEmpty>No members match “{actorQuery.trim()}”.</PickerEmpty>;
+                          return list.map((p) => (
+                            <PickerRow key={p.id} label={memberName(p)} meta="Member" selected={memberId === p.id} onClick={() => pickMember(p.id)} />
+                          ));
+                        })()
+                      ) : (
+                        agents.length === 0 ? (
+                          <PickerEmpty>No agents yet — add AI players from Config → Agents.</PickerEmpty>
+                        ) : (() => {
+                          const q = actorQuery.trim().toLowerCase();
+                          const list = q ? agents.filter((a) => (a.name || 'Agent').toLowerCase().includes(q)) : agents;
+                          if (list.length === 0) return <PickerEmpty>No agents match “{actorQuery.trim()}”.</PickerEmpty>;
+                          return list.map((a) => (
+                            <PickerRow key={a.id} label={a.name || 'Agent'} meta={agentPersonaLabel(a)} ai selected={agentId === a.id} onClick={() => pickAgent(a.id)} />
+                          ));
+                        })()
+                      )}
+                    </div>
+                  </>)}
+                </div>
+
+                <div className="h-px bg-white/6" />
+
+                {/* Developing perspective */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-text-dim/50">Developing perspective</span>
+                    {!vantageOpen && selectedVantage && (
+                      <button onClick={() => setVantageOpen(true)} className="ml-auto text-[10px] uppercase tracking-wider text-text-dim/50 hover:text-text-primary transition-colors">Change</button>
+                    )}
+                  </div>
+                  {!vantageOpen && selectedVantage ? (
+                    <PickerChosenRow
+                      imageUrl={selectedVantage.imageRef ? vantageImages.get(selectedVantage.imageRef) ?? null : null}
+                      label={selectedVantage.label}
+                      meta={selectedVantage.kind === 'narrator'
+                        ? 'Narrator'
+                        : `${TIER_LABEL[selectedVantage.tier ?? ''] ?? ''} · ${selectedVantage.kind[0].toUpperCase()}${selectedVantage.kind.slice(1)}`}
+                      onClick={() => setVantageOpen(true)}
+                    />
+                  ) : (<>
+                    <Segmented<VantageTab>
+                      size="sm"
+                      options={VANTAGE_TABS.map((t) => ({ value: t, label: `${t[0].toUpperCase()}${t.slice(1)}` }))}
+                      value={vantageTab}
+                      onChange={setVantageTab}
+                    />
+                    <PickerSearch value={vantageQuery} onChange={setVantageQuery} placeholder={`Search ${vantageTab}s…`} />
+                    <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto">
+                      {(() => {
+                        const q = vantageQuery.trim().toLowerCase();
+                        const filtered = (q ? vantagesByTab[vantageTab].filter((v) => v.label.toLowerCase().includes(q)) : vantagesByTab[vantageTab])
+                          .slice()
+                          .sort((a, b) => (TIER_RANK[a.tier ?? ''] ?? 9) - (TIER_RANK[b.tier ?? ''] ?? 9) || a.label.localeCompare(b.label));
+                        if (vantagesByTab[vantageTab].length === 0) return <PickerEmpty>No {vantageTab}s.</PickerEmpty>;
+                        if (filtered.length === 0) return <PickerEmpty>No {vantageTab}s match “{vantageQuery.trim()}”.</PickerEmpty>;
+                        return filtered.map((v) => (
+                          <PickerRow
+                            key={v.key}
+                            imageUrl={v.imageRef ? vantageImages.get(v.imageRef) ?? null : null}
+                            label={v.label}
+                            meta={TIER_LABEL[v.tier ?? ''] ?? v.tier}
+                            selected={vantageKey === v.key}
+                            onClick={() => pickVantage(v.key)}
+                          />
+                        ));
+                      })()}
+                    </div>
+                  </>)}
                 </div>
               </div>
             </div>
@@ -683,6 +769,76 @@ export function StreamsView() {
         </Modal>
       )}
     </div>
+  );
+}
+
+// ── Picker primitives — the searchable list-row affordance shared by the
+// new-stream Contributor + Developing-perspective pickers (mirrors the
+// GeneratePanel cast/location pickers: search field, avatar+name+tier rows,
+// collapse-to-chosen-row once a pick is made). ───────────────────────────────
+
+/** Search input with a leading magnifier + clear button. */
+function PickerSearch({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-md bg-bg-field/60 border border-white/10 px-2.5 focus-within:border-accent/40">
+      <IconSearch size={13} className="text-text-dim/45 shrink-0" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="flex-1 min-w-0 bg-transparent py-1.5 text-[12px] text-text-primary placeholder:text-text-dim/40 outline-none"
+      />
+      {value && (
+        <button onClick={() => onChange('')} className="text-text-dim/40 hover:text-text-primary shrink-0" title="Clear">
+          <IconClose size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+const PickerEmpty = ({ children }: { children: React.ReactNode }) => (
+  <p className="px-2 py-3 text-center text-[11px] text-text-dim/40 italic">{children}</p>
+);
+
+/** One selectable row — avatar, name, right-aligned tier/meta tag, check when
+ *  selected. */
+function PickerRow({ imageUrl, label, meta, selected, ai, onClick }: {
+  imageUrl?: string | null; label: string; meta?: string; selected?: boolean; ai?: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors ${selected ? 'bg-accent/10' : 'hover:bg-white/5'}`}
+    >
+      <Avatar label={label} imageUrl={imageUrl} size={28} selected={selected} ai={ai} />
+      <span className="flex-1 min-w-0 truncate text-[12.5px] text-text-primary">{label}</span>
+      {meta && <span className="shrink-0 text-[9px] uppercase tracking-wide text-text-dim/40">{meta}</span>}
+      {selected && <IconCheck size={13} className="text-accent shrink-0" />}
+    </button>
+  );
+}
+
+/** Collapsed chosen-row — what a picker folds to after a pick; click to reopen. */
+function PickerChosenRow({ imageUrl, label, meta, ai, onClick }: {
+  imageUrl?: string | null; label: string; meta?: string; ai?: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Change selection"
+      className="flex items-center gap-2.5 rounded-lg border border-accent/25 bg-accent/6 px-2.5 py-2 text-left hover:bg-accent/10 transition-colors"
+    >
+      <Avatar label={label} imageUrl={imageUrl} size={30} ai={ai} />
+      <div className="flex-1 min-w-0">
+        <div className="text-[12.5px] text-text-primary truncate">{label}</div>
+        {meta && <div className="text-[9.5px] uppercase tracking-wide text-text-dim/50 truncate">{meta}</div>}
+      </div>
+      <IconCheck size={14} className="text-accent shrink-0" />
+    </button>
   );
 }
 
@@ -1089,22 +1245,45 @@ function StreamCard({
   );
 }
 
-// Compact actions menu — frees the card row for the quick-add input.
+// Compact actions menu — frees the card row for the quick-add input. The menu
+// panel is portalled to <body> with fixed positioning anchored to the button:
+// the card row is `overflow-hidden` (for its rounded corners + accent bar) and
+// sits inside a scrolling list, so an in-flow absolute dropdown would be clipped
+// to the row. The portal escapes both clipping contexts.
 function KebabMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean }[] }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const place = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
+    };
+    place();
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current?.contains(e.target as Node) || btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const onScroll = () => setOpen(false);
     document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', place);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', place);
+    };
   }, [open]);
 
   if (items.length === 0) return null;
 
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className="relative shrink-0">
       <button
+        ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         className="p-1 rounded-md text-text-dim/50 hover:text-text-primary hover:bg-white/5 transition-colors"
         title="More"
@@ -1113,8 +1292,12 @@ function KebabMenu({ items }: { items: { label: string; onClick: () => void; dan
           <circle cx="8" cy="3" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="8" cy="13" r="1.4" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 min-w-[140px] rounded-md border border-white/12 bg-bg-base shadow-xl shadow-black/50 py-1">
+      {open && pos && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-9999 min-w-[140px] rounded-md border border-white/12 bg-bg-base shadow-xl shadow-black/50 py-1"
+          style={{ top: pos.top, right: pos.right }}
+        >
           {items.map((it) => (
             <button
               key={it.label}
@@ -1126,7 +1309,8 @@ function KebabMenu({ items }: { items: { label: string; onClick: () => void; dan
               {it.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

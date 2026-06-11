@@ -20,6 +20,7 @@ import { useStore } from '@/lib/state/store';
 import { useTheme } from '@/lib/state/theme-context';
 import { SourceFileModal } from '@/components/sidebar/SourceFileModal';
 import { FileComposerModal } from '@/components/sidebar/FileComposerModal';
+import { ImportFileModal } from '@/components/sidebar/ImportFileModal';
 import { ApplyExtensionModal } from '@/components/sidebar/ApplyExtensionModal';
 import { convertFile } from '@/lib/io/file-conversion';
 import { IconTrash } from '@/components/icons';
@@ -201,6 +202,7 @@ export default function FilesPanel() {
   const branchId = state.viewState.activeBranchId;
   const [openId, setOpenId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [applyFileId, setApplyFileId] = useState<string | null>(null);
 
   const files = useMemo<SourceFile[]>(() => {
@@ -253,8 +255,15 @@ export default function FilesPanel() {
           {files.length} {files.length === 1 ? 'file' : 'files'}
         </span>
         <button
+          onClick={() => setImportOpen(true)}
+          className="ml-auto text-[11px] px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+          title="Import a file from another world view"
+        >
+          Import
+        </button>
+        <button
           onClick={() => setComposerOpen(true)}
-          className="ml-auto text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-text-primary transition-colors"
+          className="text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-text-primary transition-colors"
         >
           + Add
         </button>
@@ -418,6 +427,7 @@ export default function FilesPanel() {
         <SourceFileModal key={openFile.id} file={openFile} onClose={() => setOpenId(null)} />
       )}
       {composerOpen && <FileComposerModal onClose={() => setComposerOpen(false)} />}
+      {importOpen && <ImportFileModal onClose={() => setImportOpen(false)} />}
       {applyFile && (
         <ApplyExtensionModal
           key={applyFile.id}

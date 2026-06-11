@@ -2,6 +2,7 @@
 // GeneratePanel — main scene/arc generation controls with expand-world and error-repair surfacing.
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
+import { AdvancedSettingsModal, type SceneSpec } from "@/components/generation/AdvancedSettingsModal";
 import { Segmented } from "@/components/ui/Segmented";
 import { ErrorDiagnosis, CopyErrorButton, buildErrorTrace } from "@/components/apilogs/ErrorDiagnosis";
 import { diagnoseError } from "@/lib/ai/diagnose";
@@ -34,6 +35,7 @@ import {
   PACING_PRESETS,
   samplePacingSequence,
   type PacingSequence,
+  type PacingPreset,
 } from "@/lib/pacing/pacing-markov";
 import { useStore } from "@/lib/state/store";
 import { logError } from "@/lib/core/system-logger";
@@ -158,9 +160,15 @@ export function GeneratePanel({
   const [guidanceDirection, setGuidanceDirection] = useState(
     initialContinuationMode && initialStoryDirection ? initialStoryDirection : "",
   );
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedModalOpen, setAdvancedModalOpen] = useState(false);
   const [firstSceneTimeUnit, setFirstSceneTimeUnit] = useState<TimeUnit | "automatic">("automatic");
   const [firstSceneTimeValue, setFirstSceneTimeValue] = useState<string>("");
+  // Advanced cast & place config — edited in AdvancedSettingsModal, woven into
+  // the direction at generate time and summarised under the panel divider.
+  const [seedLocationId, setSeedLocationId] = useState<string | null>(null);
+  const [arcCharacterIds, setArcCharacterIds] = useState<string[]>([]);
+  const [perSceneCast, setPerSceneCast] = useState(false);
+  const [sceneSpecs, setSceneSpecs] = useState<SceneSpec[]>([]);
 
   // Pacing preview
   const [previewSequence, setPreviewSequence] = useState<PacingSequence | null>(
@@ -205,6 +213,8 @@ export function GeneratePanel({
   const mergeLengthSetRef = useRef(false);
 
   const narrative = state.activeNarrative;
+  // Chosen seed location, for the compact Advanced summary.
+  const selectedSeedLoc = seedLocationId ? narrative?.locations[seedLocationId] ?? null : null;
   if (!narrative) return null;
 
   const headIndex = state.resolvedEntryKeys.length - 1;
@@ -374,6 +384,18 @@ export function GeneratePanel({
     setAnimating(true);
   }, [currentMode, directionCount, storyMatrix]);
 
+  // Picking a pacing preset in the Advanced modal: set the scene count, preview
+  // the sequence, and close the modal so the preview/animation shows in-panel.
+  const handlePickPacingPreset = useCallback(
+    (preset: PacingPreset) => {
+      setDirectionCount(preset.modes.length);
+      setPreviewSequence(buildPresetSequence(preset));
+      setAnimating(true);
+      setAdvancedModalOpen(false);
+    },
+    [],
+  );
+
   const handleSetStep = useCallback(
     (index: number, mode: CubeCornerKey) => {
       if (!previewSequence) return;
@@ -433,12 +455,84 @@ export function GeneratePanel({
         ? narrative.worldBuilds[worldBuildFocusId]
         : undefined;
 
+      // Cast & place (from the Advanced modal) → directives prepended to the
+      // per-generation direction. Location names carry their ancestry path for
+      // context; characters are "featured" (need not appear in every scene).
+      const locLabel = (id: string | null | undefined): string | null => {
+        if (!id || !narrative.locations[id]) return null;
+        const path: string[] = [];
+        const seen = new Set<string>();
+        let cur: string | null | undefined = id;
+        while (cur && narrative.locations[cur] && !seen.has(cur)) {
+          seen.add(cur);
+          path.unshift(narrative.locations[cur].name);
+          cur = narrative.locations[cur].parentId;
+        }
+        const nm = narrative.locations[id].name;
+        return path.length > 1 ? `${nm} (${path.join(" › ")})` : nm;
+      };
+      const charNames = (ids: string[]) =>
+        ids.map((id) => narrative.characters[id]?.name).filter((n): n is string => !!n);
+
+      // Human phrasing for a scene's opening gap (scene 1's gap rides the
+      // engine's firstSceneTime option, so it's only expressed for scene 2+).
+      const transitionPhrase = (unit: TimeUnit | "automatic", value: string): string | null => {
+        if (unit === "automatic") return null;
+        const raw = value.trim();
+        const n = raw === "" ? null : Math.round(Number(raw));
+        if (n === null || !Number.isFinite(n)) return `on a ${unit}-scale gap after the previous scene`;
+        if (n === 0) return "concurrent with the previous scene (same moment, different vantage)";
+        const abs = Math.abs(n);
+        const u = abs === 1 ? unit : `${unit}s`;
+        return n < 0 ? `as a flashback ${abs} ${u} before the previous scene` : `${n} ${u} after the previous scene`;
+      };
+
+      const stagingLines: string[] = [];
+      if (perSceneCast) {
+        for (let i = 0; i < directionCount; i++) {
+          const spec = sceneSpecs[i];
+          if (!spec) continue;
+          const where = locLabel(spec.locationId);
+          const who = charNames(spec.characterIds ?? []);
+          const note = spec.direction?.trim();
+          const trans = i >= 1 ? transitionPhrase(spec.timeUnit, spec.timeValue) : null;
+          if (!where && who.length === 0 && !note && !trans) continue;
+          const parts: string[] = [];
+          if (where) parts.push(`at ${where}`);
+          if (who.length) parts.push(`featuring ${who.join(", ")}`);
+          if (trans) parts.push(`opening ${trans}`);
+          let line = `Scene ${i + 1}:`;
+          if (parts.length) line += ` ${parts.join("; ")}.`;
+          if (note) line += ` ${note}`;
+          stagingLines.push(line.trim());
+        }
+        if (stagingLines.length) {
+          stagingLines.unshift("Stage these scenes as specified (any scene not listed is free):");
+        }
+      } else {
+        const where = locLabel(seedLocationId);
+        if (where) stagingLines.push(`Open this arc at ${where}. The first scene must be set there.`);
+        const who = charNames(arcCharacterIds);
+        if (who.length) {
+          stagingLines.push(
+            `Featured characters across this arc (they need not appear in every scene): ${who.join(", ")}.`,
+          );
+        }
+      }
+      const effectiveDirection = [stagingLines.join("\n"), direction].filter((s) => s.trim()).join("\n\n");
+
+      // The opening gap rides the engine's firstSceneTime option. In per-scene
+      // mode that's scene 1's own transition; in whole-arc mode it's the global
+      // first-scene transition.
+      const openUnit = perSceneCast ? sceneSpecs[0]?.timeUnit ?? "automatic" : firstSceneTimeUnit;
+      const openValue = perSceneCast ? sceneSpecs[0]?.timeValue ?? "" : firstSceneTimeValue;
+
       const { scenes, arc } = await generateScenes(
         narrativeForRun,
         state.resolvedEntryKeys,
         headIndex,
         directionCount, // Use directionCount for legacy path
-        direction,
+        effectiveDirection,
         {
           existingArc,
           pacingSequence: previewSequence ?? undefined,
@@ -448,10 +542,10 @@ export function GeneratePanel({
           onReasoning: (token) => setStreamText((prev) => prev + token),
           repairFromRaw: opts.repairFromRaw,
           firstSceneTimeUnit:
-            firstSceneTimeUnit === "automatic" ? undefined : firstSceneTimeUnit,
+            openUnit === "automatic" ? undefined : openUnit,
           firstSceneTimeValue:
-            firstSceneTimeUnit !== "automatic" && firstSceneTimeValue.trim() !== ""
-              ? Number(firstSceneTimeValue)
+            openUnit !== "automatic" && openValue.trim() !== ""
+              ? Number(openValue)
               : undefined,
         },
       );
@@ -607,6 +701,7 @@ export function GeneratePanel({
   const showPreview = !!previewSequence && mode === "arc" && !loading && narrative.storySettings?.usePacingChain;
 
   return (
+    <>
     <Modal onClose={loading ? () => {} : onClose} size="xl" maxHeight="90vh">
       <ModalHeader onClose={onClose} hideClose={loading}>
         <div>
@@ -931,189 +1026,60 @@ export function GeneratePanel({
                       {directionCount}
                     </span>
                   </div>
-                  {/* Current mode pill */}
-                  <div className="flex items-center gap-1.5 text-[10px] text-text-dim shrink-0">
-                    <CubeBadge mode={currentMode} />
-                    <span style={{ color: CORNER_COLORS[currentMode] }}>
-                      {NARRATIVE_CUBE[currentMode].name}
-                    </span>
-                  </div>
                 </div>
 
-                {/* Advanced */}
-                <div>
-                  <button
-                    onClick={() => setAdvancedOpen((v) => !v)}
-                    className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-text-dim hover:text-text-secondary transition-colors"
-                  >
-                    <IconChevronRight
-                      size={12}
-                      className={`transition-transform ${advancedOpen ? "rotate-90" : ""}`}
-                    />
-                    Advanced
-                  </button>
-                  {advancedOpen && (
-                    <div className="mt-3 flex flex-col gap-3">
-                      {/* First-scene time-gap unit + magnitude */}
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-1.5">
-                          First-Scene Transition
-                        </label>
-                        <div className="flex flex-wrap items-center gap-1">
-                          {firstSceneTimeUnit !== "automatic" && (
-                            <input
-                              type="number"
-                              step={1}
-                              value={firstSceneTimeValue}
-                              onChange={(e) =>
-                                setFirstSceneTimeValue(e.target.value)
-                              }
-                              placeholder="auto"
-                              className="w-14 rounded-md px-2 py-1 text-[11px] bg-white/2 border border-white/6 text-text-primary placeholder:text-text-dim focus:bg-bg-field focus:border-white/16 outline-none"
-                            />
-                          )}
-                          {(
-                            [
-                              "automatic",
-                              "minute",
-                              "hour",
-                              "day",
-                              "week",
-                              "month",
-                              "year",
-                            ] as const
-                          ).map((unit) => {
-                            const isSelected = firstSceneTimeUnit === unit;
-                            return (
-                              <button
-                                key={unit}
-                                type="button"
-                                onClick={() => {
-                                  setFirstSceneTimeUnit(unit);
-                                  if (unit === "automatic") setFirstSceneTimeValue("");
-                                }}
-                                className={`rounded-md px-2.5 py-1 text-[11px] capitalize transition border ${
-                                  isSelected
-                                    ? "bg-white/10 border-white/20 text-text-primary"
-                                    : "bg-white/2 border-white/6 text-text-dim hover:bg-white/6 hover:text-text-secondary"
-                                }`}
-                              >
-                                {unit}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[10px] text-text-dim mt-1.5">
-                          {firstSceneTimeUnit === "automatic"
-                            ? "Model picks the time scale for the first scene."
-                            : firstSceneTimeValue.trim() === ""
-                            ? `First scene opens on a ${firstSceneTimeUnit}-scale gap; the model picks the magnitude.`
-                            : (() => {
-                                const n = Number(firstSceneTimeValue);
-                                if (!Number.isFinite(n)) return null;
-                                const rounded = Math.round(n);
-                                if (rounded === 0) return "First scene is concurrent — same moment as the prior scene, different vantage.";
-                                const abs = Math.abs(rounded);
-                                const unitLabel = abs === 1 ? firstSceneTimeUnit : `${firstSceneTimeUnit}s`;
-                                return rounded < 0
-                                  ? `First scene opens with a flashback ${abs} ${unitLabel} earlier.`
-                                  : `First scene opens ${rounded} ${unitLabel} after the prior scene.`;
-                              })()}
-                        </p>
+                {/* Advanced — configured in a modal, summarised compactly here */}
+                <div className="pt-1">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className="h-px flex-1 bg-white/8" />
+                    <button
+                      onClick={() => setAdvancedModalOpen(true)}
+                      className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary transition-colors"
+                    >
+                      Advanced <IconChevronRight size={11} />
+                    </button>
+                    <div className="h-px flex-1 bg-white/8" />
+                  </div>
+                  {(() => {
+                    const chips: { k: string; label: string }[] = [];
+                    if (perSceneCast) {
+                      const staged = sceneSpecs
+                        .slice(0, directionCount)
+                        .filter((s) => s && (s.locationId || s.characterIds?.length || s.direction?.trim())).length;
+                      chips.push({ k: "cast", label: staged ? `${staged} of ${directionCount} scenes staged` : "Per-scene staging" });
+                    } else {
+                      if (selectedSeedLoc) chips.push({ k: "loc", label: `Opens at ${selectedSeedLoc.name}` });
+                      if (arcCharacterIds.length)
+                        chips.push({ k: "cast", label: `${arcCharacterIds.length} featured ${arcCharacterIds.length === 1 ? "character" : "characters"}` });
+                    }
+                    if (firstSceneTimeUnit !== "automatic")
+                      chips.push({ k: "time", label: `${firstSceneTimeValue.trim() || "auto"}-${firstSceneTimeUnit} open` });
+                    if (worldBuildFocusId && narrative.worldBuilds[worldBuildFocusId])
+                      chips.push({ k: "wb", label: "World-build focus" });
+                    if (previewSequence) chips.push({ k: "pace", label: "Pacing preset" });
+                    if (chips.length === 0) {
+                      return (
+                        <button
+                          onClick={() => setAdvancedModalOpen(true)}
+                          className="w-full text-left text-[11px] text-text-dim/45 italic hover:text-text-dim/70 transition-colors"
+                        >
+                          Defaults — the model decides cast, place &amp; timing. Configure to set them.
+                        </button>
+                      );
+                    }
+                    return (
+                      <div className="flex flex-wrap gap-1.5">
+                        {chips.map((c) => (
+                          <span
+                            key={c.k}
+                            className="inline-flex items-center rounded-md border border-white/8 bg-white/2 px-2 py-1 text-[10.5px] text-text-secondary"
+                          >
+                            {c.label}
+                          </span>
+                        ))}
                       </div>
-
-                      {/* Pacing presets — only shown when Markov pacing is enabled */}
-                      {narrative.storySettings?.usePacingChain && (
-                        <div>
-                          <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-1.5">
-                            Pacing Presets
-                          </label>
-                          <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                            {PACING_PRESETS.map((preset) => (
-                              <button
-                                key={preset.key}
-                                onClick={() => {
-                                  setDirectionCount(preset.modes.length);
-                                  const seq = buildPresetSequence(preset);
-                                  setPreviewSequence(seq);
-                                  setAnimating(true);
-                                }}
-                                disabled={!newArc && !currentArc}
-                                className="rounded-lg px-3 py-2 text-left transition border border-white/6 bg-white/2 hover:bg-white/6 hover:border-white/12 disabled:opacity-30 flex items-center gap-3"
-                              >
-                                <div className="flex gap-0.5 shrink-0">
-                                  {preset.modes.map((m, i) => (
-                                    <div
-                                      key={i}
-                                      className="w-2 h-2 rounded-sm"
-                                      style={{
-                                        backgroundColor: CORNER_COLORS[m],
-                                      }}
-                                      title={NARRATIVE_CUBE[m].name}
-                                    />
-                                  ))}
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="text-[11px] font-medium text-text-primary">
-                                    {preset.name}
-                                  </span>
-                                  <span className="text-[10px] text-text-dim ml-1.5">
-                                    {preset.modes.length}s
-                                  </span>
-                                  <p className="text-[10px] text-text-dim line-clamp-1">
-                                    {preset.description}
-                                  </p>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* World build focus */}
-                      {(() => {
-                        const resolvedSet = new Set(state.resolvedEntryKeys);
-                        const wbEntries = Object.values(
-                          narrative.worldBuilds,
-                        ).filter((wb) => resolvedSet.has(wb.id));
-                        if (wbEntries.length === 0) return null;
-                        return (
-                          <div>
-                            <label className="text-[10px] uppercase tracking-widest text-text-dim block mb-1.5">
-                              World Build Focus
-                            </label>
-                            <div className="flex flex-col gap-1 max-h-24 overflow-y-auto">
-                              {wbEntries.map((wb) => {
-                                const isSelected = worldBuildFocusId === wb.id;
-                                return (
-                                  <button
-                                    key={wb.id}
-                                    type="button"
-                                    onClick={() =>
-                                      setWorldBuildFocusId(
-                                        isSelected ? null : wb.id,
-                                      )
-                                    }
-                                    className={`rounded-lg px-3 py-2 text-left transition border ${
-                                      isSelected
-                                        ? "bg-amber-500/10 border-amber-500/30"
-                                        : "bg-bg-elevated border-border hover:border-white/16"
-                                    }`}
-                                  >
-                                    <p
-                                      className={`text-xs line-clamp-1 ${isSelected ? "text-amber-300" : "text-text-primary"}`}
-                                    >
-                                      {wb.summary}
-                                    </p>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 {/* Action buttons */}
@@ -1322,5 +1288,29 @@ export function GeneratePanel({
         )}
       </ModalBody>
     </Modal>
+    {advancedModalOpen && (
+      <AdvancedSettingsModal
+        sceneCount={directionCount}
+        seedLocationId={seedLocationId}
+        onSeedLocation={setSeedLocationId}
+        perSceneCast={perSceneCast}
+        onPerSceneCast={setPerSceneCast}
+        arcCharacterIds={arcCharacterIds}
+        onArcCharacters={setArcCharacterIds}
+        sceneSpecs={sceneSpecs}
+        onSceneSpecs={setSceneSpecs}
+        onSceneCount={setDirectionCount}
+        firstSceneTimeUnit={firstSceneTimeUnit}
+        onTimeUnit={setFirstSceneTimeUnit}
+        firstSceneTimeValue={firstSceneTimeValue}
+        onTimeValue={setFirstSceneTimeValue}
+        worldBuildFocusId={worldBuildFocusId}
+        onWorldBuildFocus={setWorldBuildFocusId}
+        pacingEnabled={!!narrative.storySettings?.usePacingChain}
+        onPickPacingPreset={handlePickPacingPreset}
+        onClose={() => setAdvancedModalOpen(false)}
+      />
+    )}
+    </>
   );
 }

@@ -155,14 +155,14 @@ const TAB_ICONS: Record<Tab, IconCmp> = {
 const TAB_ORDER: Tab[] = [
   "inspector",
   "chat",
-  "threads",
-  "files",
   "knowledge",
-  "surveys",
-  "interviews",
+  "threads",
   "maps",
   "compass",
+  "files",
   "learning",
+  "interviews",
+  "surveys",
   "eval",
 ];
 
