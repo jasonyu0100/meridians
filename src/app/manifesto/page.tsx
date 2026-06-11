@@ -503,6 +503,191 @@ function VariableScenarioDiagram() {
   );
 }
 
+/* ── Influence alluvial (same UI as the in-app Influence view) ───────────── */
+
+// Sample Fate-source streams — each band is a question the room carries, its
+// width at a scene-bucket = the attention (volume) it drew there. Bands enter,
+// swell toward the climax, and resolve, exactly as the live alluvial reads.
+const ALLUVIAL_COLORS = [
+  "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#a855f7",
+  "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#14b8a6",
+  "#f43f5e", "#8b5cf6", "#0ea5e9", "#d946ef", "#eab308",
+  "#22c55e", "#fb7185", "#3b82f6",
+];
+const ALLUVIAL_BUCKETS = [
+  "1–6", "7–12", "13–18", "19–24", "25–30", "31–36", "37–42",
+  "43–48", "49–54", "55–60", "61–66", "67–72", "73–78", "79–84",
+  "85–90", "91–96", "97–102", "103–108",
+];
+// No band runs the full width — every question enters and exits, and the
+// lifespans are interleaved so attention rolls forward: early questions resolve
+// and hand the room to mid-arc ones, which give way to late entrants. Magnitudes
+// span a wide range (a few dominate, others stay marginal) and every band spikes
+// and dips scene-to-scene. The result weaves and crosses with peaks and valleys.
+const ALLUVIAL_STREAMS: { label: string; vols: number[]; status?: "closed" }[] = [
+  { label: "Will the alliance hold?",       vols: [12, 6, 20, 9, 26, 11, 22, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], status: "closed" },
+  { label: "Who controls the corridor?",    vols: [5, 11, 4, 16, 7, 19, 8, 24, 10, 6, 0, 0, 0, 0, 0, 0, 0, 0], status: "closed" },
+  { label: "Can we cover the supply gap?",  vols: [4, 7, 3, 6, 2, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], status: "closed" },
+  { label: "Will the board ratify?",        vols: [8, 3, 10, 5, 7, 2, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], status: "closed" },
+  { label: "Will the rival commit first?",  vols: [0, 0, 5, 2, 11, 4, 16, 6, 9, 20, 7, 14, 0, 0, 0, 0, 0, 0] },
+  { label: "Who leaked the memo?",          vols: [0, 0, 0, 3, 6, 1, 7, 2, 8, 3, 6, 2, 4, 0, 0, 0, 0, 0], status: "closed" },
+  { label: "Does the new entrant disrupt?", vols: [0, 0, 0, 0, 4, 9, 3, 14, 6, 22, 10, 28, 13, 30, 16, 0, 0, 0] },
+  { label: "Can we hold the valuation?",    vols: [0, 0, 0, 0, 0, 0, 3, 9, 4, 16, 7, 22, 11, 28, 14, 9, 31, 18] },
+  { label: "Will sanctions land?",          vols: [0, 0, 0, 0, 0, 0, 0, 0, 2, 5, 1, 6, 3, 7, 2, 8, 4, 9] },
+  { label: "Will the founder walk?",        vols: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 9, 4, 17, 7, 26, 13, 20] },
+  { label: "Who succeeds the chair?",       vols: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12, 6, 18, 11] },
+];
+
+// Cubic-bezier ribbon between two stacked bands — identical to SankeyView.
+function alluvialRibbon(sx: number, tx: number, sy0: number, sy1: number, ty0: number, ty1: number): string {
+  const xm = (sx + tx) / 2;
+  return `M${sx},${sy0} C${xm},${sy0} ${xm},${ty0} ${tx},${ty0} L${tx},${ty1} C${xm},${ty1} ${xm},${sy1} ${sx},${sy1} Z`;
+}
+
+function InfluenceAlluvialDiagram() {
+  const W = 760, H = 320;
+  const NODE_W = 10, PAD = 7, TOP = 30, BOT = 14, ML = 12, MR = 12;
+  const [hovered, setHovered] = useState<number | null>(null);
+
+  const layout = useMemo(() => {
+    const B = ALLUVIAL_BUCKETS.length;
+    const cellW = (W - ML - MR) / B;
+    const cellCenter = (b: number) => ML + (b + 0.5) * cellW;
+    const cellEdge = (b: number) => ML + b * cellW;
+    const nodeLeft = (b: number) => cellCenter(b) - NODE_W / 2;
+
+    // Per-bucket volume maps, then a single global scale so the busiest column
+    // fills the height — the streamgraph stays centred with PAD gaps.
+    const vol = (s: number, b: number) => ALLUVIAL_STREAMS[s].vols[b] ?? 0;
+    let scale = Infinity;
+    for (let b = 0; b < B; b++) {
+      let total = 0, count = 0;
+      for (let s = 0; s < ALLUVIAL_STREAMS.length; s++) {
+        if (vol(s, b) > 0) { total += vol(s, b); count++; }
+      }
+      if (total > 0) {
+        const availH = H - TOP - BOT - PAD * Math.max(0, count - 1);
+        scale = Math.min(scale, Math.max(0.2, availH) / total);
+      }
+    }
+    if (!isFinite(scale)) scale = 1;
+
+    const pos = new Map<string, { y0: number; y1: number }>();
+    for (let b = 0; b < B; b++) {
+      let used = 0, count = 0;
+      for (let s = 0; s < ALLUVIAL_STREAMS.length; s++) {
+        if (vol(s, b) > 0) { used += vol(s, b) * scale; count++; }
+      }
+      used += PAD * Math.max(0, count - 1);
+      let cursor = TOP + Math.max(0, (H - TOP - BOT - used) / 2);
+      for (let s = 0; s < ALLUVIAL_STREAMS.length; s++) {
+        if (vol(s, b) <= 0) continue;
+        pos.set(`${b}:${s}`, { y0: cursor, y1: cursor + vol(s, b) * scale });
+        cursor += vol(s, b) * scale + PAD;
+      }
+    }
+
+    const segs: { s: number; sx: number; tx: number; sy0: number; sy1: number; ty0: number; ty1: number }[] = [];
+    const nodes: { s: number; b: number; x: number; y0: number; y1: number }[] = [];
+    const firstBucket = new Map<number, number>();
+    for (let s = 0; s < ALLUVIAL_STREAMS.length; s++) {
+      const bs: number[] = [];
+      for (let b = 0; b < B; b++) if (vol(s, b) > 0) bs.push(b);
+      if (bs.length) firstBucket.set(s, bs[0]);
+      for (const b of bs) {
+        const p = pos.get(`${b}:${s}`)!;
+        nodes.push({ s, b, x: nodeLeft(b), y0: p.y0, y1: p.y1 });
+      }
+      for (let k = 0; k + 1 < bs.length; k++) {
+        const p0 = pos.get(`${bs[k]}:${s}`)!;
+        const p1 = pos.get(`${bs[k + 1]}:${s}`)!;
+        segs.push({
+          s, sx: nodeLeft(bs[k]) + NODE_W, tx: nodeLeft(bs[k + 1]),
+          sy0: p0.y0, sy1: p0.y1, ty0: p1.y0, ty1: p1.y1,
+        });
+      }
+    }
+    const grid = Array.from({ length: B + 1 }, (_, b) => cellEdge(b));
+    return { B, cellCenter, nodeLeft, segs, nodes, firstBucket, grid, step: cellW, nowX: cellCenter(B - 1) };
+  }, []);
+
+  return (
+    <figure className="mt-6 mb-3">
+      <div className="rounded-xl border border-white/8 bg-linear-to-b from-white/2 to-white/4 shadow-lg overflow-hidden px-3 py-4">
+        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full h-auto" preserveAspectRatio="xMidYMid meet" style={{ aspectRatio: `${W} / ${H}` }}>
+          {/* Gridlines + bucket labels */}
+          {layout.grid.map((x, i) => (
+            <line key={`g-${i}`} x1={x} x2={x} y1={TOP - 4} y2={H - BOT + 4} stroke="#94a3b8" strokeOpacity={0.12} strokeWidth={1} />
+          ))}
+          {ALLUVIAL_BUCKETS.map((lbl, b) => (
+            (b % 2 === 0 || b === layout.B - 1) && (
+              <text key={`bl-${b}`} x={layout.cellCenter(b)} y={16} textAnchor="middle" fontSize={9} fill="#cbd5e1" fillOpacity={b === layout.B - 1 ? 0.7 : 0.34} fontFamily="ui-monospace, monospace">{lbl}</text>
+            )
+          ))}
+
+          {/* Ribbons */}
+          <g>
+            {layout.segs.map((s, i) => {
+              const act = hovered === null || hovered === s.s;
+              return (
+                <path key={`r-${i}`} d={alluvialRibbon(s.sx, s.tx, s.sy0, s.sy1, s.ty0, s.ty1)} fill={ALLUVIAL_COLORS[s.s % ALLUVIAL_COLORS.length]} fillOpacity={act ? 0.34 : 0.07} style={{ transition: "fill-opacity 120ms" }} />
+              );
+            })}
+          </g>
+
+          {/* Container bars (the per-bucket "units") */}
+          <g>
+            {layout.nodes.map((n, i) => {
+              const st = ALLUVIAL_STREAMS[n.s];
+              const dim = st.status === "closed";
+              const act = hovered === null || hovered === n.s;
+              return (
+                <rect
+                  key={`n-${i}`}
+                  x={n.x} y={n.y0} width={NODE_W} height={Math.max(1, n.y1 - n.y0)} rx={2}
+                  fill={ALLUVIAL_COLORS[n.s % ALLUVIAL_COLORS.length]}
+                  fillOpacity={dim ? 0.5 : 1}
+                  stroke={dim ? "#a855f7" : "transparent"} strokeWidth={dim ? 1 : 0}
+                  opacity={act ? 1 : 0.45}
+                  style={{ cursor: "pointer", transition: "opacity 120ms" }}
+                  onMouseEnter={() => setHovered(n.s)}
+                  onMouseLeave={() => setHovered(null)}
+                />
+              );
+            })}
+          </g>
+
+          {/* Band labels at first bucket */}
+          <g className="pointer-events-none select-none">
+            {layout.nodes.map((n, i) => {
+              if (layout.firstBucket.get(n.s) !== n.b) return null;
+              const bandH = n.y1 - n.y0;
+              if (bandH < 9) return null;
+              const isLast = n.b === layout.B - 1;
+              const act = hovered === null || hovered === n.s;
+              return (
+                <text key={`l-${i}`} x={isLast ? n.x - 6 : n.x + NODE_W + 6} y={n.y0 + bandH / 2} textAnchor={isLast ? "end" : "start"} dominantBaseline="middle" fontSize={Math.min(11, Math.max(9, bandH * 0.5))} fill="#e2e8f0" fillOpacity={ALLUVIAL_STREAMS[n.s].status === "closed" ? 0.5 : 0.9} opacity={act ? 1 : 0.3} style={{ transition: "opacity 120ms" }}>
+                  {ALLUVIAL_STREAMS[n.s].label}
+                </text>
+              );
+            })}
+          </g>
+
+          {/* Playhead — present scene */}
+          <line x1={layout.nowX} x2={layout.nowX} y1={9} y2={H - BOT + 2} stroke="#22d3ee" strokeOpacity={0.95} strokeWidth={1.5} />
+          <polygon points={`${layout.nowX - 5},1 ${layout.nowX + 5},1 ${layout.nowX},10`} fill="#22d3ee" />
+        </svg>
+      </div>
+      <figcaption className="text-[11px] text-white/35 mt-4 leading-relaxed text-center max-w-2xl mx-auto">
+        Influence alluvial — Fate source, Unit mode. Columns are scene-buckets;
+        each band is a question the room carries, its width the attention it drew
+        there. Bands enter, swell toward the climax, and resolve (dimmed,
+        edged bands have <em>closed</em>); the cyan playhead marks the present.
+      </figcaption>
+    </figure>
+  );
+}
+
 /* ── Thinking-mode explorer ──────────────────────────────────────────────── */
 
 const THINKING_MODES: {
@@ -955,7 +1140,7 @@ function BusinessModels() {
               <tr className="text-left text-[10px] uppercase tracking-wider text-white/35 border-b border-white/8 bg-white/1.5">
                 <th className="px-3 py-2 font-medium">Stream</th>
                 <th className="px-3 py-2 font-medium font-mono tabular-nums">Cost / unit</th>
-                <th className="px-3 py-2 font-medium font-mono tabular-nums text-amber-400/70">Revenue / unit</th>
+                <th className="px-3 py-2 font-medium font-mono tabular-nums text-white/55">Revenue / unit</th>
                 <th className="px-3 py-2 font-medium">Detail</th>
               </tr>
             </thead>
@@ -964,7 +1149,7 @@ function BusinessModels() {
                 <tr key={s.stream} className="border-b border-white/5 last:border-b-0 align-baseline">
                   <td className="px-3 py-2.5 font-medium text-white/85 leading-snug">{s.stream}</td>
                   <td className="px-3 py-2.5 font-mono tabular-nums text-white/55">{s.marginalCost}</td>
-                  <td className="px-3 py-2.5 font-mono tabular-nums text-amber-400/85">{s.revenuePerUser}</td>
+                  <td className="px-3 py-2.5 font-mono tabular-nums text-white/70">{s.revenuePerUser}</td>
                   <td className="px-3 py-2.5 text-white/55 leading-snug">{s.notes}</td>
                 </tr>
               ))}
@@ -1171,7 +1356,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: string; label: strin
       { id: "abstract", label: "Abstract" },
       { id: "problem", label: "Why Practice" },
       { id: "narrative-origin", label: "Narrative Origin" },
-      { id: "wedge", label: "The Wedge" },
+      { id: "wedge", label: "The Game Master" },
       { id: "approach", label: "The Substrate" },
     ],
   },
@@ -1397,7 +1582,7 @@ export default function PaperPage() {
             Manifesto
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold leading-[1.05] tracking-tight text-white/90 mb-6">
-            War Rooms
+            Rehearsal Engine
           </h1>
           <p className="text-[15px] text-white/45 leading-[1.7] max-w-xl">
             Any coherent text becomes a playable world &mdash; where you
@@ -1430,24 +1615,21 @@ export default function PaperPage() {
               committing to it, paying for it, in the open. Another had
               promised to back that play and quietly plays against it; at
               the reveal the gap shows, and it costs them the table&apos;s
-              trust. No jargon has been spoken. Yet everything that
-              matters is already on the table: private knowledge, binding
-              commitment, the signal worth sending, the defection that
-              doesn&apos;t pay.
+              trust.
             </P>
             <P>
-              <B>Meridians is that place.</B> Give it any coherent text
-              &mdash; a market brief, a doctrine, a memoir, a novel
-              &mdash; and it becomes a <B>playable world</B>: a board your
-              team sits around and moves against, one turn at a time.
-              Anyone can say it; a card makes you pay for it. <B>You play
-              the actor that produces the outcome, not the price of
-              it.</B> And the same
-              deterministic math that recovers the dramatic shape of{" "}
-              <em>Harry Potter</em> from a few thousand structural deltas
-              reads your organisation&apos;s strategic position from the
-              decisions it actually made. The proof and the product are
-              one engine.
+              <B>Meridians is that place &mdash; a rehearsal engine for the
+              future.</B> Give it any coherent text &mdash; a market brief, a
+              doctrine, a memoir, a novel &mdash; and it becomes a{" "}
+              <B>playable world</B>: a board your team sits around and moves
+              against, one turn at a time. Anyone can say it; a card makes you
+              pay for it. <B>You play the actor that produces the outcome, not
+              the price of it.</B> The math underneath is proven on narrative:
+              the same deterministic formulas recover the dramatic shape of{" "}
+              <em>Harry Potter</em> from structural deltas alone. Reading your
+              organisation&apos;s strategic position with that math is the bet
+              the product makes &mdash; same engine, demonstrated on fiction,
+              earning its way into strategy one historical rehearsal at a time.
             </P>
             <P>
               Underneath is a <B>world view</B>: a typed, continuously
@@ -1457,7 +1639,12 @@ export default function PaperPage() {
               <B>System</B>, the rules; <B>World</B>, the actors;{" "}
               <B>Fate</B>, how reality lands on what the room believed.
               Low-temperature extraction in, deterministic formulas out.
-              Same input, same score.
+              Same input, same score. The same engine scores two ways,
+              toggled on the timeline: <B>Narrative scoring</B> (the three
+              forces &mdash; how hard the world view is working) and{" "}
+              <B>Experience scoring</B> (Prior Knowledge &amp; Foresight &mdash;
+              how ready the room is, below). They sit side by side; neither
+              replaces the other.
             </P>
             <P>
               It is <B>advisory, not predictive</B>. The engine
@@ -1471,6 +1658,19 @@ export default function PaperPage() {
               It runs human-up, not data-down.
             </P>
             <P>
+              <B>Model improvement is our tailwind, not our threat.</B> The
+              first question is the right one: why doesn&apos;t a
+              foundation-model lab ship this in a quarter? Because we are the{" "}
+              <em>complement</em> to those models, not a competitor. Models
+              generate; humans choose. The engine looks one step ahead;{" "}
+              <em>vision</em> picks which future to make. No model, however
+              good, ships your room&apos;s history &mdash; the committed,
+              client-owned judgement of the people inside the problem. So the
+              better the models get, the <em>cheaper</em> we run and the{" "}
+              <em>more valuable</em> the one input they can never originate. We
+              don&apos;t parry the frontier; we ride it.
+            </P>
+            <P>
               You practise it at <B>two tempos</B>. <B>Conviction</B> is{" "}
               <em>live</em>: the room convenes and plays a high-feedback
               session where seats commit, signal, and read each other under
@@ -1481,6 +1681,24 @@ export default function PaperPage() {
               why the team can&apos;t leave.
             </P>
             <P>
+              We do not sell prediction. We sell <B>rehearsal at scale</B>, and
+              what it buys is readiness when a decision counts. The research is
+              consistent and old: under pressure, experts don&apos;t weigh
+              options &mdash; they <em>recognise</em> the situation and retrieve
+              a rehearsed move <Cite id="klein1998" label="Klein 1998" />. Our
+              two north stars measure that readiness, scene by scene:{" "}
+              <B>Prior Knowledge</B> &mdash; how strongly the room recognises the
+              present from having been somewhere like it &mdash; and{" "}
+              <B>Foresight</B> &mdash; how much of what is coming it has already
+              walked. Both are read by meaning from the room&apos;s own play, and
+              a match on <em>another</em> branch &mdash; a future actually
+              rehearsed &mdash; counts for more. A team knows it is prepared when
+              its canonical models of reality carry high Prior scores: the
+              present keeps landing on ground it has already walked. Surfacing
+              that judgement from the people who hold it, and compounding it, is
+              the behaviour Meridians sets out to change.
+            </P>
+            <P>
               Private rooms are the product today &mdash; closed tables on
               a local data model, compounding one team&apos;s edge with no
               vendor in the middle. Public rooms are the second-phase bet,
@@ -1489,9 +1707,7 @@ export default function PaperPage() {
               unrehearsed one, and <B>the engine</B> that makes the
               rehearsal measurable. Skim the argument for the wager; the
               engine sections (Forces through Reconstruction) prove it.
-              Either way the spine is the same. <B>Convene the room.
-              Practise the future. Earn the morning the surprise
-              lands.</B>
+              Either way the spine is the same.
             </P>
           </Section>
 
@@ -1517,18 +1733,15 @@ export default function PaperPage() {
             <P>
               <B>Accumulation and play fail in opposite directions;
               each corrects the other.</B> Pure accumulation has no
-              error signal: you can compound a coherent world
-              view that is confidently wrong, and it drifts
-              comfortably. Pure play is sharp but shallow: fast
-              signal on what is in front of you, but nothing carries
-              over, so you relearn the same lesson each time. A
-              goldfish with good instincts; a scholar never tested.
-              This is why the practice runs at <B>two tempos</B>.{" "}
-              <B>Capture</B> is the accumulation: asynchronous,
-              and alone it drifts confidently wrong. <B>Conviction</B> is
-              the play: live, and alone it stays sharp but
-              shallow. Neither is the unit.
-              The loop is the unit: feedback turns accumulation into
+              error signal: you can compound a coherent world view that is
+              confidently wrong, and it drifts comfortably &mdash; a scholar
+              never tested. Pure play is sharp but shallow: fast signal on
+              what&apos;s in front of you, but nothing carries over, so you
+              relearn the same lesson each time &mdash; a goldfish with good
+              instincts. This is why the practice runs at <B>two tempos</B>:{" "}
+              <B>Capture</B> is the accumulation (asynchronous),{" "}
+              <B>Conviction</B> the play (live), and neither is the unit.
+              The loop is: feedback turns accumulation into
               judgment, accumulation lets feedback compound instead of
               evaporate, and the correction writes back so the next
               pass starts corrected. That write-back is the whole game
@@ -1572,6 +1785,16 @@ export default function PaperPage() {
               A war room does.
             </P>
             <P>
+              <B>Name the loss, not just the gain.</B> Rehearsal sells like
+              insurance: you buy it against a specific remembered morning. For
+              a fund it is <em>the position you couldn&apos;t unwind before
+              the open</em> &mdash; the trade that can&apos;t be re-run, met
+              cold because the seat that would have seen it coming was empty.
+              The downside is asymmetric: a normal week&apos;s upside is small,
+              the wrong morning&apos;s cost is the franchise. That asymmetry is
+              the reason to practise.
+            </P>
+            <P>
               A room that meets weekly to play the next quarter
               builds reflexes the unprepared room can&apos;t
               improvise. A room that meets monthly to play the
@@ -1604,10 +1827,14 @@ export default function PaperPage() {
               than literally, contains a measurable world model: the
               rules that govern it (<B>System</B>), the actors who move
               through it (<B>World</B>), and the open questions that
-              decide where it goes (<B>Fate</B>). The same delta
+              decide where it goes (<B>Fate</B>). The delta
               arithmetic that recovers the dramatic shape of{" "}
-              <em>Harry Potter</em> reads a company&apos;s strategic
-              position from its committed history.
+              <em>Harry Potter</em> is built to read a company&apos;s
+              strategic position from its committed history &mdash; the
+              narrative case is demonstrated; the strategic case is the
+              working hypothesis, and the historical rehearsal (a real
+              decision with known ground truth, replayed under the original
+              fog) is where it gets tested first.
             </P>
             <P>
               <B>Every organisation already has a narrative</B> &mdash;
@@ -1649,9 +1876,14 @@ export default function PaperPage() {
           {/* ── The Wedge ─────────────────────────────────────────────── */}
           <Section id="wedge" label="The Game Master">
             <P>
-              <B>The unit is the Game Master.</B> The value is human{" "}
+              <B>The unit is the Game Master &mdash; but the Game Master is
+              nothing without the table.</B> The two are co-equal and not
+              symmetric: the <em>team</em> is where the judgement lives, the{" "}
+              <em>Game Master</em> is how it flows. Everything runs{" "}
+              <em>through</em> the Game Master; nothing happens without the
+              team. The value is human{" "}
               <em>judgement</em>: the read each person carries on what
-              matters. A Game Master gathers a room&apos;s priors, calls,
+              matters. The Game Master gathers a room&apos;s priors, calls,
               and disagreements, every member represented, and the engine
               aggregates them into one living read of how the organisation
               decides. Divergence preserved, never averaged. The
@@ -1659,7 +1891,13 @@ export default function PaperPage() {
               <em>store what your team wrote down</em>; Meridians{" "}
               <em>runs what your team believes</em>. So we don&apos;t sell
               a tool to a company. <B>We find Game Masters and arm
-              them.</B> What we deliver isn&apos;t software. It is{" "}
+              them.</B> And until that pipeline exists at volume, we{" "}
+              <em>are</em> the Game Masters: the founders facilitate the
+              first rooms directly, certify the first internal GMs out of
+              those rooms, and treat every facilitated engagement as GM
+              recruitment as much as revenue. The GM network is a
+              distribution thesis to be proven, not a channel we already
+              have. What we deliver isn&apos;t software. It is{" "}
               <B>models of reality with real social fabric</B>, and a Game
               Master keeps two things: the model, and the people who keep
               it true.
@@ -1721,16 +1959,20 @@ export default function PaperPage() {
               players and proof, not a cut of recruits. We hold that line.
             </P>
             <P>
-              <B>Two hard problems, named.</B> Embedded Game Masters
+              <B>Three hard problems, named.</B> Embedded Game Masters
               don&apos;t list like a marketplace, so there is a{" "}
               <em>sourcing gap</em> between a grassroots player with the
               gift and the believer inside a target account. The forge
-              closes part of it; a deliberate motion closes the rest. And
+              closes part of it; a deliberate motion closes the rest.
+              Sharper still: the motion routes through individuals who must
+              hold GM craft, organisational credibility, and the stamina to
+              champion a weekly ritual &mdash; all at once. That
+              intersection is rare, and until we have produced ten of them
+              we assume the founders are the channel. And
               a lone Game Master is a dependency: if they leave, the
               engagement can go with them. The fix doubles as expansion:
               grow a <em>second</em> Game Master in the account early.
-              Land via the forge; expand into the room. <em>Earn the
-              morning the surprise lands.</em>
+              Land via the forge; expand into the room.
             </P>
           </Section>
 
@@ -2520,6 +2762,29 @@ export default function PaperPage() {
                 map rhythm, not merit.
               </P>
             </div>
+
+            <div className="mt-12">
+              <h3 className="text-[15px] font-semibold text-white/80 mb-2">
+                Influence over time
+              </h3>
+              <P>
+                The activity curve sums the forces into one line. To see{" "}
+                <em>which</em> threads, entities, or rules are doing the pulling,
+                the room reads the <B>Influence</B> alluvial. Pick a source
+                (Fate, World, System, or Streams) and each band is one container
+                &mdash; a question, an entity, a rule &mdash; its width at every
+                scene-bucket equal to the attention it drew. Bands enter, swell,
+                hand influence to one another, and resolve. <B>Type</B> mode
+                re-groups the same flow by log kind instead of container.
+              </P>
+              <InfluenceAlluvialDiagram />
+              <P>
+                The literal picture of how things influence one another over a
+                run &mdash; and the substrate for the second reading: whether the
+                room has <em>been here before</em>{" "}
+                (<a href="#embeddings" className="underline decoration-white/30 underline-offset-2 hover:decoration-white/60">Prior Knowledge &amp; Foresight</a>).
+              </P>
+            </div>
           </Section>
 
           {/* ── Fate Engine ─────────────────────────────────────────── */}
@@ -3015,7 +3280,13 @@ export default function PaperPage() {
               projecting an open, adversarial reality forward. Whether
               the same math produces legible readings of a market regime
               or a competitor&apos;s next move is the next thing to
-              prove, not something we claim today.
+              prove, not something we claim today &mdash; and the proving
+              ground is chosen: historical rehearsals, where a real
+              decision with known ground truth is replayed under the
+              original fog by teams who don&apos;t know us. Five
+              non-founder cohorts, scored against what actually happened,
+              results published either way. That is the bridge from the
+              novel to the boardroom, and engine work queues behind it.
             </P>
           </Section>
 
@@ -3064,17 +3335,19 @@ export default function PaperPage() {
               average swing magnitude.
             </P>
             <P>
-              Calibration feedback &mdash; how a committed stance fared
-              as reality resolved &mdash; is a separate ledger from
-              narrative grading. Where a stance is scored against the
-              record at all, the discipline stays a strictly proper
-              scoring rule
-              <Cite id="brier1950" label="Brier 1950" />
-              <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />
-              {" "}&mdash; but this is feedback that sharpens the room,
-              not a forecast product. (A per-decision causal audit of
-              what a sealed choice <em>caused</em> is a later, optional
-              layer, not the driver.)
+              Two anchors keep the scoring honest against reality, not
+              against itself. <B>Recall</B> is checked when a consequential
+              event actually lands &mdash; the room either had a fresh,
+              played branch for it or it did not. And as
+              threads resolve observably, their <B>confirmed</B> outcomes
+              &mdash; walled in software from what the room merely believed
+              &mdash; are scored by a strictly proper rule
+              <Cite id="brier1950" label="Brier 1950" />. Full calibration
+              infrastructure is deliberately a <em>later</em> layer (it is
+              the hardest part to operationalise honestly); recognition
+              against landed events is what ships first. What the practice
+              never does is grade itself &mdash; both anchors consult the
+              record, not the simulation.
             </P>
           </Section>
 
@@ -3139,10 +3412,69 @@ export default function PaperPage() {
               works). The backward/forward binary produces four structural
               categories — <B>Anchor</B>, <B>Seed</B>, <B>Close</B>,{" "}
               <B>Texture</B> — detailed in the{" "}
-              <a href="#classification" className="text-accent hover:underline">
+              <a href="#classification" className="underline decoration-white/30 underline-offset-2 hover:decoration-white/60">
                 Classification
               </a>{" "}
               section.
+            </P>
+
+            <h3 className="text-[15px] font-semibold text-white/80 mt-10 mb-3">
+              Prior Knowledge &amp; Foresight
+            </h3>
+            <P>
+              The two north stars are this same backward/forward reading, lifted
+              from propositions to whole scenes. Every scene&apos;s{" "}
+              <B>summary</B> is embedded and pooled across <em>all branches</em>
+              {" "}&mdash; every future the room has played, not just the active
+              one. The cosine matrix{" "}
+              <Tex>{String.raw`\mathbf{S} = \hat{E}\hat{E}^{\top}`}</Tex> gives
+              each scene <Tex>{"i"}</Tex> its resemblance to every other; split by
+              play order, earlier scenes feed <B>Prior Knowledge</B> (backward,
+              recognition), later scenes feed <B>Foresight</B> (forward,
+              anticipation).
+            </P>
+            <P>
+              Cosine alone is too forgiving &mdash; a wall of 0.7 look-alikes
+              reads as recognition when it is really déjà vu. So each similarity
+              passes through a steep <B>logistic</B> centred on the match
+              boundary <Tex>{String.raw`s_0`}</Tex>, and the strength is the{" "}
+              <em>mean of the top&nbsp;K</em>: five strong matches sway far more
+              than one lone hit, and mediocrity collapses toward zero.
+            </P>
+            <Eq
+              label="Match ramp + recall strength"
+              tex={String.raw`r(s) = \frac{1}{1 + e^{-\kappa\,(s - s_0)}}, \quad s_0 = 0.80,\ \kappa = 22 \qquad\qquad \rho(\mathcal{M}) = \frac{1}{K}\!\!\sum_{s\,\in\,\mathrm{top}_K(\mathcal{M})}\!\! r(s), \quad K = 5`}
+            />
+            <P>
+              At <Tex>{String.raw`\kappa = 22`}</Tex> a 0.90 match counts roughly
+              nine times a 0.70 one; anything below ~0.70 contributes almost
+              nothing. Prior Knowledge and Foresight are that strength, read in
+              each direction:
+            </P>
+            <Eq
+              label="Prior knowledge (backward) · Foresight (forward)"
+              tex={String.raw`\mathrm{Prior}_i = 100\,\rho\!\big(\{\,S_{ij} : j \prec i\,\}\big) \qquad\qquad \mathrm{Foresight}_i = 100\,\rho\!\big(\{\,S_{ij} : j \succ i\,\}\big)`}
+            />
+            <P>
+              The decisive twist is <em>where</em> the backward match lives. A
+              prior scene on <em>another</em> branch is a future the room
+              actually played &mdash; a <B>rehearsal</B> of this moment &mdash;
+              so it outweighs an in-branch echo. That rehearsal value accrues
+              additively into <B>Experience</B>: deeper, more widely played
+              branches level up &mdash; preparedness earned by play.
+            </P>
+            <Eq
+              label="Cross-branch rehearsal → Experience"
+              tex={String.raw`\mathrm{rehearsal}_i = \rho\!\Big(\big\{\,\min(1,\ \beta_{ij}\,S_{ij}) : j \prec i\,\big\}\Big), \quad \beta_{ij} = \begin{cases} 1.4 & j \text{ off-branch} \\ 1 & j \text{ same branch} \end{cases} \qquad \mathrm{XP} = \!\!\sum_{i\,\in\,\text{branch}}\!\! \mathrm{rehearsal}_i \;\to\; \mathrm{Level}`}
+            />
+            <P>
+              <B>Prior Knowledge and Foresight are the north stars</B> &mdash;
+              not a prediction the engine stakes, but a measure of{" "}
+              <em>readiness</em>, and the room raises them the only honest way:
+              by playing more futures. Their reality-anchored proof is{" "}
+              <a href="#loop" className="underline decoration-white/30 underline-offset-2 hover:decoration-white/60">Recall Share</a>
+              , the same instinct counted against events reality delivered. The
+              geometry advises; reality scores.
             </P>
           </Section>
 
@@ -3161,7 +3493,7 @@ export default function PaperPage() {
             </h3>
             <P>
               Each proposition is classified along three axes: backward{" "}
-              <a href="#embeddings" className="text-accent hover:underline">
+              <a href="#embeddings" className="underline decoration-white/30 underline-offset-2 hover:decoration-white/60">
                 activation
               </a>{" "}
               (does it resolve prior content?), forward activation (does it
@@ -3232,11 +3564,9 @@ export default function PaperPage() {
                   key={name}
                   className="px-3 py-3 rounded-lg border border-white/6 bg-white/2"
                 >
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span
-                      className="text-[12px] font-semibold"
-                      style={{ color }}
-                    >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-[12px] font-semibold text-white/70">
                       {name}
                     </span>
                     <span className="text-[9px] font-mono text-white/25">
@@ -3294,7 +3624,7 @@ export default function PaperPage() {
                 >
                   <ArchetypeIcon archetypeKey={key} size={16} color={color} />
                   <div>
-                    <span className="font-medium" style={{ color }}>
+                    <span className="font-medium text-white/70">
                       {name}
                     </span>
                     <p className="text-white/35 mt-0.5">{desc}</p>
@@ -3362,7 +3692,7 @@ export default function PaperPage() {
                     ))}
                   </svg>
                   <div>
-                    <span className="font-medium" style={{ color }}>
+                    <span className="font-medium text-white/70">
                       {name}
                     </span>
                     <p className="text-white/35 mt-0.5">{desc}</p>
@@ -3406,7 +3736,7 @@ export default function PaperPage() {
                     ))}
                   </svg>
                   <div>
-                    <span className="font-medium" style={{ color }}>
+                    <span className="font-medium text-white/70">
                       {name}
                     </span>
                     <p className="text-white/35 mt-0.5">{desc}</p>
@@ -3420,7 +3750,7 @@ export default function PaperPage() {
             </h3>
             <P>
               The{" "}
-              <a href="#planning" className="text-accent hover:underline">
+              <a href="#planning" className="underline decoration-white/30 underline-offset-2 hover:decoration-white/60">
                 causal reasoning graph
               </a>{" "}
               classifies every node into eight typed roles across three
@@ -3444,10 +3774,8 @@ export default function PaperPage() {
                   key={name}
                   className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2"
                 >
-                  <span
-                    className="uppercase tracking-wider font-mono text-[10px] mr-2"
-                    style={{ color }}
-                  >
+                  <span className="inline-block w-2 h-2 rounded-sm mr-2 align-middle" style={{ backgroundColor: color }} />
+                  <span className="uppercase tracking-wider font-mono text-[10px] mr-2 text-white/70">
                     {name}
                   </span>
                   <span className="text-white/55">{body}</span>
@@ -3507,7 +3835,8 @@ export default function PaperPage() {
               ].map(({ name, caption, body, color }) => (
                 <div key={name} className="rounded-lg bg-white/[0.03] border border-white/6 px-3 py-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="uppercase tracking-wider font-mono text-[10px]" style={{ color }}>{name}</span>
+                    <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                    <span className="uppercase tracking-wider font-mono text-[10px] text-white/70">{name}</span>
                     <span className="text-white/30 text-[10px]">{caption}</span>
                   </div>
                   <span className="text-white/55">{body}</span>
@@ -3583,7 +3912,7 @@ export default function PaperPage() {
               The node and edge taxonomy &mdash; eight node types across
               pressure, substrate, and bridge tiers, plus eight edge
               types &mdash; is enumerated in the{" "}
-              <a href="#classification" className="text-accent hover:underline">
+              <a href="#classification" className="underline decoration-white/30 underline-offset-2 hover:decoration-white/60">
                 Classification
               </a>{" "}
               section.
@@ -3691,10 +4020,7 @@ export default function PaperPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span
-                        className="font-semibold text-[13px]"
-                        style={{ color }}
-                      >
+                      <span className="font-semibold text-[13px] text-white/70">
                         {name}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-wider text-white/35">
@@ -3838,7 +4164,12 @@ export default function PaperPage() {
           {/* ── Prose Profiles ────────────────────────────────────────── */}
           <Section id="voice" label="Voice">
             <P>
-              The room ends each session with a record &mdash; negotiated
+              A scope note first: this layer is research infrastructure
+              inherited from the narrative origin &mdash; it powers
+              authoring and the forge, and none of it ships in the war-room
+              wedge. It is documented because the same vocabulary (beats,
+              scenes, transitions) underpins how sessions are recorded. The
+              room ends each session with a record &mdash; negotiated
               agreements, commitments, reveals, the narration the substrate
               writes up &mdash; and that record is prose that deserves the
               same craft as any authored work. Generation separates{" "}
@@ -4103,21 +4434,13 @@ export default function PaperPage() {
               The <strong>10 beat functions</strong> describe what each section
               of prose does:{" "}
               <span className="text-white/60">
-                <span style={{ color: "#6b7280" }}>breathe</span> (atmosphere,
-                grounding), <span style={{ color: "#3b82f6" }}>inform</span>{" "}
-                (knowledge delivery),{" "}
-                <span style={{ color: "#22c55e" }}>advance</span> (forward
-                momentum), <span style={{ color: "#ec4899" }}>bond</span>{" "}
-                (relationship shifts),{" "}
-                <span style={{ color: "#f59e0b" }}>turn</span> (pivots and
-                reversals), <span style={{ color: "#a855f7" }}>reveal</span>{" "}
-                (character nature exposed),{" "}
-                <span style={{ color: "#ef4444" }}>shift</span> (power dynamics
-                invert), <span style={{ color: "#06b6d4" }}>expand</span>{" "}
-                (world-building),{" "}
-                <span style={{ color: "#84cc16" }}>foreshadow</span> (plants for
-                later fate), <span style={{ color: "#14b8a6" }}>resolve</span>{" "}
-                (tension releases).
+                <B>breathe</B> (atmosphere, grounding), <B>inform</B>{" "}
+                (knowledge delivery), <B>advance</B> (forward momentum),{" "}
+                <B>bond</B> (relationship shifts), <B>turn</B> (pivots and
+                reversals), <B>reveal</B> (character nature exposed),{" "}
+                <B>shift</B> (power dynamics invert), <B>expand</B>{" "}
+                (world-building), <B>foreshadow</B> (plants for later fate),{" "}
+                <B>resolve</B> (tension releases).
               </span>
             </P>
 
@@ -4433,7 +4756,7 @@ export default function PaperPage() {
 
             <div className="mt-4 space-y-1.5 text-[12px]">
               <div className="flex gap-2 px-3 py-2 rounded-lg border border-white/6 bg-white/2">
-                <span className="text-emerald-400 font-mono w-14 shrink-0">
+                <span className="text-white/70 font-mono w-14 shrink-0">
                   ok
                 </span>
                 <span className="text-white/50">
@@ -4441,7 +4764,7 @@ export default function PaperPage() {
                 </span>
               </div>
               <div className="flex gap-2 px-3 py-2 rounded-lg border border-white/6 bg-white/2">
-                <span className="text-amber-400 font-mono w-14 shrink-0">
+                <span className="text-white/70 font-mono w-14 shrink-0">
                   edit
                 </span>
                 <span className="text-white/50">
@@ -4450,7 +4773,7 @@ export default function PaperPage() {
                 </span>
               </div>
               <div className="flex gap-2 px-3 py-2 rounded-lg border border-white/6 bg-white/2">
-                <span className="text-blue-400 font-mono w-14 shrink-0">
+                <span className="text-white/70 font-mono w-14 shrink-0">
                   merge
                 </span>
                 <span className="text-white/50">
@@ -4459,7 +4782,7 @@ export default function PaperPage() {
                 </span>
               </div>
               <div className="flex gap-2 px-3 py-2 rounded-lg border border-white/6 bg-white/2">
-                <span className="text-cyan-400 font-mono w-14 shrink-0">
+                <span className="text-white/70 font-mono w-14 shrink-0">
                   insert
                 </span>
                 <span className="text-white/50">
@@ -4476,13 +4799,13 @@ export default function PaperPage() {
                 </span>
               </div>
               <div className="flex gap-2 px-3 py-2 rounded-lg border border-white/6 bg-white/2">
-                <span className="text-blue-400 font-mono w-14 shrink-0">
+                <span className="text-white/70 font-mono w-14 shrink-0">
                   move
                 </span>
                 <span className="text-white/50">
                   Content correct but wrong position. Repositioned after a
                   target scene using{" "}
-                  <code className="text-blue-300/70">moveAfter</code>. No LLM
+                  <code className="text-white/60">moveAfter</code>. No LLM
                   call — prose preserved exactly.
                 </span>
               </div>
@@ -4515,6 +4838,14 @@ export default function PaperPage() {
               architecture, the product running today.{" "}
               <Cite id="perla1990" label="Perla 1990" />
               <Cite id="schelling1960" label="Schelling 1960" />
+            </P>
+            <P>
+              The loss it insures against here is the campaign&apos;s:{" "}
+              <em>the opposition move you met cold</em> &mdash; the attack
+              that lands on a Tuesday you never gamed, with no counter
+              rehearsed and the news cycle already moving. The room exists so
+              the other side&apos;s best play is one you have already sat
+              across from, in a session where being wrong cost nothing.
             </P>
             <P>
               <B>The console shows the board; everyone joins the same
@@ -4681,12 +5012,11 @@ export default function PaperPage() {
               not a book&apos;s &mdash; and because the pool pays least on the
               favourite, <em>forcing a long-shot you also backed</em> is the
               sharp play. Stakes scale: <B>fictional</B> (chips, ELO,
-              leaderboards), <B>reality-anchored</B> (calls graded against
-              the record, with prize pools), or <B>real</B> (trades recorded
-              as commitments, only with legal sign-off) &mdash; turning it
-              into <em>skin-in-the-game rehearsal</em> where a dishonest
-              signal costs you. (Grading stays calibration feedback, not a
-              forecasting product.)
+              leaderboards), <B>reality-anchored</B> (stakes pooled on
+              real-world questions, with prize pools), or <B>real</B> (trades
+              recorded as commitments, only with legal sign-off) &mdash; turning
+              it into <em>skin-in-the-game rehearsal</em> where a dishonest
+              signal costs you.
             </P>
             <P>
               <B>Agency, not price.</B> Prediction markets reduce
@@ -4729,11 +5059,17 @@ export default function PaperPage() {
               <em>asynchronous</em> side: between sessions, on each
               member&apos;s own clock, every seat records what it believes
               and how it decides, until the room is a{" "}
-              <em>cognitive operating system</em> that compounds. That is
+              <em>rehearsal engine for the future</em> that compounds. That is
               why a team stays. Both exercise the one bet:{" "}
               <B>human vision is humanity&apos;s edge over AI</B>. Capture
               records the vision, Conviction runs it. The loop below is how
               they feed each other.
+            </P>
+            <P>
+              Capture insures the board&apos;s loss: <em>the key person who
+              walked, taking the model with them</em>. When judgement lives
+              in one head, every departure is an outage. Captured to the
+              substrate, it stays.
             </P>
             <P>
               <B>The loop: Model &rarr; Capture &rarr; Rehearsal.</B>{" "}
@@ -4820,32 +5156,28 @@ export default function PaperPage() {
               fast and clean: markets, live ops, a campaign in flight.
               A career pivot, an M&amp;A bet, a multi-year doctrine
               resolves once, ambiguously, years later &mdash; the
-              partial, deferred outcomes the write-back handles worst.
-              Name the tension plainly: <em>several of the highest-ACV
-              verticals sit where the loop is slowest</em>, and that is
-              exactly where the brand points &mdash; strategic rehearsal,
-              the decisions that justify the price. The contradiction is
-              only apparent, and it dissolves once you are precise about
-              what is sold. We do not sell a <em>prediction</em> of the
-              one-shot outcome &mdash; no honest tool can grade an M&amp;A
-              bet before it resolves, and any that claims to is lying.
-              We sell the <em>calibrated team</em> that walks into it:
-              judgement sharpened on the fast loops nested inside every
-              slow domain (the weekly read, the live file, the deal in
-              flight &mdash; the slow decision is never a single event,
-              it sits atop months of fast ones), and priors compounded
-              between sessions into the artefact the room carries through
-              the door. Calibration is the product; it is proven on the
-              fast end and <em>transferred</em> to the slow one by the
-              same people. So the division of labour holds: play to
-              sharpen the reflexes you use weekly, accumulate to face the
-              few decisions you only get to make once. What stays
-              unproven is narrow and we say so &mdash; not that rehearsal
-              helps the one-shot call (a rehearsed team beating a cold one
-              is the oldest result there is), but that our write-back can
-              <em>score</em> a one-shot call cleanly enough to compound on
-              it. That is the slow, one-shot end still to prove; the value
-              proposition does not wait on it.
+              deferred outcomes the write-back handles worst.
+              The tension is plain: <em>several of the highest-ACV
+              verticals sit where the loop is slowest</em>, exactly
+              where the brand points. It dissolves once you are precise
+              about what is sold. We do not sell a <em>prediction</em> of
+              the one-shot outcome &mdash; no honest tool can grade an
+              M&amp;A bet before it resolves. We sell the{" "}
+              <em>calibrated team</em> that walks into it: judgement
+              sharpened on the fast loops nested inside every slow domain
+              (the slow decision is never a single event &mdash; it sits
+              atop months of fast ones: the weekly read, the live file,
+              the deal in flight), and priors compounded between sessions
+              into the artefact the room carries through the door.
+              Calibration is the product, proven on the fast end and{" "}
+              <em>transferred</em> to the slow one by the same people:
+              play to sharpen the reflexes you use weekly, accumulate to
+              face the decisions you make once. What stays unproven is
+              narrow, and we say so &mdash; not that a rehearsed team
+              beats a cold one (the oldest result there is), but that our
+              write-back can <em>score</em> a one-shot call cleanly enough
+              to compound on it. The value proposition does not wait on
+              it.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
@@ -4860,8 +5192,12 @@ export default function PaperPage() {
               walk the Priors, play the future forward, score the round
               &mdash; that keeps the model honest to a world still moving.{" "}
               <B>Weekly</B> for what moves fast (markets, current ops, a
-              campaign in flight): one to two hours, each operator walking
-              in with the week&apos;s signal. <B>Monthly</B> for what
+              campaign in flight): 60&ndash;90 minutes, riding an existing
+              standing meeting wherever possible &mdash; the ritual must
+              attach to a slot that already survives busy weeks, not compete
+              for a new one. The GM carries the preparation; members walk in
+              with nothing but the week&apos;s signal in their heads.{" "}
+              <B>Monthly</B> for what
               moves slow (doctrine, portfolio, multi-year bets): two to
               four hours, rehearsing strategic <em>shape</em> &mdash; the
               kind of move you&apos;ll reach for under pressure six months
@@ -4929,9 +5265,10 @@ export default function PaperPage() {
                   <B>Historical rehearsal.</B> A team replays a decision whose
                   outcome is already known &mdash; a crisis, a famous deal, a
                   market break &mdash; capturing priors under the original fog,
-                  then scoring them against what happened. Calibration training
-                  with ground truth, and the cleanest way to evaluate a
-                  room&apos;s judgement.
+                  playing the branches forward, then scoring them against what
+                  actually happened. The cleanest day-one demo: calibration with
+                  real ground truth, the fast loop the slow domains never hand
+                  you.
                 </span>
               </li>
             </ul>
@@ -4941,13 +5278,18 @@ export default function PaperPage() {
               not an archive. Curation, not capture. <B>The fiftieth
               session is nothing like the tenth &mdash; and that gap is
               the product</B>: fifty cycles of rehearsal, fifty curated
-              drops, fifty rounds of calibration, and the sharpened
-              substrate that emerges from them. The team that practises
-              earns the morning the surprise lands.
+              drops, and the sharpened substrate that emerges from them.
+              That gap has a number &mdash; <B>Recall Share</B>. Wider
+              play and regular capture are the <em>input</em> (the way
+              training is the input to match performance, never the score
+              itself); the score is settled when events actually land and
+              the room either recalled them or did not, and it erodes as
+              the world moves and priors drift. Sessions exist to replenish
+              it: a team practises to keep its Recall Share high.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
-              Calibration
+              Alignment &amp; diversity
             </h3>
             <P>
               <B>Streams make the qualitative quantitative.</B> A prior is a
@@ -4956,23 +5298,13 @@ export default function PaperPage() {
               The stream scores it into a stance, and a chain of priors becomes a
               tracked belief: a distribution that moves over time. That one move
               makes everything else measurable. Each stream is an <B>idea under
-              test</B> &mdash; you see which hold, which decay, which get
-              overturned, and (against the reality write-back) which were
-              calibrated. And since every seat keeps its own stream, the distance
+              test</B> &mdash; you see which hold, which decay, and which get
+              overturned. And since every seat keeps its own stream, the distance
               between them is a number: read one way it is <B>alignment</B> (the
               room actually converged, not deferred to the senior voice), the
               other it is <B>diversity</B> (real disagreement, kept rather than
               averaged). The same number lets you trust convergence when it is
               earned and protect dissent when consensus is collapsing too soon.
-            </P>
-            <P>
-              <B>History is the calibration gym.</B> You cannot grade a strategic
-              call for years &mdash; unless it already happened. Run Conviction
-              on a past crisis: each seat captures priors under the original fog,
-              no peeking, then scores against what actually occurred. Clean,
-              immediate feedback on judgement itself, with ground truth &mdash;
-              the fast loop the slow domains never give you, and the cleanest
-              proof of the whole thesis.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
@@ -4991,44 +5323,34 @@ export default function PaperPage() {
               kept score. Capture is that missing ledger.
             </P>
             <P>
-              <B>Freeze the belief now; record what reality did later.</B> At
-              commit, Capture freezes each seat&apos;s probability over a
-              thread&apos;s outcomes &mdash; a paid, timestamped forecast, not a
-              free opinion. Later the game master records what actually happened
-              as a <B>confirmed</B> resolution, walled in software from the{" "}
-              <B>believed</B> merge the room played, so the ledger can&apos;t
-              grade itself. <B>Post-hoc Brier scoring</B>
-              <Cite id="brier1950" label="Brier 1950" />
-              <Cite id="gneiting2007" label="Gneiting &amp; Raftery 2007" />{" "}
-              then scores the gap, per seat, across every resolved thread. Only
-              the outcome is post-hoc &mdash; the belief was sealed beforehand,
-              or the score means nothing. It is not &ldquo;was she
-              right?&rdquo; (lossy and luck-ridden on one call): Brier scores the
-              probability committed <em>up front</em>, rewards calibration over
-              many questions, and can&apos;t be gamed by hedging. Aggregate it
-              and each seat earns a <em>computed</em> believability weight
-              &mdash; the numbered track record Bridgewater never had. The
-              reasoning stays attached, so a bad score is auditable: reopen it
-              and ask what that vantage missed.
+              <B>Recognition now; calibration as threads resolve.</B> Two
+              claims, kept distinct so neither overreaches. <em>Recognition</em>
+              is auditable today: when an event lands, the engine matches it
+              against history by meaning (summary embeddings, recent play
+              weighted), and a fresh match to a branch the room actually played
+              &mdash; reasoning attached &mdash; proves the room had met this
+              before. That is what <B>Recall Share</B> reports, and it is what
+              the team buys. But recognition proves a seat <em>played</em>, not
+              that its judgement was <em>good</em> &mdash; so accuracy is a
+              second, slower layer: each committed stance is frozen before the
+              outcome, the believed/confirmed wall keeps it from grading itself,
+              and as threads resolve observably the confirmed outcomes are scored
+              by a strictly proper rule
+              <Cite id="brier1950" label="Brier 1950" />. Believability earned by
+              calibration is the destination; auditable recognition is what ships
+              first, and it is honest about being the nearer of the two.
             </P>
             <P>
-              <B>This back-testing of belief is the enterprise sell &mdash;
-              and privacy-first is what lets a serious room say yes.</B> A
-              serious room is not buying a forecast &mdash; it is buying its own
-              audited judgement: weight earned by calibration, not title, and the
-              record client-owned. For the desks and units that hold the most
-              sensitive judgement, <B>data-privacy-first by construction</B>
+              <B>This preparedness is the enterprise sell &mdash; and
+              privacy-first is what lets a serious room say yes.</B> A serious
+              room is not buying a forecast &mdash; it is buying its own
+              <B> Recall Share</B>: recognition it owns, earned by play not
+              title, and the record client-owned. For the desks and units that hold the
+              most sensitive judgement, <B>data-privacy-first by construction</B>
               {" "}(local, client-owned, end-to-end-encrypted capture) is not a
               feature behind the product &mdash; it is the precondition for
               buying it at all, and the line that separates us from any rival
-              that parks the same judgement on its own cloud. The limit, stated
-              plainly: it bites only where
-              threads resolve observably (a market move, a filing, a
-              regulator&apos;s call), the signal is in the corpus not the single
-              event, and it leans on the GM writing reality back. The slow
-              one-shot calls still resolve late and murky &mdash; but the fast
-              loops inside them compound a real record, and that record is what a
-              table of senior people has never been able to put between them.
+              that parks the same judgement on its own cloud.
             </P>
           </Section>
 
@@ -5207,31 +5529,27 @@ export default function PaperPage() {
             </P>
             <P>
               <B>Privacy-first is the posture &mdash; and the
-              differentiator.</B> Meridians is built data-privacy-first, and
-              for the buyers that matter most &mdash; desks, funds, units,
-              policy cells &mdash; that is a reason to buy, not a caveat to
-              manage. The substrate is <B>local-first and client-owned</B>:
-              one encrypted <code className="text-white/70">.meridian</code>
-              {" "}on the operator&apos;s machine, no per-user database on
-              our side. Capture rides <B>Signal, end-to-end encrypted</B>, so
-              prior content &mdash; the judgement that is the moat &mdash;
-              never crosses a third party in the clear. Live access is a{" "}
+              differentiator.</B> For the buyers that matter most &mdash;
+              desks, funds, units, policy cells &mdash; data-privacy-first is
+              a reason to buy, not a caveat to manage. The substrate is{" "}
+              <B>local-first and client-owned</B> (one encrypted{" "}
+              <code className="text-white/70">.meridian</code>, no per-user
+              database on our side); capture rides{" "}
+              <B>end-to-end-encrypted Signal</B>; live access is a{" "}
               <B>Cloudflare quick tunnel gated by application-layer auth</B>
-              {" "}(two-stage token-QR + PIN, session-scoped, killed on
-              close), so a leaked URL meets a locked door and the exposure
-              window is the session, not forever; fully-private tables run{" "}
-              <B>LAN-only</B>. Privacy-first also means saying where it still
-              leaks: a Cloudflare quick tunnel terminates TLS at
-              Cloudflare&apos;s edge (it sees live board / chat traffic at the
-              proxy &mdash; not the priors corpus, app-auth-gated, no central
-              store), and the deeper one, the <B>inference path</B> &mdash;
-              the substrate leaves through the LLM gateway, so where the
-              provider itself is the objection, only local inference clears
-              it, and we don&apos;t ship that yet. Net: the encrypted path is
-              the default, and <em>&ldquo;your judgement never leaves your
-              control&rdquo;</em> is a claim we can stand behind for the
-              principal who signs for themselves &mdash; with the enterprise
-              tier (BYOC, below) making it stricter and audit-verifiable, not
+              {" "}(token-QR + PIN, session-scoped, killed on close), so a
+              leaked URL meets a locked door &mdash; and fully-private tables
+              run <B>LAN-only</B>. Privacy-first also means saying where it
+              still leaks: the tunnel terminates TLS at Cloudflare&apos;s edge
+              (it sees live board / chat traffic at the proxy &mdash; not the
+              priors corpus, app-auth-gated, no central store), and deeper, the{" "}
+              <B>inference path</B> &mdash; the substrate leaves through the
+              LLM gateway, so where the provider itself is the objection, only
+              local inference clears it, and we don&apos;t ship that yet. Net:
+              the encrypted path is the default, and <em>&ldquo;your judgement
+              never leaves your control&rdquo;</em> is a claim we can stand
+              behind for the principal who signs for themselves &mdash; with
+              the enterprise tier (BYOC, below) making it audit-verifiable, not
               weaker. Exactly the line a competitor built on someone
               else&apos;s cloud cannot match.
             </P>
@@ -5289,7 +5607,7 @@ export default function PaperPage() {
               <B>The moat is client-owned compounding judgement no vendor
               can ship cold.</B> A team running weekly War Rooms
               accumulates a working model of its own position &mdash;
-              priors, calibrated reads, graded calls, the decisions and
+              priors, calibrated reads, the rehearsed branches and
               threads it has played out &mdash; living in the
               substrate&apos;s history, on the client&apos;s machine,
               authored by the people inside the problem. No foundation
@@ -5297,6 +5615,11 @@ export default function PaperPage() {
               can&apos;t rebuild it for another client. Everything else
               &mdash; engine, prompts, math, even the facilitation
               playbook &mdash; commoditises eventually. This doesn&apos;t.
+              The headline client metric is its <B>Recall Share</B>
+              &mdash; of the consequential events that land on the desk,
+              the share the room had already rehearsed (a real,
+              checkable number, not a self-report); weekly sessions exist
+              to replenish it as the world&apos;s movement erodes it.
             </P>
             <P>
               <B>The honest shape: a boutique strategy practice that may
@@ -5318,10 +5641,17 @@ export default function PaperPage() {
               graduation as the thing to prove, not assume.
             </P>
             <P>
-              <B>Two surfaces, sequenced.</B> Private rooms ship
-              first &mdash; closed tables on the local data model,
-              the surface we have conviction in and revenue
-              against. Public rooms aren&apos;t a separate product: a host
+              <B>Two surfaces, sequenced &mdash; and a knife taken to the
+              rest.</B> Private rooms ship first &mdash; closed tables on
+              the local data model, the surface we have conviction in and
+              revenue against. The wedge ships four things: Capture,
+              Conviction, the two seeing surfaces, and the Compass.
+              Everything else in this document &mdash; voice profiles, beat
+              chains, reconstruction, the betting layer, public rooms
+              &mdash; is deferred until the wedge has a retention curve. The
+              engine&apos;s breadth is an asset only if it doesn&apos;t
+              delay the one experiment that matters. Public rooms
+              aren&apos;t a separate product: a host
               opens a session to outsiders with a <B>guest pass</B>{" "}
               (seat-scoped, private substrate never exposed), and the
               vault&apos;s public storage distributes worlds &mdash; so the
@@ -5492,11 +5822,15 @@ export default function PaperPage() {
               the novelty window for operators who aren&apos;t us.{" "}
               <em>One demonstrably better call from an accumulated
               substrate</em> &mdash; a real decision, on a real
-              client&apos;s priors, scored against what reality
-              returned, that no foundation-model chat could produce
-              from cold. Until both exist, the strongest part of the
+              client&apos;s priors, that no foundation-model chat could
+              produce from cold. Until both exist, the strongest part of the
               pitch is theoretical; once they exist, the moat
-              narrative is concrete. The arguments (moat, cost stack,
+              narrative is concrete. So the operating commitment: no new
+              engine capability ships until five non-founder
+              historical-rehearsal cohorts have run and a week-12 retention
+              curve exists, whatever it shows. The engine is already
+              over-built relative to the evidence; the constraint now is
+              proof, not capability. The arguments (moat, cost stack,
               wedge) are pushed as hard as they go; the evidence-gated
               parts (margin past facilitation, the graduation, the GM as a
               scaling unit, the{" "}
@@ -5517,9 +5851,17 @@ export default function PaperPage() {
               asset sits on one device, bus factor of one; encrypted
               backups and the optional online drive help, but the
               default puts data safety on the operator.{" "}
-              <em>Adoption friction</em> &mdash; weekly rituals
-              are hard to sustain; week-4 / 8 / 12 retention is
-              the leading indicator.{" "}
+              <em>Adoption friction</em> &mdash; the existential one,
+              not one of eight. The entire moat is conditional on the
+              ritual surviving: a substrate only compounds if the room
+              keeps meeting, so if retention dies at week six there is no
+              moat, only a pleasant workshop. Week-4 / 8 / 12 retention on
+              non-founder rooms is the number the company lives or dies on,
+              and the product is designed against the gym-membership failure
+              mode: the GM owns all preparation (members walk in cold),
+              sessions cap at 90 minutes, and the cadence attaches to a
+              calendar slot that already exists rather than competing for a
+              new one.{" "}
               <em>Service margin disguised as software margin</em>
               {" "}&mdash; facilitation, customer success, and CAC
               keep loaded margin in the 35&ndash;60% band while the
@@ -5550,9 +5892,13 @@ export default function PaperPage() {
               client-owned compounding judgement no vendor can
               ship from cold. The larger round implies the public
               layer lands, which is the bet that doesn&apos;t need
-              to be made yet. We are happy to take either, and we
-              would rather under-promise the public layer than
-              over-promise it.
+              to be made yet. We are raising on the base case alone: a
+              services-led practice with a credible path to software margin,
+              public layer priced at zero. If the boutique case doesn&apos;t
+              excite a fund, the right answer is a smaller round or
+              revenue-funded growth &mdash; not a bigger story. The public
+              layer is upside we will earn the right to pitch with evidence,
+              not adjectives.
             </P>
           </Section>
 
@@ -5598,6 +5944,28 @@ export default function PaperPage() {
               selling and what we have conviction in. Public is
               what private credibility earns the right to
               attempt.
+            </P>
+            <P>
+              That last line has a measurable referent now: <B>Recall
+              Share</B>. Keep it high and a consequential event arrives as
+              something the room recognises &mdash; it has met this before
+              and knows the move. But step back from the metric to the thing
+              it counts.
+            </P>
+            <P>
+              <B>Most institutions keep no record of what they believed
+              before reality answered.</B> They remember outcomes and forget
+              the model that produced them. The senior voice carries not
+              because it was right more often &mdash; no one kept score
+              &mdash; but because no one can check. Every serious discipline
+              eventually built a ledger: <B>accounting</B> for money,{" "}
+              <B>version control</B> for code, the <B>lab notebook</B> for
+              science. Judgement &mdash; the most expensive thing an
+              organisation runs on &mdash; has never had one. Meridians is
+              that missing ledger: the record of what a room believed, when,
+              and how reality landed on it. It is the older, larger claim
+              under the rehearsal engine, and the one that outlasts the
+              slogan.
             </P>
             <P>
               <B>Convene the room. Practise the future. Earn the
@@ -5653,6 +6021,19 @@ export default function PaperPage() {
                 ]}
               />
               <Ref
+                id="klein1998"
+                authors="Klein, G. A."
+                year="1998"
+                title="Sources of Power: How People Make Decisions (recognition-primed decision model)"
+                venue="MIT Press"
+                links={[
+                  {
+                    label: "MIT Press",
+                    href: "https://mitpress.mit.edu/9780262534291/sources-of-power/",
+                  },
+                ]}
+              />
+              <Ref
                 id="dalio2017"
                 authors="Dalio, R."
                 year="2017"
@@ -5662,6 +6043,19 @@ export default function PaperPage() {
                   {
                     label: "Publisher",
                     href: "https://www.simonandschuster.com/books/Principles/Ray-Dalio/9781501124020",
+                  },
+                ]}
+              />
+              <Ref
+                id="brier1950"
+                authors="Brier, G. W."
+                year="1950"
+                title="Verification of forecasts expressed in terms of probability"
+                venue="Monthly Weather Review, 78(1), 1–3"
+                links={[
+                  {
+                    label: "DOI",
+                    href: "https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2",
                   },
                 ]}
               />
@@ -5773,40 +6167,6 @@ export default function PaperPage() {
                   {
                     label: "PDF",
                     href: "https://gwern.net/doc/statistics/decision/1997-strathern.pdf",
-                  },
-                ]}
-              />
-              <Ref
-                id="brier1950"
-                authors="Brier, G. W."
-                year="1950"
-                title="Verification of forecasts expressed in terms of probability"
-                venue="Monthly Weather Review, 78(1), 1–3"
-                links={[
-                  {
-                    label: "DOI",
-                    href: "https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2",
-                  },
-                  {
-                    label: "AMS",
-                    href: "https://journals.ametsoc.org/view/journals/mwre/78/1/1520-0493_1950_078_0001_vofeit_2_0_co_2.xml",
-                  },
-                ]}
-              />
-              <Ref
-                id="gneiting2007"
-                authors="Gneiting, T., & Raftery, A. E."
-                year="2007"
-                title="Strictly proper scoring rules, prediction, and estimation"
-                venue="Journal of the American Statistical Association, 102(477), 359–378"
-                links={[
-                  {
-                    label: "DOI",
-                    href: "https://doi.org/10.1198/016214506000001437",
-                  },
-                  {
-                    label: "PDF",
-                    href: "https://sites.stat.washington.edu/raftery/Research/PDF/Gneiting2007jasa.pdf",
                   },
                 ]}
               />

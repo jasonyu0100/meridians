@@ -913,6 +913,7 @@ export type Action =
         plan?: BeatPlan;
         beatProseMap?: BeatProseMap;
         proseScore?: ProseScore;
+        experienceReport?: Scene["experienceReport"];
       };
       versionType?: "generate" | "rewrite" | "edit";
       sourcePlanVersion?: string;

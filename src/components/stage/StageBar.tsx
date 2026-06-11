@@ -352,6 +352,7 @@ function resolveCanvasMode(graphViewMode: GraphViewMode): CanvasMode {
   if (graphViewMode === 'mode') return 'mode';
   if (graphViewMode === 'curriculum' || graphViewMode === 'curriculum-list') return 'curriculum';
   if (graphViewMode === 'board') return 'board';
+  if (graphViewMode === 'experience') return 'experience';
   return 'graph';
 }
 
@@ -400,14 +401,14 @@ export function StageBar() {
   // views / the board; the sub-tab toggle in the topbar flips between them.
   const inSignalsMode =
     graphViewMode === 'vision' || graphViewMode === 'streams' ||
-    graphViewMode === 'merges' || canvasMode === 'board';
-  const lastSignalsSubModeRef = useRef<'vision' | 'streams' | 'merges' | 'board'>('streams');
+    graphViewMode === 'merges' || graphViewMode === 'experience' || canvasMode === 'board';
+  const lastSignalsSubModeRef = useRef<'vision' | 'streams' | 'merges' | 'board' | 'experience'>('streams');
   useEffect(() => {
     if (
       graphViewMode === 'vision' || graphViewMode === 'streams' ||
-      graphViewMode === 'merges' || canvasMode === 'board'
+      graphViewMode === 'merges' || graphViewMode === 'experience' || canvasMode === 'board'
     ) {
-      lastSignalsSubModeRef.current = canvasMode === 'board' ? 'board' : graphViewMode as 'vision' | 'streams' | 'merges';
+      lastSignalsSubModeRef.current = canvasMode === 'board' ? 'board' : graphViewMode as 'vision' | 'streams' | 'merges' | 'experience';
     }
   }, [graphViewMode, canvasMode]);
 
@@ -1333,6 +1334,7 @@ export function StageBar() {
               { mode: 'streams' as const, label: 'Streams' },
               { mode: 'merges' as const, label: 'History' },
               { mode: 'board' as const, label: 'Board' },
+              { mode: 'experience' as const, label: 'Experience' },
               { mode: 'vision' as const, label: 'Entry' },
             ].map(({ mode, label }, idx) => {
               const isActive = graphViewMode === mode;

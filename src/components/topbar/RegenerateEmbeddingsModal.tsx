@@ -46,10 +46,14 @@ function CoverageBar({ value }: { value: number }) {
 
 export function RegenerateEmbeddingsModal({ onClose }: Props) {
   const { dispatch } = useStore();
-  const { isEmbedding, progress, error, computeStats, generateEmbeddings } = useBulkEmbed();
+  const { isEmbedding, progress, error, computeStats, generateEmbeddings, clearEmbeddings } = useBulkEmbed();
   const [activeMode, setActiveMode] = useState<EmbedMode | 'all' | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  // Scope: the active branch's timeline, or every scene across all branches
+  // (narrative-wide — needed so Experience scoring covers other branches).
+  const [allBranches, setAllBranches] = useState(true);
 
-  const stats = computeStats();
+  const stats = computeStats(allBranches);
 
   const goTo = (mode: 'plan' | 'learning') => {
     dispatch({ type: 'SET_GRAPH_VIEW_MODE', mode });
@@ -58,7 +62,7 @@ export function RegenerateEmbeddingsModal({ onClose }: Props) {
 
   const runEmbed = async (modes: EmbedMode[], tag: EmbedMode | 'all') => {
     setActiveMode(tag);
-    await generateEmbeddings(modes);
+    await generateEmbeddings(modes, allBranches);
     setActiveMode(null);
   };
 
@@ -129,6 +133,31 @@ export function RegenerateEmbeddingsModal({ onClose }: Props) {
           question bank. Each pool needs its content generated first, then embedded. Regenerate here after
           imports, manual edits, or failed generation.
         </p>
+
+        {/* Scope toggle — branch vs narrative-wide (all branches) */}
+        <div className="flex items-center justify-between rounded-lg border border-white/8 px-3 py-2">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium text-text-secondary">Scope</span>
+            <span className="text-[9px] text-text-dim/60">
+              {allBranches ? 'Every scene across all branches' : 'Active branch timeline only'}
+            </span>
+          </div>
+          <div className="flex items-center rounded-md overflow-hidden border border-white/10">
+            <button
+              onClick={() => setAllBranches(false)}
+              className={`px-2 py-1 text-[10px] font-medium transition-colors ${!allBranches ? 'bg-white/10 text-text-primary' : 'text-text-dim/60 hover:text-text-secondary'}`}
+            >
+              This branch
+            </button>
+            <div className="w-px h-4 bg-white/10" />
+            <button
+              onClick={() => setAllBranches(true)}
+              className={`px-2 py-1 text-[10px] font-medium transition-colors ${allBranches ? 'bg-white/10 text-text-primary' : 'text-text-dim/60 hover:text-text-secondary'}`}
+            >
+              All branches
+            </button>
+          </div>
+        </div>
 
         {/* Per-pool coverage rows */}
         <div className="space-y-2.5">
@@ -232,17 +261,37 @@ export function RegenerateEmbeddingsModal({ onClose }: Props) {
           >
             {isEmbedding ? 'Generating…' : 'Close'}
           </button>
-          <button
-            onClick={() => runEmbed(missingModes(stats), 'all')}
-            disabled={isEmbedding || totalMissing === 0}
-            className="px-4 py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isEmbedding && activeMode === 'all'
-              ? 'Generating…'
-              : totalMissing > 0
-                ? `Embed all missing (${totalMissing})`
-                : 'All embedded'}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Clear all embeddings (scene-level: summary / prose / plan centroid),
+                two-step confirm. Honours the branch / all-branches scope. */}
+            <button
+              onClick={async () => {
+                if (!confirmClear) { setConfirmClear(true); return; }
+                setConfirmClear(false);
+                await clearEmbeddings(allBranches);
+              }}
+              onMouseLeave={() => setConfirmClear(false)}
+              disabled={isEmbedding}
+              className={`px-3 py-2 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                confirmClear
+                  ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                  : 'bg-white/5 text-text-dim hover:bg-white/10 hover:text-text-secondary'
+              }`}
+            >
+              {confirmClear ? `Confirm clear${allBranches ? ' (all branches)' : ''}` : 'Clear all'}
+            </button>
+            <button
+              onClick={() => runEmbed(missingModes(stats), 'all')}
+              disabled={isEmbedding || totalMissing === 0}
+              className="px-4 py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isEmbedding && activeMode === 'all'
+                ? 'Generating…'
+                : totalMissing > 0
+                  ? `Embed all missing (${totalMissing})`
+                  : 'All embedded'}
+            </button>
+          </div>
         </div>
       </ModalFooter>
     </Modal>

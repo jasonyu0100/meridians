@@ -1,11 +1,13 @@
 'use client';
 // FormulaModal — KaTeX-rendered reference of the Fate/World/System force formulas and reference means.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { FORCE_REFERENCE_MEANS } from '@/lib/forces/narrative-utils';
+import { useStore } from '@/lib/state/store';
+import { computeExperienceReport, auditExperienceAvailability, type ExperienceReport } from '@/lib/analysis/experience';
 
 type Props = { onClose: () => void };
 
@@ -35,8 +37,103 @@ function S({ title, analogy, children }: { title: string; analogy: string; child
   );
 }
 
-const tabs = ['Forces', 'Dynamics', 'Scoring'] as const;
+const tabs = ['Forces', 'Dynamics', 'Scoring', 'Experience'] as const;
 type Tab = typeof tabs[number];
+
+function expColor(v: number): string {
+  if (v >= 70) return '#34d399';
+  if (v >= 50) return '#a3e635';
+  if (v >= 30) return '#fbbf24';
+  return '#f87171';
+}
+
+/** Experience scoring — the alternative to narrative/forces scoring. Computes
+ *  the active branch's Prior / Posterior / Connectivity live (per arc + overall)
+ *  from scene summary embeddings. */
+function ExperienceTab() {
+  const { state } = useStore();
+  const narrative = state.activeNarrative;
+  const keys = state.resolvedEntryKeys;
+  const [report, setReport] = useState<ExperienceReport | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const audit = useMemo(
+    () => (narrative ? auditExperienceAvailability(narrative) : { totalScenes: 0, scenesWithEmbedding: 0 }),
+    [narrative, keys],
+  );
+  const runnable = audit.scenesWithEmbedding >= 2;
+  const key = `${narrative?.id ?? ''}:${audit.scenesWithEmbedding}:${keys.length}`;
+
+  useEffect(() => {
+    if (!narrative || !runnable) { setReport(null); return; }
+    let cancelled = false;
+    setLoading(true);
+    computeExperienceReport(narrative, keys)
+      .then((r) => { if (!cancelled) setReport(r); })
+      .catch(() => { if (!cancelled) setReport(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  return (
+    <div className="space-y-5">
+      <p className="text-[10px] text-text-dim">
+        <B>Experience scoring</B> is the alternative to forces scoring — it asks not how hard the world view is working, but how each scene relates to the branch&apos;s played history, by meaning. One cosine matrix over scene <B>summary embeddings</B> yields three raw 0–100 readings per scene, aggregated per arc and overall:
+      </p>
+      <S title="Prior" analogy="Backward — have we been here before?">
+        <p className="text-[10px] text-text-dim">Similarity to EARLIER scenes. High = the room recognises this from prior play.</p>
+      </S>
+      <S title="Posterior" analogy="Forward — do we foresee what's coming?">
+        <p className="text-[10px] text-text-dim">Similarity to LATER scenes. High = the leadup anticipates what lands.</p>
+      </S>
+      <S title="Connectivity" analogy="Omnidirectional — how central is the scene?">
+        <p className="text-[10px] text-text-dim">Total match mass across the whole history — the scene&apos;s importance / connectedness.</p>
+      </S>
+
+      <div className="border-t border-border/40 pt-3">
+        <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">
+          Active branch {loading ? '· computing…' : report ? `· ${report.scoredScenes} scored` : ''}
+        </div>
+        {!runnable ? (
+          <p className="text-[10px] text-text-dim/60">{audit.scenesWithEmbedding} / {audit.totalScenes} scenes embedded — generate embeddings to score.</p>
+        ) : report ? (
+          <>
+            <div className="flex gap-2 mb-3">
+              {[
+                { label: 'Prior knowledge', v: report.branchPrior },
+                { label: 'Foresight', v: report.branchPosterior },
+              ].map(({ label, v }) => (
+                <div key={label} className="flex-1 rounded bg-white/5 border border-white/8 px-2 py-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[10px] text-text-dim">{label}</span>
+                    <span className="font-mono text-sm font-bold" style={{ color: expColor(v) }}>{v}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {report.perArc.size > 0 && (
+              <div className="space-y-1">
+                {[...report.perArc.values()].map((a) => {
+                  const arcName = a.arcId === '—' ? 'Unassigned' : (narrative?.arcs[a.arcId]?.name ?? a.arcId);
+                  return (
+                    <div key={a.arcId} className="flex items-center gap-2 text-[10px] tabular-nums">
+                      <span className="w-36 shrink-0 truncate text-text-secondary">{arcName}</span>
+                      <span className="w-12 text-right" style={{ color: expColor(a.prior) }}>{a.prior}</span>
+                      <span className="w-12 text-right" style={{ color: expColor(a.posterior) }}>{a.posterior}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-[10px] text-text-dim/60">No active narrative.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ForcesTab() {
   return (
@@ -168,6 +265,7 @@ export function FormulaModal({ onClose }: Props) {
         {tab === 'Forces' && <ForcesTab />}
         {tab === 'Dynamics' && <DynamicsTab />}
         {tab === 'Scoring' && <ScoringTab />}
+        {tab === 'Experience' && <ExperienceTab />}
       </ModalBody>
     </Modal>
   );

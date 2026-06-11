@@ -345,7 +345,7 @@ export default function HomePage() {
 
           <p className="animate-fade-up-delay-2 text-[15px] mt-6 max-w-md text-center leading-relaxed">
             <span className="text-white/80 font-medium">
-              A cognitive operating system for teams.
+              A rehearsal engine for teams.
             </span>
             <br />
             <span className="text-white/55">

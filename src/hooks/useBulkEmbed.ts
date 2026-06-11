@@ -10,7 +10,8 @@
 
 import { useState, useCallback } from 'react';
 import { useStore } from '@/lib/state/store';
-import { generateEmbeddingsBatch, embedPropositions, computeCentroid, resolveEmbedding } from '@/lib/search/embeddings';
+import { generateEmbeddingsBatch, embedPropositions, computeCentroid, resolveEmbedding, resolveEmbeddingsBatch } from '@/lib/search/embeddings';
+import { clearExperienceCache } from '@/lib/analysis/experience';
 import { assetManager } from '@/lib/storage/asset-manager';
 import { logInfo, logError } from '@/lib/core/system-logger';
 
@@ -46,9 +47,11 @@ export function useBulkEmbed() {
   /**
    * Compute embedding coverage stats for current narrative
    */
-  const computeStats = useCallback((): EmbedStats | null => {
+  const computeStats = useCallback((allBranches = false): EmbedStats | null => {
     const narrative = state.activeNarrative;
-    const resolvedKeys = state.resolvedEntryKeys;
+    // Narrative-wide (all branches) uses the global scene dict; otherwise the
+    // active branch's resolved timeline.
+    const resolvedKeys = allBranches ? Object.keys(narrative?.scenes ?? {}) : state.resolvedEntryKeys;
     if (!narrative || !resolvedKeys) return null;
 
     const stats: EmbedStats = {
@@ -100,9 +103,11 @@ export function useBulkEmbed() {
   /**
    * Generate embeddings for selected modes
    */
-  const generateEmbeddings = useCallback(async (modes: EmbedMode[]) => {
+  const generateEmbeddings = useCallback(async (modes: EmbedMode[], allBranches = false) => {
     const narrative = state.activeNarrative;
-    const resolvedKeys = state.resolvedEntryKeys;
+    // Narrative-wide regen covers scenes on every branch (the global scene
+    // dict); branch-scoped covers the active branch's resolved timeline.
+    const resolvedKeys = allBranches ? Object.keys(narrative?.scenes ?? {}) : state.resolvedEntryKeys;
     if (!narrative || !resolvedKeys) {
       setError('No active narrative');
       return;
@@ -124,6 +129,7 @@ export function useBulkEmbed() {
         }
       }
 
+      clearExperienceCache(narrative.id); // recompute experience against fresh vectors
       logInfo('Completed bulk embedding', {
         source: 'embedding',
         operation: 'bulk-embed-complete',
@@ -144,15 +150,61 @@ export function useBulkEmbed() {
   }, [state.activeNarrative, state.resolvedEntryKeys]);
 
   /**
+   * Clear scene-level embedding refs (summary / prose / plan centroid) so they
+   * can be regenerated cleanly. Narrative-wide (all branches) or active branch.
+   */
+  const clearEmbeddings = useCallback(async (allBranches = false) => {
+    const narrative = state.activeNarrative;
+    if (!narrative) { setError('No active narrative'); return; }
+    const keys = allBranches ? Object.keys(narrative.scenes) : state.resolvedEntryKeys;
+    setIsEmbedding(true);
+    setError(null);
+    try {
+      const seen = new Set<string>();
+      let cleared = 0;
+      for (const key of keys) {
+        const scene = narrative.scenes[key];
+        if (!scene || seen.has(scene.id)) continue;
+        seen.add(scene.id);
+        const updates: { summaryEmbedding?: undefined; proseEmbedding?: undefined; planEmbeddingCentroid?: undefined } = {};
+        if (scene.summaryEmbedding) updates.summaryEmbedding = undefined;
+        if (scene.proseEmbedding) updates.proseEmbedding = undefined;
+        if (scene.planEmbeddingCentroid) updates.planEmbeddingCentroid = undefined;
+        if (Object.keys(updates).length > 0) {
+          dispatch({ type: 'REVISE_SCENE', sceneId: scene.id, updates });
+          cleared++;
+        }
+      }
+      clearExperienceCache(narrative.id);
+      logInfo('Cleared embeddings', {
+        source: 'embedding',
+        operation: 'clear-embeddings',
+        details: { narrativeId: narrative.id, cleared, allBranches },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsEmbedding(false);
+      setProgress(null);
+    }
+  }, [state.activeNarrative, state.resolvedEntryKeys, dispatch]);
+
+  /**
    * Embed scene summaries
    */
   const embedSummaries = async (narrativeId: string, resolvedKeys: string[]) => {
     const narrative = state.activeNarrative;
     if (!narrative) return;
 
-    const scenesToEmbed = resolvedKeys
+    // Target scenes with NO summary embedding ref — and scenes whose ref is
+    // present but DANGLING (vector not in this store, e.g. after an export that
+    // dropped it or a seed that ships refs without vectors). Dangling refs would
+    // otherwise be silently skipped, leaving the scene unembedded forever.
+    const candidates = resolvedKeys
       .map(key => narrative.scenes[key])
-      .filter(scene => scene && !scene.summaryEmbedding);
+      .filter((scene): scene is NonNullable<typeof scene> => !!scene);
+    const resolvedRefs = await resolveEmbeddingsBatch(candidates.map(s => s.summaryEmbedding));
+    const scenesToEmbed = candidates.filter((s, i) => !s.summaryEmbedding || !resolvedRefs.has(i));
 
     if (scenesToEmbed.length === 0) return;
 
@@ -378,5 +430,6 @@ export function useBulkEmbed() {
     error,
     computeStats,
     generateEmbeddings,
+    clearEmbeddings,
   };
 }

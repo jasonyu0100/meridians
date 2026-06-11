@@ -80,7 +80,7 @@ The engine is the spine; the LLM is one tool the engine drives.
 
 Everything above ships today. This section is the forward bet — some in build, some design-stage, some may not pan out.
 
-Meridians is a **cognitive operating system for teams**: it *runs* a team's judgement (not its files), *holds the state* the meeting would lose, and *compounds* (the moat). Most tools store what your team wrote down; Meridians runs what your team believes. Category: **gaming + education + strategy**. The product surface is the **War Room** — a role-played, information-asymmetric game on the substrate where a team sits around one board (a graph, or a board with nested maps), holds private logs, signals via cards, and rehearses the future on a cadence. It's two things at once:
+Meridians is a **rehearsal engine for the future**: it lets a team operate in complex decision-making environments with the advantage of practice and foresight — it *runs* a team's judgement (not its files), *holds the state* the meeting would lose, and *compounds* (the moat). A team knows it's prepared when its canonical models of reality carry high **Prior** scores — the present keeps landing on ground it has already walked. Most tools store what your team wrote down; Meridians runs what your team believes. Category: **gaming + education + strategy**. The product surface is the **War Room** — a role-played, information-asymmetric game on the substrate where a team sits around one board (a graph, or a board with nested maps), holds private logs, signals via cards, and rehearses the future on a cadence. It's two things at once:
 
 - a **role-play simulator** for rehearsing the future;
 - a **strategy table** for deciding on it.
@@ -97,7 +97,7 @@ Meridians is a **cognitive operating system for teams**: it *runs* a team's judg
 
 - **Public rooms** — not a separate build; *built on the vault*. A host opens a session via **guest pass** (time-limited, revocable, board/graph only, private substrate never exposed); the vault's public storage distributes worlds so players pull **fresh copies constantly**. Grows from private rooms opening a door (no cold-start, no new infra), free to play, monetised by pro analytics, ELO history, and opt-in jurisdiction-gated betting. At scale **private and public are self-reinforcing**, GMs curating both. Framing: *fantasy sports applied to strategic worlds*.
 
-**Stakes** attach to plays optionally — fictional (ELO, leaderboards), reality-anchored (forecasts graded against the record), or real (trades recorded as commitments, only with legal sign-off). **Betting** is off by default, consent-gated, offered only in fast-feedback rooms, and fully separable — a surface over stance pricing that never touches the Capture loop or substrate.
+**Stakes** attach to plays optionally — fictional (ELO, leaderboards), reality-anchored (stakes pooled on real-world questions), or real (trades recorded as commitments, only with legal sign-off). **Betting** is off by default, consent-gated, offered only in fast-feedback rooms, and fully separable — a surface over stance pricing that never touches the Capture loop or substrate.
 
 **Speculative upside** (aspirational, not a forecast): public narrative stages audiences tune into; multi-season games with persistent stakes and player "careers"; bull-case year-3 ARR of $10–20M if the public layer catches. The base case (~$3.5M ARR) is venture-defensible without any of it.
 

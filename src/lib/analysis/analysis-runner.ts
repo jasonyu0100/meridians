@@ -395,41 +395,49 @@ class AnalysisRunner {
         logWarning('Proposition embedding failed (non-fatal)', embErr, { source: 'analysis', operation: 'plan-embed' });
       }
 
-      // Generate summary + prose embeddings
-      this.emitStream(job.id, 'Embedding summaries + prose...');
-      try {
-        const { generateEmbeddingsBatch } = await import('@/lib/search/embeddings');
-        const { assetManager } = await import('@/lib/storage/asset-manager');
-        const allScenes = results.filter((r): r is AnalysisChunkResult => !!r).flatMap(r => r.scenes);
-
-        const summaries = allScenes.map(s => s.summary);
-        if (summaries.length > 0) {
-          this.emitStream(job.id, `Embedding ${summaries.length} summaries...`);
-          const embs = await generateEmbeddingsBatch(summaries, job.id);
-          for (let i = 0; i < allScenes.length; i++) {
-            (allScenes[i] as any).summaryEmbedding = await assetManager.storeEmbedding(embs[i], 'text-embedding-3-small');
-          }
-          this.emitStream(job.id, `[OK] ${summaries.length} summaries embedded`);
-        }
-
-        const withProse = allScenes.filter(s => s.prose);
-        if (withProse.length > 0) {
-          this.emitStream(job.id, `Embedding ${withProse.length} prose segments...`);
-          const proseEmbs = await generateEmbeddingsBatch(withProse.map(s => s.prose!), job.id);
-          for (let i = 0; i < withProse.length; i++) {
-            (withProse[i] as any).proseEmbedding = await assetManager.storeEmbedding(proseEmbs[i], 'text-embedding-3-small');
-          }
-          this.emitStream(job.id, `[OK] ${withProse.length} prose segments embedded`);
-        }
-      } catch (embErr) {
-        logWarning('Summary/prose embedding failed (non-fatal)', embErr, { source: 'analysis', operation: 'summary-embed' });
-      }
-
-      this.emitStream(job.id, `[OK] Plans + embeddings done`);
+      this.emitStream(job.id, `[OK] Plans + propositions embedded`);
       d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { results: [...results] } });
     }
 
     if (entry.cancelled) { d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { status: 'paused', results: [...results] } }); return; }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Summary + prose embeddings — ALWAYS, independent of plan extraction.
+    // Summaries always exist and power semantic search + Recall/Experience
+    // scoring; prose embeds when present. Proposition embedding above needs
+    // plans, but these do not — so they run whether or not plan extraction was
+    // requested. Idempotent: only scenes still missing a ref are embedded, so
+    // this is safe on resume and when Phase 2 was skipped.
+    // ═════════════════════════════════════════════════════════════════════════
+    this.emitStream(job.id, 'Embedding summaries + prose...');
+    try {
+      const { generateEmbeddingsBatch } = await import('@/lib/search/embeddings');
+      const { assetManager } = await import('@/lib/storage/asset-manager');
+      const allScenes = results.filter((r): r is AnalysisChunkResult => !!r).flatMap(r => r.scenes);
+
+      const needSummary = allScenes.filter(s => s.summary && !(s as any).summaryEmbedding);
+      if (needSummary.length > 0) {
+        this.emitStream(job.id, `Embedding ${needSummary.length} summaries...`);
+        const embs = await generateEmbeddingsBatch(needSummary.map(s => s.summary), job.id);
+        for (let i = 0; i < needSummary.length; i++) {
+          (needSummary[i] as any).summaryEmbedding = await assetManager.storeEmbedding(embs[i], 'text-embedding-3-small');
+        }
+        this.emitStream(job.id, `[OK] ${needSummary.length} summaries embedded`);
+      }
+
+      const needProse = allScenes.filter(s => s.prose && !(s as any).proseEmbedding);
+      if (needProse.length > 0) {
+        this.emitStream(job.id, `Embedding ${needProse.length} prose segments...`);
+        const proseEmbs = await generateEmbeddingsBatch(needProse.map(s => s.prose!), job.id);
+        for (let i = 0; i < needProse.length; i++) {
+          (needProse[i] as any).proseEmbedding = await assetManager.storeEmbedding(proseEmbs[i], 'text-embedding-3-small');
+        }
+        this.emitStream(job.id, `[OK] ${needProse.length} prose segments embedded`);
+      }
+      d({ type: 'UPDATE_ANALYSIS_JOB', id: job.id, updates: { results: [...results] } });
+    } catch (embErr) {
+      logWarning('Summary/prose embedding failed (non-fatal)', embErr, { source: 'analysis', operation: 'summary-embed' });
+    }
 
     // ═════════════════════════════════════════════════════════════════════════
     // Phase 3: ARCS — group every 4 scenes, name each arc.

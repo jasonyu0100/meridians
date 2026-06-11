@@ -7,6 +7,8 @@ import { useImageUrl } from '@/hooks/useAssetUrl';
 import { ArchetypeIcon } from '@/components/ArchetypeIcon';
 import { scoreColor, timeAgo } from '@/lib/utils/ui-utils';
 import { useStore, narrativeToEntry } from '@/lib/state/store';
+import { computeCanonExperience } from '@/lib/analysis/experience';
+import { smoothPath } from '@/components/shared/ExperienceSparkline';
 import type { NarrativeEntry } from '@/types/narrative';
 
 export interface StoryCardProps {
@@ -54,6 +56,21 @@ export function StoryCard({
     if (hydrated?.id === rawEntry.id) return narrativeToEntry(hydrated);
     return rawEntry;
   }, [rawEntry, state.activeNarrative]);
+
+  // Canon-branch recall (Prior) badge — computed from scene summary embeddings
+  // when this card's narrative is the hydrated one (full branch/scene data on
+  // hand); cached per id so it persists across the session.
+  const [canonRecall, setCanonRecall] = useState<number | null>(null);
+  useEffect(() => {
+    const full = state.activeNarrative;
+    if (!full || full.id !== rawEntry.id) return;
+    let cancelled = false;
+    // Shares the cached matrix in computeExperienceReport (single source).
+    computeCanonExperience(full)
+      .then((r) => { if (!cancelled) setCanonRecall(r ? r.prior : null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [state.activeNarrative, rawEntry.id]);
 
   const coverUrl = useImageUrl(entry.coverImageUrl);
   const isLg = size === 'lg';
@@ -113,10 +130,13 @@ export function StoryCard({
                     viewBox={`0 0 ${svgSize} ${svgHeight}`}
                     className="opacity-70"
                   >
-                    <polyline
-                      points={entry.shapeCurve
-                        .map(([x, y]) => `${x * svgSize},${svgHeight - y * svgHeight}`)
-                        .join(' ')}
+                    <path
+                      d={smoothPath(
+                        entry.shapeCurve.map(([x, y]) => ({
+                          x: x * svgSize,
+                          y: svgHeight - y * svgHeight,
+                        })),
+                      )}
                       fill="none"
                       stroke="#fb923c"
                       strokeWidth="1.2"
@@ -183,6 +203,17 @@ export function StoryCard({
                   style={{ color: scoreColor(entry.overallScore) }}
                 >
                   {entry.overallScore}
+                </span>
+              )}
+
+              {/* Canon-branch recall (Prior) */}
+              {canonRecall !== null && (
+                <span
+                  className="text-[10px] font-mono font-semibold"
+                  style={{ color: scoreColor(canonRecall) }}
+                  title="Canon-branch recall — how much of the branch the room has seen before (Prior)"
+                >
+                  ⟲{canonRecall}
                 </span>
               )}
             </div>

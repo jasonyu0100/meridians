@@ -20,6 +20,7 @@ import SystemGraphView, { FullscreenButton } from './SystemGraphView';
 import WorldGraphView from './WorldGraphView';
 import ThreadGraphView from './ThreadGraphView';
 import SankeyView from './SankeyView';
+import ExperienceView from './ExperienceView';
 import ThreadLogGraphView from './ThreadLogGraphView';
 import { ScenePlanView } from './ScenePlanView';
 import { SceneProseView } from './SceneProseView';
@@ -1698,6 +1699,8 @@ export default function Stage() {
         <CaptureView />
       ) : graphViewMode === 'streams' ? (
         <StreamsView />
+      ) : graphViewMode === 'experience' ? (
+        <ExperienceView />
       ) : graphViewMode === 'merges' ? (
         <MergesView />
       ) : graphViewMode === 'network-scene' || graphViewMode === 'network-arc' || graphViewMode === 'network-full' ? (

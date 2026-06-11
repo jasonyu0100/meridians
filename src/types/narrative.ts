@@ -1004,6 +1004,23 @@ export type Scene = {
    *  emitted by the LLM itself. Optional for backward compatibility with
    *  scenes generated before this field existed. */
   createdAt?: string;
+  /** Cached AI rehearsal/experience report for this scene — a RAG over the top
+   *  prior-knowledge matches (their summaries) judged against this scene's
+   *  summary. Opt-in, additive, persisted so it survives reloads + branch
+   *  switches; regenerating replaces it. Surfaced in the Experience view. */
+  experienceReport?: ExperienceSceneReport;
+};
+
+/** Persisted AI rehearsal report for one scene (Experience view). */
+export type ExperienceSceneReport = {
+  /** The report prose. */
+  text: string;
+  /** The model's reasoning trace, if any (shown collapsed). */
+  reasoning?: string;
+  /** Scene ids of the prior-knowledge matches the report was grounded on. */
+  matchIds: string[];
+  /** ISO timestamp when generated. */
+  generatedAt: string;
 };
 
 export type WorldBuild = {
@@ -3359,7 +3376,8 @@ export type GraphViewMode =
   | "mode"
   | "curriculum"
   | "curriculum-list"
-  | "board";
+  | "board"
+  | "experience";
 
 // ── Chat Threads ──────────────────────────────────────────────────────────────
 export type ChatMessage = {

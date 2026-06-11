@@ -8,6 +8,8 @@ import { computeForceSnapshots, computeWindowedForces, computeRawForceTotals, co
 import ForceLineChart, { type ChartStyle } from './ForceLineChart';
 import ActivityLineChart from './ActivityLineChart';
 import { FORCE_TIMELINE_WINDOW_DEFAULT } from '@/lib/constants';
+import { computeExperienceReport, experienceLevel } from '@/lib/analysis/experience';
+import { IconActivity, IconSignals } from '@/components/icons';
 
 const FORCE_CONFIG = [
   { key: 'fate' as const, label: 'Fate', color: 'var(--color-fate)' },
@@ -35,6 +37,11 @@ export default function ForceTimeline() {
     curve: 'smooth',
   });
   const popRef = useRef<HTMLDivElement>(null);
+
+  // Scoring mode for the left score-card readout: Narrative (Local/Cube) vs
+  // Experience (Prior score + level). Experience-forward by default.
+  const [scoringMode, setScoringMode] = useState<'narrative' | 'experience'>('experience');
+  const [currentPrior, setCurrentPrior] = useState<number | null>(null);
 
   // Close popover on outside click
   useEffect(() => {
@@ -239,6 +246,23 @@ export default function ForceTimeline() {
     });
   }, [globalForceData, currentSceneIdx]);
 
+  // Prior (recall) for the current branch — the heavy matrix is cached inside
+  // computeExperienceReport (shared with the scorecard etc.), so this is the
+  // single source of truth and surfaces agree.
+  const activeBranchId = state.viewState.activeBranchId;
+  useEffect(() => {
+    if (!narrative || scoringMode !== 'experience' || allScenes.length < 2) {
+      setCurrentPrior(null);
+      return;
+    }
+    let cancelled = false;
+    computeExperienceReport(narrative, resolvedEntryKeys)
+      .then((r) => { if (!cancelled) setCurrentPrior(r.scoredScenes ? r.experienceXP : 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [narrative?.id, activeBranchId, allScenes.length, scoringMode]);
+
   if (!narrative) {
     return (
       <div className="flex items-center justify-center h-25 shrink-0 glass-panel border-t border-border">
@@ -251,59 +275,82 @@ export default function ForceTimeline() {
 
   return (
     <div className="flex h-25 shrink-0 glass-panel border-t border-border">
-      {/* Left: shape + cube panel */}
-      <div className="flex flex-col justify-center border-r border-border shrink-0 w-36">
-        {/* Position row */}
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/50">
-          {currentPosition && recentSparkline.length > 1 ? (
-            <>
-              <svg width="36" height="18" viewBox="0 0 36 18" className="shrink-0">
-                {(() => {
-                  const n = recentSparkline.length;
-                  const min = Math.min(...recentSparkline);
-                  const max = Math.max(...recentSparkline);
-                  const range = max - min || 1;
-                  const pts = recentSparkline.map((v, i) =>
-                    `${(i / (n - 1)) * 36},${18 - ((v - min) / range) * 18}`
-                  ).join(' ');
-                  return <polyline points={pts} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />;
-                })()}
-              </svg>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[8px] uppercase tracking-widest text-text-dim">Local</span>
-                <span className="text-[11px] font-medium text-text-primary truncate">{currentPosition.name}</span>
-              </div>
-            </>
-          ) : (
-            <span className="text-[9px] text-text-dim">—</span>
-          )}
-        </div>
-        {/* Cube row */}
-        <div className="flex items-center gap-2 px-3 py-1.5">
-          {cubeCorner ? (
-            <>
-              <svg width="36" height="18" viewBox="0 0 36 18" className="shrink-0">
-                {(['P','C','K'] as const).map((label, i) => {
-                  const isHigh = cubeCorner.key[i] === 'H';
-                  const colors = ['#EF4444', '#22C55E', '#3B82F6'];
-                  const barH = isHigh ? 14 : 6;
-                  const x = i * 13;
-                  return (
-                    <g key={label}>
-                      <rect x={x} y={18 - barH} width={10} height={barH} rx={1.5} fill={colors[i]} opacity={0.7} />
-                      <text x={x + 5} y={17} textAnchor="middle" fontSize="4.5" fill="rgba(255,255,255,0.45)" fontFamily="monospace">{label}</text>
-                    </g>
-                  );
-                })}
-              </svg>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[8px] uppercase tracking-widest text-text-dim">Cube</span>
-                <span className="text-[11px] font-medium text-text-primary truncate">{cubeCorner.name}</span>
-              </div>
-            </>
-          ) : (
-            <span className="text-[9px] text-text-dim">—</span>
-          )}
+      {/* Left: score-card panel — content + minimal vertical Narrative/Experience toggle */}
+      <div className="flex border-r border-border shrink-0 w-36">
+        {scoringMode === 'narrative' ? (
+          <div className="flex flex-col justify-center flex-1 min-w-0">
+            {/* Position row */}
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/50">
+              {currentPosition && recentSparkline.length > 1 ? (
+                <>
+                  <svg width="36" height="18" viewBox="0 0 36 18" className="shrink-0">
+                    {(() => {
+                      const n = recentSparkline.length;
+                      const min = Math.min(...recentSparkline);
+                      const max = Math.max(...recentSparkline);
+                      const range = max - min || 1;
+                      const pts = recentSparkline.map((v, i) =>
+                        `${(i / (n - 1)) * 36},${18 - ((v - min) / range) * 18}`
+                      ).join(' ');
+                      return <polyline points={pts} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />;
+                    })()}
+                  </svg>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[8px] uppercase tracking-widest text-text-dim">Local</span>
+                    <span className="text-[11px] font-medium text-text-primary truncate">{currentPosition.name}</span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-[9px] text-text-dim">—</span>
+              )}
+            </div>
+            {/* Cube row */}
+            <div className="flex items-center gap-2 px-3 py-1.5">
+              {cubeCorner ? (
+                <>
+                  <svg width="36" height="18" viewBox="0 0 36 18" className="shrink-0">
+                    {(['P','C','K'] as const).map((label, i) => {
+                      const isHigh = cubeCorner.key[i] === 'H';
+                      const colors = ['#EF4444', '#22C55E', '#3B82F6'];
+                      const barH = isHigh ? 14 : 6;
+                      const x = i * 13;
+                      return (
+                        <g key={label}>
+                          <rect x={x} y={18 - barH} width={10} height={barH} rx={1.5} fill={colors[i]} opacity={0.7} />
+                          <text x={x + 5} y={17} textAnchor="middle" fontSize="4.5" fill="rgba(255,255,255,0.45)" fontFamily="monospace">{label}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[8px] uppercase tracking-widest text-text-dim">Cube</span>
+                    <span className="text-[11px] font-medium text-text-primary truncate">{cubeCorner.name}</span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-[9px] text-text-dim">—</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <ExperienceScoreCard value={currentPrior} />
+        )}
+
+        {/* Vertical minimal toggle (right edge) */}
+        <div className="flex flex-col border-l border-border/50 shrink-0 w-5">
+          {(['experience', 'narrative'] as const).map((m) => {
+            const Icon = m === 'narrative' ? IconActivity : IconSignals;
+            return (
+              <button
+                key={m}
+                onClick={() => setScoringMode(m)}
+                title={m === 'narrative' ? 'Narrative scoring' : 'Experience scoring'}
+                className={`flex-1 flex items-center justify-center transition-colors ${scoringMode === m ? 'text-text-primary' : 'text-text-dim/60 hover:text-text-secondary'}`}
+              >
+                <Icon size={12} />
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -504,6 +551,43 @@ export default function ForceTimeline() {
         )}
       </div>
 
+    </div>
+  );
+}
+
+// ── Experience score-card (Prior + Level) ────────────────────────────────────
+function expColor(v: number): string {
+  if (v >= 90) return '#22c55e'; // strong green
+  if (v >= 80) return '#a3e635'; // light green
+  if (v >= 70) return '#f59e0b'; // orange
+  return '#f87171';              // red
+}
+
+/** Left-panel readout for Experience scoring: the current branch's progression
+ *  Level + level bar, derived from its Prior (recall) score. */
+function ExperienceScoreCard({ value }: { value: number | null }) {
+  if (value == null) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <span className="text-[9px] text-text-dim/60">computing…</span>
+      </div>
+    );
+  }
+  const lvl = experienceLevel(value);
+  const col = expColor(lvl.level * 10); // colour by level (XP is unbounded)
+  return (
+    <div className="flex flex-col justify-center flex-1 min-w-0 gap-1 px-3 py-1.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[8px] uppercase tracking-widest text-text-dim">Experience</span>
+        <span className="text-[8px] font-mono text-text-dim/60">{Math.round(value)} xp</span>
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[15px] font-bold leading-none" style={{ color: col }}>L{lvl.level}</span>
+        <span className="text-[10px] text-text-secondary truncate">{lvl.label}</span>
+      </div>
+      <div className="mt-0.5 h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: col }} />
+      </div>
     </div>
   );
 }

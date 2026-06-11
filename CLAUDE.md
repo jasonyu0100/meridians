@@ -532,7 +532,7 @@ Key tuning values:
 
 ### Category positioning
 
-Meridians is a **cognitive operating system for teams** — it *runs* a team's judgement (not its files), *holds the state* the meeting would lose, and *compounds* (the moat). *Most tools store what your team wrote down; Meridians runs what your team believes.* It sits in the unclaimed segment where *gaming, education, and strategy converge*: an evolving game that codifies reality and turns it into playable worlds — not a strategy tool dressed as a game, not a serious game pretending to be entertainment, not an edtech platform with a strategy layer bolted on. Maintenance is the practice, and the practice is the value.
+Meridians is a **rehearsal engine for the future** — it lets a team operate in complex decision-making environments with the advantage of practice and foresight: it *runs* a team's judgement (not its files), *holds the state* the meeting would lose, and *compounds* (the moat). A team knows it's prepared when its canonical models of reality carry high **Prior** scores — the present keeps landing on ground it has already walked; this human-up (not data-down) read of the future, the present, and the decision between them is the behaviour it sets out to change. *Most tools store what your team wrote down; Meridians runs what your team believes.* It sits in the unclaimed segment where *gaming, education, and strategy converge*: an evolving game that codifies reality and turns it into playable worlds — not a strategy tool dressed as a game, not a serious game pretending to be entertainment, not an edtech platform with a strategy layer bolted on. Maintenance is the practice, and the practice is the value.
 
 ### Two practices, two tempos — Capture (async) & Conviction (live)
 

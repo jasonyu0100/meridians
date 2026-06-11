@@ -15,8 +15,12 @@ import {
   IconPlus,
   IconScorecard,
   IconSparkle,
+  IconSignals,
 } from "@/components/icons";
 import { NarrativeReport } from "@/components/report/NarrativeReport";
+import { ExperienceScorePanel } from "@/components/topbar/ExperienceScorePanel";
+import { smoothPath } from "@/components/shared/ExperienceSparkline";
+import { computeExperienceReport, auditExperienceAvailability, experienceLevel } from "@/lib/analysis/experience";
 import { SlidesPlayer } from "@/components/slides/SlidesPlayer";
 import { SlideRegionsModal } from "@/components/topbar/SlideRegionsModal";
 import { resolveRegionKeys, regionSceneSpan } from "@/lib/slides-data";
@@ -476,6 +480,8 @@ export default function TopBar() {
     return () => window.removeEventListener("open-learn-modal", handleOpenLearn);
   }, []);
   const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [expCardOpen, setExpCardOpen] = useState(false);
+  const [expPrior, setExpPrior] = useState<number | null>(null);
   const [usageOpen, setUsageOpen] = useState(false);
   const [usageHistoryOpen, setUsageHistoryOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -488,6 +494,7 @@ export default function TopBar() {
     "arcs" | "activity"
   >("arcs");
   const scorecardRef = useRef<HTMLDivElement>(null);
+  const expCardRef = useRef<HTMLDivElement>(null);
   const usageRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   const slidesRef = useRef<HTMLDivElement>(null);
@@ -585,6 +592,31 @@ export default function TopBar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [scorecardOpen, usageOpen, exportOpen, slidesMenuOpen, themeMenuOpen, learnMenuOpen]);
+
+  // Experience score card — outside-click close.
+  useEffect(() => {
+    if (!expCardOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (expCardRef.current && !expCardRef.current.contains(e.target as Node)) setExpCardOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [expCardOpen]);
+
+  // Current-branch Prior for the topbar Experience badge. Shares the cached
+  // matrix in computeExperienceReport, so the badge, scorecard and force
+  // timeline all show the same number.
+  useEffect(() => {
+    if (!narrative) { setExpPrior(null); return; }
+    const cov = auditExperienceAvailability(narrative);
+    if (cov.scenesWithEmbedding < 2) { setExpPrior(null); return; }
+    let cancelled = false;
+    computeExperienceReport(narrative, state.resolvedEntryKeys)
+      .then((r) => { if (!cancelled) setExpPrior(r.scoredScenes ? experienceLevel(r.experienceXP).level : 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [narrative?.id, state.viewState.activeBranchId, state.resolvedEntryKeys.length]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -1829,9 +1861,6 @@ export default function TopBar() {
                       {scorecard.shape.name}
                     </span>
                   </div>
-                  <span className="text-[9px] text-text-dim leading-snug">
-                    {scorecard.shape.description}
-                  </span>
                 </div>
                 <div className="px-2 py-2 border border-white/5 rounded flex flex-col gap-1">
                   <span className="text-[9px] uppercase tracking-widest text-text-dim">
@@ -1865,9 +1894,6 @@ export default function TopBar() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[9px] text-text-dim leading-snug">
-                    {scorecard.archetype.description}
-                  </span>
                 </div>
                 <div className="px-2 py-2 border border-white/5 rounded flex flex-col gap-1">
                   <span className="text-[9px] uppercase tracking-widest text-text-dim">
@@ -1910,9 +1936,6 @@ export default function TopBar() {
                       {scorecard.scenes}s / {scorecard.arcs}a
                     </span>
                   </div>
-                  <span className="text-[9px] text-text-dim leading-snug">
-                    {scorecard.scale.description}
-                  </span>
                 </div>
                 <div className="px-2 py-2 border border-white/5 rounded flex flex-col gap-1">
                   <span className="text-[9px] uppercase tracking-widest text-text-dim">
@@ -1956,9 +1979,6 @@ export default function TopBar() {
                       {scorecard.density.density}/scene
                     </span>
                   </div>
-                  <span className="text-[9px] text-text-dim leading-snug">
-                    {scorecard.density.description}
-                  </span>
                 </div>
               </div>
 
@@ -2065,27 +2085,20 @@ export default function TopBar() {
                           className="overflow-visible"
                         >
                           <defs>
-                            {arcPoints.slice(0, -1).map((p, i) => (
-                              <linearGradient
-                                key={i}
-                                id={`sc-seg-${i}`}
-                                x1="0"
-                                y1="0"
-                                x2="1"
-                                y2="0"
-                              >
-                                <stop
-                                  offset="0%"
-                                  stopColor={scoreColor(p.score)}
-                                  stopOpacity="0.3"
-                                />
-                                <stop
-                                  offset="100%"
-                                  stopColor={scoreColor(arcPoints[i + 1].score)}
-                                  stopOpacity="0.3"
-                                />
-                              </linearGradient>
-                            ))}
+                            {/* red→green vertical band under the curve, matching
+                                the Experience scorecard's area fill */}
+                            <linearGradient
+                              id="sc-area-grad"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.28" />
+                              <stop offset="35%" stopColor="#a3e635" stopOpacity="0.18" />
+                              <stop offset="65%" stopColor="#f59e0b" stopOpacity="0.12" />
+                              <stop offset="100%" stopColor="#f87171" stopOpacity="0.08" />
+                            </linearGradient>
                             <linearGradient
                               id="sc-line-grad"
                               x1="0"
@@ -2128,24 +2141,28 @@ export default function TopBar() {
                               </g>
                             );
                           })}
-                          {arcPoints.slice(0, -1).map((p, i) => (
-                            <path
-                              key={i}
-                              d={`M${p.x},${p.y} L${arcPoints[i + 1].x},${arcPoints[i + 1].y} L${arcPoints[i + 1].x},${PAD.top + ch} L${p.x},${PAD.top + ch} Z`}
-                              fill={`url(#sc-seg-${i})`}
-                            />
-                          ))}
-                          <path
-                            d={arcPoints
-                              .map(
-                                (p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`,
-                              )
-                              .join(" ")}
-                            fill="none"
-                            stroke="url(#sc-line-grad)"
-                            strokeWidth="2"
-                            strokeLinejoin="round"
-                          />
+                          {(() => {
+                            const line = smoothPath(arcPoints);
+                            const baseY = PAD.top + ch;
+                            const last = arcPoints[arcPoints.length - 1];
+                            const first = arcPoints[0];
+                            return (
+                              <>
+                                <path
+                                  d={`${line} L${last.x},${baseY} L${first.x},${baseY} Z`}
+                                  fill="url(#sc-area-grad)"
+                                />
+                                <path
+                                  d={line}
+                                  fill="none"
+                                  stroke="url(#sc-line-grad)"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </>
+                            );
+                          })()}
                           {arcPoints.map((p, i) => {
                             const isHovered = hoveredArcIdx === i;
                             return (
@@ -2262,6 +2279,45 @@ export default function TopBar() {
                     </div>
                   );
                 })()}
+            </div>
+          )}
+        </div>
+
+        {/* Experience score card — separate from the narrative scorecard, beside it */}
+        <div className="relative" ref={expCardRef}>
+          <button
+            onClick={() => setExpCardOpen((v) => !v)}
+            className={`px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 text-[12px] border ${
+              expCardOpen
+                ? "text-text-primary bg-white/10 border-white/15"
+                : "text-text-dim hover:text-text-primary hover:bg-white/5 border-white/8"
+            }`}
+            title="Experience scorecard — rehearsal level, prior / posterior / connectivity"
+          >
+            <IconSignals size={14} />
+            <span
+              className={`font-semibold font-mono ${
+                expPrior == null
+                  ? "text-text-dim"
+                  : expPrior >= 8
+                    ? "text-green-400"
+                    : expPrior >= 6
+                      ? "text-lime-400"
+                      : expPrior >= 4
+                        ? "text-yellow-400"
+                        : "text-red-400"
+              }`}
+            >
+              {expPrior == null ? "–" : `L${expPrior}`}
+            </span>
+          </button>
+          {expCardOpen && (
+            <div className="absolute top-full right-0 mt-1 z-50 bg-bg-base border border-white/10 rounded-lg shadow-2xl p-5 w-95">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[13px] font-semibold text-text-primary">Experience</h2>
+                <span className="text-[9px] text-text-dim font-mono uppercase tracking-wider">recall scoring</span>
+              </div>
+              <ExperienceScorePanel />
             </div>
           )}
         </div>
