@@ -424,24 +424,14 @@ export default function InspectorPanel() {
             <ThreadsPanel />
           </div>
         )}
-        {tab === "files" && (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <FilesPanel />
-          </div>
-        )}
         {tab === "knowledge" && (
           <div className="flex-1 min-h-0 flex flex-col">
             <KnowledgePanel />
           </div>
         )}
-        {tab === "surveys" && (
+        {tab === "files" && (
           <div className="flex-1 min-h-0 flex flex-col">
-            <SurveyPanel />
-          </div>
-        )}
-        {tab === "interviews" && (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <InterviewPanel />
+            <FilesPanel />
           </div>
         )}
         {tab === "maps" && (
@@ -457,6 +447,16 @@ export default function InspectorPanel() {
         {tab === "learning" && (
           <div className="flex-1 min-h-0 flex flex-col">
             <LearningPanel />
+          </div>
+        )}
+        {tab === "surveys" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <SurveyPanel />
+          </div>
+        )}
+        {tab === "interviews" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <InterviewPanel />
           </div>
         )}
         {tab === "eval" && (

@@ -8,6 +8,7 @@
 import { useMemo } from 'react';
 import { useStore } from '@/lib/state/store';
 import { IconChevronRight } from '@/components/icons';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { PrMergedIcon } from './RoomUI';
 import { buildMergeConsumerMap, mergeConsumerFor, mergesForBranch, resolutionOutcomes } from '@/lib/merges';
 
@@ -32,7 +33,17 @@ export function MergesView() {
     [n, state.resolvedEntryKeys],
   );
 
-  if (!n) return <div className="p-6 text-[12px] text-text-dim/50">No narrative loaded.</div>;
+  if (!n) return <EmptyState icon={PrMergedIcon} title="No world view loaded." />;
+
+  if (merges.length === 0) {
+    return (
+      <EmptyState
+        icon={PrMergedIcon}
+        title="No merges yet."
+        hint="Commit streams in the Streams tab to fold a merge into continuity."
+      />
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -45,12 +56,7 @@ export function MergesView() {
           <span className="ml-auto text-[10px] text-text-dim/40">commits folded into continuity</span>
         </header>
 
-        {merges.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-white/10 px-4 py-10 text-center text-[12px] text-text-dim/40 italic">
-            No merges yet. Commit streams in the Streams tab to fold a merge into continuity.
-          </div>
-        ) : (
-          <ol className="relative">
+        <ol className="relative">
             {/* Lineage rail — the committed timeline, mirroring the branch tree. */}
             <div className="absolute left-[6px] top-2 bottom-3 w-px bg-white/8" aria-hidden />
             {merges.map((f) => {
@@ -97,7 +103,6 @@ export function MergesView() {
               );
             })}
           </ol>
-        )}
       </div>
     </div>
   );

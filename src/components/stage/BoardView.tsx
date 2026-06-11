@@ -8,6 +8,7 @@ import { computeCumulativePositions } from '@/lib/forces/positions';
 import { GLOBAL_MAP_ROOT, GLOBAL_MAP_TITLE } from '@/lib/graph/location-clusters';
 import type { Character, Board, NarrativeState } from '@/types/narrative';
 import { IconMapPin } from '@/components/icons';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 /** How many avatars a cluster shows before collapsing behind a "+N" toggle. */
 const COLLAPSED_AVATARS = 5;
@@ -300,15 +301,15 @@ export function BoardView() {
   }, [maps, narrative]);
 
   if (!narrative) {
-    return <div className="flex items-center justify-center h-full"><p className="text-text-dim text-sm italic">No world view selected.</p></div>;
+    return <EmptyState icon={IconMapPin} title="No world view selected." />;
   }
   if (Object.keys(maps).length === 0 || !currentMap) {
     return (
-      <div className="flex items-center justify-center h-full px-6">
-        <p className="text-text-dim text-sm italic text-center max-w-sm">
-          No maps yet. Generate territory maps in the Media drive (Maps tab) and place their labels to navigate them here.
-        </p>
-      </div>
+      <EmptyState
+        icon={IconMapPin}
+        title="No maps yet."
+        hint="Generate territory maps in the Media drive (Maps tab) and place their labels to navigate them here."
+      />
     );
   }
 

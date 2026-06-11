@@ -8,7 +8,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { type Stream, type PerspectiveKind, type ImageRef, type NarrativeState, type ProposedMerge } from '@/types/narrative';
-import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconChevronDown, IconPlus, IconSparkle, IconClose } from '@/components/icons';
+import { IconMerge, IconTrash, IconCheck, IconChevronLeft, IconChevronDown, IconPlus, IconSparkle, IconClose, IconSignals } from '@/components/icons';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { Modal, ModalHeader, ModalBody } from '@/components/Modal';
 import { Segmented } from '@/components/ui/Segmented';
 import { InlineText } from '@/components/inspector/InlineEdit';
@@ -107,7 +108,7 @@ export function StreamsView() {
     return set;
   }, [n, state.viewState.activeBranchId]);
 
-  if (!n) return <div className="p-6 text-[12px] text-text-dim/50">No narrative loaded.</div>;
+  if (!n) return <EmptyState icon={IconSignals} title="No world view loaded." />;
 
   const viewing = viewId ? n.streams?.[viewId] ?? null : null;
 
@@ -337,9 +338,11 @@ export function StreamsView() {
         </header>
 
         {streams.length === 0 ? (
-          <div className="rounded-lg border border-white/10 px-4 py-10 text-center text-[12px] text-text-dim/40 italic">
-            No streams yet. Open one against a perspective to start gathering priors.
-          </div>
+          <EmptyState
+            icon={IconSignals}
+            title="No streams yet."
+            hint="Open one against a perspective to start gathering priors."
+          />
         ) : (
           <>
             {/* Actively monitored */}

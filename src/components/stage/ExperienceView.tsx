@@ -102,13 +102,11 @@ export default function ExperienceView() {
   if (!narrative) return null;
   if (!runnable) {
     return (
-      <div className="absolute inset-0 z-20 flex items-center justify-center">
-        <EmptyState
-          icon={IconSignals}
-          title="Experience needs scene embeddings."
-          hint={`${audit.scenesWithEmbedding} of ${audit.totalScenes} scenes embedded. Generate embeddings (TopBar → Regenerate Embeddings) so the room can relate each scene to its played history.`}
-        />
-      </div>
+      <EmptyState
+        icon={IconSignals}
+        title="Experience needs scene embeddings."
+        hint={`${audit.scenesWithEmbedding} of ${audit.totalScenes} scenes embedded. Generate embeddings (TopBar → Regenerate Embeddings) so the room can relate each scene to its played history.`}
+      />
     );
   }
 
@@ -236,17 +234,6 @@ export default function ExperienceView() {
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col">
-      <div className="shrink-0 flex items-center gap-2 px-2 h-7 border-b border-border glass-panel z-30 text-[10px] text-text-dim/70">
-        <IconSignals size={12} />
-        <span className="uppercase tracking-wider">Experience</span>
-        <span className="text-text-dim/40">·</span>
-        <span>prior knowledge · foresight · rehearsal</span>
-        <span className="ml-auto flex items-center gap-1 text-text-dim/50">
-          {loading && <IconRefresh size={11} className="animate-spin" />}
-          {report ? `${report.scoredScenes} scored` : ''}
-        </span>
-      </div>
-
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto flex max-w-3xl flex-col gap-5">
           {error && (
