@@ -1,7 +1,7 @@
 'use client';
 // ReportCard slide — graded force scorecard (Fate/World/System grades against the calibration curve).
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import type { SlidesData } from '@/lib/slides-data';
 

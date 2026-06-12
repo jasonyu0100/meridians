@@ -91,7 +91,7 @@ describe('store reducer', () => {
   describe('REVISE_SCENE with versioning', () => {
     it('should create a new prose version when prose is updated', () => {
       // Simulate REVISE_SCENE action
-      const action = {
+      const _action = {
         type: 'REVISE_SCENE' as const,
         sceneId: 'S-1',
         updates: {
@@ -136,7 +136,7 @@ describe('store reducer', () => {
       expect(updatedScene.proseVersions![0].versionType).toBe('generate');
     });
     it('should create a new plan version when plan is updated', () => {
-      const action = {
+      const _action = {
         type: 'REVISE_SCENE' as const,
         sceneId: 'S-1',
         updates: {
@@ -248,7 +248,7 @@ describe('store reducer', () => {
       expect(updatedScene.proseVersions![2].parentVersion).toBe('1.1');
     });
     it('should update non-versioned fields directly', () => {
-      const action = {
+      const _action = {
         type: 'REVISE_SCENE' as const,
         sceneId: 'S-1',
         updates: {

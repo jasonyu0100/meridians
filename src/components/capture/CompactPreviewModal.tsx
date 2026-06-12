@@ -166,7 +166,7 @@ export function CompactPreviewModal({
   }
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 backdrop-blur-sm p-6">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/75 backdrop-blur-sm p-6">
       <div className="w-full max-w-5xl h-[92vh] flex flex-col rounded-xl border border-white/10 bg-bg-base/95 shadow-2xl overflow-hidden">
         {/* Header */}
         <header className="shrink-0 flex items-center gap-3 px-5 py-3 border-b border-white/8">

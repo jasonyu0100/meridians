@@ -1,7 +1,7 @@
 "use client";
 // BranchScopeControl — picker for the context scope (time horizon) a branch operation sees.
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { BranchScope } from "@/lib/ai/branch-chat";
 import type { ScopeMode, ScopeState } from "@/types/narrative";
 
@@ -262,10 +262,14 @@ function BranchRangeSlider({
   const [localEnd, setLocalEnd] = useState(end);
 
   // Re-sync when external state changes (e.g. mode switch reseeded custom).
-  useEffect(() => {
+  // Adjust during render via a previous-prop snapshot rather than an effect —
+  // this keeps local drag state mirrored to props without a cascading render.
+  const [prevRange, setPrevRange] = useState({ start, end });
+  if (prevRange.start !== start || prevRange.end !== end) {
+    setPrevRange({ start, end });
     setLocalStart(start);
     setLocalEnd(end);
-  }, [start, end]);
+  }
 
   const max = Math.max(1, length);
   const empty = length === 0;

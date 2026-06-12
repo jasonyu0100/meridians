@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * ScenePerspectivesView — Content → Perspectives.
+ * ArcPerspectivesView — Content → Perspectives.
  *
- * Narrative perspectives on a scene, each the canon entry retold through one
- * lens: the **public** narrator, plus each participant. A perspective is a
- * summary (scene-summary register) derived from canon but free to add
- * non-canon, lens-specific detail. Purely additive — reads scene.perspectives,
- * never mutates deltas.
+ * Perspectives on an ARC, each synthesizing the whole arc (all its scenes)
+ * through one lens: the **public** narrator (third person), plus each
+ * participant (first person). A perspective is a skim-read digest derived from
+ * canon but free to add non-canon, lens-specific detail. Purely additive —
+ * reads arc.perspectives, never mutates deltas. An entity absent from every arc
+ * scene gets an offstage "elsewhere" account.
  *
  * Layout is a left column of avatars (map-style grey circles — entity image
  * when available, letter fallback otherwise; a globe for the public lens) that
@@ -19,12 +20,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/state/store";
-import { generateScenePerspective, availablePerspectiveKeys, perspectiveLabel } from "@/lib/ai";
-import { Avatar } from "@/components/stage/RoomUI";
+import { generateArcPerspective, availablePerspectiveKeys, perspectiveLabel } from "@/lib/ai";
+import { Avatar, ScoreRevealBanner } from "@/components/stage/RoomUI";
 import { useImageUrlMap } from "@/hooks/useAssetUrl";
 import { IconRefresh, IconUser, IconGlobe } from "@/components/icons";
 import { EmptyState } from "@/components/shared/EmptyState";
-import type { NarrativeState, Scene } from "@/types/narrative";
+import type { Arc, NarrativeState } from "@/types/narrative";
 
 /** The world entity behind a perspective key (or undefined for the public lens). */
 function keyEntity(narrative: NarrativeState, key: string) {
@@ -46,19 +47,18 @@ function PublicAvatar({ size = 30, selected = false }: { size?: number; selected
   );
 }
 
-export function ScenePerspectivesView({
+export function ArcPerspectivesView({
   narrative,
-  scene,
+  arc,
 }: {
   narrative: NarrativeState;
-  scene: Scene;
+  arc: Arc;
 }) {
   const { state, dispatch } = useStore();
   const resolvedKeys = state.resolvedEntryKeys;
-  const currentIndex = state.viewState.currentSceneIndex;
 
-  const keys = useMemo(() => availablePerspectiveKeys(narrative, scene), [narrative, scene]);
-  const perspectives = scene.perspectives ?? {};
+  const keys = useMemo(() => availablePerspectiveKeys(narrative, arc), [narrative, arc]);
+  const perspectives = arc.perspectives ?? {};
   const [running, setRunning] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string>("public");
@@ -70,14 +70,14 @@ export function ScenePerspectivesView({
   );
   const imageMap = useImageUrlMap(imageRefs);
 
-  // Reset selection + error when the scene changes; prefer the first lens that
+  // Reset selection + error when the arc changes; prefer the first lens that
   // already has a perspective, else the public narrator.
   useEffect(() => {
     setError(null);
-    const firstReady = keys.find((k) => scene.perspectives?.[k]?.text);
+    const firstReady = keys.find((k) => arc.perspectives?.[k]?.text);
     setSelectedKey(firstReady ?? keys[0] ?? "public");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene.id]);
+  }, [arc.id]);
 
   const activeKey = keys.includes(selectedKey) ? selectedKey : keys[0] ?? "public";
 
@@ -86,10 +86,10 @@ export function ScenePerspectivesView({
     async (key: string) => {
       setRunning((s) => new Set(s).add(key));
       try {
-        const text = await generateScenePerspective(narrative, scene, key, resolvedKeys, currentIndex);
+        const text = await generateArcPerspective(narrative, arc, key, resolvedKeys);
         dispatch({
-          type: "SET_SCENE_PERSPECTIVE",
-          sceneId: scene.id,
+          type: "SET_ARC_PERSPECTIVE",
+          arcId: arc.id,
           view: { key, label: perspectiveLabel(narrative, key), text, generatedAt: Date.now() },
         });
       } catch (err) {
@@ -102,23 +102,27 @@ export function ScenePerspectivesView({
         });
       }
     },
-    [narrative, scene, resolvedKeys, currentIndex, dispatch],
+    [narrative, arc, resolvedKeys, dispatch],
   );
 
   // ── Palette events — generate ALL in parallel / clear ──
   useEffect(() => {
     async function handleGenerate() {
       setError(null);
-      window.dispatchEvent(new CustomEvent("bulk:perspectives-start", { detail: { sceneId: scene.id } }));
+      window.dispatchEvent(new CustomEvent("bulk:perspectives-start", { detail: { arcId: arc.id } }));
       try {
-        // Fan out every available lens at once — the headline behaviour.
-        await Promise.all(availablePerspectiveKeys(narrative, scene).map((k) => genOne(k)));
+        // Fan out every available lens at once — but only the ones NOT already
+        // generated. Bulk Generate FILLS GAPS; a full regen is Clear → Generate,
+        // and a single lens has its own regenerate button. (Without this, Generate
+        // needlessly rewrites perspectives that already exist.)
+        const missing = availablePerspectiveKeys(narrative, arc).filter((k) => !arc.perspectives?.[k]?.text);
+        await Promise.all(missing.map((k) => genOne(k)));
       } finally {
-        window.dispatchEvent(new CustomEvent("bulk:perspectives-complete", { detail: { sceneId: scene.id } }));
+        window.dispatchEvent(new CustomEvent("bulk:perspectives-complete", { detail: { arcId: arc.id } }));
       }
     }
     function handleClear() {
-      dispatch({ type: "CLEAR_SCENE_PERSPECTIVES", sceneId: scene.id });
+      dispatch({ type: "CLEAR_ARC_PERSPECTIVES", arcId: arc.id });
       setError(null);
     }
     window.addEventListener("canvas:generate-perspectives", handleGenerate);
@@ -127,7 +131,7 @@ export function ScenePerspectivesView({
       window.removeEventListener("canvas:generate-perspectives", handleGenerate);
       window.removeEventListener("canvas:clear-perspectives", handleClear);
     };
-  }, [narrative, scene, dispatch, genOne]);
+  }, [narrative, arc, dispatch, genOne]);
 
   const activeView = perspectives[activeKey];
   const activeBusy = running.has(activeKey);
@@ -189,7 +193,7 @@ export function ScenePerspectivesView({
           )}
 
           {keys.length === 0 ? (
-            <EmptyState icon={IconUser} title="No lenses available." hint="This scene has no participants to voice." />
+            <EmptyState icon={IconUser} title="No lenses available." hint="This arc has no participants to voice." />
           ) : (
             <>
               <div className="flex items-center justify-between gap-2 border-b border-white/8 pb-2">
@@ -212,6 +216,12 @@ export function ScenePerspectivesView({
                   {activeBusy ? "Writing…" : activeView ? "Regenerate" : "Generate"}
                 </button>
               </div>
+
+              {/* Conviction scoring feedback for this lens, when the arc was
+                  played through a game — the same "score reveal" the game shows. */}
+              {!activeIsPublic && arc.scoreFeedback?.[activeKey] && (
+                <ScoreRevealBanner impact={arc.scoreFeedback[activeKey].impact} reason={arc.scoreFeedback[activeKey].reason} />
+              )}
 
               <div className="text-[13px] leading-relaxed text-text-secondary whitespace-pre-wrap">
                 {activeBusy && !activeView ? (

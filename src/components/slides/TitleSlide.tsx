@@ -89,11 +89,6 @@ export function TitleSlide({ data, scopeLabel }: { data: SlidesData; scopeLabel?
     }
   }, [data]);
 
-  const forces = ['fate', 'world', 'system'] as const;
-  const colors: Record<string, string> = { fate: '#EF4444', world: '#22C55E', system: '#3B82F6' };
-  const names: Record<string, string> = { fate: 'Fate', world: 'World', system: 'System' };
-  const dominant = forces.reduce((a, b) => data.overallGrades[a] > data.overallGrades[b] ? a : b);
-
   return (
     <div className="flex flex-col items-center justify-center h-full px-12 py-8 relative overflow-hidden">
       <div

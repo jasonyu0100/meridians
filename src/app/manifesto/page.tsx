@@ -5070,7 +5070,10 @@ export default function PaperPage() {
               Conviction sells the room; Capture keeps it.</B>{" "}
               <B>Conviction</B> is the fast, <em>live</em> side and the
               day-one value: a real-time, high-feedback session the room
-              plays together. Bring your team, and an <B>AI adversary</B>{" "}
+              plays together &mdash; on <B>laptops, not phones</B>, because
+              reading the scene and writing the priors that move the odds are
+              how you orient and act, and both want a real screen and keyboard.
+              Bring your team, and an <B>AI adversary</B>{" "}
               takes the other side of the table (the competitor, the
               regulator, the rival) and hunts the seams in how you
               coordinate under information asymmetry. By the first

@@ -7,7 +7,7 @@ import { WORLD_SHAPE_LABEL_BY_PARADIGM } from '@/lib/prompts/paradigm';
 import { classifyThreadCategory, computeRecentLogitEnergy } from '@/lib/forces/thread-category';
 import { ENTITY_LOG_CONTEXT_LIMIT, NEAR_RECENCY_ZONE, MID_RECENCY_ZONE } from '@/lib/constants';
 import { getIntroducedIds } from '@/lib/graph/scene-filter';
-import { computeCumulativePositions } from '@/lib/forces/positions';
+import { computeCumulativePositions, lastKnownPositions } from '@/lib/forces/positions';
 import { describeTimeGap, formatTimeDelta } from '@/lib/forces/time-deltas';
 import { aggregateNetworkGraph, buildTierLookup, type NetworkNode } from '@/lib/graph/network-graph';
 import { getActivePhaseGraph } from '@/lib/graph/phase-graph';
@@ -941,7 +941,9 @@ export function narrativeContext(
   // a participantIds at a different scene.locationId — position updates
   // implicitly. Surfaces the resolved snapshot so the model doesn't have
   // to walk participation history itself.
-  const resolvedPositions = computeCumulativePositions(n, resolvedKeys, currentIndex);
+  // Movement-aware: a live game move-intent overrides participation as the
+  // character's last-known position (reverts to the movement position).
+  const resolvedPositions = lastKnownPositions(n, resolvedKeys, currentIndex);
   const positionLines: string[] = [];
   for (const c of branchCharacters) {
     const locId = resolvedPositions[c.id];
@@ -1020,10 +1022,8 @@ function threadMarketSignal(t: import('@/types/narrative').Thread): string {
 export function sceneContext(
   narrative: NarrativeState,
   scene: Scene,
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   _resolvedKeys?: string[],
   _currentIndex?: number,
-  /* eslint-enable @typescript-eslint/no-unused-vars */
 ): string {
   // DELTAS + NEW ENTITIES ONLY. Scene context describes what THIS scene
   // introduces or changes — not cumulative world state. Callers that need

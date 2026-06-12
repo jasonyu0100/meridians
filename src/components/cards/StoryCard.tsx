@@ -43,6 +43,9 @@ export function StoryCard({
 }: StoryCardProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  // Hydration guard: timeAgo() is time-relative, so it must only render client-side
+  // to avoid an SSR/client text mismatch. A one-shot mount flip is the standard pattern.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   // If this card's narrative is currently hydrated in the store, derive
@@ -95,6 +98,8 @@ export function StoryCard({
       >
         {coverUrl && (
           <div className="absolute inset-0">
+            {/* coverUrl is a resolved IndexedDB object URL — next/image can't optimize blob/object URLs. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverUrl}
               alt=""

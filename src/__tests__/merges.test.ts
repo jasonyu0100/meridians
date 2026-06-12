@@ -417,6 +417,33 @@ describe('renderMergeBasisBlock', () => {
     expect(block).toContain('belief-leaned="yes"');
   });
 
+  it('renders the realism determination (telling + reasoning + closure) into the basis', () => {
+    // The preprocessing enrichment that must reach generation: a contested /
+    // pre-resolved question carries what reality DID + why + whether it closes.
+    const m = merge('m1', 'A', {
+      streamIds: ['s1'],
+      resolutions: {
+        s1: { outcome: 'no', telling: 'The truce frays as troops dig in.', reasoning: 'Momentum already past the point of recall.', closes: true },
+      },
+    });
+    const block = renderMergeBasisBlock(baseNarrative, [m])!;
+    expect(block).toContain('<conflict-resolution');
+    expect(block).toContain('status="closed"'); // closes: true
+    expect(block).toContain('<telling>The truce frays as troops dig in.</telling>');
+    expect(block).toContain('<reasoning>Momentum already past the point of recall.</reasoning>');
+  });
+
+  it('marks an open (non-closing) realism verdict + omits reasoning when absent', () => {
+    const m = merge('m1', 'A', {
+      streamIds: ['s1'],
+      resolutions: { s1: { outcome: 'no', telling: 'A fragile pause holds — for now.' } },
+    });
+    const block = renderMergeBasisBlock(baseNarrative, [m])!;
+    expect(block).toContain('status="open"'); // closes falsy
+    expect(block).toContain('<telling>A fragile pause holds — for now.</telling>');
+    expect(block).not.toContain('<reasoning>');
+  });
+
   it('does not flag override when the committed outcome matches the lean', () => {
     const m = merge('m1', 'A', {
       streamIds: ['s1'],

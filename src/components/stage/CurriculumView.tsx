@@ -297,10 +297,15 @@ export function CurriculumView({ view }: { view: "tree" | "list" }) {
     [narrative, state.resolvedEntryKeys],
   );
 
+  // Read the clock once via a lazy initializer (allowed — runs a single time,
+  // not on every render) so coverage staleness/due calculations stay pure.
+  // Coverage tolerates a stable "now" for the component's lifetime.
+  const [now] = useState(() => Date.now());
+
   const forest = useMemo(() => {
     const q = learner ? memberQuestions(narrative?.learningProgress, learner) : {};
-    return pruneEmptyCoverage(curriculumCoverage(topics, items, q, Date.now()));
-  }, [topics, items, narrative?.learningProgress, learner]);
+    return pruneEmptyCoverage(curriculumCoverage(topics, items, q, now));
+  }, [topics, items, narrative?.learningProgress, learner, now]);
 
   const questionsByTopic = useMemo(() => {
     const m = new Map<string, QLeaf[]>();

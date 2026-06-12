@@ -44,8 +44,6 @@ const DIMS = 1536;
 
 // ── Colors & Labels ─────────────────────────────────────────────────────────
 
-const BASE_ORDER: PropositionBaseCategory[] = ['Anchor', 'Seed', 'Close', 'Texture'];
-
 /** Base category colors */
 export const BASE_COLORS: Record<PropositionBaseCategory, string> = {
   Anchor: '#6366f1',   // indigo

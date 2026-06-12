@@ -1,13 +1,13 @@
 'use client';
 // WorldGraphView — Stage surface rendering an entity's inner world knowledge graph (raw graph substrate) via D3.
 
-import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
 import { IconChevronLeft } from '@/components/icons';
 import { getWorldNodesAtScene, getWorldEdgesAtScene } from '@/lib/graph/scene-filter';
 import { WORLD_FILL } from './graph-utils';
-import type { WorldNode, WorldEdge, World, WorldNodeType } from '@/types/narrative';
+import type { World, WorldNodeType } from '@/types/narrative';
 import { WORLD_NODE_TYPES, WORLD_NODE_CATEGORY } from '@/types/narrative';
 import { edgeOpacityFor, edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY } from '@/lib/graph/graph-styling';
 
@@ -209,7 +209,7 @@ export default function WorldGraphView({ entityId, entityName, world, scenes, re
         .attr('y', (d) => ((d.source as CNode).y! + (d.target as CNode).y!) / 2);
     });
     sim.alpha(SIM_ALPHA_START).alphaDecay(SIM_ALPHA_DECAY).restart();
-  }, [graphData, showLabels, showRelations, showTypes]);
+  }, [graphData, showLabels, showRelations, showTypes, dispatch, entityId]);
 
   const legendItems = [
     { key: 'labels', label: 'Labels', checked: showLabels, toggle: () => setShowLabels((v) => !v) },

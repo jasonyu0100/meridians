@@ -3,10 +3,9 @@
 
 import React, { useMemo } from 'react';
 import type { SlidesData } from '@/lib/slides-data';
-import { BASE_COLORS, BASE_COLORS_GLOBAL, classificationLabel, ALL_PROFILE_LABELS } from '@/lib/analysis/proposition-classify';
+import { BASE_COLORS, classificationLabel, ALL_PROFILE_LABELS } from '@/lib/analysis/proposition-classify';
 import { usePropositionClassification } from '@/hooks/usePropositionClassification';
 import type { PropositionBaseCategory } from '@/types/narrative';
-import { resolveEntry, isScene } from '@/types/narrative';
 import { SlideShell } from './SlideShell';
 
 const BASE_ORDER: PropositionBaseCategory[] = ['Anchor', 'Seed', 'Close', 'Texture'];
@@ -81,7 +80,7 @@ export function PropositionOverviewSlide({ data }: { data: SlidesData }) {
     }
 
     return { totals: t, total: sum, arcTrajectory: arcCount >= 2 ? perCategory : null, labelCounts: lc };
-  }, [sceneProfiles, data.propositionCount, data.scenes, getClassification]);
+  }, [sceneProfiles, data, getClassification]);
 
   const hasClassified = Object.values(totals).some(v => v > 0);
 

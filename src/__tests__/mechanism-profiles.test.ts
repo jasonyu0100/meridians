@@ -9,7 +9,7 @@ import {
   resolveMechanismDist,
   DEFAULT_MECHANISM_DIST,
 } from '@/lib/pacing/mechanism-profiles';
-import type { NarrativeState, Scene, BeatMechanism } from '@/types/narrative';
+import type { NarrativeState, Scene, BeatMechanism, BeatFn } from '@/types/narrative';
 import { DEFAULT_STORY_SETTINGS } from '@/types/narrative';
 // ── Test Fixtures ────────────────────────────────────────────────────────────
 function createMinimalNarrative(overrides?: Partial<NarrativeState>): NarrativeState {
@@ -44,10 +44,10 @@ function createMinimalNarrative(overrides?: Partial<NarrativeState>): NarrativeS
 }
 function createSceneWithPlan(
   id: string,
-  beats: Array<{ fn: string; mechanism: BeatMechanism }>,
+  beats: Array<{ fn: BeatFn; mechanism: BeatMechanism }>,
 ): Scene {
   const plan = beats.length > 0 ? {
-    beats: beats.map((b) => ({ fn: b.fn as any, mechanism: b.mechanism, what: 'test beat', propositions: [{ content: 'test anchor' }] })),
+    beats: beats.map((b) => ({ fn: b.fn, mechanism: b.mechanism, what: 'test beat', propositions: [{ content: 'test anchor' }] })),
     propositions: [],
   } : undefined;
   return {

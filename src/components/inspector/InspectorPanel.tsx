@@ -18,7 +18,7 @@ import { type SceneRange } from "@/components/timeline/SceneRangeSelector";
 import { useStore } from "@/lib/state/store";
 import type { WorldBuild } from "@/types/narrative";
 import { isScene, type TimelineEntry } from "@/types/narrative";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ArcDetail from "./ArcDetail";
 import ArtifactDetail from "./ArtifactDetail";
@@ -128,7 +128,7 @@ function RailTabButton({
         createPortal(
           <div
             role="tooltip"
-            className="pointer-events-none fixed z-9999 px-2 py-1 rounded-md bg-bg-overlay/95 border border-white/10 text-[11px] text-text-primary whitespace-nowrap shadow-lg backdrop-blur-sm"
+            className="pointer-events-none fixed z-popover px-2 py-1 rounded-md bg-bg-overlay/95 border border-white/10 text-[11px] text-text-primary whitespace-nowrap shadow-lg backdrop-blur-sm"
             style={{ top: tipPos.top, right: tipPos.right, transform: "translateY(-50%)" }}
           >
             {label}
@@ -272,21 +272,25 @@ export default function InspectorPanel() {
   // operator hasn't pinned an explicit inspector context — the panel
   // should stay on whatever was last visible until they navigate.
   const narrativeId = state.activeNarrative?.id ?? null;
-  const latchedDefaultRef = useRef<{
+  // Latch as state (not a ref) so the value is read-only at render time and
+  // React stays in control of updates. The "adjust state during render" pattern
+  // re-latches synchronously when the narrative changes — no extra render — by
+  // tracking the narrativeId the current latch was computed for.
+  const [latchedDefault, setLatchedDefault] = useState<{
     narrativeId: string | null;
     context: ReturnType<typeof getDefaultContext>;
   }>({ narrativeId: null, context: null });
   if (
     !state.viewState.inspectorContext &&
-    latchedDefaultRef.current.narrativeId !== narrativeId
+    latchedDefault.narrativeId !== narrativeId
   ) {
-    latchedDefaultRef.current = {
+    setLatchedDefault({
       narrativeId,
       context: getDefaultContext(state),
-    };
+    });
   }
   const ctx =
-    state.viewState.inspectorContext ?? latchedDefaultRef.current.context;
+    state.viewState.inspectorContext ?? latchedDefault.context;
   const [tab, setTab] = useState<Tab>("inspector");
   const [collapsed, setCollapsed] = useState(false);
   const { width, onMouseDown } = usePanelResize(500, 150, 1200);
@@ -302,14 +306,21 @@ export default function InspectorPanel() {
     }
   };
 
-  // Auto-switch to inspector tab when a new inspector context is set, and
-  // reveal the panel if it was minimised so the selection is visible.
-  useEffect(() => {
+  // Auto-switch to the inspector tab when a new inspector context is set, and
+  // reveal the panel if it was minimised so the selection is visible. Done with
+  // the render-phase "store previous value" pattern (not an effect) so the
+  // adjustment happens in the same render the context changes in — no cascading
+  // effect render.
+  const [prevInspectorContext, setPrevInspectorContext] = useState(
+    state.viewState.inspectorContext,
+  );
+  if (state.viewState.inspectorContext !== prevInspectorContext) {
+    setPrevInspectorContext(state.viewState.inspectorContext);
     if (state.viewState.inspectorContext) {
       setTab("inspector");
       setCollapsed(false);
     }
-  }, [state.viewState.inspectorContext]);
+  }
   const [evalMode, setEvalMode] = useState<
     "branch" | "prose" | "plan"
   >("branch");

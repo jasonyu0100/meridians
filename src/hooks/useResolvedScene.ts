@@ -26,14 +26,15 @@ export type ResolvedScene = Scene & {
  */
 export function useResolvedScene(scene: Scene | null | undefined): ResolvedScene | null {
   const { state } = useStore();
-  const branches = state.activeNarrative?.branches ?? {};
+  const branches = state.activeNarrative?.branches;
   const branchId = state.viewState.activeBranchId;
 
   return useMemo(() => {
     if (!scene || !branchId) return null;
 
-    const resolvedProse = resolveProseForBranch(scene, branchId, branches);
-    const resolvedPlan = resolvePlanForBranch(scene, branchId, branches);
+    const branchMap = branches ?? {};
+    const resolvedProse = resolveProseForBranch(scene, branchId, branchMap);
+    const resolvedPlan = resolvePlanForBranch(scene, branchId, branchMap);
 
     return {
       ...scene,
@@ -51,12 +52,12 @@ export function useResolvedScene(scene: Scene | null | undefined): ResolvedScene
  */
 export function useResolvedProse(scene: Scene | null | undefined) {
   const { state } = useStore();
-  const branches = state.activeNarrative?.branches ?? {};
+  const branches = state.activeNarrative?.branches;
   const branchId = state.viewState.activeBranchId;
 
   return useMemo(() => {
     if (!scene || !branchId) return { prose: undefined, beatProseMap: undefined, proseScore: undefined };
-    return resolveProseForBranch(scene, branchId, branches);
+    return resolveProseForBranch(scene, branchId, branches ?? {});
   }, [scene, branchId, branches]);
 }
 
@@ -66,11 +67,11 @@ export function useResolvedProse(scene: Scene | null | undefined) {
  */
 export function useResolvedPlan(scene: Scene | null | undefined): BeatPlan | undefined {
   const { state } = useStore();
-  const branches = state.activeNarrative?.branches ?? {};
+  const branches = state.activeNarrative?.branches;
   const branchId = state.viewState.activeBranchId;
 
   return useMemo(() => {
     if (!scene || !branchId) return undefined;
-    return resolvePlanForBranch(scene, branchId, branches);
+    return resolvePlanForBranch(scene, branchId, branches ?? {});
   }, [scene, branchId, branches]);
 }

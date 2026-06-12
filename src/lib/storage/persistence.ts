@@ -149,7 +149,7 @@ export async function saveActiveNarrativeId(id: string | null): Promise<void> {
     } else {
       await idbDelete(META_STORE, ACTIVE_KEY);
     }
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -159,7 +159,7 @@ export async function loadActiveNarrativeId(): Promise<string | null> {
   try {
     const id = await idbGet<string>(META_STORE, ACTIVE_KEY);
     return id ?? null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -180,7 +180,7 @@ export async function saveActiveBranchId(
     } else {
       await idbDelete(META_STORE, key);
     }
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -192,7 +192,7 @@ export async function loadActiveBranchId(
   try {
     const id = await idbGet<string>(META_STORE, branchKeyFor(narrativeId));
     return id ?? null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -206,7 +206,7 @@ export async function loadAnalysisJobs(): Promise<AnalysisJob[]> {
   try {
     const jobs = await idbGet<AnalysisJob[]>(META_STORE, ANALYSIS_JOBS_KEY);
     return jobs ?? [];
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -214,7 +214,7 @@ export async function loadAnalysisJobs(): Promise<AnalysisJob[]> {
 export async function saveAnalysisJobs(jobs: AnalysisJob[]): Promise<void> {
   try {
     await idbPut(META_STORE, ANALYSIS_JOBS_KEY, jobs);
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -227,7 +227,7 @@ export async function loadApiLogs(narrativeId: string): Promise<ApiLogEntry[]> {
   try {
     const logs = await idbGet<ApiLogEntry[]>(API_LOGS_STORE, narrativeId);
     return logs ?? [];
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -249,7 +249,7 @@ export async function saveApiLogs(narrativeId: string, logs: ApiLogEntry[]): Pro
 export async function deleteApiLogs(narrativeId: string): Promise<void> {
   try {
     await idbDelete(API_LOGS_STORE, narrativeId);
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -266,7 +266,7 @@ export async function loadAnalysisApiLogs(analysisId: string): Promise<ApiLogEnt
   try {
     const logs = await idbGet<ApiLogEntry[]>(API_LOGS_STORE, analysisLogsKey(analysisId));
     return logs ?? [];
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -275,7 +275,7 @@ export async function loadAnalysisApiLogs(analysisId: string): Promise<ApiLogEnt
 export async function saveAnalysisApiLogs(analysisId: string, logs: ApiLogEntry[]): Promise<void> {
   try {
     await idbPut(API_LOGS_STORE, analysisLogsKey(analysisId), logs);
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -284,7 +284,7 @@ export async function saveAnalysisApiLogs(analysisId: string, logs: ApiLogEntry[
 export async function deleteAnalysisApiLogs(analysisId: string): Promise<void> {
   try {
     await idbDelete(API_LOGS_STORE, analysisLogsKey(analysisId));
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -301,7 +301,7 @@ export async function loadSystemLogs(narrativeId: string): Promise<SystemLogEntr
   try {
     const logs = await idbGet<SystemLogEntry[]>(API_LOGS_STORE, systemLogsKey(narrativeId));
     return logs ?? [];
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -323,7 +323,7 @@ export async function saveSystemLogs(narrativeId: string, logs: SystemLogEntry[]
 export async function deleteSystemLogs(narrativeId: string): Promise<void> {
   try {
     await idbDelete(API_LOGS_STORE, systemLogsKey(narrativeId));
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -340,7 +340,7 @@ export async function loadAnalysisSystemLogs(analysisId: string): Promise<System
   try {
     const logs = await idbGet<SystemLogEntry[]>(API_LOGS_STORE, analysisSystemLogsKey(analysisId));
     return logs ?? [];
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -349,7 +349,7 @@ export async function loadAnalysisSystemLogs(analysisId: string): Promise<System
 export async function saveAnalysisSystemLogs(analysisId: string, logs: SystemLogEntry[]): Promise<void> {
   try {
     await idbPut(API_LOGS_STORE, analysisSystemLogsKey(analysisId), logs);
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -358,7 +358,7 @@ export async function saveAnalysisSystemLogs(analysisId: string, logs: SystemLog
 export async function deleteAnalysisSystemLogs(analysisId: string): Promise<void> {
   try {
     await idbDelete(API_LOGS_STORE, analysisSystemLogsKey(analysisId));
-  } catch (err) {
+  } catch {
     // Errors logged at caller level
   }
 }
@@ -423,7 +423,7 @@ export async function saveSearchState(narrativeId: string, query: SearchQuery | 
   if (typeof window === 'undefined') return;
   try {
     await idbPut(META_STORE, getSearchStateKey(narrativeId), query);
-  } catch (err) {
+  } catch {
     // Silently fail for search state persistence
   }
 }
@@ -432,7 +432,7 @@ export async function loadSearchState(narrativeId: string): Promise<SearchQuery 
   if (typeof window === 'undefined') return null;
   try {
     return (await idbGet<SearchQuery | null>(META_STORE, getSearchStateKey(narrativeId))) ?? null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -447,7 +447,7 @@ export async function saveViewState(narrativeId: string, viewState: NarrativeVie
   if (typeof window === 'undefined') return;
   try {
     await idbPut(META_STORE, getViewStateKey(narrativeId), viewState);
-  } catch (err) {
+  } catch {
     // Silently fail for view state persistence
   }
 }
@@ -456,7 +456,7 @@ export async function loadViewState(narrativeId: string): Promise<NarrativeViewS
   if (typeof window === 'undefined') return null;
   try {
     return (await idbGet<NarrativeViewState | null>(META_STORE, getViewStateKey(narrativeId))) ?? null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -465,7 +465,7 @@ export async function deleteViewState(narrativeId: string): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
     await idbDelete(META_STORE, getViewStateKey(narrativeId));
-  } catch (err) {
+  } catch {
     // Silently fail
   }
 }

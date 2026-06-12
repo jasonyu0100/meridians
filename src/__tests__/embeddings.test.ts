@@ -9,10 +9,7 @@
  * 5. Manual embedding regeneration
  * 6. Export/import with embeddings
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { generateScenePlan, generateScenes, generateSceneProse } from '@/lib/ai/scenes';
-import { rewriteSceneProse } from '@/lib/ai/prose';
-import { runPlanCandidates } from '@/lib/ai/candidates';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { searchNarrative } from '@/lib/search/search';
 import { generateEmbeddings, cosineSimilarity, computeCentroid, embedPropositions } from '@/lib/search/embeddings';
 import type { NarrativeState, Scene, BeatPlan } from '@/types/narrative';
@@ -21,6 +18,11 @@ import { TEST_EMBEDDINGS } from './fixtures/test-embeddings';
 import { assetManager } from '@/lib/storage/asset-manager';
 // Mock fetch for embedding API
 global.fetch = vi.fn();
+// Typed accessor for the mocked fetch and the request options shape the tests read.
+// The mock is exposed as a generic vitest Mock so test implementations can return
+// partial Response shapes without satisfying the full fetch signature.
+type FetchOptions = { body?: string };
+const fetchMock = () => global.fetch as unknown as Mock;
 const mockNarrative: NarrativeState = {
   id: 'test-narrative',
   title: 'Test Story',
@@ -151,9 +153,9 @@ describe('Embedding Generation Pipeline', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await assetManager.init();
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    fetchMock().mockImplementation((url: string, options?: FetchOptions) => {
       if (url.includes('/api/embeddings')) {
-        const body = JSON.parse(options.body);
+        const body = JSON.parse(options!.body!);
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockEmbeddingResponse(body.texts)),
@@ -277,9 +279,9 @@ describe('Embedding Generation Pipeline', () => {
 });
 describe('Plan Candidates', () => {
   beforeEach(() => {
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    fetchMock().mockImplementation((url: string, options?: FetchOptions) => {
       if (url.includes('/api/embeddings')) {
-        const body = JSON.parse(options.body);
+        const body = JSON.parse(options!.body!);
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockEmbeddingResponse(body.texts)),
@@ -339,9 +341,9 @@ describe('Plan Candidates', () => {
 });
 describe('Semantic Search', () => {
   beforeEach(() => {
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    fetchMock().mockImplementation((url: string, options?: FetchOptions) => {
       if (url.includes('/api/embeddings')) {
-        const body = JSON.parse(options.body);
+        const body = JSON.parse(options!.body!);
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockEmbeddingResponse(body.texts)),
@@ -355,7 +357,7 @@ describe('Semantic Search', () => {
     const ref1 = await assetManager.storeEmbedding(Array.from(TEST_EMBEDDINGS.sceneDiscoverDoor), 'text-embedding-3-small');
     const ref2 = await assetManager.storeEmbedding(Array.from(TEST_EMBEDDINGS.sceneAncientSword), 'text-embedding-3-small');
     // Mock fetch to return the matching query fixture embedding
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    fetchMock().mockImplementation((url: string) => {
       if (url.includes('/api/embeddings')) {
         return Promise.resolve({
           ok: true,
@@ -403,7 +405,7 @@ describe('Semantic Search', () => {
     const centroidRef1 = await assetManager.storeEmbedding(Array.from(TEST_EMBEDDINGS.propGlowsEnergy), 'text-embedding-3-small');
     const centroidRef2 = await assetManager.storeEmbedding(Array.from(TEST_EMBEDDINGS.propRustyKey), 'text-embedding-3-small');
     // Mock fetch to return the matching query fixture embedding
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    fetchMock().mockImplementation((url: string) => {
       if (url.includes('/api/embeddings')) {
         return Promise.resolve({
           ok: true,
@@ -467,7 +469,7 @@ describe('Semantic Search', () => {
       sceneData.push({ id: `scene${i}`, summary: `Scene ${i} about magic`, summaryEmbedding: ref });
     }
     // Mock fetch to return the query fixture embedding
-    (global.fetch as any).mockImplementation((url: string) => {
+    fetchMock().mockImplementation((url: string) => {
       if (url.includes('/api/embeddings')) {
         return Promise.resolve({
           ok: true,
@@ -539,7 +541,7 @@ describe('Centroid Computation', () => {
 });
 describe('Export/Import with Embeddings', () => {
   it('should preserve embeddings in exported JSON', async () => {
-    const embedding = await generateEmbeddings(['Test text'], mockNarrative.id).then(e => e[0]);
+    const _embedding = await generateEmbeddings(['Test text'], mockNarrative.id).then(e => e[0]);
     const embRef = 'emb_test123';
     const scene: Scene = {
       ...mockScene,
@@ -607,10 +609,10 @@ describe('Export/Import with Embeddings', () => {
 describe('Batch Embedding Generation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global.fetch as any).mockClear();
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    fetchMock().mockClear();
+    fetchMock().mockImplementation((url: string, options?: FetchOptions) => {
       if (url.includes('/api/embeddings')) {
-        const body = JSON.parse(options.body);
+        const body = JSON.parse(options!.body!);
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockEmbeddingResponse(body.texts)),
@@ -657,7 +659,7 @@ describe('Batch Embedding Generation', () => {
 });
 describe('Error Handling', () => {
   it('should handle embedding API errors gracefully', async () => {
-    (global.fetch as any).mockImplementation(() =>
+    fetchMock().mockImplementation(() =>
       Promise.resolve({
         ok: false,
         status: 500,
@@ -667,7 +669,7 @@ describe('Error Handling', () => {
     await expect(generateEmbeddings(['test'], mockNarrative.id)).rejects.toThrow('Embedding API error');
   });
   it('should handle network errors', async () => {
-    (global.fetch as any).mockImplementation(() =>
+    fetchMock().mockImplementation(() =>
       Promise.reject(new Error('Network error'))
     );
     await expect(generateEmbeddings(['test'], mockNarrative.id)).rejects.toThrow('Network error');

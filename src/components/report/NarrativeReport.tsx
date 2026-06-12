@@ -795,7 +795,7 @@ function StateMachineGraph({ data }: { data: SlidesData }) {
       p[c] = { x: gcx + gr * Math.cos(angle), y: gcy + gr * Math.sin(angle) };
     });
     return p;
-  }, []);
+  }, [gcx, gcy, gr]);
 
   return (
     <svg viewBox={`0 0 ${GW} ${GH}`} className="w-full" style={{ height: 400 }}>
@@ -1083,7 +1083,7 @@ export function NarrativeReport({
 
   if (data.sceneCount === 0) {
     return createPortal(
-      <div className="fixed inset-0 z-100 bg-bg-base flex items-center justify-center report-shell">
+      <div className="fixed inset-0 z-modal bg-bg-base flex items-center justify-center report-shell">
         <p className="text-white/30 text-sm">No scenes to analyse.</p>
       </div>,
       document.body,
@@ -1091,9 +1091,6 @@ export function NarrativeReport({
   }
 
   const forces = ["fate", "world", "system", "swing"] as const;
-  const dominant = (["fate", "world", "system"] as const).reduce((a, b) =>
-    data.overallGrades[a] > data.overallGrades[b] ? a : b,
-  );
   const raw = data.rawForces;
   const n = data.sceneCount;
   const stats = {
@@ -1154,7 +1151,7 @@ export function NarrativeReport({
   let sec = 0;
 
   const reportContent = (
-    <div className="fixed inset-0 z-100 bg-bg-base flex flex-col report-shell">
+    <div className="fixed inset-0 z-modal bg-bg-base flex flex-col report-shell">
       {/* ── Constellation background — same intensity as the SlidesPlayer
           so the report carries the engine's themed look. Readability is
           preserved by giving the prose column its own subtle vignette

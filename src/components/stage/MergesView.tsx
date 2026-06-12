@@ -1,29 +1,31 @@
 'use client';
 // MergesView — the Vision "History" tab. A vertical timeline of merges: each
 // folded a set of committed streams together to extend continuity. Clicking a
-// merge opens it in the inspector (MergeDetail) — the permanent record of what
-// was committed, with each stream's executive/recorded status and revert.
-// Most recent at the top.
+// merge drills into an inline detail view (MergeDetail) within the stage —
+// back button returns to the list. Most recent at the top.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { IconChevronRight } from '@/components/icons';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PrMergedIcon } from './RoomUI';
+import MergeDetail from '@/components/inspector/MergeDetail';
 import { buildMergeConsumerMap, mergeConsumerFor, mergesForBranch, resolutionOutcomes } from '@/lib/merges';
 
 const fmtWhen = (ms: number) =>
   `${new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
 
-export function MergesView() {
+export function MergesView({ branchId: branchIdProp }: { branchId?: string } = {}) {
   const { state, dispatch } = useStore();
   const n = state.activeNarrative;
+  const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
+  const branchId = branchIdProp ?? state.viewState.activeBranchId;
 
   // Branch-scoped: only merges visible on the active branch's lineage (owned by
   // it or an ancestor; legacy unstamped merges stay visible everywhere).
   const merges = useMemo(
-    () => (n ? mergesForBranch(n, state.viewState.activeBranchId) : []).sort((a, b) => b.at - a.at),
-    [n, state.viewState.activeBranchId],
+    () => (n ? mergesForBranch(n, branchId) : []).sort((a, b) => b.at - a.at),
+    [n, branchId],
   );
   // Branch-aware consumption: which merges have been folded into continuity on
   // the CURRENTLY-RESOLVED branch, and where. A merge folded on one branch
@@ -34,6 +36,24 @@ export function MergesView() {
   );
 
   if (!n) return <EmptyState icon={PrMergedIcon} title="No world view loaded." />;
+
+  // Drill-down: show merge detail when one is selected.
+  if (selectedMergeId && n.merges?.[selectedMergeId]) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="max-w-2xl mx-auto p-4">
+          <button
+            onClick={() => setSelectedMergeId(null)}
+            className="mb-4 flex items-center gap-1.5 text-[11px] text-text-dim/60 hover:text-text-secondary transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            History
+          </button>
+          <MergeDetail mergeId={selectedMergeId} />
+        </div>
+      </div>
+    );
+  }
 
   if (merges.length === 0) {
     return (
@@ -58,7 +78,7 @@ export function MergesView() {
 
         <ol className="relative">
             {/* Lineage rail — the committed timeline, mirroring the branch tree. */}
-            <div className="absolute left-[6px] top-2 bottom-3 w-px bg-white/8" aria-hidden />
+            <div className="absolute left-1.5 top-2 bottom-3 w-px bg-white/8" aria-hidden />
             {merges.map((f) => {
               const streamIds = f.streamIds ?? [];
               const consumer = mergeConsumerFor(mergeConsumers, f);
@@ -70,13 +90,16 @@ export function MergesView() {
                   {/* Dot — filled when folded into continuity on this branch,
                       hollow when still pending (active vs inactive, branch-style). */}
                   <span
-                    className="absolute left-[2px] top-[13px] h-[9px] w-[9px] rounded-full border-[1.5px] border-purple-400/70"
+                    className="absolute left-0.5 top-3.5 h-2.25 w-2.25 rounded-full border-[1.5px] border-purple-400/70"
                     style={{ background: folded ? 'rgba(168,85,247,0.85)' : 'transparent' }}
                     aria-hidden
                   />
                   <button
-                    onClick={() => dispatch({ type: 'SET_INSPECTOR', context: { type: 'merge', mergeId: f.id } })}
-                    className="group relative w-full overflow-hidden rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                    onClick={() => {
+                      setSelectedMergeId(f.id);
+                      dispatch({ type: 'SET_INSPECTOR', context: { type: 'merge', mergeId: f.id } });
+                    }}
+                    className="group relative w-full overflow-hidden rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/4"
                   >
                     {/* Folded rows get a quiet purple left-edge accent (mirrors
                         the branch tree's canon edge). */}

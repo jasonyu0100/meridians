@@ -59,7 +59,7 @@ function ExperienceTab() {
 
   const audit = useMemo(
     () => (narrative ? auditExperienceAvailability(narrative) : { totalScenes: 0, scenesWithEmbedding: 0 }),
-    [narrative, keys],
+    [narrative],
   );
   const runnable = audit.scenesWithEmbedding >= 2;
   const key = `${narrative?.id ?? ''}:${audit.scenesWithEmbedding}:${keys.length}`;

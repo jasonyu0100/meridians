@@ -3,7 +3,7 @@
  * Ensures LLM outputs match expected types before accepting results
  */
 
-import type { BeatPlan, BeatProseMap, Beat } from '@/types/narrative';
+import type { BeatPlan } from '@/types/narrative';
 import { logWarning, logError, logInfo, type LogContext } from '@/lib/core/system-logger';
 
 export interface ValidationResult {
@@ -44,7 +44,7 @@ const VALID_BEAT_MECHANISMS = [
 /**
  * Validates a single beat structure
  */
-function validateBeat(beat: any, index: number): string[] {
+function validateBeat(beat: unknown, index: number): string[] {
   const errors: string[] = [];
 
   if (!beat || typeof beat !== 'object') {
@@ -52,45 +52,47 @@ function validateBeat(beat: any, index: number): string[] {
     return errors;
   }
 
+  const b = beat as Record<string, unknown>;
+
   // Required fields
-  if (!beat.fn || typeof beat.fn !== 'string') {
+  if (!b.fn || typeof b.fn !== 'string') {
     errors.push(`Beat ${index}: missing or invalid 'fn' field`);
-  } else if (!VALID_BEAT_FUNCTIONS.includes(beat.fn as any)) {
-    errors.push(`Beat ${index}: invalid fn value '${beat.fn}'. Must be one of: ${VALID_BEAT_FUNCTIONS.join(', ')}`);
+  } else if (!(VALID_BEAT_FUNCTIONS as readonly string[]).includes(b.fn)) {
+    errors.push(`Beat ${index}: invalid fn value '${b.fn}'. Must be one of: ${VALID_BEAT_FUNCTIONS.join(', ')}`);
   }
 
-  if (!beat.mechanism || typeof beat.mechanism !== 'string') {
+  if (!b.mechanism || typeof b.mechanism !== 'string') {
     errors.push(`Beat ${index}: missing or invalid 'mechanism' field`);
-  } else if (!VALID_BEAT_MECHANISMS.includes(beat.mechanism as any)) {
-    errors.push(`Beat ${index}: invalid mechanism value '${beat.mechanism}'. Must be one of: ${VALID_BEAT_MECHANISMS.join(', ')}`);
+  } else if (!(VALID_BEAT_MECHANISMS as readonly string[]).includes(b.mechanism)) {
+    errors.push(`Beat ${index}: invalid mechanism value '${b.mechanism}'. Must be one of: ${VALID_BEAT_MECHANISMS.join(', ')}`);
   }
 
-  if (!beat.what || typeof beat.what !== 'string') {
+  if (!b.what || typeof b.what !== 'string') {
     errors.push(`Beat ${index}: missing or invalid 'what' field`);
-  } else if (beat.what.trim().length < 5) {
+  } else if (b.what.trim().length < 5) {
     // Very lenient - just ensure it's not completely empty
-    errors.push(`Beat ${index}: 'what' field too short (${beat.what.length} chars)`);
+    errors.push(`Beat ${index}: 'what' field too short (${b.what.length} chars)`);
   }
 
   // Optional but recommended paragraph indices
-  if (beat.startPara !== undefined && typeof beat.startPara !== 'number') {
+  if (b.startPara !== undefined && typeof b.startPara !== 'number') {
     errors.push(`Beat ${index}: 'startPara' must be a number if provided`);
   }
 
-  if (beat.endPara !== undefined && typeof beat.endPara !== 'number') {
+  if (b.endPara !== undefined && typeof b.endPara !== 'number') {
     errors.push(`Beat ${index}: 'endPara' must be a number if provided`);
   }
 
   if (
-    typeof beat.startPara === 'number' &&
-    typeof beat.endPara === 'number' &&
-    beat.endPara < beat.startPara
+    typeof b.startPara === 'number' &&
+    typeof b.endPara === 'number' &&
+    b.endPara < b.startPara
   ) {
-    errors.push(`Beat ${index}: endPara (${beat.endPara}) < startPara (${beat.startPara})`);
+    errors.push(`Beat ${index}: endPara (${b.endPara}) < startPara (${b.startPara})`);
   }
 
   // Validate propositions if present - be lenient, these are supplementary
-  if (beat.propositions !== undefined && !Array.isArray(beat.propositions)) {
+  if (b.propositions !== undefined && !Array.isArray(b.propositions)) {
     errors.push(`Beat ${index}: 'propositions' must be an array if provided`);
   }
 
@@ -100,23 +102,24 @@ function validateBeat(beat: any, index: number): string[] {
 /**
  * Validates beat plan structure
  */
-export function validateBeatPlan(data: any): ValidationResult {
+export function validateBeatPlan(data: unknown): ValidationResult {
   const errors: string[] = [];
 
   if (!data || typeof data !== 'object') {
     return { valid: false, errors: ['Response is not an object'] };
   }
 
-  if (!data.beats || !Array.isArray(data.beats)) {
+  const beats = (data as { beats?: unknown }).beats;
+  if (!beats || !Array.isArray(beats)) {
     return { valid: false, errors: ['Missing or invalid beats array'] };
   }
 
-  if (data.beats.length === 0) {
+  if (beats.length === 0) {
     return { valid: false, errors: ['Beats array is empty - no beats extracted'] };
   }
 
   // Validate each beat
-  data.beats.forEach((beat: any, index: number) => {
+  beats.forEach((beat: unknown, index: number) => {
     const beatErrors = validateBeat(beat, index);
     errors.push(...beatErrors);
   });
@@ -203,18 +206,20 @@ export function validateBeatProseMap(
  * Validates extracted narrative elements from text analysis
  * LENIENT - only checks for critical structural issues that would cause downstream errors
  */
-export function validateExtractionResult(data: any): ValidationResult {
+export function validateExtractionResult(data: unknown): ValidationResult {
   const errors: string[] = [];
 
   if (!data || typeof data !== 'object') {
     return { valid: false, errors: ['Extraction result is not an object'] };
   }
 
+  const d = data as Record<string, unknown>;
+
   // Only fail if COMPLETELY empty - at least one entity type should have content
-  const hasCharacters = Array.isArray(data.characters) && data.characters.length > 0;
-  const hasLocations = Array.isArray(data.locations) && data.locations.length > 0;
-  const hasThreads = Array.isArray(data.threads) && data.threads.length > 0;
-  const hasScenes = Array.isArray(data.scenes) && data.scenes.length > 0;
+  const hasCharacters = Array.isArray(d.characters) && d.characters.length > 0;
+  const hasLocations = Array.isArray(d.locations) && d.locations.length > 0;
+  const hasThreads = Array.isArray(d.threads) && d.threads.length > 0;
+  const hasScenes = Array.isArray(d.scenes) && d.scenes.length > 0;
 
   if (!hasCharacters && !hasLocations && !hasThreads && !hasScenes) {
     return {
@@ -224,25 +229,25 @@ export function validateExtractionResult(data: any): ValidationResult {
   }
 
   // Validate array types (not individual entries - those are optional/flexible)
-  if (data.characters && !Array.isArray(data.characters)) {
+  if (d.characters && !Array.isArray(d.characters)) {
     errors.push('characters field exists but is not an array');
   }
 
-  if (data.locations && !Array.isArray(data.locations)) {
+  if (d.locations && !Array.isArray(d.locations)) {
     errors.push('locations field exists but is not an array');
   }
 
-  if (data.threads && !Array.isArray(data.threads)) {
+  if (d.threads && !Array.isArray(d.threads)) {
     errors.push('threads field exists but is not an array');
   }
 
-  if (data.scenes && !Array.isArray(data.scenes)) {
+  if (d.scenes && !Array.isArray(d.scenes)) {
     errors.push('scenes field exists but is not an array');
   }
 
   // Only check critical scene fields that would cause immediate errors downstream
-  if (Array.isArray(data.scenes)) {
-    data.scenes.forEach((scene: unknown, idx: number) => {
+  if (Array.isArray(d.scenes)) {
+    d.scenes.forEach((scene: unknown, idx: number) => {
       // Only fail if scene is completely missing core structure
       if (!scene || typeof scene !== 'object') {
         errors.push(`Scene ${idx}: not an object`);
@@ -259,16 +264,18 @@ export function validateExtractionResult(data: any): ValidationResult {
 /**
  * Validates system delta extraction results
  */
-export function validateSystemDelta(data: any): ValidationResult {
+export function validateSystemDelta(data: unknown): ValidationResult {
   const errors: string[] = [];
 
   if (!data || typeof data !== 'object') {
     return { valid: false, errors: ['System delta result is not an object'] };
   }
 
+  const d = data as { nodes?: unknown; edges?: unknown };
+
   // Should have at least nodes or edges
-  const hasNodes = data.nodes && Array.isArray(data.nodes) && data.nodes.length > 0;
-  const hasEdges = data.edges && Array.isArray(data.edges) && data.edges.length > 0;
+  const hasNodes = Array.isArray(d.nodes) && d.nodes.length > 0;
+  const hasEdges = Array.isArray(d.edges) && d.edges.length > 0;
 
   if (!hasNodes && !hasEdges) {
     return {
@@ -278,30 +285,32 @@ export function validateSystemDelta(data: any): ValidationResult {
   }
 
   // Validate nodes structure
-  if (data.nodes && Array.isArray(data.nodes)) {
-    data.nodes.forEach((node: any, idx: number) => {
-      if (!node.id || typeof node.id !== 'string') {
+  if (Array.isArray(d.nodes)) {
+    d.nodes.forEach((node: unknown, idx: number) => {
+      const n = (node ?? {}) as Record<string, unknown>;
+      if (!n.id || typeof n.id !== 'string') {
         errors.push(`Node ${idx}: missing or invalid id`);
       }
-      if (!node.content || typeof node.content !== 'string') {
+      if (!n.content || typeof n.content !== 'string') {
         errors.push(`Node ${idx}: missing or invalid content`);
       }
-      if (!node.type || typeof node.type !== 'string') {
+      if (!n.type || typeof n.type !== 'string') {
         errors.push(`Node ${idx}: missing or invalid type`);
       }
     });
   }
 
   // Validate edges structure
-  if (data.edges && Array.isArray(data.edges)) {
-    data.edges.forEach((edge: any, idx: number) => {
-      if (!edge.source || typeof edge.source !== 'string') {
+  if (Array.isArray(d.edges)) {
+    d.edges.forEach((edge: unknown, idx: number) => {
+      const e = (edge ?? {}) as Record<string, unknown>;
+      if (!e.source || typeof e.source !== 'string') {
         errors.push(`Edge ${idx}: missing or invalid source`);
       }
-      if (!edge.target || typeof edge.target !== 'string') {
+      if (!e.target || typeof e.target !== 'string') {
         errors.push(`Edge ${idx}: missing or invalid target`);
       }
-      if (!edge.type || typeof edge.type !== 'string') {
+      if (!e.type || typeof e.type !== 'string') {
         errors.push(`Edge ${idx}: missing or invalid type`);
       }
     });

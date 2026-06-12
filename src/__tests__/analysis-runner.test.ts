@@ -36,7 +36,7 @@ vi.mock('@/lib/core/api-logger', () => ({
 }));
 // Mock embedding modules (dynamically imported in runner)
 vi.mock('@/lib/search/embeddings', () => ({
-  embedPropositions: vi.fn(async (props: any[]) => props.map((p: any) => ({ ...p }))),
+  embedPropositions: vi.fn(async (props: Array<{ content: string; type?: string }>) => props.map((p) => ({ ...p }))),
   generateEmbeddingsBatch: vi.fn(async (texts: string[]) => texts.map(() => new Array(1536).fill(0))),
   computeCentroid: vi.fn(() => new Array(1536).fill(0)),
 }));
@@ -50,6 +50,13 @@ import { extractSceneStructure, groupScenesIntoArcs, reconcileResults, analyzeTh
 import { reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { analysisRunner } from '@/lib/analysis/analysis-runner';
+// Shape of the dispatched actions the tests inspect (a loose view over the store Action union).
+type DispatchedAction = {
+  type: string;
+  updates: { status?: string; phase?: string; narrativeId?: string; [k: string]: unknown };
+  narrative: { id?: string; [k: string]: unknown };
+  [k: string]: unknown;
+};
 const mockNarrative: NarrativeState = {
   id: 'narrative-1',
   title: 'Test Narrative',
@@ -162,19 +169,14 @@ function createMockJob(overrides: Partial<AnalysisJob> = {}): AnalysisJob {
     ...overrides,
   };
 }
-function collectDispatches(dispatch: (action: any) => void): any[] {
-  const dispatched: any[] = [];
-  const wrapper = (action: any) => { dispatched.push(action); dispatch(action); };
-  return [dispatched, wrapper] as any;
-}
 // ══════════════════════════════════════════════════════════════════════════════
 // Full Pipeline
 // ══════════════════════════════════════════════════════════════════════════════
 describe('AnalysisRunner — Full Pipeline', () => {
   it('completes all 6 phases: plans → structure → arcs → reconcile → finalize → assemble', async () => {
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     expect(reverseEngineerScenePlan).toHaveBeenCalledTimes(2);
     expect(extractSceneStructure).toHaveBeenCalledTimes(2);
     expect(groupScenesIntoArcs).toHaveBeenCalledTimes(1);
@@ -190,27 +192,27 @@ describe('AnalysisRunner — Full Pipeline', () => {
   });
   it('dispatches ADD_NARRATIVE on successful completion', async () => {
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     const addNarrative = dispatched.find(a => a.type === 'ADD_NARRATIVE');
     expect(addNarrative).toBeDefined();
-    expect(addNarrative.narrative.id).toBe('narrative-1');
+    expect(addNarrative!.narrative.id).toBe('narrative-1');
   });
   it('sets status to running at start', async () => {
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     const first = dispatched[0];
     expect(first.type).toBe('UPDATE_ANALYSIS_JOB');
     expect(first.updates.status).toBe('running');
   });
   it('sets narrativeId on completion', async () => {
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     const completed = dispatched.find(a => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.status === 'completed');
     expect(completed).toBeDefined();
-    expect(completed.updates.narrativeId).toBe('narrative-1');
+    expect(completed!.updates.narrativeId).toBe('narrative-1');
   });
 });
 // ══════════════════════════════════════════════════════════════════════════════
@@ -243,8 +245,8 @@ describe('AnalysisRunner — Phase 1: Plans', () => {
   it('handles plan extraction failure gracefully — pipeline continues', async () => {
     vi.mocked(reverseEngineerScenePlan).mockRejectedValue(new Error('LLM failed'));
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     // Pipeline continues despite plan failures
     expect(assembleNarrative).toHaveBeenCalledTimes(1);
     const completed = dispatched.find(a => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.status === 'completed');
@@ -311,8 +313,8 @@ describe('AnalysisRunner — Game theory (opt-in)', () => {
       scenes: { 'S-1': sceneA },
     } as NarrativeState);
     const job = createMockJob({ runGameTheoryExtraction: true });
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (a) => dispatched.push(a));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (a) => dispatched.push(a as DispatchedAction));
     const phaseUpdate = dispatched.find(
       (a) => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.phase === 'game-theory',
     );
@@ -326,8 +328,8 @@ describe('AnalysisRunner — Game theory (opt-in)', () => {
     } as NarrativeState);
     vi.mocked(generateSceneGameAnalysis).mockRejectedValueOnce(new Error('boom'));
     const job = createMockJob({ runGameTheoryExtraction: true });
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (a) => dispatched.push(a));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (a) => dispatched.push(a as DispatchedAction));
     const completed = dispatched.find(
       (a) => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.status === 'completed',
     );
@@ -442,8 +444,8 @@ describe('AnalysisRunner — Phase 4: Reconciliation', () => {
     };
     vi.mocked(reconcileResults).mockResolvedValue([reconciledResult, reconciledResult]);
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     // Results should be updated after reconciliation
     const resultUpdates = dispatched.filter(a => a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.results);
     expect(resultUpdates.length).toBeGreaterThan(0);
@@ -462,8 +464,8 @@ describe('AnalysisRunner — Phase 4: Reconciliation', () => {
 describe('AnalysisRunner — Phase 5: Finalization', () => {
   it('dispatches finalization phase update', async () => {
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     const finalizationUpdate = dispatched.find(a =>
       a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.phase === 'finalization'
     );
@@ -532,8 +534,8 @@ describe('AnalysisRunner — Phase 5: Finalization', () => {
 describe('AnalysisRunner — Phase 6: Assembly', () => {
   it('dispatches assembly phase update', async () => {
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     const assemblyUpdate = dispatched.find(a =>
       a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.phase === 'assembly'
     );
@@ -550,13 +552,13 @@ describe('AnalysisRunner — Phase 6: Assembly', () => {
   it('marks job as failed when assembly throws', async () => {
     vi.mocked(assembleNarrative).mockRejectedValue(new Error('Assembly exploded'));
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     const failedUpdate = dispatched.find(a =>
       a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.status === 'failed'
     );
     expect(failedUpdate).toBeDefined();
-    expect(failedUpdate.updates.error).toBe('Assembly exploded');
+    expect(failedUpdate!.updates.error).toBe('Assembly exploded');
     // ADD_NARRATIVE should NOT be dispatched
     const addNarrative = dispatched.find(a => a.type === 'ADD_NARRATIVE');
     expect(addNarrative).toBeUndefined();
@@ -588,8 +590,8 @@ describe('AnalysisRunner — Cancellation & Lifecycle', () => {
       chunks: Array.from({ length: 10 }, (_, i) => ({ index: i, text: `Scene ${i}`, sectionCount: 12 })),
       results: Array(10).fill(null),
     });
-    const dispatched: any[] = [];
-    const promise = analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    const promise = analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     await new Promise(resolve => setTimeout(resolve, 20));
     analysisRunner.pause(job.id);
     await promise;
@@ -607,12 +609,12 @@ describe('AnalysisRunner — Cancellation & Lifecycle', () => {
       return mockStructureResult;
     });
     const job = createMockJob();
-    const dispatched: any[] = [];
+    const dispatched: DispatchedAction[] = [];
     // Start and immediately pause after plans complete
     const promise = analysisRunner.start(job, (action) => {
-      dispatched.push(action);
+      dispatched.push(action as DispatchedAction);
       // Cancel after plans phase completes and structure phase starts
-      if ((action as any).updates?.phase === 'structure') {
+      if ((action as DispatchedAction).updates?.phase === 'structure') {
         analysisRunner.pause(job.id);
       }
     });
@@ -628,8 +630,8 @@ describe('AnalysisRunner — Cancellation & Lifecycle', () => {
       () => new Promise(resolve => setTimeout(resolve, 200))
     );
     const job = createMockJob();
-    const dispatched: any[] = [];
-    const promise1 = analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    const promise1 = analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     // Try to start same job again
     await analysisRunner.start(job, () => {});
     analysisRunner.pause(job.id);
@@ -723,8 +725,8 @@ describe('AnalysisRunner — Edge Cases', () => {
       chunks: [{ index: 0, text: 'Only scene.', sectionCount: 5 }],
       results: [null],
     });
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     expect(reverseEngineerScenePlan).toHaveBeenCalledTimes(1);
     expect(assembleNarrative).toHaveBeenCalledTimes(1);
     expect(dispatched.some(a => a.type === 'ADD_NARRATIVE')).toBe(true);
@@ -732,8 +734,8 @@ describe('AnalysisRunner — Edge Cases', () => {
   it('handles job where all plan extractions fail', async () => {
     vi.mocked(reverseEngineerScenePlan).mockRejectedValue(new Error('All fail'));
     const job = createMockJob();
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     // Pipeline still completes (assembly with empty data)
     expect(assembleNarrative).toHaveBeenCalledTimes(1);
     expect(dispatched.some(a => a.updates?.status === 'completed')).toBe(true);
@@ -767,8 +769,8 @@ describe('AnalysisRunner — Edge Cases', () => {
       chunks: Array.from({ length: 4 }, (_, i) => ({ index: i, text: `Scene ${i}`, sectionCount: 12 })),
       results: Array(4).fill(null),
     });
-    const dispatched: any[] = [];
-    await analysisRunner.start(job, (action) => dispatched.push(action));
+    const dispatched: DispatchedAction[] = [];
+    await analysisRunner.start(job, (action) => dispatched.push(action as DispatchedAction));
     // Should have multiple result updates as scenes complete
     const resultUpdates = dispatched.filter(a =>
       a.type === 'UPDATE_ANALYSIS_JOB' && a.updates.results

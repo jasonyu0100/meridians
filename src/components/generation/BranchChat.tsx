@@ -56,7 +56,10 @@ export function BranchChat({
 }: Props) {
   const { state, dispatch } = useStore();
   const activeThreadId = state.viewState.activeBranchChatThreadId;
-  const threads = narrative.branchChatThreads ?? {};
+  const threads = useMemo(
+    () => narrative.branchChatThreads ?? {},
+    [narrative.branchChatThreads],
+  );
   const activeThread =
     activeThreadId && threads[activeThreadId] ? threads[activeThreadId] : null;
 

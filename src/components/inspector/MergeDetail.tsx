@@ -14,6 +14,8 @@ import { streamProbs, streamMargin } from "@/lib/forces/stream-stance";
 import { outcomeColourHex } from "@/lib/forces/thread-category";
 import { PerspectivePairBadge } from "@/components/stage/RoomUI";
 import { InlineText } from "./InlineEdit";
+import { isBranchGameLocked } from "@/lib/game/guards";
+import { useToast } from "@/lib/state/toast-context";
 
 type Props = { mergeId: string };
 
@@ -90,6 +92,7 @@ function MergeStreamRow({ streamId, resolution }: { streamId: string; resolution
 export default function MergeDetail({ mergeId }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
+  const showToast = useToast();
   const [confirmingRevert, setConfirmingRevert] = useState(false);
 
   const merge: Merge | undefined = narrative?.merges?.[mergeId];
@@ -108,6 +111,7 @@ export default function MergeDetail({ mergeId }: Props) {
   const reopenable = streamIds
     .map((id) => narrative.streams?.[id])
     .filter((s) => s?.state === "committed").length;
+  const gameLocked = isBranchGameLocked(narrative, merge.branchId);
 
   const saveMerge = (patch: Partial<Merge>) =>
     dispatch({ type: "CREATE_MERGE", merge: { ...merge, ...patch } });
@@ -221,7 +225,13 @@ export default function MergeDetail({ mergeId }: Props) {
           </div>
         ) : (
           <button
-            onClick={() => setConfirmingRevert(true)}
+            onClick={() => {
+              if (gameLocked) {
+                showToast("Can't revert while a game is active on this branch — end the game first.", "warning");
+                return;
+              }
+              setConfirmingRevert(true);
+            }}
             className="rounded-md border border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 px-3 py-1.5 text-[11px] text-red-300/90 transition-colors"
             title="Reopen the committed streams and remove this commit"
           >

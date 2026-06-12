@@ -3,7 +3,7 @@
 
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import * as d3 from 'd3';
-import type { NarrativeState, Scene } from '@/types/narrative';
+import type { NarrativeState } from '@/types/narrative';
 import { resolveEntry, NARRATOR_ID } from '@/types/narrative';
 import { resolveEntityName } from '@/lib/forces/narrative-utils';
 import {

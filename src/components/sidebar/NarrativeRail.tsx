@@ -38,6 +38,9 @@ function InfoCard({ entry, anchor }: { entry: NarrativeEntry; anchor: AnchorRect
     left: anchor.right + CARD_GAP,
   });
   const [mounted, setMounted] = useState(false);
+  // Hydration guard: timeAgo() is time-relative, so it must only render client-side
+  // to avoid an SSR/client text mismatch. A one-shot mount flip is the standard pattern.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   useLayoutEffect(() => {
@@ -68,7 +71,7 @@ function InfoCard({ entry, anchor }: { entry: NarrativeEntry; anchor: AnchorRect
     <div
       ref={cardRef}
       role="tooltip"
-      className="pointer-events-none fixed z-9999 rounded-lg bg-bg-overlay/95 border border-white/10 shadow-xl backdrop-blur-md overflow-hidden"
+      className="pointer-events-none fixed z-popover rounded-lg bg-bg-overlay/95 border border-white/10 shadow-xl backdrop-blur-md overflow-hidden"
       style={{ top: pos.top, left: pos.left, width: CARD_WIDTH }}
     >
       <div className="flex gap-2.5 p-2.5">
@@ -77,6 +80,8 @@ function InfoCard({ entry, anchor }: { entry: NarrativeEntry; anchor: AnchorRect
           style={{ background: coverUrl ? undefined : TILE_BG }}
         >
           {coverUrl ? (
+            // Resolved IndexedDB object URL — next/image can't optimize blob/object URLs.
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={coverUrl} alt="" className="w-full h-full object-cover" />
           ) : (
             <span className="flex items-center justify-center w-full h-full text-[16px] font-semibold text-text-secondary">
@@ -201,6 +206,8 @@ function RailTile({ entry, isActive }: { entry: NarrativeEntry; isActive: boolea
         aria-label={entry.title}
       >
         {coverUrl ? (
+          // Resolved IndexedDB object URL — next/image can't optimize blob/object URLs.
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt="" className="w-full h-full object-cover" />
         ) : (
           <span className="flex items-center justify-center w-full h-full text-[13px] font-semibold text-text-secondary">
@@ -243,7 +250,7 @@ function QuickAddTile() {
         createPortal(
           <div
             role="tooltip"
-            className="pointer-events-none fixed z-9999 px-2 py-1 rounded-md bg-bg-overlay/95 border border-white/10 text-[11px] text-text-primary whitespace-nowrap shadow-lg backdrop-blur-sm"
+            className="pointer-events-none fixed z-popover px-2 py-1 rounded-md bg-bg-overlay/95 border border-white/10 text-[11px] text-text-primary whitespace-nowrap shadow-lg backdrop-blur-sm"
             style={{ top: tip.top, left: tip.left, transform: 'translateY(-50%)' }}
           >
             New narrative

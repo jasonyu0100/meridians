@@ -6,7 +6,7 @@ import { useStore } from '@/lib/state/store';
 import { generateScenePlan, generateSceneProse, reverseEngineerScenePlan } from '@/lib/ai/scenes';
 import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { generateSceneQuestions } from '@/lib/ai/learning';
-import { generateScenePerspective, availablePerspectiveKeys, perspectiveLabel } from '@/lib/ai/perspectives';
+import { generateArcPerspective, availablePerspectiveKeys, perspectiveLabel } from '@/lib/ai/perspectives';
 import { embedQuestions } from '@/lib/search/embeddings';
 import { FatalApiError } from '@/lib/ai/errors';
 import { resolveEntry, isScene, type Scene } from '@/types/narrative';
@@ -64,6 +64,9 @@ export function useBulkGenerate() {
     const total = sceneIds.length;
     let completed = 0;
     let nextIndex = 0;
+    // Perspectives are arc-scoped: many scenes share one arc, so generate each
+    // arc's lenses only once per run (first scene of the arc to reach it wins).
+    const processedArcs = new Set<string>();
 
     // Plan extraction source applies to both bulk queues. 'structure' =
     // current forward flow (structure → plan → prose). 'prose' = reverse
@@ -101,7 +104,10 @@ export function useBulkGenerate() {
         if (mode === 'prose' && resolvedProse) return;
         if (mode === 'game' && scene.gameAnalysis) return;
         if (mode === 'questions' && scene.questions?.length) return;
-        if (mode === 'perspectives' && scene.perspectives && Object.keys(scene.perspectives).length) return;
+        if (mode === 'perspectives') {
+          const arc = activeNarrative.arcs[scene.arcId];
+          if (arc?.perspectives && Object.keys(arc.perspectives).length) return;
+        }
       }
 
       const statusVerb =
@@ -173,20 +179,27 @@ export function useBulkGenerate() {
           }
           dispatch({ type: 'COMMIT_SCENE_QUESTIONS', sceneId, questions: embeddedQuestions, newTopics });
         } else if (mode === 'perspectives') {
-          window.dispatchEvent(new CustomEvent('bulk:perspectives-start', { detail: { sceneId } }));
-          const sceneIdx = resolvedEntryKeys.indexOf(sceneId);
-          // Every lens for this scene, in parallel.
+          // Arc-scoped: resolve the scene's arc and generate its lenses once.
+          // Claim the arc atomically so parallel scenes of the same arc don't
+          // double-generate.
+          const arc = activeNarrative.arcs[scene.arcId];
+          if (!arc || processedArcs.has(arc.id)) return;
+          processedArcs.add(arc.id);
+          window.dispatchEvent(new CustomEvent('bulk:perspectives-start', { detail: { arcId: arc.id } }));
+          // Every lens MISSING for this arc, in parallel — skip ones already
+          // generated so a bulk pass fills gaps instead of rewriting existing work.
+          const missingKeys = availablePerspectiveKeys(activeNarrative, arc).filter((key) => !arc.perspectives?.[key]?.text);
           await Promise.all(
-            availablePerspectiveKeys(activeNarrative, scene).map(async (key) => {
-              const text = await generateScenePerspective(activeNarrative, scene, key, resolvedEntryKeys, sceneIdx);
+            missingKeys.map(async (key) => {
+              const text = await generateArcPerspective(activeNarrative, arc, key, resolvedEntryKeys);
               dispatch({
-                type: 'SET_SCENE_PERSPECTIVE',
-                sceneId,
+                type: 'SET_ARC_PERSPECTIVE',
+                arcId: arc.id,
                 view: { key, label: perspectiveLabel(activeNarrative, key), text, generatedAt: Date.now() },
               });
             }),
           );
-          window.dispatchEvent(new CustomEvent('bulk:perspectives-complete', { detail: { sceneId } }));
+          window.dispatchEvent(new CustomEvent('bulk:perspectives-complete', { detail: { arcId: arc.id } }));
         } else {
           window.dispatchEvent(new CustomEvent('bulk:prose-start', { detail: { sceneId } }));
           // Prose mode + 'prose' source: generate prose without a plan so it flows free,

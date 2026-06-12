@@ -6,7 +6,6 @@ import type {
   CoordinationPlan,
   CoordinationNode,
   CoordinationNodeType,
-  CoordinationEdge,
   InspectorContext,
 } from "@/types/narrative";
 import type { ReasoningEdgeType } from "@/lib/ai";
@@ -526,7 +525,7 @@ export function CoordinationPlanModal({
     .sort((a, b) => (a.arcIndex ?? 0) - (b.arcIndex ?? 0));
 
   return (
-    <div className="fixed inset-0 bg-bg-base z-60 flex flex-col">
+    <div className="fixed inset-0 bg-bg-base z-modal flex flex-col">
       <div className="flex-1 min-h-0 flex flex-col p-6">
         {/* Close button */}
         <button

@@ -185,7 +185,7 @@ export function PacingProfileSlide({ data }: { data: SlidesData }) {
       p[c] = { x: gcx + gr * Math.cos(angle), y: gcy + gr * Math.sin(angle) };
     });
     return p;
-  }, []);
+  }, [gcx, gcy, gr]);
 
   return (
     <SlideShell

@@ -1,17 +1,23 @@
-// Scene perspectives — retell a canonical scene through a single lens (the
-// public narrator, or a participant entity). Each is a summary in the
-// scene-summary register, derived from canon but free to add non-canon,
-// lens-specific detail. Generated in parallel from the Content → Perspectives tab.
+// Arc perspectives — retell a whole ARC (all its scenes) through a single lens
+// (the public narrator, or a participant entity). Each is a skim-read digest in
+// the scene-summary register, derived from canon but free to add non-canon,
+// lens-specific detail. Generated in parallel from the Content → Perspectives tab
+// and the Conviction READ brief.
 
-import type { NarrativeState, Scene } from '@/types/narrative';
+import type { Arc, NarrativeState } from '@/types/narrative';
 import { resolveEntry } from '@/types/narrative';
 import { callGenerateStream, resolveReasoningBudget } from './api';
-import { buildPerspectiveSystemPrompt, buildPerspectiveUserPrompt } from '@/lib/prompts/scenes/perspective';
-import { GENERATE_MODEL } from '@/lib/constants';
+import {
+  buildPerspectiveSystemPrompt,
+  buildPerspectiveUserPrompt,
+  buildOffstagePerspectiveSystemPrompt,
+  buildOffstagePerspectiveUserPrompt,
+} from '@/lib/prompts/scenes/perspective';
+import { WRITING_MODEL } from '@/lib/constants';
 import { logInfo } from '@/lib/core/system-logger';
 
 const PUBLIC_KEY = 'public';
-const CONTINUITY_SCENES = 6; // recent scenes fed in as the lens's prior history
+const CONTINUITY_SCENES = 6; // recent scenes before the arc, fed in as the lens's prior history
 
 /** Entity display name for a perspective key (or "Public" for the narrator). */
 export function perspectiveLabel(narrative: NarrativeState, key: string): string {
@@ -24,26 +30,63 @@ export function perspectiveLabel(narrative: NarrativeState, key: string): string
   );
 }
 
-/** The perspectives available for a scene: the public narrator + each distinct
- *  participant (POV + participants) that resolves to a real entity. */
-export function availablePerspectiveKeys(narrative: NarrativeState, scene: Scene): string[] {
+/** The arc's scenes in order, resolved to real Scene objects with summaries. */
+function arcScenes(narrative: NarrativeState, arc: Arc) {
+  return (arc.sceneIds ?? [])
+    .map((id) => narrative.scenes[id])
+    .filter((s): s is NonNullable<typeof s> => !!s);
+}
+
+/** The perspectives available for an arc: the public narrator + each distinct
+ *  participant (POV or participant in ANY of the arc's scenes) that resolves to
+ *  a real entity. */
+export function availablePerspectiveKeys(narrative: NarrativeState, arc: Arc): string[] {
   const keys = new Set<string>();
   const add = (id: string | null | undefined) => {
     if (!id) return;
     if (narrative.characters[id] || narrative.locations[id] || narrative.artifacts?.[id]) keys.add(id);
   };
-  add(scene.povId);
-  for (const id of scene.participantIds ?? []) add(id);
+  for (const scene of arcScenes(narrative, arc)) {
+    add(scene.povId);
+    for (const id of scene.participantIds ?? []) add(id);
+  }
   return [PUBLIC_KEY, ...keys];
 }
 
-/** Recent scene summaries before `scene`, optionally only those a given entity
- *  participated in — the lens's continuity going in. */
+/** Whether an entity appears in the arc (POV or participant in any arc scene).
+ *  When false, the entity is offstage for the whole arc and gets an imagined
+ *  concurrent moment instead of a retelling of events it never witnessed. */
+function isArcParticipant(narrative: NarrativeState, arc: Arc, entityKey: string): boolean {
+  return arcScenes(narrative, arc).some(
+    (s) => s.povId === entityKey || (s.participantIds ?? []).includes(entityKey),
+  );
+}
+
+/** The arc's position in the timeline: the index of its FIRST scene in the
+ *  resolved entry list (where the arc begins). Continuity is everything before
+ *  it. Falls back to the end of the list if no arc scene is found. */
+function arcStartIndex(arc: Arc, resolvedKeys: string[]): number {
+  const ids = new Set(arc.sceneIds ?? []);
+  for (let i = 0; i < resolvedKeys.length; i++) if (ids.has(resolvedKeys[i])) return i;
+  return resolvedKeys.length;
+}
+
+/** The arc's canonical events — its scene summaries in order, the ground truth
+ *  the perspective synthesizes across. */
+function buildArcCanon(narrative: NarrativeState, arc: Arc): string {
+  const summaries = arcScenes(narrative, arc)
+    .map((s) => s.summary)
+    .filter(Boolean);
+  if (!summaries.length) return '';
+  return summaries.map((s, i) => `${i + 1}. ${s}`).join('\n\n');
+}
+
+/** Recent scene summaries BEFORE the arc, optionally only those a given entity
+ *  participated in — the lens's continuity going into the arc. */
 function buildContinuity(
   narrative: NarrativeState,
-  scene: Scene,
   resolvedKeys: string[],
-  currentIndex: number,
+  startIndex: number,
   entityKey: string | null,
 ): string {
   const lines: string[] = [];
@@ -59,7 +102,7 @@ function buildContinuity(
   }
 
   const summaries: string[] = [];
-  for (let i = currentIndex - 1; i >= 0 && summaries.length < CONTINUITY_SCENES; i--) {
+  for (let i = startIndex - 1; i >= 0 && summaries.length < CONTINUITY_SCENES; i--) {
     const e = resolveEntry(narrative, resolvedKeys[i]);
     if (!e || e.kind !== 'scene' || !e.summary) continue;
     if (entityKey && e.povId !== entityKey && !(e.participantIds ?? []).includes(entityKey)) continue;
@@ -70,42 +113,101 @@ function buildContinuity(
   return lines.join('\n\n');
 }
 
-/**
- * Generate one scene perspective. `key` is `public` (public narrator) or a
- * participant entity id. Returns the perspective summary text. Caller saves it
- * via SET_SCENE_PERSPECTIVE; the Perspectives view fans these out in parallel.
- */
-export async function generateScenePerspective(
+/** The entity's last known location name before the arc starts — the most
+ *  recent scene it took part in. Empty when it has never been seen. */
+function lastKnownLocation(
   narrative: NarrativeState,
-  scene: Scene,
+  resolvedKeys: string[],
+  startIndex: number,
+  entityKey: string,
+): string {
+  for (let i = startIndex - 1; i >= 0; i--) {
+    const e = resolveEntry(narrative, resolvedKeys[i]);
+    if (!e || e.kind !== 'scene') continue;
+    if ((e.povId === entityKey || (e.participantIds ?? []).includes(entityKey)) && e.locationId)
+      return narrative.locations[e.locationId]?.name ?? '';
+  }
+  return '';
+}
+
+/** This entity's recent prior perspective deliveries on EARLIER arcs (its own
+ *  offstage/private narration history), oldest-first, up to a few — so the
+ *  offstage life continues coherently rather than resetting each arc. */
+function priorArcPerspectivesFor(
+  narrative: NarrativeState,
+  arc: Arc,
+  resolvedKeys: string[],
+  entityKey: string,
+  limit = 3,
+): string {
+  const thisStart = arcStartIndex(arc, resolvedKeys);
+  const earlier = Object.values(narrative.arcs ?? {})
+    .filter((a) => a.id !== arc.id && arcStartIndex(a, resolvedKeys) < thisStart)
+    .sort((a, b) => arcStartIndex(a, resolvedKeys) - arcStartIndex(b, resolvedKeys));
+  const texts = earlier
+    .map((a) => a.perspectives?.[entityKey]?.text?.trim())
+    .filter((t): t is string => !!t);
+  return texts.slice(-limit).map((t) => `— ${t}`).join('\n\n');
+}
+
+/**
+ * Generate one ARC perspective. `key` is `public` (public narrator) or a
+ * participant entity id. Synthesizes the whole arc through that lens. Returns
+ * the perspective digest text. Caller saves it via SET_ARC_PERSPECTIVE; callers
+ * fan these out in parallel.
+ */
+export async function generateArcPerspective(
+  narrative: NarrativeState,
+  arc: Arc,
   key: string,
   resolvedKeys: string[],
-  currentIndex: number,
-  opts: { onReasoning?: (token: string, accumulated: string) => void } = {},
+  opts: {
+    onReasoning?: (token: string, accumulated: string) => void;
+    /** Stream the answer text as it's written (for live "watch it build" UIs). */
+    onToken?: (token: string, accumulated: string) => void;
+  } = {},
 ): Promise<string> {
   const isPublic = key === PUBLIC_KEY;
   const label = perspectiveLabel(narrative, key);
-  logInfo('Generating scene perspective', {
+  logInfo('Generating arc perspective', {
     source: 'analysis',
     operation: 'generate-perspective',
-    details: { narrativeId: narrative.id, sceneId: scene.id, key },
+    details: { narrativeId: narrative.id, arcId: arc.id, key },
   });
 
-  const arc = scene.arcId ? narrative.arcs[scene.arcId] : undefined;
-  const outline = arc ? `${arc.name}${arc.directionVector ? ` — ${arc.directionVector}` : ''}` : '';
-  const continuity = buildContinuity(narrative, scene, resolvedKeys, currentIndex, isPublic ? null : key);
-
-  const userPrompt = buildPerspectiveUserPrompt({ label, isPublic, canonSummary: scene.summary, continuity, outline });
+  const startIndex = arcStartIndex(arc, resolvedKeys);
+  const outline = `${arc.name}${arc.directionVector ? ` — ${arc.directionVector}` : ''}`;
+  const continuity = buildContinuity(narrative, resolvedKeys, startIndex, isPublic ? null : key);
   const reasoningBudget = resolveReasoningBudget(narrative);
 
+  // OFFSTAGE: a non-public entity that appears in NONE of the arc's scenes isn't
+  // there to witness them. Don't retell the events — imagine its concurrent,
+  // elsewhere life across the arc's span (last location + routine + ongoing
+  // concerns), grounded in continuity and its prior deliveries, clear of canon.
+  const offstage = !isPublic && !isArcParticipant(narrative, arc, key);
+  const systemPrompt = offstage ? buildOffstagePerspectiveSystemPrompt() : buildPerspectiveSystemPrompt();
+  const userPrompt = offstage
+    ? buildOffstagePerspectiveUserPrompt({
+        label,
+        lastLocation: lastKnownLocation(narrative, resolvedKeys, startIndex, key),
+        continuity,
+        priorPerspectives: priorArcPerspectivesFor(narrative, arc, resolvedKeys, key),
+        outline,
+      })
+    : buildPerspectiveUserPrompt({ label, isPublic, canon: buildArcCanon(narrative, arc), continuity, outline });
+
   let reasoning = '';
+  let answer = '';
   const raw = await callGenerateStream(
     userPrompt,
-    buildPerspectiveSystemPrompt(),
-    () => {},
+    systemPrompt,
+    (token) => {
+      answer += token;
+      opts.onToken?.(token, answer);
+    },
     undefined,
-    `generateScenePerspective:${key}`,
-    GENERATE_MODEL,
+    `generateArcPerspective:${offstage ? 'offstage:' : ''}${key}`,
+    WRITING_MODEL,
     reasoningBudget,
     (token) => {
       reasoning += token;

@@ -403,7 +403,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
     } finally {
       setBusy(false);
     }
-  }, [pending, scenarios, narrative.title, focusedArc, contextSource, outline, modeSection, dispatch]);
+  }, [pending, scenarios, narrative, focusedArc, contextSource, outline, modeSection, dispatch]);
 
   // Present has no pool — its variable set stands alone and does not borrow
   // from Compass directions. The two surfaces are separate by design.
@@ -444,7 +444,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       setBusy(false);
       setStreamingReasoning('');
     }
-  }, [focusedArc, narrative.title, contextSource, outline, modeSection, direction, dispatch]);
+  }, [focusedArc, narrative, contextSource, outline, modeSection, direction, dispatch]);
 
   const generateCompass = useCallback(async () => {
     setBusy(true);
@@ -479,7 +479,7 @@ function VariablesViewInner({ mode, narrative, focusedArc, contextSource, outlin
       setBusy(false);
       setStreamingReasoning('');
     }
-  }, [focusedArc, narrative.title, contextSource, outline, modeSection, direction, dispatch]);
+  }, [focusedArc, narrative, contextSource, outline, modeSection, direction, dispatch]);
 
   // Beaker quick-action — StagePalette sets this flag immediately before
   // switching to the Compass view; consuming it here covers the render gap

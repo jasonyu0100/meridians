@@ -441,7 +441,7 @@ export function ReasoningGraphView({
     // Apply initial transform to center and scale the graph
     svg.call(zoom.transform, initialTransform);
 
-  }, [layoutNodes, layoutEdges, containerSize, handleNodeClick]);
+  }, [layoutNodes, layoutEdges, containerSize, handleNodeClick, resolveNodeColor]);
 
   // Highlight selected node
   useEffect(() => {
@@ -456,7 +456,7 @@ export function ReasoningGraphView({
         .attr("stroke-width", isSelected ? 4 : 2)
         .attr("stroke", isSelected ? ACTIVE_NODE_COLOR : resolveNodeColor(d.data.type).stroke);
     });
-  }, [selectedNodeId]);
+  }, [selectedNodeId, resolveNodeColor]);
 
   if (graph.nodes.length === 0) {
     return (

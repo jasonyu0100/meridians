@@ -18,25 +18,14 @@ import type { ImageRef, AudioRef } from '@/types/narrative';
  * @returns Blob URL for local assets, external URL as-is, or null
  */
 export function useImageUrl(imageRef: ImageRef): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+  // Synchronous passthrough values (no asset resolution needed) are derived
+  // during render so the effect only ever sets state from an async callback.
+  const passthrough = resolvePassthroughUrl(imageRef);
+  const needsResolve = imageRef && passthrough === undefined;
+  const [resolved, setResolved] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!imageRef) {
-      setUrl(null);
-      return;
-    }
-
-    // External URL (starts with http:// or https://) - use as-is
-    if (imageRef.startsWith('http://') || imageRef.startsWith('https://')) {
-      setUrl(imageRef);
-      return;
-    }
-
-    // Data URL (base64) - use as-is (legacy support)
-    if (imageRef.startsWith('data:')) {
-      setUrl(imageRef);
-      return;
-    }
+    if (!needsResolve) return;
 
     // Asset reference - resolve to blob URL
     // Note: blob URLs are cached and owned by assetManager — do NOT revoke here
@@ -44,19 +33,32 @@ export function useImageUrl(imageRef: ImageRef): string | null {
 
     assetManager.getImageUrl(imageRef).then((resolvedUrl) => {
       if (!cancelled) {
-        setUrl(resolvedUrl);
+        setResolved(resolvedUrl);
       }
     }).catch((err) => {
       console.warn(`[useImageUrl] Failed to resolve ${imageRef}:`, err);
-      if (!cancelled) setUrl(null);
+      if (!cancelled) setResolved(null);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [imageRef]);
+  }, [imageRef, needsResolve]);
 
-  return url;
+  if (passthrough !== undefined) return passthrough;
+  return needsResolve ? resolved : null;
+}
+
+/**
+ * Resolve an asset ref to a synchronous URL when no async lookup is needed.
+ * Returns the URL for external/data refs, null for empty refs, or `undefined`
+ * to signal that an async asset-manager resolution is required.
+ */
+function resolvePassthroughUrl(ref: ImageRef | AudioRef): string | null | undefined {
+  if (!ref) return null;
+  if (ref.startsWith('http://') || ref.startsWith('https://')) return ref;
+  if (ref.startsWith('data:')) return ref;
+  return undefined;
 }
 
 /**
@@ -71,13 +73,20 @@ export function useImageUrl(imageRef: ImageRef): string | null {
  * @returns Map of original ref → resolved URL (only includes resolved entries)
  */
 export function useImageUrlMap(imageRefs: ImageRef[]): Map<string, string> {
-  const [urlMap, setUrlMap] = useState<Map<string, string>>(new Map());
+  const [urlMap, setUrlMap] = useState<Map<string, string>>(EMPTY_URL_MAP);
+
+  // Stable dependency using joined string (extracted so it can be statically checked)
+  const refsKey = imageRefs.join(',');
 
   useEffect(() => {
-    // Filter to only refs that need resolution
+    // Filter to only refs that need resolution. `refsKey` is the join of
+    // `imageRefs` and is the real dependency; we read the array here for the
+    // exact values (a ref may contain commas, so we can't split refsKey).
     const refsToResolve = imageRefs.filter((ref): ref is string => !!ref);
     if (refsToResolve.length === 0) {
-      setUrlMap(new Map());
+      // Reset to the shared empty map only when we're not already empty,
+      // so the effect doesn't set state synchronously on every render.
+      setUrlMap((prev) => (prev.size === 0 ? prev : EMPTY_URL_MAP));
       return;
     }
 
@@ -114,10 +123,16 @@ export function useImageUrlMap(imageRefs: ImageRef[]): Map<string, string> {
     return () => {
       cancelled = true;
     };
-  }, [imageRefs.join(',')]); // Stable dependency using joined string
+    // refsKey is the stable serialization of imageRefs; imageRefs itself is
+    // read inside but is a new array each render, so we key off refsKey only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refsKey]);
 
   return urlMap;
 }
+
+/** Shared empty map so the "no refs" path doesn't allocate or trigger renders. */
+const EMPTY_URL_MAP: Map<string, string> = new Map();
 
 /**
  * Resolve an AudioRef to a usable URL
@@ -125,19 +140,18 @@ export function useImageUrlMap(imageRefs: ImageRef[]): Map<string, string> {
  * @returns Blob URL or null
  */
 export function useAudioUrl(audioRef: AudioRef): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+  // Data URLs / empty refs resolve synchronously during render; only true
+  // asset references need the async effect (which sets state in its callback).
+  const passthrough = audioRef
+    ? audioRef.startsWith('data:')
+      ? audioRef
+      : undefined
+    : null;
+  const needsResolve = !!audioRef && passthrough === undefined;
+  const [resolved, setResolved] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!audioRef) {
-      setUrl(null);
-      return;
-    }
-
-    // Data URL (base64) - use as-is (legacy support)
-    if (audioRef.startsWith('data:')) {
-      setUrl(audioRef);
-      return;
-    }
+    if (!needsResolve) return;
 
     // Asset reference - resolve to blob URL
     // Note: blob URLs are cached and owned by assetManager — do NOT revoke here
@@ -145,17 +159,18 @@ export function useAudioUrl(audioRef: AudioRef): string | null {
 
     assetManager.getAudioUrl(audioRef).then((resolvedUrl) => {
       if (!cancelled) {
-        setUrl(resolvedUrl);
+        setResolved(resolvedUrl);
       }
     }).catch((err) => {
       console.warn(`[useAudioUrl] Failed to resolve ${audioRef}:`, err);
-      if (!cancelled) setUrl(null);
+      if (!cancelled) setResolved(null);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [audioRef]);
+  }, [audioRef, needsResolve]);
 
-  return url;
+  if (passthrough !== undefined) return passthrough;
+  return needsResolve ? resolved : null;
 }

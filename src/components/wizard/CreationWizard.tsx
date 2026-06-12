@@ -430,7 +430,7 @@ export function CreationWizard() {
                 <span className="text-xs text-text-dim">
                   World only — skip introduction arc
                   <span className="ml-1 text-text-dim/60">
-                    (use premise as the world view's plan, generate entities only)
+                    (use premise as the world view&rsquo;s plan, generate entities only)
                   </span>
                 </span>
               </label>

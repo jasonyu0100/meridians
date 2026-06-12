@@ -2,7 +2,7 @@
 
 > **Generated** by `scripts/gen-tree.mjs` — structure is read from the filesystem and each file's description is derived from its own leading comment (else a name-based heuristic). No hand-maintained map; re-run after adding files: `node scripts/gen-tree.mjs`. Companion to [MERMAID.md](MERMAID.md). Stack: Next.js 16 · React 19 · TypeScript · Tailwind v4 · D3 · IndexedDB.
 >
-> 519 files · 511 described from their own header comment, the rest from filename heuristics.
+> 572 files · 549 described from their own header comment, the rest from filename heuristics.
 
 ```xml
 <repo name="meridians">
@@ -54,6 +54,21 @@
       <file name="entity-ref.test.ts" desc="Tests for entity-ref — bracketed entity citations in chat / search, including"/>
       <file name="epub-export.test.ts" desc="Tests for lib/io/epub-export — verifies EPUB export output, filename derivation, and browser API usage"/>
       <file name="file-conversion.test.ts" desc="file-conversion tests — focused on the pure pieces of the Apply pipeline that don't depend on the LLM: 1"/>
+      <file name="game-agent-ai.test.ts" desc="test: game agent ai"/>
+      <file name="game-agent.test.ts" desc="test: game agent"/>
+      <file name="game-attribution.test.ts" desc="test: game attribution"/>
+      <file name="game-cast.test.ts" desc="test: game cast"/>
+      <file name="game-conflicts.test.ts" desc="test: game conflicts"/>
+      <file name="game-economy.test.ts" desc="test: game economy"/>
+      <file name="game-engine.test.ts" desc="test: game engine"/>
+      <file name="game-guards.test.ts" desc="test: game guards"/>
+      <file name="game-mentions.test.ts" desc="test: game mentions"/>
+      <file name="game-narration.test.ts" desc="test: game narration"/>
+      <file name="game-realism.test.ts" desc="test: game realism"/>
+      <file name="game-round.test.ts" desc="test: game round"/>
+      <file name="game-scoring-ai.test.ts" desc="test: game scoring ai"/>
+      <file name="game-scoring.test.ts" desc="test: game scoring"/>
+      <file name="game-streams.test.ts" desc="test: game streams"/>
       <file name="game-theory-tags.test.ts" desc="Behavioural-tag classifier coverage for the Game Theory Dashboard"/>
       <file name="game-theory.test.ts" desc="Tests for lib/game-theory — Nash equilibria, margin scoring, ELO updates, and rating trajectories"/>
       <file name="graph-export.test.ts" desc="Tests for lib/io/graph-export — graph view export, mode labels, and exportable-mode detection"/>
@@ -85,7 +100,7 @@
       <file name="system-graph.test.ts" desc="Tests for lib/graph/system-graph — system delta sanitizing/application, edge keys, and concept id resolution"/>
       <file name="system-logger.test.ts" desc="Tests for lib/core/system-logger — error/warning log entries, subscription callbacks, and narrative scoping"/>
       <file name="text-analysis.test.ts" desc="Tests for lib/text-analysis — corpus chunking and extraction pipeline (with mocked AI calls and constants)"/>
-      <file name="thread-alluvial.test.ts" desc="Tests for the Streams influence alluvial: the fixed-size sliding time window,"/>
+      <file name="thread-alluvial.test.ts" desc="Tests for the Influence alluvial"/>
       <file name="thread-category.test.ts" desc="Tests for lib/forces/thread-category — thread category thresholds, logit energy, and volatile/developing…"/>
       <file name="thread-log.test.ts" desc="Tests for lib/forces/thread-log — applying thread deltas to stances, stance decay, and stance/log invariants"/>
       <file name="time-deltas.test.ts" desc="Tests for lib/forces/time-deltas — time-delta normalization, scene offsets, gap descriptions, and formatting"/>
@@ -166,7 +181,22 @@
       <dir name="effects">
         <file name="StarField.tsx" desc="StarField — canvas-rendered animated twinkling starfield background effect"/>
       </dir>
+      <dir name="game">
+        <file name="ConvictionCard.tsx" desc="A conviction card — the thing in your hand (plan §8)"/>
+        <file name="ConvictionModal.tsx" desc="Conviction — the fullscreen poker-table modal (entry point: TopBar Play)"/>
+        <file name="FateOdometer.tsx" desc="The Fate odometer — Conviction's north-star readout (plan §8a-3)"/>
+        <file name="GameBottomPanel.tsx" desc="Conviction bottom dock (GameShell) — the lower panel that mirrors the narrative workspace's bottom strip"/>
+        <file name="GameReport.tsx" desc="GameReport — the end-of-game debrief for the GM (CONCEPT.md: a per-game read of how everything went)"/>
+        <file name="GameSetup.tsx" desc="Conviction SETUP (plan §5a, §8)"/>
+        <file name="GameShell.tsx" desc="GameShell — the live Conviction workspace, built to mirror the main narrative shell (AppShell): a left rail…"/>
+        <file name="GameSidePanels.tsx" desc="Conviction right-rail panel bodies (GameShell)"/>
+        <file name="PokerTable.tsx" desc="The Board — Conviction's centre surface (plan §8, MERMAID §8)"/>
+        <file name="ScoreReveal.tsx" desc="ScoreReveal — the scoring animation that plays after Arc Gen (CONCEPT.md §scoring), the sibling of the…"/>
+        <file name="SeatHand.tsx" desc="The hand — a row of cards at the bottom of the felt, grouped/divided by stream (plan §8)"/>
+        <file name="Showdown.tsx" desc="Showdown — the reveal animation that plays on the board centre between PLAY and arc generation (CONCEPT.md…"/>
+      </dir>
       <dir name="generation">
+        <file name="AdvancedSettingsModal.tsx" desc="AdvancedSettingsModal — fine-grained generation control for GMs"/>
         <file name="BranchChat.tsx" desc="BranchChat — conversational interface for querying and steering a branch's timeline"/>
         <file name="BranchModal.tsx" desc="BranchModal — modal for creating and managing story timeline branches"/>
         <file name="BranchScopeControl.tsx" desc="BranchScopeControl — picker for the context scope (time horizon) a branch operation sees"/>
@@ -175,6 +205,7 @@
         <file name="CoordinationPlanSetupModal.tsx" desc="CoordinationPlanSetupModal — configure thinking style/resources and generate a coordination plan"/>
         <file name="GeneratePanel.tsx" desc="GeneratePanel — main scene/arc generation controls with expand-world and error-repair surfacing"/>
         <file name="GuidanceFields.tsx" desc="GuidanceFields — direction input field with AI direction suggestion"/>
+        <file name="LocationSelectorModal.tsx" desc="LocationSelectorModal — pick a location to seed a generation, by drilling"/>
         <file name="MarkovGraph.tsx" desc="MarkovGraph — visualises the cube-mode Markov transition matrix driving pacing"/>
         <file name="PacingStrip.tsx" desc="PacingStrip — horizontal strip showing the sampled cube-mode pacing sequence for an arc"/>
         <file name="ReasoningGraphModal.tsx" desc="ReasoningGraphModal — view and regenerate an arc's causal reasoning graph (CRG)"/>
@@ -248,7 +279,9 @@
         <file name="charts.tsx" desc="Shared chart primitives — the single source of truth for the app's inline line charts"/>
         <file name="CopyButton.tsx" desc="CopyButton — button that copies text to the clipboard with transient confirmation state"/>
         <file name="EmptyState.tsx" desc="EmptyState — the universal &quot;nothing here yet&quot; placeholder for stage tabs"/>
+        <file name="ExperienceSparkline.tsx" desc="ExperienceSparkline — smooth, value-coloured area line with a hover tooltip"/>
         <file name="InferenceFields.tsx" desc="Shared inference-shape renderer — the canonical visual language for the universal inference-shape (detail…"/>
+        <file name="RealismReview.tsx" desc="RealismReview — the GM's editable view of the realism preprocessing, shared IDENTICALLY by the narrative…"/>
       </dir>
       <dir name="sidebar">
         <dir name="maps">
@@ -267,6 +300,7 @@
         <file name="BoardAnnotator.tsx" desc="BoardAnnotator — overlays HTML labels/annotations onto a generated board/map image"/>
         <file name="FileComposerModal.tsx" desc="FileComposerModal — two-phase composer for extending the current world"/>
         <file name="HierarchyModal.tsx" desc="HierarchyModal — edit the location hierarchy (the map tree) of nested places"/>
+        <file name="ImportFileModal.tsx" desc="ImportFileModal — copy a source file from another world view into the current one"/>
         <file name="InterviewPanel.tsx" desc="InterviewPanel — sidebar panel for running and browsing one-subject-many-questions interviews"/>
         <file name="LearningPanel.tsx" desc="LearningPanel — sidebar surface for a member's coverage of the world view's"/>
         <file name="MapPanel.tsx" desc="MapPanel — sidebar panel listing generated board/maps and launching the map composer"/>
@@ -312,6 +346,7 @@
           <file name="VariableRadarChart.tsx" desc="VariableRadarChart — radar/spider chart plotting variable intensities for one or more scenarios"/>
           <file name="VariableViewSwitcher.tsx" desc="VariableViewSwitcher — toggle control choosing the variables visualisation mode (radar / parallel / grid)"/>
         </dir>
+        <file name="ArcPerspectivesView.tsx" desc="ArcPerspectivesView — Content → Perspectives"/>
         <file name="AudioMiniPlayer.tsx" desc="AudioMiniPlayer — compact persistent audio playback control for generated scene narration"/>
         <file name="BeliefView.tsx" desc="Belief dashboard — the world view's belief, built from per-thread stances"/>
         <file name="BoardView.tsx" desc="BoardView — Stage board surface: board-game style map with nested location maps and participant avatars"/>
@@ -319,6 +354,7 @@
         <file name="CurriculumRestructureModal.tsx" desc="CurriculumRestructureModal — reorganise the global topic tree with AI"/>
         <file name="CurriculumView.tsx" desc="CurriculumView — the world view's Topic curriculum, rendered one of two ways per the `view` prop (the Tree /…"/>
         <file name="DecisionView.tsx" desc="DecisionView — scene-level game-theoretic analysis"/>
+        <file name="ExperienceView.tsx" desc="ExperienceView — the Experience surface"/>
         <file name="graph-utils.ts" desc="graph-utils — shared helpers for Stage graph surfaces: node/edge derivation, colors, and layout utilities"/>
         <file name="MergesView.tsx" desc="MergesView — the Vision &quot;History&quot; tab"/>
         <file name="NetworkView.tsx" desc="NetworkView — Stage Network surface: aggregate connection graph across all entities, rendered with D3"/>
@@ -327,12 +363,11 @@
         <file name="PlanCandidatesView.tsx" desc="PlanCandidatesView — side-by-side comparison and selection UI for alternative generated scene-plan candidates"/>
         <file name="ReasoningGraphView.tsx" desc="ReasoningGraphView — Stage surface rendering an arc's causal reasoning graph (CRG) nodes and typed edges"/>
         <file name="RoomUI.tsx" desc="RoomUI — presentation primitives shared by the room/perspective surfaces"/>
-        <file name="SankeyView.tsx" desc="SankeyView — the Fate INFLUENCE alluvial"/>
+        <file name="SankeyView.tsx" desc="SankeyView — the INFLUENCE alluvial"/>
         <file name="SceneAudioView.tsx" desc="SceneAudioView — Stage surface for generating and playing back audio narration of a scene's prose"/>
         <file name="SceneBar.tsx" desc="SceneBar — horizontal scene navigator strip for the Stage; selects and scrolls through the branch's scenes"/>
         <file name="SceneLearningView.tsx" desc="SceneLearningView — scene-level learning question bank"/>
         <file name="ScenePanel.tsx" desc="ScenePanel — Stage scene detail container: header, POV/location, and the plan/prose/audio sub-views for a…"/>
-        <file name="ScenePerspectivesView.tsx" desc="ScenePerspectivesView — Content → Perspectives"/>
         <file name="ScenePlanView.tsx" desc="ScenePlanView — Stage surface showing a scene's beat-by-beat plan with generate/rewrite/reverse-engineer…"/>
         <file name="SceneProseView.tsx" desc="SceneProseView — Stage surface rendering a scene's prose with generate/rewrite controls and version history"/>
         <file name="SearchView.tsx" desc="SearchView — Stage search surface"/>
@@ -366,6 +401,7 @@
         <file name="BeatProfileModal.tsx" desc="BeatProfileModal — visualises beat-function/mechanism distributions and Markov sampler from scene plans"/>
         <file name="BranchContextModal.tsx" desc="BranchContextModal — inspect the LLM context (narrative/scene/outline) assembled for the active branch"/>
         <file name="DefinitionsModal.tsx" desc="DefinitionsModal — glossary of core concepts: archetypes, cube corners, forces, and entity types"/>
+        <file name="ExperienceScorePanel.tsx" desc="ExperienceScorePanel — the Experience scorecard"/>
         <file name="ExportPackageModal.tsx" desc="ExportPackageModal — configure and export the current narrative as a portable package with size estimate"/>
         <file name="FormulaModal.tsx" desc="FormulaModal — KaTeX-rendered reference of the Fate/World/System force formulas and reference means"/>
         <file name="GameTheoryDashboard.tsx" desc="GameTheoryDashboard — a focused, high-level view of the narrative's strategic structure"/>
@@ -406,6 +442,7 @@
       <file name="useBulkEmbed.ts" desc="Bulk Embedding Hook - Manual regeneration of embeddings for scenes Use cases: - Importing old narratives…"/>
       <file name="useBulkGenerate.ts" desc="useBulkGenerate — manages parallel plan/prose/game generation across a scene range with progress"/>
       <file name="useBulkStreamPreview.ts" desc="useBulkStreamPreview — cross-scene bulk stream subscription for the plan/prose/audio scene views"/>
+      <file name="useConviction.ts" desc="useConviction — the Conviction game orchestration hook (CONCEPT.md §The game loop, Rounds + computer mode)"/>
       <file name="useFeatureAccess.ts" desc="useFeatureAccess — reads/writes user-provided API keys (localStorage) and reports key availability"/>
       <file name="usePropositionClassification.tsx" desc="Proposition classification provider &amp; hook"/>
       <file name="useResolvedScene.ts" desc="useResolvedScene — resolves a scene's branch-specific prose/plan/score versions for the current branch"/>
@@ -429,7 +466,15 @@
         <file name="curriculum-restructure.ts" desc="Curriculum-restructure LLM helpers — reorganise the global topic tree into a"/>
         <file name="diagnose.ts" desc="Inspect a thrown error from a generation call and produce a user-facing diagnosis: what likely went wrong,…"/>
         <file name="errors.ts" desc="Errors raised at the LLM API boundary"/>
+        <file name="experience-report.ts" desc="experience-report.ts — AI rehearsal/experience report"/>
+        <file name="game-agent.ts" desc="Conviction agent play — the LLM decides how an AI seat takes its PLAY turn"/>
         <file name="game-analysis.ts" desc="Game-theoretic scene analysis — a purely additive, post-hoc layer"/>
+        <file name="game-cast.ts" desc="Conviction cast suggestion — the AI call that proposes WHO to seat at a new rehearsal table"/>
+        <file name="game-conflicts.ts" desc="Conviction conflict detection — the resolver's one AI step (CONCEPT.md §Contested settlement: &quot;detect + map…"/>
+        <file name="game-narration.ts" desc="Conviction narration — the perspective lenses a room reads through each round"/>
+        <file name="game-realism.ts" desc="Realism conflict resolution — the impartial-AI-judge call shared by BOTH the Conviction game (the `realism`…"/>
+        <file name="game-scoring.ts" desc="Conviction AI scoring (CONCEPT.md §scoring) — the LLM read that turns a resolved continuation into the…"/>
+        <file name="game-streams.ts" desc="Conviction seat-stream seeding — the AI call that gives a seat something real to play (CONCEPT.md…"/>
         <file name="hierarchy.ts" desc="Location-hierarchy LLM helpers — builds the nested location/map tree with target fan-out per node"/>
         <file name="image-prompt.ts" desc="Suggest a refined imagePrompt for an entity (character, location, artifact) by reading the entity's full…"/>
         <file name="index.ts" desc="Context builders"/>
@@ -437,7 +482,7 @@
         <file name="interviews.ts" desc="Interview executor — ask one subject many questions in parallel using its world-graph continuity"/>
         <file name="json.ts" desc="Clean common LLM JSON quirks: code fences, trailing commas, single-quoted keys"/>
         <file name="learning.ts" desc="Learning (Quiz) generation — a purely additive, post-hoc layer"/>
-        <file name="perspectives.ts" desc="Scene perspectives — retell a canonical scene through a single lens (the"/>
+        <file name="perspectives.ts" desc="Arc perspectives — retell a whole ARC (all its scenes) through a single lens"/>
         <file name="phase-graph.ts" desc="Phase generator — mines narrative context (with optional user guidance and optional seed graph) to produce a…"/>
         <file name="premise.ts" desc="Premise suggestion for the creation wizard"/>
         <file name="prompts.ts" desc="Re-export wrapper for backward compatibility"/>
@@ -457,6 +502,7 @@
       </dir>
       <dir name="analysis">
         <file name="analysis-runner.ts" desc="Singleton analysis runner — persists across React component mounts/unmounts"/>
+        <file name="experience.ts" desc="experience.ts — Experience scoring: an alternative to narrative (forces)"/>
         <file name="portfolio-analytics.ts" desc="Thread-portfolio analytics"/>
         <file name="proposition-classify.ts" desc="Proposition Classification Engine Classifies propositions into 4 base categories with Local/Global reach: 1"/>
         <file name="stream-portfolio.ts" desc="Stream-portfolio analytics — the HEAD-based cousin of `portfolio-analytics`"/>
@@ -474,10 +520,20 @@
         <file name="narrative-utils.ts" desc="Force formulas + graph/cube/stance algorithms — the deterministic math deriving Fate/World/System from deltas"/>
         <file name="positions.ts" desc="Entity positions — derives each character's current location from scene participation history"/>
         <file name="stream-stance.ts" desc="Stream stance engine — a Stream is a thread"/>
-        <file name="thread-alluvial.ts" desc="thread-alluvial.ts — log-based layering for the Fate Influence Sankey"/>
+        <file name="thread-alluvial.ts" desc="thread-alluvial.ts — log-based layering for the Influence Sankey"/>
         <file name="thread-category.ts" desc="Thread category classification — a single vocabulary derived from a thread's current MARKET STATE…"/>
         <file name="thread-log.ts" desc="Thread stance application"/>
         <file name="time-deltas.ts" desc="Time delta helpers. Scenes are instants; the gap between consecutive scenes is a TimeDelta ({value, unit}).…"/>
+      </dir>
+      <dir name="game">
+        <file name="agent.ts" desc="Conviction agent play — the DETERMINISTIC FALLBACK for an AI seat's turn (the LLM policy `decideAgentPlays`…"/>
+        <file name="attribution.ts" desc="Conviction attribution — turn a played-out round into the per-thread share vectors the scorer consumes…"/>
+        <file name="economy.ts" desc="Conviction economy — the pure money/evidence math for the rehearsal card game (CONCEPT.md §Constants &amp;…"/>
+        <file name="engine.ts" desc="Conviction engine — the PURE round-machine helpers for the rehearsal card game (CONCEPT.md §The game loop,…"/>
+        <file name="guards.ts" desc="Conviction guardrails — world-state protection while a game is live (CONCEPT.md §Key invariants; plan §5b)"/>
+        <file name="mentions.ts" desc="Conviction chat @-mentions — pure text parsing, so the chat can highlight a tag and the shell can badge…"/>
+        <file name="scoring.ts" desc="Conviction scoring — the Fate Metric (CONCEPT.md §The scoring math)"/>
+        <file name="settlement.ts" desc="Conviction settlement — how a contested thread picks a winner when committed claims conflict (CONCEPT.md…"/>
       </dir>
       <dir name="game-theory">
         <file name="game-theory-glossary.ts" desc="Plain-language tooltips for the game-theory UI"/>
@@ -675,6 +731,7 @@
         <file name="logs-context.tsx" desc="LogsProvider — narrative-scoped React context for API + system logs, with persistence and stale pruning"/>
         <file name="store.tsx" desc="Store — central React Context + useReducer app state: narratives, branches, view state, and all actions"/>
         <file name="theme-context.tsx" desc="ThemeProvider — light/dark theme React context with persistence"/>
+        <file name="toast-context.tsx" desc="ToastContext — lightweight global toast for brief one-line feedback"/>
         <file name="wizard-context.tsx" desc="WizardProvider — React context + reducer for the new-story creation wizard flow state"/>
       </dir>
       <dir name="storage">

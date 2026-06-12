@@ -164,6 +164,7 @@ export function NarrativeEditModal({ entry, onClose }: { entry: NarrativeEntry; 
               <div className="relative shrink-0 group">
                 <div className="w-36 rounded-lg overflow-hidden border border-white/10 bg-bg-elevated">
                   {coverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- dynamic data:/blob: cover URL, dimensions not known ahead of time
                     <img src={coverUrl} alt="Cover" className="w-full aspect-2/3 object-cover" />
                   ) : (
                     <div className="w-full aspect-2/3 flex items-center justify-center">

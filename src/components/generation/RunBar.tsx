@@ -1,8 +1,7 @@
 'use client';
 // RunBar — controls and status for an in-progress scenarios/generation run.
 
-import { useState, useEffect } from 'react';
-import { IconPause, IconPlay, IconStop, IconExpand, IconDocument, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
+import { IconPause, IconPlay, IconStop, IconExpand, IconSettings, IconWarning, IconRefresh } from '@/components/icons';
 import type { ScenariosRunState } from '@/types/narrative';
 
 // ── Shared Types ─────────────────────────────────────────────────────────────
@@ -91,14 +90,6 @@ type Props = AutoModeProps | ScenariosModeProps | BulkPlanProps | BulkProseProps
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function scoreColorClass(v: number): string {
-  if (v >= 90) return 'text-green-400';
-  if (v >= 80) return 'text-lime-400';
-  if (v >= 70) return 'text-yellow-400';
-  if (v >= 60) return 'text-orange-400';
-  return 'text-red-400';
-}
-
 const MODE_CONFIG: Record<ModeType, { label: string; color: string; bgColor: string }> = {
   'auto': { label: 'Auto', color: 'text-amber-400', bgColor: 'bg-amber-400' },
   'scenarios': { label: 'Scenarios', color: 'text-blue-400', bgColor: 'bg-blue-400' },
@@ -129,19 +120,6 @@ export function RunBar(props: Props) {
   // the per-cycle log is gone.
   const stoppedByError = false;
   const hasError = false;
-
-  // Scenarios timer
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    if (props.mode !== 'scenarios') return;
-    const { startedAt } = props.runState;
-    if (!isRunning || !startedAt) { setElapsed(0); return; }
-    setElapsed(Math.floor((Date.now() - startedAt) / 1000));
-    const id = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [props.mode === 'scenarios' ? props.runState.startedAt : null, isRunning, props.mode]);
 
   // Scenarios metrics — scenario-batched flow: count done / total
   // across the cohort, surface the leading scenario's name.

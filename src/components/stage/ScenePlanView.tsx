@@ -20,7 +20,7 @@ import { BEAT_FN_LIST, BEAT_MECHANISM_LIST } from "@/types/narrative";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlanCandidatesModal } from "./PlanCandidatesModal";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
-import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/analysis/proposition-classify";
+import { classificationColor, classificationLabel, propKey } from "@/lib/analysis/proposition-classify";
 import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 
 const FN_COLORS: Record<string, string> = {
@@ -88,8 +88,15 @@ export function ScenePlanView({
   const [showCandidates, setShowCandidates] = useState(false);
   const beatRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Sync when scene or resolved plan changes
-  useEffect(() => {
+  // Sync when scene or resolved plan changes — adjust state during render
+  // (the recommended pattern) rather than in an effect, which would cause a
+  // second render pass on every scene/plan switch.
+  const [syncKey, setSyncKey] = useState<{ id: string; plan: BeatPlan | null }>({
+    id: scene.id,
+    plan: resolvedPlan ?? null,
+  });
+  if (syncKey.id !== scene.id || syncKey.plan !== (resolvedPlan ?? null)) {
+    setSyncKey({ id: scene.id, plan: resolvedPlan ?? null });
     setPlanCache(
       resolvedPlan
         ? { plan: resolvedPlan, status: "ready" }
@@ -97,7 +104,7 @@ export function ScenePlanView({
     );
     setReasoning("");
     setMeta(null);
-  }, [scene.id, resolvedPlan]);
+  }
 
   // Listen for candidates open event from StagePalette
   useEffect(() => {

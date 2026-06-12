@@ -17,9 +17,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKS_DIR = path.join(__dirname, '..', 'public', 'works');
 const DIMS = 1536;
 const TOP_K = 5;
-const ADAPTIVE_MIX = 0.5;
-const REACH_RATIO = 0.15;
-const REACH_MIN = 5;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +117,6 @@ async function classify(narrative, resolvedKeys, embeddingsMap) {
 
   const n = entries.length;
   const totalScenes = sceneOrder;
-  const reachThreshold = Math.max(REACH_MIN, Math.round(totalScenes * REACH_RATIO));
 
   if (n === 0) return null;
 

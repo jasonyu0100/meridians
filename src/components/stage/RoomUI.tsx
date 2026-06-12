@@ -130,6 +130,22 @@ function initialsOf(name: string): string {
 export const memberName = (m: Member | undefined) =>
   m ? (`${m.firstName} ${m.lastName}`.trim() || 'unnamed') : 'unassigned';
 
+/** Conviction scoring feedback — the Impact a seat earned + a short reason, read
+ *  alongside its perspective ("score reveal"). Shared by the game perspectives
+ *  panel and the narrative Perspectives tab so the readout is identical. */
+export function ScoreRevealBanner({ impact, reason }: { impact: number; reason?: string }) {
+  const up = impact >= 0;
+  return (
+    <div className="mb-3 flex items-baseline gap-2 rounded-lg border border-accent/20 bg-accent/8 px-3 py-2">
+      <span className={`font-mono text-[13px] font-semibold tabular-nums ${up ? 'text-accent' : 'text-rose-400'}`}>
+        {up ? '+' : ''}{impact.toFixed(2)}
+      </span>
+      <span className="text-[9px] uppercase tracking-wider text-accent/70">Impact this round</span>
+      {reason && <span className="ml-1 text-[11px] text-text-dim/70">· {reason}</span>}
+    </div>
+  );
+}
+
 /** The entity behind an entity-bound perspective (for its image / name). */
 export function perspectiveEntity(p: Perspective | undefined, n: NarrativeState | null) {
   if (!p || p.kind === 'narrator' || !p.entityRef) return undefined;
@@ -173,6 +189,8 @@ export function Avatar({
       } ${dim ? 'opacity-40' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1 ring-offset-bg-base' : ''}`}
     >
       {imageUrl ? (
+        // Runtime-generated avatar (blob/data URL from IndexedDB) — next/image can't optimise it.
+        // eslint-disable-next-line @next/next/no-img-element
         <img src={imageUrl} alt={label} className="w-full h-full object-cover" draggable={false} />
       ) : (
         <span style={{ fontSize: Math.max(9, Math.round(size * 0.36)) }}>{initialsOf(label)}</span>

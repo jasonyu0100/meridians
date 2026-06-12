@@ -74,13 +74,15 @@ export default function NarrativeWorkspace() {
   const [coordinationSetupOpen, setCoordinationSetupOpen] = useState(false);
   const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(false);
 
-  // Ref to track current plan state for event handler (avoids stale closure)
+  // Plan state derived during render — safe to read directly in JSX.
+  const activeBranchId = state.viewState.activeBranchId;
+  const hasCoordinationPlan = !!(activeBranchId && state.activeNarrative?.branches[activeBranchId]?.coordinationPlan);
+  // Mirror into a ref so the (stable-identity) event handler reads the latest
+  // value without re-subscribing or capturing a stale closure.
   const coordinationPlanRef = useRef<{ branchId: string | null; hasPlan: boolean }>({ branchId: null, hasPlan: false });
   useEffect(() => {
-    const branchId = state.viewState.activeBranchId;
-    const hasPlan = !!(branchId && state.activeNarrative?.branches[branchId]?.coordinationPlan);
-    coordinationPlanRef.current = { branchId, hasPlan };
-  }, [state.viewState.activeBranchId, state.activeNarrative]);
+    coordinationPlanRef.current = { branchId: activeBranchId, hasPlan: hasCoordinationPlan };
+  }, [activeBranchId, hasCoordinationPlan]);
   const autoPlay = useAutoPlay();
   const scenarios = useScenarios();
   const bulk = useBulkGenerate();
@@ -311,7 +313,7 @@ export default function NarrativeWorkspace() {
                 statusMessage={state.viewState.autoRunState?.statusMessage ?? ''}
                 onStop={autoPlay.stop}
                 onOpenSettings={() => setAutoSettingsOpen(true)}
-                hasCoordinationPlan={coordinationPlanRef.current.hasPlan}
+                hasCoordinationPlan={hasCoordinationPlan}
               />
             )}
 
@@ -420,7 +422,7 @@ export default function NarrativeWorkspace() {
       )}
       <ScenariosPanel isOpen={scenariosOpen} onClose={() => setScenariosOpen(false)} scenarios={scenarios} />
       {isMobile && (
-        <div className="fixed inset-0 z-9999 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center">
+        <div className="fixed inset-0 z-modal bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center px-6 text-center">
           <p className="text-white/90 text-lg font-semibold mb-2">Desktop Only</p>
           <p className="text-white/40 text-sm leading-relaxed max-w-xs mb-6">
             Meridians is designed for desktop browsers. Please visit on a larger screen.

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/state/store';
 import { useImageUrl, useImageUrlMap } from '@/hooks/useAssetUrl';
-import { computeCumulativePositions } from '@/lib/forces/positions';
+import { lastKnownPositions } from '@/lib/forces/positions';
 import { GLOBAL_MAP_ROOT, GLOBAL_MAP_TITLE } from '@/lib/graph/location-clusters';
 import type { Character, Board, NarrativeState } from '@/types/narrative';
 import { IconMapPin } from '@/components/icons';
@@ -139,6 +139,8 @@ function Avatar({ char, url, onClick, active }: { char: Character; url: string |
       }`}
     >
       {url
+        // Runtime-generated avatar (blob/data URL from IndexedDB) — next/image can't optimise it.
+        // eslint-disable-next-line @next/next/no-img-element
         ? <img src={url} alt={char.name} className="w-full h-full object-cover" />
         : <span className="text-[10px] font-bold text-slate-500">{char.name[0] ?? '?'}</span>}
     </button>
@@ -151,6 +153,8 @@ function Avatar({ char, url, onClick, active }: { char: Character; url: string |
 function LocAvatar({ url, name, size = 16 }: { url: string | null; name: string; size?: number }) {
   if (url) {
     return (
+      // Runtime-generated avatar (blob/data URL from IndexedDB) — next/image can't optimise it.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={url}
         alt={name}
@@ -209,7 +213,7 @@ export function BoardView() {
   const charsByLocation = useMemo(() => {
     const m = new Map<string, Character[]>();
     if (!narrative) return m;
-    const positions = computeCumulativePositions(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+    const positions = lastKnownPositions(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
     for (const [eid, locId] of Object.entries(positions)) {
       const c = narrative.characters[eid];
       if (!c) continue;
@@ -384,6 +388,8 @@ export function BoardView() {
           // the aspect labels were normalized against — labels (placed as 0..1
           // fractions) line up exactly.
           <div className="relative select-none" style={{ width: board.w, height: board.h }}>
+            {/* Runtime-generated map image (blob/data URL from IndexedDB) — next/image can't optimise it. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt={currentMap.name} className="absolute inset-0 w-full h-full object-cover rounded-lg border border-border shadow-lg" draggable={false} />
 
             {/* Map title — clicking ascends to the parent map when one exists.

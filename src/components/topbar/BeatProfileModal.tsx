@@ -542,7 +542,7 @@ export function BeatProfileModal({
           : {},
         density: sampler?.beatsPerKWord ?? 0,
       };
-    }, [narrative, resolvedKeys]);
+    }, [narrative, resolvedKeys, branchId]);
 
   const currentFn = sequence.length > 0 ? sequence[sequence.length - 1] : null;
   const metrics = useMemo(

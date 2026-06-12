@@ -17,7 +17,7 @@ import { generateSceneGameAnalysis } from '@/lib/ai/game-analysis';
 import { FatalApiError } from '@/lib/ai/errors';
 import type { AnalysisJob, AnalysisChunkResult, SourceFile, Scene } from '@/types/narrative';
 import type { Action } from '@/lib/state/store';
-import { ANALYSIS_CONCURRENCY, ANALYSIS_STAGGER_DELAY_MS } from '@/lib/constants';
+import { ANALYSIS_CONCURRENCY } from '@/lib/constants';
 import { logError, logWarning, logInfo, setSystemLoggerAnalysisId } from '@/lib/core/system-logger';
 import { setLoggerAnalysisId } from '@/lib/core/api-logger';
 import { assetManager } from '@/lib/storage/asset-manager';
@@ -39,7 +39,6 @@ type RunningJob = {
 };
 
 const MAX_CONCURRENCY = ANALYSIS_CONCURRENCY;
-const STAGGER_DELAY_MS = ANALYSIS_STAGGER_DELAY_MS;
 
 /** Three-letter prefix mirroring the convention in `assembleNarrative` —
  *  uppercase letters from the title, falling back to "TXT". Used to keep
@@ -413,24 +412,33 @@ class AnalysisRunner {
     try {
       const { generateEmbeddingsBatch } = await import('@/lib/search/embeddings');
       const { assetManager } = await import('@/lib/storage/asset-manager');
-      const allScenes = results.filter((r): r is AnalysisChunkResult => !!r).flatMap(r => r.scenes);
+      // Analysis scenes carry optional embedding refs stashed during this
+      // phase; the chunk-result scene type doesn't declare them, so view them
+      // through a local extension rather than casting to `any`.
+      type EmbeddableScene = AnalysisChunkResult['scenes'][number] & {
+        summaryEmbedding?: string;
+        proseEmbedding?: string;
+      };
+      const allScenes = results
+        .filter((r): r is AnalysisChunkResult => !!r)
+        .flatMap(r => r.scenes as EmbeddableScene[]);
 
-      const needSummary = allScenes.filter(s => s.summary && !(s as any).summaryEmbedding);
+      const needSummary = allScenes.filter(s => s.summary && !s.summaryEmbedding);
       if (needSummary.length > 0) {
         this.emitStream(job.id, `Embedding ${needSummary.length} summaries...`);
         const embs = await generateEmbeddingsBatch(needSummary.map(s => s.summary), job.id);
         for (let i = 0; i < needSummary.length; i++) {
-          (needSummary[i] as any).summaryEmbedding = await assetManager.storeEmbedding(embs[i], 'text-embedding-3-small');
+          needSummary[i].summaryEmbedding = await assetManager.storeEmbedding(embs[i], 'text-embedding-3-small');
         }
         this.emitStream(job.id, `[OK] ${needSummary.length} summaries embedded`);
       }
 
-      const needProse = allScenes.filter(s => s.prose && !(s as any).proseEmbedding);
+      const needProse = allScenes.filter(s => s.prose && !s.proseEmbedding);
       if (needProse.length > 0) {
         this.emitStream(job.id, `Embedding ${needProse.length} prose segments...`);
         const proseEmbs = await generateEmbeddingsBatch(needProse.map(s => s.prose!), job.id);
         for (let i = 0; i < needProse.length; i++) {
-          (needProse[i] as any).proseEmbedding = await assetManager.storeEmbedding(proseEmbs[i], 'text-embedding-3-small');
+          needProse[i].proseEmbedding = await assetManager.storeEmbedding(proseEmbs[i], 'text-embedding-3-small');
         }
         this.emitStream(job.id, `[OK] ${needProse.length} prose segments embedded`);
       }

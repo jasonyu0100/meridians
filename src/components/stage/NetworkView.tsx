@@ -4,7 +4,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
-import { aggregateNetworkGraph, type HeatTier, type NetworkNode } from '@/lib/graph/network-graph';
+import { aggregateNetworkGraph, type NetworkNode } from '@/lib/graph/network-graph';
 import { heatColor } from './graph-utils';
 import { edgeWidthFor, SIM_ALPHA_START, SIM_ALPHA_DECAY, GRAPH_ZOOM_EXTENT, GRAPH_INITIAL_SCALE, FOCUS_OPACITY_ACTIVE, FOCUS_OPACITY_DIM, FOCUS_WIDTH_FACTOR_DIM, FOCUS_NODE_OPACITY_ACTIVE, FOCUS_NODE_OPACITY_DIM } from '@/lib/graph/graph-styling';
 import type { AttributionEdgeRelation } from '@/types/narrative';
@@ -18,13 +18,6 @@ type Scope = 'scene' | 'arc' | 'narrative';
 // system = System. Used both as node fill in force mode and as the
 // per-endpoint colour for edge stroke blending.
 type ForceGroup = 'fate' | 'world' | 'system';
-const FORCE_GROUP: Record<NetworkNode['kind'], ForceGroup> = {
-  thread: 'fate',
-  character: 'world',
-  location: 'world',
-  artifact: 'world',
-  system: 'system',
-};
 const FORCE_COLOR: Record<ForceGroup, string> = {
   fate: '#EF4444',
   world: '#22C55E',
@@ -128,12 +121,19 @@ export default function NetworkView() {
   // maxAttribution is recomputed every data refresh; this ref keeps the
   // helper callable from any callback without a re-render.
   const heatCacheRef = useRef({ maxAttribution: 1 });
-  const heatFillOf = (n: NetworkNode): string => {
-    const t = heatCacheRef.current.maxAttribution > 0
-      ? Math.min(1, n.attributions / heatCacheRef.current.maxAttribution)
-      : 0;
-    return heatColor(t);
-  };
+  // Render-safe heat fill: compute the max from the same data the graph uses
+  // (matching the periphery filter applied in the data-update effect) so the
+  // tooltip can colour a node during render without reading the ref.
+  const renderMaxAttribution = useMemo(() => {
+    const visible = showPeriphery
+      ? network.nodes
+      : network.nodes.filter((n) => n.attributions > 0);
+    return Math.max(...visible.map((n) => n.attributions), 1);
+  }, [network.nodes, showPeriphery]);
+  const heatFillFor = (n: NetworkNode, max: number): string =>
+    heatColor(max > 0 ? Math.min(1, n.attributions / max) : 0);
+  const heatFillOf = (n: NetworkNode): string =>
+    heatFillFor(n, heatCacheRef.current.maxAttribution);
   const forceColorOf = (n: NetworkNode): string => FORCE_FILL[n.kind];
 
   // Initial setup
@@ -524,6 +524,10 @@ export default function NetworkView() {
         .attr('x', (d) => d.x ?? 0)
         .attr('y', (d) => (d.y ?? 0) + radiusOf(d) + 12);
     });
+    // narrative / resolvedEntryKeys / currentSceneIndex are already folded into
+    // `network` (the memo keys on them); showLabels updates are handled by its
+    // own dedicated effect, so this full D3 rebuild intentionally excludes them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [network, dispatch, showEdgeLabels, heatOn, showPeriphery]);
 
   if (!narrative) {
@@ -610,7 +614,7 @@ export default function NetworkView() {
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
                   style={{
-                    background: heatFillOf(tooltip.node),
+                    background: heatFillFor(tooltip.node, renderMaxAttribution),
                     boxShadow: `0 0 0 1.5px ${forceColorOf(tooltip.node)}99, 0 0 6px ${forceColorOf(tooltip.node)}55`,
                   }}
                 />

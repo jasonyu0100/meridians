@@ -1988,6 +1988,14 @@ export async function assembleNarrative(
         ? getCharId(s.povName)
         : (participantIds[0] ?? "");
 
+      // Embedding refs are stashed on the chunk scene during the embedding
+      // phase but aren't declared on the chunk-result scene type.
+      const sEmbeddings = s as {
+        summaryEmbedding?: string;
+        proseEmbedding?: string;
+        planEmbeddingCentroid?: string;
+      };
+
       const scene: Scene = {
         kind: "scene",
         id: sceneId,
@@ -2232,10 +2240,11 @@ export async function assembleNarrative(
               },
             ]
           : undefined,
-        // Preserve embeddings from analysis pipeline
-        summaryEmbedding: (s as any).summaryEmbedding,
-        proseEmbedding: (s as any).proseEmbedding,
-        planEmbeddingCentroid: (s as any).planEmbeddingCentroid,
+        // Preserve embeddings from analysis pipeline (stashed on the chunk
+        // scene during the embedding phase; not declared on the chunk type).
+        summaryEmbedding: sEmbeddings.summaryEmbedding,
+        proseEmbedding: sEmbeddings.proseEmbedding,
+        planEmbeddingCentroid: sEmbeddings.planEmbeddingCentroid,
       };
 
       // Fold derived attributions from typed delta fields (participants,

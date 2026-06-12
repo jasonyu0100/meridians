@@ -59,7 +59,7 @@ export default function ExperienceView() {
   const currentIndex = state.viewState.currentSceneIndex;
 
   const [report, setReport] = useState<ExperienceReport | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // AI rehearsal report (per scene, on demand). The committed report persists on
@@ -76,7 +76,7 @@ export default function ExperienceView() {
 
   const audit = useMemo(
     () => (narrative ? auditExperienceAvailability(narrative) : { totalScenes: 0, scenesWithEmbedding: 0 }),
-    [narrative, keys],
+    [narrative],
   );
   const runnable = audit.scenesWithEmbedding >= 2;
 

@@ -74,7 +74,12 @@ export function useAutoPlay() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runningRef = useRef(false);
   const stateRef = useRef(state);
-  stateRef.current = state;
+  // Mirror the latest state into a ref so the async loop (driven by setTimeout
+  // outside React's render flow) always reads fresh state without re-creating
+  // the callback. Updated in an effect rather than during render.
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const runCycle = useCallback(async () => {
     const { activeNarrative, resolvedEntryKeys, viewState } = stateRef.current;
@@ -319,6 +324,9 @@ export function useAutoPlay() {
 
   // The loop: run a cycle, then immediately continue
   const consecutiveTickErrors = useRef(0);
+  // Hold the latest tick so the recursive scheduling reads it from a ref
+  // rather than closing over the callback const before it's declared.
+  const tickRef = useRef<() => void>(() => {});
   const tick = useCallback(async () => {
     if (cancelledRef.current || !runningRef.current) return;
 
@@ -366,15 +374,20 @@ export function useAutoPlay() {
     if (cancelledRef.current || !runningRef.current) return;
 
     // Continue immediately — no pause between cycles
-    timeoutRef.current = setTimeout(() => tick(), 100);
+    timeoutRef.current = setTimeout(() => tickRef.current(), 100);
   }, [runCycle, dispatch]);
+
+  // Keep the ref pointed at the latest tick for recursive/start scheduling.
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
 
   const start = useCallback(() => {
     cancelledRef.current = false;
     runningRef.current = true;
     dispatch({ type: 'START_AUTO_RUN' });
-    timeoutRef.current = setTimeout(() => tick(), 500);
-  }, [dispatch, tick]);
+    timeoutRef.current = setTimeout(() => tickRef.current(), 500);
+  }, [dispatch]);
 
   const stop = useCallback(() => {
     cancelledRef.current = true;

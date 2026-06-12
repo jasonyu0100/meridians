@@ -60,7 +60,7 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
   if (typeof document === 'undefined') return null;
 
   const content = fullScreen ? (
-      <div className="fixed inset-0 bg-bg-base z-50 flex flex-col overflow-hidden">
+      <div className="fixed inset-0 bg-bg-base z-modal flex flex-col overflow-hidden">
         {/* Cosmic background — nebulae + glow + star field, identical to the
             home page's hero stack. Astral theme only; dark/light run flat.
             Pointer-events-none so all input still hits the modal content. */}
@@ -83,7 +83,7 @@ export function Modal({ onClose, children, size = 'md', fullScreen, maxHeight, p
         </div>
       </div>
   ) : (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/80 z-modal flex items-center justify-center p-4" onClick={onClose}>
       <div
         className={`bg-bg-base border border-border rounded-2xl flex flex-col overflow-hidden ${SIZE_CLASSES[size]} ${panelClassName ?? ''}`}
         style={{ maxHeight: maxHeight ?? 'calc(100vh - 4rem)' }}

@@ -32,12 +32,10 @@ type Props = {
 export default function ArcDetail({ arcId }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
-  if (!narrative) return null;
-
-  const arc = narrative.arcs[arcId];
-  if (!arc) return null;
+  const arc = narrative?.arcs[arcId];
 
   const arcScenes = useMemo(() => {
+    if (!narrative || !arc) return [];
     const resolvedSet = new Set(state.resolvedEntryKeys);
     return arc.sceneIds
       .filter((sid) => resolvedSet.has(sid))
@@ -46,6 +44,7 @@ export default function ArcDetail({ arcId }: Props) {
   }, [arc, narrative, state.resolvedEntryKeys]);
 
   const activity = useMemo(() => {
+    if (!narrative || !arc) return null;
     const allScenes = state.resolvedEntryKeys
       .map((k) => narrative.scenes[k])
       .filter((s): s is Scene => !!s);
@@ -58,7 +57,10 @@ export default function ArcDetail({ arcId }: Props) {
     const arcStart = allScenes.findIndex((s) => arcSceneIds.has(s.id));
     const position = classifyCurrentPosition(pts);
     return { pts, arcStart, position };
-  }, [narrative, state.resolvedEntryKeys, arc.sceneIds]);
+  }, [narrative, state.resolvedEntryKeys, arc]);
+
+  if (!narrative) return null;
+  if (!arc) return null;
 
   return (
     <div className="flex flex-col gap-4">

@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { searchNarrative } from '@/lib/search/search';
-import type { NarrativeState, Scene, BeatPlan } from '@/types/narrative';
+import type { NarrativeState, Scene, BeatPlan, EmbeddingRef } from '@/types/narrative';
 import * as embeddingsModule from '@/lib/search/embeddings';
 import { SEARCH_TOP_K_SCENES, SEARCH_TOP_K_PROPOSITIONS } from '@/lib/constants';
 // Mock embeddings module
@@ -194,7 +194,7 @@ describe('searchNarrative', () => {
       [0.1, 0.2, 0.3], // query embedding
     ]);
     // Mock resolveEmbedding to return different vectors
-    vi.mocked(embeddingsModule.resolveEmbedding).mockImplementation((ref: any) => {
+    vi.mocked(embeddingsModule.resolveEmbedding).mockImplementation((ref: EmbeddingRef | undefined) => {
       const embeddings: Record<string, number[]> = {
         'scene-embed-1': [0.15, 0.25, 0.35],
         'scene-embed-2': [0.05, 0.15, 0.25],
@@ -207,7 +207,7 @@ describe('searchNarrative', () => {
         'embed-4': [0.10, 0.20, 0.30],
       };
       // Return embedding if exists, otherwise return a default one to avoid null
-      return Promise.resolve(embeddings[ref] || [0.1, 0.2, 0.3]);
+      return Promise.resolve((ref ? embeddings[ref] : undefined) || [0.1, 0.2, 0.3]);
     });
     // Mock cosine similarity to return descending similarities
     vi.mocked(embeddingsModule.cosineSimilarity).mockImplementation((_a: number[], b: number[]) => {

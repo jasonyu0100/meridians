@@ -7,7 +7,7 @@ import React, {
   useReducer,
   type ReactNode,
 } from "react";
-import type { WizardStep, WizardData, ProseProfile, ArchetypeKey } from "@/types/narrative";
+import type { WizardStep, WizardData } from "@/types/narrative";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

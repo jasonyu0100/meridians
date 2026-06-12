@@ -6,7 +6,7 @@
 // launches focused or topic-scoped quizzes in the Learn modal. The tree IS the
 // curriculum — questions are its building blocks, topics organise them.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/state/store";
 import { useActiveMember, memberName } from "@/hooks/useActiveMember";
 import { collectQuestions } from "@/lib/learning/quiz";
@@ -41,6 +41,13 @@ export default function LearningPanel() {
   const resolvedKeys = state.resolvedEntryKeys;
   const { memberId } = useActiveMember();
 
+  // Coverage applies time-decay relative to "now"; stamp it once on mount
+  // (Date.now() is impure, so it can't seed render-time state directly).
+  const [now, setNow] = useState(0);
+  // Stamp wall-time once on mount (Date.now() is impure, so it can't seed render state).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setNow(Date.now()); }, []);
+
   const memberList = useMemo(
     () => Object.values(narrative?.members ?? {}),
     [narrative?.members],
@@ -62,17 +69,17 @@ export default function LearningPanel() {
     [narrative?.learningProgress, learner],
   );
   const overall = useMemo(
-    () => overallCoverage(items, myQuestions, Date.now()),
-    [items, myQuestions],
+    () => overallCoverage(items, myQuestions, now),
+    [items, myQuestions, now],
   );
   const tree = useMemo(
     () =>
       narrative
         ? pruneEmptyCoverage(
-            curriculumCoverage(narrative.topics ?? {}, items, myQuestions, Date.now()),
+            curriculumCoverage(narrative.topics ?? {}, items, myQuestions, now),
           )
         : [],
-    [narrative, items, myQuestions],
+    [narrative, items, myQuestions, now],
   );
 
   if (!narrative) {

@@ -976,12 +976,12 @@ function GameTheoryTab() {
             Action axes
           </h3>
           <span className="text-[9px] text-text-dim">
-            What's being traded in the moment
+            What&apos;s being traded in the moment
           </span>
         </div>
         <div className="text-[10px] text-text-dim leading-relaxed mb-3">
-          Both players' actions live on the SAME axis — pick the axis by asking
-          what SHIFTS as a result of the decision. That thing is what's being
+          Both players&apos; actions live on the SAME axis — pick the axis by asking
+          what SHIFTS as a result of the decision. That thing is what&apos;s being
           traded.
         </div>
         <div className="space-y-2">

@@ -368,5 +368,4 @@ function ScopeEditor({
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _UnusedRoleHint = CharacterRole; // retained for type parity with SurveyRespondentFilter

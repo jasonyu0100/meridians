@@ -33,7 +33,7 @@ export const PREDICTIVE_MODEL = "google/gemini-2.5-flash";
  *  graph execution rather than open-ended construction — a fast graph-capable
  *  model is the right cost/quality trade-off there. */
 /** Model for prose (creative writing tasks). */
-export const WRITING_MODEL = "deepseek/deepseek-v4-flash";
+export const WRITING_MODEL = "google/gemini-2.5-flash";
 
 /** Model for planning calls — beat plans, reasoning graphs (CRG), phase graphs (PRG). */
 export const PLANNING_MODEL = "google/gemini-2.5-flash";
@@ -304,3 +304,81 @@ export const STANCE_FOCUS_K = 6;
  *  carry several resolutions at once. scenes ≈ round(N^MERGE_SCENE_COMPRESSION).
  *  At 0.6: 1→1, 2→2, 3→2, 4→2, 5→3, 8→3, 12→4, 16→5. */
 export const MERGE_SCENE_COMPRESSION = 0.6;
+
+// ── Conviction — the rehearsal card game (CONCEPT.md) ─────────────────────────
+// Out-of-box defaults — hypotheses to pilot, exposed as GM dials per room (see
+// ConvictionEconomy / GameRoom). Economy is scaled to the COST_MIN–COST_MAX
+// card-cost range (both GM dials; the ceiling is also removable per room).
+
+/** Opening conviction per seat — 2× income; climb toward the ceiling by saving. */
+export const CONVICTION_START = 50;
+
+/** Conviction granted each SETTLE — ≈ one typical multi-action call (a 4-action
+ *  stream ≈ 28); ~one real move a round, anything bigger needs saving. */
+export const CONVICTION_INCOME = 25;
+
+/** Decay on the BANKED balance each SETTLE, before income. Fixed point
+ *  INCOME/(1−DECAY) = 150 is the hoard ceiling = the dearest possible play
+ *  (max card 100 × FACEDOWN_PREMIUM 1.5). Decoupled from STANCE_VOLUME_DECAY. */
+export const CONVICTION_DECAY = 5 / 6; // ≈ 0.833
+
+/** Card-cost floor — a play is never free. Load-bearing: makes agenda-setting
+ *  cost something (admissibility gates implausibility, not strategic triviality). */
+export const COST_MIN = 1;
+
+/** Rarity→cost scale: cost = clamp(COST_MIN,COST_MAX, round(RARITY_SCALE·−ln p)).
+ *  p=0.5 ≈ 14, p=0.33 ≈ 22, p=0.25 ≈ 28, p=0.1 ≈ 46, p=0.05 ≈ 60. Improbability
+ *  IS the price — tuned so a 50-conviction opening affords ≥1.5 typical
+ *  (3–5 action) cards while long-shots still demand saving. */
+export const RARITY_SCALE = 20;
+
+/** Card-cost ceiling — the dearest a single play can price, regardless of rarity
+ *  (GM dial `economy.costMax`). At 200 the rarity curve has room before it clamps;
+ *  note this decouples from the hoard ceiling `INCOME/(1−DECAY)=150`, so the very
+ *  rarest concealed call can now outrun a fully-banked stack. */
+export const COST_MAX = 200;
+
+/** Conviction→evidence gain (concave, per play): e = clamp(±4, GAIN·ln(1+c/cost)).
+ *  Bare cost → e≈2; ~3× cost → the ±4 cap. The dial that decides what raising
+ *  buys — tune first. (Capping makes all-in TILT a contested draw, never pin it.) */
+export const EVIDENCE_GAIN = 3;
+
+/** Max cards a seat may commit per round — anti-flood backstop. Cards on one
+ *  outcome SUM in logit space (≈±6/round at 3), so near-certainty is reachable
+ *  but costs a full hand; mainly bites high-income rooms. */
+export const CARDS_PER_ROUND = 3;
+
+/** Card-requests (pose-question → open stream → deal) allowed per READ/LIVE
+ *  phase — bounds the emergent-play branching loop. */
+export const READ_MAX_REQUESTS = 3;
+
+/** Face-down cost multiplier — concealment is a paid service. Defined for
+ *  forward-compat; UNUSED while forced reveal is on (the shipped default). */
+export const FACEDOWN_PREMIUM = 1.5;
+
+/** Hoard ceiling — the dearest single play (max card × facedown premium). A
+ *  perpetual saver can afford any single concealed long-shot, never a war chest. */
+export const CONVICTION_CEILING = CONVICTION_INCOME / (1 - CONVICTION_DECAY); // = 150
+
+// Emergent dynamic (intended — do NOT cap directly): going all-in on a
+// CONTESTED outcome is powerful — up to ±6 logits buys near-certainty on the
+// draw, and the snap is Fate's house band so there's no Impact downside, only a
+// conviction cost. It is self-limiting via (1) spent-not-won (≈6 rounds to
+// reload at income/ceiling), (2) the ±4/card cap (tilts, never pins), (3) all-in
+// wars exhaust both sides and open other threads, (4) CARDS_PER_ROUND. The one
+// thing to avoid in tuning is fast refill (high income / low decay) — keep the
+// scarcity, tune via these GM dials, don't nerf all-in.
+
+// Round/turn timers (ms) — presentation phases short, deliberation gets room.
+// COSMETIC in computer mode (the GM advances by hand); the difficulty lever for
+// the human-vs-AI tempo dynamic in remote/Showdown (deferred).
+export const TIMER_PUBLIC = 30_000;
+export const TIMER_PRIVATE = 20_000;
+export const TIMER_READ = 120_000;
+export const TIMER_TURN = 30_000;
+export const TIMER_LIVE = 120_000; // Showdown (unused this build)
+export const TIMER_SHOWDOWN = 25_000;
+export const TIMER_SCORING = 20_000;
+
+/** Default contested-thread settlement rule (GM-overridable per room). */
+export const RESOLVE_BIAS_DEFAULT = "random" as const;

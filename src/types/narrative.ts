@@ -973,13 +973,6 @@ export type Scene = {
    *  context; like gameAnalysis it never mutates deltas and regenerating
    *  replaces the bank. Tags drive cross-scene quiz assembly. */
   questions?: LearningQuestion[];
-  /** Narrative perspectives on this scene — opt-in, additive retellings from
-   *  different lenses, keyed by perspective key (`public` = the public
-   *  narrator; otherwise a participant entity id). Each is a summary derived
-   *  from the canon entry but free to carry non-canon, lens-specific detail
-   *  (private knowledge, bias, blind spots). Regenerating replaces a key.
-   *  Surfaced + generated in the Content → Perspectives tab. */
-  perspectives?: Record<string, PerspectiveView>;
   /** Estimated time elapsed since the prior scene in the branch. Required
    *  via prompting going forward — the LLM commits to a best-guess based on
    *  prose cues, even when the gap is fuzzy. Optional in the type for
@@ -1285,6 +1278,22 @@ export type Arc = {
    * without replaying every delta. Written in terse, structured prose.
    */
   worldState?: string;
+  /** Perspectives on this ARC — opt-in, additive retellings, each synthesizing
+   *  the WHOLE arc (all its scenes) through one lens, keyed by perspective key
+   *  (`public` = the third-person widely-known account; otherwise a participant
+   *  entity id, voiced first-person). A perspective is a skim-read digest of
+   *  what this lens lived through across the arc — derived from canon but free
+   *  to carry non-canon, lens-specific detail (private knowledge, bias, blind
+   *  spots). An entity absent from every arc scene gets an offstage "elsewhere"
+   *  account instead of a retelling. Regenerating replaces a key. Surfaced +
+   *  generated in the Content → Perspectives tab and the Conviction READ brief. */
+  perspectives?: Record<string, PerspectiveView>;
+  /** Conviction scoring feedback for THIS arc, keyed by entity (the seat's
+   *  perspective entity). The Impact a seat earned for the round this arc
+   *  realized + a short reason — surfaced alongside the entity's perspective in
+   *  BOTH the game perspectives panel and the narrative Perspectives tab, so the
+   *  "score reveal" reads with the perspective. Set when the round is read. */
+  scoreFeedback?: Record<string, { impact: number; reason: string }>;
   /** Reasoning graph used to plan this arc's scenes — stored for canvas viewing */
   reasoningGraph?: ReasoningGraphSnapshot;
   /**
@@ -1931,6 +1940,19 @@ export interface MergeResolution {
   outcomes?: string[];
   /** True when the committed outcome(s) diverge from the stance's leader. */
   overridden?: boolean;
+  /** Set when a conflict between competing claims was resolved by the REALISM
+   *  judge (Conviction `realism` bias, or the narrative-merge realism pass): a
+   *  short realistic interpretation of WHAT actually happens. Rewrites how the
+   *  merge reads — the continuation must honour this telling. GM-editable. */
+  telling?: string;
+  /** The injected REASONING — why realism resolved this way. Surfaced to the
+   *  engine and editable by the GM (paired with `telling`). */
+  reasoning?: string;
+  /** The realism judge's CLOSURE determination: true → this decisively settles
+   *  the question (the stream/thread closes); false/undefined → realised this
+   *  beat but the question stays open. Keeps committed-vs-closed consistent
+   *  across the Conviction game and the narrative merge. */
+  closes?: boolean;
 }
 
 /** A Merge — a set of committed Streams folded together to extend continuity
@@ -1957,14 +1979,324 @@ export interface Merge {
    *  propagated through chained forks). Lets `basisMergeIds` on shared pre-fork
    *  entries match a branch's copy. Undefined = an original (not a copy). */
   originMergeId?: string;
+  /** Conviction — intended player movements committed this round (characterId →
+   *  target locationId). A SIGNAL into generation: the continuation places each
+   *  character at their target location via participation (positions are
+   *  participation-derived; there is no movement delta layer). */
+  playerMovements?: Record<string, string>;
 }
 
 /** A merge proposed at the commit review but not yet persisted. Carried into
  *  the Generate panel as the continuity basis; a real Merge (with a minted id +
  *  timestamp) is created and stamped onto the produced arc / world-build only
  *  once a generation extends the narrative with it. Every Merge is therefore
- *  consumed-by-construction. */
-export type ProposedMerge = Omit<Merge, "id" | "at">;
+ *  consumed-by-construction.
+ *
+ *  `id` is optional: callers that want commit IDEMPOTENCE (e.g. a Conviction
+ *  round, where a single round must yield exactly ONE merge no matter how many
+ *  times the resolve panel mounts / regenerates) stamp a DETERMINISTIC id here.
+ *  The Generate panel prefers it over minting a fresh one, so repeated commits
+ *  overwrite the same merge entry instead of creating duplicates. Omitted →
+ *  the panel mints a fresh id (the ad-hoc "commit these streams" path). */
+export type ProposedMerge = Omit<Merge, "id" | "at"> & { id?: string };
+
+// ── Conviction — the rehearsal card game (CONCEPT.md / MERMAID.md §8) ──────────
+// A game IS a branch; a GameRoom runs the round loop over it as a phase machine.
+// Streams are perspective-owned (one per seat — no shared "board" streams); the
+// Merge is the only place separate seats' streams meet. The score is intrinsic:
+// Impact = each seat's attributed share of Fate moved (the north star), read
+// retrospectively from the generated arc's cumulative thread logits.
+//
+// Build scope: Rounds variant + `computer` mode, forced reveal on. Fields for
+// Showdown / remote / concealment exist for forward-compat but are unused now.
+
+/** How a contested thread's WINNER is chosen when committed claims conflict.
+ *  A REALISM interpretation then runs over the winner in every case (the
+ *  universal preprocessing layer) — these only differ in who picks the winner:
+ *  - random       → seeded draw over conviction-shaped odds (a dice roll)
+ *  - highest-cost → the rarest (costliest) action is forced through (a rule)
+ *  - realism      → the impartial AI judge picks the winner too, by what would
+ *                   REALISTICALLY occur (conviction = intensity of intent)
+ *  The GM can veto / edit every resolution before commit, so a blind `gm` mode
+ *  is deprecated — realism + GM editing replaces it. */
+export type ResolveBias = "random" | "highest-cost" | "realism";
+
+/** GM-owned scarcity dials. Live balances sit on `Seat.conviction`; these are
+ *  the room's overridable copy of the constants (re-dialled between rounds). */
+export interface ConvictionEconomy {
+  /** Opening balance per seat (default CONVICTION_START). */
+  start: number;
+  /** Allowance granted each SETTLE (default CONVICTION_INCOME). */
+  income: number;
+  /** Tax on the banked balance each SETTLE, before income (0–1). Hoard ceiling
+   *  = income/(1−decayAlpha). */
+  decayAlpha: number;
+  /** No-cap accumulation: when true, banked conviction never decays and the
+   *  hoard ceiling is removed (settle = balance + income, unbounded). */
+  accumulationUncapped?: boolean;
+  /** Card-cost floor — a play is never free (default COST_MIN). */
+  costMin: number;
+  /** Card-cost ceiling — the dearest a single play can price (default COST_MAX). */
+  costMax: number;
+  /** No-cap card cost: when true, `costMax` is ignored and the rarity curve runs
+   *  unclamped (a play costs exactly `round(rarityScale·−ln p)`). */
+  costUncapped?: boolean;
+  /** Rarity→cost scale: cost = clamp(costMin,costMax, round(rarityScale·−ln p)). */
+  rarityScale: number;
+  /** Conviction→evidence gain (concave; default EVIDENCE_GAIN). */
+  evidenceGain: number;
+  /** Max cards a seat may commit per round (anti-flood backstop). */
+  cardsPerRound: number;
+  /** Face-down cost multiplier — unused while forced reveal is on. */
+  facedownPremium: number;
+  /** Contested-thread settlement rule. */
+  resolveBias: ResolveBias;
+  /** Whether the optional SHOWDOWN spotlight runs before SETTLE. */
+  showdownPhase: boolean;
+  /** Play order during the PLAY phase: `simultaneous` (all seats act at once; the
+   *  GM closes the window) or `sequential` (each seat takes a turn in deal order
+   *  and may commit/end its turn early). Default `sequential`. */
+  playOrder?: "simultaneous" | "sequential";
+}
+
+/** A seat's personal target — a tracking aid that NEVER affects the score
+ *  (Impact = Fate moved, full stop). Set zero or many; reassign any time, free. */
+export interface Goal {
+  /** The stream/thread this goal is about. */
+  threadId: string;
+  /** Index into the stream's outcomes — the action this seat wants. */
+  targetOutcome: number;
+  visibility: "private" | "public";
+  /** (Re)declared timestamp; binds nothing, costs no conviction. */
+  at: number;
+}
+
+/** A Perspective bound to a driver + its play state. */
+export interface Seat {
+  id: string;
+  /** The existing Perspective this seat plays. */
+  perspectiveId: string;
+  /** human decides by hand · agent automates · gm-proxy = GM hot-seats it. */
+  driver: "human" | "agent" | "gm-proxy";
+  /** Required for driver='human' — a registered Member. */
+  memberId?: string;
+  /** For driver='agent' — fills a seat with no assigned member. */
+  agentId?: string;
+  status: "pending" | "joined" | "playing" | "spectating";
+  /** Current conviction balance (income − spend, decayed). */
+  conviction: number;
+  /** Current node on the location tree (one hop / round). */
+  locationId: string;
+  movedThisRound: boolean;
+  goals: Goal[];
+  /** THE score — running attributed share of Fate moved (direction-agnostic). */
+  fateImpact: number;
+  /** Last round's attributed Impact (the delta added to `fateImpact`) — surfaced
+   *  as scoring feedback alongside the NEXT round's perspective, so a player reads
+   *  "what happened" and "what it earned you" together. Overwritten each round. */
+  lastImpact?: number;
+  /** A short, human reason for `lastImpact` — which stream/read drove it. */
+  lastImpactReason?: string;
+  /** Stable seat colour for authored-stance ribbons + the round readout. */
+  color?: string;
+}
+
+/** A card = conviction committed to ONE candidate action of ONE of the seat's
+ *  OWN streams (streams are one-perspective). Playing the card IS choosing that
+ *  action. `cost` is the floor; raising commits more for concave extra evidence. */
+export interface Card {
+  id: string;
+  /** A stream this seat owns. */
+  streamId: string;
+  /** Index into the stream's `outcomes` (candidate actions). */
+  outcome: number;
+  /** clamp(costMin,100, round(rarityScale·−ln p)); live from streamProbs. */
+  cost: number;
+  /** A stream the seat opened vs an engine-sampled candidate seeded to it. */
+  origin: "chosen" | "dealt";
+}
+
+export interface PlayedCard {
+  card: Card;
+  /** Open (visible) vs face-down. Always true under forced reveal (this build). */
+  faceUp: boolean;
+  /** Face-down card shown at the reveal window (voluntary OR forced). */
+  revealed?: boolean;
+  /** True → flipped by a forced reveal (contested), not chosen. */
+  forcedReveal?: boolean;
+  /** Committed amount (≥ cost; raise = more). */
+  conviction: number;
+  playedAt: number;
+  /** The stance prior this play authored on the stream — lets the GM veto the
+   *  play and cleanly replay the stream without it (rebuildStream). */
+  priorId?: string;
+}
+
+export interface Hand {
+  seatId: string;
+  cards: Card[];
+  played: PlayedCard[];
+}
+
+/** Talk is cheap — chat binds nothing; only played cards bind. Agents are full
+ *  participants (you can negotiate with — or be misled by — an AI seat).
+ *  (Distinct from the inspector `ChatMessage` — this is in-game table talk.) */
+export interface GameChatMessage {
+  id: string;
+  scope: "global" | "location";
+  /** Set for location scope (proximity-gated). */
+  locationId?: string;
+  /** A human OR an agent seat. */
+  seatId: string;
+  text: string;
+  at: number;
+  /** The round this was sent in. GLOBAL chat persists across the whole game;
+   *  LOCATION chat is ephemeral — only shown for the CURRENT round, so an
+   *  adversary can't walk into a place and read its historical whispers. */
+  roundIndex?: number;
+}
+
+/** READ-phase "request more cards": pose an open question → open a Stream → deal. */
+export interface CardRequest {
+  seatId: string;
+  question: string;
+}
+
+/** A timestamped game event — the GM-only log of everything that happened
+ *  (phase advances, plays, priors, moves, resolutions, scoring). */
+export interface GameEvent {
+  id: string;
+  at: number;
+  /** Coarse category for filtering / iconography. */
+  kind: "phase" | "play" | "veto" | "prior" | "move" | "resolve" | "score" | "system";
+  text: string;
+  /** The seat the event concerns, when applicable. */
+  seatId?: string;
+}
+
+export type RoundPhase =
+  // The three player phases. Generation calls run off-clock between them:
+  // (Perspective Gen) → READ → WRITE → (Stream & Intuition Gen) → PLAY → (Arc Gen).
+  | "read" // player — read the perspective (Perspective Gen runs on entry)
+  | "write" // player — open streams + add priors (Stream & Intuition Gen deals on exit)
+  | "play" // player — commit cards
+  | "showdown" // Showdown variant's real-time window (deferred) + the optional spotlight
+  | "resolve" // GM — Arc Gen (folds settle + scoring)
+  | "settle"
+  | "scoring";
+
+/** Per-contested-thread settlement record — seeded + drawn, for audit and the
+ *  SHOWDOWN "show the roll". */
+export interface ThreadSettlement {
+  threadId: string;
+  contested: boolean;
+  /** The contested outcomes, in the SAME order as `pStar` / `drawnOutcome` — so
+   *  the showdown can label each odds slice and name the winner. */
+  outcomes?: string[];
+  /** p° the draw read (conviction-shaped odds), aligned with `outcomes`. */
+  pStar?: number[];
+  /** Seeded RNG value for a reproducible draw. */
+  seed?: number;
+  /** Index of the outcome the draw / rule selected. */
+  drawnOutcome?: number;
+}
+
+export interface RoundState {
+  index: number;
+  phase: RoundPhase;
+  /** seatIds, rotated each round (poker). Rounds only. */
+  turnOrder: string[];
+  buttonSeat: string;
+  /** Whose turn in PLAY (null in Showdown). */
+  activeSeat: string | null;
+  /** seatIds that stood pat — Showdown only. */
+  lockedIn: string[];
+  /** Canonical threads live this round — SHARED & visible. Streams that bear on
+   *  them are PER-SEAT (in hands); the merge folds them onto these threads. */
+  openThreadIds: string[];
+  /** Round-start thread stance snapshot (logits) — ℓ⁻ for scoring. */
+  threadLogitsAtStart?: Record<string, number[]>;
+  hands: Record<string, Hand>;
+  pot: number;
+  /** The continuation scene generated at RESOLVE (canon; public/private
+   *  retellings hang off the arc's `arc.perspectives`). */
+  continuationSceneId?: string;
+  settlements?: ThreadSettlement[];
+  /** Per-seat FateCredit banked this round. */
+  fateCredits?: Record<string, number>;
+  /** The snap the world owns this round (Fate house band). */
+  houseBand?: number;
+  /** ms remaining per timed phase (cosmetic in computer mode). */
+  timers: Partial<Record<RoundPhase, number>>;
+  /** True while an AI generation is in flight (deliver perspectives / resolve
+   *  continuation). Generation is OFF-CLOCK: the phase timer pauses and the GM
+   *  can't advance until it clears. */
+  generating?: boolean;
+  /** Precise label for what's being generated RIGHT NOW (the board shows it on
+   *  the spinner). Set per generation site because a single phase can run several
+   *  distinct AI steps — READ does perspective delivery THEN stream seeding/deal,
+   *  so a phase-keyed label would mislabel the second step. */
+  generatingLabel?: string;
+  /** Agent seats whose move the engine is generating RIGHT NOW (during PLAY,
+   *  agents decide off the critical path). Drives a per-pod "thinking" indicator
+   *  so the table sees which AIs are still deliberating; cleared as their plays
+   *  land. Empty/absent = no agent is mid-decision. */
+  thinkingSeats?: string[];
+  /** Epoch ms when READ opened (after Perspective Gen) — anchors the read clock. */
+  readStartedAt?: number;
+  /** Epoch ms when the WRITE window opened (after READ) — anchors the write
+   *  clock; streams + priors lock once `timers.write` elapses past this. */
+  writeStartedAt?: number;
+  /** Epoch ms when PLAY opened (after the Stream & Intuition Gen deal) — when a
+   *  play clock is set (`timers.play`), plays LOCK once it elapses past this. */
+  playStartedAt?: number;
+  /** Epoch ms when the SCORING reveal opened (settle + score done) — anchors the
+   *  scoring phase clock; the board reveals each seat's Impact from here. */
+  scoringStartedAt?: number;
+  /** Set at RESOLVE — the round's Merge. */
+  mergeId?: string;
+  /** The merge determined at PLAY→RESOLVE from the players' card-resolutions
+   *  (contested threads settled by draw, uncontested claims standing). Pre-loaded
+   *  into the GM's Generate Panel. */
+  pendingMerge?: ProposedMerge;
+}
+
+/** One live session, over one branch. The only always-mutating game object. */
+export interface GameRoom {
+  id: string;
+  /** A game IS a branch — streams/merges branch-scoped, deep-copied on fork. */
+  branchId: string;
+  variant: "rounds" | "showdown";
+  mode: "computer" | "remote";
+  /** Approval mode. Unset/false = "GM": the GM advances each phase by hand and
+   *  reviews the continuation in the Generate Panel. True = "Automatic": every
+   *  timed phase advances on its own clock and the arc generates with no panel —
+   *  a fully self-running table (the GM can still pause or end early). Named
+   *  `autoResolve` for history; it now governs the whole loop, not just resolve. */
+  autoResolve?: boolean;
+  phase: "setup" | "waiting" | "round" | "ended";
+  /** GM pause — freezes timers + lets the GM work elsewhere; lock persists. */
+  paused: boolean;
+  /** Play area (subset of Location ids). */
+  locations: string[];
+  seats: Record<string, Seat>;
+  economy: ConvictionEconomy;
+  /** GM-set time budget (seconds) per timed phase; absent/0 = untimed. Seeds
+   *  each round's `timers` at startRound. Cosmetic in computer mode. */
+  phaseSeconds?: Partial<Record<RoundPhase, number>>;
+  round: RoundState | null;
+  /** Global + location chat (always-open; location msgs carry locationId). */
+  chat: GameChatMessage[];
+  /** GM-only timestamped event log — the record of everything that happened. */
+  log?: GameEvent[];
+  /** Cumulative Fate the WORLD moved on its own — the unattributable residual of
+   *  every round's scoring (the Fate house band), summed. Shown beside the seats'
+   *  scores so the table sees how much of the movement was outside anyone's
+   *  control vs driven by play. */
+  fateHouseBand?: number;
+  createdAt: number;
+  endedAt?: number;
+}
 
 export type NarrativeState = {
   id: string;
@@ -2080,6 +2412,9 @@ export type NarrativeState = {
   streams?: Record<string, Stream>;
   /** A0 — merges: committed streams collapsed together to extend continuity. */
   merges?: Record<string, Merge>;
+  /** Conviction — live card-game sessions, keyed by id. A game IS a branch
+   *  (`GameRoom.branchId`); deep-copied with the branch on fork. */
+  gameRooms?: Record<string, GameRoom>;
   /** Curriculum / knowledge tree — Topic entities the question bank is
    *  organised under. Keyed by topic id; parent chains form the tree. */
   topics?: Record<string, Topic>;
@@ -3250,6 +3585,12 @@ export type NarrativeViewState = {
    *  modal; null = no preset (manual choice each time). Device-local UI state,
    *  so it lives here (persisted, not exported) rather than on the document. */
   activeMemberId: string | null;
+  /** Conviction — the open game session on this device (null = none open).
+   *  Device-local UI cursor, persisted with the rest of the view state. */
+  activeGameRoomId?: string | null;
+  /** Conviction — which seat the GM is currently acting as (computer-mode
+   *  hot-seat / act-as-seat). null = the GM's own console view. */
+  actAsSeatId?: string | null;
 };
 
 // ── App State ────────────────────────────────────────────────────────────────

@@ -263,7 +263,7 @@ function SeedCarousel({
 /* ── Home page ───────────────────────────────────────────────────────────── */
 export default function HomePage() {
   const router = useRouter();
-  const { state, dispatch } = useStore();
+  const { state } = useStore();
   const { state: wizardState, dispatch: wizardDispatch } = useWizard();
   const access = useFeatureAccess();
   const { userApiKeys, hasOpenRouterKey } = access;

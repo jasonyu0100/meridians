@@ -6,7 +6,6 @@ import { resolveReasoningBudget, resolveWebsearch } from './api';
 import { clampEvidence, isThreadAbandoned, isThreadClosed, FORCE_REFERENCE_MEANS, FORCE_BANDS, fmtBand } from '@/lib/forces/narrative-utils';
 import { nextId, nextIds } from '@/lib/forces/narrative-utils';
 import { normalizeTimeDelta } from '@/lib/forces/time-deltas';
-import type { ThreadLogNodeType } from '@/types/narrative';
 import { applyThreadDelta, newNarratorStance } from '@/lib/forces/thread-log';
 import { applyWorldDelta } from '@/lib/graph/world-graph';
 import { sanitizeSystemDelta, systemEdgeKey, makeSystemIdAllocator, resolveSystemConceptIds } from '@/lib/graph/system-graph';
@@ -674,7 +673,6 @@ export async function generateNarrative(
       // pass the LLM's payload through.
       // Flatten grouped multi-id attributions ([C-31, C-32] === C-31, C-32).
       attributions: flattenAttributions(parsed.attributions),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       attributionEdges: Array.isArray(parsed.attributionEdges)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? parsed.attributionEdges.filter((e: any) =>

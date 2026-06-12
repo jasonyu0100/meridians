@@ -37,7 +37,7 @@ import {
   buildWorldPersonaPrompt,
 } from "@/lib/prompts/chat";
 import { callGenerateStream, resolveReasoningBudget, resolveWebsearch } from "@/lib/ai/api";
-import { DEFAULT_MODEL, INTERACTION_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
+import { INTERACTION_MODEL, MAX_TOKENS_DEFAULT } from "@/lib/constants";
 import {
   ReasoningCollapsed,
   ReasoningInline,
@@ -47,7 +47,6 @@ import type {
   Artifact,
   Character,
   Location,
-  NarrativeState,
 } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/ui/Markdown";
@@ -96,7 +95,7 @@ export default function ChatPanel() {
   const activeThread = state.viewState.activeChatThreadId
     ? (state.activeNarrative?.chatThreads?.[state.viewState.activeChatThreadId] ?? null)
     : null;
-  const messages = activeThread?.messages ?? [];
+  const messages = useMemo(() => activeThread?.messages ?? [], [activeThread]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -475,6 +474,12 @@ export default function ChatPanel() {
     }
   };
 
+  const sortedThreads = useMemo(() => {
+    const all = Object.values(state.activeNarrative?.chatThreads ?? {});
+    all.sort((a, b) => b.updatedAt - a.updatedAt);
+    return all;
+  }, [state.activeNarrative?.chatThreads]);
+
   if (access.userApiKeys && !access.hasOpenRouterKey) {
     return (
       <div className="flex h-full items-center justify-center flex-col gap-2">
@@ -498,12 +503,6 @@ export default function ChatPanel() {
       </div>
     );
   }
-
-  const sortedThreads = useMemo(() => {
-    const all = Object.values(state.activeNarrative?.chatThreads ?? {});
-    all.sort((a, b) => b.updatedAt - a.updatedAt);
-    return all;
-  }, [state.activeNarrative?.chatThreads]);
 
   function recencyGroup(ts: number): string {
     const diff = Date.now() - ts;

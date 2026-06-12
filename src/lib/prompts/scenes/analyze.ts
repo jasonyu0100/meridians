@@ -12,7 +12,6 @@ import { composeAnalystIdentity } from '../paradigm';
 
 /** Build the beat-analyst system prompt. The chunk count is enforced via the
  *  user prompt's constraints block; the system prompt only carries the role. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildBeatAnalystSystemPrompt(_chunkCount: number, work?: WorkIdentity): string {
   const identity = work?.paradigm
     ? `${composeAnalystIdentity(work)} `

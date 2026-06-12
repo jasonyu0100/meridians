@@ -28,7 +28,7 @@ function ProseNode({
   scene,
   arc,
   verdict,
-  originalVerdict,
+  originalVerdict: _originalVerdict,
   issues,
   isOverridden,
   isLast,

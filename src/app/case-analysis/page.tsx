@@ -72,7 +72,7 @@ export default function ExamplePage() {
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-100 bg-bg-base flex items-center justify-center">
+      <div className="fixed inset-0 z-modal bg-bg-base flex items-center justify-center">
         <div className="text-center">
           <p className="text-text-dim mb-4">Failed to load example data.</p>
           <button
@@ -88,7 +88,7 @@ export default function ExamplePage() {
 
   if (!narrative) {
     return (
-      <div className="fixed inset-0 z-100 bg-bg-base flex items-center justify-center">
+      <div className="fixed inset-0 z-modal bg-bg-base flex items-center justify-center">
         <div className="text-center">
           <div className="w-6 h-6 border-2 border-white/20 border-t-amber-400 rounded-full animate-spin mx-auto mb-3" />
           <p className="text-text-dim text-sm">

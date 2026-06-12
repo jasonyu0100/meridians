@@ -13,7 +13,6 @@ import type {
   Character,
   Location,
   RelationshipEdge,
-  GraphViewMode,
 } from '@/types/narrative';
 import EvalBar from '@/components/timeline/EvalBar';
 import SystemGraphView, { FullscreenButton } from './SystemGraphView';
@@ -25,7 +24,7 @@ import ThreadLogGraphView from './ThreadLogGraphView';
 import { ScenePlanView } from './ScenePlanView';
 import { SceneProseView } from './SceneProseView';
 import { SceneLearningView } from './SceneLearningView';
-import { ScenePerspectivesView } from './ScenePerspectivesView';
+import { ArcPerspectivesView } from './ArcPerspectivesView';
 import { SceneAudioView } from './SceneAudioView';
 import { DecisionView } from './DecisionView';
 import { CaptureView } from '@/components/capture/CaptureView';
@@ -42,7 +41,6 @@ import CompassView from './CompassView';
 import {
   type GraphNode,
   type GraphLink,
-  type NodeKind,
   computeGroups,
   computeCharacterPositions,
   buildGraphData,
@@ -1616,13 +1614,13 @@ export default function Stage() {
           />
         )
       ) : graphViewMode === 'perspective' ? (
-        currentScene ? (
-          <ScenePerspectivesView narrative={narrative} scene={currentScene} />
+        currentScene && narrative.arcs[currentScene.arcId] ? (
+          <ArcPerspectivesView narrative={narrative} arc={narrative.arcs[currentScene.arcId]} />
         ) : (
           <EmptyState
             icon={IconUser}
-            title="No scene selected."
-            hint="Select a scene from the timeline to view its perspectives."
+            title="No arc selected."
+            hint="Select a scene from the timeline to view its arc's perspectives."
           />
         )
       ) : graphViewMode === 'decision' ? (

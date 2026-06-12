@@ -40,6 +40,9 @@ function ancestry(locations: Record<string, Location>, id: string): Location[] {
 function LocCircle({ url, name, size = 40, ring }: { url: string | null; name: string; size?: number; ring?: boolean }) {
   const cls = `rounded-full object-cover shrink-0 transition-all ${ring ? 'ring-2 ring-accent' : 'ring-1 ring-black/10'}`;
   if (url) {
+    // Dynamic data:/blob: location avatar at a caller-supplied pixel size —
+    // next/image would force a fixed intrinsic size and break inline sizing.
+    // eslint-disable-next-line @next/next/no-img-element
     return <img src={url} alt={name} style={{ width: size, height: size }} className={cls} draggable={false} />;
   }
   return (

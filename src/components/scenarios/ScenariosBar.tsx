@@ -28,12 +28,15 @@ export function ScenariosBar({ runState, onStop, onOpenPanel }: Props) {
   const failed = runFailedCount(runState);
   const total = scenarioOrder.length;
 
-  // Ticking elapsed timer. Same pattern as RunBar — the
-  // setState-in-effect lint warning is unavoidable for a clock display
-  // since Date.now() can't be referenced in render.
+  // Ticking elapsed timer. Date.now() must stay off the render path (impure),
+  // so the initial value and per-second updates are owned by the effect. The
+  // one synchronous set is the reset when there is no active run; it can't be
+  // derived in render without calling Date.now() there, so it's disabled with
+  // intent rather than refactored into an impure render.
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!isRunning || !startedAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset only; Date.now() can't run during render
       setElapsed(0);
       return;
     }

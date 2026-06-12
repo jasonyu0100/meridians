@@ -919,7 +919,7 @@ describe('analyzeThreading', () => {
           },
         }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B', 'Thread C']);
     expect(result['Thread B']).toEqual(['Thread A']);
     expect(result['Thread C']).toEqual(['Thread A', 'Thread B']);
@@ -939,7 +939,7 @@ describe('analyzeThreading', () => {
       json: async () => ({
         content: JSON.stringify({ threadDependencies: {} }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B']);
     expect(result).toEqual({});
   });
@@ -951,7 +951,7 @@ describe('analyzeThreading', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ content: badJson }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B']);
     expect(result['Thread B']).toEqual(['Thread A']);
   });
@@ -972,7 +972,7 @@ describe('analyzeThreading', () => {
           },
         }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B']);
     expect(result['Thread B']).toEqual(['Thread A']);
     // No entry synthesised for the out-of-range key
@@ -989,7 +989,7 @@ describe('analyzeThreading', () => {
           },
         }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B']);
     expect(result['Thread B']).toEqual(['Thread A']);
   });
@@ -1002,7 +1002,7 @@ describe('analyzeThreading', () => {
           threadDependencies: { '3': [1, 1, 2, 2, 1] },
         }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B', 'Thread C']);
     expect(result['Thread C']).toEqual(['Thread A', 'Thread B']);
   });
@@ -1015,7 +1015,7 @@ describe('analyzeThreading', () => {
           threadDependencies: { '2': [], '3': [1] },
         }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B', 'Thread C']);
     expect(result['Thread B']).toBeUndefined();
     expect(result['Thread C']).toEqual(['Thread A']);
@@ -1031,7 +1031,7 @@ describe('analyzeThreading', () => {
           },
         }),
       }),
-    } as any);
+    } as unknown as Response);
     const result = await analyzeThreading(['Thread A', 'Thread B']);
     expect(result['Thread B']).toEqual(['Thread A']);
   });

@@ -78,7 +78,7 @@ export function ForcesOverviewSlide({ data }: { data: SlidesData }) {
     ]);
 
     // Animate from center
-    const zeroPoints = axes.map((a) => [0, 0]);
+    const zeroPoints = axes.map(() => [0, 0]);
 
     const polygon = g.append('polygon')
       .attr('points', zeroPoints.map((p) => p.join(',')).join(' '))
@@ -100,11 +100,6 @@ export function ForcesOverviewSlide({ data }: { data: SlidesData }) {
 
   // Determine dominant force
   const forces = ['fate', 'world', 'system', 'swing'] as const;
-  const avgRaw = {
-    fate: data.rawForces.fate.reduce((s, v) => s + v, 0) / data.sceneCount,
-    world: data.rawForces.world.reduce((s, v) => s + v, 0) / data.sceneCount,
-    system: data.rawForces.system.reduce((s, v) => s + v, 0) / data.sceneCount,
-  };
   const dominant = forces.reduce((a, b) => data.overallGrades[a] > data.overallGrades[b] ? a : b);
 
   const forceDescriptions: Record<string, string> = {

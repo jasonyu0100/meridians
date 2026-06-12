@@ -392,7 +392,7 @@ function RunView({
   const canCommit = doneCount > 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg-base/95 backdrop-blur-sm flex flex-col">
+    <div className="fixed inset-0 z-modal bg-bg-base/95 backdrop-blur-sm flex flex-col">
       {/* Header */}
       <div className="h-12 shrink-0 flex items-center px-4 gap-3 border-b border-white/8 glass-panel">
         <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" style={{ boxShadow: '0 0 4px rgba(96,165,250,0.8)' }} />

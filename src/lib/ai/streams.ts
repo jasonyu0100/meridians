@@ -21,7 +21,7 @@
  */
 
 import type { OutcomeEvidence, ThreadHorizon, ThreadLogNodeType } from '@/types/narrative';
-import { PREDICTIVE_MODEL } from '@/lib/constants';
+import { DEFAULT_MODEL } from '@/lib/constants';
 import { callGenerate } from './api';
 import { parseJson } from './json';
 
@@ -61,7 +61,7 @@ export async function instantiateStream(args: {
     args.fixedOutcomes?.length ? `FIXED OUTCOMES (reuse verbatim, in order): ${JSON.stringify(args.fixedOutcomes)}` : '',
   ].filter(Boolean);
 
-  const raw = await callGenerate(parts.join('\n'), SYSTEM, undefined, 'instantiateStream', PREDICTIVE_MODEL, 0);
+  const raw = await callGenerate(parts.join('\n'), SYSTEM, undefined, 'instantiateStream', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'instantiateStream') as Partial<StreamInstantiation>;
 
   // Outcomes — prefer fixed, else model, else binary fallback.
@@ -134,7 +134,7 @@ export async function suggestQuestion(args: {
     args.existingQuestions?.length ? `ALREADY OPEN (do NOT repeat or trivially rephrase these):\n${args.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}` : '',
     args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
   ].filter(Boolean).join('\n\n');
-  const raw = await callGenerate(user || 'Propose an open question.', SUGGEST_QUESTION_SYSTEM, undefined, 'suggestQuestion', PREDICTIVE_MODEL, 0);
+  const raw = await callGenerate(user || 'Propose an open question.', SUGGEST_QUESTION_SYSTEM, undefined, 'suggestQuestion', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestQuestion') as { question?: unknown };
   return typeof parsed.question === 'string' ? parsed.question.trim() : '';
 }
@@ -167,7 +167,7 @@ HARD RULES:
 EXAMPLE SHAPE (the leaned move, then a concrete personal reason in the character's own voice): "I'll send the two runners up the east face at first light rather than wait for the others — I'm the only one here who's climbed it in winter, so the head start should hold."
 
 Output ONLY JSON: {"intuition":"..."}`;
-  const raw = await callGenerate(user, sys, undefined, 'suggestIntuition', PREDICTIVE_MODEL, 0);
+  const raw = await callGenerate(user, sys, undefined, 'suggestIntuition', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestIntuition') as { intuition?: unknown };
   return typeof parsed.intuition === 'string' ? parsed.intuition.trim() : '';
 }
@@ -217,7 +217,7 @@ Output ONLY JSON: {"prior":"..."}`;
     `PRIORS SO FAR (the reasoning chain to extend — your new prior must move BEYOND every one of these, never restate or rephrase them):\n${priorsBlock}`,
     args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
   ].filter(Boolean).join('\n\n');
-  const raw = await callGenerate(user, sys, undefined, 'suggestPrior', PREDICTIVE_MODEL, 0);
+  const raw = await callGenerate(user, sys, undefined, 'suggestPrior', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestPrior') as { prior?: unknown };
   return typeof parsed.prior === 'string' ? parsed.prior.trim() : '';
 }
@@ -262,7 +262,7 @@ Output ONLY JSON: {"question":"...","intuition":"..."}`;
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
     args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
   ].filter(Boolean).join('\n\n');
-  const raw = await callGenerate(user, sys, undefined, 'suggestBranchStream', PREDICTIVE_MODEL, 0);
+  const raw = await callGenerate(user, sys, undefined, 'suggestBranchStream', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestBranchStream') as { question?: unknown; intuition?: unknown };
   return {
     question: typeof parsed.question === 'string' ? parsed.question.trim() : '',
@@ -313,7 +313,7 @@ export async function scoreStreamPrior(args: {
     `PRIOR: ${args.priorText}`,
   ].filter(Boolean).join('\n');
 
-  const raw = await callGenerate(user, SCORE_SYSTEM, undefined, 'scoreStreamPrior', PREDICTIVE_MODEL, 0);
+  const raw = await callGenerate(user, SCORE_SYSTEM, undefined, 'scoreStreamPrior', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'scoreStreamPrior') as Partial<ScoredPrior>;
 
   const updates: OutcomeEvidence[] = Array.isArray(parsed.updates)

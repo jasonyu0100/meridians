@@ -73,7 +73,7 @@ export function PlanCandidatesView({ narrative, scene, resolvedKeys, candidateCo
   };
 
   const content = (
-    <div className="fixed inset-0 bg-black/95 z-999 flex flex-col">
+    <div className="fixed inset-0 bg-black/95 z-modal flex flex-col">
       <div className="flex-1 min-h-0 flex flex-col p-6">
         <button onClick={onClose} className="absolute top-4 right-4 text-text-dim hover:text-text-primary text-lg leading-none z-10">&times;</button>
 

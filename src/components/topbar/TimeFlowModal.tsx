@@ -568,7 +568,7 @@ function RhythmView({
                   )}
                   {phrase && (
                     <p className="text-[10px] italic text-text-dim mt-1.5 pt-1.5 border-t border-border/40">
-                      "{phrase}"
+                      &quot;{phrase}&quot;
                     </p>
                   )}
                 </div>
@@ -918,7 +918,7 @@ function SceneTooltip({
         )}
         {phrase && (
           <p className="text-[10px] italic text-text-dim mt-1.5 pt-1.5 border-t border-border/40">
-            "{phrase}"
+            &quot;{phrase}&quot;
           </p>
         )}
       </div>

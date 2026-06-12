@@ -20,7 +20,7 @@ describe('AssetManager', () => {
   });
   describe('Embedding Storage', () => {
     it('should store and retrieve embeddings', async () => {
-      const vector = Array.from({ length: 1536 }, (_, i) => Math.random());
+      const vector = Array.from({ length: 1536 }, () => Math.random());
       const embId = await assetManager.storeEmbedding(vector, 'text-embedding-3-small');
       expect(embId).toMatch(/^emb_/);
       expect(embId.length).toBe(10);

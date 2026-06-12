@@ -147,6 +147,10 @@ export function useBulkEmbed() {
       setIsEmbedding(false);
       setProgress(null);
     }
+    // The embed* helpers are recreated each render and close over the same
+    // state captured here; depending on them would needlessly rebuild this
+    // callback without changing behavior.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeNarrative, state.resolvedEntryKeys]);
 
   /**

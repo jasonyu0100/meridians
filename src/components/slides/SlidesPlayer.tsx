@@ -216,7 +216,7 @@ export function SlidesPlayer({
 
   if (slidesData.sceneCount === 0) {
     return (
-      <div className="fixed inset-0 z-100 bg-bg-base flex items-center justify-center">
+      <div className="fixed inset-0 z-modal bg-bg-base flex items-center justify-center">
         <div className="text-center">
           <p className="text-text-dim mb-4">No scenes to analyse yet.</p>
           <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/10 text-text-primary text-sm hover:bg-white/15">
@@ -229,7 +229,7 @@ export function SlidesPlayer({
 
   return (
      
-    <div ref={containerRef} className="fixed inset-0 z-100 bg-bg-base flex flex-col outline-none" tabIndex={0}>
+    <div ref={containerRef} className="fixed inset-0 z-modal bg-bg-base flex flex-col outline-none" tabIndex={0}>
       {/* Cosmic background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="cosmos-container absolute inset-0">

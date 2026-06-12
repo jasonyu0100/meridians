@@ -1,6 +1,6 @@
 // Force formulas + graph/cube/stance algorithms — the deterministic math deriving Fate/World/System from deltas.
 
-import type { Branch, NarrativeState, Scene, Thread, Stance, OutcomeEvidence, ThreadDelta, ForceSnapshot, CubeCornerKey, CubeCorner, SystemGraph, SystemNode, SystemEdge, SystemDelta, WorldBuild, Character, Location, Artifact } from '@/types/narrative';
+import type { Branch, NarrativeState, Scene, Thread, Stance, OutcomeEvidence, ForceSnapshot, CubeCornerKey, CubeCorner, SystemGraph, SystemNode, SystemEdge, SystemDelta, WorldBuild, Character, Location, Artifact } from '@/types/narrative';
 import { getSceneSystemAttributions } from '@/lib/graph/system-graph';
 import { NARRATOR_ID } from '@/types/narrative';
 import {
@@ -9,9 +9,7 @@ import {
   STANCE_EVIDENCE_MAX,
   STANCE_TAU_CLOSE,
   STANCE_NEAR_CLOSED_MIN,
-  STANCE_VOLUME_DECAY,
   STANCE_ABANDON_VOLUME,
-  STANCE_VOLATILITY_BETA,
   STANCE_RECENCY_DECAY,
   STANCE_FOCUS_K,
 } from '@/lib/constants';

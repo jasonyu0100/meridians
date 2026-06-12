@@ -14,17 +14,41 @@ type Props = { entityId: string; nodeId: string };
 export default function WorldNodeDetail({ entityId, nodeId }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
+
+  const entity = narrative
+    ? (narrative.characters[entityId] ?? narrative.locations[entityId] ?? narrative.artifacts[entityId])
+    : undefined;
+
+  const entityType = narrative && narrative.characters[entityId]
+    ? 'character'
+    : narrative && narrative.locations[entityId]
+      ? 'location'
+      : 'artifact';
+
+  const nodes = useMemo(() => {
+    if (!narrative || !entity) return [];
+    return getWorldNodesAtScene(entity.world.nodes, entityId, narrative.scenes, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+  }, [entity, entityId, narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
+
+  // Scenes where this entity gains this node
+  const mentionedScenes = useMemo(() => {
+    if (!narrative) return [];
+    const sceneIndices: number[] = [];
+    for (let i = 0; i <= state.viewState.currentSceneIndex && i < state.resolvedEntryKeys.length; i++) {
+      const key = state.resolvedEntryKeys[i];
+      const scene = narrative.scenes[key];
+      if (!scene) continue;
+      for (const km of scene.worldDeltas) {
+        if (km.entityId === entityId && (km.addedNodes ?? []).some(n => n.id === nodeId)) {
+          sceneIndices.push(i);
+        }
+      }
+    }
+    return sceneIndices;
+  }, [narrative, entityId, nodeId, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
+
   if (!narrative) return null;
-
-  const entity = narrative.characters[entityId] ?? narrative.locations[entityId] ?? narrative.artifacts[entityId];
   if (!entity) return <p className="text-xs text-text-dim">Entity not found</p>;
-
-  const entityType = narrative.characters[entityId] ? 'character' : narrative.locations[entityId] ? 'location' : 'artifact';
-
-  const nodes = useMemo(() =>
-    getWorldNodesAtScene(entity.world.nodes, entityId, narrative.scenes, state.resolvedEntryKeys, state.viewState.currentSceneIndex),
-    [entity, entityId, narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex],
-  );
 
   const node = nodes.find(n => n.id === nodeId);
   if (!node) return <p className="text-xs text-text-dim">Node not found</p>;
@@ -40,22 +64,6 @@ export default function WorldNodeDetail({ entityId, nodeId }: Props) {
       const direction = e.from === nodeId ? 'outgoing' : 'incoming';
       return { otherId, other, relation: e.relation, direction };
     });
-
-  // Scenes where this entity gains this node
-  const mentionedScenes = useMemo(() => {
-    const sceneIndices: number[] = [];
-    for (let i = 0; i <= state.viewState.currentSceneIndex && i < state.resolvedEntryKeys.length; i++) {
-      const key = state.resolvedEntryKeys[i];
-      const scene = narrative.scenes[key];
-      if (!scene) continue;
-      for (const km of scene.worldDeltas) {
-        if (km.entityId === entityId && (km.addedNodes ?? []).some(n => n.id === nodeId)) {
-          sceneIndices.push(i);
-        }
-      }
-    }
-    return sceneIndices;
-  }, [narrative, entityId, nodeId, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
 
   return (
     <div className="flex flex-col gap-4">

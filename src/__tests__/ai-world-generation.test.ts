@@ -46,7 +46,7 @@ vi.mock('@/lib/storage/asset-manager', () => ({
   },
 }));
 import { expandWorld, generateNarrative } from '@/lib/ai/world';
-import { callGenerate, callGenerateStream } from '@/lib/ai/api';
+import { callGenerate } from '@/lib/ai/api';
 // ── Test Fixtures ────────────────────────────────────────────────────────────
 function createCharacter(id: string, overrides: Partial<Character> = {}): Character {
   return {

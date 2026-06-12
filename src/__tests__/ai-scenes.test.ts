@@ -127,14 +127,9 @@ vi.mock("@/lib/storage/asset-manager", () => {
     },
   };
 });
-import { callGenerate, callGenerateStream } from "@/lib/ai/api";
+import { callGenerate } from "@/lib/ai/api";
 import {
-  editScenePlan,
-  generateScenePlan,
-  generateSceneProse,
   generateScenes,
-  reverseEngineerScenePlan,
-  rewriteScenePlan,
   sanitizeScenes,
 } from "@/lib/ai/scenes";
 // ── Test Fixtures ────────────────────────────────────────────────────────────

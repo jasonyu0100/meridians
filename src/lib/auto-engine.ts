@@ -17,13 +17,10 @@ import type {
 } from "@/types/narrative";
 import { isScene } from "@/types/narrative";
 import {
-  focusScore,
   isNearClosed,
   isThreadAbandoned,
   isThreadClosed,
-  scenesSinceTouched,
   getThreadStance,
-  normalizedEntropy,
   getStanceProbs,
 } from "@/lib/forces/narrative-utils";
 

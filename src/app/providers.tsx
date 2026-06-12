@@ -4,6 +4,7 @@
 import { LogsProvider } from '@/lib/state/logs-context';
 import { StoreProvider, useStore } from '@/lib/state/store';
 import { ThemeProvider } from '@/lib/state/theme-context';
+import { ToastProvider } from '@/lib/state/toast-context';
 import { WizardProvider } from '@/lib/state/wizard-context';
 import type { ReactNode } from 'react';
 
@@ -22,7 +23,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <StoreProvider>
         <WizardProvider>
-          <LogsProviderBridge>{children}</LogsProviderBridge>
+          <ToastProvider>
+            <LogsProviderBridge>{children}</LogsProviderBridge>
+          </ToastProvider>
         </WizardProvider>
       </StoreProvider>
     </ThemeProvider>

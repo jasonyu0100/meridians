@@ -7,7 +7,7 @@ import 'fake-indexeddb/auto';
 // Use Node.js built-in Blob (available in Node 16+)
 import { Blob } from 'node:buffer';
 if (typeof globalThis.Blob === 'undefined') {
-  (globalThis as any).Blob = Blob;
+  (globalThis as Record<string, unknown>).Blob = Blob;
 }
 
 // Mock performance.now for timing tests if not available

@@ -7,7 +7,9 @@ import {
   getResolvedProseVersion,
   getResolvedPlanVersion,
 } from '@/lib/forces/narrative-utils';
-import type { Scene, Branch, ProseVersion, PlanVersion, BeatPlan } from '@/types/narrative';
+import type { Scene, Branch, ProseVersion, PlanVersion, BeatPlan, BeatProseMap } from '@/types/narrative';
+// Legacy scene fields (pre-versioning) used to simulate old data in tests.
+type LegacyScene = Scene & { prose?: string; plan?: BeatPlan; beatProseMap?: BeatProseMap };
 // Helper to create a minimal scene with versions
 function createScene(
   id: string,
@@ -97,7 +99,7 @@ describe('Version Number Computation', () => {
     });
     it('should increment major version for subsequent generations', () => {
       // After V1, regeneration should create V2
-      const v1 = createProseVersion('1', 'branch-1', 'generate', 1000);
+      const _v1 = createProseVersion('1', 'branch-1', 'generate', 1000);
       const v2 = createProseVersion('2', 'branch-1', 'generate', 2000);
       expect(v2.version).toBe('2');
     });
@@ -110,7 +112,7 @@ describe('Version Number Computation', () => {
       expect(pv.parentVersion).toBe('1');
     });
     it('should increment minor version for subsequent rewrites', () => {
-      const v1_1 = createProseVersion('1.1', 'branch-1', 'rewrite', 2000, '1');
+      const _v1_1 = createProseVersion('1.1', 'branch-1', 'rewrite', 2000, '1');
       const v1_2 = createProseVersion('1.2', 'branch-1', 'rewrite', 3000, '1.1');
       expect(v1_2.version).toBe('1.2');
       expect(v1_2.parentVersion).toBe('1.1');
@@ -128,7 +130,7 @@ describe('Version Number Computation', () => {
       expect(pv.parentVersion).toBe('1.1');
     });
     it('should increment edit version for subsequent edits', () => {
-      const v1_1_1 = createProseVersion('1.1.1', 'branch-1', 'edit', 3000, '1.1');
+      const _v1_1_1 = createProseVersion('1.1.1', 'branch-1', 'edit', 3000, '1.1');
       const v1_1_2 = createProseVersion('1.1.2', 'branch-1', 'edit', 4000, '1.1.1');
       expect(v1_1_2.version).toBe('1.1.2');
     });
@@ -145,7 +147,7 @@ describe('Prose Resolution', () => {
     it('should return undefined when no versions exist (no legacy fallback)', () => {
       const scene = createScene('scene-1');
       // Legacy prose field is ignored - no fallback
-      (scene as any).prose = 'Legacy prose content';
+      (scene as LegacyScene).prose = 'Legacy prose content';
       const branches = { 'branch-1': createBranch('branch-1') };
       const result = resolveProseForBranch(scene, 'branch-1', branches);
       expect(result.prose).toBeUndefined();
@@ -208,7 +210,7 @@ describe('Prose Resolution', () => {
     });
     it('should return undefined for legacy (unversioned) prose', () => {
       const scene = createScene('scene-1');
-      (scene as any).prose = 'Legacy prose';
+      (scene as LegacyScene).prose = 'Legacy prose';
       const branches = { 'branch-1': createBranch('branch-1') };
       const version = getResolvedProseVersion(scene, 'branch-1', branches);
       expect(version).toBeUndefined();
@@ -238,7 +240,7 @@ describe('Plan Resolution', () => {
     it('should return undefined when no versions exist (no legacy fallback)', () => {
       const scene = createScene('scene-1');
       // Legacy plan field is ignored - no fallback
-      (scene as any).plan = { beats: [{ fn: 'advance', mechanism: 'action', what: 'Legacy beat', propositions: [] }] } as BeatPlan;
+      (scene as LegacyScene).plan = { beats: [{ fn: 'advance', mechanism: 'action', what: 'Legacy beat', propositions: [] }] } as BeatPlan;
       const branches = { 'branch-1': createBranch('branch-1') };
       const result = resolvePlanForBranch(scene, 'branch-1', branches);
       expect(result).toBeUndefined();
@@ -392,13 +394,13 @@ describe('Version Pointers', () => {
 });
 describe('Plan-to-Prose Linkage', () => {
   it('should track source plan version in prose', () => {
-    const planV1 = createPlanVersion('1', 'branch-1', 'generate', 1000);
+    const _planV1 = createPlanVersion('1', 'branch-1', 'generate', 1000);
     const proseV1 = createProseVersion('1', 'branch-1', 'generate', 2000, undefined, '1');
     expect(proseV1.sourcePlanVersion).toBe('1');
   });
   it('should track different plan versions for different prose versions', () => {
-    const planV1 = createPlanVersion('1', 'branch-1', 'generate', 1000);
-    const planV2 = createPlanVersion('2', 'branch-1', 'generate', 2000);
+    const _planV1 = createPlanVersion('1', 'branch-1', 'generate', 1000);
+    const _planV2 = createPlanVersion('2', 'branch-1', 'generate', 2000);
     const proseFromPlanV1 = createProseVersion('1', 'branch-1', 'generate', 3000, undefined, '1');
     const proseFromPlanV2 = createProseVersion('2', 'branch-1', 'generate', 4000, undefined, '2');
     expect(proseFromPlanV1.sourcePlanVersion).toBe('1');
@@ -413,7 +415,7 @@ describe('Edge Cases', () => {
   it('should handle empty branches object', () => {
     const scene = createScene('scene-1');
     // Legacy prose is ignored - no branch to resolve
-    (scene as any).prose = 'Legacy prose';
+    (scene as LegacyScene).prose = 'Legacy prose';
     const result = resolveProseForBranch(scene, 'nonexistent', {});
     expect(result.prose).toBeUndefined();
   });
@@ -523,8 +525,8 @@ describe('Beat Prose Map and Prose Score Resolution', () => {
   it('should return undefined beatProseMap when no versions exist (no legacy fallback)', () => {
     const scene = createScene('scene-1');
     // Legacy fields are ignored - no fallback
-    (scene as any).prose = 'Legacy prose';
-    (scene as any).beatProseMap = { chunks: [{ beatIndex: 0, prose: 'Legacy beat' }], createdAt: 500 };
+    (scene as LegacyScene).prose = 'Legacy prose';
+    (scene as LegacyScene).beatProseMap = { chunks: [{ beatIndex: 0, prose: 'Legacy beat' }], createdAt: 500 };
     const branches = { 'branch-1': createBranch('branch-1') };
     const result = resolveProseForBranch(scene, 'branch-1', branches);
     expect(result.beatProseMap).toBeUndefined();

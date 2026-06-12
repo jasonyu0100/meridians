@@ -51,9 +51,10 @@ export default function SceneBar() {
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // editValue is seeded fresh each time edit mode is entered (and is hidden
+  // when editField is null), so the effect only needs to focus the input.
   useEffect(() => {
     if (editField) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
-    else setEditValue('');
   }, [editField]);
 
   const commit = useCallback(() => {

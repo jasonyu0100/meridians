@@ -71,7 +71,7 @@ export default function SceneRangeSelector({
   const narrative = state.activeNarrative;
   const resolvedKeys = state.resolvedEntryKeys;
   const branchId = state.viewState.activeBranchId;
-  const branches = narrative?.branches ?? {};
+  const branches = useMemo(() => narrative?.branches ?? {}, [narrative?.branches]);
 
   const [open, setOpen] = useState(false);
   // Gap-fill by default; the operator can opt into regenerating existing.
@@ -119,10 +119,12 @@ export default function SceneRangeSelector({
       hasAudio.push(!!scene.audioUrl);
       hasGame.push(!!(scene.gameAnalysis?.games?.length));
       hasQuestions.push(!!(scene.questions?.length));
-      hasPerspectives.push(!!(scene.perspectives && Object.keys(scene.perspectives).length));
+      // Perspectives are arc-scoped — a scene "has" them if its arc does.
+      const arc = narrative?.arcs[scene.arcId];
+      hasPerspectives.push(!!(arc?.perspectives && Object.keys(arc.perspectives).length));
     }
     return { hasPlan, hasProse, hasAudio, hasGame, hasQuestions, hasPerspectives };
-  }, [sceneEntries, branchId, branches]);
+  }, [sceneEntries, branchId, branches, narrative]);
 
   const effectiveStart = range?.start ?? 0;
   const effectiveEnd = range?.end ?? Math.max(0, totalScenes - 1);
@@ -207,7 +209,7 @@ export default function SceneRangeSelector({
       {open && popoutPos && createPortal(
         <div
           ref={popoutRef}
-          className="fixed z-9999 w-72 bg-neutral-900/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl p-3 space-y-3"
+          className="fixed z-popover w-72 bg-neutral-900/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl p-3 space-y-3"
           style={{ top: popoutPos.top, bottom: popoutPos.bottom, left: popoutPos.left }}
         >
           {/* Title + reset */}

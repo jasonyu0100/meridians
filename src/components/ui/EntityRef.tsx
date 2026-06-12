@@ -116,7 +116,7 @@ function HoverCard({ info, anchor }: { info: EntityRefInfo; anchor: AnchorRect }
     <div
       ref={cardRef}
       role="tooltip"
-      className="pointer-events-none fixed z-9999 rounded-lg border border-white/10 bg-bg-panel/95 px-3 py-2.5 shadow-xl backdrop-blur-xl"
+      className="pointer-events-none fixed z-popover rounded-lg border border-white/10 bg-bg-panel/95 px-3 py-2.5 shadow-xl backdrop-blur-xl"
       style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, width: CARD_WIDTH, opacity: pos ? 1 : 0 }}
     >
       <div className="flex items-center gap-1.5">

@@ -286,7 +286,7 @@ describe('Package Export/Import', () => {
       expect(await assetManager.getEmbedding(emb1)).toBeNull();
       // Import should restore it
       const file = new File([zipBlob], 'test.meridians');
-      const imported = await importFromPackage(file, {
+      await importFromPackage(file, {
         importEmbeddings: true,
         importAudio: false,
         importImages: false,

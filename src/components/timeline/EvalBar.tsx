@@ -72,6 +72,9 @@ export default function EvalBar() {
     const delta = to - from;
     prevTarget.current = to;
 
+    // Kicks off a requestAnimationFrame spring; the prevTarget guard above means
+    // this only fires on an actual target change, so it can't cascade.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCalibrating(true);
     const start = performance.now();
     const duration = 600;

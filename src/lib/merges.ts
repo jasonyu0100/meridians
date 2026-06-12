@@ -363,8 +363,16 @@ export function renderMergeBasisBlock(
           overridden ? `overridden="true" belief-leaned="${xmlAttr(leaned!)}"` : "",
         ].filter(Boolean).join(" ");
 
+        // A REALISM determination (conflicting / complex claims pre-resolved by
+        // the impartial judge): the continuation must realise the TELLING as what
+        // actually happened; the REASONING is why; closes/open says whether the
+        // question is now settled or still live.
+        const tellingBlock = res?.telling
+          ? `\n      <conflict-resolution status="${res.closes ? "closed" : "open"}" hint="Competing claims on this question were pre-resolved by an impartial realism pass. The telling is what ACTUALLY happens — the chosen outcome above prevails; render it, including how the losing intent fails / is co-opted / backfires. status=&quot;closed&quot; means the question is decisively settled; status=&quot;open&quot; means it realised this beat but stays live.">\n        <telling>${xmlAttr(res.telling)}</telling>${res.reasoning ? `\n        <reasoning>${xmlAttr(res.reasoning)}</reasoning>` : ""}\n      </conflict-resolution>\n      `
+          : "";
+
         streamBlocks.push(
-          `      <resolved ${attrs}>${priors ? `\n      <priors hint="RAW perspective-held thinking behind this resolution — noisy evidence, not fact. De-noise per &lt;synthesis&gt;: read for motive / texture / directional pressure, never as competing outcomes. [logType] tags weight: payoff/twist/escalation &gt; setup/pulse.">\n${priors}\n      </priors>\n      ` : ""}</resolved>`,
+          `      <resolved ${attrs}>${tellingBlock}${priors ? `\n      <priors hint="RAW perspective-held thinking behind this resolution — noisy evidence, not fact. De-noise per &lt;synthesis&gt;: read for motive / texture / directional pressure, never as competing outcomes. [logType] tags weight: payoff/twist/escalation &gt; setup/pulse.">\n${priors}\n      </priors>\n      ` : ""}</resolved>`,
         );
       } else if (outcomes.length > 0) {
         // ── Open-ended — the merge folded this stream in WITHOUT committing an
@@ -399,6 +407,22 @@ export function renderMergeBasisBlock(
   }
   if (mergeBlocks.length === 0) return null;
 
+  // Player movements committed this round — render as a directive so the
+  // continuation places each character at their target location through
+  // participation (positions are participation-derived; no movement layer).
+  const moveLines: string[] = [];
+  for (const merge of merges) {
+    for (const [charId, locId] of Object.entries(merge.playerMovements ?? {})) {
+      const cName = n.characters[charId]?.name ?? charId;
+      const lName = n.locations[locId]?.name ?? locId;
+      moveLines.push(`    <move character="${xmlAttr(cName)}" to="${xmlAttr(lName)}" />`);
+    }
+  }
+  const movementsBlock =
+    moveLines.length > 0
+      ? `\n  <movements hint="Intended player movements committed this round. Open the continuation by placing EACH listed character AT their target location — show the travel / arrival / already-there — and ensure each PARTICIPATES in a scene set at that location, so their position updates. Movement is intent realised in the fiction (the journey or arrival), not a teleport or a bare statement.">\n${moveLines.join("\n")}\n  </movements>`
+      : "";
+
   return `<continuity-basis hint="GROUND TRUTH the continuation extends from. Each &lt;resolved&gt; question below was committed at a merge — its outcome is what HAPPENED and outranks any speculative lean elsewhere in context. The priors under each are RAW perspective-held thinking (noisy evidence), not facts. De-noise them into a single direction (see &lt;synthesis&gt;) and continue ALONG that vector. PRIMARY FAILURE MODE: producing content that is thematically adjacent to these questions but never realises the committed outcomes by their actual content — every &lt;resolved&gt; outcome MUST surface concretely in what you produce, named and developed, not gestured at. overridden=&quot;true&quot; means reality diverged from the accumulated belief (which leaned belief-leaned) — honour the committed outcome, not the lean. multi-resolved=&quot;a + b&quot; means the question committed to SEVERAL outcomes at once — reconcile them as jointly true / a blend / a sequence / a partial, NOT as competing alternatives; if they cannot coherently coexist, prefer the primary outcome and treat the rest as tension. A merge RECORDS all the room's decision-making, but ONLY &lt;resolved&gt; (executive) decisions drive the continuation. &lt;open&gt; questions were folded in WITHOUT an executive outcome — they are organisational RECORD, not fact and not drivers: a live uncertainty, or an alternative line weighed and not taken. The continuation MAY acknowledge them (the room considered this) but must NOT advance along them or harden them into fact; the executive (resolved) decisions alone steer where the world goes.">
   <synthesis hint="How to turn these noisy priors + committed resolutions into the direction this continuation advances along. Do this BEFORE drafting — when an arc/expansion emits a directionVector, it IS the output of this synthesis.">
     <step n="1" name="signal-vs-noise">Treat each &lt;resolved&gt; question's committed outcome as settled fact (the signal). Treat its priors as raw, vantage-biased thinking — partial, sometimes wrong, often contradicting each other. Never promote a single prior to fact.</step>
@@ -407,6 +431,6 @@ export function renderMergeBasisBlock(
     <step n="4" name="realise-each" critical="true">Advance the world ALONG that vector — and for EVERY &lt;resolved&gt; question, make its committed outcome CONCRETE and load-bearing in what you produce. Name the actual outcome (its real content — e.g. the specific answer that was committed, not merely the question's topic) and build the events, claims, or consequences that follow FROM it. Realise it NATURALLY inside the CONTINUING narrative, carried through the perspective that held the stream — the outcome becomes lived story (what that vantage now sees, decides, contends with, or is changed by) and the priors are its motive and texture, NOT a bolted-on statement of fact or a forecast report grafted onto the work. Let each perspective act on its confirmed or broken read. Content that is merely thematically adjacent to a question — touching its subject without ever asserting or developing the committed answer — does NOT count: a continuation that fails to realise each committed outcome by its actual content has IGNORED this basis. That is the PRIMARY FAILURE MODE; avoid it. Do not relitigate settled questions; build on them.</step>
     <step n="5" name="open-questions">Each &lt;open&gt; question is organisational RECORD, not an executive decision — it does NOT drive the continuation. No outcome was committed, so it is not fact. You may acknowledge it for realism (a question the room is still weighing, or a line it considered and did not take) but must NOT advance the world along it, harden it into a fact, or let it steer where the continuation goes. Its priors are context for what the room considered, never a directive. Only the &lt;resolved&gt; (executive) decisions move the world.</step>
   </synthesis>
-${mergeBlocks.join("\n")}
+${mergeBlocks.join("\n")}${movementsBlock}
 </continuity-basis>`;
 }

@@ -491,7 +491,7 @@ function TransitionGraph({
 export function MarkovChainModal({
   narrative,
   resolvedKeys,
-  currentSceneIndex,
+  currentSceneIndex: _currentSceneIndex,
   onClose,
 }: Props) {
   const [focusedCorner, setFocusedCorner] = useState<CubeCornerKey | null>(
@@ -786,7 +786,7 @@ export function MarkovChainModal({
                   </div>
                   {focusDetail.sortedOut
                     .slice(0, 5)
-                    .map(({ c: to, prob, count }) => (
+                    .map(({ c: to, prob }) => (
                       <div
                         key={to}
                         className="flex items-center gap-1.5 text-[11px] mb-1"
@@ -822,7 +822,7 @@ export function MarkovChainModal({
                   </div>
                   {focusDetail.sortedIn
                     .slice(0, 5)
-                    .map(({ c: from, prob, count }) => (
+                    .map(({ c: from, prob }) => (
                       <div
                         key={from}
                         className="flex items-center gap-1.5 text-[11px] mb-1"

@@ -40,27 +40,12 @@ const TYPE_DESCRIPTIONS: Record<string, string> = {
 export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
   const { state, dispatch } = useStore();
   const narrative = state.activeNarrative;
-  if (!narrative) return null;
-
-  const thread = narrative.threads[threadId];
-  if (!thread) return <p className="text-xs text-text-dim">Thread not found</p>;
-
-  const node = thread.threadLog?.nodes?.[nodeId] as ThreadLogNode | undefined;
-  if (!node) return <p className="text-xs text-text-dim">Log node not found</p>;
-
-  const edges = thread.threadLog?.edges ?? [];
-  // Ordered node list — drives the prev/next Sequence navigation.
-  const orderedNodeIds = Object.keys(thread.threadLog?.nodes ?? {});
-  const seqIndex = orderedNodeIds.indexOf(nodeId);
-  const prevNode = seqIndex > 0 ? thread.threadLog?.nodes?.[orderedNodeIds[seqIndex - 1]] : undefined;
-  const nextNode = seqIndex >= 0 && seqIndex < orderedNodeIds.length - 1 ? thread.threadLog?.nodes?.[orderedNodeIds[seqIndex + 1]] : undefined;
-  // The originating scene/worldbuild id — explicit on the node, else recovered
-  // from the node id pattern `${threadId}:${sceneId}`.
-  const logSceneId = node.sceneId ?? (nodeId.includes(":") ? nodeId.slice(nodeId.indexOf(":") + 1) : "");
+  const thread = narrative?.threads[threadId];
 
   // All edges involving this node
   const connections = useMemo(() => {
-    const allNodes = thread.threadLog?.nodes ?? {};
+    const allNodes = thread?.threadLog?.nodes ?? {};
+    const edges = thread?.threadLog?.edges ?? [];
     return edges
       .filter((e) => e.from === nodeId || e.to === nodeId)
       .map((e) => {
@@ -69,11 +54,12 @@ export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
         const direction = e.from === nodeId ? "outgoing" : "incoming";
         return { otherId, other, relation: e.relation, direction };
       });
-  }, [edges, thread.threadLog, nodeId]);
+  }, [thread?.threadLog, nodeId]);
 
   // Find scenes where this node's thread delta occurred
   // (derive from scene.threadDeltas, matching by position in the node list)
   const mentionedScenes = useMemo(() => {
+    if (!narrative || !thread) return [];
     const nodeIds = Object.keys(thread.threadLog?.nodes ?? {});
     const nodeIndex = nodeIds.indexOf(nodeId);
     if (nodeIndex < 0) return [];
@@ -94,7 +80,22 @@ export default function ThreadLogNodeDetail({ threadId, nodeId }: Props) {
       }
     }
     return scenes;
-  }, [narrative, threadId, nodeId, thread.threadLog, state.resolvedEntryKeys]);
+  }, [narrative, threadId, nodeId, thread, state.resolvedEntryKeys]);
+
+  if (!narrative) return null;
+  if (!thread) return <p className="text-xs text-text-dim">Thread not found</p>;
+
+  const node = thread.threadLog?.nodes?.[nodeId] as ThreadLogNode | undefined;
+  if (!node) return <p className="text-xs text-text-dim">Log node not found</p>;
+
+  // Ordered node list — drives the prev/next Sequence navigation.
+  const orderedNodeIds = Object.keys(thread.threadLog?.nodes ?? {});
+  const seqIndex = orderedNodeIds.indexOf(nodeId);
+  const prevNode = seqIndex > 0 ? thread.threadLog?.nodes?.[orderedNodeIds[seqIndex - 1]] : undefined;
+  const nextNode = seqIndex >= 0 && seqIndex < orderedNodeIds.length - 1 ? thread.threadLog?.nodes?.[orderedNodeIds[seqIndex + 1]] : undefined;
+  // The originating scene/worldbuild id — explicit on the node, else recovered
+  // from the node id pattern `${threadId}:${sceneId}`.
+  const logSceneId = node.sceneId ?? (nodeId.includes(":") ? nodeId.slice(nodeId.indexOf(":") + 1) : "");
 
   return (
     <div className="flex flex-col gap-4">

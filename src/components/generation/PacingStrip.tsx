@@ -116,6 +116,10 @@ export function PacingStrip({
 
   useEffect(() => {
     if (!animating) {
+      // Non-animating: snap to fully settled. The same counter is otherwise
+      // driven incrementally by timers in the animating branch, so it must
+      // remain effect-owned state — it can't be purely derived during render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSettledCount(sequence.steps.length);
       return;
     }

@@ -28,7 +28,7 @@ function PlanNode({
   scene,
   arc,
   verdict,
-  originalVerdict,
+  originalVerdict: _originalVerdict,
   issues,
   isOverridden,
   isLast,

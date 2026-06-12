@@ -8,7 +8,7 @@ import type { GraphViewMode } from '@/types/narrative';
 import { getResolvedProseVersion, getResolvedPlanVersion, resolveProseForBranch, resolvePlanForBranch } from '@/lib/forces/narrative-utils';
 import { VersionHistoryTree } from './VersionHistoryTree';
 import { RegenerateEmbeddingsModal } from '@/components/topbar/RegenerateEmbeddingsModal';
-import { IconMind, IconSignals, IconContent, IconDatabase, IconClose, IconRefresh, IconCopy, IconDownload, IconChevronDown, IconLineChart } from '@/components/icons';
+import { IconMind, IconSignals, IconContent, IconDatabase, IconClose, IconRefresh, IconCopy, IconDownload, IconChevronDown } from '@/components/icons';
 import { buildSequentialPath } from '@/lib/ai';
 import { CopyButton } from '@/components/shared/CopyButton';
 import { exportGraphView, graphViewLabel, isExportableGraphMode } from '@/lib/io/graph-export';
@@ -229,12 +229,6 @@ function BeatPlanToggle() {
   );
 }
 
-const VERSION_TYPE_COLORS = {
-  generate: 'text-emerald-400',
-  rewrite: 'text-sky-400',
-  edit: 'text-amber-400',
-};
-
 const VERSION_TYPE_BG_COLORS = {
   generate: 'bg-emerald-400',
   rewrite: 'bg-sky-400',
@@ -315,7 +309,7 @@ function VersionSelector({
           Solid bg-bg-base + a sharper border + heavier dropshadow give the
           panel a clear figure/ground separation from the page beneath. */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1.5 z-[100] bg-bg-base border border-white/14 rounded-lg shadow-2xl shadow-black/70 min-w-[240px] max-h-[320px] overflow-hidden">
+        <div className="absolute top-full left-0 mt-1.5 z-dropdown bg-bg-base border border-white/14 rounded-lg shadow-2xl shadow-black/70 min-w-[240px] max-h-[320px] overflow-hidden">
           <VersionHistoryTree
             versions={versions}
             currentVersion={currentVersion}
@@ -443,7 +437,7 @@ export function StageBar() {
   }, [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex]);
 
   // ── Version state ────────────────────────────────────────────────────
-  const branches = narrative?.branches ?? {};
+  const branches = useMemo(() => narrative?.branches ?? {}, [narrative?.branches]);
   const branchId = state.viewState.activeBranchId;
 
   const currentProseVersion = useMemo(() => {
@@ -650,9 +644,10 @@ export function StageBar() {
     );
   }, [currentArcMaps, state.viewState.selectedMapId]);
 
+  // editValue is seeded fresh each time edit mode is entered (and is hidden
+  // when editField is null), so the effect only needs to focus the input.
   useEffect(() => {
     if (editField) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
-    else setEditValue('');
   }, [editField]);
 
   const commit = useCallback(() => {
@@ -1429,7 +1424,7 @@ type GraphLike = {
   summary: string;
 };
 function GraphInfoStrip({
-  graph,
+  graph: _graph,
   copied,
   onCopy,
   onExport,

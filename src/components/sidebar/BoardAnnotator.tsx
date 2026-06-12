@@ -179,6 +179,9 @@ export function BoardAnnotator({ map, onClose }: { map: Board; onClose: () => vo
             positioned by normalized coordinates over it. */}
         <div className="relative inline-block w-full select-none">
           {url ? (
+            // Raw <img> with a ref so annotations can be positioned over it by
+            // normalized coords; next/image wraps the element and can't carry blob/object URLs.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               ref={imgRef}
               src={url}

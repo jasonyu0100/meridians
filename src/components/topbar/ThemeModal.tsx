@@ -37,7 +37,7 @@ export function ThemeMenu({ onClose }: { onClose: () => void }) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="absolute top-full right-0 mt-1.5 z-[100] min-w-[256px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
+    <div className="absolute top-full right-0 mt-1.5 z-dropdown min-w-[256px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
       {THEMES.map((id) => {
         const o = OPTIONS[id];
         const active = theme === id;

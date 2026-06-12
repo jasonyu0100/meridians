@@ -85,6 +85,9 @@ export function PropositionClassificationProvider({
   // Cleanup worker on unmount
   useEffect(() => {
     return () => {
+      // The worker is created lazily after mount, so we must read the ref's
+      // current value at cleanup time (capturing it now would be null).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       workerRef.current?.terminate();
     };
   }, []);

@@ -2,7 +2,7 @@
 
 import type {
   NarrativeState, Scene, ForceSnapshot, CubeCornerKey,
-  Character, Location, Artifact, Thread,
+  Character, Location, Artifact,
   BeatSampler,
   PropositionBaseCategory,
   NarrativeParadigm,
@@ -830,7 +830,7 @@ function buildTroughInfos(
   delivery: ActivityPoint[],
   forces: ForceSnapshot[],
   peakIndices: number[],
-  narrative: NarrativeState,
+  _narrative: NarrativeState,
 ): TroughInfo[] {
   return delivery
     .filter((e) => e.isValley)

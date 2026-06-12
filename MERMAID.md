@@ -180,7 +180,7 @@ flowchart TB
     end
 ```
 
-> Build status: the **room / participant model** (`Member`/`Agent`/`Perspective`), **capture-as-perspective-PRs** (Streams — a member's bearing on an open question, member-owned Stance), and the **war-room merge** (Merges fold committed streams into continuity) are now **shipped**. Still **not yet built**: the weekly market, the **Conviction** card game ([CONCEPT.md](CONCEPT.md)), local encryption/PIN, **Signal** async capture (E2E), and **Cloudflare-tunnel** (`cloudflared`) multi-user live access. Other shipped bases: `useScenarios`/`scenarios-engine` (Rehearse), `SlidesPlayer`/`slides-data` + **SlideRegionsModal** (scoped decks), `ai/review`+`reconstruct` (the engine's branch review). *Review-as-a-loop-phase and Butterfly were dropped.*
+> Build status: the **room / participant model** (`Member`/`Agent`/`Perspective`), **capture-as-perspective-PRs** (Streams — a member's bearing on an open question, member-owned Stance), the **war-room merge** (Merges fold committed streams into continuity), and the **Conviction** card game ([CONCEPT.md](CONCEPT.md); §8 — Rounds variant, computer mode; the **Read → Write → Play** loop with generation calls between phases) are now **shipped**. Still **not yet built**: the weekly market, local encryption/PIN, **Signal** async capture (E2E), **Cloudflare-tunnel** (`cloudflared`) multi-user live access, and Conviction's **remote/Showdown** modes. Other shipped bases: `useScenarios`/`scenarios-engine` (Rehearse), `SlidesPlayer`/`slides-data` + **SlideRegionsModal** (scoped decks), `ai/review`+`reconstruct` (the engine's branch review). *Review-as-a-loop-phase and Butterfly were dropped.*
 
 ---
 
@@ -252,56 +252,144 @@ flowchart TB
 
 ## 8. Conviction — the rehearsal game state machine ([CONCEPT.md](CONCEPT.md))
 
-A game is a **branch**; a `GameRoom` runs the round loop over it as a phase machine (`RoundState.phase`), in one of two **variants** — **Rounds** (poker turn order; the diagram below) or **Showdown** (a real-time, simultaneous **LIVE** window replacing READ-WRITE + PLAY). Humans take their turns by hand; agents resolve automatically; a timeout with nothing committed = no action (ceded to the LLM). Scoring is **intrinsic**: in the **SCORING** phase each round, the realized stance shift on every thread is decomposed across the seats that moved it — **Aumann–Shapley on the Fate/KL, conserving exactly** — into a running **Impact** score, shown with a **Ranking**. **Streams are perspective-owned** (one per seat — no shared "board" streams); the **Merge** is the only place separate seats' streams meet, settling each **contested thread** per **`RESOLVE_BIAS`** (a random draw from the conviction-shaped odds by default · `lowest-cost` realism · `highest-cost` drama · `gm` sovereign), optionally spotlit in an **optional SHOWDOWN phase** before SETTLE. **Goals** are optional personal trackers that never affect the score; the old betting layer is gone. Conviction is a **gamified automation layer over the shipping stream / merge / generate UI** — one continuous window; the GM advances each round with **one click through the Generate Panel** (override optional). **Not yet built** — this is the spec.
+A game is a **branch**; a `GameRoom` runs the turn loop over it as a phase machine (`RoundState.phase`). **Shipped: the Rounds variant in computer mode** — one GM screen, the GM proxies every seat and advances with one click. Each turn **alternates a generation call (the engine writes) with a player phase (the table acts)**, closing on the GM's confirm — the general shape is **generation → action → confirm**, and the action is the three things a player does: **READ → WRITE → PLAY**. The full loop: **(Perspective Gen) → READ → WRITE → (Stream & Intuition Gen) → PLAY → (Arc Gen) → next turn**. **Perspective Gen** writes the public account + each seat's private view; **READ** is reading that brief; **WRITE** is opening streams + adding priors (a prior that moves a thread your way *cheapens* its cards and earns conviction); **Stream & Intuition Gen** seeds the candidate streams/intuitions and **prices + deals** the cards; **PLAY** is poker turn order, committing cards; **Arc Gen** is the GM's confirm — Merge → continuation, folding the reveal window, settle and score. The live UI **auto-advances the active tab** with the phase: READ → **Perspective**, WRITE → **Write**, PLAY → **Board** (hand in the bottom dock). Scoring is **intrinsic**: each Arc Gen decomposes the realized stance shift on every thread across the seats that moved it — **Aumann–Shapley on the Fate/KL, conserving exactly** — into a running **Impact** score + **Ranking**. **Streams are perspective-owned** (one per seat — no shared "board" streams); the **Merge** is the only place separate seats' streams meet, settling each **contested thread** per **`RESOLVE_BIAS`** — who picks the winner: **`random`** (seeded draw over conviction-shaped odds) · **`highest-cost`** (the rarest action forced through) · **`realism`** (an impartial AI judge picks by what would realistically occur). A **universal realism preprocessing layer** then runs over *every* contested settlement — interpreting reality *around* the chosen winner — producing a GM-editable **telling** (what actually happens) + **reasoning** (why) + **closure** (does it settle the question) that rides onto the merge resolution: auditable, and injected into the continuation prompt as `<conflict-resolution>`. The same impartial-judge call (`ai/game-realism`, streamed reasoning) backs both the narrative merge's **Preprocess reality** step (StreamsView) and the Conviction **SHOWDOWN** review, via the shared **`RealismReview`** editor. **SHOWDOWN** sits **before Arc Gen**: tabs lock to the board, face-down cards flip, and the verdicts are revealed for the GM to veto / dictate / re-prompt before generating. *(The blind `gm` and `lowest-cost` biases were removed — realism + GM editing replaces them.)* **Goals** are optional personal trackers that never affect the score. One continuous fullscreen window, no modal chrome; the GM advances each turn through the Generate Panel (or auto-resolve auto-passes). **Deferred:** remote multi-controller play (Cloudflare tunnel) and the Showdown variant.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Setup
-    Setup --> Waiting: mode = remote (seats join controllers)
-    Setup --> Round: mode = computer (GM proxies all)
-    Waiting --> Round: GM starts · empty seats → agents
+    Setup --> Turn: Start game - computer mode - GM proxies all seats
 
-    state Round {
-        [*] --> PublicNarration
-        PublicNarration --> PrivateNarration: public delivered (everyone)
-        PrivateNarration --> ReadWrite: private delivered (per seat)
-        ReadWrite --> Play: read timer ends / stand pat
-        Play --> Resolve: reveal forced by default - off = teeth
-        Resolve --> Showdown: settle contests per RESOLVE_BIAS - random default - GM one-click generate
-        Showdown --> Settle: spotlight verdicts - optional SHOWDOWN_PHASE
-        Settle --> Scoring: decay then income - ceiling 150
-        Scoring --> PublicNarration: Impact decomposed - Ranking shown
+    state Turn {
+        [*] --> PerspectiveGen
+        PerspectiveGen --> Read: GEN - public + private views off the canon - off-clock
+        Read --> Write: PLAYER reads the brief - Perspective tab
+        Write --> StreamGen: PLAYER opens streams + adds priors - Write tab - WRITE clock
+        StreamGen --> Play: GEN - candidate streams + intuitions seeded - cards priced + dealt
+        Play --> Showdown: PLAYER commits cards in poker turn order - PLAY clock
+        Showdown --> ArcGen: REVEAL all cards + realism verdicts - GM vetoes / dictates / re-prompts
+        ArcGen --> PerspectiveGen: GEN - Merge + continuation - settle + score - next turn
     }
-    Round --> [*]: GM ends game
+    Turn --> [*]: GM ends game - Report
 
-    note left of Round
-      RoundState.phase ∈ public-narration · private-narration ·
-      read-write · play (Rounds) | live (Showdown) · resolve ·
-      showdown (optional) · settle · scoring (ReadWrite = id 'read-write'). NARRATION:
-      at Resolve the canon generates
-      once (GM-only ground truth; round 1 = the opening state),
-      then a PARALLEL BATCH of PerspectiveViews off it — public,
-      then each seat's private. Players never see canon; GM sees all.
+    note left of Turn
+      Generation calls (off-clock) alternate with player phases. phase
+      ids: read = Perspective Gen + READ; write = WRITE; play = PLAY;
+      showdown = the reveal; resolve = Arc Gen (folds settle + scoring).
+      PerspectiveGen writes a PARALLEL BATCH of PerspectiveViews (public
+      + each seat's private) off the canon; players never see canon, the
+      GM sees all. StreamGen seeds each seat's candidate streams +
+      intuitions, then prices and DEALS the hand.
     end note
-    note right of Round
+    note right of Turn
       Streams are PERSPECTIVE-OWNED, one per seat — no shared board.
-      READ WRITE: deal hands on your OWN streams, update priors + open
-      NEW streams you own (open questions → scoreStreamPrior gate →
-      deal), take the ONE location hop. PLAY: poker turn order, face
-      up/down, cost COST_MIN–100. Reveal FORCED by default. RESOLVE
-      folds committed streams into a Merge; contested threads settle
-      per RESOLVE_BIAS — random draw default · lowest-cost realism ·
-      highest-cost drama · gm sovereign — optionally spotlit in the
-      SHOWDOWN phase (shows the draw + Fate house band). SCORING:
-      nudge-fate decomposed across seats (Aumann–Shapley); the draw's
-      snap is FATE's band, not a seat's → Impact + Ranking; goals
-      personal, never scored. Chat global / location ALWAYS open.
+      WRITE: pose questions + add priors; a prior that moves a thread
+      your way cheapens its cards (-ln p falls). PLAY: cards face
+      up/down, capped at CARDS_PER_ROUND. SHOWDOWN: face-downs flip and
+      a UNIVERSAL realism pass interprets each contested settlement
+      (winner picked by RESOLVE_BIAS = random | highest-cost | realism),
+      yielding a GM-editable telling/reasoning/closure on the merge.
+      Arc Gen folds it into the continuation; SETTLE (decay->income) +
+      SCORE (Aumann-Shapley Impact + Ranking). Skipped when nothing was
+      committed. Chat global / location open every phase.
     end note
 ```
 
-> **Build components.**
-> **Host surfaces** — (1) **GM board · desktop**: the Play fullscreen modal, global state + `act-as-seat` proxy, runs the machine. (2) **Player controller · mobile**: perspective-gated, over the tunnel.
-> **Shared play UI** — minimalist; **The Board is the single primary surface** (rendered global for the GM, perspective-gated for a player — **responsive across desktop + mobile**). (3) **The Board**: poker-table-inspired felt that **conveys narration + round info directly** (no side panels) — seats as **avatar + name + conviction stack**, a rotating **dealer button**, the **live canonical threads + pot + timer** at centre (each seat's own streams sit in its hand), face-up/down reveal, plus the live **Impact tally / Ranking** and the SCORING-phase **readout** (authored stance ribbons + per-seat fate decomposition). (4) **The Cards**: the hand at the player's seat — face-up/down, `−log p` cost, play / raise / pass / fold. (5) **Chat — modal**: **global** (everyone; cheap talk) + **location** (co-located only; alliances), opened over the board; **agents are full participants**. (6) **Navigation — popups**: move, pose-question / request-more, **set / reassign goal**, settings — popups layered on the board, not panels.
-> **Content tab** — (7) **Perspective views**: per-scene `PerspectiveView` (canon global + private per-entity retellings) that feed the narration phases.
-> **Spec** — (8) **State machine** (this diagram): `RoundState.phase` over a `GameRoom`.
-> New types (`GameRoom` (carries `variant`) · `Seat` (carries `goals` + running `fateImpact`) · `RoundState` (phase incl. `scoring`) · `Card`/`Hand`/`PlayedCard` · `CardRequest` (backs nav (6)) · `ChatMessage` · `PerspectiveView` (canon/public/private — one type for narration *and* requested retellings) · `Goal` (personal target; never scored) · `ConvictionEconomy`) layer over shipped `Perspective` / `Stream` / `Merge` / `Location` — see [CONCEPT.md](CONCEPT.md). Scoring reuses the engine's **Fate/KL + thread log** (Aumann–Shapley attribution), and the **Influence alluvial** (Fate tab) carries cumulative Impact.
+> **Build components (shipped).** Entry: **TopBar → `ConvictionModal`** — a chrome-less fullscreen window that routes by lifecycle (no room → `GameSetup`; live → `GameShell`; ended → `GameReport`).
+> **Setup** — (1) **`GameSetup`**: seat the table off a searchable, prominence-sorted roster (characters · locations · artifacts), AI **Suggest cast** (`ai/game-cast`), per-seat driver (agent / member / GM), then **Rules** (resolution + WRITE/PLAY phase clocks; conviction economy under Advanced; carry-over default).
+> **Live board** — (2) **`GameShell`** wraps the board + tabs + the GM dock, **auto-advances the active tab through Read → Write → Play**, surfaces the **Generate Panel at Arc Gen** (`pendingMerge` → `completeResolve`), and carries the always-visible **phase + timer bar** (GM can grant `+time`) plus the **@-mention badge**. (3) **`PokerTable`**: the felt — seats as **avatar + name + conviction stack**, rotating **dealer button**, centre pedestal (phase stepper + `PhaseTimer` + `FateOdometer` + switchable public/private view), corner **Ranking**. (4) **`SeatHand` / `ConvictionCard`**: the act-as-seat hand — face-up/down, `−ln p` cost, play / raise / fold. (5) **`GameBottomPanel`**: the GM dock — one-click **Advance** (label tracks the phase) · pause · end · clear · move. (6) **`GameSidePanels`**: the combined **Perspective** tab (public + private), the **Write** surface (streams + priors), the **Streams** ledger, this-turn **merges & settlements**, and **Chat** — a full-height messenger (global persists; location whispers are round-ephemeral; @-mentions). Agents are full participants.
+> **Orchestration** — **`hooks/useConviction`** (`startGame` · `advance` · `pendingMerge` · `completeResolve` / `autoGenerateResolve` · `playCard` · `vetoPlay` · `setContestedOutcome` · `editGroupRealism` / `rerunShowdownRealism` · `openNewStream` · `move` · `actAsSeat` · `pause` / `extendClock` / `end` / `clear` · `sendChat`) threads the pure engine through the store and async generation: **`lib/game/`** (`engine` phase machine + deal · `economy` pricing/settle · `scoring` Aumann–Shapley Impact · `settlement` contested draws · `agent` deterministic auto-play fallback · `attribution` · `mentions` · `guards`) + **`lib/ai/`** (`game-narration` perspective gen · `game-streams` stream+intuition gen · `game-agent` LLM agent play · `game-conflicts` conflict detection · `game-realism` impartial-judge realism resolution · `game-cast` · `game-analysis`). The realism preprocessing UI is the shared **`components/shared/RealismReview`**.
+> Types (`GameRoom` (carries `variant` · `phaseSeconds` · `autoResolve`) · `Seat` (`goals` + running `fateImpact`) · `RoundState` (`readStartedAt` · `writeStartedAt` · `playStartedAt` · `timers`) · `Card`/`Hand`/`PlayedCard` (with `priorId` + `faceUp`/`revealed`/`forcedReveal`) · `MergeResolution` (with realism `telling`/`reasoning`/`closes`) · `GameChatMessage` (`roundIndex` for ephemeral whispers) · `Goal` · `ConvictionEconomy`) layer over shipped `Perspective` / `Stream` / `Merge` / `Location` — see [CONCEPT.md](CONCEPT.md). Scoring reuses the engine's **Fate/KL + thread log**; the **Influence alluvial** (Fate tab) carries cumulative Impact.
+
+### 8a. The interface (UI design)
+
+**Design language — one metaphor, skinned by the app theme:** a **poker table**. The whole game is a single chrome-less fullscreen window (`ConvictionModal`); **`GameShell`** lays it out like the narrative AppShell so the two feel like one app — a left **seat rail**, a Chrome-style **tab strip**, the center **board/tab surface**, an always-on **phase + timer bar**, and a bottom **dock**. The active tab **auto-advances with the phase** (READ → Perspective, WRITE → Write, PLAY → Board); SHOWDOWN locks every tab to the board.
+
+**Screen layout — the regions:**
+
+```mermaid
+flowchart TB
+    subgraph WIN["Conviction window · fullscreen · chrome-less · theme-skinned (astral / dark / light)"]
+        direction TB
+        subgraph BODY[" "]
+            direction LR
+            RAIL["▏Seat rail▕<br/>· avatars<br/>· whose-turn ring<br/>· AI vs human tell<br/>· act-as-seat<br/>(GM hot-seats)"]
+            subgraph MAIN["main column"]
+                direction TB
+                TABS["Tab strip — Board · Perspective · Write · Chat · ❲History · Log GM-only❳"]
+                CENTER["CENTER = active tab<br/><br/>BOARD: oval felt · seat pods around the rim (avatar · name · conviction chip-stack · rank · played cards) · centre pedestal (phase stepper · Fate odometer · round clock)<br/>SHOWDOWN: full board takeover — flips + verdicts + RealismReview<br/>PERSPECTIVE / WRITE / CHAT: centred reading + authoring panels"]
+            end
+        end
+        PBAR["Phase + timer bar — Read → Write → Play → Resolve stepper · window clock · GM +time"]
+        DOCK["Bottom dock — GM deck (Advance · Pause · Minimise · End · Clear) ⟷ impersonated hand (fanned ConvictionCards: stake chips · conceal · raise · veto)"]
+    end
+```
+
+**Component tree (routing):**
+
+```mermaid
+flowchart TD
+    TopBar["TopBar — Play / Resume"] --> Modal["ConvictionModal — fullscreen, routes by lifecycle"]
+    Modal -->|no room| Setup["GameSetup — seat the table, set the rules"]
+    Modal -->|ended| Report["GameReport — debrief readout"]
+    Modal -->|live| Shell["GameShell"]
+
+    Shell --> Rail["Seat rail — act-as-seat (GM hot-seats anyone)"]
+    Shell --> Tabs["Tab strip — auto-advances with the phase"]
+    Shell --> Bar["PhaseBar — phase stepper + window clock (+time)"]
+    Shell --> Dock["GameBottomPanel — GM deck OR impersonated hand"]
+
+    Tabs --> Board["Board"]
+    Tabs --> Persp["Perspective — public + private (READ)"]
+    Tabs --> Write["Write — open streams + priors (WRITE)"]
+    Tabs --> Chat["Chat — global + location whispers"]
+    Tabs --> Hist["History · Log (GM-only)"]
+
+    Board -->|phase = showdown| Show["Showdown — reveal + RealismReview popup"]
+    Board -->|else| Felt["PokerTable — felt, seat pods, played cards, Fate odometer"]
+    Dock -->|impersonating| Hand["SeatHand / ConvictionCard — stake chips, conceal, raise"]
+    Dock -->|GM, resolve| Gen["GeneratePanel — review merge + generate"]
+
+    Write -. shares .-> RR["shared/RealismReview — preprocessing editor"]
+    Show -. shares .-> RR
+```
+
+### 8b. The engine (orchestration data-flow)
+
+**`useConviction.advance()`** is the one-click GM progression: per phase it runs the right side-effects through the pure engine + the AI calls, then commits to the store. Realism preprocessing is the load-bearing AI step — shared with the narrative merge UI.
+
+```mermaid
+flowchart LR
+    Adv["useConviction.advance() — one click per phase"]
+
+    subgraph gen["AI calls (lib/ai, reasoning from story settings)"]
+      direction TB
+      AP["generateArcPerspective — public + private views"]
+      GS["game-streams.generateSeatStream — seed + deal"]
+      AG["game-agent.decideAgentPlays — LLM agent turn"]
+      DC["game-conflicts.detectConflicts — which claims clash"]
+      CR["game-realism.resolveConflictRealism — impartial judge (streamed)"]
+    end
+
+    subgraph pure["Pure engine (lib/game)"]
+      direction TB
+      ENG["engine — phase machine + deal"]
+      ECO["economy — cardCost / settle"]
+      SET["settlement — seeded draw / rule pick"]
+      SCO["scoring — Aumann–Shapley Impact"]
+      ATT["attribution — realized Fate per seat"]
+    end
+
+    Adv -->|read| AP --> ENG
+    Adv -->|write| GS --> ENG
+    Adv -->|play| AG
+    AG --> ECO
+    Adv -->|play→showdown| DC --> SET
+    SET -->|winner per group| CR
+    CR -->|telling · reasoning · closes| Merge["MergeResolution (auditable)"]
+    Adv -->|resolve / Arc Gen| Merge --> Basis["renderMergeBasisBlock — &lt;conflict-resolution&gt;"]
+    Basis --> GEN["generateScenes → BULK_ADD_SCENES"]
+    GEN --> SCO --> ATT
+    ATT --> Store["store — UPSERT_GAME_ROOM · CREATE_MERGE · COMMIT/CLOSE_STREAM"]
+    ECO --> Store
+    SCO --> Store
+```

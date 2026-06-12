@@ -253,7 +253,7 @@ describe("heatColor", () => {
     // Parse RGB values
     const match = color.match(/rgb\((\d+),(\d+),(\d+)\)/);
     expect(match).not.toBeNull();
-    const [, r, g, b] = match!;
+    const [, r, _g, _b] = match!;
     // Should be between blue (59,130,246) and green (34,197,94)
     expect(parseInt(r)).toBeGreaterThanOrEqual(34);
     expect(parseInt(r)).toBeLessThanOrEqual(59);

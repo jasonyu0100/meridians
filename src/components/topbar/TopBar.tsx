@@ -42,6 +42,8 @@ import { PropositionAnalysisModal } from "@/components/topbar/PropositionAnalysi
 import SystemLogModal from "@/components/topbar/SystemLogModal";
 import { ThemeMenu } from "@/components/topbar/ThemeModal";
 import { GameTheoryDashboard } from "@/components/topbar/GameTheoryDashboard";
+import { ConvictionModal } from "@/components/game/ConvictionModal";
+import { activeGameForBranch } from "@/lib/game/guards";
 import { LearnModal } from "@/components/topbar/LearnModal";
 import { collectQuestions, type ScopeSelection } from "@/lib/learning/quiz";
 import {
@@ -170,156 +172,6 @@ function LogoMark() {
       </g>
     </svg>
   );
-}
-
-function downloadJson(data: object, filename: string) {
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportNarrative(narrative: NarrativeState) {
-  downloadJson(
-    narrative,
-    `${narrative.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.json`,
-  );
-}
-
-/** Export a single branch as a self-contained NarrativeState with only the entries in that branch's timeline */
-function exportBranch(narrative: NarrativeState, branchId: string) {
-  const resolvedKeys = resolveEntrySequence(narrative.branches, branchId);
-  const resolvedSet = new Set(resolvedKeys);
-
-  // Collect only scenes and world builds on this branch's timeline
-  const scenes: NarrativeState["scenes"] = {};
-  const worldBuilds: NarrativeState["worldBuilds"] = {};
-  const referencedCharIds = new Set<string>();
-  const referencedLocIds = new Set<string>();
-  const referencedThreadIds = new Set<string>();
-  const referencedArcIds = new Set<string>();
-  const referencedArtifactIds = new Set<string>();
-
-  for (const key of resolvedKeys) {
-    const scene = narrative.scenes[key];
-    if (scene) {
-      scenes[key] = scene;
-      if (scene.povId) referencedCharIds.add(scene.povId);
-      for (const pid of scene.participantIds) referencedCharIds.add(pid);
-      referencedLocIds.add(scene.locationId);
-      for (const tm of scene.threadDeltas)
-        referencedThreadIds.add(tm.threadId);
-      for (const cm of scene.worldDeltas)
-        referencedCharIds.add(cm.entityId);
-      for (const rm of scene.relationshipDeltas) {
-        referencedCharIds.add(rm.from);
-        referencedCharIds.add(rm.to);
-      }
-      for (const om of scene.ownershipDeltas ?? [])
-        referencedArtifactIds.add(om.artifactId);
-      // Find arc containing this scene
-      for (const [arcId, arc] of Object.entries(narrative.arcs)) {
-        if (arc.sceneIds.includes(key)) referencedArcIds.add(arcId);
-      }
-    }
-    const wb = narrative.worldBuilds[key];
-    if (wb) worldBuilds[key] = wb;
-  }
-
-  // Also collect entities from world build expansion manifests
-  for (const wb of Object.values(worldBuilds)) {
-    const m = wb.expansionManifest;
-    if (m) {
-      for (const c of m.newCharacters ?? []) referencedCharIds.add(c.id);
-      for (const l of m.newLocations ?? []) referencedLocIds.add(l.id);
-      for (const t of m.newThreads ?? []) referencedThreadIds.add(t.id);
-      for (const a of m.newArtifacts ?? []) referencedArtifactIds.add(a.id);
-    }
-  }
-
-  // Add parent locations to maintain hierarchy
-  for (const locId of [...referencedLocIds]) {
-    let current = narrative.locations[locId];
-    while (current?.parentId && !referencedLocIds.has(current.parentId)) {
-      referencedLocIds.add(current.parentId);
-      current = narrative.locations[current.parentId];
-    }
-  }
-
-  // Build filtered entity catalogs
-  const characters: NarrativeState["characters"] = {};
-  for (const id of referencedCharIds)
-    if (narrative.characters[id]) characters[id] = narrative.characters[id];
-
-  const locations: NarrativeState["locations"] = {};
-  for (const id of referencedLocIds)
-    if (narrative.locations[id]) locations[id] = narrative.locations[id];
-
-  const threads: NarrativeState["threads"] = {};
-  for (const id of referencedThreadIds)
-    if (narrative.threads[id]) threads[id] = narrative.threads[id];
-
-  const artifacts: NarrativeState["artifacts"] = {};
-  for (const id of referencedArtifactIds)
-    if (narrative.artifacts?.[id]) artifacts[id] = narrative.artifacts[id];
-
-  const arcs: NarrativeState["arcs"] = {};
-  for (const id of referencedArcIds)
-    if (narrative.arcs[id]) arcs[id] = narrative.arcs[id];
-
-  // Filter relationships to only those between referenced characters
-  const relationships = narrative.relationships.filter(
-    (r) => referencedCharIds.has(r.from) && referencedCharIds.has(r.to),
-  );
-
-  // Build the branch chain — include this branch and its ancestors
-  const branch = narrative.branches[branchId];
-  const branches: NarrativeState["branches"] = {};
-
-  // Flatten into a single root branch for the export
-  const exportBranchObj: Branch = {
-    id: branchId,
-    name: branch?.name ?? "main",
-    parentBranchId: null,
-    forkEntryId: null,
-    entryIds: resolvedKeys,
-    coordinationPlan: branch?.coordinationPlan,
-    createdAt: branch?.createdAt ?? Date.now(),
-  };
-  branches[branchId] = exportBranchObj;
-
-  const exported: NarrativeState = {
-    id: narrative.id,
-    title: narrative.title,
-    description: narrative.description,
-    characters,
-    locations,
-    threads,
-    artifacts,
-    arcs,
-    scenes,
-    worldBuilds,
-    branches,
-    relationships,
-    systemGraph: narrative.systemGraph,
-    worldSummary: narrative.worldSummary,
-    storySettings: narrative.storySettings,
-    imageStyle: narrative.imageStyle,
-    coverImageUrl: narrative.coverImageUrl,
-    structureReviews: narrative.structureReviews?.[branchId]
-      ? { [branchId]: narrative.structureReviews[branchId] }
-      : undefined,
-    createdAt: narrative.createdAt,
-    updatedAt: narrative.updatedAt,
-  };
-
-  const branchName = branch?.name ?? "main";
-  const filename = `${narrative.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${branchName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.json`;
-  downloadJson(exported, filename);
 }
 
 // ── Menu Dropdown ────────────────────────────────────────────────────────────
@@ -453,6 +305,12 @@ export default function TopBar() {
   const [beatProfileOpen, setBeatProfileOpen] = useState(false);
   const [propositionAnalysisOpen, setPropositionAnalysisOpen] = useState(false);
   const [gameTheoryOpen, setGameTheoryOpen] = useState(false);
+  const [convictionOpen, setConvictionOpen] = useState(false);
+  // A live (non-ended) game on the current branch — the Play button reads
+  // "Resume" with a pulse so a minimised game is always re-openable.
+  const activeGame = narrative
+    ? activeGameForBranch(narrative, state.viewState.activeBranchId)
+    : undefined;
   const [learnOpen, setLearnOpen] = useState(false);
   const [learnInitial, setLearnInitial] = useState<ScopeSelection | undefined>(undefined);
   const [learnPreset, setLearnPreset] = useState<PresetId | null>(null);
@@ -506,7 +364,6 @@ export default function TopBar() {
   // replacing the URL — not a derived-state loop.
   useEffect(() => {
     if (searchParams.get("slides") === "1" && narrative) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSlidesDeck({ keys: state.resolvedEntryKeys });
       router.replace(`/narrative/${narrative.id}`, { scroll: false });
     }
@@ -519,14 +376,6 @@ export default function TopBar() {
     window.addEventListener("open-api-keys", handleOpenApiKeys);
     return () => window.removeEventListener("open-api-keys", handleOpenApiKeys);
   }, []);
-
-  const activeArc = narrative
-    ? Object.values(narrative.arcs).find((a) =>
-        a.sceneIds.includes(
-          state.resolvedEntryKeys[state.viewState.currentSceneIndex] ?? "",
-        ),
-      )
-    : null;
 
   useEffect(() => {
     if (!selectorOpen) return;
@@ -900,7 +749,7 @@ export default function TopBar() {
         await navigator.clipboard.writeText(JSON.stringify(scene, null, 2));
         setExportOpen(false);
         setCopyToast("Scene JSON copied");
-      } catch (err) {
+      } catch {
         setCopyToast("Failed to copy");
       }
       return;
@@ -925,7 +774,7 @@ export default function TopBar() {
       await navigator.clipboard.writeText(JSON.stringify(worldBuild, null, 2));
       setExportOpen(false);
       setCopyToast("World commit JSON copied");
-    } catch (err) {
+    } catch {
       setCopyToast("Failed to copy");
     }
   }, [narrative, state.viewState.inspectorContext, state.resolvedEntryKeys]);
@@ -936,7 +785,7 @@ export default function TopBar() {
       await navigator.clipboard.writeText(JSON.stringify(narrative, null, 2));
       setExportOpen(false);
       setCopyToast("Narrative JSON copied");
-    } catch (err) {
+    } catch {
       setCopyToast("Failed to copy");
     }
   }, [narrative]);
@@ -947,7 +796,6 @@ export default function TopBar() {
       narrative.branches,
       state.viewState.activeBranchId,
     );
-    const resolvedSet = new Set(resolvedKeys);
 
     // Collect only scenes and world builds on this branch's timeline
     const scenes: NarrativeState["scenes"] = {};
@@ -1071,7 +919,7 @@ export default function TopBar() {
       await navigator.clipboard.writeText(JSON.stringify(exported, null, 2));
       setExportOpen(false);
       setCopyToast("Branch JSON copied");
-    } catch (err) {
+    } catch {
       setCopyToast("Failed to copy");
     }
   }, [narrative, state.viewState.activeBranchId]);
@@ -2582,7 +2430,7 @@ export default function TopBar() {
               </button>
 
               {slidesMenuOpen && (
-                <div className="absolute top-full right-0 mt-1.5 z-[100] min-w-[240px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
+                <div className="absolute top-full right-0 mt-1.5 z-dropdown min-w-[240px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
                   {/* Full narrative — the summative deck, the primary CTA */}
                   <button
                     onClick={() => {
@@ -2663,7 +2511,7 @@ export default function TopBar() {
               </button>
 
               {learnMenuOpen && (
-                <div className="absolute top-full right-0 mt-1.5 z-[100] min-w-[260px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
+                <div className="absolute top-full right-0 mt-1.5 z-dropdown min-w-[260px] bg-bg-base border border-white/12 rounded-lg shadow-2xl shadow-black/60 overflow-hidden p-1.5">
                   {/* Active learner */}
                   <div className="px-3 pt-1 pb-1.5 flex items-center justify-between">
                     <span className="text-[9px] uppercase tracking-wider text-text-dim/50">Learning as</span>
@@ -2728,23 +2576,41 @@ export default function TopBar() {
               )}
             </div>
 
-            {/* Generate — circular coloured CTA, far right. Opens the
+            {/* Generate — circular coloured CTA. Opens the
                 generation panel; the accent fill marks it as the primary
                 action in the bar. */}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("open-generate-panel"))}
-              className="ml-0.5 flex items-center justify-center w-8 h-8 rounded-full bg-world text-bg-base shadow-sm shadow-world/30 hover:bg-world/90 hover:shadow-world/50 transition-all"
+              className="ml-1 flex items-center justify-center w-8 h-8 rounded-full bg-world text-bg-base shadow-sm shadow-world/30 hover:bg-world/90 hover:shadow-world/50 transition-all"
               title="Generate"
               aria-label="Generate"
             >
               <IconSparkle size={16} />
+            </button>
+
+            {/* Play — coloured icon+text CTA for Conviction, the rehearsal
+                card game. Sits at the very right of the bar. */}
+            <button
+              onClick={() => setConvictionOpen(true)}
+              disabled={!hasNarrative}
+              className="ml-0.5 flex items-center gap-1.5 rounded-full bg-violet-500 px-3.5 h-8 text-white text-[12px] font-semibold shadow-sm shadow-violet-500/30 hover:bg-violet-400 hover:shadow-violet-500/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              title={activeGame ? "Resume Conviction — a game is running on this branch" : "Play Conviction — the rehearsal card game"}
+              aria-label={activeGame ? "Resume Conviction" : "Play Conviction"}
+            >
+              {activeGame && (
+                <span className="-ml-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-white shadow-[0_0_6px] shadow-white/80" />
+              )}
+              {activeGame ? "Resume Conviction" : "Play Conviction"}
+              <svg width="9" height="10" viewBox="0 0 9 10" fill="currentColor" aria-hidden="true">
+                <polygon points="0,0 9,5 0,10" />
+              </svg>
             </button>
           </>
         )}
 
         {/* Copy toast */}
         {copyToast && (
-          <div className="fixed top-14 right-4 z-[100] px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300 text-[11px] font-medium animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="fixed top-14 right-4 z-toast px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300 text-[11px] font-medium animate-in fade-in slide-in-from-top-1 duration-200">
             {copyToast}
           </div>
         )}
@@ -2796,6 +2662,9 @@ export default function TopBar() {
             dispatch({ type: "SET_SCENE_INDEX", index });
           }}
         />
+      )}
+      {convictionOpen && narrative && (
+        <ConvictionModal onClose={() => setConvictionOpen(false)} />
       )}
       {learnOpen && narrative && (
         <LearnModal

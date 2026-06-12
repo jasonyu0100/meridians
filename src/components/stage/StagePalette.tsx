@@ -1373,7 +1373,10 @@ export default function StagePalette({
                       <IconSparkle size={12} />
                       Generate
                     </button>
-                    {currentScene?.perspectives && Object.keys(currentScene.perspectives).length > 0 && (
+                    {(() => {
+                      const arc = currentScene ? narrative?.arcs[currentScene.arcId] : undefined;
+                      return arc?.perspectives && Object.keys(arc.perspectives).length > 0;
+                    })() && (
                       <button
                         type="button"
                         className="w-7 h-7 flex items-center justify-center rounded-md transition-colors text-text-dim bg-white/5 hover:bg-white/10 hover:text-text-secondary"

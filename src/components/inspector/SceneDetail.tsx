@@ -416,7 +416,6 @@ export default function SceneDetail({ sceneId }: Props) {
     ? narrative.characters[effectivePovId]
     : null;
 
-  const { fate, world, system } = forceSnapshot;
   const cubeCorner = detectCubeCorner(forceSnapshot);
 
   const arc = Object.values(narrative.arcs).find((a) =>
@@ -694,7 +693,7 @@ export default function SceneDetail({ sceneId }: Props) {
               </div>
               {phrase && (
                 <div className="text-xs italic text-text-secondary">
-                  "{phrase}"
+                  &ldquo;{phrase}&rdquo;
                 </div>
               )}
             </div>
@@ -1251,27 +1250,3 @@ function SceneAttributions({
   );
 }
 
-function ForceBar({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="flex flex-1 flex-col gap-1">
-      <span className="text-[10px] uppercase text-text-dim">{label}</span>
-      <div className="h-1.5 w-full rounded-full bg-white/6">
-        <div
-          className="h-1.5 rounded-full"
-          style={{
-            width: `${Math.max(0, Math.min(1, value)) * 100}%`,
-            backgroundColor: color,
-          }}
-        />
-      </div>
-    </div>
-  );
-}

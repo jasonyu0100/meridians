@@ -125,6 +125,8 @@ function GenerateButton({ onClick, disabled, generating }: { onClick: () => void
 function ThumbnailImage({ imageRef, alt, className }: { imageRef: ImageRef; alt: string; className: string }) {
   const resolvedUrl = useImageUrl(imageRef);
   if (!resolvedUrl) return null;
+  // Resolved IndexedDB object URL — next/image can't optimize blob/object URLs.
+  // eslint-disable-next-line @next/next/no-img-element
   return <img src={resolvedUrl} alt={alt} className={className} />;
 }
 

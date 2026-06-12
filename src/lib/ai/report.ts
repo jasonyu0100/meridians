@@ -1,8 +1,8 @@
 // World-view report generation — LLM synthesis of the narrative into a structured analysis report.
 
 import type { SlidesData } from '@/lib/slides-data';
-import type { NarrativeState, Scene } from '@/types/narrative';
-import { NARRATIVE_CUBE, type CubeCornerKey, resolveEntry, isScene } from '@/types/narrative';
+import type { NarrativeState } from '@/types/narrative';
+import { NARRATIVE_CUBE, type CubeCornerKey } from '@/types/narrative';
 import { detectCubeCorner, resolveEntityName } from '@/lib/forces/narrative-utils';
 import { callGenerate, resolveReasoningBudget, resolveWebsearch } from './api';
 import { parseJson } from './json';
@@ -63,7 +63,7 @@ const stdDev = (arr: number[]) => {
 
 // ── Story context builder ────────────────────────────────────────────────────
 
-function buildStoryContext(narrative: NarrativeState, data: SlidesData, resolvedKeys: string[]): string {
+function buildStoryContext(narrative: NarrativeState, data: SlidesData, _resolvedKeys: string[]): string {
   const scenes = data.scenes;
   const n = scenes.length;
   const raw = data.rawForces;

@@ -32,7 +32,6 @@ import {
   DEFAULT_TRANSITION_MATRIX,
   detectCurrentMode,
   MATRIX_PRESETS,
-  PACING_PRESETS,
   samplePacingSequence,
   type PacingSequence,
   type PacingPreset,
@@ -111,8 +110,24 @@ export function GeneratePanel({
   initialContinuationMode,
   initialStoryDirection,
   proposedMerge,
+  onGenerated,
+  onLoadingChange,
+  autoGenerate,
 }: {
   onClose: () => void;
+  /** Fired AFTER a generation actually adds scenes (BULK_ADD_SCENES), distinct
+   *  from `onClose` (which also fires on a plain dismiss). The Conviction resolve
+   *  flow uses this to progress the round ONLY when an arc was really generated —
+   *  closing the panel without generating must not advance the game. */
+  onGenerated?: () => void;
+  /** Mirrors the panel's internal loading state so a host (the Conviction board)
+   *  can show generation in progress to players while the GM drives the panel. */
+  onLoadingChange?: (loading: boolean) => void;
+  /** Fire the arc generation automatically once the proposed merge is loaded —
+   *  the Conviction Automatic-approval flow opens this panel and lets it run on
+   *  its own, so a light-touch GM still watches the continuation's reasoning
+   *  stream without clicking Generate. Fires exactly once. */
+  autoGenerate?: boolean;
   /** When true, the panel opens straight into the world-expansion tab with
    *  `initialWorldDirection` prefilled into the direction field. Fired by
    *  brief-driven expansion suggestions. */
@@ -192,6 +207,14 @@ export function GeneratePanel({
 
   // Shared
   const [loading, setLoading] = useState(false);
+  // Mirror loading to the host (the Conviction board) so players see generation
+  // in progress while the GM drives the panel. Ref-held so an inline callback
+  // doesn't re-fire every render — only on an actual loading transition.
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  onLoadingChangeRef.current = onLoadingChange;
+  useEffect(() => {
+    onLoadingChangeRef.current?.(loading);
+  }, [loading]);
   const [streamText, setStreamText] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState("");
@@ -207,28 +230,44 @@ export function GeneratePanel({
   // via the state initializer), so the same id is both stamped onto the
   // produced arc / world-build AND used for the CREATE_MERGE that persists it
   // on success — making every merge consumed-by-construction.
-  const [proposedMergeId] = useState(() => uid("merge"));
+  // Prefer a deterministic id carried on the proposed merge (Conviction stamps
+  // one per round so a round yields exactly ONE merge across remounts /
+  // regenerations); fall back to a freshly-minted id for the ad-hoc
+  // "commit these streams" path that doesn't supply one. Either way the id is
+  // stable for this panel instance, so basisMerges + commitProposedMerge agree.
+  const [fallbackMergeId] = useState(() => uid("merge"));
+  const proposedMergeId = proposedMerge?.id ?? fallbackMergeId;
 
   // Guards the one-time automatic arc-length set from a pending merge.
   const mergeLengthSetRef = useRef(false);
 
   const narrative = state.activeNarrative;
+  // A proposed merge carrying an id that's ALREADY in the store means this
+  // round/commit was already resolved. The deterministic id (Conviction stamps
+  // one per round) turns "resolved once" into a durable, checkable fact — unlike
+  // a component ref, it survives panel remounts (dev StrictMode double-mount, a
+  // reopen, an async re-render). Gating generation on it makes the whole resolve
+  // idempotent at the source: exactly ONE continuation + ONE merge per round, no
+  // wasted regeneration. (The ad-hoc commit path has no id, so it never trips.)
+  const mergeAlreadyCommitted = !!(proposedMerge?.id && narrative?.merges?.[proposedMerge.id]);
   // Chosen seed location, for the compact Advanced summary.
   const selectedSeedLoc = seedLocationId ? narrative?.locations[seedLocationId] ?? null : null;
-  if (!narrative) return null;
+  // NOTE: the `if (!narrative) return null` guard lives AFTER every hook below —
+  // hooks must run in the same order every render. Derived values used by those
+  // hooks are kept null-safe so they read cleanly when narrative is absent.
 
   const headIndex = state.resolvedEntryKeys.length - 1;
   const headKey = state.resolvedEntryKeys[headIndex];
-  const headEntry = headKey ? resolveEntry(narrative, headKey) : null;
+  const headEntry = headKey && narrative ? resolveEntry(narrative, headKey) : null;
   const currentArc =
-    headEntry?.kind === "scene" && narrative.arcs[headEntry.arcId]
+    headEntry?.kind === "scene" && narrative?.arcs[headEntry.arcId]
       ? narrative.arcs[headEntry.arcId]
       : null;
 
   // ── Coordination Plan Detection ─────────────────────────────────────────────
   const activeBranchId = state.viewState.activeBranchId;
   const branchPlan = activeBranchId
-    ? narrative.branches[activeBranchId]?.coordinationPlan
+    ? narrative?.branches[activeBranchId]?.coordinationPlan
     : null;
   const hasActivePlan = branchPlan && !isPlanComplete(branchPlan);
   const coordPlan = hasActivePlan ? branchPlan.plan : null;
@@ -238,7 +277,7 @@ export function GeneratePanel({
   const planArcNode = coordPlan ? getArcNode(coordPlan, planArcIndex) : null;
   const planArcName = planArcNode?.label ?? "";
   const planSceneCount = coordPlan ? getArcSceneCount(coordPlan, planArcIndex, 4) : 4;
-  const planDirective = coordPlan ? buildPlanDirective(narrative, coordPlan, planArcIndex) : "";
+  const planDirective = coordPlan && narrative ? buildPlanDirective(narrative, coordPlan, planArcIndex) : "";
 
   // Build coordination plan context for direct injection into generation
   const coordinationPlanContext: CoordinationPlanContext | undefined = useMemo(() => {
@@ -296,7 +335,7 @@ export function GeneratePanel({
   }, [narrative?.storySettings, dispatch]);
 
   const currentMode = useMemo(
-    () => detectCurrentMode(narrative, state.resolvedEntryKeys),
+    () => (narrative ? detectCurrentMode(narrative, state.resolvedEntryKeys) : "LLL"),
     [narrative, state.resolvedEntryKeys],
   );
 
@@ -345,6 +384,25 @@ export function GeneratePanel({
     setDirectionCount(suggestMergeSceneCount(proposedMerge));
   }, [proposedMerge]);
 
+  // Automatic-approval auto-run — once the proposed merge is in hand, fire the arc
+  // generation without waiting on a Generate click, so the Conviction Automatic
+  // flow runs the continuation on its own while the GM watches the reasoning
+  // stream. Once only; the panel's own loading guard prevents a re-fire.
+  const autoGenFiredRef = useRef(false);
+  useEffect(() => {
+    if (!autoGenerate || autoGenFiredRef.current || loading) return;
+    if (!proposedMerge || !(proposedMerge.streamIds?.length > 0)) return;
+    // Already resolved this round (durable check that survives remounts) — do
+    // not regenerate. This is the real fix for the duplicate continuation: the
+    // ref above resets on remount, the merge's existence in the store does not.
+    if (mergeAlreadyCommitted) return;
+    autoGenFiredRef.current = true;
+    void handleGenerateArc();
+    // handleGenerateArc is a stable function declaration; depending on it would
+    // re-run every render, so it is intentionally omitted (the ref guards re-fire).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate, proposedMerge, loading, mergeAlreadyCommitted]);
+
   // Suggest the arc title + direction. Merge-aware: when a merge is pending, the
   // suggestion coordinates every committed outcome into one continuation. Fills
   // the arc name and the direction field; leaves the (automatic) scene count
@@ -370,13 +428,13 @@ export function GeneratePanel({
 
   const storyMatrix = useMemo(() => {
     const presetKey =
-      narrative.storySettings?.rhythmPreset ??
+      narrative?.storySettings?.rhythmPreset ??
       DEFAULT_STORY_SETTINGS.rhythmPreset;
     return (
       MATRIX_PRESETS.find((p) => p.key === presetKey)?.matrix ??
       DEFAULT_TRANSITION_MATRIX
     );
-  }, [narrative.storySettings?.rhythmPreset]);
+  }, [narrative?.storySettings?.rhythmPreset]);
 
   const handleSample = useCallback(() => {
     const seq = samplePacingSequence(currentMode, directionCount, storyMatrix);
@@ -428,8 +486,15 @@ export function GeneratePanel({
     [previewSequence],
   );
 
+  // All hooks are declared above this guard so they run in the same order on
+  // every render; only after that do we bail when there is no active narrative.
+  if (!narrative) return null;
+
   async function handleGenerateArc(opts: { repairFromRaw?: string } = {}) {
     if (!narrative) return;
+    // This round/commit already produced its continuation — bail (and dismiss
+    // the panel) rather than generate a duplicate arc + merge.
+    if (mergeAlreadyCommitted) { onClose(); return; }
     if (!newArc && !currentArc) return;
     setLoading(true);
     setStreamText("");
@@ -564,6 +629,7 @@ export function GeneratePanel({
         dispatch({ type: "ADVANCE_COORDINATION_PLAN", branchId: activeBranchId });
       }
       clearSceneDirectionAfterUse();
+      onGenerated?.();
       onClose();
     } catch (err) {
       logError("Manual scene generation failed", err, {
@@ -616,6 +682,9 @@ export function GeneratePanel({
   // Quick expand without reasoning (for exact size or when user skips planning)
   async function handleExpandWorld(opts: { repairFromRaw?: string } = {}) {
     if (!narrative) return;
+    // Same idempotency guard as the arc path — a re-fired resolve must not
+    // fold the same merge into a second expansion.
+    if (mergeAlreadyCommitted) { onClose(); return; }
     setLoading(true);
     setStreamText("");
     setError("");

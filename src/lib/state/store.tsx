@@ -5,6 +5,8 @@ import { assetManager } from "@/lib/storage/asset-manager";
 import { initBeatProfilePresets } from "@/lib/pacing/beat-profiles";
 import { applyWorldDelta } from "@/lib/graph/world-graph";
 import { forkLedger } from "@/lib/merges";
+import { forkGameRooms } from "@/lib/game/engine";
+import { branchOfMerge, branchOfStream, isBranchGameLocked } from "@/lib/game/guards";
 import { initMechanismProfilePresets } from "@/lib/pacing/mechanism-profiles";
 import {
   classifyArchetype,
@@ -119,6 +121,7 @@ import type {
   Stream,
   StreamPrior,
   Merge,
+  GameRoom,
 } from "@/types/narrative";
 import { isScene, resolveEntry, DEFAULT_STORY_SETTINGS } from "@/types/narrative";
 import { emptyProgress, applyAnswer } from "@/lib/learning/coverage";
@@ -967,15 +970,20 @@ export type Action =
       type: "CLEAR_SCENE_QUESTIONS";
       sceneId: string;
     }
-  // Scene perspectives (Content → Perspectives) — one retelling per lens
+  // Arc perspectives (Content → Perspectives) — one retelling per lens, over the arc
   | {
-      type: "SET_SCENE_PERSPECTIVE";
-      sceneId: string;
+      type: "SET_ARC_PERSPECTIVE";
+      arcId: string;
       view: PerspectiveView;
     }
   | {
-      type: "CLEAR_SCENE_PERSPECTIVES";
-      sceneId: string;
+      type: "CLEAR_ARC_PERSPECTIVES";
+      arcId: string;
+    }
+  | {
+      type: "SET_ARC_SCORE_FEEDBACK";
+      arcId: string;
+      feedback: Record<string, { impact: number; reason: string }>;
     }
   // Continual learning coverage (per-member)
   | {
@@ -1178,6 +1186,13 @@ export type Action =
   | { type: "REOPEN_STREAM"; streamId: string }
   | { type: "CREATE_MERGE"; merge: Merge }
   | { type: "REVERT_MERGE"; mergeId: string }
+  // Conviction — the rehearsal card game. The room is whole-replaced (the engine
+  // computes next state purely); substrate mutations still flow through the
+  // stream/merge/branch actions above so the ledger stays consistent.
+  | { type: "UPSERT_GAME_ROOM"; room: GameRoom }
+  | { type: "REMOVE_GAME_ROOM"; id: string }
+  | { type: "SET_ACTIVE_GAME_ROOM"; id: string | null }
+  | { type: "SET_ACT_AS_SEAT"; seatId: string | null }
   // Branch Chat threads — persisted multi-branch analytical sessions.
   | { type: "CREATE_BRANCH_CHAT_THREAD"; thread: BranchChatThread }
   | { type: "DELETE_BRANCH_CHAT_THREAD"; threadId: string }
@@ -1966,6 +1981,10 @@ function reducer(state: AppState, action: Action): AppState {
       });
 
     case "DELETE_SCENE": {
+      // Branch lock (plan §5b): no deletion on a branch with a live game.
+      if (state.activeNarrative && isBranchGameLocked(state.activeNarrative, action.branchId)) {
+        return state;
+      }
       const newState = updateNarrative(state, (n) => {
         const { [action.sceneId]: _, ...restScenes } = n.scenes;
         const { [action.sceneId]: __, ...restWorldBuilds } = n.worldBuilds;
@@ -2024,11 +2043,35 @@ function reducer(state: AppState, action: Action): AppState {
         // a backup). Fresh ids + origin back-links; merge stream-refs remapped.
         const parentId = action.branch.parentBranchId;
         const ledger = parentId ? forkLedger(n, parentId, action.branch.id) : { streams: [], merges: [] };
+        // Fork copies the game (plan §5b): deep-copy any GameRoom on the parent
+        // branch onto the child, remapping card/goal stream refs onto the copies.
+        const parentRooms = parentId
+          ? Object.values(n.gameRooms ?? {}).filter((r) => r.branchId === parentId)
+          : [];
+        let forkedRooms: GameRoom[] = [];
+        if (parentRooms.length > 0) {
+          // parent streamId → child copy id, matched by shared root origin.
+          const childByRoot = new Map(ledger.streams.map((c) => [c.originStreamId ?? c.id, c.id]));
+          const streamIdMap = new Map<string, string>();
+          for (const ps of Object.values(n.streams ?? {})) {
+            if (ps.branchId !== parentId) continue;
+            const child = childByRoot.get(ps.originStreamId ?? ps.id);
+            if (child) streamIdMap.set(ps.id, child);
+          }
+          let seq = 0;
+          forkedRooms = forkGameRooms(
+            parentRooms,
+            action.branch.id,
+            streamIdMap,
+            (prefix) => `${prefix}-${Date.now().toString(36)}-${(seq++).toString(36)}`,
+          );
+        }
         return {
           ...n,
           branches: { ...n.branches, [action.branch.id]: action.branch },
           streams: { ...(n.streams ?? {}), ...Object.fromEntries(ledger.streams.map((s) => [s.id, s])) },
           merges: { ...(n.merges ?? {}), ...Object.fromEntries(ledger.merges.map((m) => [m.id, m])) },
+          gameRooms: { ...(n.gameRooms ?? {}), ...Object.fromEntries(forkedRooms.map((r) => [r.id, r])) },
         };
       });
       if (newState.activeNarrative) {
@@ -2060,6 +2103,9 @@ function reducer(state: AppState, action: Action): AppState {
 
     case "DELETE_BRANCH": {
       if (action.branchId === state.viewState.activeBranchId) return state;
+      if (state.activeNarrative && isBranchGameLocked(state.activeNarrative, action.branchId)) {
+        return state;
+      }
       // Build full cascade set (branch + all child branches)
       const toDelete = new Set<string>();
       if (state.activeNarrative) {
@@ -2291,6 +2337,9 @@ function reducer(state: AppState, action: Action): AppState {
     case "REMOVE_BRANCH_ENTRY": {
       // Remove an entry from a branch's entryIds without deleting the scene itself.
       // Used when the scene is referenced by other branches.
+      if (state.activeNarrative && isBranchGameLocked(state.activeNarrative, action.branchId)) {
+        return state;
+      }
       const newState = updateNarrative(state, (n) => {
         const branch = n.branches[action.branchId];
         if (!branch) return n;
@@ -2392,28 +2441,38 @@ function reducer(state: AppState, action: Action): AppState {
         return { ...n, scenes, topics: pruneOrphanTopics(n.topics ?? {}, scenes) };
       });
 
-    case "SET_SCENE_PERSPECTIVE":
+    case "SET_ARC_PERSPECTIVE":
       return updateNarrative(state, (n) => {
-        const scene = n.scenes[action.sceneId];
-        if (!scene) return n;
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
         return {
           ...n,
-          scenes: {
-            ...n.scenes,
-            [action.sceneId]: {
-              ...scene,
-              perspectives: { ...(scene.perspectives ?? {}), [action.view.key]: action.view },
+          arcs: {
+            ...n.arcs,
+            [action.arcId]: {
+              ...arc,
+              perspectives: { ...(arc.perspectives ?? {}), [action.view.key]: action.view },
             },
           },
         };
       });
 
-    case "CLEAR_SCENE_PERSPECTIVES":
+    case "CLEAR_ARC_PERSPECTIVES":
       return updateNarrative(state, (n) => {
-        const scene = n.scenes[action.sceneId];
-        if (!scene) return n;
-        const { perspectives: _removed, ...rest } = scene;
-        return { ...n, scenes: { ...n.scenes, [action.sceneId]: rest } };
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
+        const { perspectives: _removed, ...rest } = arc;
+        return { ...n, arcs: { ...n.arcs, [action.arcId]: rest } };
+      });
+
+    case "SET_ARC_SCORE_FEEDBACK":
+      return updateNarrative(state, (n) => {
+        const arc = n.arcs[action.arcId];
+        if (!arc) return n;
+        return {
+          ...n,
+          arcs: { ...n.arcs, [action.arcId]: { ...arc, scoreFeedback: action.feedback } },
+        };
       });
 
     case "RECORD_QUIZ_ANSWER":
@@ -3846,6 +3905,12 @@ function reducer(state: AppState, action: Action): AppState {
       }));
 
     case "REMOVE_STREAM":
+      if (
+        state.activeNarrative &&
+        isBranchGameLocked(state.activeNarrative, branchOfStream(state.activeNarrative, action.id))
+      ) {
+        return state;
+      }
       return updateNarrative(state, (n) => {
         const { [action.id]: _removed, ...rest } = n.streams ?? {};
         return { ...n, streams: rest };
@@ -3942,7 +4007,47 @@ function reducer(state: AppState, action: Action): AppState {
         merges: { ...(n.merges ?? {}), [action.merge.id]: action.merge },
       }));
 
+    // ── Conviction — game room lifecycle ──────────────────────────────────
+    case "UPSERT_GAME_ROOM":
+      return updateNarrative(state, (n) => ({
+        ...n,
+        gameRooms: { ...(n.gameRooms ?? {}), [action.room.id]: action.room },
+      }));
+
+    case "REMOVE_GAME_ROOM": {
+      const next = updateNarrative(state, (n) => {
+        const { [action.id]: _removed, ...rest } = n.gameRooms ?? {};
+        return { ...n, gameRooms: rest };
+      });
+      // Clearing the open game closes its modal cursor.
+      if (next.viewState.activeGameRoomId === action.id) {
+        return {
+          ...next,
+          viewState: { ...next.viewState, activeGameRoomId: null, actAsSeatId: null },
+        };
+      }
+      return next;
+    }
+
+    case "SET_ACTIVE_GAME_ROOM":
+      return {
+        ...state,
+        viewState: { ...state.viewState, activeGameRoomId: action.id, actAsSeatId: null },
+      };
+
+    case "SET_ACT_AS_SEAT":
+      return {
+        ...state,
+        viewState: { ...state.viewState, actAsSeatId: action.seatId },
+      };
+
     case "REVERT_MERGE":
+      if (
+        state.activeNarrative &&
+        isBranchGameLocked(state.activeNarrative, branchOfMerge(state.activeNarrative, action.mergeId))
+      ) {
+        return state;
+      }
       // Undo a merge: drop the merge record, reopen the streams it sealed so
       // they become open again, and unstamp it as a continuity basis. Any
       // narrative content already generated FROM the merge is left intact —
@@ -4938,6 +5043,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // Intentionally keyed only on the id: this effect loads when the active
+    // narrative *id* changes. state.activeNarrative is read solely as a
+    // fast-path skip; depending on it would reload on every content mutation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeNarrativeId]);
 
   // Persist active narrative to IndexedDB whenever it changes

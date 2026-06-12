@@ -41,6 +41,9 @@ function shortLabel(name: string): string {
 /** Circular avatar — image, else a letter circle (shared map-annotation style). */
 function Circle({ url, name, size, ring }: { url: string | null; name: string; size: number; ring?: boolean }) {
   const base = `rounded-full object-cover shrink-0 ${ring ? 'ring-2 ring-accent' : 'ring-1 ring-white/10'}`;
+  // Dynamic data:/blob: avatar at a caller-supplied pixel size — next/image
+  // would force a fixed intrinsic size and break the inline sizing.
+  // eslint-disable-next-line @next/next/no-img-element
   if (url) return <img src={url} alt={name} style={{ width: size, height: size }} className={base} draggable={false} />;
   return (
     <div style={{ width: size, height: size }} className={`bg-slate-300 flex items-center justify-center ${base}`}>
@@ -75,7 +78,7 @@ const Label = ({ children }: { children: React.ReactNode }) => (
 );
 
 // ── Location picker — search + hierarchy drill ───────────────────────────────
-function LocationPicker({
+export function LocationPicker({
   locations, urlFor, value, onChange,
 }: {
   locations: Record<string, Location>;

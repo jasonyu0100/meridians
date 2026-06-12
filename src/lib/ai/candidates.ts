@@ -4,7 +4,7 @@
  */
 
 import { generateScenePlan } from './scenes';
-import { cosineSimilarity, computeCentroid, generateEmbeddings, embedPropositions, resolveEmbedding } from '@/lib/search/embeddings';
+import { cosineSimilarity, computeCentroid, generateEmbeddings, resolveEmbedding } from '@/lib/search/embeddings';
 import { assetManager } from '@/lib/storage/asset-manager';
 import type { NarrativeState, Scene, PlanCandidates, PlanCandidate } from '@/types/narrative';
 import { PLAN_CANDIDATES_COUNT } from '@/lib/constants';

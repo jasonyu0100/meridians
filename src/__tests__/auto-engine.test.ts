@@ -541,7 +541,7 @@ describe("pickArcLength", () => {
   it("returns minArcLength when many primed threads", () => {
     const pressure = {
       ...basePressure,
-      threads: { ...basePressure.threads, primed: [{}, {}] as any[] },
+      threads: { ...basePressure.threads, primed: [{}, {}] as unknown as Thread[] },
     };
     expect(pickArcLength(config, pressure)).toBe(3);
   });
@@ -555,7 +555,7 @@ describe("pickArcLength", () => {
   it("returns maxArcLength when character development needed", () => {
     const pressure = {
       ...basePressure,
-      entities: { shallow: [{}] as any[], neglected: [], recentGrowth: 1 },
+      entities: { shallow: [{}] as unknown as Character[], neglected: [], recentGrowth: 1 },
     };
     expect(pickArcLength(config, pressure)).toBe(8);
   });

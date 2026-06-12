@@ -404,9 +404,10 @@ export function ThinkingAnimation({
         .attr('stroke-width', (e) => 0.6 + e.weight * 0.45)
         .attr('stroke-linecap', 'round')
         .attr('opacity', 0)
-        .each(function (this: SVGPathElement) {
-          const len = this.getTotalLength();
-          d3.select(this)
+        .each((_d, i, nodes) => {
+          const el = nodes[i] as SVGPathElement;
+          const len = el.getTotalLength();
+          d3.select(el)
             .attr('stroke-dasharray', `${len}`)
             .attr('stroke-dashoffset', len);
         });

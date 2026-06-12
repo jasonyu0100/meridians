@@ -56,7 +56,7 @@ export default function MediaPreview({ items, currentIndex, onNavigate, onClose 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -80,6 +80,8 @@ export default function MediaPreview({ items, currentIndex, onNavigate, onClose 
 
         {/* Image */}
         {resolvedUrl && (
+          /* Resolved IndexedDB object URL — next/image can't optimize blob/object URLs. */
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={resolvedUrl}
             alt={item.label}

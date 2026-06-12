@@ -5,6 +5,38 @@ import { DEFAULT_MODEL, API_TIMEOUT_MS, API_STREAM_TIMEOUT_MS } from '@/lib/cons
 import { FatalApiError, isFatalStatus } from '@/lib/ai/errors';
 import { REASONING_BUDGETS, WEBSEARCH_MAX_RESULTS, WEBSEARCH_DEFAULT_MAX_TOTAL, type NarrativeState, type WebsearchConfig } from '@/types/narrative';
 
+/** Surface a failed / aborted / incomplete LLM call to the user as a toast.
+ *  api.ts is a plain module (no React), so it broadcasts a window event the
+ *  ToastProvider listens for. Fires for EVERY failure path — HTTP errors
+ *  including fatal 401/402/403, 429 rate limits, timeouts, network drops, and
+ *  malformed responses — exactly once, from the central catch. The message is
+ *  pre-classified to something a player can act on (credits, key, rate, retry).
+ *  Identical messages dedupe at the toast layer, so a fan-out that all fails on
+ *  the same credit exhaustion shows one toast, not a dozen. */
+function emitApiError(caller: string, model: string, err: unknown): void {
+  if (typeof window === 'undefined') return;
+  const status = err instanceof FatalApiError ? err.status : undefined;
+  const raw = err instanceof Error ? err.message : String(err);
+  const lower = raw.toLowerCase();
+  const isAbort = err instanceof Error && err.name === 'AbortError';
+  const isFetch = lower.includes('fetch failed') || lower.includes('network error');
+  let message: string;
+  if (status === 402 || /credit|insufficient|payment|quota|billing|balance/.test(lower)) {
+    message = 'Out of API credits — generation stopped. Top up, then retry.';
+  } else if (status === 401 || status === 403 || /unauthor|api key|forbidden|invalid key/.test(lower)) {
+    message = 'API key rejected — check your key in settings.';
+  } else if (status === 429 || /rate.?limit|too many requests/.test(lower)) {
+    message = 'Rate limited — pause a moment, then retry.';
+  } else if (isAbort) {
+    message = "Request timed out — the model didn't finish. Retry.";
+  } else if (isFetch) {
+    message = "Network error — couldn't reach the model. Check your connection.";
+  } else {
+    message = `Generation failed: ${raw.replace(/^\[[^\]]+\]\s*/, '').slice(0, 140)}`;
+  }
+  window.dispatchEvent(new CustomEvent('meridians:api-error', { detail: { caller, model, status, message } }));
+}
+
 /** Resolve a story's reasoning budget (thinking tokens) from its settings.
  *  Returns the canonical number (including 0 for "none") so callers pass
  *  the user's intent through unchanged. */
@@ -135,6 +167,7 @@ export async function callGenerateStream(
     return full;
   } catch (err) {
     clearTimeout(timeoutId);
+    emitApiError(caller, resolvedModel, err); // toast — every failure path, once
     // Preserve fatal errors — loops rely on `instanceof FatalApiError` to halt.
     if (err instanceof FatalApiError) throw err;
 
@@ -196,6 +229,7 @@ export async function callGenerate(prompt: string, systemPrompt: string, maxToke
     return content;
   } catch (err) {
     clearTimeout(timeoutId);
+    emitApiError(caller, resolvedModel, err); // toast — every failure path, once
     // Preserve fatal errors — loops rely on `instanceof FatalApiError` to halt.
     if (err instanceof FatalApiError) throw err;
 

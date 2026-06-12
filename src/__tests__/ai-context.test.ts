@@ -217,7 +217,7 @@ describe('getStateAtIndex', () => {
         }),
       },
     });
-    const state = getStateAtIndex(n, ['s1', 's2'], 1);
+    const _state = getStateAtIndex(n, ['s1', 's2'], 1);
   });
   it('tracks artifact ownership from world builds', () => {
     const n = createMinimalNarrative({

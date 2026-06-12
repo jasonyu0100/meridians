@@ -474,7 +474,7 @@ export default function SystemGraphView({ narrative, resolvedKeys, currentIndex,
     // Compute connected groups and reset focus
     setSysGroups(computeGroups(simNodes, simLinks));
     setSysFocusedGroupIndex(null);
-  }, [graphData, mode, sceneNodeIds, showLabels, showRelations, showTypes]);
+  }, [graphData, mode, sceneNodeIds, showLabels, showRelations, showTypes, currentIndex, dispatch, narrative.scenes, resolvedKeys]);
 
   // ── Zoom to focused group ──
   useEffect(() => {

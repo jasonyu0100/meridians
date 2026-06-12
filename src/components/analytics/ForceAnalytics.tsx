@@ -5,7 +5,7 @@ import { useMemo, useState, useRef, useEffect, useCallback, useId } from 'react'
 import * as d3 from 'd3';
 import { useStore } from '@/lib/state/store';
 import { resolveEntry, isScene, type Scene, type ForceSnapshot, type CubeCornerKey } from '@/types/narrative';
-import { computeForceSnapshots, computeWindowedForces, computeRawForceTotals, computeSwingMagnitudes, detectCubeCorner, gradeForces, FORCE_REFERENCE_MEANS, zScoreNormalize, movingAverage, FORCE_WINDOW_SIZE, computeActivityCurve, classifyCurrentPosition, type ActivityPoint } from '@/lib/forces/narrative-utils';
+import { computeForceSnapshots, computeRawForceTotals, computeSwingMagnitudes, detectCubeCorner, gradeForces, FORCE_REFERENCE_MEANS, zScoreNormalize, movingAverage, FORCE_WINDOW_SIZE, computeActivityCurve, classifyCurrentPosition, type ActivityPoint } from '@/lib/forces/narrative-utils';
 import { IconLineChart, IconPencilDraw } from '@/components/icons';
 
 type ForceKey = 'fate' | 'world' | 'system' | 'swing' | 'activity';
@@ -1344,7 +1344,7 @@ export function ForceAnalytics({ onClose }: { onClose: () => void }) {
   const hasDrawings = Object.values(drawLines).some((lines) => lines.length > 0);
 
   return (
-    <div className="fixed inset-0 bg-bg-base z-60 flex flex-col">
+    <div className="fixed inset-0 bg-bg-base z-modal flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 border-b border-white/5 shrink-0" style={{ height: headerHeight }}>
         <div className="flex items-center gap-4">

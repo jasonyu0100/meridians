@@ -99,6 +99,9 @@ export default function MediaField({
         // Image at its natural ratio. All chrome is hover-only and overlaid, so
         // a present image is just the image until you reach for it.
         <div className={`relative rounded-lg ${dragOver ? 'ring-1 ring-accent/60' : ''}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- resolvedUrl is a
+              client-side object/blob URL for a locally-stored asset (unknown intrinsic
+              size, no remote loader); next/image cannot optimize it. */}
           <img
             src={resolvedUrl}
             alt={alt}

@@ -1,6 +1,6 @@
 // Prose generation/rewrite — renders a scene's beat plan into formatted prose; critique-guided rewrites.
 
-import type { NarrativeState, Scene, ProseFormat } from '@/types/narrative';
+import type { NarrativeState, Scene } from '@/types/narrative';
 import { callGenerate, callGenerateStream, resolveReasoningBudget, resolveWebsearch } from './api';
 import { WRITING_MODEL, DEFAULT_MODEL, MAX_TOKENS_DEFAULT } from '@/lib/constants';
 import { parseJson } from './json';

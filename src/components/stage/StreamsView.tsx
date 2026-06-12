@@ -21,7 +21,12 @@ import {
   Avatar, PerspectivePairBadge, perspectiveName, perspectiveEntity, memberName,
 } from './RoomUI';
 import { instantiateStream, scoreStreamPrior, suggestQuestion, suggestIntuition, suggestPrior, suggestBranchStream } from '@/lib/ai/streams';
+import { resolveConflictRealism } from '@/lib/ai/game-realism';
+import { resolveReasoningBudget } from '@/lib/ai/api';
+import { RealismReview } from '@/components/shared/RealismReview';
 import { streamsForBranch, mergesForBranch } from '@/lib/merges';
+import { isBranchGameLocked } from '@/lib/game/guards';
+import { useToast } from '@/lib/state/toast-context';
 import { resolveAgentPersona, agentPersonaLabel, allAgents, resolveAgentById } from '@/lib/agents/personas';
 import { openStream, applyStreamPrior, streamProbs, streamMargin, streamTrajectory, classifyStreamCategory } from '@/lib/forces/stream-stance';
 import { normalizedEntropy } from '@/lib/forces/narrative-utils';
@@ -65,6 +70,8 @@ const TIER_RANK: Record<string, number> = Object.fromEntries(
 export function StreamsView() {
   const { state, dispatch } = useStore();
   const n = state.activeNarrative;
+  const showToast = useToast();
+  const gameLocked = !!n && isBranchGameLocked(n, state.viewState.activeBranchId);
   // Active member presets the contributor for a new stream (set in Members).
   const { memberId: activeMemberId } = useActiveMember();
   const [composing, setComposing] = useState(false);
@@ -99,6 +106,20 @@ export function StreamsView() {
   // Per-stream committed outcome SET (length 1 = single clean resolution, the
   // default; length ≥ 2 = multi-resolution, the LLM reconciles them).
   const [resolutionDraft, setResolutionDraft] = useState<Record<string, string[]>>({});
+  // ── Reality preprocessing — the step BETWEEN review and commit. After the GM
+  // sets outcomes, "Preprocess reality" runs the impartial realism judge over the
+  // executive resolutions (interpreting around each committed outcome), then the
+  // modal re-renders ENRICHED with an editable per-stream telling / reasoning /
+  // closure the GM can tweak (or re-prompt) before "Commit to history". The same
+  // realism preprocessing layer the Conviction game uses — auditable on the merge.
+  const [reviewPhase, setReviewPhase] = useState<'review' | 'enriched'>('review');
+  const [preprocessing, setPreprocessing] = useState(false);
+  const [preprocessErr, setPreprocessErr] = useState<string | null>(null);
+  // The judge's live reasoning, streamed during the preprocess → review
+  // transition (and kept for the auditable record in the enriched view).
+  const [preprocessReasoning, setPreprocessReasoning] = useState('');
+  const [realismGuidance, setRealismGuidance] = useState('');
+  const [realismDraft, setRealismDraft] = useState<Record<string, { telling: string; reasoning: string; closes: boolean }>>({});
   // RECORD-ONLY is derived, not a separate flag: a stream whose committed set is
   // EMPTY is folded into the merge for the organisational record only — no
   // executive decision, so it doesn't drive generation (it just tracks the final
@@ -171,6 +192,9 @@ export function StreamsView() {
       return next;
     });
   const selectedOpen = open.filter((s) => selected.has(s.id));
+  // Bulk delete operates on every selected non-committed stream (open or
+  // closed) — committed streams are sealed and excluded.
+  const selectedDeletable = streams.filter((s) => selected.has(s.id) && s.state !== 'committed');
 
   const reset = () => { setTitle(''); setIntuition(''); setMemberId(activeMemberId ?? ''); setAgentId(''); setActorTab('members'); setActorQuery(''); setActorOpen(!activeMemberId); setVantageKey(''); setVantageQuery(''); setVantageOpen(true); setOpenErr(null); setStep(1); };
   const closeComposer = () => { setComposing(false); reset(); };
@@ -320,6 +344,19 @@ export function StreamsView() {
     setSelected(new Set());
   };
 
+  // Permanently remove every selected non-committed stream at once — the bulk
+  // cousin of the per-card "Delete stream" action. Irreversible, so confirm.
+  const deleteSelected = () => {
+    if (selectedDeletable.length === 0) return;
+    if (gameLocked) {
+      showToast("Can't delete streams while a game is active — end the game first.", "warning");
+      return;
+    }
+    if (!window.confirm(`Delete ${selectedDeletable.length} ${selectedDeletable.length === 1 ? 'stream' : 'streams'}? This can't be undone.`)) return;
+    for (const s of selectedDeletable) dispatch({ type: 'REMOVE_STREAM' as const, id: s.id });
+    setSelected(new Set());
+  };
+
   // Open the commit review — the GM assigns each selected stream's FINAL
   // outcome (defaulting to its stance leader) before the merge is recorded.
   const openCommitReview = () => {
@@ -333,6 +370,9 @@ export function StreamsView() {
     }
     setResolutionDraft(init);
     setMergeLabel(`Committed ${selectedOpen.length} ${selectedOpen.length === 1 ? 'stream' : 'streams'}`);
+    setReviewPhase('review');
+    setRealismDraft({});
+    setRealismGuidance('');
     setCommitting(true);
   };
 
@@ -340,36 +380,85 @@ export function StreamsView() {
   // (streams + GM-assigned final outcomes) and hand it to the Generate panel as
   // the locked continuity basis. The merge is only persisted (and its streams
   // committed) once a generation lands — see GeneratePanel.commitProposedMerge.
-  const doCommit = () => {
-    const streams = selectedOpen;
-    if (streams.length === 0) return;
-    const resolutions: Record<string, { outcome: string; outcomes?: string[]; overridden?: boolean }> = {};
-    for (const s of streams) {
+  // Build the executive resolutions from the current draft (shared by the
+  // preprocess step and the final commit). EMPTY committed set ⇒ record-only.
+  const buildResolutions = (): Record<string, { outcome: string; outcomes?: string[]; overridden?: boolean; telling?: string; reasoning?: string; closes?: boolean }> => {
+    const resolutions: Record<string, { outcome: string; outcomes?: string[]; overridden?: boolean; telling?: string; reasoning?: string; closes?: boolean }> = {};
+    for (const s of selectedOpen) {
       const outs = s.outcomes ?? [];
       const { topIdx } = streamMargin(s);
       const leading = outs[topIdx];
-      // The committed SET. EMPTY = record-only: the stream stays in the merge
-      // (organisational record) with NO resolution, so it won't drive generation
-      // — just tracks its final prior distribution. 1+ = an executive decision
-      // (a single clean call, a different outcome = override, or several =
-      // multi-resolution the LLM reconciles).
       const chosenSet = (resolutionDraft[s.id] ?? []).filter(Boolean);
       if (chosenSet.length === 0) continue; // record-only — no resolution entry
-      const overridden = !!leading && !chosenSet.includes(leading);
+      const real = realismDraft[s.id];
       resolutions[s.id] = {
         outcome: chosenSet[0],
         ...(chosenSet.length > 1 ? { outcomes: chosenSet } : {}),
-        overridden,
+        overridden: !!leading && !chosenSet.includes(leading),
+        ...(real?.telling?.trim() ? { telling: real.telling.trim() } : {}),
+        ...(real?.reasoning?.trim() ? { reasoning: real.reasoning.trim() } : {}),
+        ...(real?.closes ? { closes: true } : {}),
       };
     }
+    return resolutions;
+  };
+
+  // PREPROCESS — run the impartial realism judge over the executive resolutions
+  // (each committed outcome is FIXED; the judge interprets reality around it),
+  // then enrich the modal with the editable telling / reasoning / closure. We do
+  // NOT commit to history yet — the GM tweaks the determination first.
+  const runPreprocess = async () => {
+    const resolutions = buildResolutions();
+    const executive = selectedOpen.filter((s) => resolutions[s.id]);
+    if (executive.length === 0) {
+      // Nothing executive to interpret — skip straight to the enriched (commit) view.
+      setReviewPhase('enriched');
+      return;
+    }
+    setPreprocessing(true);
+    setPreprocessErr(null);
+    setPreprocessReasoning('');
+    try {
+      const resos = await resolveConflictRealism({
+        conflicts: executive.map((s) => ({
+          id: s.id,
+          question: s.title,
+          claims: [{ claimant: perspectiveName(n.perspectives?.[s.perspectiveId], n), action: resolutions[s.id].outcome }],
+          decidedOutcome: resolutions[s.id].outcome,
+        })),
+        narrativeContext: headContext(),
+        guidance: realismGuidance.trim() || undefined,
+        onProgress: setPreprocessReasoning,
+        reasoningBudget: resolveReasoningBudget(n),
+      });
+      const draft: Record<string, { telling: string; reasoning: string; closes: boolean }> = {};
+      for (const x of resos) draft[x.id] = { telling: x.telling, reasoning: x.reasoning, closes: x.closes };
+      setRealismDraft(draft);
+      setReviewPhase('enriched');
+    } catch (e) {
+      // Still advance — the enriched view surfaces the error + a Re-run, and the
+      // GM can edit the determination by hand or commit without it.
+      setPreprocessErr(e instanceof Error ? e.message : 'Preprocessing failed');
+      setReviewPhase('enriched');
+    } finally {
+      setPreprocessing(false);
+    }
+  };
+
+  const doCommit = () => {
+    const streams = selectedOpen;
+    if (streams.length === 0) return;
     const proposedMerge: ProposedMerge = {
       streamIds: streams.map((s) => s.id),
       label: mergeLabel.trim() || undefined,
-      resolutions,
+      resolutions: buildResolutions(),
     };
     window.dispatchEvent(new CustomEvent('open-generate-panel', { detail: { proposedMerge } }));
     setSelected(new Set());
     setCommitting(false);
+    setReviewPhase('review');
+    setRealismDraft({});
+    setRealismGuidance('');
   };
 
   return (
@@ -384,7 +473,13 @@ export function StreamsView() {
           </span>
           <span className="text-[10px] text-text-dim/40">member contributions against a perspective</span>
           <button
-            onClick={() => setComposing(true)}
+            onClick={() => {
+              if (gameLocked) {
+                showToast("Can't create streams while a game is active — end the game first.", "warning");
+                return;
+              }
+              setComposing(true);
+            }}
             className="ml-auto text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/16 text-text-primary transition"
           >
             New stream
@@ -403,22 +498,35 @@ export function StreamsView() {
             <div className="flex items-center gap-2 pb-2 text-[10px] uppercase tracking-[0.18em] text-text-dim/60">
               Actively monitored
               <span className="font-mono text-text-dim/40">{open.length}</span>
-              {selectedOpen.length > 0 && (
+              {selected.size > 0 && (
                 <div className="ml-auto flex items-center gap-1.5">
-                  <button
-                    onClick={closeSelected}
-                    className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-white/12 text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
-                    title="Close the selected streams (they stay in the list and can be reopened)"
-                  >
-                    <IconClose size={12} /> Close {selectedOpen.length}
-                  </button>
-                  <button
-                    onClick={openCommitReview}
-                    className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-purple-400/40 text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
-                    title="Review and commit the selected streams' final outcomes"
-                  >
-                    <IconMerge size={12} /> Review &amp; commit {selectedOpen.length}
-                  </button>
+                  {selectedOpen.length > 0 && (
+                    <>
+                      <button
+                        onClick={closeSelected}
+                        className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-white/12 text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
+                        title="Close the selected streams (they stay in the list and can be reopened)"
+                      >
+                        <IconClose size={12} /> Close {selectedOpen.length}
+                      </button>
+                      <button
+                        onClick={openCommitReview}
+                        className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-purple-400/40 text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
+                        title="Review and commit the selected streams' final outcomes"
+                      >
+                        <IconMerge size={12} /> Review &amp; commit {selectedOpen.length}
+                      </button>
+                    </>
+                  )}
+                  {selectedDeletable.length > 0 && (
+                    <button
+                      onClick={deleteSelected}
+                      className="flex items-center gap-1.5 normal-case tracking-normal text-[11px] font-medium px-2.5 py-1 rounded-md border border-red-400/40 text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+                      title="Permanently delete the selected streams"
+                    >
+                      <IconTrash size={12} /> Delete {selectedDeletable.length}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -462,7 +570,17 @@ export function StreamsView() {
               ) : (
                 <>
                   <div className="absolute left-[6px] top-2 bottom-2 w-px bg-white/8" aria-hidden />
-                  {settled.map((s) => <StreamCard key={s.id} stream={s} number={numberOf[s.id]} merged={mergedIds.has(s.id)} onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }} />)}
+                  {settled.map((s) => (
+                    <StreamCard
+                      key={s.id}
+                      stream={s}
+                      number={numberOf[s.id]}
+                      merged={mergedIds.has(s.id)}
+                      selected={selected.has(s.id)}
+                      onToggleSelect={() => toggleSelect(s.id)}
+                      onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
+                    />
+                  ))}
                 </>
               )}
             </div>
@@ -692,12 +810,32 @@ export function StreamsView() {
       {committing && (
         <Modal onClose={() => setCommitting(false)} fullScreen>
           <div className="flex flex-col h-full">
-            {/* Header bar */}
+            {/* Header bar — a phase stepper makes the flow read as PREPROCESSING
+                before generation: set the outcomes, let realism resolve what they
+                do (auditable + guiding), then commit and generate. */}
             <div className="shrink-0 flex items-center gap-3 px-6 h-14 border-b border-white/8">
-              <IconMerge size={16} />
-              <h2 className="text-sm font-semibold text-text-primary shrink-0">
-                Commit {selectedOpen.length} {selectedOpen.length === 1 ? 'stream' : 'streams'}
-              </h2>
+              <IconMerge size={16} className="shrink-0 text-text-dim" />
+              <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
+                {([
+                  { k: 'review', n: 1, label: 'Outcomes' },
+                  { k: 'enriched', n: 2, label: 'Realism check' },
+                  { k: 'generate', n: 3, label: 'Generate' },
+                ] as const).map((s, i) => {
+                  const order = { review: 0, enriched: 1, generate: 2 };
+                  const cur = order[reviewPhase];
+                  const done = order[s.k] < cur;
+                  const active = s.k === reviewPhase;
+                  return (
+                    <span key={s.k} className="flex items-center gap-1.5">
+                      {i > 0 && <span className="text-text-dim/30">→</span>}
+                      <span className={`flex items-center gap-1 ${active ? 'font-semibold text-accent' : done ? 'text-text-secondary' : 'text-text-dim/40'}`}>
+                        <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${active ? 'bg-accent text-white' : done ? 'bg-white/15 text-text-secondary' : 'bg-white/5 text-text-dim/50'}`}>{s.n}</span>
+                        {s.label}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
               <input
                 value={mergeLabel}
                 onChange={(e) => setMergeLabel(e.target.value)}
@@ -705,25 +843,64 @@ export function StreamsView() {
                 className="max-w-xs bg-bg-field/60 border border-white/10 rounded px-2.5 py-1.5 text-[12px] text-text-primary outline-none focus:border-accent/40"
               />
               <div className="ml-auto flex items-center gap-2">
-                <button
-                  onClick={() => setCommitting(false)}
-                  className="py-1.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition text-[12px]"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={doCommit}
-                  className="py-1.5 px-4 rounded-lg bg-purple-600/80 hover:bg-purple-600 text-white font-semibold transition text-[12px]"
-                >
-                  Commit to history
-                </button>
+                {reviewPhase === 'review' ? (
+                  <>
+                    <button
+                      onClick={() => setCommitting(false)}
+                      className="py-1.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition text-[12px]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={runPreprocess}
+                      disabled={preprocessing}
+                      className="py-1.5 px-4 rounded-lg bg-purple-600/80 hover:bg-purple-600 text-white font-semibold transition text-[12px] disabled:opacity-50"
+                    >
+                      {preprocessing ? 'Preprocessing reality…' : 'Preprocess reality →'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setReviewPhase('review')}
+                      className="py-1.5 px-4 rounded-lg border border-white/8 hover:bg-white/6 text-text-dim hover:text-text-primary transition text-[12px]"
+                    >
+                      ← Back to review
+                    </button>
+                    <button
+                      onClick={doCommit}
+                      className="py-1.5 px-4 rounded-lg bg-purple-600/80 hover:bg-purple-600 text-white font-semibold transition text-[12px]"
+                    >
+                      Commit to history
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-            {/* Body — one expansive review card per stream */}
+            {/* Body — REVIEW phase (set outcomes) → ENRICHED phase (tweak the
+                realism determination the engine will generate from). */}
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-4xl mx-auto p-6 space-y-5">
+                {preprocessing ? (
+                  /* Transition — the judge thinks out loud while it resolves what
+                     each committed outcome actually does (auditable + guiding). */
+                  <div className="flex flex-col items-center gap-4 py-10">
+                    <div className="flex items-center gap-2 text-[13px] font-semibold text-sky-200">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400 shadow-[0_0_8px] shadow-sky-400" />
+                      Realism check — resolving what reality does…
+                    </div>
+                    <div className="w-full max-w-2xl rounded-xl border border-sky-400/20 bg-sky-500/4 p-4">
+                      <div className="mb-1.5 text-[10px] uppercase tracking-wider text-sky-300/60">Thinking</div>
+                      <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-text-secondary">
+                        {preprocessReasoning || 'Reading the world and weighing the committed outcomes…'}
+                        <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-sky-400/70 align-middle" />
+                      </p>
+                    </div>
+                  </div>
+                ) : reviewPhase === 'review' ? (
+                  <>
                 <p className="text-[11px] text-text-dim/50">
-                  Each <span className="text-emerald-300/80">executive</span> stream commits with a final outcome — the stance leader is the default; override where reality says otherwise, or select more than one to <span className="text-purple-300/80">multi-resolve</span>. Mark a stream <span className="text-text-secondary">record only</span> to fold it in for the record without an executive decision — it won&apos;t drive generation. Only executive decisions move the world.
+                  Each <span className="text-emerald-300/80">executive</span> stream commits with a final outcome — the stance leader is the default; override where reality says otherwise, or select more than one to <span className="text-purple-300/80">multi-resolve</span>. Mark a stream <span className="text-text-secondary">record only</span> to fold it in for the record without an executive decision — it won&apos;t drive generation. Only executive decisions move the world. Next, an impartial <span className="text-sky-300/80">realism</span> pass interprets what each committed outcome actually does.
                 </p>
                 {selectedOpen.map((s) => {
                   const draft = resolutionDraft[s.id] ?? [];
@@ -763,6 +940,26 @@ export function StreamsView() {
                   />
                   );
                 })}
+                  </>
+                ) : (
+                  <RealismReview
+                    items={selectedOpen
+                      .filter((s) => (resolutionDraft[s.id] ?? []).filter(Boolean).length > 0)
+                      .map((s) => {
+                        const real = realismDraft[s.id] ?? { telling: '', reasoning: '', closes: false };
+                        return { id: s.id, question: s.title, outcome: (resolutionDraft[s.id] ?? [])[0], ...real };
+                      })}
+                    onEdit={(id, patch) =>
+                      setRealismDraft((d) => ({ ...d, [id]: { ...(d[id] ?? { telling: '', reasoning: '', closes: false }), ...patch } }))
+                    }
+                    guidance={realismGuidance}
+                    onGuidanceChange={setRealismGuidance}
+                    onReRun={runPreprocess}
+                    busy={preprocessing}
+                    error={preprocessErr}
+                    thinking={preprocessReasoning}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -847,7 +1044,7 @@ const fmtDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { mon
 /** Score a new prior into thread-style evidence and apply it to the stance,
  *  returning the updated stream. Falls back to a plain prior for legacy streams
  *  that have no outcomes. */
-async function scoreAndApply(stream: Stream, text: string, n: NarrativeState | null): Promise<Stream> {
+export async function scoreAndApply(stream: Stream, text: string, n: NarrativeState | null): Promise<Stream> {
   const outcomes = stream.outcomes ?? [];
   if (outcomes.length === 0) return applyStreamPrior(stream, { text, authorId: stream.memberId });
   const scored = await scoreStreamPrior({
@@ -1125,7 +1322,7 @@ const STREAM_STATE_HEX: Record<Stream['state'], string> = {
   closed: '#f87171',
 };
 
-function StreamCard({
+export function StreamCard({
   stream,
   number,
   merged,
@@ -1142,8 +1339,12 @@ function StreamCard({
 }) {
   const { state, dispatch } = useStore();
   const n = state.activeNarrative;
+  const showToast = useToast();
   const isOpen = stream.state === 'open';
-  const selectable = isOpen && !!onToggleSelect;
+  // Selectable for bulk ops on any deletable stream (open or closed); committed
+  // streams are sealed in history, so they're never selectable.
+  const selectable = stream.state !== 'committed' && !!onToggleSelect;
+  const gameLocked = !!n && isBranchGameLocked(n, stream.branchId);
   const [quick, setQuick] = useState('');
   const [scoring, setScoring] = useState(false);
 
@@ -1165,7 +1366,10 @@ function StreamCard({
   const menuItems = [
     ...(stream.state === 'open' ? [{ label: 'Close stream', onClick: () => dispatch({ type: 'CLOSE_STREAM' as const, streamId: stream.id }) }] : []),
     ...(stream.state === 'closed' ? [{ label: 'Reopen stream', onClick: () => dispatch({ type: 'REOPEN_STREAM' as const, streamId: stream.id }) }] : []),
-    ...(stream.state !== 'committed' ? [{ label: 'Delete stream', danger: true, onClick: () => dispatch({ type: 'REMOVE_STREAM' as const, id: stream.id }) }] : []),
+    ...(stream.state !== 'committed' ? [{ label: 'Delete stream', danger: true, onClick: () => {
+      if (gameLocked) { showToast("Can't delete streams while a game is active — end the game first.", "warning"); return; }
+      dispatch({ type: 'REMOVE_STREAM' as const, id: stream.id });
+    }}] : []),
   ];
 
   const dotColor = STREAM_STATE_HEX[stream.state] ?? STREAM_STATE_HEX.open;
@@ -1190,7 +1394,7 @@ function StreamCard({
               className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                 selected ? 'bg-purple-500/30 border-purple-400/70 text-purple-100' : 'border-white/20 hover:border-white/40'
               }`}
-              title={selected ? 'Deselect' : 'Select to commit & collapse'}
+              title={selected ? 'Deselect' : 'Select'}
               aria-pressed={selected}
             >
               {selected && <IconCheck size={10} />}
@@ -1250,7 +1454,7 @@ function StreamCard({
 // the card row is `overflow-hidden` (for its rounded corners + accent bar) and
 // sits inside a scrolling list, so an in-flow absolute dropdown would be clipped
 // to the row. The portal escapes both clipping contexts.
-function KebabMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean }[] }) {
+export function KebabMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean; disabled?: boolean; title?: string }[] }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -1295,15 +1499,17 @@ function KebabMenu({ items }: { items: { label: string; onClick: () => void; dan
       {open && pos && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-9999 min-w-[140px] rounded-md border border-white/12 bg-bg-base shadow-xl shadow-black/50 py-1"
+          className="fixed z-popover min-w-[140px] rounded-md border border-white/12 bg-bg-base shadow-xl shadow-black/50 py-1"
           style={{ top: pos.top, right: pos.right }}
         >
           {items.map((it) => (
             <button
               key={it.label}
-              onClick={() => { it.onClick(); setOpen(false); }}
-              className={`w-full text-left px-3 py-1.5 text-[12px] transition-colors ${
-                it.danger ? 'text-red-400 hover:bg-red-500/10' : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
+              onClick={() => { if (!it.disabled) { it.onClick(); setOpen(false); } }}
+              disabled={it.disabled}
+              title={it.title}
+              className={`w-full text-left px-3 py-1.5 text-[12px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                it.danger ? 'text-red-400 hover:bg-red-500/10 disabled:hover:bg-transparent' : 'text-text-secondary hover:bg-white/5 hover:text-text-primary disabled:hover:bg-transparent'
               }`}
             >
               {it.label}
@@ -1320,7 +1526,7 @@ const fmtDateTime = (ms: number) =>
   new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 // Stream detail — the priors timeline + composer, shown in-place in the tab.
-function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; number: number; onBack: () => void; onBranch: (seed: { question: string; intuition?: string; memberId?: string; agentId?: string; perspectiveId: string }) => void }) {
+export function StreamDetail({ stream, number, onBack, onBranch, locked = false }: { stream: Stream; number: number; onBack: () => void; onBranch: (seed: { question: string; intuition?: string; memberId?: string; agentId?: string; perspectiveId: string }) => void; locked?: boolean }) {
   const { state, dispatch } = useStore();
   const n = state.activeNarrative;
   const [draft, setDraft] = useState('');
@@ -1480,7 +1686,7 @@ function StreamDetail({ stream, number, onBack, onBranch }: { stream: Stream; nu
 
       {/* Composer — only open streams accept new priors. A committed/closed
           stream's stance is sealed (the GM has folded or resolved it). */}
-      {isOpen ? (
+      {!locked && isOpen ? (
         <div className="mt-4 flex flex-col gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-3">
           <textarea
             value={draft}

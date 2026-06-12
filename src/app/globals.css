@@ -29,6 +29,30 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ── Z-index scale ──────────────────────────────────────────────────────────
+ * ONE semantic stacking order for the whole app — use these `z-<name>` utilities
+ * instead of ad-hoc numbers (z-50, z-[100], z-999, z-9999 …). Higher layer wins.
+ * Portaled overlays (Modal, tooltips, toast) all mount on <body>, so they share
+ * one stacking context and these numbers decide ordering directly.
+ *
+ *   z-raised    (10)  in-flow lift: sticky sub-headers, overlapping cards
+ *   z-sticky    (20)  sticky bars/panels within a scrolling view
+ *   z-nav       (30)  rails, floating nav, stage bars
+ *   z-dropdown  (40)  menus / popovers anchored to a trigger in the page
+ *   z-modal     (50)  Modal scrim + content, and fullscreen takeover views
+ *   z-popover   (60)  tooltips & floating popovers that must clear a modal
+ *   z-toast     (70)  global notifications — ALWAYS on top of everything
+ * Keep the raw Tailwind z-0 / z-10 for purely-local stacking inside a component. */
+@theme {
+  --z-index-raised: 10;
+  --z-index-sticky: 20;
+  --z-index-nav: 30;
+  --z-index-dropdown: 40;
+  --z-index-modal: 50;
+  --z-index-popover: 60;
+  --z-index-toast: 70;
+}
+
 /* ── UI surface standard ────────────────────────────────────────────────────
  * Chrome (tabs, toggles, segmented controls, pills, hovers, fields) is built
  * from ONE neutral overlay scale, never from the violet `--bg-elevated` /

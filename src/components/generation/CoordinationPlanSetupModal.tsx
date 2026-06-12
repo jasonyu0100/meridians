@@ -11,11 +11,7 @@ import { isThreadAbandoned, isThreadClosed } from "@/lib/forces/narrative-utils"
 import { useCallback, useMemo, useState } from "react";
 import { GuidanceFields } from "./GuidanceFields";
 import { CoordinationPlanModal } from "./CoordinationPlanModal";
-import {
-  ThinkingSettings,
-  type ReasoningSize,
-  type NetworkBias,
-} from "./ThinkingPicker";
+import { ThinkingSettings } from "./ThinkingPicker";
 
 // ── Thread Target Types ─────────────────────────────────────────────────────
 
@@ -142,17 +138,16 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
   const [showPlanModal, setShowPlanModal] = useState(false);
 
   const narrative = state.activeNarrative;
-  if (!narrative) return null;
 
   const headIndex = state.resolvedEntryKeys.length - 1;
 
   // Get active threads for configuration — open markets only.
   const activeThreads = useMemo(
     () =>
-      Object.values(narrative.threads).filter(
+      Object.values(narrative?.threads ?? {}).filter(
         (t) => !isThreadClosed(t) && !isThreadAbandoned(t),
       ),
-    [narrative.threads]
+    [narrative?.threads]
   );
 
   const handleConfigChange = useCallback((threadId: string, config: ThreadConfig) => {
@@ -178,6 +173,9 @@ export function CoordinationPlanSetupModal({ onClose, onPlanCreated }: Props) {
       thinkingStyle,
     };
   }, [threadConfigs, arcTarget, direction, thinkingResource, thinkingStyle]);
+
+  // Guard placed after all hooks so hook order is stable across renders.
+  if (!narrative) return null;
 
   async function handleGeneratePlan(additionalPrompt?: string) {
     if (!narrative) return;

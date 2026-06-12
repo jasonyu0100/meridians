@@ -10,7 +10,6 @@ import { CreationWizard } from '@/components/wizard/CreationWizard';
 import ApiKeyModal from '@/components/topbar/ApiKeyModal';
 import { StoryCard } from '@/components/cards/StoryCard';
 import { StarField } from '@/components/effects/StarField';
-import { timeAgo } from '@/lib/utils/ui-utils';
 
 export default function DashboardPage() {
   const router = useRouter();

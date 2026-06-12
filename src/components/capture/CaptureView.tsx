@@ -87,10 +87,13 @@ export function CaptureView() {
   const queue = useMemo(() => entries.filter((e) => !isLocked(e)), [entries]);
   const historical = useMemo(() => entries.filter((e) => isLocked(e)), [entries]);
 
-  // Auto-select the most recent entry when none is active.
+  // Auto-select the most recent entry when none is active. Guards (early returns
+  // on valid selection) make this self-limiting — it fires only when the active
+  // selection is missing or stale, never on a steady state, so no cascade.
   useEffect(() => {
     if (subTab !== 'entry') return;
     if (activeId && entries.some((e) => e.id === activeId)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveId(queue[0]?.id ?? historical[0]?.id ?? null);
   }, [subTab, activeId, entries, queue, historical]);
 

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+// CommonJS Node build script (uses require + __dirname); run directly via node.
 /**
  * Generate real OpenAI embeddings for test fixtures
  * Run: node scripts/generate-test-embeddings.js
@@ -97,8 +99,6 @@ async function main() {
 export const TEST_EMBEDDINGS = {
 ${textKeys.map((key, i) => {
   const embedding = embeddings[i];
-  // Format the embedding array nicely
-  const embeddingStr = `[${embedding.slice(0, 10).map(v => v.toFixed(8)).join(', ')}, /* ... ${embedding.length - 10} more values */]`;
   return `  ${key}: ${JSON.stringify(embedding)},`;
 }).join('\n')}
 } as const;

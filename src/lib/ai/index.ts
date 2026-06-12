@@ -11,7 +11,7 @@ export { generateSceneGameAnalysis } from './game-analysis';
 export { generateSceneQuestions } from './learning';
 
 // Scene perspectives (opt-in retellings per lens — Content → Perspectives)
-export { generateScenePerspective, availablePerspectiveKeys, perspectiveLabel } from './perspectives';
+export { generateArcPerspective, availablePerspectiveKeys, perspectiveLabel } from './perspectives';
 
 // Plan candidates
 export { runPlanCandidates } from './candidates';

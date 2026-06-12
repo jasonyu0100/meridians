@@ -490,7 +490,7 @@ export function ReasoningGraphModal({
   const progress = ((focusedIndex + 1) / sortedNodes.length) * 100;
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-60 flex flex-col">
+    <div className="fixed inset-0 bg-black/95 z-modal flex flex-col">
       <div className="flex-1 min-h-0 flex flex-col p-6">
         {/* Close button */}
         <button

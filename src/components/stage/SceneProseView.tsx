@@ -11,14 +11,14 @@ import type { NarrativeState, Scene } from "@/types/narrative";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSceneBulkStream } from "@/lib/storage/bulk-stream-store";
 import { usePropositionClassification } from "@/hooks/usePropositionClassification";
-import { classificationColor, classificationLabel, propKey, BASE_COLORS } from "@/lib/analysis/proposition-classify";
+import { classificationColor, classificationLabel, propKey } from "@/lib/analysis/proposition-classify";
 import { Markdown } from "@/components/ui/Markdown";
 
 // Persistent state that survives component unmounts (scene navigation, world commits)
 let beatPlanLinkedModePersisted = false;
 
 // Custom hook: useState that persists across component unmounts
-function usePersistedState(initialValue: boolean): [boolean, (value: boolean | ((prev: boolean) => boolean)) => void] {
+function usePersistedState(_initialValue: boolean): [boolean, (value: boolean | ((prev: boolean) => boolean)) => void] {
   const [state, setState] = useState(() => beatPlanLinkedModePersisted);
 
   const setPersistedState = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
@@ -137,15 +137,22 @@ export function SceneProseView({
     window.dispatchEvent(new CustomEvent('canvas:beat-plan-toggled', { detail: { value: showBeatPlan } }));
   }, [showBeatPlan]);
 
-  // Sync when scene or resolved prose changes
-  useEffect(() => {
+  // Sync when scene or resolved prose changes — adjust state during render
+  // (the recommended pattern) rather than in an effect, which would cause a
+  // second render pass on every scene/prose switch.
+  const [syncKey, setSyncKey] = useState<{ id: string; prose: string | null }>({
+    id: scene.id,
+    prose: resolvedProse ?? null,
+  });
+  if (syncKey.id !== scene.id || syncKey.prose !== (resolvedProse ?? null)) {
+    setSyncKey({ id: scene.id, prose: resolvedProse ?? null });
     setProseState(
       resolvedProse
         ? { text: resolvedProse, status: "ready" }
         : { text: "", status: "idle" },
     );
     setIsEditing(false);
-  }, [scene.id, resolvedProse]);
+  }
 
   // Bulk prose streaming — text accumulated globally per-sceneId by the
   // bulk-stream-store. Switching scenes mid-stream shows the in-flight

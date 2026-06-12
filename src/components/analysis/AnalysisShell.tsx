@@ -42,9 +42,13 @@ function formatAssembleStage(stage: AssembleStage, current?: number, total?: num
 
 /* ── Elapsed timer ─────────────────────────────────────────────────────── */
 function useElapsed(startTime: number, running: boolean) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(startTime);
   useEffect(() => {
     if (!running) return;
+    // Sync the clock to wall-time the moment the timer starts (Date.now() is impure,
+    // so it can't seed render state); subsequent ticks come from the interval callback.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [running]);
@@ -604,7 +608,7 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                   <div className="max-w-md space-y-4">
                     <p className="text-white/40 text-sm font-medium">Ready to analyze</p>
                     <p className="text-white/20 text-[11px] leading-relaxed">
-                      The text has been split into {totalScenes} scene{totalScenes !== 1 ? 's' : ''} (~1200 words each). Each scene's structure is extracted in parallel, then a beat plan is reverse-engineered from the prose. Scenes are grouped into arcs of ~4, reconciled, finalised, and assembled.
+                      The text has been split into {totalScenes} scene{totalScenes !== 1 ? 's' : ''} (~1200 words each). Each scene&apos;s structure is extracted in parallel, then a beat plan is reverse-engineered from the prose. Scenes are grouped into arcs of ~4, reconciled, finalised, and assembled.
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
                       {[
@@ -895,7 +899,6 @@ function JobDetail({ job }: { job: AnalysisJob }) {
                       {liveJob.chunks.map((_, i) => {
                         const result = liveJob.results[i] as AnalysisChunkResult | null;
                         const done = !!result?.chapterSummary;
-                        const hasPlan = !!result?.scenes?.[0]?.plan;
                         const isInFlight = inFlightSet.has(i);
                         const isSelected = selectedScene === i;
                         return (
@@ -1468,6 +1471,8 @@ function NewJobSetup({ sourceText, onCreated }: { sourceText: string; onCreated:
       if (!cancelled) setDetecting(false);
     });
     return () => { cancelled = true; };
+    // chunks is derived from sourceText each render; keying on sourceText avoids re-detecting on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceText]);
   const wordCount = sourceText.split(/\s+/).length;
   const tooLarge = wordCount > ANALYSIS_MAX_CORPUS_WORDS;

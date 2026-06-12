@@ -38,7 +38,7 @@ export function ExportPackageModal({ narrative, onClose }: Props) {
     images: 0,
     total: 0,
   });
-  const [calculating, setCalculating] = useState(false);
+  const [, setCalculating] = useState(false);
 
   // Calculate exact sizes when options change
   useEffect(() => {

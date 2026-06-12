@@ -28,7 +28,6 @@ import {
 import type {
   Branch,
   ForceSnapshot,
-  NarrativeState,
   Scene,
   SystemGraph,
 } from "@/types/narrative";
@@ -47,38 +46,6 @@ function createScene(overrides: Partial<Scene> = {}): Scene {
     worldDeltas: [],
     relationshipDeltas: [],
     summary: "Test scene",
-    ...overrides,
-  };
-}
-function createNarrative(
-  overrides: Partial<NarrativeState> = {},
-): NarrativeState {
-  return {
-    id: "test-narrative",
-    title: "Test",
-    description: "Test narrative",
-    characters: {},
-    locations: {},
-    threads: {},
-    scenes: {},
-    arcs: {},
-    worldBuilds: {},
-    branches: {
-      main: {
-        id: "main",
-        name: "Main",
-        parentBranchId: null,
-        forkEntryId: null,
-        entryIds: [],
-        createdAt: Date.now(),
-      },
-    },
-    artifacts: {},
-    relationships: [],
-    systemGraph: { nodes: {}, edges: [] },
-    worldSummary: "",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
     ...overrides,
   };
 }

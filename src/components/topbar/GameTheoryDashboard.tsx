@@ -1260,7 +1260,7 @@ export function GameTheoryDashboard({
               Game Theory
             </h2>
             <span className="text-[11px] text-text-dim/70">
-              Who's actually winning this world view
+              Who&apos;s actually winning this world view
             </span>
             {positionLabel && (
               <span
@@ -1431,8 +1431,8 @@ function Stat({
 
 function PlayerRankings({
   agg,
-  onClose,
-  onSelectScene,
+  onClose: _onClose,
+  onSelectScene: _onSelectScene,
 }: {
   agg: Aggregate;
   onClose: () => void;
