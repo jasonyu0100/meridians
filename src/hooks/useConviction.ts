@@ -1342,10 +1342,25 @@ export function useConviction() {
     // which is the honest math, just less intuitive).
     const resolutions = round.pendingMerge?.resolutions ?? {};
     const owner = ownerSeatByStream(round);
+    // Every live question this round, mapped to its seat — INCLUDING the ones a
+    // seat held (was dealt but committed no card). Non-action is a stance we still
+    // score: a player's mere presence at a question is a decision to hold, judged
+    // against how the continuation actually landed. (`owner` above stays played-
+    // only for the deterministic fallback; the AI path scores the fuller set.)
+    const ownerAll = new Map<string, string>();
+    for (const hand of Object.values(round.hands)) {
+      for (const card of hand.cards) if (!ownerAll.has(card.streamId)) ownerAll.set(card.streamId, hand.seatId);
+    }
     const seatName = (seatId: string) => perspectiveName(narrative.perspectives?.[room.seats[seatId]?.perspectiveId], narrative);
     // Conviction a seat committed on a stream this round (sum of its played cards).
     const convictionOn = (seatId: string, streamId: string) =>
       (round.hands[seatId]?.played ?? []).filter((p) => p.card.streamId === streamId).reduce((s, p) => s + p.conviction, 0);
+    // A digest of what the round's continuation did — shared context so a HELD
+    // question (no resolution of its own) can still be placed: did the world move
+    // it while its owner stood pat?
+    const continuationSummary = Object.entries(resolutions)
+      .map(([sid, r]) => `• ${narrative.streams?.[sid]?.title ?? sid} → ${r.telling?.trim() || r.outcome || "(resolved)"}`)
+      .join("\n");
 
     // Deterministic fallback: realized ≈ the committed outcome, share = the seat's
     // own play push. Used only if the AI scoring call fails, so a round always scores.
@@ -1373,20 +1388,24 @@ export function useConviction() {
     let reads: ThreadScoringRead[] = [];
     try {
       const inputs: ThreadScoringInput[] = [];
-      for (const [streamId, seatId] of owner) {
+      for (const [streamId, seatId] of ownerAll) {
         const stream = narrative.streams?.[streamId];
         if (!stream?.outcomes) continue;
         const res = resolutions[streamId];
+        const cv = convictionOn(seatId, streamId);
+        const acted = cv > 0;
         inputs.push({
           threadId: streamId,
           question: stream.title,
           outcomes: stream.outcomes,
           logitsBefore: round.threadLogitsAtStart?.[streamId] ?? stream.openingLogits ?? stream.outcomes.map(() => 0),
-          resolvedLog: res?.telling ?? (res?.outcome ? `Committed outcome: ${res.outcome}` : "(no resolution recorded)"),
-          resolutions: [{ seatId, name: seatName(seatId), backed: res?.outcome ?? "(none)", conviction: convictionOn(seatId, streamId) }],
+          resolvedLog: acted
+            ? res?.telling ?? (res?.outcome ? `Committed outcome: ${res.outcome}` : "(no resolution recorded)")
+            : "(owner HELD — committed no card; judge from the continuation whether this question held to its prior or moved on its own)",
+          resolutions: [{ seatId, name: seatName(seatId), backed: acted ? res?.outcome ?? "(none)" : "(held — no action)", conviction: cv, acted }],
         });
       }
-      if (inputs.length > 0) reads = await scoreThreadsWithAI(inputs, resolveReasoningBudget(narrative));
+      if (inputs.length > 0) reads = await scoreThreadsWithAI(inputs, resolveReasoningBudget(narrative), continuationSummary);
     } catch {
       reads = [];
     }

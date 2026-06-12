@@ -485,7 +485,10 @@ export function PokerTable({
           const x = 50 + 47 * Math.sin(angle);
           const y = 50 - 45 * Math.cos(angle);
           return (
-            <div key={seat.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }}>
+            // Hovering a pod lifts it above sibling pods, so a played card's
+            // drop-down tooltip clears neighbouring avatars instead of being
+            // painted over by them (the pods are absolute siblings).
+            <div key={seat.id} className="absolute -translate-x-1/2 -translate-y-1/2 hover:z-popover" style={{ left: `${x}%`, top: `${y}%` }}>
               <SeatPod
                 seat={seat}
                 narrative={narrative}

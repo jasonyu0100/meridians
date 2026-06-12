@@ -22,8 +22,8 @@ const thread = (over: Partial<ThreadScoringInput> = {}): ThreadScoringInput => (
   logitsBefore: [0, 0],
   resolvedLog: "She pressed and it broke open.",
   resolutions: [
-    { seatId: "s1", name: "Alice", backed: "press", conviction: 40 },
-    { seatId: "s2", name: "Bob", backed: "hold", conviction: 10 },
+    { seatId: "s1", name: "Alice", backed: "press", conviction: 40, acted: true },
+    { seatId: "s2", name: "Bob", backed: "hold", conviction: 10, acted: true },
   ],
   ...over,
 });
@@ -81,6 +81,26 @@ describe("scoreThreadsWithAI — logits + shares conversion", () => {
   it("returns [] for no threads without calling the model", async () => {
     expect(await scoreThreadsWithAI([])).toEqual([]);
     expect(callGenerate).not.toHaveBeenCalled();
+  });
+
+  it("scores a HELD (non-action) seat as a stance — credited when restraint drove the landing", async () => {
+    // Bob held; the model judges his restraint let the status quo carry → drive 0.5.
+    mockReturn(JSON.stringify({ threads: [{ threadId: "T1", realizedProbs: [0.3, 0.7], drive: { s1: 0, s2: 0.5 } }] }));
+    const held = thread({
+      resolutions: [
+        { seatId: "s1", name: "Alice", backed: "press", conviction: 40, acted: true },
+        { seatId: "s2", name: "Bob", backed: "(held — no action)", conviction: 0, acted: false },
+      ],
+    });
+    const [read] = await scoreThreadsWithAI([held], 0, "Nothing forced the question; it settled where it stood.");
+    const dl = read.logitsAfter.map((x, k) => x - held.logitsBefore[k]);
+    // the held seat carries a real (non-zero) share of the realized shift
+    expect(read.shares.s2).toEqual(dl.map((x) => x * 0.5 + 0));
+    expect(read.shares.s2.some((x) => x !== 0)).toBe(true);
+    // the prompt renders the held seat as HELD + the shared continuation digest
+    const userPrompt = vi.mocked(callGenerate).mock.calls[0][0] as string;
+    expect(userPrompt).toContain("HELD — committed no card");
+    expect(userPrompt).toContain("THE ROUND'S CONTINUATION");
   });
 });
 
