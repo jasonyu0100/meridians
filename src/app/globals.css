@@ -42,8 +42,11 @@
  *   z-modal     (50)  Modal scrim + content, and fullscreen takeover views
  *   z-popover   (60)  tooltips & floating popovers that must clear a modal
  *   z-toast     (70)  global notifications — ALWAYS on top of everything
- * Keep the raw Tailwind z-0 / z-10 for purely-local stacking inside a component. */
-@theme {
+ * Keep the raw Tailwind z-0 / z-10 for purely-local stacking inside a component.
+ * `inline` bakes the literal value into each `.z-*` rule (z-index:50) rather than
+ * `var(--z-index-modal)`, so the utility can't break if the theme var fails to
+ * emit (an incremental-dev-build quirk that silently dropped the modal layer). */
+@theme inline {
   --z-index-raised: 10;
   --z-index-sticky: 20;
   --z-index-nav: 30;
