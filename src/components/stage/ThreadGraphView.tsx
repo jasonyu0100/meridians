@@ -241,12 +241,24 @@ export default function ThreadGraphView({
     const g = gRef.current;
     if (!sim || !g) return;
 
-    // Size scales with the absolute number of thread deltas a thread has
-    // accumulated. Linear growth (+3px per delta) keeps the visual signal
-    // obvious as a thread gets busier — one delta matters, ten matters
-    // ten times more. Capped at 60px so a runaway thread doesn't swamp
-    // the rest of the layout.
-    const nodeRadius = (d: TNode) => Math.min(60, 10 + d.activity * 3);
+    // Size scales with how many deltas (log entries) a thread has accumulated,
+    // but RELATIVE to the rest of the visible set rather than on an absolute
+    // ruler — the same discipline the entity board uses. A firm minimum (nothing
+    // tiny), log-compressed growth (a 10× busier thread is a modest step, not
+    // 10×), and a hard ceiling so a runaway thread can't swamp the layout.
+    const THREAD_MIN_R = 12;
+    const THREAD_MAX_R = 48;
+    const threadMag = (d: TNode) => Math.log1p(Math.max(0, d.activity));
+    const threadMags = graphData.nodes.map(threadMag);
+    const minThreadMag = threadMags.length ? Math.min(...threadMags) : 0;
+    const maxThreadMag = threadMags.length ? Math.max(...threadMags) : 0;
+    const threadMagRange = maxThreadMag - minThreadMag;
+    const nodeRadius = (d: TNode) => {
+      // Equal activity across the set → a neutral mid-size, not the floor.
+      if (threadMagRange <= 1e-6) return THREAD_MIN_R + (THREAD_MAX_R - THREAD_MIN_R) * 0.4;
+      const t = (threadMag(d) - minThreadMag) / threadMagRange;
+      return THREAD_MIN_R + (THREAD_MAX_R - THREAD_MIN_R) * t;
+    };
 
     // Preserve positions
     const prevPos = new Map(nodesRef.current.map(n => [n.id, { x: n.x, y: n.y }]));

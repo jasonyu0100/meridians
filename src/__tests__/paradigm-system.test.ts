@@ -61,7 +61,7 @@ const ALL_PARADIGMS: NarrativeParadigm[] = [
   "atlas",
   "debate",
   "record",
-  "game",
+  "scenario",
 ];
 
 function buildPrompt(paradigm: NarrativeParadigm, sourceText?: string) {
@@ -197,25 +197,24 @@ describe("World-gen prompt — deterministic per paradigm", () => {
     expect(lower).toContain("velocity-coherence");
   });
 
-  it("game gets ONLY the multi-actor-game shape", () => {
-    const prompt = buildPrompt("game");
-    expect(prompt).toContain("<multi-actor-game-shape");
-    expect(prompt).toContain("multi-actor-game");
+  it("scenario gets ONLY the scenario shape", () => {
+    const prompt = buildPrompt("scenario");
+    expect(prompt).toContain("<scenario-shape");
     expect(prompt).not.toContain("<populated-narrative-shape");
     expect(prompt).not.toContain("<adversarial-contest-shape");
     expect(prompt).not.toContain("<reference-typology-shape");
     expect(prompt).not.toContain("<chronological-record-shape");
   });
 
-  it("game requires rules-load-bearing + turn structure + info rules", () => {
-    const prompt = buildPrompt("game");
+  it("scenario models the pieces + operative dynamics + live stakes", () => {
+    const prompt = buildPrompt("scenario");
     const lower = prompt.toLowerCase();
-    // The structural disciplines of Game — rules are enforceable, turn
-    // structure declared, information regime declared, threads are stakes.
-    expect(lower).toContain("rules-load-bearing");
-    expect(lower).toContain("turn-structure");
-    expect(lower).toContain("information-rules");
-    expect(lower).toContain("stakes-are-threads");
+    // The structural disciplines of Scenario — model the actors/terrain/instruments,
+    // dynamics as system, stakes as threads, plural vantage, playable.
+    expect(lower).toContain("model-the-pieces");
+    expect(lower).toContain("dynamics-as-system");
+    expect(lower).toContain("stakes-as-threads");
+    expect(lower).toContain("plural-vantage");
   });
 
   it("populated-narrative paradigms forbid AI-coded single-word names", () => {
@@ -256,7 +255,7 @@ describe("Panel paradigm — evidence discipline", () => {
   });
 
   it("does NOT include the evidence-discipline block in non-panel paradigms", () => {
-    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate", "record", "game"] as const) {
+    for (const p of ["fiction", "non-fiction", "simulation", "essay", "atlas", "debate", "record", "scenario"] as const) {
       const prompt = buildPrompt(p);
       expect(prompt).not.toContain("<evidence-discipline");
     }

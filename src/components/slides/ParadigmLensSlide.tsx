@@ -98,14 +98,14 @@ const PARADIGM: Record<NarrativeParadigm, ParadigmEntry> = {
     loadBearing: 'world',
     loadBearingNote: 'Records lean on World — the lived layer accumulates, entry by entry, into the work itself.',
   },
-  game: {
-    label: 'Game',
-    oneLiner: 'A multi-actor contest under enforceable rules. Actors take turns; stakes are contested.',
-    fate: 'The contested stakes — open objectives, victory conditions, the questions the rules will resolve.',
-    world: 'The actors and what they command — resources, positions, artifacts, information sets.',
-    system: 'The rule set — legal action spaces, turn structure, win conditions, information rules.',
+  scenario: {
+    label: 'Scenario',
+    oneLiner: 'A real strategic moment modelled for play. Actors, terrain, and instruments reconstructed to rehearse the dynamics.',
+    fate: 'The live stakes — the strategic questions the moment hangs on, and how they could tip.',
+    world: 'The actors and what they command — capabilities, positions, artifacts, and their private read of the moment.',
+    system: 'The operative dynamics — the rules, pressures, constraints, and deadlines that governed the moment.',
     loadBearing: 'system',
-    loadBearingNote: 'Games stand on System. The rules dictate what is possible; outcomes resolve only when the rules say so — authorial rescue is paradigm error.',
+    loadBearingNote: 'Scenarios stand on System — the operative dynamics dictate what is possible and how the stakes resolve; the model exists to be played forward, not rescued.',
   },
 };
 

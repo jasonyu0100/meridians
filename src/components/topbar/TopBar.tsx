@@ -62,6 +62,7 @@ import { UsageModal } from "@/components/topbar/UsageModal";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { assetManager } from "@/lib/storage/asset-manager";
 import { exportEpub } from "@/lib/io/epub-export";
+import { exportPerspectives } from "@/lib/io/perspectives-export";
 import {
   FORCE_REFERENCE_MEANS,
   classifyArchetype,
@@ -666,6 +667,15 @@ export default function TopBar() {
     setExportOpen(false);
   }, [narrative, state.resolvedEntryKeys, state.viewState.activeBranchId]);
 
+  const handleCopyPerspectives = useCallback(() => {
+    if (!narrative) return;
+    const md = exportPerspectives({ narrative, resolvedKeys: state.resolvedEntryKeys });
+    navigator.clipboard.writeText(md).then(() => {
+      setCopyToast("Copied perspectives");
+    });
+    setExportOpen(false);
+  }, [narrative, state.resolvedEntryKeys]);
+
   const handleExportAudio = useCallback(async () => {
     if (!narrative) return;
     setExportOpen(false);
@@ -984,6 +994,7 @@ export default function TopBar() {
         hasSummaries: false,
         hasAudio: false,
         hasGames: false,
+        hasPerspectives: false,
       };
     }
     const branches = narrative.branches;
@@ -998,6 +1009,9 @@ export default function TopBar() {
       hasSummaries: allScenes.some((s) => s.summary),
       hasAudio: allScenes.some((s) => s.audioUrl),
       hasGames: allScenes.some((s) => (s.gameAnalysis?.games?.length ?? 0) > 0),
+      hasPerspectives: Object.values(narrative.arcs ?? {}).some((a) =>
+        Object.values(a.perspectives ?? {}).some((v) => v?.text?.trim()),
+      ),
     };
   }, [allScenes, narrative, state.viewState.activeBranchId]);
 
@@ -2290,6 +2304,26 @@ export default function TopBar() {
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                     </svg>
                     Game Decisions
+                  </button>
+                  <button
+                    onClick={handleCopyPerspectives}
+                    disabled={!exportAvailability.hasPerspectives}
+                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] transition-colors ${exportAvailability.hasPerspectives ? "text-text-secondary hover:text-text-primary hover:bg-white/5" : "text-text-dim/50 cursor-not-allowed"}`}
+                    title={exportAvailability.hasPerspectives ? "Copy all arc perspectives (canon + non-canon) as markdown" : "No perspectives generated — write them in Content → Perspectives first"}
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 text-text-dim shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    Perspectives
                   </button>
                   <button
                     onClick={handleCopyCurrentEntryJson}

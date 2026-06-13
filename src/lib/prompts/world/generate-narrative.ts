@@ -60,7 +60,8 @@ export function buildDetectPatternsSystem(work?: WorkIdentity): string {
  *  - reference-typology — atlas (entries / taxa, system-graph IS the work)
  *  - adversarial-contest — debate (2+ parties, zero-sum stakes, rules of engagement)
  *  - chronological-record — record (time-ordered log of events, variable velocity)
- *  - multi-actor-game — game (2+ actors take turns under enforceable rules; stakes contested) */
+ *  - scenario — scenario (a real strategic moment modelled for play — actors, terrain,
+ *    instruments, and operative dynamics reconstructed so the moment can be rehearsed) */
 type ParadigmShape =
   | 'populated-narrative'
   | 'rule-governed-narrative'
@@ -69,7 +70,7 @@ type ParadigmShape =
   | 'reference-typology'
   | 'adversarial-contest'
   | 'chronological-record'
-  | 'multi-actor-game';
+  | 'scenario';
 
 const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directive: string }> = {
   'fiction':      { shape: 'populated-narrative',      directive: 'REALITY POSTURE: invented. Populated scene-narrative — characters, places, and events are wholly authored; nothing needs to anchor to an external record. Fate (thread resolution) + World (character transformation) carry the weight; System provides the working rules of the imagined world. Match the register and setting the premise implies.' },
@@ -80,7 +81,7 @@ const PARADIGM_SHAPE: Record<NarrativeParadigm, { shape: ParadigmShape; directiv
   'atlas':        { shape: 'reference-typology',       directive: 'REALITY POSTURE: either — a real-world reference (a flora, an encyclopedia of jurisdictions, a doctrine corpus) or an invented codex (the sects of a secondary world). Form: a typology of entries replacing scenes; the curator orchestrates and specimens / categories / entities populate the work. System is everything — the typological structure IS the work, with dense cross-references between entries. Fate minimal (no dramatic resolution); World minimal (specimens don\'t transform). Threads, when present, track classification questions, not events.' },
   'debate':       { shape: 'adversarial-contest',      directive: 'REALITY POSTURE: either — a documented contest (trial, election, championship, M&A negotiation) or a hypothetical one (scripted moot, invented negotiation). Rules of engagement are typically sourceable even when contestants are invented. Two or more named parties locked in zero-sum stakes under explicit rules; each scene is a MOVE in the contest. Fate (who wins each axis) + System (rules of engagement) carry the weight; threads are AXES OF CONTESTATION whose outcomes favour one party or the other.' },
   'record':       { shape: 'chronological-record',     directive: 'REALITY POSTURE: either — a documented chronicle (Tacitus\'s Annals, a CEO\'s monthly report, Pepys\'s diary, a pandemic timeline) or an invented one (annals of a fictional kingdom, an imagined ship\'s log). Form: a TIME-ORDERED LOG of events in a chronicler\'s documentary voice; the ordering of time IS the structure. Each entry covers a moment or period. Pick a TIME VELOCITY — daily, monthly, yearly, or dynamic (granular during important periods, coarser during quiet stretches) — and respect it; velocity shifts ARE editorial signal. World (entities evolving over time) + System (institutions, patterns chronicled) carry the weight; Fate minimal — events happen, they don\'t structurally resolve. Threads are long-running trajectories tracked across entries.' },
-  'game':         { shape: 'multi-actor-game',         directive: 'REALITY POSTURE: rule-governed contest — real (wargame, tabletop RPG, sport, market, campaign, trial framed as a game), designed (boardgame, simulation game), or hypothetical (an invented contest under sourceable rules). Form: 2+ actors take TURNS pursuing contested stakes under explicit, enforceable rules. The system-graph IS the rule set — legal action spaces, turn structure, victory conditions, resource accounting, information rules. World entities are the ACTORS (sides / players / factions) and the RESOURCES, POSITIONS, and ARTIFACTS they command. Threads are the OPEN STAKES the contest is deciding (objectives, win conditions, contested territories). Declare turn order, information rules (open / hidden / asymmetric), and victory conditions up front; they bind every downstream pass. POV is plural by default — each actor plays from its own information set; there is no single protagonist.' },
+  'scenario':     { shape: 'scenario',                 directive: 'REALITY POSTURE: a real strategic moment, modelled for play. A scenario reconstructs a KEY EVENT — historical or contemporary — worth modelling for the strategic dynamics in play at that instant (a crisis, a campaign, a negotiation, a market dislocation, a decisive turn). Model the load-bearing ACTORS (decision-makers and factions, each with its own goal, capabilities, constraints, and information), the LOCATIONS (the terrain the moment plays across), and the ARTIFACTS (the instruments that confer leverage). The system-graph captures the OPERATIVE DYNAMICS — the rules, pressures, and constraints that governed the moment. Threads are the LIVE STRATEGIC QUESTIONS it hangs on (what each actor is deciding, what could tip). POV is plural — each actor reasons from its own vantage; there is no single protagonist. The aim is a coherent, PLAYABLE model of reality that recreates the strategic dynamics for rehearsal — Meridians\' core demo form. Ground it in the real moment; where the record is thin, name the gap rather than invent.' },
 };
 
 // ── Per-paradigm prompt blocks ───────────────────────────────────────────────
@@ -241,29 +242,28 @@ const PARADIGM_CHRONOLOGICAL_RECORD = `<chronological-record-shape critical="tru
   <example category="good" flavour="ship-log" velocity="daily">An invented exploration vessel's log across an 18-month expedition. Chronicler: the captain (anchor) + the ship's surgeon-naturalist (recurring co-chronicler). Subjects: the vessel (anchor), the crew (recurring), waypoints (recurring), specimens collected (transient). Threads: "the southern-passage attempt", "the crew's health", "the natural-history catalogue". Entries: daily, leading with date + coordinates + weather.</example>
 </chronological-record-shape>`;
 
-const PARADIGM_MULTI_ACTOR_GAME = `<multi-actor-game-shape critical="true" hint="Game shape — 2+ actors take turns pursuing contested stakes under enforceable rules. A wargame, tabletop RPG session, sports match, campaign, market round, trial framed as a game. The system-graph IS the rule set; world tracks the actors and what they command; threads are the open stakes. Forces: System (rules) + Fate (stake resolution) carry the weight; World tracks each actor's shifting position.">
-  <intent>The work models a CONTEST. Multiple actors pursue contested stakes under explicit, enforceable rules. Each scene is a TURN; each turn has an active actor, a move from their legal action set, a rule-check, an effect on game state, and information disclosed to other actors. The structure of the game (rules, turn order, information rules, victory conditions) is declared up front; everything downstream binds to it.</intent>
+const PARADIGM_SCENARIO = `<scenario-shape critical="true" hint="Scenario — a real strategic moment (historical or contemporary) modelled for play. Reconstruct the actors, terrain, and instruments of a key event so its strategic dynamics can be rehearsed. The system-graph is the operative dynamics; world tracks each actor's position; threads are the live strategic questions. Forces: System (the dynamics in play) + Fate (how the stakes tip) carry the weight; World tracks each actor's shifting hand. This is Meridians' core demo form.">
+  <intent>Model a KEY EVENT worth recreating for the strategy in play at that instant — a crisis, a campaign, a negotiation, a market dislocation, a decisive turn. The aim is a coherent, PLAYABLE model of reality: a board the actors can be run on, again and again, to rehearse how the moment could go. Ground it in the real moment; where the record is thin, name the gap rather than invent.</intent>
 
-  <required-roles>
-    <role kind="actor" mapping="anchor" critical="true">Each player / faction / side in the contest is an anchor — 2+ required. Each carries an objective (what they're playing for), an information set (what they know vs. don't know), a resource pool (what they command), a strategy posture (how they tend to move), and a vulnerability (where they can lose). Their world-graphs evolve as turns pass.</role>
-    <role kind="referee / GM / arbiter" mapping="anchor or recurring">When the game has a neutral rule-keeper (game master, referee, market clearinghouse, election commission, court), they are an anchor — distinct from actors, they enforce the rules and resolve disputes. Optional for pure-rule games (chess has no referee mid-game) but recommended when interpretation matters (RPG GM, trial judge).</role>
-    <role kind="support / unit" mapping="recurring or transient">Each actor's controlled units, advisors, or sub-agents. May be named or implied; in wargames these are battalions / fleets / commanders, in RPGs they are party members under one player, in markets they are positions / orders.</role>
-  </required-roles>
+  <model-the-pieces>
+    <actors>The decision-makers and factions in play — each a full agent with its own GOAL (what it's after), CAPABILITIES and RESOURCES (what it can bring to bear), CONSTRAINTS (what binds it), and INFORMATION (what it knows vs. doesn't, and what it misreads). They reason from their own vantage; their world-graphs carry their private read of the moment.</actors>
+    <locations>The terrain the moment plays across — theatres, capitals, chokepoints, the rooms where decisions land. Position is leverage: who holds what shapes what's possible.</locations>
+    <artifacts>The instruments that confer leverage — weapons, documents, treaties, assets, channels, intelligence. Each is a lever some actor commands.</artifacts>
+  </model-the-pieces>
 
   <discipline>
-    <rule name="rules-load-bearing" critical="true">The system-graph IS the rule set. Legal action spaces, turn order, victory conditions, resource accounting, information rules — all encoded as system-nodes with explicit triggering conditions. Illegal moves do not happen; if an actor cannot do X under the current state and rules, the work cannot describe them doing X.</rule>
-    <rule name="turn-structure">Declare the turn structure as a system-node: simultaneous (all actors move per round), sequential (fixed initiative order), reactive (active player + response window), continuous-tick (market / real-time games). Each scene's active actor and turn ordinal trace back to this rule.</rule>
-    <rule name="information-rules">Declare the information regime: open (perfect information, e.g. chess), hidden (some private state, e.g. poker hands), asymmetric (different actors see different things, e.g. fog-of-war wargame). Each actor's world-graph encodes their PRIVATE information set; what they observe of others is gated by the rules.</rule>
-    <rule name="stakes-are-threads">Threads are OPEN STAKES the contest is deciding — objectives, contested territories, victory conditions, resource ownership. They close on rule-driven resolution (win condition met, resource depleted, objective taken), NOT on authorial preference. Stakes have OUTCOMES the rules enumerate (which actor takes the objective, which side wins the territory).</rule>
-    <rule name="multi-actor-distinct">Actors are distinct. Each has its own goals, information, strategy posture; no monolithic cast voice. POV may move turn-by-turn; no single protagonist. Their alliances and oppositions are encoded as relationships, not collapsed into one cohesive party.</rule>
+    <rule name="dynamics-as-system" critical="true">The system-graph captures the OPERATIVE DYNAMICS of the moment — the rules, pressures, constraints, and couplings that governed it (escalation ladders, alliance commitments, supply limits, deadlines, market microstructure). These make the model cohere and are what a rehearsal reasons over.</rule>
+    <rule name="stakes-as-threads">Threads are the LIVE STRATEGIC QUESTIONS the moment hangs on — what each actor is deciding, what could tip ("are the missiles withdrawn?", "does the front hold?", "does the deal clear?"). Their outcomes enumerate the ways the moment could resolve.</rule>
+    <rule name="plural-vantage">No single protagonist. Each actor reasons from its own information set; alliances and oppositions are relationships, not one collapsed voice. POV moves between actors.</rule>
+    <rule name="playable">The model exists to be PLAYED — keep it coherent enough that the actors can be run forward from the modelled state. Every piece should pull weight in the strategic dynamics; texture that shapes no decision is noise.</rule>
   </discipline>
 
-  <example category="good" flavour="wargame">Cuban Missile Crisis as turn-based wargame, October 1962. Actors: Soviet Politburo (anchor — Khrushchev, Mikoyan, Malinovsky as controlled units), US ExComm (anchor — Kennedy, McNamara, Rusk as controlled units), Cuban Government (anchor — smaller resource base, narrower action set). Rules: 13 daily turns, simultaneous moves with reveal, asymmetric intel (SIGINT + U-2 vs. embassy reporting). Stakes: "are the missiles withdrawn?", "is Berlin held?", "does the quarantine hold without escalation?". Each turn an actor moves (DEFCON shift, communiqué, deployment); the rules check (escalation triggers, time pressure, ally response), state updates, the other actors observe what their intel allows.</example>
+  <example category="good" flavour="crisis">Cuban Missile Crisis, October 1962. Actors: Soviet Politburo (Khrushchev, Mikoyan, Malinovsky — goal: trade the missiles for a Berlin/Turkey concession without war; constrained by sea-lift exposure), US ExComm (Kennedy, McNamara, Rusk — goal: remove the missiles without escalation; constrained by hawk pressure and the clock), Cuban Government (narrower hand, exposed terrain). Locations: the quarantine line, Berlin, the Jupiter sites in Turkey. Artifacts: the missiles, the U-2 imagery, the back-channel. Dynamics (system): the escalation ladder, the 13-day clock, asymmetric intelligence. Stakes (threads): "are the missiles withdrawn?", "is Berlin held?", "does the quarantine hold without a shot?".</example>
 
-  <example category="good" flavour="tabletop-rpg">Tomb-of-the-Stranded-Star RPG session. Actors: four player-characters (each anchor — a Cleric, a Rogue, a Wizard, a Ranger, with class abilities and inventories), the GM (anchor as referee — runs NPCs, narrates rule outcomes). Rules: 5e initiative order in combat, ability-check resolution by DC, hidden GM-side state (monster HP, trap triggers), partial information (PCs see what their characters see). Stakes: "do the PCs recover the stranded star?", "does the lich-priest's binding hold?", "does any PC fall?". Each turn the active PC declares an action from their character sheet; the GM rules on it under the rules; outcomes update HP / position / inventory; other PCs see what they would witness.</example>
+  <example category="good" flavour="campaign">A pivotal campaign turn — say a contested river crossing. Actors: the advancing command and the defending command (each with forces, supply state, doctrine, and what their reconnaissance shows), the political seat that can release reserves. Locations: the crossing, the rail head, the flank towns. Artifacts: the bridging train, the intercepted order, the reserve divisions. Dynamics: supply-line stress, the weather window, the chain-of-command lag. Stakes: "is the crossing forced before the thaw?", "do the reserves arrive in time?", "does the flank hold?".</example>
 
-  <example category="good" flavour="market">A liquidity crunch in a sovereign-bond market across a five-session week. Actors: three primary dealers (anchors with size, inventory, balance-sheet constraints), the central bank (anchor as referee — sets the policy rate, opens repo facilities), institutional buyers (recurring). Rules: continuous-tick within sessions, end-of-session marks, repo-facility activation triggers, balance-sheet limits. Stakes: "does the auction clear?", "does the central bank intervene?", "which dealer takes losses?". Each turn an actor's order hits the book; the rules clear it (or don't) under the market microstructure; positions update; other actors see public prints.</example>
-</multi-actor-game-shape>`;
+  <example category="good" flavour="market">A sovereign-bond liquidity crunch across a tense week. Actors: primary dealers (size, inventory, balance-sheet limits), the central bank (sets the rate, can open repo), institutional buyers. Locations: the auction, the repo desk. Artifacts: the balance sheets, the facility terms, the public prints. Dynamics: market microstructure, the intervention triggers, end-of-session marks. Stakes: "does the auction clear?", "does the bank intervene?", "which dealer eats the losses?".</example>
+</scenario-shape>`;
 
 /** Emits ONLY the matching paradigm block — the other paradigms are dropped at
  *  build time so the model gets a single, focused, deterministic standard. */
@@ -276,102 +276,7 @@ function paradigmBlockFor(paradigm: NarrativeParadigm): string {
     case 'reference-typology':      return PARADIGM_REFERENCE_TYPOLOGY;
     case 'adversarial-contest':     return PARADIGM_ADVERSARIAL_CONTEST;
     case 'chronological-record':    return PARADIGM_CHRONOLOGICAL_RECORD;
-    case 'multi-actor-game':        return PARADIGM_MULTI_ACTOR_GAME;
-  }
-}
-
-// ── Per-paradigm minimums ────────────────────────────────────────────────────
-
-const MINIMUMS_POPULATED = `<minimums>
-  <count entity="characters" target="≥8">2+ anchors, 3+ recurring, 3+ transient. Human / in-world species names matching the premise's setting.</count>
-  <count entity="locations" target="≥6">parent/child hierarchy with ≥2 nesting levels.</count>
-  <count entity="threads" target="≥4">DELIBERATE MIX of shapes (1+ discrete-resolution, 1+ slow-burn, 1+ constant-tension). ≥2 must share participants so their markets correlate.</count>
-  <count entity="relationships" target="≥8">at least 1 hostile.</count>
-  <count entity="artifacts" target="≥1">when the premise involves tools, documents, instruments, sources, or objects that carry weight.</count>
-  <count entity="system-nodes" target="≥12">with ≥8 edges. Each node 15-25 words. Mix of micro-rules, mid-rules, macro-rules.</count>
-</minimums>`;
-
-const MINIMUMS_RULE_GOVERNED = `<minimums>
-  <count entity="characters" target="≥8">In-world figures the rules ACT ON. 2+ anchors (load-bearing decision-makers under the rules) + 3+ recurring (agents whose positions evolve under the rules) + 3+ transient (witnesses, secondary actors). Real or invented names matching the setting.</count>
-  <count entity="locations" target="≥6">parent/child hierarchy with ≥2 nesting levels. Theatres of action — places where the rules are enacted.</count>
-  <count entity="threads" target="≥4">DELIBERATE MIX of shapes (1+ discrete-resolution on rule-driven outcomes, 1+ slow-burn on pressure accumulation, 1+ constant-tension on the macro question the rules answer). ≥2 must share participants so their markets correlate.</count>
-  <count entity="relationships" target="≥8">at least 1 adversarial — but the engine of consequence is the rules, not interpersonal drama.</count>
-  <count entity="artifacts" target="≥1">rule-bearing instruments (treaty, charter, doctrine, modelled-state ledger). The rules' physical substrate.</count>
-  <count entity="system-nodes" target="≥20">with ≥12 edges. THE RULE SET IS LOAD-BEARING — propagation laws, decision rules, doctrinal gates, mechanism couplings, threshold conditions. This is where simulation pulls weight away from fiction/non-fiction.</count>
-</minimums>`;
-
-const MINIMUMS_SINGULAR_THINKER = `<minimums>
-  <count entity="characters" target="2-4">1 anchor (the named author) + 1-3 transient interlocutors (cited theorists, named reviewers, primary-source authors the work engages or rebuts).</count>
-  <count entity="locations" target="0-3">optional — study / archive / field site. Skip entirely if the argument doesn't ground in a place.</count>
-  <count entity="threads" target="≥4">argument-questions the author is pursuing. 1+ constant-tension (the central thesis question) + sub-questions as discrete-resolution. Internal friction (rejected readings, qualified commitments) appears in thread logs.</count>
-  <count entity="relationships" target="0-3">intellectual lineages — mentor / inheritance / rebuttal / extension. Hostile is rare unless the author engages an adversarial position.</count>
-  <count entity="artifacts" target="0-3">the author's archive, primary sources, cited works being engaged with.</count>
-  <count entity="system-nodes" target="≥20">with ≥12 edges. The system graph IS the argument substrate — propositions, mechanisms, evidence relations, predictions, the author's claims and counter-positions.</count>
-</minimums>`;
-
-const MINIMUMS_MULTI_THINKER = `<minimums>
-  <count entity="thinkers" target="≥8">synthesiser / facilitator (anchor) + 3-5 specialists (≥1 MUST hold devil's-advocate / dissenter) + 1-2 methods/data + 2-3 transient sources / external interlocutors. AI-coded single-word names OR plausibly-human names — pick ONE mode and commit; see multi-thinker-pattern cast-mode block.</count>
-  <count entity="locations" target="≥6">working spaces (HQ, meeting room, individual offices) + field sites / archives / corpora / datasets the panel engages with.</count>
-  <count entity="threads" target="≥4">1+ constant-tension GOAL-THREAD capturing the panel's collective question ("does the thesis hold?") + 1+ discrete-resolution per member's investigative focus + 1+ slow-burn on the contested-claim space.</count>
-  <count entity="relationships" target="≥8">≥1 methodological-adversarial pair (devil's-advocate vs synthesiser, data-vs-narrative, recency-vs-historical). Hostile here means productive friction, not personal enmity.</count>
-  <count entity="artifacts" target="≥1">panel tools (proprietary model, dataset, instrument), the primary sources / cited works the inquiry leans on.</count>
-  <count entity="system-nodes" target="≥20">with ≥12 edges. The system graph IS the argument — propositions, mechanisms, methods, evidence relations, predictions, contestation points.</count>
-</minimums>`;
-
-const MINIMUMS_REFERENCE_TYPOLOGY = `<minimums>
-  <count entity="curators" target="1-3">The named author(s) or institution orchestrating the typology. May be a single curator, an editorial board, or an institutional voice (e.g. "the Inquiry Hall", "the Bank's policy committee").</count>
-  <count entity="entries" target="≥12">Specimens / taxa / doctrines / concepts being classified — the populated cast of the work. Each gets a stable-fact world-node block. Mix anchor (load-bearing entries the typology hinges on), recurring (referenced across the work), transient (mentioned once or twice).</count>
-  <count entity="locations" target="0-6">Optional — habitats, regions, jurisdictions, contexts where entries operate. Skip if the typology is abstract.</count>
-  <count entity="threads" target="0-3">Minimal. When present, classification questions ("does X belong in family Y?") that resolve through the typology's internal logic, NOT through events.</count>
-  <count entity="relationships" target="≥6">Cross-references between entries — extends, supersedes, depends-on, conflicts-with, applies-under. These ARE the typological structure.</count>
-  <count entity="artifacts" target="0-3">Reference instruments — measuring devices, sample collections, source archives the typology depends on.</count>
-  <count entity="system-nodes" target="≥30">with ≥20 edges. THE SYSTEM GRAPH IS THE WORK — it carries the entire taxonomic structure, classification rules, mechanism couplings, hierarchical containment, cross-cutting principles.</count>
-</minimums>`;
-
-const MINIMUMS_ADVERSARIAL_CONTEST = `<minimums>
-  <count entity="contestants" target="2-4 anchors" critical="true">Each named party in the contest is an anchor. 2 for binary contests (trial, head-to-head debate); 3-4 for multi-party contests (primary election, multi-bidder auction). Each carries a goal, capacity, strategy, vulnerability.</count>
-  <count entity="arbiters" target="1-2">Judge, referee, electorate, market, panel — whoever determines the outcome under the rules. May be a single named figure or a collective body. Distinct from contestants; never a contestant.</count>
-  <count entity="counsel-support" target="≥3 recurring/transient">Each contestant's team — advisors, witnesses, analysts, seconds, surrogates. May be named or implied.</count>
-  <count entity="locations" target="≥3">The arena — courtroom, debate stage, boardroom, polling district, ring, negotiating table. Sub-locations for caucusing / chambers / back-rooms.</count>
-  <count entity="threads" target="≥4">EACH THREAD IS AN AXIS OF CONTESTATION ("will the prosecution prove intent?", "will candidate X carry the swing states?", "will the price clear the fairness opinion?"). Outcomes favour one contestant or the other; zero-sum or graded.</count>
-  <count entity="relationships" target="≥6">Adversarial between contestants (the contest's structure). Cooperative within each contestant's camp. Procedural between contestants and arbiter.</count>
-  <count entity="artifacts" target="≥2">Rule-bearing instruments — the procedural code, the rulebook, the contract terms, the evidentiary record, the campaign finance ledger. The contest's substrate.</count>
-  <count entity="system-nodes" target="≥15">with ≥10 edges. The contest's RULES — procedural, evidentiary, temporal, jurisdictional. What moves are available, what counts as a win, what triggers a verdict.</count>
-</minimums>`;
-
-const MINIMUMS_CHRONOLOGICAL_RECORD = `<minimums>
-  <count entity="chroniclers" target="1-2 anchors" critical="true">The named voice (or institutional voice) recording the chronicle. 1 anchor for personal diaries / single annalists (Pepys, Tacitus, a captain's logbook); 2 for paired chroniclers (captain + surgeon-naturalist, scribe + verifier). Institutional voices ("the Cloister Annalists", "the Bank's reporting team") count as a single anchor.</count>
-  <count entity="subjects" target="1-3 anchors">The entity / entities / institution whose history is being chronicled — a kingdom, a person's life, a research lab, a vessel, a war, a market. Subjects evolve entry-by-entry; their world-graphs accumulate the most state-change deltas.</count>
-  <count entity="figures" target="≥6">Recurring + transient people / institutions / places that appear in entries. Each gets a stable-fact world-node block at first appearance; relationships and state changes recorded as world deltas at the entries they appear in.</count>
-  <count entity="locations" target="≥4">Settings where entries take place — capitals, theatres of operation, archives, the chronicler's own seat. Parent / child hierarchy where the chronicle spans a defined geography.</count>
-  <count entity="threads" target="≥4">LONG-RUNNING TRAJECTORIES tracked across entries — a war's progression, a market's trend, a person's career arc, a doctrine's evolution. Threads in Record accumulate evidence across many entries rather than closing dramatically.</count>
-  <count entity="relationships" target="≥6">Track persistent affiliations + adversaries across the chronicle. Relationship deltas record shifts at specific entries.</count>
-  <count entity="artifacts" target="≥1">Rule-bearing or symbolic instruments referenced in the chronicle — a charter, a treaty, a logbook, a ledger, a relic.</count>
-  <count entity="system-nodes" target="≥12">with ≥8 edges. Institutions, rules, patterns, doctrines that frame the chronicle. The system-graph captures the WORLD the entries log against.</count>
-  <count entity="time-velocity" target="1" critical="true">A single declared velocity field on the world — daily / monthly / yearly / dynamic. The chronicler's prose profile must respect this velocity; entries are time-stamped accordingly.</count>
-</minimums>`;
-
-const MINIMUMS_MULTI_ACTOR_GAME = `<minimums>
-  <count entity="actors" target="2-6 anchors" critical="true">Each player / faction / side in the contest is an anchor. 2 for head-to-head games (chess, head-to-head trial, dual-bidder auction); 3-6 for multi-actor games (Diplomacy, multi-party negotiation, RPG party + GM, multi-bidder market). Each carries an objective, an information set, a resource pool, and a strategy posture.</count>
-  <count entity="referee / GM / arbiter" target="0-2">The neutral rule-keeper when present — game master, referee, market clearinghouse, election commission, court. Optional for pure-rule games where rules are self-enforcing; required for interpretation-heavy games (RPG GM, trial judge, ambiguous-state arbiter).</count>
-  <count entity="support / units" target="≥3 recurring/transient">Each actor's controlled units, advisors, sub-agents, party members, deployed pieces. May be named (a wargame's named commanders, an RPG's named henchmen) or implied (anonymous units of a faction).</count>
-  <count entity="locations" target="≥3">The contest's playing field — board / map regions, theatres of operation, contested zones. When the game has positional state, locations track who occupies what.</count>
-  <count entity="threads" target="≥4" critical="true">EACH THREAD IS AN OPEN STAKE the contest is deciding. Objectives, contested territories, victory conditions, resource ownership. Outcomes enumerate which actor(s) can win each stake. Mix discrete-resolution (a single objective taken) with constant-tension (the macro question — does any side win?). ≥1 thread should be terminal — when it closes, the game ends.</count>
-  <count entity="relationships" target="≥6">Adversarial between opposing actors. Alliances within coalitions. Procedural between actors and referees. Relationships shift as the game state evolves; some are public (declared alliances), some hidden (secret agendas).</count>
-  <count entity="artifacts" target="≥2">Resources actors command (gold, troops, cards, balance-sheet capacity, action points), rule-bearing instruments (the rulebook, the board, the dice / RNG mechanism), and objective-bearing artifacts (the flag, the treasure, the contract).</count>
-  <count entity="system-nodes" target="≥18" critical="true">with ≥12 edges. THE RULE SET IS LOAD-BEARING. Encode: legal action spaces per actor / phase, turn structure (sequential / simultaneous / reactive / continuous-tick), victory conditions, resource accounting rules, information regime (open / hidden / asymmetric), conflict-resolution rules (combat math, bidding rules, dice mechanics), end-game triggers. Each system-node ties to the actions or stakes it constrains.</count>
-</minimums>`;
-
-function minimumsBlockFor(paradigm: NarrativeParadigm): string {
-  switch (PARADIGM_SHAPE[paradigm].shape) {
-    case 'populated-narrative':     return MINIMUMS_POPULATED;
-    case 'rule-governed-narrative': return MINIMUMS_RULE_GOVERNED;
-    case 'singular-thinker':        return MINIMUMS_SINGULAR_THINKER;
-    case 'multi-thinker':           return MINIMUMS_MULTI_THINKER;
-    case 'reference-typology':      return MINIMUMS_REFERENCE_TYPOLOGY;
-    case 'adversarial-contest':     return MINIMUMS_ADVERSARIAL_CONTEST;
-    case 'chronological-record':    return MINIMUMS_CHRONOLOGICAL_RECORD;
-    case 'multi-actor-game':        return MINIMUMS_MULTI_ACTOR_GAME;
+    case 'scenario':                return PARADIGM_SCENARIO;
   }
 }
 
@@ -390,6 +295,9 @@ export type GenerateNarrativeArgs = {
   /** Scenes in the opening arc. Set by the wizard slider; ignored when
    *  `worldOnly` is true. Bounded 2–8 at the call site. */
   sceneCount: number;
+  /** Force reference means + bands — the calibrated RICHNESS BAR a high-quality
+   *  opening reaches, surfaced in the prompt as an aspirational reference, not a
+   *  quota to hit. From FORCE_REFERENCE_MEANS / FORCE_BANDS. */
   forceReferenceMeansWorld: number;
   forceReferenceMeansSystem: number;
   worldTypicalBand: string;
@@ -509,20 +417,18 @@ Return JSON with this exact structure:
 ${buildNarrativeOutputSchema({ worldOnly })}
 </output-format>
 
-<rules name="opening-arc" hint="Establish a tight, focused world. Counts are minimums; exceed when warranted. Paradigm is fixed by the user's selection (or inferred when omitted) — see the paradigm block above.">
+<rules name="opening-arc" hint="Establish a tight, focused world. Stand on the extraction principle: each entry carries at least one real fact, further entries must be core knowledge (not noise), and richer material yields more entries. The paradigm block above already carries the world's natural SHAPE — populate to it, no count quota. Paradigm is fixed by the user's selection (or inferred when omitted).">
   ${paradigmBlockFor(paradigm)}
 
-  ${minimumsBlockFor(paradigm)}
-  <example-block hint="System-node examples — what good foundational rules look like across paradigms.">
+  <system-examples hint="What good foundational system-nodes (rules / dynamics) look like across paradigms.">
     <example category="bad" reason="too-short">Tribunal</example>
     <example category="good" register="fiction" flavour="fantasy">A house's right to bind rain to its lands lapses if the founding water-compact goes three generations without a renewing oath; lapsed lands return to common drought rotation under the regent's ledger.</example>
     <example category="good" register="fiction" flavour="cultivation">A disciple ascends a tier only when the sect elder witnesses a tribulation crossing AND the qi-reservoir admits the new draw; reservoir capacity binds the sect to a fixed succession rate.</example>
     <example category="good" register="fiction" flavour="sci-fi">A colony's memory-scent inheritance passes only along confirmed matrilineal lines registered at the genome archive; off-register children carry the chemistry but no inheritance rights, and the archive can be edited only by quorum.</example>
-    <example category="good" register="simulation" flavour="wargame">A border raid escalates to open conflict only when the cumulative grievance ledger crosses the threshold set by the suzerain's tribute schedule, gating retaliation through a mandatory seven-day council convocation.</example>
-    <example category="good" register="paper">A finding is admitted to the journal's record only after two reviewers, blind to author and institution, sign off on methods AND data within the 16-week revision cycle; managing-editor override requires written dissent.</example>${worldOnly ? '' : `
-    <count entity="scenes" target="${sceneCount} in 1 arc">Averaging ~${forceReferenceMeansWorld} world nodes and ~${forceReferenceMeansSystem} system nodes per scene (the grading reference means). Some scenes quiet, some dense — but the MEAN across the arc must hit the reference or the whole opening grades in the 60s. Generate exactly ${sceneCount} scenes — operator-chosen length, not a default.</count>
-    <density typical="touches 3-5 entities; ${worldTypicalBand} world nodes; ${systemTypicalBand} system concepts" climactic="${worldClimaxBand} world; ${systemClimaxBand} system" />`}
-  </minimums>
+    <example category="good" register="scenario" flavour="crisis">A border raid escalates to open conflict only when the cumulative grievance ledger crosses the threshold set by the suzerain's tribute schedule, gating retaliation through a mandatory seven-day council convocation.</example>
+    <example category="good" register="paper">A finding is admitted to the journal's record only after two reviewers, blind to author and institution, sign off on methods AND data within the 16-week revision cycle; managing-editor override requires written dissent.</example>
+  </system-examples>${worldOnly ? '' : `
+  <scenes count="exactly ${sceneCount}, one arc">Operator-chosen length — generate exactly that many. Per-scene density stands on the extraction principle above: each scene logs as many discrete world/system entries as its content genuinely carries — no per-scene quota. As a RICHNESS BAR (the depth high-quality openings reach, not a target to hit): richly-realised stories run around ~${forceReferenceMeansWorld} world / ~${forceReferenceMeansSystem} system entries per scene — typical scenes near ${worldTypicalBand} world and ${systemTypicalBand} system, climaxes near ${worldClimaxBand} world and ${systemClimaxBand} system. Write scenes worth that depth and let the prose carry the count.</scenes>`}
 
   <seeding-fate>
     <intent>A great narrative is pregnant with consequence. Every entity you create should carry the seeds of future tension.</intent>

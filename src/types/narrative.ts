@@ -3650,7 +3650,7 @@ export type NarrativeParadigm =
   | 'atlas'
   | 'debate'
   | 'record'
-  | 'game';
+  | 'scenario';
 
 export type WizardData = {
   title: string;

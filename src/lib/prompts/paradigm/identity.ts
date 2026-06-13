@@ -62,7 +62,7 @@ export const WRITER_ROLE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'You write typology entries — specimens, taxa, doctrines, or concepts described by structural attributes and position in the system, not by events.',
   'debate':      'You write moves in an adversarial contest — each move has attribution, intent, and effect under explicit rules; not a fiction scene with throughline.',
   'record':      'You write dated chronicle entries — what happened and what changed at the declared time velocity, in the chronicler\'s documentary voice; not omniscient narrator.',
-  'game':        'You write turns in a multi-actor game — each turn is one actor\'s legal move under enforceable rules, with rule-checked effects on resources, position, information, and contested stakes; no single-protagonist throughline, each actor plays from their own information set.',
+  'scenario':    'You write moves in a modelled strategic moment — each scene is one actor\'s decision or action from its own vantage, the operative dynamics bearing on it, with effects on position, leverage, information, and the live stakes; no single-protagonist throughline, each actor reads the moment from its own information.',
 };
 
 /** Writer-role identity line. When paradigm is unset, fall back to a
@@ -102,7 +102,7 @@ export const ANALYST_ROLE_BY_PARADIGM: Record<NarrativeParadigm, string> = {
   'atlas':       'You analyse a reference typology — entries (specimens, taxa, doctrines, concepts) classified by structural attributes and position; threads, when present, track classification questions, not arcs.',
   'debate':      'You analyse an adversarial contest — two or more named parties locked in zero-sum stakes under explicit rules; threads as axes of contestation whose outcomes favour one party or the other.',
   'record':      'You analyse a chronological record — dated entries in a chronicler\'s voice at a declared time velocity; threads as long-running trajectories tracked across entries, not arcs that dramatically resolve.',
-  'game':        'You analyse a multi-actor game — 2+ actors take turns pursuing contested stakes under enforceable rules; threads as the open stakes the contest is deciding; events are rule-driven moves under each actor\'s information set, not authorial choices; outcomes resolve only when the rules say so.',
+  'scenario':    'You analyse a modelled strategic moment — multiple actors pursuing their aims from their own vantage under the moment\'s operative dynamics; threads are the live strategic questions it hangs on; events are moves shaped by the dynamics and each actor\'s information, not authorial choices; stakes resolve as the dynamics force.',
 };
 
 /** Analyst-role identity line. When paradigm is unset, fall back to a

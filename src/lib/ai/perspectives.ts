@@ -53,6 +53,36 @@ export function availablePerspectiveKeys(narrative: NarrativeState, arc: Arc): s
   return [PUBLIC_KEY, ...keys];
 }
 
+/** Every OTHER entity not in the arc — characters, locations, artifacts that
+ *  take part in NONE of the arc's scenes. These are the non-canon "other"
+ *  perspectives: an offstage entity gets an imagined concurrent moment
+ *  ("elsewhere") rather than a retelling of events it never witnessed.
+ *  Ordered most-prominent first (anchors / domains / key artifacts), then by
+ *  name, so the on-demand list reads sensibly. */
+export function otherPerspectiveKeys(narrative: NarrativeState, arc: Arc): string[] {
+  const inArc = new Set(availablePerspectiveKeys(narrative, arc));
+  const rank = (r: string | undefined, order: string[]) => {
+    const i = r ? order.indexOf(r) : -1;
+    return i === -1 ? order.length : i;
+  };
+  type Row = { id: string; name: string; group: number; sub: number };
+  const rows: Row[] = [];
+  for (const c of Object.values(narrative.characters)) {
+    if (inArc.has(c.id)) continue;
+    rows.push({ id: c.id, name: c.name ?? c.id, group: 0, sub: rank(c.role, ["anchor", "recurring", "transient"]) });
+  }
+  for (const l of Object.values(narrative.locations)) {
+    if (inArc.has(l.id)) continue;
+    rows.push({ id: l.id, name: l.name ?? l.id, group: 1, sub: rank(l.prominence, ["domain", "place", "margin"]) });
+  }
+  for (const a of Object.values(narrative.artifacts ?? {})) {
+    if (inArc.has(a.id)) continue;
+    rows.push({ id: a.id, name: a.name ?? a.id, group: 2, sub: rank(a.significance, ["key", "notable", "minor"]) });
+  }
+  rows.sort((a, b) => a.group - b.group || a.sub - b.sub || a.name.localeCompare(b.name));
+  return rows.map((r) => r.id);
+}
+
 /** Whether an entity appears in the arc (POV or participant in any arc scene).
  *  When false, the entity is offstage for the whole arc and gets an imagined
  *  concurrent moment instead of a retelling of events it never witnessed. */

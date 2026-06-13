@@ -142,7 +142,7 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
   const { state } = useStore();
   const narrative = state.activeNarrative as NarrativeState;
   const {
-    actAsSeatId, advance, pendingMerge, completeResolve, setResolveGenerating, playCard, vetoPlay, setContestedOutcome,
+    actAsSeatId, advance, cancelGeneration, pendingMerge, completeResolve, setResolveGenerating, playCard, vetoPlay, setContestedOutcome,
     editGroupRealism, rerunShowdownRealism, actAsSeat, move,
     openNewStream, pause, extendClock, endGame, clearGame, sendChat, addSeats,
   } = useConviction();
@@ -469,6 +469,7 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
         narrative={narrative}
         actAsSeatId={actAsSeatId}
         onAdvance={advance}
+        onCancelGeneration={cancelGeneration}
         onPause={pause}
         onEnd={() => endGame()}
         onClear={() => { clearGame(); onMinimise(); }}

@@ -219,6 +219,8 @@ function SeatPod({
   streamsById,
   revealImpact = false,
   thinking = false,
+  turnPos = 0,
+  isNext = false,
   onClick,
 }: {
   seat: Seat;
@@ -227,6 +229,10 @@ function SeatPod({
   rank: number;
   isActive: boolean;
   isActing: boolean;
+  /** 1-based position in the round's turn order (sequential play only; 0 = hide). */
+  turnPos?: number;
+  /** The seat that acts NEXT after the active one (sequential play) — "on deck". */
+  isNext?: boolean;
   /** Simultaneous play — this seat is still to commit, so its outline glows in
    *  its own colour (no single turn marker applies in this mode). */
   playing: boolean;
@@ -252,7 +258,7 @@ function SeatPod({
       <div className="relative">
         <div
           className={`rounded-full transition ${
-            isActing ? "ring-2 ring-accent" : isActive ? "ring-2 ring-accent ring-offset-2 ring-offset-transparent" : "group-hover:ring-1 group-hover:ring-white/25"
+            isActing ? "ring-2 ring-accent" : isActive ? "ring-2 ring-accent ring-offset-2 ring-offset-transparent" : isNext ? "ring-1 ring-accent/40 ring-dashed" : "group-hover:ring-1 group-hover:ring-white/25"
           }`}
           style={playing && !isActing && !isActive ? { boxShadow: `0 0 0 2px ${seat.color}, 0 0 14px ${seat.color}66` } : undefined}
         >
@@ -303,6 +309,19 @@ function SeatPod({
         )}
       </div>
       <span className="flex max-w-28 items-center gap-1 truncate text-[11px] font-medium text-text-primary">
+        {/* Turn-order ordinal (sequential play) — the seat's place in the queue,
+            so the whole order reads at a glance. Active is accented, on-deck is
+            half-lit, the rest are dim. */}
+        {turnPos > 0 && (
+          <span
+            className={`shrink-0 font-mono text-[9px] tabular-nums leading-3 ${
+              isActive ? "text-accent" : isNext ? "text-text-secondary" : "text-text-dim/40"
+            }`}
+            title={isActive ? "Acting now" : isNext ? "On deck — acts next" : `Turn ${turnPos}`}
+          >
+            {turnPos}
+          </span>
+        )}
         {isAgent && <span className="shrink-0 rounded bg-violet-500/90 px-1 text-[7px] font-bold leading-3 text-white">AI</span>}
         <span className="truncate">{name}</span>
       </span>
@@ -339,6 +358,13 @@ export function PokerTable({
   // Simultaneous play has no single turn — instead glow the outline of every
   // seat still to commit, so the table reads who we're waiting on at a glance.
   const simultaneousPlay = round?.phase === "play" && room.economy.playOrder === "simultaneous";
+  // Sequential play has an order — number the pods by their place in the queue and
+  // mark who's on deck, so the whole turn order reads effortlessly. (Simultaneous
+  // is a free-for-all: no order, anything's up for grabs, so no numbers.)
+  const sequentialPlay = round?.phase === "play" && room.economy.playOrder !== "simultaneous";
+  const turnOrder = round?.turnOrder ?? [];
+  const activeOrderIdx = round?.activeSeat ? turnOrder.indexOf(round.activeSeat) : -1;
+  const nextSeatId = sequentialPlay && activeOrderIdx >= 0 ? turnOrder[(activeOrderIdx + 1) % turnOrder.length] : undefined;
   const totalFate = seats.reduce((s, x) => s + x.fateImpact, 0);
   const lastEventText = room.log?.[room.log.length - 1]?.text ?? "";
 
@@ -501,6 +527,8 @@ export function PokerTable({
                 streamsById={narrative.streams ?? {}}
                 revealImpact={round?.phase === "scoring"}
                 thinking={round?.phase === "play" && !!round?.thinkingSeats?.includes(seat.id)}
+                turnPos={sequentialPlay ? turnOrder.indexOf(seat.id) + 1 : 0}
+                isNext={seat.id === nextSeatId}
                 onClick={() => onActAsSeat(actAsSeatId === seat.id ? null : seat.id)}
               />
             </div>

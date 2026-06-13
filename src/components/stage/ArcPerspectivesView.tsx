@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/state/store";
-import { generateArcPerspective, availablePerspectiveKeys, perspectiveLabel } from "@/lib/ai";
+import { generateArcPerspective, availablePerspectiveKeys, otherPerspectiveKeys, perspectiveLabel } from "@/lib/ai";
 import { Avatar, ScoreRevealBanner } from "@/components/stage/RoomUI";
 import { useImageUrlMap } from "@/hooks/useAssetUrl";
 import { IconRefresh, IconUser, IconGlobe } from "@/components/icons";
@@ -57,7 +57,13 @@ export function ArcPerspectivesView({
   const { state, dispatch } = useStore();
   const resolvedKeys = state.resolvedEntryKeys;
 
+  // Canon = the public narrator + every participant in the arc. Non-canon =
+  // every OTHER entity, voiced as an offstage "elsewhere" account (opt-in,
+  // generated on demand — kept out of the bulk fan-out).
   const keys = useMemo(() => availablePerspectiveKeys(narrative, arc), [narrative, arc]);
+  const otherKeys = useMemo(() => otherPerspectiveKeys(narrative, arc), [narrative, arc]);
+  const allKeys = useMemo(() => [...keys, ...otherKeys], [keys, otherKeys]);
+  const isOther = useCallback((k: string) => otherKeys.includes(k), [otherKeys]);
   const perspectives = arc.perspectives ?? {};
   const [running, setRunning] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +71,8 @@ export function ArcPerspectivesView({
 
   // Resolve entity portraits for the whole column in one batch.
   const imageRefs = useMemo(
-    () => keys.map((k) => keyEntity(narrative, k)?.imageUrl ?? undefined),
-    [keys, narrative],
+    () => allKeys.map((k) => keyEntity(narrative, k)?.imageUrl ?? undefined),
+    [allKeys, narrative],
   );
   const imageMap = useImageUrlMap(imageRefs);
 
@@ -74,12 +80,12 @@ export function ArcPerspectivesView({
   // already has a perspective, else the public narrator.
   useEffect(() => {
     setError(null);
-    const firstReady = keys.find((k) => arc.perspectives?.[k]?.text);
+    const firstReady = allKeys.find((k) => arc.perspectives?.[k]?.text);
     setSelectedKey(firstReady ?? keys[0] ?? "public");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arc.id]);
 
-  const activeKey = keys.includes(selectedKey) ? selectedKey : keys[0] ?? "public";
+  const activeKey = allKeys.includes(selectedKey) ? selectedKey : keys[0] ?? "public";
 
   // Generate a single perspective and save it.
   const genOne = useCallback(
@@ -136,51 +142,69 @@ export function ArcPerspectivesView({
   const activeView = perspectives[activeKey];
   const activeBusy = running.has(activeKey);
   const activeIsPublic = activeKey === "public";
+  const activeIsOther = isOther(activeKey);
+
+  // One avatar row — shared by the canon group and the non-canon "Other" group.
+  const renderRow = (key: string) => {
+    const isPublic = key === "public";
+    const view = perspectives[key];
+    const busy = running.has(key);
+    const selected = key === activeKey;
+    const label = perspectiveLabel(narrative, key);
+    const ref = keyEntity(narrative, key)?.imageUrl ?? undefined;
+    const url = ref ? imageMap.get(ref) ?? null : null;
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={() => setSelectedKey(key)}
+        title={label}
+        className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+          selected ? "bg-white/8" : "hover:bg-white/4"
+        }`}
+      >
+        {isPublic ? (
+          <PublicAvatar selected={selected} />
+        ) : (
+          <Avatar label={label} imageUrl={url} size={30} selected={selected} />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className={`truncate text-xs ${selected ? "text-text-primary" : "text-text-secondary"}`}>
+            {label}
+          </div>
+          <div className="text-[9px] uppercase tracking-wide text-text-dim/60">
+            {busy ? "Writing…" : isPublic ? "Narrator" : view ? "Ready" : isOther(key) ? "Elsewhere" : "Empty"}
+          </div>
+        </div>
+        {/* status pip */}
+        {!busy && (
+          <span
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${view ? "bg-emerald-400/70" : "bg-white/10"}`}
+          />
+        )}
+      </button>
+    );
+  };
 
   return (
     <div className="flex h-full">
-      {/* Avatar column — one lens per row, image-or-letter map-style grey. */}
+      {/* Avatar column — one lens per row, image-or-letter map-style grey.
+          Canon (public + arc participants) first; a divider then the non-canon
+          "Other perspectives" — every entity outside the arc, voiced offstage. */}
       <div className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-white/8 px-2 py-3">
-        {keys.map((key) => {
-          const isPublic = key === "public";
-          const view = perspectives[key];
-          const busy = running.has(key);
-          const selected = key === activeKey;
-          const label = perspectiveLabel(narrative, key);
-          const ref = keyEntity(narrative, key)?.imageUrl ?? undefined;
-          const url = ref ? imageMap.get(ref) ?? null : null;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSelectedKey(key)}
-              title={label}
-              className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
-                selected ? "bg-white/8" : "hover:bg-white/4"
-              }`}
-            >
-              {isPublic ? (
-                <PublicAvatar selected={selected} />
-              ) : (
-                <Avatar label={label} imageUrl={url} size={30} selected={selected} />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className={`truncate text-xs ${selected ? "text-text-primary" : "text-text-secondary"}`}>
-                  {label}
-                </div>
-                <div className="text-[9px] uppercase tracking-wide text-text-dim/60">
-                  {busy ? "Writing…" : isPublic ? "Narrator" : view ? "Ready" : "Empty"}
-                </div>
-              </div>
-              {/* status pip */}
-              {!busy && (
-                <span
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${view ? "bg-emerald-400/70" : "bg-white/10"}`}
-                />
-              )}
-            </button>
-          );
-        })}
+        {keys.map(renderRow)}
+        {otherKeys.length > 0 && (
+          <>
+            <div className="mt-2 flex items-center gap-2 px-2 pt-2 pb-1">
+              <div className="h-px flex-1 bg-white/8" />
+              <span className="text-[8px] font-semibold uppercase tracking-widest text-text-dim/50">
+                Other · non-canon
+              </span>
+              <div className="h-px flex-1 bg-white/8" />
+            </div>
+            {otherKeys.map(renderRow)}
+          </>
+        )}
       </div>
 
       {/* Reading pane — the selected lens. */}
@@ -192,7 +216,7 @@ export function ArcPerspectivesView({
             </div>
           )}
 
-          {keys.length === 0 ? (
+          {allKeys.length === 0 ? (
             <EmptyState icon={IconUser} title="No lenses available." hint="This arc has no participants to voice." />
           ) : (
             <>
@@ -203,6 +227,11 @@ export function ArcPerspectivesView({
                   {activeIsPublic && (
                     <span className="rounded bg-white/8 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-dim/70">
                       widely known
+                    </span>
+                  )}
+                  {activeIsOther && (
+                    <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-amber-300/70">
+                      non-canon · elsewhere
                     </span>
                   )}
                 </div>
@@ -230,8 +259,9 @@ export function ArcPerspectivesView({
                   activeView.text
                 ) : (
                   <span className="text-text-dim/40">
-                    Not generated. Use Generate in the palette below to write all lenses in parallel, or Generate
-                    above for just this one.
+                    {activeIsOther
+                      ? "Not generated. This is a non-canon lens — an entity outside this arc, voiced as a concurrent “elsewhere” account. Use Generate above to write it (it stays out of the bulk fan-out)."
+                      : "Not generated. Use Generate in the palette below to write all lenses in parallel, or Generate above for just this one."}
                   </span>
                 )}
               </div>

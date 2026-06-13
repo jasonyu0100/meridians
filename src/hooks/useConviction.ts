@@ -111,6 +111,13 @@ export function useConviction() {
   const roomRef = useRef<GameRoom | null>(room);
   roomRef.current = room;
 
+  // Generation epoch — bumped by cancelGeneration() to invalidate any in-flight
+  // AI work. Each generation site captures the epoch on entry and re-checks it
+  // after every await; a mismatch means the GM cancelled, so the site bails
+  // without applying results or transitioning the phase (the orphaned request
+  // dies on the API timeout; its result is discarded).
+  const genEpochRef = useRef(0);
+
   const saveRoom = useCallback(
     (r: GameRoom) => dispatch({ type: "UPSERT_GAME_ROOM", room: r }),
     [dispatch],
@@ -201,6 +208,27 @@ export function useConviction() {
     },
     [room, saveRoom],
   );
+
+  /** GM cancels the in-flight generation (e.g. a stalled perspective delivery,
+   *  agent decision, or conflict read). Invalidates any running generation via
+   *  the epoch so its result is discarded when it eventually lands, and clears
+   *  the round's `generating` + `thinkingSeats` flags so the board unblocks
+   *  immediately. The phase stays put — the GM re-clicks Advance to retry the
+   *  same step. No-op when nothing is generating. */
+  const cancelGeneration = useCallback(() => {
+    const r = roomRef.current;
+    if (!r?.round) return;
+    const thinking = (r.round.thinkingSeats?.length ?? 0) > 0;
+    if (!r.round.generating && !thinking) return;
+    genEpochRef.current += 1; // any in-flight generation now reads as cancelled
+    saveRoom(
+      logRoom(
+        { ...r, round: { ...r.round, generating: false, generatingLabel: undefined, thinkingSeats: [] } },
+        "phase",
+        "GM cancelled generation — Advance to retry",
+      ),
+    );
+  }, [saveRoom, logRoom]);
 
   /** GM grants more time on the active phase clock — bumps the round's PLAY
    *  budget by `seconds`, pushing the deadline out (re-opens it if it lapsed) so
@@ -447,10 +475,12 @@ export function useConviction() {
         })
         .filter((c) => c.claims.length > 0);
       if (conflicts.length === 0) return;
+      const epoch = genEpochRef.current;
       saveRoom({ ...room, round: { ...round, generating: true, generatingLabel: "Re-judging realism" } });
       try {
         const headCtx = narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
         const resos = await resolveConflictRealism({ conflicts, narrativeContext: headCtx, guidance: guidance.trim() || undefined, onProgress, reasoningBudget: resolveReasoningBudget(narrative) });
+        if (genEpochRef.current !== epoch) return; // GM cancelled — discard
         const byId: Record<string, RealismResolution> = Object.fromEntries(resos.map((x) => [x.id, x]));
         const resolutions = { ...pending.resolutions };
         for (const s of contested) {
@@ -693,6 +723,11 @@ export function useConviction() {
   const advance = useCallback(async () => {
     if (!narrative || !room?.round || room.phase !== "round" || room.paused) return;
     const round = room.round;
+    // Snapshot the generation epoch for this advance run. cancelGeneration()
+    // bumps it; every await below re-checks via cancelled() and bails if the GM
+    // pulled the plug, leaving the phase put so a re-click of Advance retries.
+    const epoch = genEpochRef.current;
+    const cancelled = () => genEpochRef.current !== epoch;
 
     const headCtx = narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
     const entityContextOf = (perspectiveId: string): string => {
@@ -788,6 +823,7 @@ export function useConviction() {
         );
         let w = roomRef.current;
         if (!w?.round || w.round.phase !== "play") return; // window closed/changed → drop
+        if (cancelled()) return; // GM cancelled — discard these agent decisions
         for (const { seatId, plays } of results)
           for (const p of plays) w = applyPlay(narrative, w, seatId, p.cardId, p.conviction, !p.faceDown);
         saveRoom({ ...w, round: { ...w.round!, thinkingSeats: [] } });
@@ -796,23 +832,31 @@ export function useConviction() {
 
     // Walk the turn order from `fromActive`, auto-playing agent seats, stopping
     // at the first MANUAL seat (human / gm-proxy) the GM must play, or null at end.
-    const drainAgents = async (r: GameRoom, fromActive: string | null): Promise<{ room: GameRoom; active: string | null }> => {
-      let w: GameRoom = { ...r, round: { ...r.round!, activeSeat: fromActive } };
+    const runAgentTurns = async (r: GameRoom, fromActive: string | null): Promise<{ room: GameRoom; active: string | null }> => {
+      const roundIndex = r.round!.index;
       let active = fromActive;
       while (active) {
-        const seat = w.seats[active];
-        if (!seat || seat.driver !== "agent") break; // manual seat: wait for the GM
-        // Surface the seat the engine is deciding right now as "thinking" so the
-        // board pulses its pod through the sequential drain (one agent at a time).
+        // Always work from the LIVEST room so a human commit made meanwhile
+        // survives; bail if the window closed or the round rolled over.
+        const base = roomRef.current ?? r;
+        if (!base.round || base.round.phase !== "play" || base.round.index !== roundIndex) break;
+        const seat = base.seats[active];
+        if (!seat || seat.driver !== "agent") break; // manual seat: it's the GM/human's turn
+        if (cancelled()) break; // GM cancelled mid-drain — stop deciding more agents
         const deciding = active;
-        const live = roomRef.current;
-        if (live?.round && live.round.phase === "play")
-          saveRoom({ ...live, round: { ...live.round, thinkingSeats: [deciding] } });
-        w = await autoPlaySeat(w, active);
-        active = nextActiveSeat({ ...w.round!, activeSeat: active });
-        w = { ...w, round: { ...w.round!, activeSeat: active } };
+        // Sequential play: the turn marker AND the thinking indicator both land on
+        // the acting agent, so the table reads "it's this AI's turn, it's moving"
+        // — one agent at a time, the counter on whoever is up.
+        saveRoom({ ...base, round: { ...base.round, activeSeat: deciding, thinkingSeats: [deciding] } });
+        const played = await autoPlaySeat(roomRef.current ?? base, deciding);
+        if (cancelled() || !played.round || played.round.phase !== "play") break;
+        const next = nextActiveSeat({ ...played.round, activeSeat: deciding });
+        // Commit the agent's move and pass the turn on (thinking cleared).
+        saveRoom({ ...played, round: { ...played.round, activeSeat: next, thinkingSeats: [] } });
+        active = next;
       }
-      return { room: { ...w, round: { ...w.round!, thinkingSeats: [] } }, active };
+      const room = roomRef.current ?? r;
+      return { room, active };
     };
 
     // Head scene to deliver perspectives off this round — the latest scene on
@@ -869,10 +913,10 @@ export function useConviction() {
             let reasoning = "";
             try {
               const finalText = await generateArcPerspective(narrative, headArc, key, state.resolvedEntryKeys, {
-                onToken: (_t, acc) => { text = acc; emit(key, { text, reasoning, status: "stream" }); },
-                onReasoning: (_t, acc) => { reasoning = acc; emit(key, { text, reasoning, status: "stream" }); },
+                onToken: (_t, acc) => { if (cancelled()) return; text = acc; emit(key, { text, reasoning, status: "stream" }); },
+                onReasoning: (_t, acc) => { if (cancelled()) return; reasoning = acc; emit(key, { text, reasoning, status: "stream" }); },
               });
-              dispatch({ type: "SET_ARC_PERSPECTIVE", arcId, view: { key, label: perspectiveLabel(narrative, key), text: finalText, generatedAt: Date.now() } });
+              if (!cancelled()) dispatch({ type: "SET_ARC_PERSPECTIVE", arcId, view: { key, label: perspectiveLabel(narrative, key), text: finalText, generatedAt: Date.now() } });
             } catch {
               /* best-effort per key */
             } finally {
@@ -880,6 +924,7 @@ export function useConviction() {
             }
           }),
         );
+        if (cancelled()) return; // GM cancelled — stay in READ; Advance retries
         saveRoom(
           logRoom(
             { ...room, round: { ...round, generating: false, readStartedAt: Date.now(), continuationSceneId: headSceneId ?? round.continuationSceneId } },
@@ -955,6 +1000,7 @@ export function useConviction() {
           }
         }),
       );
+      if (cancelled()) return; // GM cancelled — no streams seeded; Advance retries
       for (const s of generated) dispatch({ type: "UPSERT_STREAM", stream: s });
       const dealtIds = new Set(generated.map((s) => s.id));
 
@@ -1018,9 +1064,10 @@ export function useConviction() {
         // turn pointer to the first manual seat (no human acts during agent turns,
         // so this bases on the opened snapshot; dropped if play has since closed).
         void (async () => {
-          const { room: drained, active } = await drainAgents(opened, first);
+          const { room: drained, active } = await runAgentTurns(opened, first);
           const latest = roomRef.current;
           if (!latest?.round || latest.round.phase !== "play" || latest.round.index !== round.index) return;
+          if (cancelled()) return; // GM cancelled — discard the drained agent plays
           saveRoom({ ...drained, round: { ...drained.round!, activeSeat: active } });
         })();
       }
@@ -1037,7 +1084,8 @@ export function useConviction() {
         const next = nextActiveSeat(round);
         // Agents decide via LLM (off-clock) — flag generating while they think.
         if (next) saveRoom({ ...room, round: { ...round, generating: true, generatingLabel: "Agents deciding" } });
-        const drained = await drainAgents(working, next);
+        const drained = await runAgentTurns(working, next);
+        if (cancelled()) return; // GM cancelled the agent drain — discard, stay in PLAY
         working = { ...drained.room, round: { ...drained.room.round!, generating: false } };
         active = drained.active;
       }
@@ -1101,6 +1149,7 @@ export function useConviction() {
           } catch {
             conflictGroups = []; // best-effort → nothing contested, claims stand
           }
+          if (cancelled()) return; // GM cancelled the conflict read — stay in PLAY
         }
         const conflictedIds = new Set(conflictGroups.flat());
 
@@ -1168,6 +1217,7 @@ export function useConviction() {
           } catch {
             // Best-effort — the merge still resolves on the chosen winner.
           }
+          if (cancelled()) return; // GM cancelled the realism pass — stay in PLAY
         }
 
         // Apply — the winner is the rule's pick (dice / rarest) or, in realism
@@ -1539,6 +1589,7 @@ export function useConviction() {
     actAsSeatId,
     startGame,
     advance,
+    cancelGeneration,
     pendingMerge,
     completeResolve,
     setResolveGenerating,

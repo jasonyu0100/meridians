@@ -38,6 +38,7 @@ export function GameBottomPanel({
   narrative,
   actAsSeatId,
   onAdvance,
+  onCancelGeneration,
   onPause,
   onEnd,
   onClear,
@@ -53,6 +54,9 @@ export function GameBottomPanel({
   narrative: NarrativeState;
   actAsSeatId: string | null;
   onAdvance: () => Promise<void> | void;
+  /** GM cancels the in-flight generation (e.g. if it has stalled) — clears the
+   *  generating/thinking flags so the phase unblocks and Advance can retry. */
+  onCancelGeneration: () => void;
   onPause: (paused: boolean) => void;
   onEnd: () => void;
   onClear: () => void;
@@ -74,6 +78,12 @@ export function GameBottomPanel({
   const phase = round?.phase ?? "";
   const generating = !!round?.generating;
   const resolving = phase === "resolve";
+  // The GM can cancel any round-machine generation it's waiting on (perspectives,
+  // seeding, agents deciding, conflict read) or a stalled background agent
+  // decision (thinkingSeats). The RESOLVE continuation is owned by the Generate
+  // Panel, so it's excluded here.
+  const thinkingActive = (round?.thinkingSeats?.length ?? 0) > 0;
+  const canCancel = (generating && !resolving) || thinkingActive;
   const activeSeat = round?.activeSeat ? room.seats[round.activeSeat] : null;
   const seatName = (id?: string | null) =>
     id ? perspectiveName(narrative.perspectives?.[room.seats[id]?.perspectiveId], narrative) : "";
@@ -200,30 +210,45 @@ export function GameBottomPanel({
 
   // ── GM control deck ─────────────────────────────────────────────────────────
   return (
-    <div className="flex shrink-0 justify-center border-t border-border bg-bg-elevated px-4 py-3">
-      <div className="flex w-full max-w-4xl items-center gap-4">
-      <span className="text-[10px] uppercase tracking-widest text-text-dim/60">GM</span>
+    <div className="flex shrink-0 justify-center border-t border-border bg-bg-base px-4 py-3.5">
+      <div className="flex w-full max-w-5xl items-center gap-3">
+      <span className="shrink-0 rounded-md bg-white/5 px-2 py-1 text-[11px] font-semibold uppercase tracking-widest text-text-dim/70">GM</span>
 
+      {/* Primary action — the one-click round progression. Fixed width so the
+          label swapping (Generating… / Advance / Resolve) never jolts the row. */}
       <button
         type="button"
         disabled={busy || room.paused || generating}
         onClick={resolving ? onResolveOpen : advance}
-        className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-[12px] font-semibold text-white shadow-sm shadow-accent/30 transition hover:bg-accent/90 disabled:opacity-40"
+        className="flex h-11 min-w-56 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-white shadow-sm shadow-accent/30 transition hover:bg-accent/90 disabled:opacity-40"
       >
         {generating ? "Generating…" : resolving ? "Resolve in panel" : busy ? "Working…" : NEXT_LABEL[phase] ?? "Advance"} ▸
       </button>
+      {/* Cancel — pull the plug on a stalled generation. Clears the generating /
+          thinking flags so the phase unblocks; the GM re-clicks Advance to retry. */}
+      {canCancel && (
+        <button
+          type="button"
+          onClick={onCancelGeneration}
+          title="Cancel the in-flight generation (e.g. if it has stalled). The round stays put — click Advance to retry."
+          className="flex h-11 shrink-0 items-center rounded-lg border border-rose-500/50 bg-rose-500/10 px-4 text-sm font-medium text-rose-300 transition hover:bg-rose-500/20"
+        >
+          Cancel
+        </button>
+      )}
       <button
         type="button"
         onClick={() => onPause(!room.paused)}
-        className="rounded-lg border border-white/10 px-2.5 py-2 text-[11px] text-text-secondary hover:bg-white/5"
+        title={room.paused ? "Resume the round" : "Pause — freeze the clock; the branch stays locked"}
+        className="flex h-11 shrink-0 items-center rounded-lg border border-white/12 bg-white/5 px-4 text-sm font-medium text-text-secondary transition hover:bg-white/10 hover:text-text-primary"
       >
         {room.paused ? "Resume" : "Pause"}
       </button>
 
       {/* Whose-turn callout — the operator's orientation */}
-      <div className="ml-2 flex min-w-0 flex-1 items-center gap-2 text-[11px]">
+      <div className="ml-1 flex min-w-0 flex-1 items-center gap-2 text-xs">
         {phase === "play" && room.economy.playOrder === "simultaneous" ? (
-          <span className="text-text-dim/70">
+          <span className="text-text-dim/75">
             Round {(round?.index ?? 0) + 1} · Play — all seats commit simultaneously; Advance to close the window
           </span>
         ) : phase === "play" && activeSeat ? (
@@ -233,37 +258,47 @@ export function GameBottomPanel({
               It’s <span className="font-medium text-text-primary">{seatName(round?.activeSeat)}</span>’s turn
             </span>
             {activeSeat.driver === "agent" ? (
-              <span className="text-[10px] text-text-dim/60">— agent; Advance to auto-play</span>
+              <span className="text-[11px] text-text-dim/60">— agent; Advance to auto-play</span>
             ) : (
               <button
                 onClick={() => onActAsSeat(activeSeat.id)}
-                className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent hover:bg-accent/25"
+                className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/25"
               >
                 play for them ▸
               </button>
             )}
           </>
         ) : room.paused ? (
-          <span className="text-[10px] text-amber-400/80">Paused — branch still locked. Resume to continue.</span>
+          <span className="text-amber-400/80">Paused — branch still locked. Resume to continue.</span>
         ) : (
-          <span className="text-text-dim/70">
+          <span className="text-text-dim/75">
             Round {(round?.index ?? 0) + 1} · {PHASE_VERB[phase] ?? ""}
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Session controls — separated from the round actions by a divider so the
+          GM never confuses "advance the round" with "leave / end the game". */}
+      <div className="flex shrink-0 items-center gap-2 border-l border-white/10 pl-3">
         <button
           onClick={onMinimise}
           title="Minimise — return to the main UI; the game keeps running on this branch"
-          className="rounded-lg border border-white/10 px-2.5 py-2 text-[11px] text-text-secondary hover:bg-white/5"
+          className="flex h-11 items-center rounded-lg border border-white/12 bg-white/5 px-3.5 text-sm font-medium text-text-secondary transition hover:bg-white/10 hover:text-text-primary"
         >
           Minimise
         </button>
-        <button onClick={onEnd} className="rounded-lg border border-white/10 px-2.5 py-2 text-[11px] text-text-secondary hover:bg-white/5">
+        <button
+          onClick={onEnd}
+          title="End game — finish this game and unlock the branch"
+          className="flex h-11 items-center rounded-lg border border-white/12 bg-white/5 px-3.5 text-sm font-medium text-text-secondary transition hover:bg-white/10 hover:text-text-primary"
+        >
           End game
         </button>
-        <button onClick={onClear} title="Abandon — discard this game entirely (no economy carryover)" className="rounded-lg border border-rose-500/40 px-2.5 py-2 text-[11px] text-rose-400 hover:bg-rose-500/10">
+        <button
+          onClick={onClear}
+          title="Abandon — discard this game entirely (no economy carryover)"
+          className="flex h-11 items-center rounded-lg border border-rose-500/40 px-3.5 text-sm font-medium text-rose-400 transition hover:bg-rose-500/10"
+        >
           Abandon
         </button>
       </div>

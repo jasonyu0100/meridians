@@ -7,18 +7,21 @@
  */
 
 import { FORCE_BANDS, fmtBand } from '@/lib/forces/narrative-utils';
+import { EXTRACTION_DISCIPLINE } from '@/lib/prompts/core/extraction';
 
 const W = FORCE_BANDS.world;
 const S = FORCE_BANDS.system;
 
 export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from prose; never invent. Under-tagging is the dominant failure. Register-neutral: the same delta shapes carry fiction, non-fiction, and simulation. In simulation register, system deltas are higher-density and often DRIVE the world deltas the scene records (a propagation law fires → modelled state updates); thread deltas often log rule-state shifts (a parameter threshold crossed, a gate tripped, an objective met under the model's rules) rather than dramatic turns.">
-  <node-content>15-25 words, PRESENT TENSE, specific and concrete.</node-content>
+  ${EXTRACTION_DISCIPLINE}
 
-  <density-tiers hint="Above the per-scene floor in forces.ts.">
-    <tier name="breather">0 transitions, ${fmtBand(W.quiet)} world, ${fmtBand(S.quiet)} system.</tier>
+  <node-content>One concrete present-tense fact per node — bite-sized, specific enough to be unique to this entity in this world.</node-content>
+
+  <density-tiers hint="Calibrated bands (forces.ts) for how much a scene of each weight TYPICALLY moves — orientation toward fruitful quantity, not a cap. Let the prose set the real count.">
+    <tier name="breather">no transitions, ${fmtBand(W.quiet)} world, ${fmtBand(S.quiet)} system.</tier>
     <tier name="typical">0-1 transitions, ${fmtBand(W.typical)} world, ${fmtBand(S.typical)} system + edges.</tier>
     <tier name="climactic">1-2 transitions, ${fmtBand(W.climax, true)} world, ${fmtBand(S.climax)} system + edges.</tier>
-    <tier name="theory-or-lore-dump">6-10 world, 6-12 system.</tier>
+    <tier name="theory-or-lore-dump">as much as it genuinely lays down — no ceiling.</tier>
   </density-tiers>
 
   <initialization-floor>
@@ -56,7 +59,7 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
       <two-outcome-stances>Mirror evidence by default ({yes+2, no-1} for a clear but not decisive shift). One-sided nudges ({yes+1} alone) imply the rival is unchanged — legitimate for ambient reinforcement.</two-outcome-stances>
     </multi-outcome-updates>
 
-    <density>2–6 threads per scene; focus-window threads first. Don't emit zero-evidence zero-volume entries.</density>
+    <density>Move every thread the scene genuinely touches, focus-window first — no quota. Skip zero-evidence padding; never leave a thread the scene clearly moved untouched.</density>
   </thread-deltas>
 
   <world-deltas hint="Entity's PRESENT-TENSE facts.">
@@ -73,8 +76,8 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
     <example type="bad" reason="event-language belongs in thread log, not as a present-tense state">"Akira discovered..." / "The authors realised..." / "The Politburo decided..."</example>
     <rule name="node-order">Order matters (auto-chains).</rule>
 
-    <tag-richly hint="Entities are SPONGES: rich prose supports many nodes per entity; sparse prose supports few. No per-entity cap.">
-      <density-guide>A reflective POV alone often carries 4-6 nodes — shifts in belief, state, goal, capability, position, method, uncertainty, secret, or commitment. A location or institution re-entered in a dense scene carries 2-3 new properties. A quiet pass-through carries one. Under-tagging a rich summary is the failure.</density-guide>
+    <tag-richly hint="Entities are SPONGES: rich prose supports many nodes per entity; sparse prose supports few. No per-entity cap, no quota.">
+      <density-guide>Surface every genuine shift, no more. A reflective POV is usually richest — each shift in belief, state, goal, capability, position, method, uncertainty, secret, or commitment earns a node; a re-entered location yields the properties it reveals; a pass-through yields little. Read the prose, not a target.</density-guide>
       <discipline name="agency-over-orbit">A node carrying agency ("the elder suspects the apprentice is hiding something", "the reviewer suspects the dataset is mis-sampled") beats one that only records orbit ("the elder is impressed", "the reviewer is impressed").</discipline>
       <discipline name="off-stage">Off-stage deltas are valid when news, rumour, faction intelligence, or cited-elsewhere finding would realistically reach them. Across an arc the entity set evolves alongside the POV, not waiting on it.</discipline>
       <discipline name="no-padding">Participants who were unchanged get nothing.</discipline>
@@ -95,7 +98,7 @@ export const PROMPT_DELTAS = `<deltas hint="Inputs to force formulas. Earn from 
   </system-deltas>
 
   <relationship-deltas>SHIFTS only — emit when the scene's events actually move the pair, skip when they don't. valenceDelta: ±0.1 subtle drift, ±0.3 meaningful (named on-page trigger), ±0.5 dramatic (irreversible). Successive minute shifts are legitimate accumulation; the failure is reusing the same magnitude regardless of what the trigger does.</relationship-deltas>
-  <events>2-4 word tags, 2-4 per scene.</events>
+  <events>Short 2-4 word tags — one per genuine beat the scene contains, as many or few as that is.</events>
   <artifact-usages>When an artifact / tool delivers utility. Every usage has a wielder.</artifact-usages>
   <ownership-deltas>Artifact changes hands.</ownership-deltas>
   <character-movements>Physical location changes only.</character-movements>

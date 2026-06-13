@@ -219,7 +219,10 @@ export function GameSetup({ onStart, onClose }: { onStart: (cfg: StartGameConfig
   };
 
   const humanWithoutMember = seatList.some((d) => d.driver === "human" && members.length === 0);
-  const canStart = seatList.length >= 2 && !humanWithoutMember;
+  // A lone seat is a valid game — solo Conviction rehearses one perspective's
+  // calls against the canon with no contests (the engine skips conflict reads
+  // below two committed cards). Min 1.
+  const canStart = seatList.length >= 1 && !humanWithoutMember;
 
   const selected = selectedId ? seats[selectedId] : null;
 
@@ -453,7 +456,7 @@ export function GameSetup({ onStart, onClose }: { onStart: (cfg: StartGameConfig
                         <span className="text-[10px] uppercase tracking-[0.22em] text-text-dim/70">Seat the table</span>
                         <span className="font-mono text-3xl tabular-nums text-text-primary">{seatList.length}</span>
                         <span className="text-[11px] text-text-dim">
-                          {seatList.length === 1 ? "1 seated" : `${seatList.length} seated`} · min 2
+                          {seatList.length === 1 ? "1 seated" : `${seatList.length} seated`} · min 1
                         </span>
                         <span className="max-w-56 text-[10px] leading-relaxed text-text-dim/50">
                           {seatList.length === 0
@@ -508,7 +511,7 @@ export function GameSetup({ onStart, onClose }: { onStart: (cfg: StartGameConfig
             <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-bg-base/40 px-8 py-4 backdrop-blur-md">
               <span className="text-[11px] text-text-dim">
                 {seatList.length} seat{seatList.length === 1 ? "" : "s"}
-                {!canStart && seatList.length < 2 && <span className="ml-2 text-amber-400/80">— seat at least 2</span>}
+                {!canStart && seatList.length < 1 && <span className="ml-2 text-amber-400/80">— seat at least 1</span>}
                 {humanWithoutMember && <span className="ml-2 text-amber-400/80">— add a member or change driver</span>}
               </span>
               <button

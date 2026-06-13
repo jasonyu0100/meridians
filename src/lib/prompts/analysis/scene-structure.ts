@@ -11,6 +11,7 @@
 import type { BeatPlan } from '@/types/narrative';
 import { FORCE_REFERENCE_MEANS } from '@/lib/forces/narrative-utils';
 import { PROMPT_STANCE_PRINCIPLES } from '../core/belief-calibration';
+import { EXTRACTION_DISCIPLINE } from '../core/extraction';
 
 export const SCENE_STRUCTURE_SYSTEM = `You are a world-view structure extractor. Given a scene's exact prose and its beat plan, extract all entities, deltas, and structural data accurately. The scene may carry narrative events, argued claims, chronicled changes, classified attributes, contest moves, or rule-driven state transitions — extract whichever the paradigm presents. Dense content deserves rich extraction; sparse content deserves minimal extraction. Return only valid JSON.`;
 
@@ -61,7 +62,7 @@ Return JSON:
 
   const fieldGuide = `
 <extraction-standards>
-  <intent>Analysis filters an unlimited source — the prose in front of you. No quality floor, no count cap; count follows the information the text actually carries.</intent>
+  ${EXTRACTION_DISCIPLINE}
   <invariant name="match-the-source">Sparse prose → few nodes; dense prose → many. Applies entity-by-entity: rich entity reveals → many nodes; thin reveals → few. Don't under-extract to hit a target; don't pad to fill a slot.</invariant>
   <invariant name="format">15-25 words per node, present tense, distinct claims, one claim per node.</invariant>
   <invariant name="omit-empty-entries" critical="true">If nothing to add for a delta type, OMIT the entry — never emit a placeholder with missing fields. Every \`systemDeltas.addedNodes\` entry MUST have non-empty \`concept\`; every \`worldDeltas\` entry MUST have non-empty \`entityName\` and node \`content\`; every \`threads\` entry MUST have non-empty \`description\`. Malformed entries are dropped.</invariant>

@@ -36,7 +36,7 @@ export const PARADIGM_VOCABULARY: Record<NarrativeParadigm, ParadigmVocabulary> 
   'atlas':       { unit: 'entry',   collection: 'section',  resolution: 'classification settled' },
   'debate':      { unit: 'move',    collection: 'phase',    resolution: 'axis decided' },
   'record':      { unit: 'entry',   collection: 'period',   resolution: 'trajectory landmark' },
-  'game':        { unit: 'turn',    collection: 'round',    resolution: 'stake settled' },
+  'scenario':    { unit: 'move',    collection: 'phase',    resolution: 'stake tipped' },
 };
 
 /** Render the vocabulary as a one-line cheatsheet for inclusion in prompts.

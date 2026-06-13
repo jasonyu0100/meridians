@@ -769,11 +769,36 @@ export default function Stage() {
     const maxArtUsage = artUsages.length > 0 ? Math.max(...artUsages) : 1;
     const artRange = Math.max(1, maxArtUsage - minArtUsage);
     const normArt = (d: GraphNode) => ((d.usageCount ?? 1) - minArtUsage) / artRange;
-    const CHAR_MIN_R = 20;
-    const CHAR_MAX_R = 44;
-    const LOC_MIN_SCALE = 0.6;
-    const LOC_MAX_SCALE = 1.4;
     const ARTIFACT_SIZES: Record<string, number> = { key: 22, notable: 16, minor: 11 };
+
+    // ── Entity sizing — one world-relative usage curve shared by every kind ──
+    // The old behaviour stretched each kind across its OWN min→max, so a single
+    // heavy entity collapsed its peers onto the floor and every kind carried a
+    // different baseline (the "large variation" problem). New behaviour: a firm
+    // minimum (nothing tiny), gentle log-compressed growth with entry count, a
+    // hard ceiling — normalised across the WHOLE world (all entity kinds at
+    // once) so a given size means the same thing everywhere. log1p compresses
+    // the spread: a 10× difference in entries is a modest size step, not 10×.
+    const USAGE_SCALE_MIN = 0.85; // floor multiplier — low-log nodes stay substantial
+    const USAGE_SCALE_MAX = 2.1;  // ceiling multiplier — busiest nodes read clearly bigger
+    const usageMag = (n: GraphNode) => Math.log1p(Math.max(0, (n.usageCount ?? 1) - 1));
+    const entityMags = nodes
+      .filter((n) => n.kind === 'character' || n.kind === 'location' || n.kind === 'artifact')
+      .map(usageMag);
+    const minUsageMag = entityMags.length ? Math.min(...entityMags) : 0;
+    const maxUsageMag = entityMags.length ? Math.max(...entityMags) : 0;
+    const usageMagRange = maxUsageMag - minUsageMag;
+    // Equal usage (or scaling off) → neutral base size, not the floor.
+    const usageScale = (d: GraphNode) => {
+      if (!scaleByUsage || usageMagRange <= 1e-6) return 1;
+      const t = (usageMag(d) - minUsageMag) / usageMagRange;
+      return USAGE_SCALE_MIN + (USAGE_SCALE_MAX - USAGE_SCALE_MIN) * t;
+    };
+    // Per-kind base sizes (the consistent baselines) × the shared usage scale.
+    const CHAR_BASE_R = 24;
+    const charRadius = (d: GraphNode) => CHAR_BASE_R * usageScale(d);
+    const locSize = (d: GraphNode) => LOCATION_SIZE * usageScale(d);
+    const artHalf = (d: GraphNode) => (ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 16) * usageScale(d);
 
     // Edges that should show a directional arrowhead at their midpoint.
     const arrowedKinds = new Set<GraphLink['linkKind']>(['character-location', 'spatial', 'ownership']);
@@ -797,17 +822,9 @@ export default function Stage() {
         'collide',
         d3.forceCollide<GraphNode>().radius((d) => {
           if (d.kind === 'knowledge') return 28;
-          if (d.kind === 'artifact') return (d.significance === 'key' ? 22 : d.significance === 'minor' ? 11 : 16) + 14;
-          if (scaleByUsage) {
-            if (d.kind === 'character') {
-              const t = charRange > 0 ? ((d.usageCount ?? 1) - minCharUsage) / charRange : 0;
-              return (CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * t) + 16;
-            }
-            const t = locRange > 0 ? ((d.usageCount ?? 1) - minLocUsage) / locRange : 0;
-            const s = LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * t;
-            return (LOCATION_SIZE * s) / 2 + 16;
-          }
-          if (d.kind === 'character') return (ROLE_RADIUS[d.role ?? 'recurring'] ?? 18) + 20;
+          if (d.kind === 'artifact') return artHalf(d) + 14;
+          if (d.kind === 'character') return charRadius(d) + 16;
+          if (d.kind === 'location') return locSize(d) / 2 + 16;
           return LOCATION_SIZE / 2 + 20;
         }),
       );
@@ -1044,10 +1061,7 @@ export default function Stage() {
     nodeGroup
       .filter((d) => d.kind === 'character')
       .append('circle')
-      .attr('r', (d) => {
-        if (scaleByUsage) return CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * normChar(d);
-        return ROLE_RADIUS[d.role as keyof typeof ROLE_RADIUS] ?? ROLE_RADIUS.recurring;
-      })
+      .attr('r', (d) => charRadius(d))
       .attr('fill', (d) =>
         showHeatmap ? heatColor(normChar(d)) : roleFill(d.role, neutrals),
       );
@@ -1057,10 +1071,7 @@ export default function Stage() {
       .filter((d) => d.kind === 'location')
       .each(function (d) {
         const sel = d3.select(this);
-        const scale = scaleByUsage
-          ? LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * normLoc(d)
-          : 1;
-        const size = LOCATION_SIZE * scale;
+        const size = locSize(d);
         sel.append('rect')
           .attr('x', -size / 2)
           .attr('y', -size / 2)
@@ -1076,9 +1087,7 @@ export default function Stage() {
       .filter((d) => !showHeatmap && d.kind === 'character' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
       .each(function (d) {
         const sel = d3.select(this);
-        const r = scaleByUsage
-          ? CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * normChar(d)
-          : ROLE_RADIUS[d.role ?? 'recurring'];
+        const r = charRadius(d);
         const clipId = `clip-${d.id}`;
         defs.append('clipPath').attr('id', clipId)
           .append('circle').attr('r', r);
@@ -1094,10 +1103,7 @@ export default function Stage() {
       .filter((d) => !showHeatmap && d.kind === 'location' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
       .each(function (d) {
         const sel = d3.select(this);
-        const scale = scaleByUsage
-          ? LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * normLoc(d)
-          : 1;
-        const size = LOCATION_SIZE * scale;
+        const size = locSize(d);
         const clipId = `clip-${d.id}`;
         defs.append('clipPath').attr('id', clipId)
           .append('rect')
@@ -1119,15 +1125,15 @@ export default function Stage() {
       .attr('r', 8)
       .attr('fill', (d) => WORLD_FILL[d.worldType ?? 'trait'] ?? neutrals.defaultFill);
 
-    // Artifact diamonds — sized by significance (ARTIFACT_SIZES defined above).
+    // Artifact diamonds — significance base × world-relative usage scale (artHalf).
     const ARTIFACT_FILLS: Record<string, string> = { key: '#F59E0B', notable: '#D97706', minor: '#92400E' };
     nodeGroup
       .filter((d) => d.kind === 'artifact')
       .append('rect')
-      .attr('x', (d) => -(ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10))
-      .attr('y', (d) => -(ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10))
-      .attr('width', (d) => (ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10) * 2)
-      .attr('height', (d) => (ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10) * 2)
+      .attr('x', (d) => -artHalf(d))
+      .attr('y', (d) => -artHalf(d))
+      .attr('width', (d) => artHalf(d) * 2)
+      .attr('height', (d) => artHalf(d) * 2)
       .attr('rx', 2)
       .attr('transform', 'rotate(45)')
       .attr('fill', (d) => showHeatmap ? heatColor(normArt(d)) : (ARTIFACT_FILLS[d.significance ?? 'notable'] ?? '#D97706'));
@@ -1140,7 +1146,7 @@ export default function Stage() {
       .filter((d) => !showHeatmap && d.kind === 'artifact' && !!d.imageUrl && resolvedImageUrls.has(d.imageUrl))
       .each(function (d) {
         const sel = d3.select(this);
-        const sz = ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 16;
+        const sz = artHalf(d);
         const imgSz = sz * Math.SQRT2; // cover the full diagonal
         const clipId = `clip-${d.id}`;
         defs.append('clipPath').attr('id', clipId)
@@ -1174,16 +1180,9 @@ export default function Stage() {
       .style('font-weight', '700')
       .style('fill', 'rgba(255,255,255,0.92)')
       .style('font-size', (d) => {
-        if (d.kind === 'character') {
-          const r = scaleByUsage ? CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * normChar(d) : (ROLE_RADIUS[d.role ?? 'recurring'] ?? 18);
-          return `${Math.round(r * 0.9)}px`;
-        }
-        if (d.kind === 'artifact') {
-          const sz = ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 16;
-          return `${Math.round(sz * 0.85)}px`;
-        }
-        const s = LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * normLoc(d);
-        return `${Math.round((LOCATION_SIZE * s) * 0.42)}px`;
+        if (d.kind === 'character') return `${Math.round(charRadius(d) * 0.9)}px`;
+        if (d.kind === 'artifact') return `${Math.round(artHalf(d) * 0.85)}px`;
+        return `${Math.round(locSize(d) * 0.42)}px`;
       })
       .text((d) => nodeInitial(d));
 
@@ -1194,16 +1193,9 @@ export default function Stage() {
       .attr('class', 'graph-label')
       .attr('text-anchor', 'middle')
       .attr('dy', (d) => {
-        if (d.kind === 'character') {
-          const r = CHAR_MIN_R + (CHAR_MAX_R - CHAR_MIN_R) * normChar(d);
-          return r + 14;
-        }
-        if (d.kind === 'artifact') {
-          const sz = ARTIFACT_SIZES[d.significance ?? 'notable'] ?? 10;
-          return sz + 18;
-        }
-        const s = LOC_MIN_SCALE + (LOC_MAX_SCALE - LOC_MIN_SCALE) * normLoc(d);
-        return (LOCATION_SIZE * s) / 2 + 14;
+        if (d.kind === 'character') return charRadius(d) + 14;
+        if (d.kind === 'artifact') return artHalf(d) + 18;
+        return locSize(d) / 2 + 14;
       })
       .text((d) => d.label);
 
