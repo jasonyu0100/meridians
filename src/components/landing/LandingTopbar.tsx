@@ -13,7 +13,15 @@ const NAV_ITEMS = [
 
 export function LandingTopbar() {
   const pathname = usePathname();
-  if (pathname.startsWith('/narrative/') || pathname.startsWith('/analysis') || pathname.startsWith('/extension')) return null;
+  // Full-screen workspaces + the locked Conviction player route own the whole
+  // viewport — no public marketing nav.
+  if (
+    pathname.startsWith('/narrative/') ||
+    pathname.startsWith('/analysis') ||
+    pathname.startsWith('/extension') ||
+    pathname.startsWith('/play/')
+  )
+    return null;
 
   return (
     <nav className="relative z-30 flex items-center justify-center pt-8 pb-6">

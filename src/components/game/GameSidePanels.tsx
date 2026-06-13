@@ -20,7 +20,7 @@ import { segmentMentions, type SeatHandle } from "@/lib/game/mentions";
 import { streamProbs, streamTrajectory } from "@/lib/forces/stream-stance";
 import { streamsForBranch, mergesForBranch } from "@/lib/merges";
 import { useStore } from "@/lib/state/store";
-import type { Arc, GameRoom, NarrativeState, Seat } from "@/types/narrative";
+import { GM_SENDER_ID, type Arc, type GameRoom, type NarrativeState, type Seat } from "@/types/narrative";
 
 const SECTION = "text-[9px] uppercase tracking-[0.18em] text-text-dim/70";
 
@@ -74,7 +74,8 @@ export function RankingPanel({ room, narrative }: { room: GameRoom; narrative: N
  *  GLOBAL table talk (persists the whole game) and LOCATION whispers (ephemeral —
  *  only the CURRENT round is shown, so an adversary can't read a place's history).
  *  A player sees Global + their own place; the GM sees Global + every occupied
- *  place. Avatars are image-aware; the composer pins to the bottom. */
+ *  place and can speak into any of them (broadcast to the table or whisper into a
+ *  place as "GM"). Avatars are image-aware; the composer pins to the bottom. */
 export function ChatPanel({
   room,
   narrative,
@@ -91,13 +92,17 @@ export function ChatPanel({
   const endRef = useRef<HTMLDivElement>(null);
 
   const seatName = (seatId: string) =>
-    perspectiveName(narrative.perspectives?.[room.seats[seatId]?.perspectiveId], narrative);
+    seatId === GM_SENDER_ID
+      ? "GM"
+      : perspectiveName(narrative.perspectives?.[room.seats[seatId]?.perspectiveId], narrative);
   const locNameOf = (id?: string) => (id ? narrative.locations[id]?.name ?? "this place" : undefined);
 
   const actSeat = actAsSeatId ? room.seats[actAsSeatId] : null;
   const myLoc = actSeat?.locationId;
   const isGM = !actAsSeatId;
   const roundIndex = room.round?.index ?? -1;
+  // Who this composer speaks AS: a seat when impersonating, else the GM directly.
+  const senderId = actAsSeatId ?? GM_SENDER_ID;
 
   // Conversations the viewer may open: Global always; then locations — a player
   // gets only their own place, the GM gets every occupied place (+ any with a
@@ -128,16 +133,18 @@ export function ChatPanel({
     )
     .sort((a, b) => a.at - b.at);
 
-  // Send only when acting as a seat AND (global, or this is the seat's own place).
-  const canSend = !!actAsSeatId && (!isLocation || active === myLoc);
+  // A seated player speaks at the table or in its OWN place. The GM speaks
+  // anywhere it can open a conversation — global, or any occupied place it's
+  // viewing (its switcher already scopes to occupied/whispered locations).
+  const canSend = isGM ? true : !isLocation || active === myLoc;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [msgs.length, active]);
 
   const send = () => {
-    if (!canSend || !actAsSeatId || !text.trim()) return;
-    onSend(actAsSeatId, text.trim(), isLocation ? "location" : "global", isLocation ? active : undefined);
+    if (!canSend || !text.trim()) return;
+    onSend(senderId, text.trim(), isLocation ? "location" : "global", isLocation ? active : undefined);
     setText("");
     setMention(null);
   };
@@ -218,16 +225,19 @@ export function ChatPanel({
         )}
         {msgs.map((m, i) => {
           const prev = msgs[i - 1];
+          const fromGM = m.seatId === GM_SENDER_ID;
           const seat = room.seats[m.seatId];
           const persp = narrative.perspectives?.[seat?.perspectiveId];
-          const isSelf = m.seatId === actAsSeatId;
+          const isSelf = m.seatId === senderId;
           // Group consecutive messages from the same seat (within 5 min).
           const grouped = !!prev && prev.seatId === m.seatId && m.at - prev.at < 5 * 60_000;
-          const bubble = isSelf
-            ? isLocation
-              ? "bg-violet-500/30 text-text-primary"
-              : "bg-accent/25 text-text-primary"
-            : "bg-white/6 text-text-secondary";
+          const bubble = fromGM
+            ? "bg-amber-400/15 text-amber-50 ring-1 ring-inset ring-amber-300/25"
+            : isSelf
+              ? isLocation
+                ? "bg-violet-500/30 text-text-primary"
+                : "bg-accent/25 text-text-primary"
+              : "bg-white/6 text-text-secondary";
 
           return (
             <div
@@ -236,13 +246,23 @@ export function ChatPanel({
             >
               {/* Avatar gutter — a spacer keeps grouped rows aligned. */}
               <div className="w-7 shrink-0">
-                {!grouped && <PerspectiveAvatar perspective={persp} n={narrative} size={28} />}
+                {!grouped &&
+                  (fromGM ? (
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400/20 text-[9px] font-bold uppercase tracking-wider text-amber-200 ring-1 ring-inset ring-amber-300/30"
+                      title="Game master"
+                    >
+                      GM
+                    </span>
+                  ) : (
+                    <PerspectiveAvatar perspective={persp} n={narrative} size={28} />
+                  ))}
               </div>
               <div className={`flex max-w-[78%] flex-col gap-0.5 ${isSelf ? "items-end" : "items-start"}`}>
                 {!grouped && (
                   <span className={`flex items-center gap-1.5 px-1 text-[9px] ${isSelf ? "flex-row-reverse" : ""}`}>
                     {!isSelf && (
-                      <span className="font-medium" style={{ color: seat?.color }}>
+                      <span className="font-medium" style={{ color: fromGM ? "#fcd34d" : seat?.color }}>
                         {seatName(m.seatId)}
                       </span>
                     )}
@@ -317,7 +337,11 @@ export function ChatPanel({
               }}
               rows={1}
               placeholder={
-                isLocation ? `Whisper to ${locNameOf(active)}… (@ to tag)` : `Speak as ${seatName(actAsSeatId!)}… (@ to tag)`
+                isLocation
+                  ? `Whisper to ${locNameOf(active)}${isGM ? " as GM" : ""}… (@ to tag)`
+                  : isGM
+                    ? `Broadcast to the table as GM… (@ to tag)`
+                    : `Speak as ${seatName(actAsSeatId!)}… (@ to tag)`
               }
               className="flex-1 resize-none rounded-lg border border-border bg-white/5 px-3 py-2 text-xs text-text-primary placeholder:text-text-dim transition-colors focus:border-white/20 focus:outline-none"
             />
@@ -334,11 +358,7 @@ export function ChatPanel({
           </div>
         ) : (
           <span className="text-[10px] text-text-dim/60">
-            {isLocation
-              ? isGM
-                ? "Whispers here are read-only for the GM — act as a player at this place to speak."
-                : "Only players at this place can whisper here."
-              : "Act as a seat to speak at the table."}
+            Only players at this place can whisper here.
           </span>
         )}
       </div>
@@ -742,14 +762,20 @@ export function GameWritePanel({
   actAsSeatId,
   locked,
   onOpenStream,
+  onAddPrior,
 }: {
   room: GameRoom;
   narrative: NarrativeState;
   actAsSeatId: string | null;
   locked: boolean;
   onOpenStream: (seatId: string, question: string, intuition: string) => Promise<void> | void;
+  /** Remote PLAYER mode — when set, add-prior routes to the master as an intent and
+   *  store-only affordances (kebab menu, bulk close, AI suggest, stream drill-in)
+   *  are suppressed. The GM (no handler) keeps the full store-driven panel. */
+  onAddPrior?: (seatId: string, streamId: string, text: string) => void;
 }) {
   const { state, dispatch } = useStore();
+  const playerMode = !!onAddPrior;
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState('');
   const [intuition, setIntuition] = useState('');
@@ -831,7 +857,7 @@ export function GameWritePanel({
       const q = await suggestQuestion({
         perspectiveLabel: perspectiveName(narrative.perspectives?.[seat.perspectiveId], narrative),
         entityContext: entityContextOf(seat.perspectiveId),
-        narrativeContext: outlineContext(narrative, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
+        narrativeOutline: outlineContext(narrative, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         personaContext: personaForSeat,
         existingQuestions: existingQs,
       });
@@ -853,7 +879,7 @@ export function GameWritePanel({
         question: q,
         perspectiveLabel: perspectiveName(narrative.perspectives?.[seat.perspectiveId], narrative),
         entityContext: entityContextOf(seat.perspectiveId),
-        narrativeContext: outlineContext(narrative, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
+        narrativeOutline: outlineContext(narrative, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         personaContext: personaForSeat,
       });
       if (intu) setIntuition(intu);
@@ -942,8 +968,11 @@ export function GameWritePanel({
                           number={numberOf[s.id]}
                           merged={mergedIds.has(s.id)}
                           selected={selected.has(s.id)}
-                          onToggleSelect={() => toggleSelect(s.id)}
-                          onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
+                          onToggleSelect={playerMode ? undefined : () => toggleSelect(s.id)}
+                          onOpen={playerMode ? undefined : () => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
+                          onAddPrior={onAddPrior && actAsSeatId ? (sid, text) => onAddPrior(actAsSeatId, sid, text) : undefined}
+                          hideMenu={playerMode}
+                          narrative={narrative}
                         />
                       ))}
                     </>
@@ -970,8 +999,11 @@ export function GameWritePanel({
                           number={numberOf[s.id]}
                           merged={mergedIds.has(s.id)}
                           selected={selected.has(s.id)}
-                          onToggleSelect={() => toggleSelect(s.id)}
-                          onOpen={() => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
+                          onToggleSelect={playerMode ? undefined : () => toggleSelect(s.id)}
+                          onOpen={playerMode ? undefined : () => { setViewId(s.id); dispatch({ type: 'SET_INSPECTOR', context: { type: 'stream', streamId: s.id } }); }}
+                          onAddPrior={onAddPrior && actAsSeatId ? (sid, text) => onAddPrior(actAsSeatId, sid, text) : undefined}
+                          hideMenu={playerMode}
+                          narrative={narrative}
                         />
                       ))}
                     </>
@@ -1002,13 +1034,15 @@ export function GameWritePanel({
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
                 <label className="text-[10px] uppercase tracking-wider text-text-dim/50">Open question</label>
-                <button
-                  onClick={handleSuggestQuestion}
-                  disabled={suggestingQ}
-                  className="ml-auto shrink-0 text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
-                >
-                  {suggestingQ ? 'Thinking...' : 'Suggest'}
-                </button>
+                {!playerMode && (
+                  <button
+                    onClick={handleSuggestQuestion}
+                    disabled={suggestingQ}
+                    className="ml-auto shrink-0 text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
+                  >
+                    {suggestingQ ? 'Thinking...' : 'Suggest'}
+                  </button>
+                )}
               </div>
               <textarea
                 value={title}
@@ -1024,14 +1058,16 @@ export function GameWritePanel({
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
                 <label className="text-[10px] uppercase tracking-wider text-text-dim/50">Initial intuition</label>
-                <button
-                  onClick={handleSuggestIntuition}
-                  disabled={suggestingI || !title.trim()}
-                  className="ml-auto shrink-0 text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
-                  title={title.trim() ? 'Suggest an intuition for this question' : 'Enter a question first'}
-                >
-                  {suggestingI ? 'Thinking...' : 'Suggest'}
-                </button>
+                {!playerMode && (
+                  <button
+                    onClick={handleSuggestIntuition}
+                    disabled={suggestingI || !title.trim()}
+                    className="ml-auto shrink-0 text-[10px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-30 uppercase tracking-wider"
+                    title={title.trim() ? 'Suggest an intuition for this question' : 'Enter a question first'}
+                  >
+                    {suggestingI ? 'Thinking...' : 'Suggest'}
+                  </button>
+                )}
               </div>
               <textarea
                 value={intuition}

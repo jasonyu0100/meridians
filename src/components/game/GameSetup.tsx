@@ -54,10 +54,11 @@ const DRIVER_LABEL: Record<Driver, string> = { agent: "Agent", human: "Member", 
  *  in seconds. 0 = untimed. Presentation phases run short; the deliberative
  *  phases (READ / PLAY) get the time. Cosmetic while the game runs in computer
  *  mode; the difficulty lever for the human-vs-AI tempo dynamic when live. */
+// Play has its OWN two clocks (per-move sequential / shared window simultaneous)
+// set on the Play section from the economy — so it's not listed here.
 const TIMED_PHASES: { phase: RoundPhase; label: string; hint: string; def: number }[] = [
   { phase: "read", label: "Read", hint: "Read the perspective that opened the scene", def: 45 },
   { phase: "write", label: "Write", hint: "Work the model — open streams, add priors (the strategic heart)", def: 240 },
-  { phase: "play", label: "Play", hint: "Commit cards on your hand", def: 150 },
   { phase: "showdown", label: "Showdown", hint: "Reveal all cards, settle conflicts together", def: 25 },
   { phase: "scoring", label: "Scoring", hint: "Impact readout", def: 20 },
 ];
@@ -546,9 +547,29 @@ export function GameSetup({ onStart, onClose }: { onStart: (cfg: StartGameConfig
                   </SegRow>
                   <div className="flex flex-col gap-1.5 rounded-md bg-white/2 px-2.5 py-2 text-[10px] leading-relaxed text-text-dim/60">
                     <ul className="flex flex-col gap-0.5 pl-0.5">
-                      <li><span className="text-text-secondary">Ordered</span> — seats commit one at a time in deal order, poker-style; later seats read the table before they act.</li>
-                      <li><span className="text-text-secondary">Simultaneous</span> — every seat commits at once, blind to the others, until the GM closes the window.</li>
+                      <li><span className="text-text-secondary">Sequential</span> — seats commit one at a time in deal order, poker-style; later seats read the table before they act. Each gets their own per-move clock.</li>
+                      <li><span className="text-text-secondary">Simultaneous</span> — every seat commits at once, blind to the others, within one shared (more generous) window.</li>
                     </ul>
+                  </div>
+                  {/* Only the ACTIVE mode's clock applies, so only it is shown:
+                      sequential resets a per-move budget each turn; simultaneous is
+                      one shared window. Switching mode swaps the control. */}
+                  <div className="pt-1">
+                    {econ.playOrder === "simultaneous" ? (
+                      <TimerTile
+                        label="Window clock"
+                        hint="One shared window all seats act within at once"
+                        value={econ.windowSeconds ?? 0}
+                        onChange={(v) => setEcon({ ...econ, windowSeconds: v })}
+                      />
+                    ) : (
+                      <TimerTile
+                        label="Per-move clock"
+                        hint="Each player's budget on their own turn (the clock resets per turn)"
+                        value={econ.turnSeconds ?? 0}
+                        onChange={(v) => setEcon({ ...econ, turnSeconds: v })}
+                      />
+                    )}
                   </div>
                 </RuleSection>
 

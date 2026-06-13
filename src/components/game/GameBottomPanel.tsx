@@ -49,6 +49,7 @@ export function GameBottomPanel({
   onResolveOpen,
   onMinimise,
   playLocked,
+  blocked = false,
 }: {
   room: GameRoom;
   narrative: NarrativeState;
@@ -71,6 +72,9 @@ export function GameBottomPanel({
   onMinimise: () => void;
   /** True once the play clock has elapsed — cards lock in, no more edits. */
   playLocked: boolean;
+  /** Presence gate — human seats aren't all ready, so the round can't advance
+   *  (even the GM). Grey out the round-progression action until they're in. */
+  blocked?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -215,14 +219,17 @@ export function GameBottomPanel({
       <span className="shrink-0 rounded-md bg-white/5 px-2 py-1 text-[11px] font-semibold uppercase tracking-widest text-text-dim/70">GM</span>
 
       {/* Primary action — the one-click round progression. Fixed width so the
-          label swapping (Generating… / Advance / Resolve) never jolts the row. */}
+          label swapping (Generating… / Advance / Resolve) never jolts the row.
+          Greyed while the presence gate is up: the round can't advance until
+          every human seat is online + ready (invite / wait on the board). */}
       <button
         type="button"
-        disabled={busy || room.paused || generating}
+        disabled={busy || room.paused || generating || blocked}
         onClick={resolving ? onResolveOpen : advance}
-        className="flex h-11 min-w-56 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-white shadow-sm shadow-accent/30 transition hover:bg-accent/90 disabled:opacity-40"
+        title={blocked ? "Waiting for players — everyone must be seated and ready before the round can advance" : undefined}
+        className="flex h-11 min-w-56 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-white shadow-sm shadow-accent/30 transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {generating ? "Generating…" : resolving ? "Resolve in panel" : busy ? "Working…" : NEXT_LABEL[phase] ?? "Advance"} ▸
+        {blocked ? "Waiting for players" : generating ? "Generating…" : resolving ? "Resolve in panel" : busy ? "Working…" : NEXT_LABEL[phase] ?? "Advance"} ▸
       </button>
       {/* Cancel — pull the plug on a stalled generation. Clears the generating /
           thinking flags so the phase unblocks; the GM re-clicks Advance to retry. */}

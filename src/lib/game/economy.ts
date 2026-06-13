@@ -13,6 +13,8 @@ import {
   COST_MIN,
   EVIDENCE_GAIN,
   FACEDOWN_PREMIUM,
+  PLAY_TURN_SECONDS,
+  PLAY_WINDOW_SECONDS,
   RARITY_SCALE,
   RESOLVE_BIAS_DEFAULT,
   STANCE_EVIDENCE_MAX,
@@ -35,6 +37,8 @@ export function defaultEconomy(): ConvictionEconomy {
     resolveBias: RESOLVE_BIAS_DEFAULT,
     showdownPhase: true,
     playOrder: "sequential",
+    turnSeconds: PLAY_TURN_SECONDS,
+    windowSeconds: PLAY_WINDOW_SECONDS,
   };
 }
 
@@ -93,7 +97,10 @@ export function playLogitNudge(
  *  no-cap accumulation the decay is skipped — the balance carries in full. */
 export function settle(balance: number, economy: ConvictionEconomy): number {
   if (economy.accumulationUncapped) return balance + economy.income;
-  return Math.max(0, balance * economy.decayAlpha) + economy.income;
+  // Round the decayed carry so conviction stays a whole number — the decay
+  // (×5/6) is the only step that mints fractions, and a fractional stack reads as
+  // noise (e.g. an "All in" of 55.8333) and lets fractional commits into the pot.
+  return Math.max(0, Math.round(balance * economy.decayAlpha)) + economy.income;
 }
 
 /** The hoard ceiling — the fixed point income/(1−decay): the dearest possible

@@ -42,8 +42,8 @@ export async function generateSeatStream(args: {
   perspectiveLabel?: string;
   /** The perspective's inner-world graph, rendered to text. */
   entityContext?: string;
-  /** Canonical head context (context.ts narrativeContext). */
-  narrativeContext?: string;
+  /** Outline of the narrative head (context.ts outlineContext). */
+  narrativeOutline?: string;
   /** AI-player persona driving the seat. */
   personaContext?: string;
   /** Questions already open on this seat — propose something distinct. */
@@ -60,7 +60,7 @@ export async function generateSeatStream(args: {
     args.existingQuestions?.length
       ? `ALREADY-OPEN QUESTIONS (propose a DIFFERENT one):\n${args.existingQuestions.map((q) => `- ${q}`).join("\n")}`
       : "",
-    args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : "",
+    args.narrativeOutline ? `WORLD:\n${args.narrativeOutline}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");

@@ -2057,6 +2057,14 @@ export interface ConvictionEconomy {
    *  GM closes the window) or `sequential` (each seat takes a turn in deal order
    *  and may commit/end its turn early). Default `sequential`. */
   playOrder?: "simultaneous" | "sequential";
+  /** SEQUENTIAL play — per-MOVE clock (seconds): each seat gets this long when it's
+   *  their turn (the clock resets per turn), so the cumulative play budget grows
+   *  with the table. Default 60s. 0 = untimed. */
+  turnSeconds?: number;
+  /** SIMULTANEOUS play — the single shared WINDOW (seconds) all seats act within.
+   *  More generous than one sequential move since everyone moves at once. Default
+   *  180s. 0 = untimed. */
+  windowSeconds?: number;
 }
 
 /** A seat's personal target — a tracking aid that NEVER affects the score
@@ -2083,6 +2091,14 @@ export interface Seat {
   /** For driver='agent' — fills a seat with no assigned member. */
   agentId?: string;
   status: "pending" | "joined" | "playing" | "spectating";
+  /** LIVE presence — a guest is currently streaming this seat (the player has
+   *  opened the game). Set by the broker's connect/disconnect edges. A Member seat
+   *  that is offline (or online-but-not-{@link ready}) gates the round. */
+  online?: boolean;
+  /** LIVE readiness — a human (member-driven) seat must be ONLINE and READY before
+   *  the table can begin, and a mid-game joiner before the next round opens. Agent
+   *  / gm-proxy seats never gate (the GM drives them). Undefined = not ready. */
+  ready?: boolean;
   /** Current conviction balance (income − spend, decayed). */
   conviction: number;
   /** Current node on the location tree (one hop / round). */
@@ -2141,12 +2157,18 @@ export interface Hand {
 /** Talk is cheap — chat binds nothing; only played cards bind. Agents are full
  *  participants (you can negotiate with — or be misled by — an AI seat).
  *  (Distinct from the inspector `ChatMessage` — this is in-game table talk.) */
+/** Sentinel `seatId` for a message the GM sends directly. The GM holds no seat,
+ *  so its messages carry this id; renders as "GM" with neutral styling and never
+ *  collides with real seat ids ("S-1", …). Visible like any other message —
+ *  global to the whole table, location whispers to occupants of that place. */
+export const GM_SENDER_ID = "__gm__";
+
 export interface GameChatMessage {
   id: string;
   scope: "global" | "location";
   /** Set for location scope (proximity-gated). */
   locationId?: string;
-  /** A human OR an agent seat. */
+  /** A human or agent seat — or {@link GM_SENDER_ID} for a GM broadcast/whisper. */
   seatId: string;
   text: string;
   at: number;
@@ -2247,9 +2269,14 @@ export interface RoundState {
   /** Epoch ms when the WRITE window opened (after READ) — anchors the write
    *  clock; streams + priors lock once `timers.write` elapses past this. */
   writeStartedAt?: number;
-  /** Epoch ms when PLAY opened (after the Stream & Intuition Gen deal) — when a
-   *  play clock is set (`timers.play`), plays LOCK once it elapses past this. */
+  /** Epoch ms when PLAY opened (after the Stream & Intuition Gen deal) — anchors
+   *  the SIMULTANEOUS window clock (`economy.windowSeconds`): all seats act within
+   *  one window measured from here. */
   playStartedAt?: number;
+  /** Epoch ms when the CURRENT seat's turn began — anchors the SEQUENTIAL per-move
+   *  clock (`economy.turnSeconds`); reset each time the turn passes, so every
+   *  player gets their full move budget. */
+  turnStartedAt?: number;
   /** Epoch ms when the SCORING reveal opened (settle + score done) — anchors the
    *  scoring phase clock; the board reveals each seat's Impact from here. */
   scoringStartedAt?: number;
@@ -2259,6 +2286,24 @@ export interface RoundState {
    *  (contested threads settled by draw, uncontested claims standing). Pre-loaded
    *  into the GM's Generate Panel. */
   pendingMerge?: ProposedMerge;
+}
+
+/** One round's scoring, snapshotted for the Rankings data-viz. Appended at each
+ *  SCORING step so the screen can chart trajectories (cumulative scores together
+ *  over time) and decompose every round into play-driven vs house-driven Fate. */
+export interface RoundScoreRecord {
+  /** 0-based round index this scoring belongs to. */
+  roundIndex: number;
+  /** FateCredit each seat EARNED this round (the per-round delta, signed). */
+  perSeat: Record<string, number>;
+  /** Cumulative `fateImpact` per seat AFTER this round — the running score line. */
+  cumulative: Record<string, number>;
+  /** Fate house band earned this round (the world's residual, floored ≥0). */
+  houseBand: number;
+  /** Cumulative house band after this round. */
+  houseCumulative: number;
+  /** Total Fate moved this round (Σ seat credits + house band). */
+  total: number;
 }
 
 /** One live session, over one branch. The only always-mutating game object. */
@@ -2284,6 +2329,17 @@ export interface GameRoom {
   /** GM-set time budget (seconds) per timed phase; absent/0 = untimed. Seeds
    *  each round's `timers` at startRound. Cosmetic in computer mode. */
   phaseSeconds?: Partial<Record<RoundPhase, number>>;
+  /** Epoch ms when the window was MINIMISED (closed but still on the branch). The
+   *  clocks freeze while away: on resume the phase anchors are shifted forward by
+   *  the elapsed time so timers continue from exactly where they were left, and the
+   *  auto-pilot doesn't fast-forward through budgets that "ran out" off-screen. */
+  minimisedAt?: number;
+  /** LIVE hosting — when true the master device publishes seat-scoped views over
+   *  the tunnel and applies remote players' intents (lib/game/live). */
+  live?: boolean;
+  /** Per-seat guest passes (token → seat) handed to remote players via a QR/link.
+   *  Holding one grants ONLY that seat's locked Conviction UI; nothing else. */
+  guestPasses?: { token: string; gameId: string; seatId: string; expiresAt: number }[];
   round: RoundState | null;
   /** Global + location chat (always-open; location msgs carry locationId). */
   chat: GameChatMessage[];
@@ -2294,6 +2350,10 @@ export interface GameRoom {
    *  scores so the table sees how much of the movement was outside anyone's
    *  control vs driven by play. */
   fateHouseBand?: number;
+  /** Per-round scoring snapshots (Rankings data-viz) — appended each SCORING step.
+   *  Absent on games that pre-date the feature; the Rankings screen falls back to
+   *  the live cumulative snapshot when it's empty. */
+  scoreHistory?: RoundScoreRecord[];
   createdAt: number;
   endedAt?: number;
 }

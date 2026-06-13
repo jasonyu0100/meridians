@@ -8,6 +8,8 @@ The measurable spine is the three force fields — **System** (rules and structu
 
 No backend. State and embeddings live in IndexedDB. Plug in an OpenRouter key and run locally — your data stays in your browser.
 
+This engine is the substrate under **Meridians: a gamified rehearsal engine that compounds into a social network.** The product is the engine — you *play the future before it arrives* (any text becomes a playable world, rehearsed as the Conviction card game on a measured substrate). It compounds into a network: what each room builds accrues to a client-owned substrate and a community no competitor can ship cold. It grows grassroots / B2C through communities around Game Masters; worlds are simple to create and people enter through free workshops. See the **[manifesto](https://meridians.global/manifesto)** for the product; this README documents the engine.
+
 **[Try it →](https://meridians.global/)** · **[Read the manifesto →](https://meridians.global/manifesto)** · **[Architecture reference →](CLAUDE.md)** · **[Shared vocabulary →](LANGUAGE.md)**
 
 ---

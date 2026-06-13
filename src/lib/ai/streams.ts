@@ -48,13 +48,13 @@ export async function instantiateStream(args: {
   question: string;
   intuition: string;
   perspectiveLabel?: string;
-  /** Canonical narrative context at the head (from context.ts narrativeContext). */
-  narrativeContext?: string;
+  /** Outline of the narrative head (from context.ts outlineContext). */
+  narrativeOutline?: string;
   /** When copying an existing question — reuse these outcomes verbatim. */
   fixedOutcomes?: string[];
 }): Promise<StreamInstantiation> {
   const parts = [
-    args.narrativeContext ? `NARRATIVE CONTEXT (current head):\n${args.narrativeContext}\n` : '',
+    args.narrativeOutline ? `NARRATIVE OUTLINE (current head):\n${args.narrativeOutline}\n` : '',
     `QUESTION: ${args.question}`,
     args.perspectiveLabel ? `PERSPECTIVE: ${args.perspectiveLabel}` : '',
     `INTUITION: ${args.intuition}`,
@@ -121,7 +121,7 @@ Output ONLY JSON: {"question":"..."}`;
 export async function suggestQuestion(args: {
   perspectiveLabel?: string;
   entityContext?: string;
-  narrativeContext?: string;
+  narrativeOutline?: string;
   /** Questions already open on this perspective — propose something distinct. */
   existingQuestions?: string[];
   /** AI-player persona driving this perspective — shapes lean, framing, risk. */
@@ -132,7 +132,7 @@ export async function suggestQuestion(args: {
     personaBlock(args.personaContext),
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
     args.existingQuestions?.length ? `ALREADY OPEN (do NOT repeat or trivially rephrase these):\n${args.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}` : '',
-    args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
+    args.narrativeOutline ? `WORLD:\n${args.narrativeOutline}` : '',
   ].filter(Boolean).join('\n\n');
   const raw = await callGenerate(user || 'Propose an open question.', SUGGEST_QUESTION_SYSTEM, undefined, 'suggestQuestion', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestQuestion') as { question?: unknown };
@@ -144,7 +144,7 @@ export async function suggestIntuition(args: {
   question: string;
   perspectiveLabel?: string;
   entityContext?: string;
-  narrativeContext?: string;
+  narrativeOutline?: string;
   /** AI-player persona driving this perspective — shapes lean, framing, risk. */
   personaContext?: string;
 }): Promise<string> {
@@ -153,7 +153,7 @@ export async function suggestIntuition(args: {
     args.perspectiveLabel ? `PERSPECTIVE: ${args.perspectiveLabel}` : '',
     personaBlock(args.personaContext),
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
-    args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
+    args.narrativeOutline ? `WORLD:\n${args.narrativeOutline}` : '',
   ].filter(Boolean).join('\n\n');
   const sys = `You write the first INTUITION on an open question of WHAT TO DO, strictly from the given PERSPECTIVE — a fragment of THIS character's stream of consciousness as they weigh the move, recorded in first person as they actually think it. You are capturing their inner voice deciding on a move, not analysing from outside. This is a prior, not an essay: 1–3 short, plain sentences — which move they're leaning toward, then the concrete personal reason.
 
@@ -185,7 +185,7 @@ export async function suggestPrior(args: {
   priors: string[];
   perspectiveLabel?: string;
   entityContext?: string;
-  narrativeContext?: string;
+  narrativeOutline?: string;
   /** AI-player persona driving this perspective — shapes lean, framing, risk. */
   personaContext?: string;
   /** Optional operator steer — free-text direction the suggestion should aim
@@ -215,7 +215,7 @@ Output ONLY JSON: {"prior":"..."}`;
     personaBlock(args.personaContext),
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
     `PRIORS SO FAR (the reasoning chain to extend — your new prior must move BEYOND every one of these, never restate or rephrase them):\n${priorsBlock}`,
-    args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
+    args.narrativeOutline ? `WORLD:\n${args.narrativeOutline}` : '',
   ].filter(Boolean).join('\n\n');
   const raw = await callGenerate(user, sys, undefined, 'suggestPrior', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestPrior') as { prior?: unknown };
@@ -236,7 +236,7 @@ export async function suggestBranchStream(args: {
   existingQuestions?: string[];
   perspectiveLabel?: string;
   entityContext?: string;
-  narrativeContext?: string;
+  narrativeOutline?: string;
   /** AI-player persona driving this perspective — shapes lean, framing, risk. */
   personaContext?: string;
   /** Optional operator steer — free-text direction the branch question should
@@ -260,7 +260,7 @@ Output ONLY JSON: {"question":"...","intuition":"..."}`;
     args.perspectiveLabel ? `PERSPECTIVE: ${args.perspectiveLabel}` : '',
     personaBlock(args.personaContext),
     args.entityContext ? `INNER WORLD — this perspective's traits, goals, secrets, relations, history (use it to think AS them, nuanced and alive):\n${args.entityContext}` : '',
-    args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : '',
+    args.narrativeOutline ? `WORLD:\n${args.narrativeOutline}` : '',
   ].filter(Boolean).join('\n\n');
   const raw = await callGenerate(user, sys, undefined, 'suggestBranchStream', DEFAULT_MODEL, 0);
   const parsed = parseJson(raw, 'suggestBranchStream') as { question?: unknown; intuition?: unknown };

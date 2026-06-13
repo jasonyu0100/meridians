@@ -10,9 +10,22 @@ import { useEffect, useRef, useState } from "react";
 
 import { FateOdometer } from "@/components/game/FateOdometer";
 import { Avatar, perspectiveName } from "@/components/stage/RoomUI";
+import { IconShare } from "@/components/icons";
 import { convictionCeiling } from "@/lib/game/economy";
-import { fateScore } from "@/lib/game/scoring";
+import { isHumanControlled, seatPresence, unreadyHumanSeats } from "@/lib/game/engine";
 import type { GameRoom, NarrativeState, PlayedCard, RoundPhase, Seat, Stream } from "@/types/narrative";
+
+/** 1 → "1st", 3 → "3rd", 10 → "10th". English ordinal suffix. */
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
 
 const PHASE_LABEL: Record<string, string> = {
   read: "Read — the perspective",
@@ -189,18 +202,20 @@ function MiniPlayedCard({ play, stream }: { play: PlayedCard; stream?: Stream })
     <div className="group/card relative">
       <CardTooltip play={play} stream={stream} concealed={concealed} />
       {concealed ? (
-        <div className="flex h-12 w-9 cursor-default flex-col items-center justify-between rounded-md border border-violet-400/50 bg-linear-to-b from-violet-600/40 to-violet-950/60 p-1 shadow-md">
+        // Face-down — the themed violet back.
+        <div className="flex h-12 w-9 cursor-default flex-col items-center justify-between rounded-md border border-violet-400/50 bg-linear-to-br from-violet-600/45 to-violet-950/65 p-1 shadow-md">
           <span className="text-[13px] leading-none text-violet-200">🂠</span>
           <span className="font-mono text-[10px] tabular-nums text-violet-100">{play.conviction}</span>
         </div>
       ) : (
+        // Face-up — the printed white card-stock, action in dark ink.
         <div
-          className={`flex h-12 w-9 cursor-default flex-col justify-between rounded-md border bg-linear-to-b from-bg-elevated to-black/50 p-1 shadow-md ${
-            play.forcedReveal ? "border-rose-400/50" : "border-white/15"
+          className={`flex h-12 w-9 cursor-default flex-col justify-between rounded-md border bg-linear-to-b from-[#ffffff] to-[#e8eaf2] p-1 shadow-md ${
+            play.forcedReveal ? "border-rose-400/60" : "border-zinc-300"
           }`}
         >
-          <span className="text-[7px] leading-[1.15] text-text-secondary line-clamp-3">{action}</span>
-          <span className="self-end font-mono text-[11px] font-semibold leading-none tabular-nums text-accent">{play.conviction}</span>
+          <span className="text-[7px] leading-[1.15] text-zinc-700 line-clamp-3">{action}</span>
+          <span className="self-end font-mono text-[11px] font-semibold leading-none tabular-nums text-violet-600">{play.conviction}</span>
         </div>
       )}
     </div>
@@ -219,7 +234,6 @@ function SeatPod({
   streamsById,
   revealImpact = false,
   thinking = false,
-  turnPos = 0,
   isNext = false,
   onClick,
 }: {
@@ -229,8 +243,6 @@ function SeatPod({
   rank: number;
   isActive: boolean;
   isActing: boolean;
-  /** 1-based position in the round's turn order (sequential play only; 0 = hide). */
-  turnPos?: number;
   /** The seat that acts NEXT after the active one (sequential play) — "on deck". */
   isNext?: boolean;
   /** Simultaneous play — this seat is still to commit, so its outline glows in
@@ -247,7 +259,14 @@ function SeatPod({
   onClick: () => void;
 }) {
   const persp = narrative.perspectives?.[seat.perspectiveId];
-  const isAgent = seat.driver === "agent";
+  // The badge reflects the seat's TYPE (an agent seat stays "AI" even while a player
+  // pilots it — they're only playing it temporarily, and leaving hands it back to
+  // the AI). The presence DOT reflects who's live: shown whenever a human controls
+  // the seat (a Member, or an agent a player has taken over). So a piloted agent
+  // reads as "AI seat, human on it" — distinct from a Member's PLAYER badge.
+  const isAgentSeat = seat.driver === "agent";
+  const humanControlled = isHumanControlled(seat);
+  const pilotedAgent = isAgentSeat && humanControlled; // a player is flying this AI seat
   const name = perspectiveName(persp, narrative);
   const leader = rank === 1;
   // A seat added mid-game waits out the current round — muted, with a "joins
@@ -262,8 +281,21 @@ function SeatPod({
           }`}
           style={playing && !isActing && !isActive ? { boxShadow: `0 0 0 2px ${seat.color}, 0 0 14px ${seat.color}66` } : undefined}
         >
-          <Avatar label={name} ai={isAgent} size={44} />
+          <Avatar label={name} ai={isAgentSeat} size={44} />
         </div>
+        {/* PRESENCE TELL — a human-controlled seat (a Member, or an agent a player
+            has TAKEN OVER) carries a status dot: green = ready, orange = online but
+            not ready, red = offline. An unclaimed agent is AI — no presence dot. */}
+        {humanControlled && (() => {
+          const p = seatPresence(seat);
+          const dot = p === "ready" ? "bg-emerald-400" : p === "waiting" ? "bg-amber-400" : "bg-rose-500";
+          return (
+            <span
+              className={`absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-bg-base ${dot} ${p === "waiting" ? "animate-pulse" : ""}`}
+              title={p === "ready" ? "Ready — online" : p === "waiting" ? "Online — not ready" : "Offline"}
+            />
+          );
+        })()}
         {pending && (
           <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-amber-400/90 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-black shadow ring-2 ring-bg-base">
             next round
@@ -271,12 +303,12 @@ function SeatPod({
         )}
         {/* Fate-Metric rank — leader gets the gold seat. */}
         <span
-          className={`absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow ring-2 ring-bg-base ${
+          className={`absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums shadow ring-2 ring-bg-base ${
             leader ? "bg-amber-400 text-black" : "bg-bg-elevated text-text-secondary"
           }`}
-          title={`Rank ${rank} · Fate moved`}
+          title={`${ordinal(rank)} · Fate moved`}
         >
-          {rank}
+          {ordinal(rank)}
         </span>
         {/* Agent deliberating — pulses over the pod while its move generates
             (takes the slot from "to act": this is the seat we're waiting on). */}
@@ -309,26 +341,25 @@ function SeatPod({
         )}
       </div>
       <span className="flex max-w-28 items-center gap-1 truncate text-[11px] font-medium text-text-primary">
-        {/* Turn-order ordinal (sequential play) — the seat's place in the queue,
-            so the whole order reads at a glance. Active is accented, on-deck is
-            half-lit, the rest are dim. */}
-        {turnPos > 0 && (
+        {isAgentSeat ? (
+          // AI seat — keeps its violet badge even while piloted; the emerald ring +
+          // "·YOU"-style dot is the subtle "a human is flying this AI" tell.
           <span
-            className={`shrink-0 font-mono text-[9px] tabular-nums leading-3 ${
-              isActive ? "text-accent" : isNext ? "text-text-secondary" : "text-text-dim/40"
-            }`}
-            title={isActive ? "Acting now" : isNext ? "On deck — acts next" : `Turn ${turnPos}`}
+            className={`shrink-0 rounded bg-violet-500/90 px-1 text-[7px] font-bold leading-3 text-white ${pilotedAgent ? "ring-1 ring-emerald-400/80" : ""}`}
+            title={pilotedAgent ? "AI seat — piloted by a player" : "AI player"}
           >
-            {turnPos}
+            {pilotedAgent ? "AI·LIVE" : "AI"}
           </span>
+        ) : humanControlled ? (
+          <span className="shrink-0 rounded bg-sky-500/90 px-1 text-[7px] font-bold leading-3 text-white">PLAYER</span>
+        ) : (
+          <span className="shrink-0 rounded bg-white/20 px-1 text-[7px] font-bold leading-3 text-white">GM</span>
         )}
-        {isAgent && <span className="shrink-0 rounded bg-violet-500/90 px-1 text-[7px] font-bold leading-3 text-white">AI</span>}
         <span className="truncate">{name}</span>
       </span>
       <ConvictionStack value={seat.conviction} ceiling={ceiling} color={seat.color} />
-      {seat.fateImpact > 0.0049 && (
-        <span className="font-mono text-[9px] tabular-nums text-accent/90" title="Fate score (0–100) — cumulative contribution to Fate">★ {fateScore(seat.fateImpact)}</span>
-      )}
+      {/* Fate scoring lives in the Rankings tab now — the pod shows only the rank
+          badge; the number + trajectory belong to the data-viz screen. */}
       {/* Cards this seat has played, laid on the felt in front of the pod. */}
       {plays.length > 0 && (
         <div className="flex items-end justify-center gap-1 pt-0.5">
@@ -346,11 +377,20 @@ export function PokerTable({
   narrative,
   actAsSeatId,
   onActAsSeat,
+  isGM = false,
+  blocked = false,
+  onInvite,
 }: {
   room: GameRoom;
   narrative: NarrativeState;
   actAsSeatId: string | null;
   onActAsSeat: (seatId: string | null) => void;
+  /** GM view — gets the invite action on the presence gate. */
+  isGM?: boolean;
+  /** The table can't advance until human seats are ready — show the centre gate. */
+  blocked?: boolean;
+  /** Open the share / invite (link + QR) flow. */
+  onInvite?: () => void;
 }) {
   const round = room.round;
   const seats = Object.values(room.seats);
@@ -367,6 +407,12 @@ export function PokerTable({
   const nextSeatId = sequentialPlay && activeOrderIdx >= 0 ? turnOrder[(activeOrderIdx + 1) % turnOrder.length] : undefined;
   const totalFate = seats.reduce((s, x) => s + x.fateImpact, 0);
   const lastEventText = room.log?.[room.log.length - 1]?.text ?? "";
+
+  // Presence gate — the seats we're still waiting on (offline / not readied). When
+  // blocked, the centre offers the one unblocking action: invite (GM goes live;
+  // a player just forwards the already-minted links).
+  const waitingOn = blocked ? unreadyHumanSeats(room) : [];
+  const canInvite = !!onInvite && (isGM || room.live);
 
   // Fate-Metric rank per seat (1 = most Fate moved), shown on each pod.
   const rankBySeat = new Map<string, number>();
@@ -452,6 +498,49 @@ export function PokerTable({
           </div>
           {round && <PhaseStepper phase={round.phase} />}
 
+          {/* Presence gate — the table is frozen until players ready up. A quiet
+              line in the natural pedestal stack + the one unblocking action
+              (invite): the GM goes live, a player just forwards the links. */}
+          {blocked && (
+            <div className="flex items-center gap-2.5">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-amber-200/90">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                Waiting for {waitingOn.length || "all"} {waitingOn.length === 1 ? "player" : "players"}
+              </span>
+              {canInvite && (
+                <button
+                  onClick={() => onInvite?.()}
+                  className="flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-[11px] font-medium text-text-secondary transition hover:border-white/30 hover:text-text-primary"
+                  title={isGM ? "Go live and share a link / QR per seat" : "Share the invite links with players"}
+                >
+                  <IconShare size={12} />
+                  {isGM ? "Invite" : "Share"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Whose turn — stated by NAME, clear on the felt. Sequential names the
+              one seat up; simultaneous tells the table everyone is acting at once. */}
+          {round?.phase === "play" && (
+            sequentialPlay && round.activeSeat && room.seats[round.activeSeat] ? (
+              <div className="flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: room.seats[round.activeSeat].color, boxShadow: `0 0 8px ${room.seats[round.activeSeat].color}` }}
+                />
+                <span className="text-[13px] font-semibold text-text-primary">
+                  {perspectiveName(narrative.perspectives?.[room.seats[round.activeSeat].perspectiveId], narrative)}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider text-accent/80">to play</span>
+              </div>
+            ) : simultaneousPlay ? (
+              <div className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] font-medium text-text-secondary">
+                All seats playing — commit at once
+              </div>
+            ) : null
+          )}
+
           <FateOdometer value={totalFate} />
 
           {/* Timer / generating counter + pot — a single quiet status line. */}
@@ -473,9 +562,13 @@ export function PokerTable({
                     <PhaseTimer endsAt={round.writeStartedAt + (round.timers?.write ?? 0)} paused={room.paused} />
                   )) ||
                 (round?.phase === "play" &&
-                  round.playStartedAt != null &&
+                  // Sequential = per-move clock (turnStartedAt); simultaneous = shared window (playStartedAt).
+                  (room.economy.playOrder !== "simultaneous" ? round.turnStartedAt : round.playStartedAt) != null &&
                   (round.timers?.play ?? 0) > 0 && (
-                    <PhaseTimer endsAt={round.playStartedAt + (round.timers?.play ?? 0)} paused={room.paused} />
+                    <PhaseTimer
+                      endsAt={(room.economy.playOrder !== "simultaneous" ? round.turnStartedAt! : round.playStartedAt!) + (round.timers?.play ?? 0)}
+                      paused={room.paused}
+                    />
                   )) ||
                 (round?.phase === "scoring" &&
                   round.scoringStartedAt != null &&
@@ -527,7 +620,6 @@ export function PokerTable({
                 streamsById={narrative.streams ?? {}}
                 revealImpact={round?.phase === "scoring"}
                 thinking={round?.phase === "play" && !!round?.thinkingSeats?.includes(seat.id)}
-                turnPos={sequentialPlay ? turnOrder.indexOf(seat.id) + 1 : 0}
                 isNext={seat.id === nextSeatId}
                 onClick={() => onActAsSeat(actAsSeatId === seat.id ? null : seat.id)}
               />

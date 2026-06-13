@@ -62,7 +62,10 @@ export function SeatHand({
     stakes.push({ key: "play", label: faceDown ? "Conceal" : "Play", amt: minCommit });
     if (canRaise) {
       for (const m of [2, 3]) if (minCommit * m <= balance) stakes.push({ key: `x${m}`, label: `Raise ×${m}`, amt: minCommit * m });
-      if (balance > minCommit && !stakes.some((s) => s.amt === balance)) stakes.push({ key: "max", label: "All in", amt: balance });
+      // Floor to a whole stack — never offer to commit more than is actually held
+      // (a legacy fractional balance must not round UP past the budget).
+      const allIn = Math.floor(balance);
+      if (allIn > minCommit && !stakes.some((s) => s.amt === allIn)) stakes.push({ key: "max", label: "All in", amt: allIn });
     }
   }
 

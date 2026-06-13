@@ -88,7 +88,7 @@ describe("resolveConflictRealism — determination contract", () => {
     await resolveConflictRealism({
       conflicts: [conflict({ decidedOutcome: "gold falls" })],
       guidance: "treat the central bank as decisive",
-      narrativeContext: "WORLD STATE",
+      narrativeOutline: "WORLD STATE",
     });
     const userPrompt = vi.mocked(callGenerate).mock.calls[0][0] as string;
     expect(userPrompt).toContain("treat the central bank as decisive");

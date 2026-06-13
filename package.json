@@ -12,9 +12,11 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@ngrok/ngrok": "^1.7.0",
     "@tensorflow/tfjs": "^4.22.0",
     "@types/d3": "^7.4.3",
     "@types/dagre": "^0.7.54",
+    "@types/qrcode": "^1.5.6",
     "@types/uuid": "^10.0.0",
     "@vercel/analytics": "^2.0.0",
     "d3": "^7.9.0",
@@ -23,6 +25,7 @@
     "jszip": "^3.10.1",
     "katex": "^0.16.38",
     "next": "16.1.6",
+    "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",

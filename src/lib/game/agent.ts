@@ -5,7 +5,7 @@
  *  conviction by persona aggressiveness, bounded by its balance and
  *  CARDS_PER_ROUND. No LLM in the loop, so an all-AI room still plays instantly
  *  (offline-testable, cheap demos). Same `AgentPlay[]` signature as the LLM path. */
-import { canAfford, evidenceFromConviction } from "@/lib/game/economy";
+import { canAfford, effectiveCost, evidenceFromConviction } from "@/lib/game/economy";
 import { streamProbs } from "@/lib/forces/stream-stance";
 import type { AgentPersonaKey, ConvictionEconomy, Hand, Seat } from "@/types/narrative";
 
@@ -77,6 +77,55 @@ export function chooseAgentPlays(
     if (conviction < c.cost) continue;
     plays.push({ cardId: c.cardId, conviction });
     balance -= conviction;
+  }
+  return plays;
+}
+
+/** A play as PROPOSED by an agent (LLM or otherwise), before legality is
+ *  enforced. cardId may not exist; conviction may exceed budget. */
+export interface ProposedPlay {
+  cardId: string;
+  conviction: number;
+  faceDown: boolean;
+}
+
+/** Legality gate for an agent's proposed plays — the single authority that turns
+ *  what an agent WANTS into what it may legally DO. A proposed play is kept ONLY
+ *  if every rule holds: the card is real and unplayed (no duplicate), the seat is
+ *  under the per-round card cap, it can afford the (premium-scaled) floor, and
+ *  the committed conviction is between that floor and the REMAINING budget.
+ *
+ *  An illegal play is DROPPED WHOLE — never silently clamped down to fit — so an
+ *  over-budget raise or a hallucinated card simply results in NO card played for
+ *  that move, not a quietly-shrunk one. Budget is spent in order: each play is
+ *  checked against what's left after the legal ones before it. Pure: decides, mutates
+ *  nothing. (`applyPlay` re-checks the same floor/budget at commit as defence in depth.) */
+export function legalizeAgentPlays(
+  proposed: ProposedPlay[],
+  cardsById: Map<string, { id: string; cost: number }>,
+  balance: number,
+  economy: ConvictionEconomy,
+): AgentPlay[] {
+  const plays: AgentPlay[] = [];
+  const seen = new Set<string>();
+  let remaining = balance;
+  for (const p of proposed) {
+    if (plays.length >= economy.cardsPerRound) break;
+    const card = cardsById.get(p.cardId);
+    if (!card || seen.has(card.id)) continue; // unknown or duplicate card
+    // Conceal only when the room actually prices concealment; the floor follows.
+    const faceDown = p.faceDown === true && economy.facedownPremium > 1;
+    const faceUp = !faceDown;
+    // Must clear the per-round cap and afford the (effective) floor at all.
+    if (!canAfford(remaining, card.cost, faceUp, plays.length, economy)) continue;
+    const floor = effectiveCost(card.cost, faceUp, economy);
+    const want = Number.isFinite(p.conviction) ? Math.round(p.conviction) : floor;
+    // Illegal: below the floor, or a raise that overruns the remaining budget.
+    // Drop the play entirely rather than clamp it to fit.
+    if (want < floor || want > remaining) continue;
+    plays.push({ cardId: card.id, conviction: want, faceDown });
+    seen.add(card.id);
+    remaining -= want;
   }
   return plays;
 }

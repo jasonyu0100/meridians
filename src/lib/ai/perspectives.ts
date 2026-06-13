@@ -6,7 +6,7 @@
 
 import type { Arc, NarrativeState } from '@/types/narrative';
 import { resolveEntry } from '@/types/narrative';
-import { callGenerateStream, resolveReasoningBudget } from './api';
+import { callGenerateStream } from './api';
 import {
   buildPerspectiveSystemPrompt,
   buildPerspectiveUserPrompt,
@@ -208,7 +208,10 @@ export async function generateArcPerspective(
   const startIndex = arcStartIndex(arc, resolvedKeys);
   const outline = `${arc.name}${arc.directionVector ? ` — ${arc.directionVector}` : ''}`;
   const continuity = buildContinuity(narrative, resolvedKeys, startIndex, isPublic ? null : key);
-  const reasoningBudget = resolveReasoningBudget(narrative);
+  // Perspective retelling is a register/voice task on already-decided canon — it
+  // doesn't need a thinking budget. Keep it reasoning-free (like the narrative
+  // stream-creation calls) so it stays cheap, especially the per-seat READ fan-out.
+  const reasoningBudget = 0;
 
   // OFFSTAGE: a non-public entity that appears in NONE of the arc's scenes isn't
   // there to witness them. Don't retell the events — imagine its concurrent,

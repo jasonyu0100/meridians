@@ -9,9 +9,11 @@
 import { useEffect, useState } from "react";
 
 import { Modal, ModalBody, ModalHeader } from "@/components/Modal";
+import { ConvictionCard } from "@/components/game/ConvictionCard";
 import { RealismReview } from "@/components/shared/RealismReview";
 import { perspectiveName } from "@/components/stage/RoomUI";
-import type { GameRoom, NarrativeState, ResolveBias } from "@/types/narrative";
+import { streamProbs } from "@/lib/forces/stream-stance";
+import type { Card, GameRoom, NarrativeState, ResolveBias } from "@/types/narrative";
 
 /** How each contested-thread ruleset decides a winner — surfaced so the table
  *  understands WHY a clash resolved as it did (not just that it did). */
@@ -40,7 +42,11 @@ interface Claim {
   seatId: string;
   seatName: string;
   color?: string;
+  /** The committed card itself — rendered as a conviction card in the reveal. */
+  card: Card;
   action: string;
+  /** Live stance probability of the backed action (for the card's odds badge). */
+  prob: number;
   conviction: number;
   faceUp: boolean;
   forced: boolean;
@@ -81,9 +87,10 @@ function buildGroups(room: GameRoom, narrative: NarrativeState): Group[] {
     for (const sid of s.threadId.split("|")) groupKeyOf.set(sid, s.threadId);
   }
 
-  // One claim per committed (stream, seat). A seat's plays on a stream fold into
-  // a single claim (summed conviction, the backed action from the resolution).
-  const claimByStreamSeat = new Map<string, Claim>();
+  // One claim per COMMITTED CARD — the showdown flips every card individually,
+  // so a seat's multiple cards on a stream stay distinct (no folding). Each
+  // carries the card + the live odds of its backed action for the card face.
+  const entries: { sid: string; claim: Claim }[] = [];
   for (const hand of Object.values(round.hands)) {
     const seat = room.seats[hand.seatId];
     if (!seat) continue;
@@ -91,30 +98,28 @@ function buildGroups(room: GameRoom, narrative: NarrativeState): Group[] {
     for (const p of hand.played) {
       const sid = p.card.streamId;
       const stream = streamsById[sid];
-      const key = `${sid}::${hand.seatId}`;
-      const action = stream?.outcomes?.[p.card.outcome] ?? `action ${p.card.outcome}`;
-      const existing = claimByStreamSeat.get(key);
-      if (existing) {
-        existing.conviction += p.conviction;
-        existing.faceUp = existing.faceUp && p.faceUp;
-        existing.forced = existing.forced || !!p.forcedReveal;
-      } else {
-        claimByStreamSeat.set(key, {
+      const probs = stream ? streamProbs(stream) : [];
+      entries.push({
+        sid,
+        claim: {
           seatId: hand.seatId,
           seatName,
           color: seat.color,
-          action,
+          card: p.card,
+          action: stream?.outcomes?.[p.card.outcome] ?? `action ${p.card.outcome}`,
+          prob: probs[p.card.outcome] ?? 0,
           conviction: p.conviction,
           faceUp: p.faceUp,
           forced: !!p.forcedReveal,
-        });
-      }
+        },
+      });
     }
   }
 
+  // Group by the open question: contested streams fold under their shared
+  // settlement key (resolved together); the rest group by their own stream id.
   const groups = new Map<string, Group>();
-  for (const [key, claim] of claimByStreamSeat) {
-    const sid = key.split("::")[0];
+  for (const { sid, claim } of entries) {
     const gkey = groupKeyOf.get(sid);
     const winnerOutcome = resolutions[sid]?.outcome;
     const question = streamsById[sid]?.title ?? sid;
@@ -129,39 +134,51 @@ function buildGroups(room: GameRoom, narrative: NarrativeState): Group[] {
       g.claims.push(claim);
       groups.set(gkey, g);
     } else {
-      groups.set(key, { key, question, contested: false, winnerOutcome, claims: [claim] });
+      const g = groups.get(sid) ?? { key: sid, question, contested: false, winnerOutcome, claims: [] };
+      g.winnerOutcome = winnerOutcome ?? g.winnerOutcome;
+      g.claims.push(claim);
+      groups.set(sid, g);
     }
   }
   // Contested first (the drama), then the standing claims.
   return [...groups.values()].sort((a, b) => Number(b.contested) - Number(a.contested));
 }
 
-function ClaimChip({ claim, revealed, delay }: { claim: Claim; revealed: boolean; delay: number }) {
+/** One committed card in the reveal — the actual conviction card, flipped face-up
+ *  on the showdown beat (concealed cards turn in on a delay for the drama). The
+ *  seat that played it, its staked conviction, and the contest verdict (won / lost
+ *  / forced) read in the caption beneath, so the card face stays the action. */
+function ShowdownCard({ claim, revealed, delay }: { claim: Claim; revealed: boolean; delay: number }) {
   const concealed = !claim.faceUp;
   const show = revealed || !concealed; // open cards are visible immediately
   return (
     <div
-      className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-all duration-500"
-      style={{
-        borderColor: claim.won ? "var(--color-accent)" : "rgba(255,255,255,0.12)",
-        background: claim.won ? "color-mix(in oklab, var(--color-accent) 16%, transparent)" : "rgba(255,255,255,0.03)",
-        opacity: claim.won === false ? 0.5 : 1,
-        transitionDelay: `${delay}ms`,
-        transform: show ? "rotateY(0deg)" : "rotateY(90deg)",
-      }}
+      className="flex flex-col items-center gap-1.5 transition-opacity duration-500"
+      style={{ transitionDelay: `${delay}ms`, opacity: claim.won === false ? 0.5 : 1 }}
     >
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: claim.color }} />
-      <span className="text-[11px] font-medium text-text-primary">{claim.seatName}</span>
-      {concealed && (
-        <span className={`text-[10px] ${claim.forced ? "text-rose-300" : "text-violet-300"}`}>
-          {claim.forced ? "🂠→ forced" : "🂠"}
-        </span>
-      )}
-      <span className="max-w-44 truncate text-[11px] text-text-secondary">
-        {show ? claim.action : "concealed"}
-      </span>
-      <span className="ml-auto font-mono text-[11px] tabular-nums text-accent">{claim.conviction}</span>
-      {claim.won && <span className="text-[10px] font-bold uppercase tracking-wider text-accent">won</span>}
+      {/* The card turns to face the table — edge-on until its reveal beat. */}
+      <div
+        className="transition-transform duration-500 transform-3d"
+        style={{ transitionDelay: `${delay}ms`, transform: show ? "rotateY(0deg)" : "rotateY(90deg)" }}
+      >
+        <ConvictionCard
+          card={claim.card}
+          actionLabel={claim.action}
+          streamTitle=""
+          prob={claim.prob}
+          hideStreamTitle
+          committed={{ conviction: claim.conviction, faceUp: claim.faceUp, revealed: show, forcedReveal: claim.forced }}
+        />
+      </div>
+      {/* Who staked it, how hard, and the verdict. */}
+      <div className="flex max-w-40 flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: claim.color }} />
+        <span className="text-[11px] font-medium text-text-primary">{claim.seatName}</span>
+        <span className="font-mono text-[11px] tabular-nums text-accent">◆{claim.conviction}</span>
+        {claim.forced && <span className="text-[10px] text-rose-300">forced open</span>}
+        {claim.won && <span className="text-[10px] font-bold uppercase tracking-wider text-accent">won</span>}
+        {claim.won === false && <span className="text-[10px] uppercase tracking-wider text-text-dim/50">lost</span>}
+      </div>
     </div>
   );
 }
@@ -281,7 +298,7 @@ export function Showdown({
         )}
       </div>
 
-      <div className="grid w-full max-w-3xl gap-3" style={{ perspective: "1000px" }}>
+      <div className="grid w-full max-w-5xl gap-3 overflow-y-auto" style={{ perspective: "1000px" }}>
         {groups.map((g, gi) => {
           const options = g.contested ? [...new Set(g.claims.map((c) => c.action))] : [];
           return (
@@ -302,9 +319,9 @@ export function Showdown({
                   )}
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-end justify-center gap-4 pt-4" style={{ perspective: "900px" }}>
                 {g.claims.map((c, ci) => (
-                  <ClaimChip key={`${c.seatId}-${ci}`} claim={c} revealed={revealed} delay={gi * 150 + ci * 100} />
+                  <ShowdownCard key={`${c.seatId}-${ci}-${c.card.id}`} claim={c} revealed={revealed} delay={gi * 150 + ci * 100} />
                 ))}
               </div>
               {/* How + why this clash resolved under the active ruleset. */}

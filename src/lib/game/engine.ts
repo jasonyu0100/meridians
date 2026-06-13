@@ -94,6 +94,54 @@ export function createSeat(args: CreateSeatArgs): Seat {
   };
 }
 
+// ── Control & presence ──────────────────────────────────────────────────────
+
+/** Who actually controls a seat RIGHT NOW:
+ *   · gm-proxy → the GM (local act-as) — never remote, never gates, never AI;
+ *   · human (Member) → a remote player, always;
+ *   · agent → the AI by default, but a player can TAKE IT OVER by connecting
+ *     (online). While claimed it's human-controlled and the AI stands down.
+ *  Presence is about the human at the seat, not its configured driver — a claimed
+ *  agent and an unfilled Member are symmetric. */
+export function isHumanControlled(seat: Seat): boolean {
+  if (seat.driver === "gm-proxy") return false;
+  return seat.driver === "human" || !!seat.online;
+}
+
+/** The AI drives this seat — an agent seat NO player has taken over. A claimed
+ *  agent (online) is human-controlled, so the AI must NOT also auto-play it. */
+export function isAiControlled(seat: Seat): boolean {
+  return seat.driver === "agent" && !seat.online;
+}
+
+/** A seat's live presence for the status dot + gate:
+ *   · `ai`      — AI- or GM-driven, no human to wait on (unclaimed agent / gm-proxy);
+ *   · `offline` — a remote player owns this seat but hasn't opened the game;
+ *   · `waiting` — online, but hasn't confirmed readiness;
+ *   · `ready`   — online AND readied (present). */
+export function seatPresence(seat: Seat): "offline" | "waiting" | "ready" | "ai" {
+  if (!isHumanControlled(seat)) return "ai";
+  if (!seat.online) return "offline";
+  return seat.ready ? "ready" : "waiting";
+}
+
+/** Human-controlled seats that aren't fully PRESENT (online AND ready) — the ones
+ *  blocking the round. Includes a Member seat whose player hasn't joined (offline)
+ *  AND an agent seat a player has CLAIMED but not readied; excludes UNCLAIMED agents
+ *  (the AI plays them), gm-proxy, and spectators. Empty = the table may begin. */
+export function unreadyHumanSeats(room: GameRoom): Seat[] {
+  return Object.values(room.seats).filter(
+    (s) => s.status !== "spectating" && isHumanControlled(s) && !(s.online && s.ready),
+  );
+}
+
+/** All human-controlled seats present (online + ready) → the GM may start the round
+ *  and generate perspectives. Gates round-start + perspective delivery, nothing
+ *  mid-round. With no human-controlled seats (all AI / gm-proxy), vacuously true. */
+export function humansReady(room: GameRoom): boolean {
+  return unreadyHumanSeats(room).length === 0;
+}
+
 // ── Turn order & button ─────────────────────────────────────────────────────
 
 /** Rotate the dealer button one seat clockwise around the (stable) seating
@@ -145,13 +193,20 @@ export function startRound(
       Object.keys(room.seats).map((id) => [id, { seatId: id, cards: [], played: [] } as Hand]),
     ),
     pot: 0,
-    timers: room.phaseSeconds
-      ? Object.fromEntries(
-          Object.entries(room.phaseSeconds)
-            .filter(([, s]) => (s ?? 0) > 0)
-            .map(([phase, s]) => [phase, (s as number) * 1000]),
-        )
-      : {},
+    // READ/WRITE clocks come from phaseSeconds; the PLAY clock is mode-dependent —
+    // the per-MOVE budget (turnSeconds) in sequential, the shared WINDOW
+    // (windowSeconds) in simultaneous — so `timers.play` always holds the budget
+    // the active mode measures against (anchored at turnStartedAt / playStartedAt).
+    timers: (() => {
+      const t: Partial<Record<RoundPhase, number>> = {};
+      for (const [phase, s] of Object.entries(room.phaseSeconds ?? {})) {
+        if (phase !== "play" && (s ?? 0) > 0) t[phase as RoundPhase] = (s as number) * 1000;
+      }
+      const playSecs =
+        (room.economy?.playOrder === "simultaneous" ? room.economy?.windowSeconds : room.economy?.turnSeconds) ?? 0;
+      if (playSecs > 0) t.play = playSecs * 1000;
+      return t;
+    })(),
   };
 }
 

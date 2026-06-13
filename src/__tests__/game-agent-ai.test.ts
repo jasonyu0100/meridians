@@ -36,16 +36,22 @@ describe("decideAgentPlays — clamp keeps the LLM honest", () => {
     expect(out.rationale).toBe("holding");
   });
 
-  it("raises conviction below the cost floor up to the floor", async () => {
-    mockJson({ plays: [{ cardId: "c1", conviction: 3 }] }); // below cost 10
+  it("drops a play bid below the cost floor (legality is law, not clamped up)", async () => {
+    mockJson({ plays: [{ cardId: "c1", conviction: 3 }] }); // below floor 10
     const out = await decideAgentPlays({ seat: seat(100), hand: hand([card("c1", 10)]), economy: econ(), streamsById: streams });
-    expect(out.plays).toEqual([{ cardId: "c1", conviction: 10, faceDown: false }]);
+    expect(out.plays).toEqual([]);
   });
 
-  it("preserves a raise but clamps it to the balance", async () => {
+  it("preserves a legal raise at its exact value (no clamping)", async () => {
+    mockJson({ plays: [{ cardId: "c1", conviction: 30 }] }); // raise above floor 10, within stack 40
+    const out = await decideAgentPlays({ seat: seat(40), hand: hand([card("c1", 10)]), economy: econ(), streamsById: streams });
+    expect(out.plays).toEqual([{ cardId: "c1", conviction: 30, faceDown: false }]);
+  });
+
+  it("drops a raise that overruns the balance (not clamped down)", async () => {
     mockJson({ plays: [{ cardId: "c1", conviction: 999 }] });
     const out = await decideAgentPlays({ seat: seat(40), hand: hand([card("c1", 10)]), economy: econ(), streamsById: streams });
-    expect(out.plays[0].conviction).toBe(40); // capped at the stack
+    expect(out.plays).toEqual([]);
   });
 
   it("drops plays referencing an unknown card and dedupes repeats", async () => {
@@ -71,11 +77,16 @@ describe("decideAgentPlays — clamp keeps the LLM honest", () => {
     expect(out.plays[0].faceDown).toBe(false);
   });
 
-  it("charges the premium floor on a priced face-down play", async () => {
-    mockJson({ plays: [{ cardId: "c1", conviction: 10, faceDown: true }] }); // below premium floor
+  it("drops a face-down play bid below the premium floor", async () => {
+    mockJson({ plays: [{ cardId: "c1", conviction: 10, faceDown: true }] }); // below premium floor round(10×1.5)=15
     const out = await decideAgentPlays({ seat: seat(100), hand: hand([card("c1", 10)]), economy: econ({ facedownPremium: 1.5 }), streamsById: streams });
-    expect(out.plays[0].faceDown).toBe(true);
-    expect(out.plays[0].conviction).toBe(15); // round(10 × 1.5)
+    expect(out.plays).toEqual([]);
+  });
+
+  it("keeps a face-down play that clears the premium floor", async () => {
+    mockJson({ plays: [{ cardId: "c1", conviction: 15, faceDown: true }] }); // = premium floor round(10×1.5)=15
+    const out = await decideAgentPlays({ seat: seat(100), hand: hand([card("c1", 10)]), economy: econ({ facedownPremium: 1.5 }), streamsById: streams });
+    expect(out.plays).toEqual([{ cardId: "c1", conviction: 15, faceDown: true }]);
   });
 
   it("skips a card the seat cannot afford", async () => {

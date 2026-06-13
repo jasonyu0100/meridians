@@ -244,7 +244,7 @@ export function StreamsView() {
     setOpening(true);
     setOpenErr(null);
     try {
-      const inst = await instantiateStream({ question: q, intuition: intu, perspectiveLabel: v.label, narrativeContext: headContext() });
+      const inst = await instantiateStream({ question: q, intuition: intu, perspectiveLabel: v.label, narrativeOutline: headContext() });
       const perspectiveId = resolvePerspectiveId(v);
       const stream = openStream({
         perspectiveId,
@@ -283,7 +283,7 @@ export function StreamsView() {
   const suggestCtx = () => ({
     perspectiveLabel: selectedVantage?.label,
     entityContext: entityContextOf(selectedVantage),
-    narrativeContext: headContext(),
+    outlineContext: headContext(),
     // When an agent drives the new stream, its persona shapes the suggestion.
     personaContext: resolveAgentPersona(selectedAgent) || undefined,
   });
@@ -426,7 +426,7 @@ export function StreamsView() {
           claims: [{ claimant: perspectiveName(n.perspectives?.[s.perspectiveId], n), action: resolutions[s.id].outcome }],
           decidedOutcome: resolutions[s.id].outcome,
         })),
-        narrativeContext: headContext(),
+        narrativeOutline: headContext(),
         guidance: realismGuidance.trim() || undefined,
         onProgress: setPreprocessReasoning,
         reasoningBudget: resolveReasoningBudget(n),
@@ -1329,6 +1329,9 @@ export function StreamCard({
   selected = false,
   onToggleSelect,
   onOpen,
+  onAddPrior,
+  hideMenu = false,
+  narrative,
 }: {
   stream: Stream;
   number: number;
@@ -1336,9 +1339,16 @@ export function StreamCard({
   selected?: boolean;
   onToggleSelect?: () => void;
   onOpen?: () => void;
+  /** When set (remote PLAYER), the inline add-prior routes here as an intent — the
+   *  master scores + applies it — instead of scoring + dispatching to the store. */
+  onAddPrior?: (streamId: string, text: string) => void;
+  /** Suppress the close/delete kebab (a thin client can't mutate the store). */
+  hideMenu?: boolean;
+  /** Narrative override for the pair badge when off the store (player projection). */
+  narrative?: NarrativeState;
 }) {
   const { state, dispatch } = useStore();
-  const n = state.activeNarrative;
+  const n = narrative ?? state.activeNarrative;
   const showToast = useToast();
   const isOpen = stream.state === 'open';
   // Selectable for bulk ops on any deletable stream (open or closed); committed
@@ -1351,6 +1361,8 @@ export function StreamCard({
   const addQuickPrior = async () => {
     const t = quick.trim();
     if (!t || scoring) return;
+    // Remote player: hand the prior to the master (it scores + applies authoritatively).
+    if (onAddPrior) { onAddPrior(stream.id, t); setQuick(''); return; }
     setScoring(true);
     try {
       const next = await scoreAndApply(stream, t, n);
@@ -1438,7 +1450,7 @@ export function StreamCard({
           ) : (
             <div className="flex-1" />
           )}
-          <KebabMenu items={menuItems} />
+          {!hideMenu && <KebabMenu items={menuItems} />}
         </div>
       </div>
 
@@ -1568,7 +1580,7 @@ export function StreamDetail({ stream, number, onBack, onBranch, locked = false 
         priors: priors.map((p) => p.text),
         perspectiveLabel: perspectiveName(n?.perspectives?.[stream.perspectiveId], n),
         entityContext: innerWorldText(stream.perspectiveId, n),
-        narrativeContext: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
+        narrativeOutline: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         // An agent-driven stream continues its priors with that player's persona.
         personaContext: resolveAgentPersona(resolveAgentById(n, stream.agentId)) || undefined,
         direction,
@@ -1601,7 +1613,7 @@ export function StreamDetail({ stream, number, onBack, onBranch, locked = false 
         existingQuestions: [stream.title.trim(), ...existingQuestions],
         perspectiveLabel: label,
         entityContext: innerWorldText(stream.perspectiveId, n),
-        narrativeContext: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
+        narrativeOutline: outlineContext(n, state.resolvedEntryKeys, state.resolvedEntryKeys.length - 1),
         personaContext: persona,
         direction,
       });

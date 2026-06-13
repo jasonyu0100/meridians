@@ -77,7 +77,7 @@ Output ONLY JSON: {"resolutions":[{"id":"<exact id>","outcome":"<verbatim action
 export async function resolveConflictRealism(args: {
   conflicts: RealismConflict[];
   /** Rich head/world context so the judgment is principled, not abstract. */
-  narrativeContext?: string;
+  narrativeOutline?: string;
   /** Optional working-model (Mode Graph / PRG) block — the world's machinery. */
   worldContext?: string;
   /** A GM directive that influences the resolution (the prompt-driven editing
@@ -108,7 +108,7 @@ export async function resolveConflictRealism(args: {
     .join("\n\n");
 
   const user = [
-    args.narrativeContext ? `WORLD — the situation the future unfolds from:\n${args.narrativeContext}` : "",
+    args.narrativeOutline ? `WORLD — the situation the future unfolds from:\n${args.narrativeOutline}` : "",
     args.worldContext ? `WORKING MODEL — the world's operative machinery:\n${args.worldContext}` : "",
     args.guidance ? `GM STEER — weight this in your judgment (it does not override realism, but guides it):\n${args.guidance.trim()}` : "",
     `CONFLICTS TO RESOLVE — competing committed claims on the future:\n${conflictLines}`,

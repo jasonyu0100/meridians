@@ -112,7 +112,7 @@ describe("no-cap dials", () => {
 describe("face-down premium + affordability", () => {
   it("face-down costs ×premium", () => {
     expect(effectiveCost(40, true, econ)).toBe(40);
-    expect(effectiveCost(40, false, econ)).toBe(60); // ×1.5
+    expect(effectiveCost(40, false, econ)).toBe(50); // ×1.25 (FACEDOWN_PREMIUM)
   });
 
   it("canAfford respects balance and the per-round card cap", () => {

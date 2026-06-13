@@ -7,12 +7,12 @@
  *  result to the economy (real cardIds, conviction ≥ cost, affordable, within the
  *  per-round cap) so a hallucinated reply can never mint an illegal play. On any
  *  failure the caller falls back to the deterministic `chooseAgentPlays`. */
-import { PREDICTIVE_MODEL } from "@/lib/constants";
+import { ACTION_MODEL } from "@/lib/constants";
 import { callGenerate } from "@/lib/ai/api";
 import { parseJson } from "@/lib/ai/json";
-import { canAfford, effectiveCost } from "@/lib/game/economy";
+import { effectiveCost } from "@/lib/game/economy";
 import { streamProbs } from "@/lib/forces/stream-stance";
-import type { AgentPlay } from "@/lib/game/agent";
+import { legalizeAgentPlays, type AgentPlay, type ProposedPlay } from "@/lib/game/agent";
 import type { ConvictionEconomy, Hand, Seat, Stream } from "@/types/narrative";
 
 const SYSTEM = `You operate ONE player seated at a strategy table, taking your PLAY turn. The table has open QUESTIONS (streams); each card is a candidate ACTION you could commit to, priced in conviction (rarer / bolder actions cost more). Conviction is a scarce, decaying resource — a fixed stack each round, spent on commit, and what you bank carries (lightly decayed) into the next round.
@@ -42,6 +42,26 @@ function conflictRuleBlock(bias: ConvictionEconomy["resolveBias"]): string {
     default:
       return "";
   }
+}
+
+/** The room's concrete economics, in this seat's actual numbers — budget, the
+ *  per-round cap, what a card's floor means, what concealment costs here, and
+ *  where raising stops buying edge. The SYSTEM prompt gives the rules; this gives
+ *  the live dials so the agent prices its plays against a real budget. */
+function economicsBlock(conviction: number, economy: ConvictionEconomy): string {
+  const pct = Math.round((economy.facedownPremium - 1) * 100);
+  const cap = economy.cardsPerRound;
+  const lines = [
+    "YOUR ECONOMICS (price every play against these — conviction is scarce and decays):",
+    `- BUDGET: ${conviction.toFixed(0)} conviction in your stack. You spend it on commit; whatever you bank carries (lightly decayed) into next round, so holding is real value.`,
+    `- CAP: at most ${cap} card${cap === 1 ? "" : "s"} this round.`,
+    "- FLOOR: each card lists a face-up floor — its price on the table. Never commit below it; that floor is the bare cost of taking the action.",
+    economy.facedownPremium > 1
+      ? `- CONCEAL: a face-down play costs +${pct}% over the floor (the concealed price is shown on each card) and hides your action until showdown. Pay it only when surprise is worth the premium.`
+      : "- CONCEAL: face-down play is off in this room — every play is face-up.",
+    "- RAISE: committing ABOVE a card's floor buys EDGE, but ONLY when your action collides with a rival's opposing action on the same question; with no clash the surplus is REFUNDED. Raising past roughly 3× the floor buys little further edge (the evidence a commit lands is capped). Raise for a clash or a decisive moment — not by default.",
+  ];
+  return lines.join("\n");
 }
 
 const personaBlock = (persona?: string): string =>
@@ -74,8 +94,8 @@ export async function decideAgentPlays(args: {
   perspectiveLabel?: string;
   /** The seat entity's inner-world graph rendered to text (its continuity). */
   entityContext?: string;
-  /** Canonical head context (context.ts narrativeContext). */
-  narrativeContext?: string;
+  /** Outline of the narrative head (context.ts outlineContext). */
+  narrativeOutline?: string;
   /** AI-player persona driving the seat. */
   persona?: string;
   /** Plays already committed THIS round by OTHER seats (sequential play only —
@@ -105,8 +125,10 @@ export async function decideAgentPlays(args: {
     tableLines.push(`Q: ${stream?.title ?? streamId}`);
     for (const c of cards) {
       const lean = Math.round((probs[c.outcome] ?? 0) * 100);
+      const concealed =
+        economy.facedownPremium > 1 ? ` · concealed ${effectiveCost(c.cost, false, economy)}` : "";
       tableLines.push(
-        `  - cardId ${c.id} · action "${stream?.outcomes?.[c.outcome] ?? `action ${c.outcome}`}" · cost ${c.cost} · your current lean ${lean}%`,
+        `  - cardId ${c.id} · action "${stream?.outcomes?.[c.outcome] ?? `action ${c.outcome}`}" · floor ${c.cost}${concealed} · your current lean ${lean}%`,
       );
     }
   }
@@ -114,41 +136,34 @@ export async function decideAgentPlays(args: {
   const user = [
     args.perspectiveLabel ? `YOU ARE: ${args.perspectiveLabel}` : "",
     personaBlock(args.persona),
-    args.entityContext ? `YOUR INNER WORLD (think AS this — traits, goals, secrets, relations):\n${args.entityContext}` : "",
-    `YOUR CONVICTION STACK: ${seat.conviction.toFixed(0)} · cards you may play this round: up to ${economy.cardsPerRound}`,
+    args.entityContext
+      ? `YOUR INNER WORLD (think AS this — traits, goals, secrets, and your RELATIONSHIPS toward others). Where a relationship is marked AT THIS TABLE, the seat across from you IS that person: let warmth pull you to back or shield their move, let rivalry pull you to contest, outbid, or conceal against it. The social standing is as load-bearing as the odds:\n${args.entityContext}`
+      : "",
+    economicsBlock(seat.conviction, economy),
     conflictRuleBlock(economy.resolveBias),
     priorPlaysBlock(args.priorPlays),
     `THE TABLE — open questions and the action-cards in your hand:\n${tableLines.join("\n")}`,
-    args.narrativeContext ? `WORLD:\n${args.narrativeContext}` : "",
+    args.narrativeOutline ? `WORLD:\n${args.narrativeOutline}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const raw = await callGenerate(user, SYSTEM, undefined, "decideAgentPlays", PREDICTIVE_MODEL, args.reasoningBudget ?? 0);
+  const raw = await callGenerate(user, SYSTEM, undefined, "decideAgentPlays", ACTION_MODEL, args.reasoningBudget ?? 0);
   const parsed = parseJson(raw, "decideAgentPlays") as { plays?: unknown; rationale?: unknown };
 
-  const validById = new Map(options.map((c) => [c.id, c]));
-  const proposed = Array.isArray(parsed.plays) ? parsed.plays : [];
-  const plays: AgentPlay[] = [];
-  const seen = new Set<string>();
-  let balance = seat.conviction;
-  for (const row of proposed) {
-    if (plays.length >= economy.cardsPerRound) break;
+  // Normalize the LLM's raw proposals, then hand them to the single legality gate
+  // (`legalizeAgentPlays`): it keeps only the moves that are real, within the card
+  // cap, and inside the seat's budget — dropping (playing NO card for) anything
+  // illegal rather than clamping it to fit. The model decides; legality is law.
+  const cardsById = new Map(options.map((c) => [c.id, { id: c.id, cost: c.cost }]));
+  const proposed: ProposedPlay[] = (Array.isArray(parsed.plays) ? parsed.plays : []).map((row) => {
     const p = (row ?? {}) as Record<string, unknown>;
-    const cardId = typeof p.cardId === "string" ? p.cardId : "";
-    const card = validById.get(cardId);
-    if (!card || seen.has(cardId)) continue;
-    // Conceal only when the room actually prices it; the floor follows.
-    const faceDown = p.faceDown === true && economy.facedownPremium > 1;
-    const faceUp = !faceDown;
-    if (!canAfford(balance, card.cost, faceUp, plays.length, economy)) continue;
-    const floor = effectiveCost(card.cost, faceUp, economy);
-    const want = typeof p.conviction === "number" && Number.isFinite(p.conviction) ? Math.round(p.conviction) : floor;
-    const conviction = Math.min(Math.max(want, floor), balance);
-    if (conviction < floor) continue;
-    plays.push({ cardId, conviction, faceDown });
-    seen.add(cardId);
-    balance -= conviction;
-  }
+    return {
+      cardId: typeof p.cardId === "string" ? p.cardId : "",
+      conviction: typeof p.conviction === "number" ? p.conviction : NaN,
+      faceDown: p.faceDown === true,
+    };
+  });
+  const plays = legalizeAgentPlays(proposed, cardsById, seat.conviction, economy);
   return { plays, rationale: typeof parsed.rationale === "string" ? parsed.rationale.trim() : undefined };
 }

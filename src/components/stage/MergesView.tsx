@@ -11,15 +11,31 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PrMergedIcon } from './RoomUI';
 import MergeDetail from '@/components/inspector/MergeDetail';
 import { buildMergeConsumerMap, mergeConsumerFor, mergesForBranch, resolutionOutcomes } from '@/lib/merges';
+import type { NarrativeState } from '@/types/narrative';
 
 const fmtWhen = (ms: number) =>
   `${new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
 
-export function MergesView({ branchId: branchIdProp }: { branchId?: string } = {}) {
+/** Same History timeline the GM stage shows. Defaults to the store (stage usage),
+ *  but a remote PLAYER drives it from its projection by passing `narrative` +
+ *  `resolvedEntryKeys` and `interactive={false}` — the projected merge ledger is
+ *  read-only (no store-coupled drill-down). */
+export function MergesView({
+  branchId: branchIdProp,
+  narrative: narrativeProp,
+  resolvedEntryKeys: rekProp,
+  interactive = true,
+}: {
+  branchId?: string;
+  narrative?: NarrativeState;
+  resolvedEntryKeys?: string[];
+  interactive?: boolean;
+} = {}) {
   const { state, dispatch } = useStore();
-  const n = state.activeNarrative;
+  const n = narrativeProp ?? state.activeNarrative;
   const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const branchId = branchIdProp ?? state.viewState.activeBranchId;
+  const resolvedKeys = rekProp ?? state.resolvedEntryKeys;
 
   // Branch-scoped: only merges visible on the active branch's lineage (owned by
   // it or an ancestor; legacy unstamped merges stay visible everywhere).
@@ -31,14 +47,14 @@ export function MergesView({ branchId: branchIdProp }: { branchId?: string } = {
   // the CURRENTLY-RESOLVED branch, and where. A merge folded on one branch
   // reads as "not yet folded" on a sibling branch that forked before it.
   const mergeConsumers = useMemo(
-    () => (n ? buildMergeConsumerMap(n, state.resolvedEntryKeys) : new Map()),
-    [n, state.resolvedEntryKeys],
+    () => (n ? buildMergeConsumerMap(n, resolvedKeys) : new Map()),
+    [n, resolvedKeys],
   );
 
   if (!n) return <EmptyState icon={PrMergedIcon} title="No world view loaded." />;
 
-  // Drill-down: show merge detail when one is selected.
-  if (selectedMergeId && n.merges?.[selectedMergeId]) {
+  // Drill-down: show merge detail when one is selected (store-coupled, GM-only).
+  if (interactive && selectedMergeId && n.merges?.[selectedMergeId]) {
     return (
       <div className="h-full overflow-y-auto">
         <div className="max-w-2xl mx-auto p-4">
@@ -95,11 +111,11 @@ export function MergesView({ branchId: branchIdProp }: { branchId?: string } = {
                     aria-hidden
                   />
                   <button
-                    onClick={() => {
+                    onClick={interactive ? () => {
                       setSelectedMergeId(f.id);
                       dispatch({ type: 'SET_INSPECTOR', context: { type: 'merge', mergeId: f.id } });
-                    }}
-                    className="group relative w-full overflow-hidden rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/4"
+                    } : undefined}
+                    className={`group relative w-full overflow-hidden rounded-lg px-3 py-2 text-left transition-colors ${interactive ? 'hover:bg-white/4' : 'cursor-default'}`}
                   >
                     {/* Folded rows get a quiet purple left-edge accent (mirrors
                         the branch tree's canon edge). */}
@@ -107,7 +123,7 @@ export function MergesView({ branchId: branchIdProp }: { branchId?: string } = {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="truncate text-[13px] font-medium text-text-primary group-hover:text-white transition-colors">{f.label || 'Commit'}</span>
                       <span className="ml-auto shrink-0 text-[10px] text-text-dim/45 tabular-nums">{fmtWhen(f.at)}</span>
-                      <IconChevronRight size={12} className="shrink-0 text-text-dim/25 group-hover:text-text-dim/60 transition-colors" />
+                      {interactive && <IconChevronRight size={12} className="shrink-0 text-text-dim/25 group-hover:text-text-dim/60 transition-colors" />}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-text-dim/55">
                       <span className="tabular-nums">{streamIds.length} {streamIds.length === 1 ? 'stream' : 'streams'}</span>

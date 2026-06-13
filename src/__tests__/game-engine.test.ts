@@ -9,12 +9,17 @@ import {
   createSeat,
   dealHand,
   forkGameRooms,
+  humansReady,
+  isAiControlled,
+  isHumanControlled,
   nextActiveSeat,
   nextRoundsPhase,
   rotateButton,
   seatColor,
+  seatPresence,
   startRound,
   turnOrderFrom,
+  unreadyHumanSeats,
   unplayedDealtStreamIds,
 } from "@/lib/game/engine";
 import {
@@ -312,5 +317,85 @@ describe("engine — forkGameRooms (branch isolation)", () => {
     const [forked] = forkGameRooms([room], "child", new Map(), (p) => `${p}-X`);
     expect(forked.seats.s1.goals[0].threadId).toBe("keep");
     expect(forked.round).toBeNull();
+  });
+});
+
+describe("presence gate — seatPresence / humansReady / unreadyHumanSeats", () => {
+  const seat = (over: Partial<ReturnType<typeof createSeat>>) =>
+    ({ ...createSeat({ id: "x", perspectiveId: "p", driver: "human", locationId: "L", economy: econ, colorIndex: 0 }), ...over });
+  const mk = (seats: Record<string, ReturnType<typeof createSeat>>): GameRoom =>
+    ({ id: "g", branchId: "b", seats, economy: econ } as unknown as GameRoom);
+
+  it("seatPresence: Member offline→waiting→ready; unclaimed agent / gm-proxy = ai", () => {
+    expect(seatPresence(seat({ driver: "human", online: false, ready: false }))).toBe("offline");
+    expect(seatPresence(seat({ driver: "human", online: false, ready: true }))).toBe("offline"); // disconnected even if readied
+    expect(seatPresence(seat({ driver: "human", online: true, ready: false }))).toBe("waiting");
+    expect(seatPresence(seat({ driver: "human", online: true, ready: true }))).toBe("ready");
+    expect(seatPresence(seat({ driver: "agent", online: false, ready: false }))).toBe("ai"); // unclaimed → AI plays it
+    expect(seatPresence(seat({ driver: "gm-proxy", online: false }))).toBe("ai");
+  });
+
+  it("agent TAKEOVER: a claimed agent becomes human-controlled; the AI stands down", () => {
+    const unclaimed = seat({ driver: "agent", online: false });
+    const claimed = seat({ driver: "agent", online: true, ready: false });
+    // Unclaimed: AI drives, not human-controlled, doesn't gate.
+    expect(isAiControlled(unclaimed)).toBe(true);
+    expect(isHumanControlled(unclaimed)).toBe(false);
+    // Claimed (a player connected): human-controlled, AI stands down, gates until ready.
+    expect(isAiControlled(claimed)).toBe(false);
+    expect(isHumanControlled(claimed)).toBe(true);
+    expect(seatPresence(claimed)).toBe("waiting");
+    // Leaving (offline again) hands it straight back to the AI.
+    expect(isAiControlled({ ...claimed, online: false })).toBe(true);
+  });
+
+  it("a CLAIMED-but-unready agent gates the round; an UNCLAIMED agent doesn't", () => {
+    expect(humansReady(mk({ ai: seat({ id: "ai", driver: "agent", online: true, ready: false }) }))).toBe(false);
+    expect(humansReady(mk({ ai: seat({ id: "ai", driver: "agent", online: false }) }))).toBe(true);
+    // A claimed agent that readies up clears the gate.
+    expect(humansReady(mk({ ai: seat({ id: "ai", driver: "agent", online: true, ready: true }) }))).toBe(true);
+  });
+
+  it("gm-proxy is never human-controlled and never AI-auto-played", () => {
+    const gm = seat({ driver: "gm-proxy", online: true, ready: false });
+    expect(isHumanControlled(gm)).toBe(false);
+    expect(isAiControlled(gm)).toBe(false);
+  });
+
+  it("a Member seat gates when OFFLINE — the GM is blocked until they open the game", () => {
+    // The reported bug: a game with a player seat that never opened must block.
+    const room = mk({ a: seat({ id: "a", driver: "human", online: false, ready: false }) });
+    expect(humansReady(room)).toBe(false);
+    expect(unreadyHumanSeats(room).map((s) => s.id)).toEqual(["a"]);
+  });
+
+  it("a Member seat gates when ONLINE but not ready", () => {
+    const room = mk({ a: seat({ id: "a", driver: "human", online: true, ready: false }) });
+    expect(humansReady(room)).toBe(false);
+  });
+
+  it("clears only when every Member is online AND ready; agents / gm-proxy never gate", () => {
+    const room = mk({
+      a: seat({ id: "a", driver: "human", online: true, ready: true }),
+      b: seat({ id: "b", driver: "human", online: true, ready: true }),
+      ai: seat({ id: "ai", driver: "agent", online: false, ready: false }),
+      gm: seat({ id: "gm", driver: "gm-proxy", online: false, ready: false }),
+    });
+    expect(humansReady(room)).toBe(true);
+  });
+
+  it("a table with NO Member seats never gates (all agent / gm-proxy)", () => {
+    const room = mk({ ai: seat({ id: "ai", driver: "agent" }), gm: seat({ id: "gm", driver: "gm-proxy" }) });
+    expect(humansReady(room)).toBe(true);
+  });
+
+  it("spectators don't gate; a mid-game joiner (pending, offline) re-arms the gate", () => {
+    const room = mk({
+      a: seat({ id: "a", driver: "human", online: true, ready: true }),
+      s: seat({ id: "s", driver: "human", online: false, ready: false, status: "spectating" }),
+      j: seat({ id: "j", driver: "human", online: false, ready: false, status: "pending" }),
+    });
+    expect(unreadyHumanSeats(room).map((s) => s.id)).toEqual(["j"]);
+    expect(humansReady(room)).toBe(false);
   });
 });

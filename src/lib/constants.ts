@@ -51,6 +51,12 @@ export const GAME_THEORY_MODEL = "deepseek/deepseek-v4-flash";
 /** Model for interactive / conversational calls — chat, surveys, interviews. */
 export const INTERACTION_MODEL = "deepseek/deepseek-v4-flash";
 
+/** Model for live Conviction agent moves — the in-character "which cards to
+ *  commit this turn" decision. Gemini for SPEED: it runs on the play clock, one
+ *  call per agent per turn, so latency is the binding constraint (a slow decision
+ *  freezes the table / times out). Its own constant so it tunes independently. */
+export const ACTION_MODEL = "google/gemini-2.5-flash";
+
 /** Model for Learning question extraction (per-scene multiple-choice banks).
  *  Gemini — the extraction is analytical and structured, like the planning
  *  and analysis passes, and benefits from the same model's reasoning. */
@@ -319,7 +325,7 @@ export const CONVICTION_INCOME = 25;
 
 /** Decay on the BANKED balance each SETTLE, before income. Fixed point
  *  INCOME/(1−DECAY) = 150 is the hoard ceiling = the dearest possible play
- *  (max card 100 × FACEDOWN_PREMIUM 1.5). Decoupled from STANCE_VOLUME_DECAY. */
+ *  (max card 100 × FACEDOWN_PREMIUM 1.25). Decoupled from STANCE_VOLUME_DECAY. */
 export const CONVICTION_DECAY = 5 / 6; // ≈ 0.833
 
 /** Card-cost floor — a play is never free. Load-bearing: makes agenda-setting
@@ -352,9 +358,11 @@ export const CARDS_PER_ROUND = 3;
  *  phase — bounds the emergent-play branching loop. */
 export const READ_MAX_REQUESTS = 3;
 
-/** Face-down cost multiplier — concealment is a paid service. Defined for
- *  forward-compat; UNUSED while forced reveal is on (the shipped default). */
-export const FACEDOWN_PREMIUM = 1.5;
+/** Face-down cost multiplier — concealment is a paid service. Tuned down from
+ *  1.5 to 1.25: a 25% surcharge keeps concealment a real cost (still a pinch on a
+ *  thin stack) while making it cheap enough that agents reach for it more often —
+ *  nudging a small uptick in face-down play. */
+export const FACEDOWN_PREMIUM = 1.25;
 
 /** Hoard ceiling — the dearest single play (max card × facedown premium). A
  *  perpetual saver can afford any single concealed long-shot, never a war chest. */
@@ -377,6 +385,11 @@ export const TIMER_PRIVATE = 20_000;
 export const TIMER_READ = 120_000;
 export const TIMER_TURN = 30_000;
 export const TIMER_LIVE = 120_000; // Showdown (unused this build)
+/** PLAY clocks (seconds, GM-tunable per room). Sequential gives each seat its own
+ *  per-move budget (the clock resets per turn); simultaneous gives one shared,
+ *  more-generous window since everyone moves at once. */
+export const PLAY_TURN_SECONDS = 60; // sequential — per player, per move
+export const PLAY_WINDOW_SECONDS = 180; // simultaneous — one shared window (3 min)
 export const TIMER_SHOWDOWN = 25_000;
 export const TIMER_SCORING = 20_000;
 

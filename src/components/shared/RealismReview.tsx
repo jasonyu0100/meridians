@@ -85,40 +85,76 @@ export function RealismReview({
         </div>
       )}
 
-      {items.map((it) => (
-        <div key={it.id} className="space-y-2.5 rounded-xl border border-white/10 bg-white/2 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <span className="text-[13px] font-medium text-text-primary">{it.question}</span>
-            <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300/90">→ {it.outcome}</span>
-          </div>
-          <div>
-            <span className="text-[10px] uppercase tracking-wider text-sky-300/70">Telling — what actually happens</span>
-            <textarea
-              value={it.telling}
-              onChange={(e) => onEdit(it.id, { telling: e.target.value })}
-              rows={2}
-              className="mt-1 w-full resize-y rounded border border-white/10 bg-bg-field/60 px-2.5 py-1.5 text-[12px] leading-snug text-text-primary outline-none focus:border-sky-400/40"
-            />
-          </div>
-          <div>
-            <span className="text-[10px] uppercase tracking-wider text-text-dim/60">Reasoning — why</span>
-            <textarea
-              value={it.reasoning}
-              onChange={(e) => onEdit(it.id, { reasoning: e.target.value })}
-              rows={2}
-              className="mt-1 w-full resize-y rounded border border-white/10 bg-bg-field/60 px-2.5 py-1.5 text-[12px] leading-snug text-text-secondary outline-none focus:border-white/30"
-            />
-          </div>
-          <button
-            onClick={() => onEdit(it.id, { closes: !it.closes })}
-            className={`rounded-full px-2.5 py-1 text-[11px] transition ${
-              it.closes ? "bg-rose-500/20 text-rose-300" : "border border-white/10 text-text-dim hover:text-text-secondary"
-            }`}
+      {/* Reality's rulings, read as a BENCH LEDGER rather than tiled cards: the
+          telling + reasoning are full paragraphs, so each ruling gets a full-width
+          row where the prose can breathe (the card grid clipped them). Skinned with
+          the app's own dark tokens so it blends into the UI; a sky ruling-rail marks
+          the margin, the matter (question) heads it, the RULING is the headline
+          result, and the opinion + rationale read as editable fields that auto-grow
+          to their content — nothing is ever clipped. */}
+      <div className="flex flex-col gap-3">
+        {items.map((it, i) => (
+          <div
+            key={it.id}
+            className="relative overflow-hidden rounded-2xl border border-sky-400/15 bg-sky-500/4 py-4 pl-6 pr-5"
           >
-            {it.closes ? "closes the question" : "stays open"}
-          </button>
-        </div>
-      ))}
+            {/* The ruling-rail — a sky margin down the left edge. */}
+            <span className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-linear-to-b from-sky-400/70 to-sky-500/20" />
+
+            {/* Numbered eyebrow + the closure status (does the matter settle?). */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.22em] text-sky-300/80">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-sky-500/15 font-mono text-[9px] tabular-nums text-sky-200">{i + 1}</span>
+                Reality&apos;s verdict
+              </span>
+              <button
+                onClick={() => onEdit(it.id, { closes: !it.closes })}
+                title={it.closes ? "This verdict closes the question" : "The question stays open after this"}
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider transition ${
+                  it.closes
+                    ? "bg-rose-500/20 text-rose-300"
+                    : "border border-white/10 text-text-dim hover:text-text-secondary"
+                }`}
+              >
+                {it.closes ? "✕ closes the matter" : "stays open"}
+              </button>
+            </div>
+
+            {/* The matter before the judge. */}
+            <p className="mt-2 text-[14px] font-semibold leading-snug text-text-primary">{it.question}</p>
+
+            {/* The ruling — the headline result the continuation will honour. */}
+            <div className="mt-2.5 flex items-baseline gap-2.5 rounded-lg bg-emerald-500/10 px-3 py-2">
+              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-300/70">Ruling</span>
+              <span className="text-[13px] font-semibold leading-snug text-emerald-300">→ {it.outcome}</span>
+            </div>
+
+            {/* The opinion — what actually happens. Full-width prose, auto-growing
+                so the whole telling is always legible (no clipped scroll-boxes). */}
+            <div className="mt-3">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-sky-300/70">What actually happens</span>
+              <textarea
+                value={it.telling}
+                onChange={(e) => onEdit(it.id, { telling: e.target.value })}
+                rows={3}
+                className="mt-1 block w-full resize-none rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-[13px] leading-relaxed text-text-primary outline-none transition field-sizing-content hover:border-white/15 focus:border-sky-400/40"
+              />
+            </div>
+
+            {/* The rationale — why it resolves this way. Secondary, but just as
+                readable; also auto-growing. */}
+            <div className="mt-2.5">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-text-dim/70">Why it resolves this way</span>
+              <textarea
+                value={it.reasoning}
+                onChange={(e) => onEdit(it.id, { reasoning: e.target.value })}
+                rows={2}
+                className="mt-1 block w-full resize-none rounded-lg border border-white/8 bg-black/15 px-3 py-2 text-[12.5px] leading-relaxed text-text-secondary outline-none transition field-sizing-content hover:border-white/15 focus:border-sky-400/40"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
       {items.length === 0 && <p className="text-center text-[12px] text-text-dim/50">No executive outcomes to interpret.</p>}
     </div>
   );

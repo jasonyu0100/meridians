@@ -12,7 +12,7 @@ import { useCallback, useMemo, useRef } from "react";
 
 import { generateScenes } from "@/lib/ai/scenes";
 import { resolveReasoningBudget } from "@/lib/ai/api";
-import { narrativeContext } from "@/lib/ai/context";
+import { outlineContext } from "@/lib/ai/context";
 import { generateArcPerspective, perspectiveLabel } from "@/lib/ai/perspectives";
 import { detectConflicts } from "@/lib/ai/game-conflicts";
 import { missingRoomPerspectiveKeys } from "@/lib/ai/game-narration";
@@ -25,7 +25,7 @@ import { chooseAgentPlays, playEvidence, streamProbsResolver, type AgentPlay } f
 import { ownerSeatByStream, snapshotThreadLogits } from "@/lib/game/attribution";
 import { STANCE_EVIDENCE_MAX } from "@/lib/constants";
 import { cardCost, defaultEconomy, effectiveCost, playLogitNudge, settle } from "@/lib/game/economy";
-import { createSeat, dealHand, nextActiveSeat, startRound, unplayedDealtStreamIds } from "@/lib/game/engine";
+import { createSeat, dealHand, isAiControlled, nextActiveSeat, seatPresence, startRound, unreadyHumanSeats, unplayedDealtStreamIds } from "@/lib/game/engine";
 import { scoreRound, type ThreadAttribution } from "@/lib/game/scoring";
 import { settleContest, settlementSeed } from "@/lib/game/settlement";
 import { applyStreamPrior, openStream, rebuildStream, streamProbs } from "@/lib/forces/stream-stance";
@@ -35,6 +35,7 @@ import { resolveAgentById, resolveAgentPersona } from "@/lib/agents/personas";
 import { activeGameForBranch } from "@/lib/game/guards";
 import { perspectiveName, uid } from "@/components/stage/RoomUI";
 import { useStore } from "@/lib/state/store";
+import { useToast } from "@/lib/state/toast-context";
 import type {
   Arc,
   ConvictionEconomy,
@@ -48,6 +49,7 @@ import type {
   PlayedCard,
   ProposedMerge,
   RoundPhase,
+  RoundScoreRecord,
   Seat,
   Stream,
   ThreadSettlement,
@@ -80,8 +82,89 @@ export interface StartGameConfig {
  *  empty in a world without prepared streams; the GM can expand). */
 const SEED_ACTIONS = ["press the advantage", "hold and observe", "change the terms"];
 
+/** Human-readable "who we're waiting on" for the presence-gate toasts — each
+ *  blocking seat annotated with WHY (offline vs not ready) so the GM knows whether
+ *  to wait, nudge, or share the game. */
+function waitingLabel(seats: Seat[], narrative: NarrativeState): string {
+  return seats
+    .map((s) => {
+      const name = perspectiveName(narrative.perspectives?.[s.perspectiveId], narrative);
+      return `${name} (${seatPresence(s) === "offline" ? "offline" : "not ready"})`;
+    })
+    .join(", ");
+}
+
+/** The set of entity ids actually SEATED in a room — each seat's perspective
+ *  resolved to its backing entity. Used to flag, in an agent's continuity, which
+ *  of its standing relationships are with players ACROSS THE TABLE right now. */
+function seatedEntityIds(narrative: NarrativeState, room: GameRoom | null | undefined): Set<string> {
+  const ids = new Set<string>();
+  for (const seat of Object.values(room?.seats ?? {})) {
+    const ref = narrative.perspectives?.[seat.perspectiveId]?.entityRef;
+    if (ref) ids.add(ref);
+  }
+  return ids;
+}
+
+/** Render a seat entity's continuity for an in-character agent decision: its own
+ *  inner-world facts, PLUS its standing RELATIONSHIPS toward other entities
+ *  (trust / allegiance / rivalry, signed by valence). At a strategy table the
+ *  relationship layer is the load-bearing read — it tells the agent how its
+ *  character actually stands toward the others, and counterparts seated AT THIS
+ *  TABLE are flagged so the social dynamics of the board drive the play. */
+function renderEntityContext(
+  narrative: NarrativeState,
+  perspectiveId: string,
+  tableEntityIds?: Set<string>,
+): string {
+  const p = narrative.perspectives?.[perspectiveId];
+  if (!p || p.kind === "narrator" || !p.entityRef) return "";
+  const self = p.entityRef;
+  const src =
+    p.kind === "character" ? narrative.characters : p.kind === "location" ? narrative.locations : narrative.artifacts;
+  const ent = src?.[self];
+  if (!ent) return "";
+
+  const nameOf = (id: string): string | undefined =>
+    narrative.characters?.[id]?.name ?? narrative.locations?.[id]?.name ?? narrative.artifacts?.[id]?.name;
+
+  const lines: string[] = [`${ent.name}:`];
+  for (const nd of Object.values(ent.world?.nodes ?? {})) lines.push(`- ${nd.content}`);
+
+  // Inter-entity relationships involving this seat. Positive valence = warmth /
+  // alliance / trust; negative = friction / rivalry / hostility. Counterparts
+  // seated this game are the agent's LIVE reads — surface them first and marked.
+  const rels = (narrative.relationships ?? [])
+    .map((r) => {
+      const otherId = r.from === self ? r.to : r.to === self ? r.from : null;
+      return otherId ? { otherId, type: r.type, valence: r.valence } : null;
+    })
+    .filter((r): r is { otherId: string; type: string; valence: number } => r !== null);
+  if (rels.length) {
+    const atTable = tableEntityIds ?? new Set<string>();
+    // Players across the table first, then the rest — bias the agent toward the
+    // social dynamics actually in play this round.
+    rels.sort((a, b) => Number(atTable.has(b.otherId)) - Number(atTable.has(a.otherId)));
+    const relLines = rels
+      .map((r) => {
+        const other = nameOf(r.otherId);
+        if (!other) return null;
+        const sign = r.valence > 0 ? `+${r.valence}` : `${r.valence}`;
+        const seated = atTable.has(r.otherId) ? " · AT THIS TABLE" : "";
+        return `- ${r.type} (${sign}) → ${other}${seated}`;
+      })
+      .filter(Boolean) as string[];
+    if (relLines.length) {
+      lines.push("YOUR RELATIONSHIPS (how you stand toward others — sign = warmth/hostility, magnitude = strength):");
+      lines.push(...relLines);
+    }
+  }
+  return lines.join("\n");
+}
+
 export function useConviction() {
   const { state, dispatch } = useStore();
+  const showToast = useToast();
   const narrative = state.activeNarrative;
   const roomId = state.viewState.activeGameRoomId ?? null;
   // Resolve the candidate room: prefer the pinned activeGameRoomId, fall back to
@@ -105,9 +188,16 @@ export function useConviction() {
   })();
   const actAsSeatId = state.viewState.actAsSeatId ?? null;
 
-  // Always points at the freshest committed room. Background work (agents deciding
-  // during the PLAY window) reads this so its plays land on top of whatever humans
-  // have committed in the meantime — never on a stale snapshot.
+  // The freshest committed room — the single source of truth for background async
+  // work (agents deciding during PLAY, perspective/seed generation) that runs
+  // outside React's render cycle and must read the latest state, not a snapshot.
+  //
+  // CRITICAL: this is kept current in TWO places — at render (for room changes that
+  // come from elsewhere: switching rooms, external dispatches) AND synchronously
+  // inside `saveRoom` below (line: roomRef.current = r). The synchronous update is
+  // what makes the ref reliable: a `saveRoom` and the background work it kicks off
+  // run in the SAME tick, before React commits, so a render-only ref would still
+  // hold the pre-save snapshot and the background work would clobber the save.
   const roomRef = useRef<GameRoom | null>(room);
   roomRef.current = room;
 
@@ -119,7 +209,12 @@ export function useConviction() {
   const genEpochRef = useRef(0);
 
   const saveRoom = useCallback(
-    (r: GameRoom) => dispatch({ type: "UPSERT_GAME_ROOM", room: r }),
+    (r: GameRoom) => {
+      // Mirror into the ref synchronously so same-tick background work reads this
+      // save, not the pre-commit snapshot React still holds (see roomRef above).
+      roomRef.current = r;
+      dispatch({ type: "UPSERT_GAME_ROOM", room: r });
+    },
     [dispatch],
   );
 
@@ -207,6 +302,97 @@ export function useConviction() {
       if (room) saveRoom({ ...room, paused });
     },
     [room, saveRoom],
+  );
+
+  // ── Minimise / resume — freeze the clocks while the window is away ───────────
+  // Minimising closes the window but the game lives on; without this the phase
+  // anchors keep counting in wall-clock time, so on resume a budget that "ran out"
+  // off-screen drains the timer (or fast-forwards the auto-pilot). We stamp the
+  // minimise time and, on resume, push every live anchor forward by the elapsed
+  // gap — so the clocks continue from exactly where they were left.
+  const minimise = useCallback(() => {
+    if (room && room.phase !== "ended" && room.minimisedAt == null) saveRoom({ ...room, minimisedAt: Date.now() });
+  }, [room, saveRoom]);
+
+  const resumeFromMinimise = useCallback(() => {
+    if (!room || room.minimisedAt == null) return;
+    const delta = Date.now() - room.minimisedAt;
+    const r = room.round;
+    const shift = (v?: number) => (v != null ? v + delta : v);
+    const round = r
+      ? {
+          ...r,
+          readStartedAt: shift(r.readStartedAt),
+          writeStartedAt: shift(r.writeStartedAt),
+          playStartedAt: shift(r.playStartedAt),
+          turnStartedAt: shift(r.turnStartedAt),
+          scoringStartedAt: shift(r.scoringStartedAt),
+        }
+      : r;
+    saveRoom({ ...room, minimisedAt: undefined, round });
+  }, [room, saveRoom]);
+
+  // ── Live hosting — share seats with remote players over the tunnel ───────────
+  // Turning hosting ON mints a guest pass per seat (a token → seat binding); the
+  // GM shares the QR/link for whichever seats players take. The host BRIDGE
+  // (useConvictionLiveHost) does the actual publish/apply; this just flips the
+  // flag + passes on the room so they persist and the bridge activates.
+  const setHosting = useCallback(
+    (on: boolean) => {
+      if (!room) return;
+      if (!on) {
+        // Stopping hosting drops every guest — clear presence so nobody reads as
+        // online once the tunnel's closed (the host won't get the offline edges,
+        // its stream is gone). Readiness persists; online is what just changed.
+        const seats = Object.fromEntries(
+          Object.entries(room.seats).map(([id, s]) => [id, s.online ? { ...s, online: false } : s]),
+        );
+        saveRoom({ ...room, live: false, seats });
+        return;
+      }
+      const existing = new Map((room.guestPasses ?? []).map((p) => [p.seatId, p]));
+      // Mint a claim link for every PLAYER-FILLABLE seat — Member seats AND agent
+      // seats (a player can take an AI over). gm-proxy is the GM's own; no link.
+      const passes = Object.values(room.seats)
+        .filter((s) => s.driver !== "gm-proxy")
+        .map((s) => {
+          const prior = existing.get(s.id);
+          const token =
+            prior?.token ??
+            (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : uid("pass"));
+          return { token, gameId: room.id, seatId: s.id, expiresAt: 0 };
+        });
+      saveRoom({ ...room, live: true, guestPasses: passes });
+    },
+    [room, saveRoom],
+  );
+
+  // A seated player marks themselves PRESENT (or steps away). Drives the presence
+  // gate (engine.humansReady): the GM can't start a round / generate perspectives
+  // until every human member is online AND ready. Reads roomRef so a remote ready
+  // landing concurrently with other intents folds onto the latest committed room.
+  const setReady = useCallback(
+    (seatId: string, ready: boolean) => {
+      const r = roomRef.current;
+      const seat = r?.seats[seatId];
+      if (!r || !seat || seat.ready === ready) return;
+      saveRoom({ ...r, seats: { ...r.seats, [seatId]: { ...seat, ready } } });
+    },
+    [saveRoom],
+  );
+
+  // The broker reports a guest connecting (online) or dropping (offline) for a
+  // seat — the master flags it so the gate + status dots reflect who has actually
+  // opened the game. A player who disconnects goes offline (red) and re-gates the
+  // round even if they'd readied; readiness itself is left intact for their return.
+  const setSeatOnline = useCallback(
+    (seatId: string, online: boolean) => {
+      const r = roomRef.current;
+      const seat = r?.seats[seatId];
+      if (!r || !seat || !!seat.online === online) return;
+      saveRoom({ ...r, seats: { ...r.seats, [seatId]: { ...seat, online } } });
+    },
+    [saveRoom],
   );
 
   /** GM cancels the in-flight generation (e.g. a stalled perspective delivery,
@@ -341,10 +527,14 @@ export function useConviction() {
 
   const playCard = useCallback(
     (seatId: string, cardId: string, conviction: number, faceUp = true) => {
-      if (!narrative || !room) return;
-      saveRoom(applyPlay(narrative, room, seatId, cardId, conviction, faceUp));
+      // Fold onto the LATEST committed room (roomRef tracks it synchronously) so
+      // two near-simultaneous commits — e.g. remote players in simultaneous play —
+      // each land instead of clobbering one another.
+      const r = roomRef.current;
+      if (!narrative || !r) return;
+      saveRoom(applyPlay(narrative, r, seatId, cardId, conviction, faceUp));
     },
-    [narrative, room, saveRoom, applyPlay],
+    [narrative, saveRoom, applyPlay],
   );
 
   /** GM veto — strip a committed play from a seat's hand: refund the conviction,
@@ -478,8 +668,8 @@ export function useConviction() {
       const epoch = genEpochRef.current;
       saveRoom({ ...room, round: { ...round, generating: true, generatingLabel: "Re-judging realism" } });
       try {
-        const headCtx = narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
-        const resos = await resolveConflictRealism({ conflicts, narrativeContext: headCtx, guidance: guidance.trim() || undefined, onProgress, reasoningBudget: resolveReasoningBudget(narrative) });
+        const headCtx = outlineContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+        const resos = await resolveConflictRealism({ conflicts, narrativeOutline: headCtx, guidance: guidance.trim() || undefined, onProgress, reasoningBudget: resolveReasoningBudget(narrative) });
         if (genEpochRef.current !== epoch) return; // GM cancelled — discard
         const byId: Record<string, RealismResolution> = Object.fromEntries(resos.map((x) => [x.id, x]));
         const resolutions = { ...pending.resolutions };
@@ -501,24 +691,27 @@ export function useConviction() {
 
   const foldSeat = useCallback(
     (seatId: string) => {
-      if (!room?.round) return;
+      const r = roomRef.current;
+      if (!r?.round) return;
       // Folding = no commit; advance the turn if it's this seat's.
-      if (room.round.activeSeat === seatId) {
-        const next = nextActiveSeat(room.round);
-        saveRoom({ ...room, round: { ...room.round, activeSeat: next } });
+      if (r.round.activeSeat === seatId) {
+        const next = nextActiveSeat(r.round);
+        saveRoom({ ...r, round: { ...r.round, activeSeat: next } });
       }
     },
-    [room, saveRoom],
+    [saveRoom],
   );
 
   // ── Table ──────────────────────────────────────────────────────────────────
   const sendChat = useCallback(
     (seatId: string, text: string, scope: GameChatMessage["scope"] = "global", locationId?: string) => {
-      if (!room) return;
-      const msg: GameChatMessage = { id: uid("msg"), scope, locationId, seatId, text, at: Date.now(), roundIndex: room.round?.index };
-      saveRoom({ ...room, chat: [...room.chat, msg] });
+      // Latest room — concurrent messages from different players must all survive.
+      const r = roomRef.current;
+      if (!r) return;
+      const msg: GameChatMessage = { id: uid("msg"), scope, locationId, seatId, text, at: Date.now(), roundIndex: r.round?.index };
+      saveRoom({ ...r, chat: [...r.chat, msg] });
     },
-    [room, saveRoom],
+    [saveRoom],
   );
 
   const setGoal = useCallback(
@@ -538,12 +731,15 @@ export function useConviction() {
    *  RE-PRICED (priors adjust cost via prompting). */
   const addPrior = useCallback(
     async (seatId: string, streamId: string, text: string) => {
-      if (!narrative || !room || !text.trim()) return;
+      const r0 = roomRef.current;
+      if (!narrative || !r0 || !text.trim()) return;
       // Write-phase protection: priors are authored ONLY during the write window.
-      if (room.round?.phase !== "write") return;
-      const seat = room.seats[seatId];
+      if (r0.round?.phase !== "write") return;
+      const seat = r0.seats[seatId];
       const stream = narrative.streams?.[streamId];
       if (!seat || !stream?.outcomes) return;
+      // Ownership invariant: a seat may only prior its OWN question.
+      if (stream.perspectiveId !== seat.perspectiveId) return;
       const author = seat.memberId ?? seat.agentId ?? seatId;
       let updated: Stream;
       try {
@@ -566,13 +762,16 @@ export function useConviction() {
         updated = applyStreamPrior(stream, { text: text.trim(), authorId: author });
       }
       dispatch({ type: "UPSERT_STREAM", stream: updated });
-      // Re-price the seat's dealt cards on this stream from the new stance.
-      const round = room.round;
+      // Re-price the seat's dealt cards on this stream from the new stance — fold
+      // onto the LATEST room (post-await), so concurrent priors don't clobber.
+      const r = roomRef.current;
+      if (!r) return;
+      const round = r.round;
       const hand = round?.hands[seatId];
       const name = perspectiveName(narrative.perspectives?.[seat.perspectiveId], narrative);
       const base = round && hand
         ? {
-            ...room,
+            ...r,
             round: {
               ...round,
               hands: {
@@ -581,17 +780,17 @@ export function useConviction() {
                   ...hand,
                   cards: hand.cards.map((c) =>
                     c.streamId === streamId
-                      ? { ...c, cost: cardCost(streamProbs(updated)[c.outcome] ?? 0, room.economy) }
+                      ? { ...c, cost: cardCost(streamProbs(updated)[c.outcome] ?? 0, r.economy) }
                       : c,
                   ),
                 },
               },
             },
           }
-        : room;
+        : r;
       saveRoom(logRoom(base, "prior", `${name} added a prior on "${stream.title}"`, seatId));
     },
-    [narrative, room, dispatch, saveRoom, logRoom],
+    [narrative, dispatch, saveRoom, logRoom],
   );
 
   /** Open a NEW stream for the seat from a posed open question — the AI
@@ -599,10 +798,11 @@ export function useConviction() {
    *  the seat's hand. */
   const openNewStream = useCallback(
     async (seatId: string, question: string, intuition?: string) => {
-      if (!narrative || !room || !question.trim()) return;
+      const r0 = roomRef.current;
+      if (!narrative || !r0 || !question.trim()) return;
       // Write-phase protection: new streams open ONLY during the write window.
-      if (room.round?.phase !== "write") return;
-      const seat = room.seats[seatId];
+      if (r0.round?.phase !== "write") return;
+      const seat = r0.seats[seatId];
       if (!seat) return;
       const persp = narrative.perspectives?.[seat.perspectiveId];
       const q = question.trim();
@@ -613,7 +813,7 @@ export function useConviction() {
           question: q,
           intuition: intu,
           perspectiveLabel: perspectiveName(persp, narrative),
-          narrativeContext: narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex),
+          narrativeOutline: outlineContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex),
         });
         stream = openStream({
           perspectiveId: seat.perspectiveId,
@@ -623,7 +823,7 @@ export function useConviction() {
           outcomes: inst.outcomes,
           priorProbs: inst.priorProbs,
           intuition: intu,
-          branchId: room.branchId,
+          branchId: r0.branchId,
         });
       } catch {
         stream = openStream({
@@ -633,22 +833,24 @@ export function useConviction() {
           question: q,
           outcomes: [...SEED_ACTIONS],
           intuition: intu,
-          branchId: room.branchId,
+          branchId: r0.branchId,
         });
       }
       dispatch({ type: "UPSERT_STREAM", stream });
-      // Deal cards for the new stream into the seat's hand.
-      const round = room.round;
+      // Deal cards for the new stream into the seat's hand — fold onto the LATEST
+      // room (post-await) so concurrent opens don't clobber.
+      const r = roomRef.current;
+      const round = r?.round;
       const hand = round?.hands[seatId];
-      if (round && hand) {
-        const dealtCards = dealHand(seatId, [stream], room.economy, () => uid("card"), new Set([stream.id])).cards;
+      if (r && round && hand) {
+        const dealtCards = dealHand(seatId, [stream], r.economy, () => uid("card"), new Set([stream.id])).cards;
         saveRoom({
-          ...room,
+          ...r,
           round: { ...round, hands: { ...round.hands, [seatId]: { ...hand, cards: [...hand.cards, ...dealtCards] } } },
         });
       }
     },
-    [narrative, room, state.resolvedEntryKeys, state.viewState.currentSceneIndex, dispatch, saveRoom],
+    [narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex, dispatch, saveRoom],
   );
 
   // ── Inter-round GM controls (plan §5c) ──────────────────────────────────────
@@ -664,14 +866,15 @@ export function useConviction() {
   /** Seat new players mid-game (one or many in a single commit, so a multi-add
    *  doesn't clobber on a stale room snapshot). Each seat is added as `pending` —
    *  it shows on the rail/board straight away but doesn't get a hand or a turn
-   *  until the NEXT round opens (completeResolve promotes pending → playing at
-   *  startRound, and that round's READ generates its perspective). New players
-   *  bank the fresh economy.start; no carry-over. */
+   *  until the NEXT round opens (the scoring→next-round advance promotes pending →
+   *  playing, rebuilds the turn order around it, and that round's READ generates its
+   *  perspective). New players bank the fresh economy.start; no carry-over. */
   const addSeats = useCallback(
     (cfgs: SeatConfig[]) => {
       if (!room || !narrative || cfgs.length === 0) return;
       const seats = { ...room.seats };
       const names: string[] = [];
+      const newSeatIds: string[] = [];
       // A live round never gains a seat mid-flight (its turn order + hands are
       // already dealt); without a round we're between games → seat as playing.
       const status: Seat["status"] = room.round ? "pending" : "playing";
@@ -681,11 +884,27 @@ export function useConviction() {
           ...createSeat({ id: seatId, ...cfg, economy: room.economy, colorIndex: Object.keys(room.seats).length + i }),
           status,
         };
+        newSeatIds.push(seatId);
         names.push(perspectiveName(narrative.perspectives?.[cfg.perspectiveId], narrative));
       });
+      // If the table is already LIVE, mint a guest pass for each new seat so a
+      // remote player can join it immediately (the Share modal lists it) — without
+      // this, a mid-game human seat would have no token to connect through and
+      // would gate the next round forever.
+      const guestPasses = room.live
+        ? [
+            ...(room.guestPasses ?? []),
+            ...newSeatIds.map((seatId) => ({
+              token: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : uid("pass"),
+              gameId: room.id,
+              seatId,
+              expiresAt: 0,
+            })),
+          ]
+        : room.guestPasses;
       saveRoom(
         logRoom(
-          { ...room, seats },
+          { ...room, seats, ...(guestPasses ? { guestPasses } : {}) },
           "phase",
           status === "pending"
             ? `${names.join(", ")} seated — join next round`
@@ -702,11 +921,12 @@ export function useConviction() {
   // knows the intended move. Only character perspectives can move.
   const move = useCallback(
     (seatId: string, locationId: string) => {
-      if (!room || !narrative) return;
-      const seat = room.seats[seatId];
+      const r = roomRef.current;
+      if (!r || !narrative) return;
+      const seat = r.seats[seatId];
       if (!seat) return;
       if (narrative.perspectives?.[seat.perspectiveId]?.kind !== "character") return;
-      const moved = { ...room, seats: { ...room.seats, [seatId]: { ...seat, locationId, movedThisRound: true } } };
+      const moved = { ...r, seats: { ...r.seats, [seatId]: { ...seat, locationId, movedThisRound: true } } };
       saveRoom(
         logRoom(
           moved,
@@ -716,7 +936,7 @@ export function useConviction() {
         ),
       );
     },
-    [room, narrative, saveRoom, logRoom],
+    [narrative, saveRoom, logRoom],
   );
 
   // ── The GM one-click progression ────────────────────────────────────────────
@@ -729,26 +949,34 @@ export function useConviction() {
     const epoch = genEpochRef.current;
     const cancelled = () => genEpochRef.current !== epoch;
 
-    const headCtx = narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
-    const entityContextOf = (perspectiveId: string): string => {
-      const p = narrative.perspectives?.[perspectiveId];
-      if (!p || p.kind === "narrator" || !p.entityRef) return "";
-      const src =
-        p.kind === "character" ? narrative.characters : p.kind === "location" ? narrative.locations : narrative.artifacts;
-      const ent = src?.[p.entityRef];
-      if (!ent) return "";
-      const nodes = Object.values(ent.world?.nodes ?? {}).map((nd) => `- ${nd.content}`);
-      return [`${ent.name}:`, ...nodes].join("\n");
+    const headCtx = outlineContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+    const tableEntityIds = seatedEntityIds(narrative, room);
+    const entityContextOf = (perspectiveId: string): string =>
+      renderEntityContext(narrative, perspectiveId, tableEntityIds);
+
+    // The agent's HARD time budget for one decision, read off the play clock:
+    // the per-move budget in sequential (the clock resets each turn), the time
+    // left in the shared window in simultaneous. 0 = untimed → no bound (the
+    // agent deliberates fully, the original behaviour).
+    const agentDeadlineMs = (r: GameRoom): number => {
+      const econ = r.economy;
+      if (econ.playOrder === "simultaneous") {
+        const budget = (econ.windowSeconds ?? 0) * 1000;
+        if (budget <= 0 || r.round?.playStartedAt == null) return 0;
+        return Math.max(0, r.round.playStartedAt + budget - Date.now());
+      }
+      const budget = (econ.turnSeconds ?? 0) * 1000; // per-move clock, fresh this turn
+      return budget > 0 ? budget : 0;
     };
 
     // DECIDE (the slow part) — ask one agent seat, IN CHARACTER, which cards (if
     // any) to commit; it may pass and bank its conviction. Pure: returns the plays,
-    // applies nothing. On any failure, falls back to the deterministic heuristic so
-    // an all-agent room still progresses offline / without an API key. Safe to run
-    // concurrently for many seats (no shared state touched).
+    // applies nothing. On any failure — or when the play clock runs out — it falls
+    // back to the deterministic heuristic so an all-agent room always progresses
+    // and no agent thinks past the timer. Safe to run concurrently (no shared state).
     const decideSeatPlays = async (r: GameRoom, seatId: string): Promise<AgentPlay[]> => {
       const seat = r.seats[seatId];
-      if (!seat || seat.driver !== "agent" || !r.round) return [];
+      if (!seat || !isAiControlled(seat) || !r.round) return []; // a CLAIMED agent is human-driven now
       const agent = resolveAgentById(narrative, seat.agentId);
       // Sequential play only: hand this seat the plays already committed this round
       // by OTHERS so it can read the table and respond (in simultaneous play every
@@ -775,59 +1003,70 @@ export function useConviction() {
                 }),
               )
           : [];
-      try {
-        const decision = await decideAgentPlays({
-          seat,
-          hand: r.round.hands[seatId],
-          economy: r.economy,
-          streamsById,
-          perspectiveLabel: perspectiveName(narrative.perspectives?.[seat.perspectiveId], narrative),
-          entityContext: entityContextOf(seat.perspectiveId),
-          narrativeContext: headCtx,
-          persona: resolveAgentPersona(agent) || undefined,
-          priorPlays,
-          reasoningBudget: resolveReasoningBudget(narrative),
-        });
-        return decision.plays;
-      } catch {
-        return chooseAgentPlays(seat, r.round.hands[seatId], r.economy, agent?.persona, streamProbsResolver(narrative.streams ?? {}));
-      }
+      // The deterministic snap-move — an instant, within-budget play from the
+      // seat's own stance lean. Used on API failure AND when the play clock cuts
+      // the agent off (below): the agent still acts, it just can't deliberate.
+      const fallback = (): AgentPlay[] =>
+        chooseAgentPlays(seat, r.round!.hands[seatId], r.economy, agent?.persona, streamProbsResolver(narrative.streams ?? {}));
+
+      // The LLM decision, hardened so it never rejects (errors snap to the
+      // deterministic move) — lets us race it cleanly against the clock.
+      const decisionP: Promise<AgentPlay[]> = decideAgentPlays({
+        seat,
+        hand: r.round.hands[seatId],
+        economy: r.economy,
+        streamsById,
+        perspectiveLabel: perspectiveName(narrative.perspectives?.[seat.perspectiveId], narrative),
+        entityContext: entityContextOf(seat.perspectiveId),
+        narrativeOutline: headCtx,
+        persona: resolveAgentPersona(agent) || undefined,
+        priorPlays,
+        reasoningBudget: resolveReasoningBudget(narrative),
+      })
+        .then((d) => d.plays)
+        .catch(() => fallback());
+
+      // The play clock is a HARD bound on the agent, not just a display: when the
+      // per-move budget (sequential) or the shared window (simultaneous) elapses,
+      // the agent is CUT to its snap-move so it can never keep thinking past the
+      // timer. An untimed room (budget 0) keeps the deliberate-fully behaviour.
+      const deadline = agentDeadlineMs(r);
+      if (deadline <= 0) return decisionP;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeoutP = new Promise<AgentPlay[]>((resolve) => {
+        timer = setTimeout(() => resolve(fallback()), deadline);
+      });
+      const plays = await Promise.race([decisionP, timeoutP]);
+      if (timer) clearTimeout(timer);
+      return plays;
     };
 
-    // Auto-play a single agent seat — decide then apply (no-op for human/gm-proxy).
-    const autoPlaySeat = async (r: GameRoom, seatId: string): Promise<GameRoom> => {
-      const plays = await decideSeatPlays(r, seatId);
-      let w = r;
-      for (const p of plays) w = applyPlay(narrative, w, seatId, p.cardId, p.conviction, !p.faceDown);
-      return w;
-    };
-
-    // Run agent decisions OFF the critical path during PLAY: decide concurrently
-    // for the given seats, then fold every agent's plays onto the LATEST room (so a
-    // human commit made while the agents were thinking survives). Applies nothing
-    // if the play window has since closed. Never awaited by `advance` — the GM's
-    // click returns immediately and play is interactive while agents think.
+    // Run agent decisions OFF the critical path during PLAY (simultaneous): every
+    // agent decides in PARALLEL, and each one's play lands on the felt the MOMENT
+    // its own decision resolves — not batched at the end — so cards (face-up or
+    // face-down) appear one by one and the pod stops "thinking" as soon as it
+    // commits. In computer mode the play clock paces the table (auto-advance) but
+    // does NOT cut an agent off mid-think: a decision always completes, so no agent
+    // silently holds. Each fold reads the LATEST room so a human commit survives.
     const runAgentsInBackground = (openedRoom: GameRoom, seatIds: string[]) => {
-      const agents = seatIds.filter((id) => openedRoom.seats[id]?.driver === "agent");
+      const agents = seatIds.filter((id) => { const s = openedRoom.seats[id]; return s && isAiControlled(s); });
       if (!agents.length) return;
-      // Flag the deciding agents so the board pulses a "thinking" tell over each
-      // pod while they deliberate (off-clock). Cleared once their plays land.
+      // Flag the deciding agents so the board pulses a "thinking" tell over each pod.
       {
         const w0 = roomRef.current;
         if (w0?.round && w0.round.phase === "play")
           saveRoom({ ...w0, round: { ...w0.round, thinkingSeats: agents } });
       }
-      void (async () => {
-        const results = await Promise.all(
-          agents.map(async (seatId) => ({ seatId, plays: await decideSeatPlays(openedRoom, seatId) })),
-        );
-        let w = roomRef.current;
-        if (!w?.round || w.round.phase !== "play") return; // window closed/changed → drop
-        if (cancelled()) return; // GM cancelled — discard these agent decisions
-        for (const { seatId, plays } of results)
+      for (const seatId of agents) {
+        void decideSeatPlays(openedRoom, seatId).then((plays) => {
+          let w = roomRef.current;
+          if (!w?.round || w.round.phase !== "play" || cancelled()) return; // window closed/cancelled
           for (const p of plays) w = applyPlay(narrative, w, seatId, p.cardId, p.conviction, !p.faceDown);
-        saveRoom({ ...w, round: { ...w.round!, thinkingSeats: [] } });
-      })();
+          if (!w.round) return;
+          const stillThinking = (w.round.thinkingSeats ?? []).filter((s) => s !== seatId);
+          saveRoom({ ...w, round: { ...w.round, thinkingSeats: stillThinking } });
+        });
+      }
     };
 
     // Walk the turn order from `fromActive`, auto-playing agent seats, stopping
@@ -836,23 +1075,31 @@ export function useConviction() {
       const roundIndex = r.round!.index;
       let active = fromActive;
       while (active) {
-        // Always work from the LIVEST room so a human commit made meanwhile
-        // survives; bail if the window closed or the round rolled over.
+        // Work from the latest committed room (roomRef tracks it synchronously, so
+        // a human commit made meanwhile survives); stop if the window closed or the
+        // round rolled over.
         const base = roomRef.current ?? r;
         if (!base.round || base.round.phase !== "play" || base.round.index !== roundIndex) break;
         const seat = base.seats[active];
-        if (!seat || seat.driver !== "agent") break; // manual seat: it's the GM/human's turn
+        if (!seat || !isAiControlled(seat)) break; // manual seat (human OR a claimed agent): their turn
         if (cancelled()) break; // GM cancelled mid-drain — stop deciding more agents
         const deciding = active;
         // Sequential play: the turn marker AND the thinking indicator both land on
         // the acting agent, so the table reads "it's this AI's turn, it's moving"
-        // — one agent at a time, the counter on whoever is up.
-        saveRoom({ ...base, round: { ...base.round, activeSeat: deciding, thinkingSeats: [deciding] } });
-        const played = await autoPlaySeat(roomRef.current ?? base, deciding);
-        if (cancelled() || !played.round || played.round.phase !== "play") break;
-        const next = nextActiveSeat({ ...played.round, activeSeat: deciding });
-        // Commit the agent's move and pass the turn on (thinking cleared).
-        saveRoom({ ...played, round: { ...played.round, activeSeat: next, thinkingSeats: [] } });
+        // — one agent at a time, the counter on whoever is up. The per-move clock
+        // resets to this turn (turnStartedAt) so each player gets their full budget.
+        saveRoom({ ...base, round: { ...base.round, activeSeat: deciding, thinkingSeats: [deciding], turnStartedAt: Date.now() } });
+        // The agent decides FULLY — the per-move clock paces the table (and bounds
+        // human turns), it never cuts an agent off mid-think (computer mode).
+        const decision = await decideSeatPlays(base, deciding);
+        if (cancelled()) break;
+        const live = roomRef.current ?? base;
+        if (!live.round || live.round.phase !== "play") break;
+        const next = nextActiveSeat({ ...live.round, activeSeat: deciding });
+        let played = live;
+        for (const p of decision) played = applyPlay(narrative, played, deciding, p.cardId, p.conviction, !p.faceDown);
+        // Commit the agent's move, pass the turn on, and start the next seat's clock.
+        saveRoom({ ...played, round: { ...played.round!, activeSeat: next, thinkingSeats: [], turnStartedAt: Date.now() } });
         active = next;
       }
       const room = roomRef.current ?? r;
@@ -882,6 +1129,16 @@ export function useConviction() {
     // parallel. Once delivered, READ is the brief; ADVANCING snapshots ℓ⁻
     // (pre-write) and opens WRITE.
     if (round.phase === "read") {
+      // PRESENCE GATE — the table can't start the round / generate perspectives
+      // until every human MEMBER is present (online AND readied). Agents are present
+      // by default. A mid-game joiner re-arms this gate for the next round. The GM
+      // stays in READ; once everyone's in, Advance proceeds. (A table with no Member
+      // seats — all agent / gm-proxy — never gates.)
+      const waiting = unreadyHumanSeats(room);
+      if (waiting.length > 0) {
+        showToast(`Waiting on ${waitingLabel(waiting, narrative)}`, "warning");
+        return;
+      }
       // Stamp the head arc with the prior round's scoring feedback (per entity),
       // once, so BOTH the game perspectives panel and the narrative Perspectives
       // tab can show each seat its Impact + reason alongside the perspective — the
@@ -941,17 +1198,10 @@ export function useConviction() {
       // their cards. ℓ⁻ is snapshotted over the post-seed stance so write-time
       // moves (and PLAY) are the attributed shift.
       saveRoom({ ...room, round: { ...round, generating: true, generatingLabel: "Seeding streams & dealing" } });
-      const headCtx = narrativeContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
-      const entityContextOf = (perspectiveId: string): string => {
-        const p = narrative.perspectives?.[perspectiveId];
-        if (!p || p.kind === "narrator" || !p.entityRef) return "";
-        const src =
-          p.kind === "character" ? narrative.characters : p.kind === "location" ? narrative.locations : narrative.artifacts;
-        const ent = src?.[p.entityRef];
-        if (!ent) return "";
-        const nodes = Object.values(ent.world?.nodes ?? {}).map((nd) => `- ${nd.content}`);
-        return [`${ent.name}:`, ...nodes].join("\n");
-      };
+      const headCtx = outlineContext(narrative, state.resolvedEntryKeys, state.viewState.currentSceneIndex);
+      const tableEntityIds = seatedEntityIds(narrative, room);
+      const entityContextOf = (perspectiveId: string): string =>
+        renderEntityContext(narrative, perspectiveId, tableEntityIds);
 
       const ownedBySeat: Record<string, Stream[]> = {};
       for (const seat of Object.values(room.seats)) ownedBySeat[seat.id] = ownedStreams(narrative, room, seat);
@@ -978,9 +1228,13 @@ export function useConviction() {
             const seed = await generateSeatStream({
               perspectiveLabel: label,
               entityContext: entityCtx,
-              narrativeContext: headCtx,
+              narrativeOutline: headCtx,
               personaContext: persona,
-              reasoningBudget: resolveReasoningBudget(narrative),
+              // Reasoning-FREE, matching the narrative UI's new-stream calls
+              // (instantiateStream / suggestQuestion / suggestIntuition all run at
+              // budget 0 on the default model). The thinking budget was the cost —
+              // seeding fires once per seat per round, so it must stay cheap.
+              reasoningBudget: 0,
             });
             const stream = openStream({
               perspectiveId: seat.perspectiveId,
@@ -1050,7 +1304,7 @@ export function useConviction() {
       const first = simultaneous ? null : round.turnOrder[0] ?? null;
       const opened: GameRoom = {
         ...room,
-        round: { ...round, phase: "play", generating: false, activeSeat: first, playStartedAt: Date.now() },
+        round: { ...round, phase: "play", generating: false, activeSeat: first, playStartedAt: Date.now(), turnStartedAt: Date.now() },
       };
       saveRoom(
         logRoom(opened, "phase", `Round ${round.index + 1} — play opens${simultaneous ? " (simultaneous)" : ""}`),
@@ -1059,7 +1313,7 @@ export function useConviction() {
       if (simultaneous) {
         // Every agent seat decides at once; plays fold onto the latest room.
         runAgentsInBackground(opened, round.turnOrder);
-      } else if (first && opened.seats[first]?.driver === "agent") {
+      } else if (first && opened.seats[first] && isAiControlled(opened.seats[first])) {
         // Ordered: drain the leading run of agents in the background, advancing the
         // turn pointer to the first manual seat (no human acts during agent turns,
         // so this bases on the opened snapshot; dropped if play has since closed).
@@ -1210,7 +1464,7 @@ export function useConviction() {
                 })),
                 ...(c.decidedOutcome ? { decidedOutcome: c.decidedOutcome } : {}),
               })),
-              narrativeContext: headCtx,
+              narrativeOutline: headCtx,
               reasoningBudget: resolveReasoningBudget(narrative),
             });
             for (const x of resos) realismById[x.id] = x;
@@ -1328,7 +1582,24 @@ export function useConviction() {
     // SCORING → the Impact reveal has been watched on the board; advancing opens
     // the NEXT round. The feedback also persists into the next perspective.
     if (round.phase === "scoring") {
-      saveRoom({ ...room, round: startRound(room, round.index + 1, round.openThreadIds) });
+      // PRESENCE GATE at the round boundary — a round can't roll to the next until
+      // every human member is ready. Un-readying mid-round never stopped THIS round
+      // (the gate only sits at boundaries), but the NEXT one waits here, on the
+      // scoreboard, until everyone (incl. a mid-game joiner) is back in.
+      const waiting = unreadyHumanSeats(room);
+      if (waiting.length > 0) {
+        showToast(`Waiting on ${waitingLabel(waiting, narrative)} before the next round`, "warning");
+        return;
+      }
+      // Promote anyone who joined mid-game (pending) to a full player now — the new
+      // round rebuilds the turn order (rotating the button) and READ→WRITE deals
+      // them a hand + seeds their stream + generates their perspective. Without this
+      // a mid-game arrival would stay "pending" forever, never properly integrated.
+      const seats = Object.fromEntries(
+        Object.entries(room.seats).map(([id, s]) => [id, s.status === "pending" ? { ...s, status: "playing" as const } : s]),
+      );
+      const next = { ...room, seats };
+      saveRoom({ ...next, round: startRound(next, round.index + 1, round.openThreadIds) });
       return;
     }
 
@@ -1337,7 +1608,7 @@ export function useConviction() {
     // surfaces the panel; `completeResolve()` runs SETTLE + SCORE, stamps each
     // seat's Impact feedback, and opens the NEXT round immediately on generate
     // (the feedback rides in the next perspective). So advancing does nothing here.
-  }, [narrative, room, state.resolvedEntryKeys, state.viewState.currentSceneIndex, dispatch, saveRoom, logRoom, ownedStreams, applyPlay]);
+  }, [narrative, room, state.resolvedEntryKeys, state.viewState.currentSceneIndex, dispatch, saveRoom, logRoom, ownedStreams, applyPlay, showToast]);
 
   /** The merge the GM resolves through the Generate Panel — determined at
    *  PLAY→RESOLVE (contested threads settled, uncontested claims standing).
@@ -1455,7 +1726,7 @@ export function useConviction() {
           resolutions: [{ seatId, name: seatName(seatId), backed: acted ? res?.outcome ?? "(none)" : "(held — no action)", conviction: cv, acted }],
         });
       }
-      if (inputs.length > 0) reads = await scoreThreadsWithAI(inputs, resolveReasoningBudget(narrative), continuationSummary);
+      if (inputs.length > 0) reads = await scoreThreadsWithAI(inputs, 0, continuationSummary);
     } catch {
       reads = [];
     }
@@ -1535,12 +1806,25 @@ export function useConviction() {
     // next round opens on the following advance (auto-timed in autoResolve rooms).
     // The same feedback also rides into the next perspective (stamped on the arc
     // at READ), so a player reads "what it earned them" with the new situation.
+    const houseThisRound = Math.max(0, score.houseBand);
+    const houseCumulative = (room.fateHouseBand ?? 0) + houseThisRound;
+    // Snapshot this round's scoring for the Rankings data-viz — per-seat credit,
+    // the running cumulative line, and the world's house band (play vs outside force).
+    const scoreRecord: RoundScoreRecord = {
+      roundIndex: round.index,
+      perSeat: score.perSeat,
+      cumulative: Object.fromEntries(Object.values(seats).map((s) => [s.id, s.fateImpact])),
+      houseBand: houseThisRound,
+      houseCumulative,
+      total: score.total,
+    };
     const scored: GameRoom = {
       ...room,
       seats,
       // Accumulate the world's uncontrolled share across rounds (shown beside seat
       // scores so the table sees how much Fate moved outside anyone's play).
-      fateHouseBand: (room.fateHouseBand ?? 0) + Math.max(0, score.houseBand),
+      fateHouseBand: houseCumulative,
+      scoreHistory: [...(room.scoreHistory ?? []), scoreRecord],
       round: {
         ...round,
         phase: "scoring",
@@ -1605,6 +1889,11 @@ export function useConviction() {
     addPrior,
     openNewStream,
     pause,
+    setHosting,
+    setReady,
+    setSeatOnline,
+    minimise,
+    resumeFromMinimise,
     extendClock,
     endGame,
     clearGame,

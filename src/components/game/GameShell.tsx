@@ -7,23 +7,30 @@
  *  testing. Whose-turn is shown three ways: the board ring, the left-rail ring,
  *  and the bottom callout. Plan §8 / MERMAID §8. */
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AddPlayersModal } from "@/components/game/AddPlayersModal";
 import { GameBottomPanel } from "@/components/game/GameBottomPanel";
 import { ChatPanel, GameWritePanel, LogPanel, PerspectivesPanel } from "@/components/game/GameSidePanels";
 import { MergesView } from "@/components/stage/MergesView";
 import { PokerTable } from "@/components/game/PokerTable";
+import { RankingsView } from "@/components/game/RankingsView";
 import { Showdown } from "@/components/game/Showdown";
 import { GeneratePanel } from "@/components/generation/GeneratePanel";
 import { Avatar, perspectiveName } from "@/components/stage/RoomUI";
-import { IconChat, IconCompass, IconDice, IconEye, IconList, IconMerge, IconPencil, IconPlus } from "@/components/icons";
+import { IconChat, IconCompass, IconEye, IconList, IconMerge, IconPencil, IconPlus, IconScorecard, IconShare } from "@/components/icons";
+import { ShareGameModal } from "@/components/game/ShareGameModal";
+import { PresenceRoster } from "@/components/game/PresenceBar";
 import { useConviction } from "@/hooks/useConviction";
+import { useConvictionLiveHost } from "@/hooks/useConvictionLiveHost";
+import type { Intent } from "@/lib/game/live/protocol";
+import { humansReady } from "@/lib/game/engine";
+import { intentAllowed, sanitizeIntent } from "@/lib/game/live/validate";
 import { mentionedSeatIds, type SeatHandle } from "@/lib/game/mentions";
 import { useStore } from "@/lib/state/store";
 import type { GameRoom, NarrativeState } from "@/types/narrative";
 
-type GameTab = "board" | "perspective" | "write" | "chat" | "history" | "log";
+type GameTab = "board" | "perspective" | "write" | "chat" | "rankings" | "history" | "log";
 
 // Automatic-mode dwell for a reveal/untimed phase — the "watch it land" beat
 // shared by the SHOWDOWN, SCORING, and untimed READ/WRITE/PLAY auto-advances.
@@ -36,6 +43,8 @@ const TABS: { key: GameTab; icon: React.ReactNode; label: string; gmOnly?: boole
   { key: "perspective", icon: <IconEye size={13} />, label: "Perspective" },
   { key: "write", icon: <IconPencil size={13} />, label: "Write" },
   { key: "chat", icon: <IconChat size={13} />, label: "Chat" },
+  // The scoreboard — Fate standings, trajectories, and house influence (data-viz).
+  { key: "rankings", icon: <IconScorecard size={13} />, label: "Rankings" },
   // GM-only — full record, hidden when impersonating a player.
   { key: "history", icon: <IconMerge size={13} />, label: "History" },
   { key: "log", icon: <IconList size={13} />, label: "Log", gmOnly: true },
@@ -70,13 +79,16 @@ function PhaseBar({ room, now, canControl, onAddTime }: { room: GameRoom; now: n
   // The live clock follows the open window: READ, WRITE, and PLAY each carry
   // their own anchored timer. All run off-clock-safe (anchored only after the
   // facilitating generation finished).
+  // PLAY clock is mode-dependent: SEQUENTIAL is a per-MOVE clock anchored to the
+  // current turn (turnStartedAt); SIMULTANEOUS is one shared window from playStartedAt.
+  const seqPlay = room.economy.playOrder !== "simultaneous";
   const anchor: { ms: number; startedAt?: number } =
     round.phase === "read"
       ? { ms: round.timers?.read ?? 0, startedAt: round.readStartedAt }
       : round.phase === "write"
         ? { ms: round.timers?.write ?? 0, startedAt: round.writeStartedAt }
         : round.phase === "play"
-          ? { ms: round.timers?.play ?? 0, startedAt: round.playStartedAt }
+          ? { ms: round.timers?.play ?? 0, startedAt: seqPlay ? round.turnStartedAt : round.playStartedAt }
           : { ms: 0 };
   const windowMs = anchor.ms;
   const startedAt = anchor.startedAt;
@@ -143,11 +155,48 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
   const narrative = state.activeNarrative as NarrativeState;
   const {
     actAsSeatId, advance, cancelGeneration, pendingMerge, completeResolve, setResolveGenerating, playCard, vetoPlay, setContestedOutcome,
-    editGroupRealism, rerunShowdownRealism, actAsSeat, move,
-    openNewStream, pause, extendClock, endGame, clearGame, sendChat, addSeats,
+    editGroupRealism, rerunShowdownRealism, actAsSeat, move, foldSeat, addPrior,
+    openNewStream, pause, setHosting, setReady, setSeatOnline, minimise, resumeFromMinimise, extendClock, endGame, clearGame, sendChat, addSeats,
   } = useConviction();
+  // Live hosting — apply each remote player's intent through the master's own
+  // (authoritative) action methods, and publish seat views back over the tunnel.
+  useConvictionLiveHost({
+    room,
+    narrative,
+    onPresence: setSeatOnline,
+    apply: useCallback(
+      (seatId: string, intent: Intent) => {
+        // The wire is untrusted — gate every intent on phase / turn / ownership
+        // before it touches the authoritative reducer. Rejected intents are dropped.
+        if (!intentAllowed(room, narrative, seatId, intent).ok) return;
+        const safe = sanitizeIntent(room, seatId, intent);
+        switch (safe.cmd) {
+          case "play": playCard(seatId, safe.cardId, safe.conviction, safe.faceUp); break;
+          case "fold": foldSeat(seatId); break;
+          case "chat": sendChat(seatId, safe.text, safe.scope, safe.locationId); break;
+          case "addPrior": void addPrior(seatId, safe.streamId, safe.text); break;
+          case "openStream": void openNewStream(seatId, safe.question, safe.intuition); break;
+          case "move": move(seatId, safe.locationId); break;
+          case "ready": setReady(seatId, safe.ready); break;
+        }
+      },
+      [room, narrative, playCard, foldSeat, sendChat, addPrior, openNewStream, move, setReady],
+    ),
+  });
+  // On mount (incl. resume after minimise) shift the frozen clocks forward by the
+  // away-time, so timers continue from where they were left — once, before the
+  // auto-pilot evaluates (it's gated on `minimisedAt` until this clears it).
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current) return;
+    resumedRef.current = true;
+    resumeFromMinimise();
+  }, [resumeFromMinimise]);
+  // Stamp the minimise time, then close — the clocks freeze while away.
+  const handleMinimise = () => { minimise(); onMinimise(); };
   const [tab, setTab] = useState<GameTab>("board");
   const [addPlayersOpen, setAddPlayersOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   // Per-seat "chat seen up to" (session-only) — drives the @-mention badge.
   const [chatSeen, setChatSeen] = useState<Record<string, number>>({});
   // Tracks the last auto-applied play-step (per seat) so the tab auto-advances
@@ -173,6 +222,15 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
     }
   }
 
+  // Presence gate: a live table waits for every human member before it starts /
+  // rolls a round. Gates the perspective-delivery (read) AND the scoring→next-round
+  // boundary, for both the GM's manual Advance and the auto-pilot below. Defined
+  // up here so every auto-advance effect can read it.
+  const presenceReady = humansReady(room);
+  const awaitingPresence =
+    !presenceReady &&
+    ((room.round?.phase === "read" && room.round?.readStartedAt == null) || room.round?.phase === "scoring");
+
   // Auto-advance the SHOWDOWN watch into resolution when the GM opted into full
   // auto (a brief beat to watch the reveal, then on). Manual rooms wait for the
   // GM's "Continue" on the board. Once per round (guarded by ref).
@@ -193,13 +251,15 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
   const scoringAdvancedRef = useRef<string | null>(null);
   const scoring = room.round?.phase === "scoring";
   useEffect(() => {
-    if (!scoring || !room.autoResolve || room.paused) return;
+    // Hold the auto-advance at the scoreboard until every member is ready — and
+    // re-fire (presenceReady in deps) the moment the last one is back in.
+    if (!scoring || !room.autoResolve || room.paused || !presenceReady) return;
     const key = `${room.id}:${room.round?.index}`;
     if (scoringAdvancedRef.current === key) return;
     scoringAdvancedRef.current = key;
     const id = setTimeout(() => void advance(), AUTO_BEAT_MS);
     return () => clearTimeout(id);
-  }, [scoring, room.autoResolve, room.paused, room.id, room.round?.index, advance]);
+  }, [scoring, room.autoResolve, room.paused, room.id, room.round?.index, presenceReady, advance]);
 
   // 1s clock so the play timer can lock plays + writes when it elapses (kept in
   // state so render stays pure — no Date.now() in the render body).
@@ -209,12 +269,16 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
     return () => clearInterval(id);
   }, []);
   const playMs = room.round?.timers?.play ?? 0;
+  // PLAY clock anchor by mode: sequential = the current turn (per-move budget);
+  // simultaneous = the shared window from when play opened.
+  const seqPlay = room.economy.playOrder !== "simultaneous";
+  const playAnchor = seqPlay ? room.round?.turnStartedAt : room.round?.playStartedAt;
   const playLocked =
     room.round?.phase === "play" &&
     playMs > 0 &&
     !room.paused &&
-    room.round.playStartedAt != null &&
-    now - room.round.playStartedAt > playMs;
+    playAnchor != null &&
+    now - playAnchor > playMs;
   // The WRITE window has its own clock, anchored to when the deal generation
   // finished. Once it elapses, new streams + priors lock — all writes must land
   // before PLAY opens.
@@ -236,13 +300,15 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
   // An untimed phase falls back to a short beat so the loop never stalls; pause or
   // End game still halts everything (the pilot gates on `paused`). Each transition
   // fires exactly once (ref-keyed by round + phase + sub-step).
-  const auto = !!room.autoResolve && !room.paused;
+  // Gated on `minimisedAt` too: don't fast-forward phases on resume until the
+  // frozen clocks have been shifted forward (resumeFromMinimise clears the stamp).
+  const auto = !!room.autoResolve && !room.paused && room.minimisedAt == null;
   const elapsed = (startedAt: number | undefined, windowMs: number) =>
     startedAt != null && now - startedAt > (windowMs > 0 ? windowMs : AUTO_BEAT_MS);
   const readMs = room.round?.timers?.read ?? 0;
   const readElapsed = auto && room.round?.phase === "read" && elapsed(room.round.readStartedAt, readMs);
   const writeElapsed = auto && room.round?.phase === "write" && elapsed(room.round.writeStartedAt, writeMs);
-  const playElapsed = auto && room.round?.phase === "play" && elapsed(room.round.playStartedAt, playMs);
+  const playElapsed = auto && room.round?.phase === "play" && elapsed(playAnchor, playMs);
   const pilotRef = useRef<string | null>(null);
   const pPhase = room.round?.phase;
   const pIndex = room.round?.index;
@@ -252,7 +318,7 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
   useEffect(() => {
     if (!auto || !pPhase || pGenerating) return;
     let subKey: string | null = null;
-    if (pPhase === "read") subKey = pReadStarted == null ? "deliver" : readElapsed ? "leave" : null;
+    if (pPhase === "read") subKey = pReadStarted == null ? (presenceReady ? "deliver" : null) : readElapsed ? "leave" : null;
     else if (pPhase === "write") subKey = writeElapsed ? "leave" : null;
     else if (pPhase === "play") subKey = playElapsed ? `leave:${pActive ?? "x"}` : null;
     if (!subKey) return;
@@ -260,7 +326,7 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
     if (pilotRef.current === key) return;
     pilotRef.current = key;
     void advance();
-  }, [auto, room.id, pPhase, pIndex, pGenerating, pReadStarted, pActive, readElapsed, writeElapsed, playElapsed, advance]);
+  }, [auto, room.id, pPhase, pIndex, pGenerating, pReadStarted, pActive, presenceReady, readElapsed, writeElapsed, playElapsed, advance]);
 
   // GM-only tabs collapse when impersonating a player; fall back to the board.
   const isGM = actAsSeatId === null;
@@ -324,17 +390,39 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
     <div className="flex h-full min-h-0 flex-col bg-bg-base">
       <div className="flex min-h-0 flex-1">
         {/* LEFT RAIL — seats (the roster + whose-turn + act-as) */}
-        <div className="flex w-14 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-white/8 bg-bg-base/60 py-2 backdrop-blur-sm">
+        <div className="flex w-14 shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-border bg-bg-base/70 py-2.5 backdrop-blur-sm">
           <button
             onClick={() => actAsSeat(null)}
-            title="Game Master view"
-            className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
-              actAsSeatId === null ? "bg-white/10 text-text-primary ring-1 ring-white/20" : "text-text-dim hover:bg-white/5 hover:text-text-primary"
+            title="Game Master"
+            className={`relative rounded-full p-0.5 transition ${
+              actAsSeatId === null ? "ring-2 ring-amber-400" : "ring-1 ring-white/10 hover:ring-amber-400/50"
             }`}
           >
-            <IconDice size={16} />
+            {/* GM avatar — gold "master" distinction, set apart from violet AI / slate human seats. */}
+            <span
+              style={{ width: 32, height: 32 }}
+              className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-[11px] font-bold leading-none text-amber-950 shadow-sm"
+            >
+              GM
+            </span>
+            {/* Crown badge marks the seat as the table's master. */}
+            <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-amber-950 ring-2 ring-bg-base">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M3 7l4 4 5-7 5 7 4-4-2 12H5L3 7z" />
+              </svg>
+            </span>
           </button>
-          <div className="h-px w-7 bg-white/8" />
+          <div className="my-0.5 h-px w-6 bg-border" />
+          {/* Add players — sits at the head of the roster, just under the GM. */}
+          {isGM && room.phase !== "ended" && (
+            <button
+              onClick={() => setAddPlayersOpen(true)}
+              title="Add players — join next round"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-text-dim ring-1 ring-dashed ring-border transition hover:bg-white/5 hover:text-text-primary hover:ring-white/30"
+            >
+              <IconPlus size={16} />
+            </button>
+          )}
           {seats.map((seat) => {
             const isActive = round?.activeSeat === seat.id;
             const isActing = actAsSeatId === seat.id;
@@ -346,8 +434,8 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
                 key={seat.id}
                 onClick={() => actAsSeat(isActing ? null : seat.id)}
                 title={`${name}${pending ? " · joins next round" : thinking ? " · thinking…" : isActive ? " · to act" : ""}`}
-                className={`relative rounded-lg p-0.5 transition ${
-                  thinking ? "ring-2 ring-violet-400/70" : isActing ? "ring-2 ring-accent" : isActive ? "ring-2 ring-accent/60" : "ring-1 ring-white/8 hover:ring-white/25"
+                className={`relative rounded-full p-0.5 transition ${
+                  thinking ? "ring-2 ring-violet-400/70" : isActing ? "ring-2 ring-accent" : isActive ? "ring-2 ring-accent/60" : "ring-1 ring-white/10 hover:ring-white/25"
                 } ${pending ? "opacity-50" : ""}`}
               >
                 <Avatar label={name} ai={seat.driver === "agent"} size={32} />
@@ -365,15 +453,32 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
               </button>
             );
           })}
-          {/* GM-only — add players to the live game; they join next round. */}
-          {isGM && (
-            <button
-              onClick={() => setAddPlayersOpen(true)}
-              title="Add players — join next round"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-text-dim ring-1 ring-dashed ring-white/15 transition hover:bg-white/5 hover:text-text-primary hover:ring-white/30"
-            >
-              <IconPlus size={15} />
-            </button>
+          {/* Footer tools, docked to the foot of the rail. Go-live / invite: a
+              player on a live table gets it too, but only to FORWARD the already-
+              minted links (never to open the tunnel). */}
+          {(isGM || room.live) && room.phase !== "ended" && (
+            <div className="mt-auto flex flex-col items-center gap-1.5 pt-2">
+              <div className="h-px w-6 bg-border" />
+              {/* Invite — GM goes live; a player just opens the share sheet. */}
+              <button
+                onClick={() => { if (isGM) setHosting(true); setShareOpen(true); }}
+                title={
+                  isGM
+                    ? room.live ? "Live — invite players (QR / link)" : "Invite players — share a QR / link to a seat"
+                    : "Share invite links with players"
+                }
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition ${
+                  room.live
+                    ? "bg-accent-soft text-accent ring-1 ring-accent/40"
+                    : "text-text-dim ring-1 ring-border hover:bg-white/5 hover:text-text-primary hover:ring-white/30"
+                }`}
+              >
+                <IconShare size={16} />
+                {room.live && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-accent shadow-[0_0_6px] shadow-accent" />
+                )}
+              </button>
+            </div>
           )}
         </div>
 
@@ -432,7 +537,15 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
                 onRerunRealism={isGM ? rerunShowdownRealism : undefined}
               />
             ) : activeTab === "board" ? (
-              <PokerTable room={room} narrative={narrative} actAsSeatId={actAsSeatId} onActAsSeat={actAsSeat} />
+              <PokerTable
+                room={room}
+                narrative={narrative}
+                actAsSeatId={actAsSeatId}
+                onActAsSeat={actAsSeat}
+                isGM={isGM}
+                blocked={awaitingPresence}
+                onInvite={() => { if (isGM) setHosting(true); setShareOpen(true); }}
+              />
             ) : activeTab === "chat" ? (
               // Full-height messenger — its own internal scroll + pinned composer.
               <div className="mx-auto h-full w-full max-w-2xl">
@@ -446,6 +559,8 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
                 locked={!!writeLocked}
                 onOpenStream={openNewStream}
               />
+            ) : activeTab === "rankings" ? (
+              <RankingsView room={room} narrative={narrative} />
             ) : activeTab === "history" ? (
               <MergesView branchId={room.branchId} />
             ) : activeTab === "perspective" ? (
@@ -459,6 +574,16 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
           </div>
         </div>
       </div>
+
+      {/* PRESENCE GATE banner — a live table holds at READ until every human member
+          is present. The GM sees exactly who it's waiting on (the same roster the
+          players see); Advance still toasts if clicked early. Clears the instant the
+          last member readies. */}
+      {awaitingPresence && (
+        <div className="border-t border-amber-500/25 bg-amber-500/10 px-4 py-2">
+          <PresenceRoster room={room} narrative={narrative} />
+        </div>
+      )}
 
       {/* Always-visible phase + timer — every tab, so the table never loses the round. */}
       <PhaseBar room={room} now={now} canControl={isGM} onAddTime={extendClock} />
@@ -478,8 +603,9 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
         onActAsSeat={actAsSeat}
         onMove={move}
         onResolveOpen={() => setResolvePanelOpen(true)}
-        onMinimise={onMinimise}
+        onMinimise={handleMinimise}
         playLocked={!!playLocked}
+        blocked={awaitingPresence}
       />
 
       {/* RESOLVE — the real Generate Panel, pre-loaded with the merge built from
@@ -513,6 +639,15 @@ export function GameShell({ room, onMinimise }: { room: GameRoom; onMinimise: ()
           room={room}
           onAdd={(configs) => addSeats(configs)}
           onClose={() => setAddPlayersOpen(false)}
+        />
+      )}
+      {shareOpen && (
+        <ShareGameModal
+          room={room}
+          narrative={narrative}
+          canHost={isGM}
+          onClose={() => setShareOpen(false)}
+          onStopHosting={() => setHosting(false)}
         />
       )}
     </div>

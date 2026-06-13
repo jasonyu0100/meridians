@@ -936,11 +936,16 @@ function ShapeCurve({
 // LLM cost amortises across a cohort so per-player marginal cost is
 // cents per season even on a heavy game.
 
-// Cost is human hours, not LLM. So price the service-intensity, and
-// unbundle three independent dials: a one-time setup, a removable
-// facilitation retainer, and the cheap recurring software line. Every
-// number is a hypothesis — price the first pilots by hand; publish a
-// rate card only after.
+// Grassroots, not boutique consulting. The growth motion is the
+// Player → Contributor → GM ladder: the card game spreads through
+// networks, the community produces GMs, GMs run the rooms. Revenue
+// still lands — recurring private rooms, pro tiers, and pilots a
+// grown room can reach — but the GM is grown from the network, not
+// staffed by us, so the bottleneck is network growth, not facilitator
+// hiring. The three private dials below (setup, facilitation, software)
+// still describe an early room a founder runs; the model scales by GMs
+// multiplying. Every number is a hypothesis — price the first rooms by
+// hand; publish a rate card only after.
 
 type UnbundledLine = {
   line: string;
@@ -978,24 +983,24 @@ type Motion = {
 
 const MOTIONS: Motion[] = [
   {
-    motion: "Free room",
-    price: "$0 · capped, self-serve",
-    role: "The no-friction taste; costs cents to serve. Top of funnel.",
+    motion: "Free workshop",
+    price: "$0 · social, world-seeding",
+    role: "The grassroots entry. A free gathering that takes a real scenario and makes it playable — people play a game of Conviction (Read / Write / Play) and seed new worlds in the process. Onboarding, top of funnel.",
   },
   {
-    motion: "Workshop",
-    price: "one-off · ~few hundred – $2K",
-    role: "First paid touch, priced like a team offsite. Leaves a seeded substrate — no setup fee, no recurring obligation.",
+    motion: "Community",
+    price: "$0 · the network",
+    role: "The Signal chat and the network around a GM. Players become Contributors feeding priors to the model; the social fabric — and the next GMs — form here. Retention, not revenue.",
   },
   {
-    motion: "Recurring",
-    price: "software base + sunsetting facilitation",
-    role: "Opt-in after value is felt. Where the client-led margin lift shows up.",
+    motion: "Recurring room",
+    price: "consumer sub · per room / seat",
+    role: "A GM grown from the network runs a standing private room for a group or community. The recurring subscription line; the community supplies the facilitation, so margin isn't capped by us hiring.",
   },
   {
-    motion: "Pilot",
-    price: "$80–120K / 6mo",
-    role: "Wedge motion (defence, hedge, political-research). Priming included; renewal steps down to software + light facilitation.",
+    motion: "Public + pro",
+    price: "free-to-play + pro tiers",
+    role: "Public rooms grow from private ones via the guest pass; pro subscriptions, opt-in betting, and sponsorship ride on top of free distribution. The B2C upside layer.",
   },
 ];
 
@@ -1085,10 +1090,10 @@ function BusinessModels() {
       <div>
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <h4 className="text-[12.5px] font-semibold tracking-wide text-white/80">
-            The motions — a wide, cheap front door onto the substrate
+            The motions — the grassroots ladder onto the substrate
           </h4>
           <span className="text-[10px] text-white/35 font-mono tabular-nums">
-            free → workshop → recurring → pilot
+            workshop → community → room → public
           </span>
         </div>
         <div className="rounded-lg border border-white/6 bg-white/1.5 overflow-hidden">
@@ -1159,17 +1164,20 @@ function BusinessModels() {
       </div>
 
       <p className="text-[10.5px] text-white/35 italic leading-relaxed">
-        The cost is human hours, not LLM &mdash; a session is rounding error; facilitation,
-        customer success, and the priming build-out are the spend. So price the service-intensity
-        and unbundle it: a one-time <em>setup</em> recovered where it occurs, a <em>facilitation</em>
-        retainer built to sunset, and the cheap recurring <em>software</em> line that finally
-        carries software-shape margin on its own. Graduation stops being a margin shift we hope for
-        and becomes a price cut the client chooses &mdash; the investment thesis turned into a
-        billing mechanic. The entry door stays wide and nearly free: a workshop leaves a seeded
-        substrate behind, so the cheapness buys a foothold on the moat rather than a one-night
-        stand, and no setup fee sits anywhere near it. Every number here is a hypothesis &mdash;
-        price the first pilots by hand and publish a rate card only once buyers have shown where
-        they flinch. Public economics stay separate; the cohort doesn&apos;t exist yet.
+        The cost is human hours, not LLM &mdash; a session is rounding error; the spend is the
+        hours a Game Master puts into a room. In the grassroots model those hours come from the{" "}
+        <em>network</em>, not our payroll: the card game produces players, the community produces
+        Contributors, and the committed graduate into GMs who facilitate their own rooms. The three
+        private dials still describe an early room a founder runs &mdash; a one-time <em>setup</em>
+        {" "}recovered where it occurs, a <em>facilitation</em> line that sunsets as the room&apos;s
+        own GM takes over, and the cheap recurring <em>software</em> line that carries
+        software-shape margin on its own &mdash; but the model scales by GMs multiplying through the
+        network, so facilitation stops being a cost we have to staff and becomes something the
+        community supplies. The entry door is the free workshop: a real scenario made playable,
+        free and social, that seeds a world and a relationship rather than a one-night stand. Every number here is a
+        hypothesis &mdash; price the first rooms by hand and publish a rate card only once the
+        network shows where it flinches. Public economics stay separate; the cohort doesn&apos;t
+        exist yet.
       </p>
     </div>
   );
@@ -1582,13 +1590,14 @@ export default function PaperPage() {
             Manifesto
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold leading-[1.05] tracking-tight text-white/90 mb-6">
-            Rehearsal Engine
+            Playable Reality
           </h1>
           <p className="text-[15px] text-white/45 leading-[1.7] max-w-xl">
-            Any coherent text becomes a playable world &mdash; where you
-            play the actor that produces the outcome, not the price of
-            it. Convene the room. Practise the future. Earn the morning
-            the surprise lands.
+            A gamified rehearsal engine that compounds into a social network
+            &mdash; you play the future before it arrives, and what you build
+            accrues to a network no one can ship cold. You play the actor that
+            produces the outcome, not the price of it. Convene the room.
+            Practise the future. Earn the morning the surprise lands.
           </p>
           <div className="mt-8">
             <PaperMeta />
@@ -1618,14 +1627,15 @@ export default function PaperPage() {
               trust.
             </P>
             <P>
-              <B>Meridians is that place &mdash; a rehearsal engine for
-              teams.</B> That is the company, singular: we help teams that
-              make consequential decisions rehearse the future together, and
-              we keep the ledger so the rehearsal compounds. Give the engine
-              any coherent text &mdash; a market brief, a doctrine, a
-              competitive landscape &mdash; and it becomes a{" "}
-              <B>playable world</B>: a board your team sits around and moves
-              against, one turn at a time. Anyone can say it; a card makes you
+              <B>Meridians is a gamified rehearsal engine that compounds into
+              a social network.</B> That is the company, singular: the{" "}
+              <em>product</em> is the engine &mdash; you play the future
+              before it arrives &mdash; and it <em>compounds</em> into a
+              network, every room&apos;s judgement and worlds accruing to a
+              substrate no competitor can ship cold. Give it any coherent text
+              &mdash; a market brief, a doctrine, a competitive landscape
+              &mdash; and it becomes a <B>playable world</B>: a board your
+              team sits around and moves against, one turn at a time. Anyone can say it; a card makes you
               pay for it. <B>You play the actor that produces the outcome, not
               the price of it.</B> The math underneath was proven on narrative
               &mdash; the same deterministic formulas recover the dramatic
@@ -1633,6 +1643,19 @@ export default function PaperPage() {
               &mdash; but fiction is our wind tunnel, not our market: a known
               text with a known shape is how you validate an instrument before
               pointing it at a live one.
+            </P>
+            <P>
+              <B>Players, Contributors, and Game Masters</B> each read the
+              same world differently; membership lives <em>in the narratives
+              themselves</em>, so the model you play is also the directory of
+              who you play it with. A frontier model turns any text into a
+              playable world on the three forces &mdash; rules become{" "}
+              <B>System</B>, players <B>World</B>, quests and the north star{" "}
+              <B>Fate</B> &mdash; so worlds are cheap to build. Most stay{" "}
+              <em>surface-level and vibrant</em>, where the play lives; go deep
+              and a world becomes an <B>expert system that understands its
+              players better than they understand themselves</B>. Surface
+              worlds drive the network; deep worlds are the moat.
             </P>
             <P>
               Underneath is a <B>world view</B>: a typed, continuously
@@ -1706,13 +1729,14 @@ export default function PaperPage() {
               a local data model, compounding one team&apos;s edge with no
               vendor in the middle. Public rooms are the second-phase bet,
               unproven and named as such. One note on how to read what
-              follows: there is <B>one business here, the rehearsal engine
-              for teams.</B> Everything narrative &mdash; Harry Potter, story
-              shapes, voice, beat chains &mdash; is either the validation
-              harness that proved the math or the internal tooling that runs
-              the engine. When a section reads like a writing product, it
-              isn&apos;t one; it is the engine room of the rehearsal product,
-              documented. Skim the argument for the wager; the engine
+              follows: there is <B>one business here &mdash; a gamified
+              rehearsal engine that compounds into a social network.</B>
+              Everything
+              narrative &mdash; Harry Potter, story shapes, voice, beat chains
+              &mdash; is either the validation harness that proved the math or
+              the internal tooling that runs the engine. When a section reads
+              like a writing product, it isn&apos;t one; it is the engine room
+              under the network, documented. Skim the argument for the wager; the engine
               sections (Forces through Reconstruction) are the
               instrument&apos;s spec sheet.
             </P>
@@ -1818,10 +1842,23 @@ export default function PaperPage() {
               weekly cadence operationally trivial. And the
               labour-displacement conversation around AI put a
               premium on the one thing models don&apos;t do{" "}
-              &mdash; originate vision. The room itself is not
-              new; what changed is the cost of running it and the
-              permission to bring it to anyone outside the
-              general-staff tradition.
+              &mdash; originate vision. And it sharpened the need: when a
+              model answers everything, judgment atrophies from disuse
+              and deciding turns solitary. The room is the counterweight
+              &mdash; a <B>social play</B> that keeps judgment exercised
+              and the table human. What changed is the cost of running
+              it, the permission to carry it past the general-staff
+              tradition, and the need.
+            </P>
+            <P>
+              <B>The certainty it returns is internal, not
+              predictive.</B> The future stays unknowable; no honest
+              practice changes that. What rehearsal changes is the room:
+              you walk in having played the ground and the
+              adversary&apos;s seat, so you meet the morning with earned{" "}
+              <B>conviction</B> instead of a forecast you&apos;ll be
+              wrong about &mdash; a behavioural practice for the age of
+              AI, where being ready beats claiming to know.
             </P>
           </Section>
 
@@ -1923,6 +1960,19 @@ export default function PaperPage() {
               into public ones.
             </P>
             <P>
+              <B>Meridians is a networking tool for Game Masters &mdash; a
+              recruitment tool as it matures.</B> Running a world is how a GM
+              builds a network: gamified world-modelling is a{" "}
+              <em>creative, strategic, social</em> experience, and the{" "}
+              <em>quality of the models is the value</em> &mdash; people stay
+              for great worlds and sharp play. So the movement is grassroots:
+              it grows from <B>strong networks around individual GMs and the
+              founders</B>, each a node that pulls in players, makes them
+              contributors, and graduates the committed into GMs of their own.
+              The same instrument later becomes a <B>recruitment tool</B>
+              &mdash; the network is where talent surfaces and is found.
+            </P>
+            <P>
               The Game Master is already a profession. Thousands run paid
               tables every week. We point that instinct at strategy,
               business, and life. One person, two stages: <em>forged</em>{" "}
@@ -1947,15 +1997,14 @@ export default function PaperPage() {
             <P>
               <B>The Table.</B> That same person has a job, a team, an
               organisation. They carry the model into a structure they{" "}
-              <em>already belong to</em>, open a room on a contained but
-              real question, and earn the leader by <em>showing, not
-              pitching</em>. The model travels through real relationships,
-              not a cold sale. The Game Master lands; the leader graduates
-              the spend. <B>Champion-led adoption, top-down
-              monetisation</B>: adoption starts in the middle and
-              graduates upward, instead of dying there. The high-ACV
-              verticals (investment, defence, policy, political shops) are
-              not who we sell to. They are where Game Masters deploy.
+              <em>already belong to</em> &mdash; a team, a club, a community
+              &mdash; open a room on a real question, and earn the next player
+              by <em>showing, not pitching</em>. The model travels through
+              real relationships, not a cold sale. <B>Bottom-up</B>: it starts
+              inside a relationship and grows as the value becomes undeniable.
+              Where a room sits inside something more serious, the same
+              bottom-up motion carries it &mdash; a member brings their play
+              in, never a top-down sale.
             </P>
             <P>
               <B>What flows upward is signal, not fees.</B> Players who
@@ -1965,6 +2014,28 @@ export default function PaperPage() {
               Master earns from <em>running rooms</em>, never from
               recruiting other Game Masters. What travels up the ladder is
               players and proof, not a cut of recruits. We hold that line.
+            </P>
+            <P>
+              <B>The grassroots ladder: Player &rarr; Contributor &rarr;
+              Game Master.</B> This is a <em>grassroots</em> motion, not a
+              boutique-consulting one &mdash; growth runs bottom-up through
+              the community, not top-down through a sales team. Each rung is a
+              deepening relationship to one world. <B>Onboarding</B> is the
+              card game: a player is introduced to Meridians by sitting down
+              to a game of Conviction &mdash; low-friction, social, fun, all
+              they carry is Read / Write / Play. <B>Membership</B> is the{" "}
+              <em>Signal chat</em>: they join the room&apos;s back-channel and
+              start <em>contributing priors to the model</em> &mdash; a{" "}
+              <em>Contributor</em>, no longer just a guest at the table.{" "}
+              <B>Ownership</B> is becoming the Game Master: onboarded onto the
+              engine itself, they build their <em>own</em> model, run their
+              own table, and recruit the next ring of players. Play earns
+              membership; membership earns ownership; owners make more players.
+              It is a <B>positive feedback loop</B> &mdash; a community that
+              grows itself &mdash; and the Game Master&apos;s job at every rung
+              is to <em>keep the room social and fun</em>, because that, not a
+              pitch, is what turns a player into a contributor and a
+              contributor into an owner.
             </P>
             <P>
               <B>Three hard problems, named.</B> Embedded Game Masters
@@ -4915,7 +4986,12 @@ export default function PaperPage() {
               uncertainty and reading the room. With a full table the play
               is <em>emergent, not scripted</em>: sometimes there is no best
               move, sometimes you commit and signal, sometimes you go covert
-              and trust the team. (Rehearsal is a pluggable layer over the
+              and trust the team. At root it <B>turns the tedious work of
+              simulating outcomes into a social process</B> &mdash; players
+              choose the actions they&apos;ll play, then the world is{" "}
+              <em>simulated one step forward</em>: forecasting reframed as a
+              table everyone reads, rather than a solitary calculation.
+              (Rehearsal is a pluggable layer over the
               shared resolver; more modes can ride the same substrate later.)
             </P>
             <P>
@@ -5009,6 +5085,16 @@ export default function PaperPage() {
               <B>regenerable</B> with a custom guidance vector or thinking
               mode, so a resolution is <em>a</em> reasoned reading, never{" "}
               <em>the</em> answer.
+            </P>
+            <P>
+              <B>The honest promise: more of the board, not better
+              outcomes.</B> We don&apos;t claim the room makes decisions{" "}
+              <em>better</em> &mdash; that is hard to prove. It gives you the
+              space to <em>see more outcomes from where you stand</em>: playing
+              a model is your life on <B>10&times; speed</B>, more of the board
+              revealed &mdash; a hypothetical board, but one you walked before
+              the real move came. You may not choose differently; you choose
+              having seen further.
             </P>
             <P>
               <B>Eyes on the board, eyes on the graph.</B> Most operator
@@ -5368,15 +5454,15 @@ export default function PaperPage() {
               first, and it is honest about being the nearer of the two.
             </P>
             <P>
-              <B>This preparedness is the enterprise sell &mdash; and
-              privacy-first is what lets a serious room say yes.</B> A serious
-              room is not buying a forecast &mdash; it is buying its own
-              <B> Recall Share</B>: recognition it owns, earned by play not
-              title, and the record client-owned. For the desks and units that hold the
+              <B>This preparedness is what a serious room pays for &mdash; and
+              privacy-first is what lets it say yes.</B> A serious room is not
+              buying a forecast &mdash; it is buying its own{" "}
+              <B>Recall Share</B>: recognition it owns, earned by play not
+              title, and the record player-owned. For the players who hold the
               most sensitive judgement, <B>data-privacy-first by construction</B>
-              {" "}(local, client-owned, end-to-end-encrypted capture) is not a
+              {" "}(local, player-owned, end-to-end-encrypted capture) is not a
               feature behind the product &mdash; it is the precondition for
-              buying it at all, and the line that separates us from any rival
+              playing at all, and the line that separates us from any rival
               that parks the same judgement on its own cloud.
             </P>
           </Section>
@@ -5388,10 +5474,11 @@ export default function PaperPage() {
               component names will change as the ecosystem
               moves. The architectural read is what to take
               forward: a federation of <em>sovereign local hosts</em>
-              (after OpenClaw) &mdash; each a laptop that owns its truth,
-              reached live over a Cloudflare quick tunnel and async
-              through an end-to-end-encrypted Signal capture channel,
-              LLM-as-gateway, no central server.
+              (after OpenClaw) &mdash; each an <em>always-on</em> GM machine
+              that owns its truth, kept live by an always-on Electron app and
+              reached over an <B>ngrok</B> tunnel, with async capture through
+              an end-to-end-encrypted Signal channel, LLM-as-gateway, no
+              central server.
             </p>
             <P>
               The substrate ships as a single Next.js application with
@@ -5432,21 +5519,20 @@ export default function PaperPage() {
               <li className="flex gap-2">
                 <span className="text-white/25 shrink-0">·</span>
                 <span>
-                  <B>Cloudflare quick tunnel</B> &mdash; live access.
-                  While the host runs, a bundled{" "}
-                  <code className="text-white/70">cloudflared</code> quick
-                  tunnel (free, no account) puts the instance behind a
-                  real-cert public URL; players join by <B>scanning a
-                  per-seat QR</B> (or a play link the daemon sends over the
-                  capture channel), opening a{" "}
-                  <em>controller scoped to their seat</em> (its feed,
-                  hand, history) over the same live state. They get their
-                  vantage &mdash; not the GM console, others&apos; hidden
-                  state, or the raw distributions; that boundary is the
-                  asymmetry the game runs on. Public exposure, so{" "}
-                  <B>application-layer auth is the perimeter</B>:
-                  two-stage pairing (token QR + GM PIN), GM-elevated, and
-                  gone the moment the machine sleeps.
+                  <B>ngrok tunnel</B> &mdash; live access, always on.
+                  The always-on Electron host keeps an{" "}
+                  <B>ngrok</B> tunnel up continuously (a stable reserved URL),
+                  so members can reach the instance <em>any time</em> &mdash;
+                  not only during a convened session. Players join by{" "}
+                  <B>scanning a per-seat QR</B> (or a play link), opening a{" "}
+                  <em>controller scoped to their seat</em> (its feed, hand,
+                  history) over the same live state. They get their vantage
+                  &mdash; not the GM console, others&apos; hidden state, or the
+                  raw distributions; that boundary is the asymmetry the game
+                  runs on. Always-on public exposure, so{" "}
+                  <B>application-layer auth is the perimeter</B>: two-stage
+                  pairing (token QR + GM PIN), GM-elevated, sessions revocable
+                  at the host.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -5528,16 +5614,17 @@ export default function PaperPage() {
               <B>Two ways in: live and dark.</B> The console is the
               single source of truth &mdash; no sync, no merge, no
               conflict &mdash; and the room reaches it on two clocks.{" "}
-              <B>Live</B>, the game master raises a{" "}
+              <B>Live</B>, the always-on Electron host holds an{" "}
               <a
-                href="https://github.com/cloudflare/cloudflared"
+                href="https://ngrok.com"
                 className="text-white/70 underline-offset-2 hover:underline"
               >
-                Cloudflare quick tunnel
+                ngrok
               </a>{" "}
-              (free, no account, bundled in the app) and the team plays
-              their seat controllers together over it. <B>Dark</B>, the
-              tunnel is down but the capture channel is not:{" "}
+              tunnel up continuously, so the team can reach their seat
+              controllers any time, not only when a session is convened.{" "}
+              <B>Dark</B>, the host is genuinely off but the capture channel is
+              not:{" "}
               <a
                 href="https://signal.org"
                 className="text-white/70 underline-offset-2 hover:underline"
@@ -5556,65 +5643,50 @@ export default function PaperPage() {
             </P>
             <P>
               <B>Privacy-first is the posture &mdash; and the
-              differentiator.</B> For the buyers that matter most &mdash;
-              desks, funds, units, policy cells &mdash; data-privacy-first is
-              a reason to buy, not a caveat to manage. The substrate is{" "}
+              differentiator.</B> For the players who care most about privacy
+              &mdash; anyone holding sensitive judgement &mdash;
+              data-privacy-first is a reason to play, not a caveat to manage. The substrate is{" "}
               <B>local-first and client-owned</B> (one encrypted{" "}
               <code className="text-white/70">.meridian</code>, no per-user
               database on our side); capture rides{" "}
-              <B>end-to-end-encrypted Signal</B>; live access is a{" "}
-              <B>Cloudflare quick tunnel gated by application-layer auth</B>
-              {" "}(token-QR + PIN, session-scoped, killed on close), so a
-              leaked URL meets a locked door &mdash; and fully-private tables
-              run <B>LAN-only</B>. Privacy-first also means saying where it
-              still leaks: the tunnel terminates TLS at Cloudflare&apos;s edge
-              (it sees live board / chat traffic at the proxy &mdash; not the
-              priors corpus, app-auth-gated, no central store), and deeper, the{" "}
+              <B>end-to-end-encrypted Signal</B>; live access is an{" "}
+              <B>always-on ngrok tunnel gated by application-layer auth</B>
+              {" "}(token-QR + PIN, GM-revocable), so a leaked URL meets a
+              locked door &mdash; and fully-private tables run{" "}
+              <B>LAN-only</B>. Privacy-first also means saying where it still
+              leaks: an always-on tunnel is a persistent attack surface (auth
+              is the perimeter, not obscurity), it terminates TLS at
+              ngrok&apos;s edge (which sees live board / chat traffic at the
+              proxy &mdash; not the priors corpus, app-auth-gated, no central
+              store), and deeper, the{" "}
               <B>inference path</B> &mdash; the substrate leaves through the
               LLM gateway, so where the provider itself is the objection, only
               local inference clears it, and we don&apos;t ship that yet. Net:
               the encrypted path is the default, and <em>&ldquo;your judgement
               never leaves your control&rdquo;</em> is a claim we can stand
-              behind for the principal who signs for themselves &mdash; with
-              the enterprise tier (BYOC, below) making it audit-verifiable, not
-              weaker. Exactly the line a competitor built on someone
-              else&apos;s cloud cannot match.
+              behind for the person who plays on their own machine. Exactly
+              the line a competitor built on someone else&apos;s cloud cannot
+              match.
             </P>
             <P>
-              <B>Electron + daemon for the install.</B> An Electron
-              bundle wraps the same build into a desktop binary, so the
-              room feels like an app, not a tab &mdash; shortcuts, a known
-              persistence location for the encrypted{" "}
-              <code className="text-white/70">.meridian</code>, the
-              console one launch away &mdash; running a{" "}
-              <B>background daemon</B> that keeps the host&apos;s access
-              alive (the tunnel up, the Signal channel paired) while the
-              machine is awake.
+              <B>Always-on Electron host &mdash; the main way a room stays
+              up.</B> The build wraps into an Electron desktop app that runs{" "}
+              <B>always-on on the Game Master&apos;s computer</B>: it is the
+              room&apos;s host and single source of truth, a{" "}
+              <B>background daemon</B> keeping the instance live and the{" "}
+              <B>ngrok tunnel</B> up continuously (and the Signal channel
+              paired) so members can reach the app at any time. The GM machine
+              is the always-on server; there is no separate cloud backend
+              &mdash; shortcuts, a known location for the encrypted{" "}
+              <code className="text-white/70">.meridian</code>, the console one
+              launch away.
             </P>
             <P>
-              <B>The host is a laptop today; the principle scales to the
-              customer&apos;s tenancy.</B> Right now the sovereign host is
-              one person&apos;s machine &mdash; the right shape for the buyer
-              who <em>is</em> the principal (boutique funds, family offices,
-              political consultancies, owner-led firms), where no security
-              committee sits between desire and signature and{" "}
-              <em>&ldquo;it lives on my machine, encrypted, no vendor
-              cloud&rdquo;</em> reads as pure upside. The enterprise reframe
-              keeps the principle and <B>moves the host</B>: it stops being a
-              laptop and becomes a <B>workload in the customer&apos;s own
-              tenancy</B> &mdash; we ship the application as a container or VM
-              image the customer runs in their <B>own AWS / Azure / GCP
-              account or on-prem</B> (BYOC / customer-VPC), the encrypted
-              substrate living in <em>their</em> storage, under <em>their</em>
-              {" "}IAM, backup, and legal hold. We never touch the data
-              &mdash; so <em>&ldquo;your judgement never leaves your
-              control&rdquo;</em> becomes <em>more</em> true and{" "}
-              <B>verifiable by their own cloud audit logs</B>, not our
-              whitepaper. It is a well-understood enterprise pattern (how
-              security-sensitive data tooling commonly ships), nothing exotic
-              to evaluate. One product, three deployment tiers &mdash;
-              laptop, then the customer&apos;s cloud &mdash; and a
-              differentiator that only sharpens as it climbs.
+              <B>The host is the GM&apos;s own machine.</B> The sovereign host
+              is one person&apos;s always-on computer &mdash; local-first,
+              encrypted, no vendor cloud, which reads as pure upside:{" "}
+              <em>&ldquo;it lives on my machine.&rdquo;</em> We never touch the
+              data; that is the whole deployment story.
             </P>
             <P>
               <B>Priors are human-made, not scraped.</B> A person
@@ -5649,23 +5721,21 @@ export default function PaperPage() {
               to replenish it as the world&apos;s movement erodes it.
             </P>
             <P>
-              <B>The honest shape: a boutique strategy practice that may
-              earn a software margin &mdash; not SaaS that happens to need
-              facilitation.</B> The unit is the Game Master, so Meridians
-              is <em>services-led at the foundation</em>: a people
-              business, where the operator who runs the room is the value.
-              The bet is that it evolves &mdash; the substrate sharpens
-              across sessions, the facilitation layer is designed to{" "}
-              <B>fade out</B> as a client takes over its own rooms, and
-              margin steps from a services band toward software as it
-              does. But that is <em>a graduation we hope for, not a margin
-              we book</em>: facilitation is the hard part, the product
-              isn&apos;t turnkey, and self-facilitation is a behaviour
-              change a busy organisation has to sustain. Plenty of
-              services businesses never escape services margin, because
-              the human is the value. Model Meridians as consulting that{" "}
-              <em>might</em> earn its way to SaaS &mdash; and treat
-              graduation as the thing to prove, not assume.
+              <B>The honest shape: a grassroots, community-led practice
+              &mdash; not a boutique consulting firm.</B> The unit is still the
+              Game Master, but growth is <em>bottom-up</em> through the ladder
+              &mdash; <B>Player &rarr; Contributor &rarr; GM</B> &mdash; not a
+              sales team chasing big-ticket contracts. We don&apos;t sell
+              consulting; we <em>seed games</em>: a workshop onboards players,
+              the Signal chat makes them Contributors, the committed become
+              GMs who build their own models and pull in the next ring. The
+              card game is the funnel, the community the retention, the GMs the
+              distribution &mdash; a <B>self-reinforcing loop</B> the founders
+              prime and step out of. The risk is honest: grassroots loops are
+              slow to ignite, and a GM&apos;s job is as much{" "}
+              <em>keeping the room fun</em> as running the math. Model Meridians
+              as a <B>community that grows itself</B> &mdash; not a consulting
+              practice hoping to graduate to software.
             </P>
             <P>
               <B>Two surfaces, sequenced &mdash; and a knife taken to the
@@ -5689,23 +5759,45 @@ export default function PaperPage() {
               Economics treats it as zero.
             </P>
             <P>
-              <B>Value on day one; the moat takes months.</B> The two
-              tempos set the time-to-value. <B>Conviction pays in session
-              one.</B> A team faces an AI adversary that hunts the seams
-              in how they coordinate, and the gaps show up, felt and
-              undeniable, with no priming and no validity bet (a
-              competent, surprising opponent is enough). That is the
-              wedge, and it sells the room. The <B>compounding
-              substrate</B>, the defensible Capture asset, takes around{" "}
+              <B>The wedge has to survive first &mdash; the tension,
+              plainly.</B> The moat (compounding client-owned judgement)
+              takes{" "}
               <span className="font-mono tabular-nums text-white/70">2&ndash;3 months</span>
-              {" "}to stand up on a new domain: corpus ingestion, prior
-              calibration, the first sessions. So we don&apos;t make the
-              buyer wait. <B>Session one finds the seam; session fifty is
-              why you can&apos;t leave.</B> The product isn&apos;t
-              turnkey, and we don&apos;t pretend otherwise.
+              {" "}to form; the existential risk is <B>week-6 retention</B>.
+              So the moat doesn&apos;t exist during the window we&apos;re most
+              likely to die &mdash; and if the only thing carrying us through
+              it were <em>a competent AI adversary</em>, a foundation lab
+              could ship that in a quarter, because the adversary needs no
+              substrate. The moat answers <em>&ldquo;why won&apos;t a lab eat
+              this&rdquo;</em> for the long run and says nothing about the
+              first six weeks. The wedge is the least defensible part, and
+              it&apos;s what has to survive first. We won&apos;t soft-pedal
+              that.
             </P>
             <P>
-              <B>Versus the alternatives.</B> A foundation-model vendor
+              <B>The answer: the wedge isn&apos;t the AI &mdash; it&apos;s
+              the social play.</B> A lab can ship a better sparring bot; it
+              can&apos;t ship <em>your table, your GM, and a bottomless supply
+              of worlds you find interesting</em>. Weeks 0&ndash;12 are held
+              by a <em>social ritual</em>, not a benchmark &mdash; the reason
+              people come back to a poker night or a D&amp;D campaign: their
+              friends are there and the next scenario is fresh. Three things
+              carry it, none a model upgrade: <B>breadth of worlds</B> (any
+              text becomes a playable world, so the GM never runs out of
+              interesting scenarios and novelty doesn&apos;t decay at week
+              six), <B>the GM</B> (a person curating worlds for a specific
+              group and keeping it fun &mdash; no &ldquo;Strategy Mode&rdquo;
+              ships that), and <B>the group</B> (the unit that returns is
+              friends with social inertia, not a lone user a notification has
+              to re-hook). The AI adversary is the <em>hook</em> that sells
+              session one; social play is the <em>retention</em> that carries
+              to the moat. The lab competes on AI quality, which commoditises;
+              we compete on social play and world-breadth, which a model
+              release doesn&apos;t touch.
+            </P>
+            <P>
+              <B>Versus the alternatives, long-run.</B> Past the wedge, the
+              moat does the work. A foundation-model vendor
               ships a &ldquo;Strategy Mode&rdquo; chat in a quarter, but
               can&apos;t ship your room&apos;s history &mdash; months of
               compounded priors, a private substrate you own,
@@ -5726,27 +5818,16 @@ export default function PaperPage() {
               where it earns its way</em>. Numbers follow.
             </P>
             <P>
-              <B>Sell the laptop to the sub-enterprise tier now; earn the
-              enterprise tier later.</B> There is a real market where the
-              laptop model passes as-is &mdash; <B>boutique funds, family
-              offices, political consultancies, strategy boutiques, owner-led
-              firms</B>, anywhere the buyer <em>is</em> the principal and no
-              security committee sits between desire and signature. For them
-              {" "}<em>&ldquo;it lives on my machine, encrypted, no vendor
-              cloud&rdquo;</em> is pure upside &mdash; and they are
-              conveniently the same <B>champion-led, GM-shaped</B> motion
-              the rest of this model already runs on. So the honest
-              sequencing: <B>sell the current architecture to the
-              sub-enterprise tier now</B> and let it fund and prove the
-              practice; <B>build the BYOC / customer-VPC deployment in
-              parallel</B> (see Architecture) for when an enterprise buyer is
-              real. And the discipline that protects the motion: <B>don&apos;t
-              drag the laptop architecture into an enterprise security review
-              in the meantime.</B> A failed review doesn&apos;t just lose the
-              deal &mdash; it burns the internal champion the whole motion
-              depends on, and that person doesn&apos;t get a second swing.
-              Move the host into their tenancy <em>before</em> you walk in
-              that door.
+              <B>Consumer subscriptions, grassroots, public and private.</B>
+              {" "}The local-first architecture fits the consumer perfectly
+              &mdash; <em>&ldquo;it lives on my machine, encrypted, no vendor
+              cloud&rdquo;</em> is pure upside for a person. <B>Private rooms
+              are groups and communities</B> &mdash; a friend group, a hobby
+              league, a small team that plays its own world &mdash; on a
+              consumer subscription; <B>public rooms</B> grow from private ones
+              through the guest pass. Adoption is bottom-up: a community member
+              carries their play into wherever they belong, the network
+              growing one table at a time.
             </P>
 
             <h3 className="text-[15px] font-semibold text-white/80 mt-12 mb-3">
@@ -5754,43 +5835,47 @@ export default function PaperPage() {
             </h3>
             <p className="text-[12.5px] text-white/35 italic leading-[1.85] mt-3 border-l-2 border-white/10 pl-4">
               Numbers below are today&apos;s figures &mdash;
-              LLM costs and pricing intent will move. The shape
-              of the model (the board-game bonding exercise is the
-              entry; the high-end B2B pilot is the follow-through;
-              private subscription covers a session that costs cents;
-              public is amortised across a cohort) is the point.
+              LLM costs and pricing intent will move. The shape: free
+              workshops are the grassroots entry, communities of recurring
+              rooms are the follow-through, a consumer subscription covers a
+              session that costs cents, and public play is amortised across a
+              cohort.
             </p>
             <P>
-              <B>LLM cost is cheap; loaded margin is the honest
-              number.</B> A session costs{" "}
+              <B>LLM cost is cheap; the binding constraint is the
+              network, not code.</B> A session costs{" "}
               <span className="font-mono tabular-nums text-white/70">~$0.30&ndash;$0.50</span>
               {" "}in LLM on the current model split; a weekly
               cadence is{" "}
               <span className="font-mono tabular-nums text-white/70">$1.50&ndash;$2.00</span>
               {" "}per private room per month. That is the easy
-              part. The binding constraint is a <em>person</em>, not
-              code &mdash; the <B>game master</B> &mdash; so Meridians is{" "}
-              <B>services-led</B>: we supply or train the GM and price
-              the service, not just the seat. Once customer success,
-              facilitation, and amortised CAC are folded in, contribution margin on
-              facilitated engagements sits in the{" "}
+              part. The binding constraint is a <em>person</em> &mdash; the{" "}
+              <B>game master</B> &mdash; but the GM is <B>grown from the
+              community, not staffed by us</B>: the network produces
+              Contributors, the committed graduate into GMs who run their own
+              rooms. So Meridians is <B>community-led, not services-led</B>
+              &mdash; we are the first GMs, but the model scales by GMs{" "}
+              <em>multiplying through the network</em>, not by us hiring
+              facilitators. A founder-run room carries a services cost
+              (contribution margin{" "}
               <span className="font-mono tabular-nums text-white/70">35&ndash;60%</span>
-              {" "}band &mdash; respectable, but not the
-              software-margin daydream an LLM-only view produces.
-              The architecture is high-margin; the early go-to-market
-              is services-shaped. We are not pretending otherwise.
+              {" "}while a founder is in the chair); the thesis is that
+              community-grown GMs carry their own. The risk moves with it: not{" "}
+              <em>&ldquo;can we staff facilitators&rdquo;</em> but{" "}
+              <em>&ldquo;does the network produce GMs.&rdquo;</em>
             </P>
             <P>
-              <B>Client-led is the structural ceiling.</B> The fastest
-              path to true software margin is the organisation graduating
-              to run its own sessions: when the client supplies the
-              facilitator, the heaviest COGS line disappears and loaded
-              margin steps up to{" "}
-              <span className="font-mono tabular-nums text-white/70">~75%+</span>
-              {" "}once the facilitation retainer sunsets. The pitch to a
-              serious operator: get up to speed inside 90 days and run
-              rooms internally after &mdash; we keep answering hard
-              questions but stop being a services line item.
+              <B>Community-led is the structural ceiling.</B> The fastest
+              path to true software margin is the network supplying its own
+              facilitators: when the room&apos;s GM is grown from the
+              community rather than staffed by us, the heaviest COGS line
+              disappears and loaded margin steps up to{" "}
+              <span className="font-mono tabular-nums text-white/70">~75%+</span>.
+              {" "}A serious operator who plays their way up the ladder gets
+              to speed inside 90 days and runs rooms themselves after &mdash;
+              we keep answering hard questions and shipping the engine, but
+              stop being a services line item. Every GM the network produces
+              is one more room we don&apos;t have to staff.
             </P>
             <P>
               <B>Public cost is hypothetical.</B> A cohort of
@@ -5805,41 +5890,36 @@ export default function PaperPage() {
             <BusinessModels />
 
             <P>
-              <B>Entry, then the high-end follow-through.</B> The entry is
-              the board-game bonding exercise (see{" "}
-              <a href="#wedge" className="text-white/70 underline-offset-2 hover:underline">The Wedge</a>),
-              priced for the easiest yes: a free capped room as the taste,
-              then a one-off <em>workshop</em>
-              {" "}(<span className="font-mono tabular-nums text-white/70">~few hundred&ndash;$2K</span>)
-              that leaves a seeded substrate behind &mdash; validation
-              motion, not revenue. It earns into a{" "}
-              <em>6-month pilot</em> with a single defence contractor,
-              hedge fund, or political shop &mdash; ACV{" "}
-              <span className="font-mono tabular-nums text-white/70">~$80&ndash;120K</span>,
-              priming included, structured as priors-accumulation against
-              a real question and stepping down to software + light
-              facilitation on renewal. Services-heavy on day one by
-              design: the pilot funds itself, produces the case study the
-              next ten sales need, and seeds the substrate the client
-              keeps. In parallel, the recurring line &mdash; software at{" "}
+              <B>Grassroots entry, then revenue where the network lands.</B>
+              {" "}The entry is the <B>free workshop</B> (see{" "}
+              <a href="#wedge" className="text-white/70 underline-offset-2 hover:underline">The Game Master</a>)
+              &mdash; a real scenario made playable, the easiest possible yes:
+              people gather, play a game of Conviction, seed a world, and the
+              keenest join the Signal chat to keep contributing to the model.
+              No fee, no sale &mdash; a seeded substrate and a
+              relationship. From the network, GMs stand up <B>recurring
+              private rooms</B> for their groups and communities on a{" "}
+              <B>consumer subscription</B> &mdash;{" "}
               <span className="font-mono tabular-nums text-white/70">$99&ndash;299/mo per room</span>
-              {" "}plus a sunsetting facilitation retainer &mdash; at
-              boutique committees, family offices, campaign cells, M&amp;A
-              teams, policy units.
+              {" "}(or per-seat), the spine of private revenue. On top of that,{" "}
+              <B>public rooms</B> grow from private ones through the guest
+              pass, with pro tiers, opt-in betting, and sponsorship riding on
+              free distribution. Growth is the network compounding one table
+              at a time, not a sales motion.
             </P>
             <P>
               <B>Scale math &mdash; scenarios.</B>{" "}
               <span className="font-mono tabular-nums text-white/70">Bear ~$500K</span>
-              {" "}&mdash; one pilot, no compounding, recurring
-              adoption stalls.{" "}
+              {" "}&mdash; the grassroots loop stalls: the card game
+              spreads but the network doesn&apos;t produce GMs, so recurring
+              rooms don&apos;t compound.{" "}
               <span className="font-mono tabular-nums text-white/70">Base ~$3.5M</span>
-              {" "}&mdash; ~200 recurring rooms + two to three running
-              pilots with at least one renewing into a multi-room
-              expansion. The free room is funnel-only in this base, not
-              a revenue line. Base alone is venture-defensible.
-              Upside beyond this &mdash; public layer at scale, a
-              betting vertical &mdash; we keep separate so it
-              doesn&apos;t muddy the near-term plan.
+              {" "}&mdash; a few thousand recurring private rooms grown from
+              the network on consumer subscriptions, plus early pro tiers. The
+              free workshop is funnel-only in this base, not a revenue line.
+              Base alone is venture-defensible. Upside beyond this &mdash; the
+              public layer at scale, a betting vertical &mdash; we keep
+              separate so it doesn&apos;t muddy the near-term plan.
             </P>
             <P>
               <B>Early evidence we owe.</B> Two milestones collapse
@@ -5889,55 +5969,57 @@ export default function PaperPage() {
               sessions cap at 90 minutes, and the cadence attaches to a
               calendar slot that already exists rather than competing for a
               new one.{" "}
-              <em>Service margin disguised as software margin</em>
-              {" "}&mdash; facilitation, customer success, and CAC
-              keep loaded margin in the 35&ndash;60% band while the
-              facilitation retainer is live, until clients
-              self-facilitate.{" "}
+              <em>Network doesn&apos;t produce GMs</em> &mdash; the load-bearing
+              grassroots risk: if the card game spreads but few players ever
+              graduate into Contributors and fewer into GMs, the founders stay
+              in every chair, loaded margin sticks in the 35&ndash;60% band,
+              and the model is a services business after all. The whole thesis
+              rests on the ladder actually turning.{" "}
               <em>Behavioural moat fragility</em> and{" "}
               <em>foundation-model encroachment</em> &mdash; the two
               competitors named above (the stripped lighter tool, the
               frontier vendor); the compounding client-owned substrate
               is the answer to both, but it has to keep being earned
               every quarter.{" "}
-              <em>Pilot doesn&apos;t generalise</em> &mdash; one
-              case study at a hedge fund may not port to defence
-              or political research without a second priming
-              motion.{" "}
-              <em>Entry conversion</em> &mdash; a free capped room and a
-              one-off workshop set a deliberately low bar; the risk is
-              whether that low-friction entry converts into recurring
-              rooms rather than stopping at a pleasant one-off.{" "}
+              <em>Consumer monetisation</em> &mdash; a vibrant free
+              community may not convert to paid subscriptions at the rate the
+              base case needs; surface play that&apos;s fun to give away is not
+              automatically something people pay for.{" "}
+              <em>Entry conversion</em> &mdash; the card game and the
+              community set a deliberately low bar; the risk is whether that
+              low-friction, social entry converts into recurring rooms rather
+              than stopping at a pleasant game night.{" "}
               <em>Public-game cold start</em> &mdash; the hardest
               one; a free game with fifty players isn&apos;t a
               community.
             </P>
             <P>
               <B>Investability fork.</B> The base case justifies a
-              modest round on private rooms alone &mdash; a
-              services-led SaaS thesis where the moat is
-              client-owned compounding judgement no vendor can
-              ship from cold. The larger round implies the public
-              layer lands, which is the bet that doesn&apos;t need
-              to be made yet. We are raising on the base case alone: a
-              services-led practice with a credible path to software margin,
-              public layer priced at zero. If the boutique case doesn&apos;t
-              excite a fund, the right answer is a smaller round or
-              revenue-funded growth &mdash; not a bigger story. The public
-              layer is upside we will earn the right to pitch with evidence,
-              not adjectives.
+              modest round on private rooms alone &mdash; a{" "}
+              <B>grassroots, consumer thesis</B> where the moat is
+              player-owned compounding judgement no vendor can ship from cold
+              and the growth engine is a network that produces its own GMs.
+              The larger round implies the public layer lands, which is the
+              bet that doesn&apos;t need to be made yet. We are raising on the
+              base case alone: a <em>community that grows itself</em> with a
+              credible path to software margin, public layer priced at zero.
+              If the grassroots case doesn&apos;t excite a fund, the right
+              answer is a smaller round or revenue-funded growth &mdash; not a
+              bigger story. The public layer is upside we will earn the right
+              to pitch with evidence, not adjectives.
             </P>
           </Section>
 
           {/* ── Coda ──────────────────────────────────────────────────── */}
           <Section id="coda" label="Coda">
             <P>
-              Meridians is <B>one company doing one thing: a rehearsal
-              engine for teams.</B> It convenes a room to play the future
-              before it arrives, on a measured substrate that learns from
-              every committed move. Anyone can say it; a card makes you pay
-              for it. The substrate keeps the ledger; the next room inherits
-              the priors. Any coherent text can seed the first session
+              Meridians is <B>one company doing one thing: a gamified
+              rehearsal engine that compounds into a social network.</B> People
+              connect by playing the future before it arrives &mdash; modelling reality
+              human-up, practising it against an AI built to push back,
+              cooperating across the table on a substrate that learns from
+              every committed move. Anyone can say it; a card makes you pay for
+              it. The network compounds what each room learns. Any coherent text can seed the first session
               &mdash; a market brief, a doctrine, a history. After that, the
               room authors its own world.
             </P>
